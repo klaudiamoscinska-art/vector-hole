@@ -729,6 +729,33 @@ html, body {
   letter-spacing: 1px;
 }
 
+.daily-result, .mission-result, .hub-milestone-result {
+  width: 100%;
+  max-width: 320px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.daily-result {
+  color: var(--neon-cyan);
+  background: rgba(0, 243, 255, 0.08);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+}
+
+.mission-result {
+  color: var(--neon-gold);
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.hub-milestone-result {
+  color: #b026ff;
+  background: rgba(176, 38, 255, 0.08);
+  border: 1px solid rgba(176, 38, 255, 0.35);
+}
+
 /* ===================== SCREENS (Menu / Shop / GameOver / Ad) ===================== */
 
 .screen {
