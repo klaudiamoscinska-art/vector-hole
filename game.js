@@ -37,6 +37,12 @@ const CONFIG = {
     newRecordBonusCoins: 50,
     newRecordBonusPrisms: 3
   },
+  // Fallback reward once every skin AND aura is already unlocked, so a
+  // City Core milestone always grants *something* real.
+  hub: {
+    milestoneFallbackCoins: 100,
+    milestoneFallbackPrisms: 10
+  },
   // Floating Thumb Pad tuning (Phase 2). Legacy direct-drag stays available
   // via settings.inputMode and is unaffected by these values.
   input: {
@@ -247,7 +253,7 @@ const MUTATIONS = [
 ];
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 4;
+const SAVE_SCHEMA_VERSION = 5;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -287,6 +293,22 @@ function dailySeedForDate(date) {
   return { seed: hash >>> 0, dateKey: key };
 }
 
+// A small rotating mission pool: one is active per UTC calendar day (same
+// hashing approach as the Daily Seed Challenge, so it needs no backend).
+// Progress is tracked live during a round and checked at round end —
+// this replaces the Hub's previous static, never-checked mission line.
+const MISSIONS = [
+  { id: 'eat_5_rivals', name: 'Zjedz 5 rywali w jednej rundzie', target: 5, rewardCoins: 40 },
+  { id: 'reach_size_60', name: 'Osiągnij rozmiar 60', target: 60, rewardCoins: 35 },
+  { id: 'combo_x3', name: 'Zbuduj combo x3', target: 3, rewardCoins: 30 },
+  { id: 'score_150', name: 'Zdobądź 150 punktów w jednej rundzie', target: 150, rewardCoins: 45 }
+];
+
+function missionForDate(date) {
+  const { seed, dateKey } = dailySeedForDate(date);
+  return { mission: MISSIONS[seed % MISSIONS.length], dateKey };
+}
+
 function defaultSave() {
   return {
     schemaVersion: SAVE_SCHEMA_VERSION,
@@ -300,7 +322,8 @@ function defaultSave() {
     settings: { inputMode: 'thumbpad', sensitivity: 1, haptics: true, minimap: 'auto' },
     stats: { runsPlayed: 0 },
     hub: { coreCharge: 0 },
-    daily: { lastSeedDate: null, lastSeedScore: 0 }
+    daily: { lastSeedDate: null, lastSeedScore: 0 },
+    mission: { dateKey: null, completed: false }
   };
 }
 
@@ -351,6 +374,17 @@ function migrateSave(data) {
       displayName: data.displayName || null,
       hub: data.hub || { coreCharge: 0 },
       daily: data.daily || { lastSeedDate: null, lastSeedScore: 0 }
+    };
+  }
+
+  if (data.schemaVersion < 5) {
+    // v4 -> v5: the Hub's mission line was a static, non-functional
+    // placeholder ("Zjedz 5 rywali w jednej rundzie" always shown, never
+    // checked or rewarded). It's now a real rotating daily mission.
+    data = {
+      ...data,
+      schemaVersion: 5,
+      mission: data.mission || { dateKey: null, completed: false }
     };
   }
 
@@ -854,6 +888,13 @@ class Game {
     // Phase 9: Daily Seed Challenge
     this.isDailyRun = false;
 
+    // Daily mission (real progress tracking, replaces the old static line)
+    this.activeMission = null;
+    this.missionProgressPeak = 0;
+    this.rivalsEatenThisRun = 0;
+    this.missionJustCompleted = false;
+    this.hubMilestoneReward = null;
+
     this.sessionId = generateId('session');
     this.analytics = new Analytics();
     this.state = GameState.BOOT;
@@ -1352,12 +1393,15 @@ class Game {
     document.getElementById('prismCountShop').textContent = this.save.prisms || 0;
     document.getElementById('hubCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
     document.getElementById('hubChargeValue').textContent = (this.save.hub.coreCharge || 0) + '%';
-    document.getElementById('hubMissionText').textContent = this.hubMilestoneReached
-      ? 'City Core naładowany! Neon City odblokowuje kolejny fragment.'
-      : 'Zjedz 5 rywali w jednej rundzie.';
     document.getElementById('hubRunsValue').textContent = this.save.stats.runsPlayed || 0;
 
     const { dateKey } = dailySeedForDate(new Date());
+    const { mission } = missionForDate(new Date());
+    const missionDoneToday = this.save.mission.dateKey === dateKey && this.save.mission.completed;
+    document.getElementById('hubMissionText').textContent = missionDoneToday
+      ? `Misja dnia ukończona! Wróć jutro po nową. (+${mission.rewardCoins} monet odebrane)`
+      : `Misja dnia: ${mission.name} (+${mission.rewardCoins} monet)`;
+
     const goalText = document.getElementById('dailyGoalText');
     if (this.save.daily.lastSeedDate === dateKey) {
       goalText.textContent = `Cel: pobij dzisiejszy rekord (${this.save.daily.lastSeedScore} pkt). Nagroda: +${CONFIG.daily.completionBonusCoins} monet, a za nowy rekord +${CONFIG.daily.newRecordBonusCoins} monet i +${CONFIG.daily.newRecordBonusPrisms} pryzmatów.`;
@@ -1447,6 +1491,17 @@ class Game {
     this.runSeed = options.seed !== undefined ? options.seed : generateSeed();
     this.rng = new SeededRNG(this.runSeed);
     this.modifier = this.pickModifier();
+
+    const { mission, dateKey } = missionForDate(new Date());
+    if (this.save.mission.dateKey !== dateKey) {
+      this.save.mission = { dateKey, completed: false };
+      saveGame(this.save);
+    }
+    this.activeMission = mission;
+    this.missionProgressPeak = 0;
+    this.rivalsEatenThisRun = 0;
+    this.missionJustCompleted = false;
+    this.hubMilestoneReward = null;
 
     this.createObjects(this.rng);
     this.createEntities(this.rng);
@@ -1579,13 +1634,47 @@ class Game {
 
     // Phase 6: every run charges the City Core meter (GDD §7 — "the hub
     // must communicate it's building something after every few runs").
+    // A full meter grants a real, visible reward instead of just a
+    // congratulatory message: the next cosmetic the player doesn't own
+    // yet (skins first, then auras), or a currency bonus once everything
+    // is already unlocked.
     this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + 12;
     this.hubMilestoneReached = this.save.hub.coreCharge >= 100;
-    if (this.hubMilestoneReached) this.save.hub.coreCharge = 0;
+    this.hubMilestoneReward = null;
+    if (this.hubMilestoneReached) {
+      this.save.hub.coreCharge = 0;
+      const nextSkin = SKINS.find(s => !this.save.owned.includes(s.id));
+      const nextAura = AURAS.find(a => !this.save.auras.owned.includes(a.id));
+      if (nextSkin) {
+        this.save.owned.push(nextSkin.id);
+        this.hubMilestoneReward = { type: 'skin', name: nextSkin.name };
+      } else if (nextAura) {
+        this.save.auras.owned.push(nextAura.id);
+        this.hubMilestoneReward = { type: 'aura', name: nextAura.name };
+      } else {
+        this.save.coins += CONFIG.hub.milestoneFallbackCoins;
+        this.save.prisms = (this.save.prisms || 0) + CONFIG.hub.milestoneFallbackPrisms;
+        this.hubMilestoneReward = {
+          type: 'bonus', coins: CONFIG.hub.milestoneFallbackCoins, prisms: CONFIG.hub.milestoneFallbackPrisms
+        };
+      }
+      this.analytics.track('result_action', { action: 'hub_milestone', reward: this.hubMilestoneReward });
+    }
 
     // Phase 7: Prisms have no IAP adapter yet, so the only earn path is a
     // small trickle from progression (GDD 10.1's "slowly earned" clause).
     if (this.save.stats.runsPlayed % 3 === 0) this.save.prisms = (this.save.prisms || 0) + 1;
+
+    // Daily mission: was a static, never-checked line before this pass.
+    // Checked once per day (save.mission.completed guards re-granting the
+    // reward on a later round the same day).
+    this.missionJustCompleted = false;
+    if (this.activeMission && !this.save.mission.completed && this.missionProgressPeak >= this.activeMission.target) {
+      this.save.mission.completed = true;
+      this.save.coins += this.activeMission.rewardCoins;
+      this.missionJustCompleted = true;
+      this.analytics.track('result_action', { action: 'mission_completed', mission: this.activeMission.id });
+    }
 
     // Phase 9 fix: give the Daily Seed Challenge an explicit goal (beat
     // today's best) and its own reward, not just a different seed with no
@@ -1641,6 +1730,25 @@ class Game {
       dailyLine.classList.remove('hidden');
     } else {
       dailyLine.classList.add('hidden');
+    }
+
+    const missionLine = document.getElementById('missionResultLine');
+    if (this.missionJustCompleted) {
+      missionLine.textContent = `🎯 MISJA UKOŃCZONA: „${this.activeMission.name}" — +${this.activeMission.rewardCoins} monet`;
+      missionLine.classList.remove('hidden');
+    } else {
+      missionLine.classList.add('hidden');
+    }
+
+    const hubLine = document.getElementById('hubMilestoneLine');
+    if (this.hubMilestoneReward) {
+      const r = this.hubMilestoneReward;
+      hubLine.textContent = r.type === 'bonus'
+        ? `🌀 CITY CORE NAŁADOWANY! Wszystko już odblokowane — +${r.coins} monet, +${r.prisms} pryzmatów`
+        : `🌀 CITY CORE NAŁADOWANY! Odblokowano nowy ${r.type === 'skin' ? 'skin' : 'efekt aury'}: ${r.name}`;
+      hubLine.classList.remove('hidden');
+    } else {
+      hubLine.classList.add('hidden');
     }
 
     const list = document.getElementById('finalLeaderboard');
@@ -1813,6 +1921,7 @@ class Game {
           if (isBounty) this.bountyTarget = null;
           this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#00f3ff' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer);
           if (a.isPlayer) {
+            this.rivalsEatenThisRun++;
             this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius), bounty: isBounty });
             this.vibrate(40);
           } else if (b.isPlayer) {
@@ -1829,6 +1938,22 @@ class Game {
   /** Fires a `size_tier` analytics event the first time the player's radius
    *  crosses into a new tier this run. Tiers are analytics-only for now
    *  (Phase 4 will attach visuals/evolution offers to the same thresholds). */
+  /** Tracks the best value reached this run for whichever metric today's
+   *  mission cares about. Checked against the target at round end
+   *  (finalizeRun) rather than mid-round, so a mission can't be granted
+   *  twice and the reward always lines up with the results screen. */
+  checkMissionProgress() {
+    if (!this.activeMission) return;
+    let current = 0;
+    switch (this.activeMission.id) {
+      case 'eat_5_rivals': current = this.rivalsEatenThisRun; break;
+      case 'reach_size_60': current = this.player.radius; break;
+      case 'combo_x3': current = this.comboCount; break;
+      case 'score_150': current = this.player.score; break;
+    }
+    this.missionProgressPeak = Math.max(this.missionProgressPeak, current);
+  }
+
   checkSizeTier() {
     const tiers = CONFIG.sizeTiers;
     let current = tiers[0];
@@ -2069,6 +2194,7 @@ class Game {
     this.checkEvolutionTriggers();
     this.checkOverdriveTrigger();
     this.updateMutationEffects(dt);
+    this.checkMissionProgress();
 
     this.particles.forEach(p => p.update(dt));
     this.particles = this.particles.filter(p => !p.dead);

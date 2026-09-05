@@ -782,7 +782,62 @@ confirms the Hub card + module grid layout, the restored minimap +
 standings panel together in one HUD screenshot, the reworded Run Setup
 screen, and the Daily Challenge reward line on results.
 
-**Next recommended phase**: still Phase 10/11 only once usage data
-justifies it (per §7) — but the more immediate next step, given this
-feedback round, is getting the same kind of direct play-it-yourself
-review on the Hub/Daily changes before assuming they've fully landed.
+**Next recommended phase (superseded — see §9)**: getting direct review
+on the Hub/Daily changes came first, and surfaced exactly this.
+
+## 9. Making the Hub's placeholders real
+
+Direct play-it-yourself review of §8's Hub redesign asked a fair
+question back: what does "City Core naładowany" actually *do*, and what
+is the static "Zjedz 5 rywali w jednej rundzie" mission line actually
+*for*? Honest answer at the time: nothing yet — both were cosmetic
+placeholders that looked like working systems but weren't wired to
+anything. This patch wires them up.
+
+**Daily mission, for real.** A small pool of 4 missions
+(`MISSIONS`) — eat 5 rivals in one run, reach size 60, build a ×3 combo,
+score 150 — with one active per UTC calendar day via the same
+date-hashing approach as the Daily Seed Challenge (`missionForDate()`,
+no backend needed). `Game.checkMissionProgress()` tracks the run's best
+value toward whichever metric today's mission cares about
+(`missionProgressPeak`); `finalizeRun()` checks it against the target
+once, grants `rewardCoins`, and sets `save.mission.completed` so it
+can't be granted twice in the same day. The Hub's mission line now shows
+the actual mission and its reward, or "ukończona, wróć jutro" once
+done; the results screen shows a dedicated `🎯 MISJA UKOŃCZONA` line
+when a round completes it.
+
+**City Core milestone, for real.** Filling the meter to 100% used to
+just reset it and print a self-congratulatory sentence. Now it actually
+grants something: the next skin the player doesn't own yet, or — once
+every skin is owned — the next aura, or — once every cosmetic is owned —
+a flat Coins+Prisms bonus (`CONFIG.hub.milestoneFallbackCoins/Prisms`)
+so a milestone is never a dead end. The reward is applied immediately
+(pushed into `save.owned`/`save.auras.owned`) and called out on the
+results screen with what was actually unlocked.
+
+**Save schema bumped to v5** (`mission: {dateKey, completed}`); v4→v5
+migration adds the field to existing saves without touching anything
+else.
+
+**Verified via Playwright**: forcing each mission's target metric and
+confirming `missionJustCompleted`, the exact reward text, and
+`save.mission.completed` all update correctly; forcing `hub.coreCharge`
+to 96 (so one run's +12 crosses 100) and confirming the next unowned
+skin is both granted (`save.owned`) and named correctly in the results
+line; the Hub's mission text reflecting the live mission before playing;
+a full pause → evolution → results playthrough plus a page reload
+confirming the v5 save round-trips with no data loss and zero console
+errors throughout.
+
+**Remaining honest gap**: the mission pool is still only 4 entries and
+picked by a simple date hash (no weighting, no "don't repeat
+yesterday's" guard) — fine for a first real version, worth revisiting
+once there's usage data on which missions players actually engage with.
+The Mission Board / Collection Vault / League Terminal screens from the
+GDD are still not built; this patch made the *existing* Hub promises
+real rather than adding new ones.
+
+**Next recommended phase**: Phase 10/11 only once usage data justifies
+it (per §7) — the Hub and Daily Challenge now do what they visibly claim
+to do, which was the higher-priority gap to close first.
