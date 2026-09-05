@@ -48,6 +48,29 @@ const CONFIG = {
     canEatHighlightBandHigh: 1.15, // this band around 1.0 -- "you're close to being able to eat this"
     dangerHaloRange: 260
   },
+  // Phase 4: Evolution moments (run-only mutation picks) + Overdrive/City Shift.
+  evolution: {
+    triggerRadii: [45, 65],  // fires once each, aligned with the 'core'/'vortex' size tiers
+    cardCount: 3,
+    slowMotionFactor: 0.25, // world speed while a card is pending; not a full pause (GDD 4.1)
+    autoPickMs: 5000,        // avoid soft-locking flow if the player doesn't choose
+    magnetRadius: 160,
+    magnetPull: 90,
+    slipstreamComboThreshold: 3,
+    slipstreamSpeedMult: 1.6,
+    slipstreamMs: 1500,
+    phaseEdgeInvulnBonusMs: 2000,
+    scannerIntervalSeconds: 4,
+    shockwaveRadius: 140,
+    shockwavePush: 70,
+    bountyBonusScore: 40
+  },
+  overdrive: {
+    triggerSecondsRemaining: 12,
+    variants: ['blackout', 'portal_rain'],
+    bonusObjectCount: 10,
+    bonusObjectValue: 15
+  },
   // Size tiers used for analytics (`size_tier` events) and future evolution
   // visuals (GDD P2). Not yet shown in the HUD or tied to any visual change.
   sizeTiers: [
@@ -60,14 +83,15 @@ const CONFIG = {
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
   flags: {
-    inputThumbPad: true,        // Phase 2: Floating Thumb Pad control (global kill-switch; false forces legacy)
-    evolutionSystem: false,     // Phase 4: evolution cards + Overdrive
-    proceduralDistricts: false, // Phase 5: seeded chunk generator
-    hub: false,                 // Phase 6: Neon Core Hub
-    shopV2: false,              // Phase 7: shop categories/loadout
-    dailyChallenge: false,      // Phase 9: daily seed challenge
-    monetizationAdapters: false,// Phase 11: real ad/IAP SDK adapters
-    analyticsConsoleLog: true   // Phase 1: log analytics events to console
+    inputThumbPad: true,   // Phase 2: Floating Thumb Pad control (global kill-switch; false forces legacy)
+    evolutionSystem: true, // Phase 4: evolution cards + Overdrive
+    runModifiers: true,    // Phase 5 (scoped): seed-driven Rush Hour modifier; full chunk/district system NOT built
+    proceduralDistricts: false, // full authored chunk generator (GDD §14.2) — not implemented, see plan doc
+    hub: true,              // Phase 6: Neon Core Hub skeleton
+    shopV2: true,           // Phase 7: shop categories/loadout + Prisms
+    dailyChallenge: true,   // Phase 9: daily seed challenge (local-only, no backend leaderboard)
+    monetizationAdapters: false, // real ad/IAP SDKs — deliberately not added (no secrets/store creds in-repo)
+    analyticsConsoleLog: true    // Phase 1: log analytics events to console
   }
 };
 
@@ -127,6 +151,19 @@ function generateId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Phase 8: a tiny placeholder blocklist so public display names aren't
+// completely unmoderated. This is NOT production profanity moderation
+// (GDD P6 explicitly calls for real moderation before names are public) —
+// it exists so the guest-to-named-profile flow isn't shipped with zero
+// safeguard, not as a finished solution.
+const NAME_BLOCKLIST = ['fuck', 'shit', 'kurwa', 'chuj', 'nazi'];
+function moderateName(name) {
+  if (!name) return '';
+  const lower = name.toLowerCase();
+  if (NAME_BLOCKLIST.some(w => lower.includes(w))) return '';
+  return name.slice(0, 16);
+}
+
 /* ----------------------- Analytics (provider-agnostic stub) -----------------------
    Minimum event set per the Golden Shot V2 spec. Events that depend on
    systems not yet built (ftue_step, evolution_offer/pick, overdrive_start,
@@ -172,8 +209,38 @@ const SKINS = [
   { id: 'white', name: 'Plasma White', price: 200, color: '#ffffff' }
 ];
 
+// Phase 7 shop v2: a second cosmetic category beyond ring skins, purchasable
+// with either currency to give Prisms an actual sink (GDD 10.1/10.2).
+const AURAS = [
+  { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins' },
+  { id: 'spark', name: 'Spark Aura', priceCoins: 120, priceType: 'coins', color: '#00f3ff' },
+  { id: 'ember', name: 'Ember Aura', pricePrisms: 15, priceType: 'prisms', color: '#ff007f' },
+  { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#b026ff' }
+];
+
+// Phase 7 casual run tools: consumable per-run boosters, Coins-only, casual
+// mode only (no ranked/daily equivalent exists yet to keep them fair for).
+const RUN_TOOLS = [
+  { id: 'none', name: 'Brak', price: 0, desc: 'Zwykła runda.' },
+  { id: 'shield', name: 'Tarcza', price: 40, desc: 'Chroni przed 1 starciem z większym rywalem.' },
+  { id: 'magnet', name: 'Magnes', price: 30, desc: 'Przyciąga obiekty przez pierwsze 8 s rundy.' }
+];
+
+// Phase 4: Golden Shot evolution mutations — run-only, never sold or kept
+// between rounds, so the ranked/daily leaderboard (once it exists) stays
+// fair (GDD 4.1).
+const MUTATIONS = [
+  { id: 'magnet_pulse', name: 'Magnet Pulse', desc: 'Lekko przyciąga pobliskie obiekty.', weight: 3, color: '#00f3ff' },
+  { id: 'slipstream', name: 'Slipstream', desc: 'Speed boost po udanym combo.', weight: 3, color: '#39ff14' },
+  { id: 'phase_edge', name: 'Phase Edge', desc: 'Dłuższa ochrona po starciu z rywalem.', weight: 2, color: '#b026ff' },
+  { id: 'combo_reactor', name: 'Combo Reactor', desc: 'Dłuższe okno combo.', weight: 3, color: '#ffd700' },
+  { id: 'scanner', name: 'Scanner', desc: 'Co kilka sekund wskazuje wartościowy klaster.', weight: 2, color: '#00f3ff' },
+  { id: 'shockwave', name: 'Shockwave', desc: 'Po wzroście odpycha małe obiekty.', weight: 2, color: '#ff007f' },
+  { id: 'bounty_core', name: 'Bounty Core', desc: 'Oznacza rywala — zjedzenie daje bonus.', weight: 2, color: '#ffae00' }
+];
+
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 3;
+const SAVE_SCHEMA_VERSION = 4;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -182,13 +249,35 @@ function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
-function pickUnique(arr, n) {
+function pickUnique(arr, n, rng) {
   const pool = arr.slice();
   const out = [];
   for (let i = 0; i < n && pool.length; i++) {
-    out.push(pool.splice(randInt(0, pool.length - 1), 1)[0]);
+    const idx = rng ? Math.floor(rng.next() * pool.length) : randInt(0, pool.length - 1);
+    out.push(pool.splice(idx, 1)[0]);
   }
   return out;
+}
+
+/** Phase 5 (scoped): seeded equivalents of rand()/randInt() so a run's
+ *  *initial* layout (object/bot starting positions) is reproducible from
+ *  its seed — used for the Daily Seed Challenge. Ongoing mid-round
+ *  randomness (bot wandering, object respawn after being eaten, particle
+ *  drift) intentionally keeps using Math.random(): only the starting
+ *  layout needs to match across devices/replays, per GDD 14.2. */
+function seededRand(rng, min, max) { return rng.next() * (max - min) + min; }
+function seededInt(rng, min, max) { return Math.floor(seededRand(rng, min, max + 1)); }
+
+/** UTC-date-based seed so every player gets the same Daily Seed Challenge
+ *  on the same calendar day, without a backend (GDD 14.2/14.3 — daily
+ *  leaderboard infra is a later phase; the seed itself needs none). */
+function dailySeedForDate(date) {
+  const key = date.toISOString().slice(0, 10); // YYYY-MM-DD
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (Math.imul(31, hash) + key.charCodeAt(i)) | 0;
+  }
+  return { seed: hash >>> 0, dateKey: key };
 }
 
 function defaultSave() {
@@ -198,9 +287,13 @@ function defaultSave() {
     prisms: 0,
     owned: ['rainbow'],
     selected: 'rainbow',
+    auras: { owned: ['none'], selected: 'none' },
+    displayName: null, // guest-first: never required before the first run (GDD P6)
     guestId: generateId('guest'),
     settings: { inputMode: 'thumbpad', sensitivity: 1, haptics: true, minimap: 'auto' },
-    stats: { runsPlayed: 0 }
+    stats: { runsPlayed: 0 },
+    hub: { coreCharge: 0 },
+    daily: { lastSeedDate: null, lastSeedScore: 0 }
   };
 }
 
@@ -238,6 +331,19 @@ function migrateSave(data) {
         inputMode: data.settings.inputMode === 'legacy' ? 'thumbpad' : data.settings.inputMode,
         minimap: data.settings.minimap || 'auto'
       }
+    };
+  }
+
+  if (data.schemaVersion < 4) {
+    // v3 -> v4: Neon Core Hub, profile display name, a second cosmetic
+    // currency sink (auras), and a local Daily Seed Challenge record.
+    data = {
+      ...data,
+      schemaVersion: 4,
+      auras: data.auras || { owned: ['none'], selected: 'none' },
+      displayName: data.displayName || null,
+      hub: data.hub || { coreCharge: 0 },
+      daily: data.daily || { lastSeedDate: null, lastSeedScore: 0 }
     };
   }
 
@@ -337,20 +443,30 @@ class Ripple {
 /* ----------------------- WorldObject ----------------------- */
 
 class WorldObject {
-  constructor(tierName) {
-    this.respawn(tierName, true);
+  constructor(tierName, rng) {
+    this.respawn(tierName, true, rng);
   }
 
-  respawn(tierName, first) {
+  /** rng, when given, only applies to the *initial* spawn (first=true) —
+   *  see seededRand()'s doc comment for why later respawns stay unseeded. */
+  respawn(tierName, first, rng) {
     const tier = TIERS[tierName];
     this.tier = tierName;
     this.color = tier.color;
     this.value = tier.value;
-    this.subtype = tier.subtypes[randInt(0, tier.subtypes.length - 1)];
-    this.radius = rand(tier.minR, tier.maxR);
-    this.rotation = rand(0, Math.PI * 2);
-    this.x = rand(this.radius + 20, WORLD_W - this.radius - 20);
-    this.y = rand(this.radius + 20, WORLD_H - this.radius - 20);
+    if (first && rng) {
+      this.subtype = tier.subtypes[seededInt(rng, 0, tier.subtypes.length - 1)];
+      this.radius = seededRand(rng, tier.minR, tier.maxR);
+      this.rotation = seededRand(rng, 0, Math.PI * 2);
+      this.x = seededRand(rng, this.radius + 20, WORLD_W - this.radius - 20);
+      this.y = seededRand(rng, this.radius + 20, WORLD_H - this.radius - 20);
+    } else {
+      this.subtype = tier.subtypes[randInt(0, tier.subtypes.length - 1)];
+      this.radius = rand(tier.minR, tier.maxR);
+      this.rotation = rand(0, Math.PI * 2);
+      this.x = rand(this.radius + 20, WORLD_W - this.radius - 20);
+      this.y = rand(this.radius + 20, WORLD_H - this.radius - 20);
+    }
     this.eating = false;
     this.eatT = 0;
     this.eater = null;
@@ -490,7 +606,9 @@ class Hole {
 
   getSpeed() {
     const s = BASE_SPEED * Math.pow(BASE_RADIUS / this.radius, 0.22);
-    return clamp(s, 45, BASE_SPEED);
+    // tempSpeedMult: set per-frame by Game.updateMutationEffects() for the
+    // Slipstream evolution mutation (Phase 4); 1 the rest of the time.
+    return clamp(s, 45, BASE_SPEED) * (this.tempSpeedMult || 1);
   }
 
   moveToward(tx, ty, dt) {
@@ -526,14 +644,31 @@ class Hole {
     this.radius = Math.max(MIN_RADIUS, Math.sqrt(newArea / Math.PI));
   }
 
-  shrinkAndRespawn() {
+  shrinkAndRespawn(bonusInvulnMs) {
     this.radius = BASE_RADIUS;
     this.x = rand(this.radius + 20, WORLD_W - this.radius - 20);
     this.y = rand(this.radius + 20, WORLD_H - this.radius - 20);
-    this.invulnerableUntil = performance.now() + INVULN_TIME * 1000;
+    this.invulnerableUntil = performance.now() + INVULN_TIME * 1000 + (bonusInvulnMs || 0);
   }
 
   draw(ctx, time) {
+    if (this.auraId && this.auraId !== 'none') {
+      const aura = AURAS.find(a => a.id === this.auraId);
+      if (aura && aura.color) {
+        const pulse = 0.5 + 0.5 * Math.sin(time * 2.4);
+        ctx.save();
+        ctx.globalAlpha = 0.25 + 0.15 * pulse;
+        ctx.strokeStyle = aura.color;
+        ctx.shadowBlur = 22;
+        ctx.shadowColor = aura.color;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius + 8 + 3 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
     ctx.save();
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -682,8 +817,35 @@ class Game {
     this.comboMultiplier = 1;
     this.comboTimer = 0;
     this.comboDisplayAlpha = 0;
+    this.comboWindowOverride = null;
     this.dangerWarned = new Set();
     this.adUsedThisRound = false;
+
+    // Phase 4: Evolution + Overdrive (run-only state, reset every round)
+    this.activeMutations = new Set();
+    this.evolutionOffersTriggered = new Set();
+    this.evolutionPending = false;
+    this.evolutionAutoPickTimer = null;
+    this.magnetUntil = 0;
+    this.speedBoostUntil = 0;
+    this.scannerTimer = 0;
+    this.scannerTarget = null;
+    this.scannerTargetUntil = 0;
+    this.bountyTarget = null;
+    this.overdriveActive = false;
+    this.overdriveVariant = null;
+    this.overdriveTag = null;
+
+    // Phase 5: seeded run modifier (lightweight — see docs for scope)
+    this.modifier = 'none';
+
+    // Phase 7: casual run tools (consumable, casual-only)
+    this.selectedRunTool = 'none';
+    this.shieldCharges = 0;
+    this.toolMagnetUntil = 0;
+
+    // Phase 9: Daily Seed Challenge
+    this.isDailyRun = false;
 
     this.sessionId = generateId('session');
     this.analytics = new Analytics();
@@ -868,16 +1030,44 @@ class Game {
   }
 
   bindUI() {
-    document.getElementById('btnStart').addEventListener('click', () => this.startRound());
+    document.getElementById('btnStart').addEventListener('click', () => {
+      this.selectedRunTool = 'none';
+      this.populateRunToolGrid();
+      this.showScreen('runSetupScreen');
+    });
+    document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
+    document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
+
+    document.getElementById('btnDaily').addEventListener('click', () => this.startDailyChallenge());
+
+    document.getElementById('btnProfile').addEventListener('click', () => this.openProfileScreen());
+    document.getElementById('btnSaveProfile').addEventListener('click', () => this.saveProfile());
+    document.getElementById('btnProfileBack').addEventListener('click', () => this.showScreen('mainMenu'));
+
     document.getElementById('btnShop').addEventListener('click', () => {
       this.analytics.track('shop_view', {});
+      this.populateAuras();
       this.showScreen('shopScreen');
     });
     document.getElementById('btnShopBack').addEventListener('click', () => this.showScreen('mainMenu'));
+    document.getElementById('tabSkins').addEventListener('click', () => {
+      document.getElementById('tabSkins').classList.add('active');
+      document.getElementById('tabAuras').classList.remove('active');
+      document.getElementById('skinGrid').classList.remove('hidden');
+      document.getElementById('auraGrid').classList.add('hidden');
+    });
+    document.getElementById('tabAuras').addEventListener('click', () => {
+      document.getElementById('tabAuras').classList.add('active');
+      document.getElementById('tabSkins').classList.remove('active');
+      document.getElementById('auraGrid').classList.remove('hidden');
+      document.getElementById('skinGrid').classList.add('hidden');
+    });
+
     document.getElementById('btnPlayAgain').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'play_again' });
       this.requestPlayAgain();
     });
+    document.getElementById('btnShare').addEventListener('click', () => this.shareResult());
     document.getElementById('btnMenu').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'menu' });
       this.updateCoinDisplays();
@@ -1001,13 +1191,163 @@ class Game {
     this.updateCoinDisplays();
   }
 
+  /** Phase 7 shop v2's second cosmetic category — gives Prisms an actual
+   *  sink alongside Coins (GDD 10.1/10.2). */
+  populateAuras() {
+    const grid = document.getElementById('auraGrid');
+    grid.innerHTML = '';
+    AURAS.forEach(aura => {
+      const owned = this.save.auras.owned.includes(aura.id);
+      const selected = this.save.auras.selected === aura.id;
+      const card = document.createElement('div');
+      card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
+
+      const swatch = document.createElement('div');
+      swatch.className = 'skin-swatch';
+      if (aura.color) {
+        swatch.style.borderColor = aura.color;
+        swatch.style.boxShadow = `0 0 10px ${aura.color}`;
+      } else {
+        swatch.style.borderColor = 'rgba(255,255,255,0.3)';
+      }
+      card.appendChild(swatch);
+
+      const name = document.createElement('div');
+      name.className = 'skin-name';
+      name.textContent = aura.name;
+      card.appendChild(name);
+
+      const meta = document.createElement('div');
+      meta.className = owned ? 'skin-owned-badge' : 'skin-price';
+      meta.textContent = owned
+        ? (selected ? 'WYBRANY' : 'POSIADANE')
+        : (aura.priceType === 'prisms' ? `◆ ${aura.pricePrisms}` : `◈ ${aura.priceCoins}`);
+      card.appendChild(meta);
+
+      card.addEventListener('click', () => this.onAuraClick(aura));
+      grid.appendChild(card);
+    });
+  }
+
+  onAuraClick(aura) {
+    const owned = this.save.auras.owned.includes(aura.id);
+    if (owned) {
+      this.save.auras.selected = aura.id;
+    } else if (aura.priceType === 'prisms') {
+      if (this.save.prisms < aura.pricePrisms) {
+        this.analytics.track('cosmetic_preview', { auraId: aura.id, affordable: false });
+        return;
+      }
+      this.save.prisms -= aura.pricePrisms;
+      this.save.auras.owned.push(aura.id);
+      this.save.auras.selected = aura.id;
+      this.analytics.track('soft_purchase', { auraId: aura.id, price: aura.pricePrisms, currency: 'prisms' });
+    } else {
+      if (this.save.coins < aura.priceCoins) {
+        this.analytics.track('cosmetic_preview', { auraId: aura.id, affordable: false });
+        return;
+      }
+      this.save.coins -= aura.priceCoins;
+      this.save.auras.owned.push(aura.id);
+      this.save.auras.selected = aura.id;
+      this.analytics.track('soft_purchase', { auraId: aura.id, price: aura.priceCoins, currency: 'coins' });
+    }
+    saveGame(this.save);
+    this.populateAuras();
+    this.updateCoinDisplays();
+  }
+
+  /** Phase 7 casual run tools — Coins-only, consumed at round start, no
+   *  ranked/daily equivalent exists yet to keep those modes fair. */
+  populateRunToolGrid() {
+    const grid = document.getElementById('runToolGrid');
+    grid.innerHTML = '';
+    RUN_TOOLS.forEach(tool => {
+      const afford = tool.price === 0 || this.save.coins >= tool.price;
+      const btn = document.createElement('button');
+      btn.className = 'run-tool-card' + (this.selectedRunTool === tool.id ? ' selected' : '');
+      btn.style.opacity = afford ? '1' : '0.5';
+      btn.innerHTML = `<span><span class="run-tool-name">${tool.name}</span><br><span class="run-tool-desc">${tool.desc}</span></span><span>${tool.price > 0 ? '◈ ' + tool.price : ''}</span>`;
+      btn.addEventListener('click', () => {
+        if (!afford) return;
+        this.selectedRunTool = tool.id;
+        this.populateRunToolGrid();
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  confirmRunSetup() {
+    const tool = RUN_TOOLS.find(t => t.id === this.selectedRunTool);
+    if (tool && tool.price > 0) {
+      this.save.coins -= tool.price;
+      saveGame(this.save);
+      this.updateCoinDisplays();
+    }
+    this.startRound();
+  }
+
+  openProfileScreen() {
+    document.getElementById('displayNameInput').value = this.save.displayName || '';
+    document.getElementById('guestIdLabel').textContent = this.save.guestId;
+    this.showScreen('profileScreen');
+  }
+
+  saveProfile() {
+    const raw = document.getElementById('displayNameInput').value.trim();
+    this.save.displayName = moderateName(raw) || null;
+    saveGame(this.save);
+    this.analytics.track('profile_created', { guest: !this.save.displayName });
+    this.showScreen('mainMenu');
+  }
+
+  startDailyChallenge() {
+    const { seed, dateKey } = dailySeedForDate(new Date());
+    this.analytics.track('daily_challenge_start', { dateKey, seed });
+    this.startRound({ seed, daily: true });
+  }
+
+  /** navigator.share with a clipboard fallback — never assumes Web Share
+   *  exists (GDD P6: feature-detect with canShare, always have a fallback). */
+  async shareResult() {
+    const place = document.getElementById('finalPlace').textContent;
+    const score = document.getElementById('finalScore').textContent;
+    const tagEl = document.getElementById('resultTag');
+    const tag = !tagEl.classList.contains('hidden') ? ` [${tagEl.textContent}]` : '';
+    const text = `Vector Hole — miejsce ${place}, wynik ${score}${tag}. Seed: ${this.runSeed}.`;
+    const url = window.location.href;
+    this.analytics.track('share_click', {});
+
+    const btn = document.getElementById('btnShare');
+    const originalText = btn.textContent;
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ text, url }))) {
+        await navigator.share({ title: 'Vector Hole', text, url });
+        this.analytics.track('share_success', {});
+      } else {
+        await navigator.clipboard.writeText(`${text} ${url}`);
+        this.analytics.track('share_success', { fallback: 'clipboard' });
+        btn.textContent = 'SKOPIOWANO ✓';
+        setTimeout(() => { btn.textContent = originalText; }, 2000);
+      }
+    } catch (e) {
+      this.analytics.track('share_fail', { error: String(e) });
+    }
+  }
+
   updateCoinDisplays() {
     document.getElementById('coinCountMenu').textContent = this.save.coins;
     document.getElementById('coinCountShop').textContent = this.save.coins;
+    document.getElementById('prismCountMenu').textContent = this.save.prisms || 0;
+    document.getElementById('prismCountShop').textContent = this.save.prisms || 0;
+    document.getElementById('hubCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
+    document.getElementById('hubMissionText').textContent = this.hubMilestoneReached
+      ? 'City Core naładowany! Neon City odblokowuje kolejny fragment.'
+      : 'Zjedz 5 rywali w jednej rundzie.';
   }
 
   showScreen(id) {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'profileScreen', 'runSetupScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
     document.getElementById('hud').classList.toggle('hidden', true);
@@ -1016,70 +1356,123 @@ class Game {
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'profileScreen', 'runSetupScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
   }
 
   /* ---------- world setup ---------- */
 
-  randomWorldPos(padding) {
-    return { x: rand(padding, WORLD_W - padding), y: rand(padding, WORLD_H - padding) };
+  playerDisplayName() {
+    return this.save.displayName || 'Ty';
   }
 
-  createObjects() {
+  /** rng, when passed, makes this position part of the run's deterministic
+   *  starting layout (Phase 5 — see seededRand()'s doc comment). */
+  randomWorldPos(padding, rng) {
+    return rng
+      ? { x: seededRand(rng, padding, WORLD_W - padding), y: seededRand(rng, padding, WORLD_H - padding) }
+      : { x: rand(padding, WORLD_W - padding), y: rand(padding, WORLD_H - padding) };
+  }
+
+  createObjects(rng) {
     this.objects = [];
     Object.keys(TIERS).forEach(tierName => {
       for (let i = 0; i < TIERS[tierName].count; i++) {
-        this.objects.push(new WorldObject(tierName));
+        this.objects.push(new WorldObject(tierName, rng));
       }
     });
   }
 
-  createEntities() {
-    const spawn = this.randomWorldPos(300);
-    this.player = new Hole('Ty', spawn.x, spawn.y, true);
+  createEntities(rng) {
+    const spawn = this.randomWorldPos(300, rng);
+    this.player = new Hole(this.playerDisplayName(), spawn.x, spawn.y, true);
     this.player.skin = this.save.selected;
+    this.player.auraId = this.save.auras.selected;
 
     this.bots = [];
-    const names = pickUnique(BOT_NAME_POOL, NUM_BOTS);
+    const names = pickUnique(BOT_NAME_POOL, NUM_BOTS, rng);
     for (let i = 0; i < NUM_BOTS; i++) {
-      const p = this.randomWorldPos(300);
+      const p = this.randomWorldPos(300, rng);
       this.bots.push(new Bot(names[i], p.x, p.y));
     }
+
+    // Phase 5 (scoped): a single lightweight run modifier, seed-driven so
+    // a Daily Seed Challenge gets the same one for every player that day.
+    // Full authored districts/chunks (GDD §14.2) are NOT implemented —
+    // see docs/VECTRE_V2_PLAN.md for the explicit scope call.
+    if (this.modifier === 'rush_hour') {
+      for (const bot of this.bots) bot.tempSpeedMult = 1.3;
+    }
+  }
+
+  pickModifier() {
+    if (!CONFIG.flags.runModifiers) return 'none';
+    return this.rng.next() < 0.35 ? 'rush_hour' : 'none';
   }
 
   /* ---------- round flow ---------- */
 
-  startRound() {
+  /** options.seed forces a specific seed (Daily Seed Challenge);
+   *  options.daily marks the run so endRound() records a daily best. */
+  startRound(options) {
+    options = options || {};
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
-    this.createObjects();
-    this.createEntities();
+
+    this.isDailyRun = !!options.daily;
+    this.runId = generateId('run');
+    this.runSeed = options.seed !== undefined ? options.seed : generateSeed();
+    this.rng = new SeededRNG(this.runSeed);
+    this.modifier = this.pickModifier();
+
+    this.createObjects(this.rng);
+    this.createEntities(this.rng);
     this.particles = [];
     this.ripples = [];
     this.comboCount = 0;
     this.comboMultiplier = 1;
     this.comboTimer = 0;
+    this.comboWindowOverride = null;
     this.comboDisplayAlpha = 0;
     this.dangerWarned = new Set();
     this.timeRemaining = ROUND_TIME;
     this.adUsedThisRound = false;
-    this.runId = generateId('run');
-    this.runSeed = generateSeed();
-    this.rng = new SeededRNG(this.runSeed);
     this.runStartedAt = performance.now();
     this.firstEatTracked = false;
     this.lastSizeTierId = CONFIG.sizeTiers[0].id;
+
+    // Phase 4 run-only state
+    this.activeMutations = new Set();
+    this.evolutionOffersTriggered = new Set();
+    this.evolutionPending = false;
+    clearTimeout(this.evolutionAutoPickTimer);
+    this.magnetUntil = 0;
+    this.speedBoostUntil = 0;
+    this.scannerTimer = 0;
+    this.scannerTarget = null;
+    this.bountyTarget = null;
+    this.overdriveActive = false;
+    this.overdriveVariant = null;
+    this.overdriveTag = null;
+    document.getElementById('evolutionOverlay').classList.add('hidden');
+    document.getElementById('overdriveBanner').classList.add('hidden');
+
+    // Phase 7 run tool, selected in the Run Setup screen (or 'none')
+    this.shieldCharges = this.selectedRunTool === 'shield' ? 1 : 0;
+    this.toolMagnetUntil = this.selectedRunTool === 'magnet' ? performance.now() + 8000 : 0;
+    this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
+
     this.running = true;
     this.state = GameState.PLAYING;
 
     const hint = document.getElementById('mobile-hint');
-    hint.textContent = this.useThumbpad
+    hint.textContent = (this.useThumbpad
       ? 'Dotknij dolną część ekranu, aby sterować kciukiem'
-      : 'Dotknij i przeciągaj, aby sterować dziurą';
+      : 'Dotknij i przeciągaj, aby sterować dziurą')
+      + (this.modifier === 'rush_hour' ? ' • Modyfikator: RUSH HOUR' : '');
     hint.classList.remove('hidden');
     clearTimeout(this.hintTimer);
     this.hintTimer = setTimeout(() => hint.classList.add('hidden'), 4000);
@@ -1090,7 +1483,10 @@ class Game {
       runId: this.runId,
       seed: this.runSeed,
       skin: this.player.skin,
-      playCount: this.playCount
+      playCount: this.playCount,
+      modifier: this.modifier,
+      runTool: this.selectedRunTool,
+      daily: this.isDailyRun
     });
   }
 
@@ -1160,8 +1556,27 @@ class Game {
     this.adPendingCoins = coinsEarned;
     this.save.coins += coinsEarned;
     this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
-    saveGame(this.save);
 
+    // Phase 6: every run charges the City Core meter (GDD §7 — "the hub
+    // must communicate it's building something after every few runs").
+    this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + 12;
+    this.hubMilestoneReached = this.save.hub.coreCharge >= 100;
+    if (this.hubMilestoneReached) this.save.hub.coreCharge = 0;
+
+    // Phase 7: Prisms have no IAP adapter yet, so the only earn path is a
+    // small trickle from progression (GDD 10.1's "slowly earned" clause).
+    if (this.save.stats.runsPlayed % 3 === 0) this.save.prisms = (this.save.prisms || 0) + 1;
+
+    if (this.isDailyRun) {
+      const { dateKey } = dailySeedForDate(new Date());
+      const isNewBest = this.save.daily.lastSeedDate !== dateKey || this.player.score > this.save.daily.lastSeedScore;
+      if (isNewBest) {
+        this.save.daily = { lastSeedDate: dateKey, lastSeedScore: this.player.score };
+      }
+      this.analytics.track('daily_challenge_end', { dateKey, score: this.player.score, isNewBest });
+    }
+
+    saveGame(this.save);
     return { ranked, place, coinsEarned };
   }
 
@@ -1172,6 +1587,16 @@ class Game {
     document.getElementById('finalPlace').textContent = '#' + place;
     document.getElementById('finalScore').textContent = this.player.score;
     document.getElementById('finalCoins').textContent = coinsEarned;
+
+    const tag = document.getElementById('resultTag');
+    if (this.overdriveActive && this.overdriveTag) {
+      tag.textContent = this.overdriveTag;
+      tag.classList.remove('hidden');
+    } else {
+      tag.classList.add('hidden');
+    }
+
+    document.getElementById('resultCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
 
     const list = document.getElementById('finalLeaderboard');
     list.innerHTML = '';
@@ -1195,7 +1620,8 @@ class Game {
       place,
       durationMs: Math.round(performance.now() - this.runStartedAt),
       coinsEarned,
-      completed: true
+      completed: true,
+      overdriveTag: this.overdriveTag
     });
   }
 
@@ -1297,9 +1723,13 @@ class Game {
    *  than cutting abruptly when the window lapses (see update()). */
   registerCombo() {
     this.comboCount++;
-    this.comboTimer = CONFIG.juice.combo.windowSeconds;
+    // Combo Reactor mutation (Phase 4) extends the window for this run only.
+    this.comboTimer = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
     this.comboMultiplier = clamp(1 + (this.comboCount - 1) * CONFIG.juice.combo.stepBonus, 1, CONFIG.juice.combo.maxMultiplier);
     this.comboDisplayAlpha = 1;
+    if (this.activeMutations.has('slipstream') && this.comboCount >= CONFIG.evolution.slipstreamComboThreshold) {
+      this.speedBoostUntil = performance.now() + CONFIG.evolution.slipstreamMs;
+    }
     return this.comboMultiplier;
   }
 
@@ -1322,18 +1752,30 @@ class Game {
         if (a.radius <= b.radius * EAT_HOLE_RATIO) continue;
         const d = dist(a.x, a.y, b.x, b.y);
         if (d < a.radius * 0.75) {
+          // Phase 7 "Shield" run tool: fully negates one collision instead
+          // of softening it (Phase Edge softens; Shield blocks outright).
+          if (b.isPlayer && this.shieldCharges > 0) {
+            this.shieldCharges--;
+            this.spawnParticles(b.x, b.y, '#00f3ff', 20);
+            this.vibrate(60);
+            continue;
+          }
+
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
           const multiplier = a.isPlayer ? this.registerCombo() : 1;
-          a.score += Math.round(b.radius * 2 * multiplier);
+          const isBounty = a.isPlayer && b === this.bountyTarget;
+          a.score += Math.round(b.radius * 2 * multiplier) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
+          if (isBounty) this.bountyTarget = null;
           this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#00f3ff' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer);
           if (a.isPlayer) {
-            this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius) });
+            this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius), bounty: isBounty });
             this.vibrate(40);
           } else if (b.isPlayer) {
             this.analytics.track('player_eaten', { by: a.name, playerSize: Math.round(b.radius) });
             this.vibrate([30, 40, 30]);
           }
-          b.shrinkAndRespawn();
+          const phaseEdgeBonus = (b.isPlayer && this.activeMutations.has('phase_edge')) ? CONFIG.evolution.phaseEdgeInvulnBonusMs : 0;
+          b.shrinkAndRespawn(phaseEdgeBonus);
         }
       }
     }
@@ -1351,12 +1793,178 @@ class Game {
     if (current.id !== this.lastSizeTierId) {
       this.lastSizeTierId = current.id;
       this.analytics.track('size_tier', { tier: current.id, radius: Math.round(this.player.radius) });
-      // Growth-tier transition pulse: purely cosmetic today (green = positive
-      // per the GDD 5.4 color hierarchy); Phase 4 attaches real evolution
-      // offers to these same thresholds.
+      // Growth-tier transition pulse (green = positive per GDD 5.4's color
+      // hierarchy). Phase 4's evolution offers trigger from the same
+      // radius crossings via CONFIG.evolution.triggerRadii, checked
+      // separately in checkEvolutionTriggers() below.
       this.ripples.push(new Ripple(this.player.x, this.player.y, '#39ff14', this.player.radius, this.player.radius * 2.5, 0.5));
       this.spawnParticles(this.player.x, this.player.y, '#39ff14', 20);
       this.vibrate(60);
+
+      if (this.activeMutations.has('shockwave')) {
+        for (const obj of this.objects) {
+          const d = dist(this.player.x, this.player.y, obj.x, obj.y);
+          if (d > 0 && d < CONFIG.evolution.shockwaveRadius && !obj.eating) {
+            const push = CONFIG.evolution.shockwavePush * (1 - d / CONFIG.evolution.shockwaveRadius);
+            obj.x += ((obj.x - this.player.x) / d) * push;
+            obj.y += ((obj.y - this.player.y) / d) * push;
+          }
+        }
+        this.ripples.push(new Ripple(this.player.x, this.player.y, '#ff007f', this.player.radius, CONFIG.evolution.shockwaveRadius, 0.4));
+      }
+    }
+  }
+
+  /** Weighted, seed-driven pick from a small pool of run-only mutations —
+   *  never duplicates within one offer (GDD 4.1). */
+  pickMutationCards() {
+    const available = MUTATIONS.filter(m => !this.activeMutations.has(m.id));
+    const pool = (available.length >= CONFIG.evolution.cardCount ? available : MUTATIONS).slice();
+    const chosen = [];
+    for (let i = 0; i < CONFIG.evolution.cardCount && pool.length; i++) {
+      const totalWeight = pool.reduce((sum, m) => sum + m.weight, 0);
+      let roll = this.rng.next() * totalWeight;
+      let idx = pool.length - 1;
+      for (let j = 0; j < pool.length; j++) {
+        roll -= pool[j].weight;
+        if (roll <= 0) { idx = j; break; }
+      }
+      chosen.push(pool.splice(idx, 1)[0]);
+    }
+    return chosen;
+  }
+
+  /** Fires an evolution moment: slows the world (doesn't fully stop it —
+   *  GDD 4.1) and shows up to CONFIG.evolution.cardCount cards above the
+   *  Thumb Pad zone. Auto-picks the first option after autoPickMs so an
+   *  idle/AFK player can never soft-lock the round. */
+  offerEvolution() {
+    this.evolutionPending = true;
+    const cards = this.pickMutationCards();
+    this.analytics.track('evolution_offer', { options: cards.map(c => c.id) });
+
+    const grid = document.getElementById('evolutionCards');
+    grid.innerHTML = '';
+    cards.forEach(m => {
+      const btn = document.createElement('button');
+      btn.className = 'evolution-card';
+      btn.style.borderColor = m.color;
+      btn.innerHTML = `<span class="evolution-card-name" style="color:${m.color}">${m.name}</span><span class="evolution-card-desc">${m.desc}</span>`;
+      btn.addEventListener('click', () => this.pickMutation(m.id));
+      grid.appendChild(btn);
+    });
+    document.getElementById('evolutionOverlay').classList.remove('hidden');
+    this.vibrate(40);
+
+    clearTimeout(this.evolutionAutoPickTimer);
+    this.evolutionAutoPickTimer = setTimeout(() => {
+      if (this.evolutionPending && cards[0]) this.pickMutation(cards[0].id);
+    }, CONFIG.evolution.autoPickMs);
+  }
+
+  pickMutation(id) {
+    if (!this.evolutionPending) return;
+    clearTimeout(this.evolutionAutoPickTimer);
+    this.evolutionPending = false;
+    this.activeMutations.add(id);
+    document.getElementById('evolutionOverlay').classList.add('hidden');
+    this.analytics.track('evolution_pick', { mutation: id });
+    this.vibrate(50);
+
+    if (id === 'magnet_pulse') this.magnetUntil = Infinity;
+    if (id === 'combo_reactor') this.comboWindowOverride = CONFIG.juice.combo.windowSeconds * 1.6;
+    if (id === 'bounty_core') this.assignBountyTarget();
+  }
+
+  /** Marks the nearest eligible rival as a Bounty target (crown marker,
+   *  one-time score bonus when the player eats it — GDD 4.1). */
+  assignBountyTarget() {
+    let target = null, targetDist = Infinity;
+    for (const bot of this.bots) {
+      const d = dist(this.player.x, this.player.y, bot.x, bot.y);
+      if (d < targetDist) { target = bot; targetDist = d; }
+    }
+    this.bountyTarget = target;
+  }
+
+  checkEvolutionTriggers() {
+    if (this.evolutionPending) return;
+    for (const r of CONFIG.evolution.triggerRadii) {
+      if (this.player.radius >= r && !this.evolutionOffersTriggered.has(r)) {
+        this.evolutionOffersTriggered.add(r);
+        this.offerEvolution();
+        return;
+      }
+    }
+  }
+
+  /** Final-seconds City Shift (GDD 4.2). Seed-driven variant pick so a
+   *  Daily Seed Challenge run gets the same Overdrive for everyone. */
+  checkOverdriveTrigger() {
+    if (this.overdriveActive || this.timeRemaining > CONFIG.overdrive.triggerSecondsRemaining) return;
+    this.overdriveActive = true;
+    const variants = CONFIG.overdrive.variants;
+    this.overdriveVariant = variants[Math.floor(this.rng.next() * variants.length)];
+    this.overdriveTag = this.overdriveVariant === 'blackout' ? 'BLACKOUT FINISH' : 'PORTAL STORM';
+    this.analytics.track('overdrive_start', { variant: this.overdriveVariant, runId: this.runId });
+    this.vibrate([60, 40, 60]);
+
+    const banner = document.getElementById('overdriveBanner');
+    banner.classList.remove('hidden');
+    setTimeout(() => banner.classList.add('hidden'), 3000);
+
+    if (this.overdriveVariant === 'portal_rain') this.spawnPortalRain();
+  }
+
+  /** One-time wave of high-value bonus objects — the comeback opportunity
+   *  half of Overdrive (GDD 4.2). They fold back into the normal object
+   *  pool once eaten, so no cleanup/tracking is needed after the round. */
+  spawnPortalRain() {
+    for (let i = 0; i < CONFIG.overdrive.bonusObjectCount; i++) {
+      const obj = new WorldObject('medium');
+      const pos = this.randomWorldPos(obj.radius + 20);
+      obj.x = pos.x;
+      obj.y = pos.y;
+      obj.color = '#ffd700';
+      obj.value = CONFIG.overdrive.bonusObjectValue;
+      this.objects.push(obj);
+    }
+  }
+
+  /** Per-frame upkeep for whichever mutation the player picked this run —
+   *  Magnet Pulse, Slipstream's speed window, and the Scanner ping. */
+  updateMutationEffects(dt) {
+    const now = performance.now();
+
+    if (now < this.magnetUntil || now < this.toolMagnetUntil) {
+      for (const obj of this.objects) {
+        if (obj.eating || obj.radius >= this.player.radius * EAT_OBJ_RATIO) continue;
+        const d = dist(this.player.x, this.player.y, obj.x, obj.y);
+        if (d > 0 && d < CONFIG.evolution.magnetRadius) {
+          const pull = CONFIG.evolution.magnetPull * (1 - d / CONFIG.evolution.magnetRadius);
+          obj.x -= ((obj.x - this.player.x) / d) * pull * dt;
+          obj.y -= ((obj.y - this.player.y) / d) * pull * dt;
+        }
+      }
+    }
+
+    this.player.tempSpeedMult = now < this.speedBoostUntil ? CONFIG.evolution.slipstreamSpeedMult : 1;
+
+    if (this.activeMutations.has('scanner')) {
+      this.scannerTimer -= dt;
+      if (this.scannerTimer <= 0) {
+        this.scannerTimer = CONFIG.evolution.scannerIntervalSeconds;
+        let best = null, bestValue = -Infinity;
+        for (const obj of this.objects) {
+          if (obj.eating) continue;
+          if (obj.value > bestValue) { best = obj; bestValue = obj.value; }
+        }
+        if (best) {
+          this.scannerTarget = best;
+          this.scannerTargetUntil = now + 2000;
+          this.ripples.push(new Ripple(best.x, best.y, '#00f3ff', best.radius, best.radius * 3, 0.6));
+        }
+      }
     }
   }
 
@@ -1413,6 +2021,9 @@ class Game {
 
     this.handleHoleCollisions();
     this.checkSizeTier();
+    this.checkEvolutionTriggers();
+    this.checkOverdriveTrigger();
+    this.updateMutationEffects(dt);
 
     this.particles.forEach(p => p.update(dt));
     this.particles = this.particles.filter(p => !p.dead);
@@ -1638,6 +2249,8 @@ class Game {
     this.drawGrid(ctx);
     for (const obj of this.objects) obj.draw(ctx, this.canEatHighlight(obj));
     this.drawDangerHalos(ctx);
+    this.drawScannerTarget(ctx);
+    this.drawBountyMarker(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const r of this.ripples) r.draw(ctx);
 
@@ -1651,6 +2264,48 @@ class Game {
 
     if (this.showMinimap) this.drawMinimap(ctx);
     this.drawDangerIndicators(ctx);
+
+    // Overdrive "blackout" City Shift: dims the world layer only (drawn
+    // after ctx.restore(), so HUD/minimap on top stay fully readable).
+    if (this.overdriveActive && this.overdriveVariant === 'blackout') {
+      ctx.save();
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, this.width, this.height);
+      ctx.restore();
+    }
+  }
+
+  /** Crown marker over the Bounty Core mutation's marked rival (GDD 4.1). */
+  drawBountyMarker(ctx) {
+    if (!this.bountyTarget) return;
+    const b = this.bountyTarget;
+    ctx.save();
+    ctx.translate(b.x, b.y - b.radius - 18);
+    ctx.fillStyle = '#ffae00';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#ffae00';
+    ctx.font = 'bold 16px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👑', 0, 0);
+    ctx.restore();
+  }
+
+  /** Scanner mutation ping: a fading cyan ring around the last-found
+   *  high-value cluster (GDD 4.1). */
+  drawScannerTarget(ctx) {
+    if (!this.scannerTarget || performance.now() > this.scannerTargetUntil) return;
+    const t = this.scannerTarget;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = '#00f3ff';
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = '#00f3ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.radius * 1.8, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** 0..1 "close to threshold" highlight strength for the can-eat breathing
@@ -1703,9 +2358,12 @@ class Game {
   }
 
   loop(now) {
-    const dt = Math.min(0.05, (now - this.lastTime) / 1000);
+    const rawDt = Math.min(0.05, (now - this.lastTime) / 1000);
     this.lastTime = now;
     if (this.running) {
+      // Evolution offers slow the world instead of fully pausing it
+      // (GDD 4.1) -- keeps the round feeling alive while picking a card.
+      const dt = this.evolutionPending ? rawDt * CONFIG.evolution.slowMotionFactor : rawDt;
       this.update(dt);
       this.render(now / 1000);
       this.rafId = requestAnimationFrame((t) => this.loop(t));

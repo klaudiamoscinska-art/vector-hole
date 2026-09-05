@@ -49,6 +49,13 @@
 
     <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
 
+    <div id="overdriveBanner" class="overdrive-banner hidden">⚡ OVERDRIVE — CITY SHIFT ⚡</div>
+
+    <div id="evolutionOverlay" class="evolution-overlay hidden">
+      <div class="evolution-title">EWOLUCJA — wybierz mutację</div>
+      <div id="evolutionCards" class="evolution-cards"></div>
+    </div>
+
     <div id="thumbpadBase" class="thumbpad-base hidden">
       <div id="thumbpadKnob" class="thumbpad-knob"></div>
     </div>
@@ -101,34 +108,86 @@
     </div>
   </div>
 
-  <!-- ===================== MAIN MENU ===================== -->
+  <!-- ===================== MAIN MENU / NEON CORE HUB (skeleton) ===================== -->
   <div id="mainMenu" class="screen">
     <div class="screen-inner">
       <h1 class="title-glow">VECTOR <span class="accent">HOLE</span></h1>
       <p class="subtitle">EAT THE NEON CITY</p>
 
-      <div class="coin-display">
-        <span class="coin-icon">◈</span>
-        <span id="coinCountMenu">0</span> monet
+      <div class="currency-row">
+        <div class="coin-display">
+          <span class="coin-icon">◈</span>
+          <span id="coinCountMenu">0</span>
+        </div>
+        <div class="coin-display prism-display">
+          <span class="coin-icon">◆</span>
+          <span id="prismCountMenu">0</span>
+        </div>
       </div>
 
+      <div class="hub-meter-row">
+        <span class="hud-label">CITY CORE</span>
+        <div class="hub-meter-track"><div id="hubCoreBar" class="hub-meter-bar"></div></div>
+      </div>
+      <p id="hubMissionText" class="hint-text hub-mission">Zjedz 5 rywali w jednej rundzie.</p>
+
       <button id="btnStart" class="btn btn-primary">GRAJ (2:00)</button>
-      <button id="btnShop" class="btn btn-secondary">SKLEP ZE SKINAMI</button>
+      <button id="btnDaily" class="btn btn-secondary">🗓️ WYZWANIE DNIA</button>
+
+      <div class="hub-row">
+        <button id="btnShop" class="btn btn-secondary hub-half">WARSZTAT</button>
+        <button id="btnProfile" class="btn btn-secondary hub-half">PROFIL</button>
+      </div>
 
       <p class="hint-text">Steruj myszką lub dotykiem. Pożeraj mniejsze obiekty i boty, unikaj większych!</p>
     </div>
   </div>
 
-  <!-- ===================== SHOP SCREEN ===================== -->
+  <!-- ===================== PROFILE PANEL ===================== -->
+  <div id="profileScreen" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title">PROFIL</h2>
+      <p class="hint-text">Nazwa jest opcjonalna — możesz grać jako Gość.</p>
+      <input id="displayNameInput" class="text-input" type="text" maxlength="16" placeholder="Twoja nazwa (opcjonalnie)">
+      <button id="btnSaveProfile" class="btn btn-primary">ZAPISZ</button>
+      <div class="hint-text">Gość ID: <span id="guestIdLabel"></span></div>
+      <button id="btnProfileBack" class="btn btn-secondary">POWRÓT</button>
+    </div>
+  </div>
+
+  <!-- ===================== RUN SETUP (casual run tools) ===================== -->
+  <div id="runSetupScreen" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title">PRZED RUNDĄ</h2>
+      <p class="hint-text">Wybierz narzędzie na tę rundę (tylko tryb casual).</p>
+      <div id="runToolGrid" class="run-tool-grid"></div>
+      <button id="btnConfirmStart" class="btn btn-primary">START</button>
+      <button id="btnRunSetupBack" class="btn btn-secondary">POWRÓT</button>
+    </div>
+  </div>
+
+  <!-- ===================== SHOP SCREEN (Workshop v2) ===================== -->
   <div id="shopScreen" class="screen hidden">
     <div class="screen-inner">
-      <h2 class="section-title">SKLEP ZE SKINAMI</h2>
-      <div class="coin-display">
-        <span class="coin-icon">◈</span>
-        <span id="coinCountShop">0</span> monet
+      <h2 class="section-title">WARSZTAT</h2>
+      <div class="currency-row">
+        <div class="coin-display">
+          <span class="coin-icon">◈</span>
+          <span id="coinCountShop">0</span>
+        </div>
+        <div class="coin-display prism-display">
+          <span class="coin-icon">◆</span>
+          <span id="prismCountShop">0</span>
+        </div>
+      </div>
+
+      <div class="shop-tabs">
+        <button id="tabSkins" class="toggle-btn active">RING</button>
+        <button id="tabAuras" class="toggle-btn">AURA</button>
       </div>
 
       <div id="skinGrid" class="skin-grid"></div>
+      <div id="auraGrid" class="skin-grid hidden"></div>
 
       <button id="btnShopBack" class="btn btn-secondary">POWRÓT</button>
     </div>
@@ -138,6 +197,7 @@
   <div id="gameOverScreen" class="screen hidden">
     <div class="screen-inner">
       <h2 class="section-title">KONIEC RUNDY</h2>
+      <div id="resultTag" class="result-tag hidden"></div>
 
       <div class="result-summary">
         <div class="result-place" id="finalPlace">#1</div>
@@ -147,8 +207,14 @@
 
       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
 
+      <div class="hub-meter-row">
+        <span class="hud-label">City Core</span>
+        <div class="hub-meter-track"><div id="resultCoreBar" class="hub-meter-bar"></div></div>
+      </div>
+
       <button id="btnWatchAd" class="btn btn-gold">📺 OBEJRZYJ REKLAMĘ = x2 MONET</button>
       <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ PONOWNIE</button>
+      <button id="btnShare" class="btn btn-secondary">🔗 UDOSTĘPNIJ WYNIK</button>
       <button id="btnMenu" class="btn btn-secondary">MENU GŁÓWNE</button>
     </div>
   </div>

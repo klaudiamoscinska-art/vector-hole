@@ -421,6 +421,219 @@ html, body {
   box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
 }
 
+/* ===================== EVOLUTION CARDS (Phase 4) ===================== */
+/* Positioned above the Floating Thumb Pad zone so choosing a mutation
+   never covers the control area (GDD 4.1 "nie zasłania strefy kontrolnej"). */
+
+.evolution-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: calc(35% + 14px);
+  transform: translateX(-50%);
+  width: min(94vw, 460px);
+  padding: 12px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(0, 243, 255, 0.25);
+  pointer-events: auto;
+  z-index: 25;
+  text-align: center;
+}
+
+.evolution-title {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  margin-bottom: 8px;
+}
+
+.evolution-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.evolution-card {
+  padding: 10px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.evolution-card:active {
+  transform: scale(0.96);
+}
+
+.evolution-card-name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.evolution-card-desc {
+  font-size: 10px;
+  opacity: 0.75;
+  line-height: 1.3;
+}
+
+/* ===================== OVERDRIVE BANNER ===================== */
+
+.overdrive-banner {
+  position: absolute;
+  top: calc(148px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 20px;
+  background: rgba(255, 0, 127, 0.15);
+  border: 1px solid var(--neon-pink);
+  border-radius: 20px;
+  color: var(--neon-pink);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px var(--neon-pink);
+  animation: pulse-warning 0.5s infinite alternate;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+/* ===================== HUB (Phase 6) ===================== */
+
+.currency-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.prism-display {
+  color: #b026ff;
+  border-color: rgba(176, 38, 255, 0.35);
+  background: rgba(176, 38, 255, 0.08);
+  text-shadow: 0 0 8px rgba(176, 38, 255, 0.6);
+}
+
+.hub-meter-row {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hub-meter-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(0, 243, 255, 0.12);
+  overflow: hidden;
+}
+
+.hub-meter-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+  box-shadow: 0 0 8px var(--neon-cyan);
+  transition: width 0.4s ease;
+}
+
+.hub-mission {
+  margin-top: -2px;
+}
+
+.hub-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.hub-half {
+  flex: 1;
+}
+
+.text-input {
+  width: 100%;
+  max-width: 300px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.35);
+}
+
+.shop-tabs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.run-tool-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.run-tool-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  color: var(--text-main);
+  font-family: inherit;
+  text-align: left;
+}
+
+.run-tool-card.selected {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0, 243, 255, 0.3);
+}
+
+.run-tool-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.run-tool-desc {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.result-tag {
+  display: inline-block;
+  margin: -4px auto 6px;
+  padding: 4px 14px;
+  border-radius: 14px;
+  background: rgba(255, 0, 127, 0.15);
+  border: 1px solid var(--neon-pink);
+  color: var(--neon-pink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
 /* ===================== SCREENS (Menu / Shop / GameOver / Ad) ===================== */
 
 .screen {

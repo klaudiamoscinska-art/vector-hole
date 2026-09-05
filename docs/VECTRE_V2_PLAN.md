@@ -120,16 +120,15 @@ phase's acceptance criteria intact.
 |---|---|---|---|
 | 1 | P0 instrumentation baseline: state machine, config/tuning layer, feature flags, seeded RNG abstraction + run/session IDs, versioned save + migration, analytics event stub, ambiguous-HUD-string fix | P0 | Shipped |
 | 2 | Floating Thumb Pad input (with legacy drag toggle), pause/leave-run sheet, HUD v2 (explicit Size/Score/Rank, collapsible standings, contextual minimap) | P0/P1 | Shipped |
-| **3** | Game-feel/juice pass: size-scaled eat feedback, growth-tier pulse, combo system + fading combo text, can-eat/danger readability | P0 | **Shipped this patch** |
-| 3 | Game-feel/juice pass: size-aware eat feedback, growth-tier ring transitions, combo readability, can-eat/danger cues | P0 | Not started |
-| 4 | Evolution moments (2/run, 3-card weighted offer, run-only mutations) + Overdrive/City Shift finale (≥2 variants) | P1 | Not started |
-| 5 | Seeded chunk generator: `DistrictDefinition`/chunk templates/spawn budgets/validators, ship Neon Downtown + 1 modifier | P1 | Not started |
-| 6 | Neon Core Hub skeleton + City Core meter + first unlocks | P1 | Not started |
-| 7 | Shop v2 (categories, loadout, preview/equip), economy tuning hooks, two-currency model (Coins/Prisms), casual run tools | P2 | Not started |
-| 8 | Guest profile, cosmetics identity, share card (`navigator.share` + fallback) | P2 | Not started |
-| 9 | Daily Seed Challenge (local-first) + league/ghost/bounty async competition | P2 | Not started |
-| 10 | Collections, live-event tooling, additional districts/modifiers | P3 | Not started |
-| 11 | Backend leaderboard, cloud save/auth, real monetization adapters | P3+ | Gated on retention KPIs (see GDD §13/§16) |
+| 3 | Game-feel/juice pass: size-scaled eat feedback, growth-tier pulse, combo system + fading combo text, can-eat/danger readability | P0 | Shipped |
+| 4 | Evolution moments (2/run, 3-card weighted offer, run-only mutations) + Overdrive/City Shift finale (2 variants) | P1 | Shipped |
+| 5 | Seeded starting layout + a single seed-driven run modifier (Rush Hour) | P1 | **Shipped, scoped down** — see §7. Full `DistrictDefinition`/chunk-template/spawn-budget/validator system (GDD §14.2/§6) was **not** built |
+| 6 | Neon Core Hub skeleton (City Core meter, mission stub, Play/Daily/Workshop/Profile) | P1 | Shipped as a skeleton — no separate animated hub screen or real unlocks yet, per GDD §7's own "can be 2D, not explorable 3D" allowance |
+| 7 | Shop v2 (ring + aura categories, Coins/Prisms), casual run tools (Shield, Magnet) | P2 | Shipped, lean — 2 cosmetic categories not the full list in GDD §10.2; Prisms earn via progression trickle only (no IAP adapter) |
+| 8 | Guest profile (optional name + placeholder moderation), share card (`navigator.share` + clipboard fallback) | P2 | Shipped |
+| 9 | Daily Seed Challenge (local-only, UTC-date seed) | P2 | Shipped, local-only — no backend leaderboard, no league/ghost/bounty async competition beyond the in-round Bounty Core mutation |
+| 10 | Collections, live-event tooling, additional districts/modifiers | P3 | **Not built** — no collections UI, only 1 modifier and the existing single implicit district |
+| 11 | Backend leaderboard, cloud save/auth, real monetization adapters | P3+ | **Not built.** Explicitly out of scope: requires a backend, ad/IAP SDK integration, and store/OAuth credentials that must never live in this repo (see CLAUDE.md / this doc's own rules) |
 | — | Real-time multiplayer, guilds, energy/stamina gates, gacha, 20 districts, heavy interstitials | Explicitly **not** building yet | Backlog per GDD §16.1 |
 
 Sprint definition-of-done reference (GDD §15.2) is preserved per-phase in
@@ -479,10 +478,229 @@ existing HUD are still Phase 4+.
   districts) it should extend `updateDangerWarnings()` rather than grow
   a third parallel threat-detection pass.
 
-**Next recommended phase**: Phase 4 (Evolution moments + Overdrive/City
-Shift finale) — the GDD's own highest-priority differentiator ("Golden
-Shot") and the next P1 item, and it now has real groundwork to build on:
-the size tiers driving `size_tier` analytics and the growth-pulse ripple
-are exactly the thresholds an evolution offer would trigger from, and
-the HUD's perk-picker placement is already constrained to stay clear of
-the Phase 2 control zone.
+**Next recommended phase (superseded — see §7)**: Phase 4 shipped next.
+
+## 7. Phases 4–9 — what shipped together in this patch
+
+The user explicitly asked to bring in "all phases" in one pass, then open
+a PR and deploy. Phases 4–9 shipped as one combined patch (`game.js`,
+`index.html`, `style.css`); Phases 10–11 were deliberately **not**
+built — see §3's table for exactly why (no backend, no ad/IAP SDKs, no
+secrets in this repo). This section documents what each phase actually
+delivered, same honesty standard as Phases 1–3: every simplification
+versus the GDD is named, not silently absorbed.
+
+### Phase 4 — Evolution + Overdrive ("Golden Shot")
+
+Two evolution offers per run trigger when the player's radius crosses
+`CONFIG.evolution.triggerRadii` (45 / 65, the same thresholds Phase 1's
+`size_tier` analytics already used). `Game.offerEvolution()` slows the
+world to `slowMotionFactor` (25%) instead of pausing it, shows up to 3
+weighted-random cards from a 7-mutation pool (`MUTATIONS`) positioned
+above the Thumb Pad zone, and auto-picks the first option after 5s so an
+idle player can never soft-lock a round. All 7 mutations from the GDD's
+example list are implemented and run-only (reset every round, `Game.
+activeMutations`):
+
+- **Magnet Pulse** — pulls nearby edible objects each frame.
+- **Slipstream** — a temporary speed multiplier once combo count hits a
+  threshold.
+- **Phase Edge** — extends post-hit invulnerability instead of blocking
+  the hit outright (that's what the Shield run tool does — see Phase 7).
+- **Combo Reactor** — extends the combo window for the rest of the run.
+- **Scanner** — periodically pings the highest-value object on screen.
+- **Shockwave** — pushes nearby small objects away on the next
+  growth-tier crossing.
+- **Bounty Core** — marks one rival (crown icon); eating it grants a
+  score bonus.
+
+The last `CONFIG.overdrive.triggerSecondsRemaining` (12s) trigger a
+seed-driven Overdrive variant: **Blackout** (a dark overlay dims the
+world layer only, HUD stays readable) or **Portal Rain** (a one-time
+wave of high-value bonus objects that fold back into the normal pool
+once eaten — no extra cleanup needed). The result screen gets a tag
+(`BLACKOUT FINISH` / `PORTAL STORM`) carried into the share card.
+
+Verified via Playwright: forcing the trigger radius shows exactly 3
+cards; picking one adds it to `activeMutations` and hides the overlay;
+forcing `timeRemaining` low triggers Overdrive with the expected
+variant/tag; a Shield run tool correctly negates a would-be collision
+before Phase Edge or scoring logic runs. One layout bug was caught and
+fixed during testing: the Overdrive banner initially overlapped the
+Phase 2 size/score HUD panel at narrow viewport widths — moved down in
+`style.css` and re-verified by screenshot.
+
+### Phase 5 — seeded generation (explicitly scoped down)
+
+The GDD's own §14.2 (`DistrictDefinition`/`ChunkDefinition`/spawn
+budgets/reachability validators, 6–9 macro-chunks per run) is a
+multi-day content-and-tooling project on its own — building a shallow,
+mislabeled version of it would be worse than being explicit about not
+building it yet. What **did** ship:
+
+- `SeededRNG` (added in Phase 1) now actually seeds something:
+  `WorldObject.respawn(tierName, first, rng)` and `Game.createEntities()`
+  use it for the *initial* object/player/bot positions and the bot name
+  draw, so a given seed reproduces the same starting layout. Ongoing
+  randomness (bot wandering targets, post-eat respawn position, particle
+  drift) intentionally stays on `Math.random()` — only the start needs
+  to match across devices for the Daily Seed Challenge to be fair.
+- One lightweight, seed-driven run modifier: **Rush Hour** (35% chance
+  per run when `CONFIG.flags.runModifiers` is on), which gives every bot
+  a 1.3× speed multiplier for the round and shows a one-line toast at
+  round start. This is the "1 modifier" the roadmap called for — it is
+  not the `Blackout`/`Portal Storm`/`Bounty Hunt`/`Double Combo`/`Moving
+  Grid` set from GDD §6.3 (note also that "Blackout" already exists as
+  an *Overdrive* variant with different scope; naming overlap between
+  the two systems is called out here to avoid confusion later).
+- There is still exactly one implicit district (today's existing world);
+  Neon Downtown/Circuit Garden/Synth Harbor/Glitch Mall/Skyline Core
+  (GDD §6.2) do not exist as distinct visual/gameplay spaces.
+
+Verified: `dailySeedForDate()` produces identical seeds for two
+timestamps on the same UTC calendar day and a different seed for the
+next day (checked directly via Playwright's page context).
+
+### Phase 6 — Neon Core Hub (skeleton)
+
+The main menu now doubles as the hub the GDD allows for a first pass
+("can be 2D animated, not an explorable 3D world" — GDD §7): a City Core
+meter (`save.hub.coreCharge`, +12%/run, wraps to 0 at 100% with a
+milestone message), a one-line mission-text stub, and Play / Daily
+Challenge / Workshop / Profile entry points all on one screen instead of
+a bare menu + shop link. There is no separate Mission Board, Collection
+Vault, League Terminal, or Event Portal screen — those are Phase 10+
+territory and are not stubbed with fake content, per the project's
+running rule against shipping fake features.
+
+### Phase 7 — Shop v2 + economy (lean)
+
+The Workshop screen gained a second tab: **Auras** (`AURAS`), a
+purchasable glow effect layered on top of the existing ring skins,
+buyable with either Coins or Prisms. This is what actually gives Prisms
+a purpose — they weren't spendable on anything before this phase.
+Prisms have no IAP adapter (deliberately — see Phase 11), so the only
+earn path is a small trickle from progression (`+1 every 3rd run`),
+matching the GDD's "slowly earned from progression" clause for the
+premium currency rather than inventing a fake purchase flow.
+
+A new pre-round **Run Setup** screen offers two casual-only consumable
+tools (`RUN_TOOLS`): **Shield** (blocks the next collision with a bigger
+rival outright — distinct from the Phase 4 Phase Edge mutation, which
+only softens the aftermath) and **Magnet** (an 8-second pull at round
+start). Both cost Coins, deducted on confirm, and are cleared after one
+round so "Play Again" can't silently reuse a paid tool for free. Only 2
+of the GDD's 5 example tools (Scanner/Burst/Combo Extender omitted) —
+the mutation pool already covers similar effects (Scanner, Slipstream)
+for evolution, and adding near-duplicate purchasable versions felt like
+padding rather than value.
+
+Verified: selecting Shield deducts the correct Coin price, and a forced
+collision with a shield charge active leaves the player's radius
+unchanged and decrements the charge instead of triggering the normal
+eat/shrink logic.
+
+### Phase 8 — Profile + Share
+
+An optional display name (never required before the first run — the
+Profile screen is reachable but never forced) replaces the previous
+hardcoded "Ty" player name once set, stored alongside a stable guest ID
+already generated in Phase 1's save schema. Name input passes through
+`moderateName()`, a small hardcoded blocklist — this is explicitly **not**
+production profanity moderation (the GDD calls for real moderation before
+names go public; this project has no "public" name surface like a
+server-side leaderboard yet for it to protect). It exists so the flow
+isn't shipped with zero safeguard at all, not as a finished answer.
+
+`Game.shareResult()` uses `navigator.share`, feature-detected via
+`navigator.canShare` before calling it, with a clipboard-copy fallback
+(button text flips to "SKOPIOWANO ✓" for 2s) for browsers without Web
+Share — per the GDD's explicit instruction to never assume it exists.
+The shared text includes rank, score, the Overdrive tag if the round hit
+one, and the run's seed.
+
+Verified: saving a clean name persists it and is reflected as the
+in-round player label; saving a blocklisted name is rejected (stored as
+`null`, falls back to the guest label); the share flow doesn't throw
+with `navigator.share` stubbed out mid-test.
+
+### Phase 9 — Daily Seed Challenge (local-only)
+
+`startDailyChallenge()` forces the round's seed to the UTC-date-derived
+value from Phase 5, so every player gets the same starting layout,
+modifier, and (seed-driven) Overdrive variant on a given calendar day.
+Progress is tracked entirely client-side in `save.daily`
+(`lastSeedDate`/`lastSeedScore`) — **there is no backend, so there is no
+actual leaderboard, league, ghost race, or cross-device comparison yet**;
+this phase only delivers the deterministic-seed half of "Daily," which
+is also the half that needed no infrastructure to build honestly. The
+in-round Bounty Core mutation is the closest thing to the GDD's
+Rival/Nemesis idea that exists today; it is not a persistent nemesis
+system.
+
+Verified: leaving a Daily run early (via the Phase 2 pause/leave flow)
+still records a `save.daily` entry and fires `daily_challenge_end` with
+`isNewBest` computed correctly against the same day's prior score.
+
+### Cross-cutting: what got touched everywhere
+
+- `SAVE_SCHEMA_VERSION` is now 4; v3→v4 migration adds `auras`,
+  `displayName`, `hub`, and `daily` to any existing save without losing
+  coins/skins/settings from earlier phases.
+- `CONFIG.flags`: `evolutionSystem`, `runModifiers`, `hub`, `shopV2`,
+  `dailyChallenge` are now `true` (their systems exist); `proceduralDistricts`
+  and `monetizationAdapters` stay `false` on purpose — flip them only once
+  their real scope (full chunk generator; real ad/IAP SDK) is actually
+  built, not to "unlock" today's lightweight stand-ins.
+- `index.html` grew several new screens/overlays (`runSetupScreen`,
+  `profileScreen`, `evolutionOverlay`, `overdriveBanner`) but kept the
+  existing pattern of one flat DOM with `.hidden`-toggled screens — no
+  router was introduced.
+
+### Golden Slice acceptance criteria — where this patch actually lands
+
+Checking against the master prompt's own "Golden Shot acceptance
+criteria" list:
+
+- ✅ Starts without account friction (guest-first; Profile is optional).
+- ✅ Thumb Pad control doesn't require covering the action with a finger.
+- ✅ Can-eat/danger cues (Phase 3) make eatability legible quickly.
+- ✅ Visible growth within ~10s (existing growth curve + Phase 3 pulse).
+- ✅ At least one evolution/mutation choice per run (two, in fact).
+- ✅ A distinct Overdrive event with two variants.
+- ⚠️ "Clear post-run progression into hub/league/collection" — hub
+  meter and mission stub exist; **league and collection do not** (Phase
+  10/11, deferred).
+- ✅ Immediate replay or share of a best result.
+- ✅ Completes on a small iPhone-class viewport with no HUD/control
+  overlap (verified by screenshot at 375×667/390×844 across phases,
+  including the Overdrive banner fix this phase).
+
+### Remaining risks / honest gaps after Phases 1–9
+
+- **No backend, anywhere.** Daily Challenge, profile, and economy are
+  all `localStorage`-only. Clearing site data resets everything; there
+  is no cross-device sync. This is the single biggest gap versus the
+  full GDD vision and is exactly what Phase 11 (explicitly deferred)
+  exists to close, once retention data justifies the investment (GDD
+  §13/§16 — "monetization/backend before retention" is called out as a
+  risk to avoid, not a checklist to rush).
+- **Only one district, one modifier.** Replayability from Phase 5 comes
+  from the evolution/mutation variety and Overdrive, not from level
+  variety yet.
+- **`game.js` is now a large single file.** Still inside the three-file
+  constraint by instruction, but if a future phase (real district
+  content, a real hub scene) makes this unwieldy, that is a decision to
+  put back to the user explicitly, per §2's conflict-resolution note —
+  not something to resolve unilaterally by splitting files or adding a
+  bundler.
+- **`CONFIG.evolution`/`CONFIG.overdrive`/`CONFIG.juice`/economy values**
+  are first-pass numbers across all of Phases 3–9, not validated by any
+  real playtesting or A/B data — they're centralized in `CONFIG`
+  specifically so that tuning pass doesn't require touching this code
+  later.
+
+**Next recommended phase**: Phase 10/11 only once real usage data
+justifies backend investment (per the GDD's own KPI-gate guidance) —
+until then, the highest-value next work is playtesting and tuning the
+`CONFIG` values shipped across Phases 3–9, not adding more systems.
