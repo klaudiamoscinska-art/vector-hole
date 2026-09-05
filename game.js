@@ -30,6 +30,16 @@ const CONFIG = {
     coinsBase: 10,
     adRewardMultiplier: 2
   },
+  // Floating Thumb Pad tuning (Phase 2). Legacy direct-drag stays available
+  // via settings.inputMode and is unaffected by these values.
+  input: {
+    zoneHeightFraction: 0.35, // bottom % of screen height that anchors the pad
+    deadZonePx: 10,
+    maxRadiusPx: 55,
+    curveExponent: 1.6,       // >1 = more precision near center, speed at full deflection
+    fadeDelayMs: 400,
+    minimapAutoHideWidth: 700 // below this viewport width, minimap defaults off
+  },
   // Size tiers used for analytics (`size_tier` events) and future evolution
   // visuals (GDD P2). Not yet shown in the HUD or tied to any visual change.
   sizeTiers: [
@@ -42,7 +52,7 @@ const CONFIG = {
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
   flags: {
-    inputThumbPad: false,       // Phase 2: Floating Thumb Pad control
+    inputThumbPad: true,        // Phase 2: Floating Thumb Pad control (global kill-switch; false forces legacy)
     evolutionSystem: false,     // Phase 4: evolution cards + Overdrive
     proceduralDistricts: false, // Phase 5: seeded chunk generator
     hub: false,                 // Phase 6: Neon Core Hub
@@ -155,7 +165,7 @@ const SKINS = [
 ];
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 2;
+const SAVE_SCHEMA_VERSION = 3;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -181,7 +191,7 @@ function defaultSave() {
     owned: ['rainbow'],
     selected: 'rainbow',
     guestId: generateId('guest'),
-    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true },
+    settings: { inputMode: 'thumbpad', sensitivity: 1, haptics: true, minimap: 'auto' },
     stats: { runsPlayed: 0 }
   };
 }
@@ -195,7 +205,7 @@ function migrateSave(data) {
 
   if (!data.schemaVersion) {
     // v1 (no schemaVersion field) -> v2: add currencies/settings/profile stubs
-    return {
+    data = {
       schemaVersion: 2,
       coins: data.coins,
       prisms: 0,
@@ -204,6 +214,22 @@ function migrateSave(data) {
       guestId: generateId('guest'),
       settings: { inputMode: 'legacy', sensitivity: 1, haptics: true },
       stats: { runsPlayed: 0 }
+    };
+  }
+
+  if (data.schemaVersion < 3) {
+    // v2 -> v3: Floating Thumb Pad ships as the new default control.
+    // No real players have explicitly chosen "legacy" yet (pre-launch
+    // prototype), so it's safe to move the stored default forward too;
+    // add settings.minimap for the new auto-hide-on-small-screens rule.
+    data = {
+      ...data,
+      schemaVersion: 3,
+      settings: {
+        ...data.settings,
+        inputMode: data.settings.inputMode === 'legacy' ? 'thumbpad' : data.settings.inputMode,
+        minimap: data.settings.minimap || 'auto'
+      }
     };
   }
 
@@ -420,6 +446,20 @@ class Hole {
     this.y = clamp(this.y, this.radius, WORLD_H - this.radius);
   }
 
+  /** Velocity-based movement for the Floating Thumb Pad and keyboard input:
+   *  dirX/dirY is a unit vector, magnitude is 0..1 (post dead-zone/curve),
+   *  sensitivity is a player-controlled multiplier. Unlike moveToward(),
+   *  this never "chases" a screen point — the hole doesn't need to sit
+   *  under the finger. */
+  moveDirection(dirX, dirY, magnitude, sensitivity, dt) {
+    if (magnitude <= 0) return;
+    const speed = this.getSpeed() * magnitude * sensitivity;
+    this.x += dirX * speed * dt;
+    this.y += dirY * speed * dt;
+    this.x = clamp(this.x, this.radius, WORLD_W - this.radius);
+    this.y = clamp(this.y, this.radius, WORLD_H - this.radius);
+  }
+
   growFromArea(gainArea) {
     const area = Math.PI * this.radius * this.radius;
     const newArea = area + gainArea;
@@ -573,6 +613,7 @@ class Game {
     this.bots = [];
     this.camera = { x: WORLD_W / 2, y: WORLD_H / 2 };
     this.running = false;
+    this.paused = false;
     this.lastTime = 0;
     this.shake = 0;
     this.adPendingCoins = 0;
@@ -581,6 +622,13 @@ class Game {
     this.sessionId = generateId('session');
     this.analytics = new Analytics();
     this.state = GameState.BOOT;
+
+    // Movement intent shared by the Floating Thumb Pad and keyboard input;
+    // legacy drag keeps using this.pointerWorld + moveToward() directly.
+    this.moveVector = { x: 0, y: 0, magnitude: 0 };
+    this.keyDir = { x: 0, y: 0 };
+    this.thumbpadTouchId = null;
+    this.thumbpadFadeTimer = null;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -609,9 +657,21 @@ class Game {
     this.canvas.style.width = this.width + 'px';
     this.canvas.style.height = this.height + 'px';
     this.dpr = dpr;
+    // Minimap is only genuinely useful on wider viewports; on small phones
+    // it's too cramped to read (GDD 5.3), so hide it by default there unless
+    // the player explicitly turned it on/off in settings.
+    const pref = this.save ? this.save.settings.minimap : 'auto';
+    this.showMinimap = pref === 'on' || (pref === 'auto' && this.width >= CONFIG.input.minimapAutoHideWidth);
+  }
+
+  /** True while the Floating Thumb Pad should handle touch (feature flag is
+   *  the global kill switch; the player's own setting picks the mode). */
+  get useThumbpad() {
+    return CONFIG.flags.inputThumbPad && this.save.settings.inputMode === 'thumbpad';
   }
 
   bindInput() {
+    this.isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
     this.pointerWorld = { x: WORLD_W / 2, y: WORLD_H / 2 };
     const updateFromScreen = (sx, sy) => {
       this.pointerWorld = {
@@ -619,17 +679,126 @@ class Game {
         y: this.camera.y + (sy - this.height / 2)
       };
     };
+
+    // ---- Mouse (desktop): unchanged direct-drag chase behavior. ----
     window.addEventListener('mousemove', (e) => updateFromScreen(e.clientX, e.clientY));
+
+    // ---- Keyboard (desktop accessibility): WASD / arrow keys. ----
+    const keyMap = {
+      KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
+      KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right'
+    };
+    const heldKeys = new Set();
+    const recomputeKeyDir = () => {
+      let x = 0, y = 0;
+      if (heldKeys.has('left')) x -= 1;
+      if (heldKeys.has('right')) x += 1;
+      if (heldKeys.has('up')) y -= 1;
+      if (heldKeys.has('down')) y += 1;
+      const mag = Math.hypot(x, y);
+      this.keyDir = mag > 0 ? { x: x / mag, y: y / mag } : { x: 0, y: 0 };
+    };
+    window.addEventListener('keydown', (e) => {
+      const dir = keyMap[e.code];
+      if (!dir) return;
+      if (e.code === 'Escape') return;
+      heldKeys.add(dir);
+      recomputeKeyDir();
+    });
+    window.addEventListener('keyup', (e) => {
+      const dir = keyMap[e.code];
+      if (!dir) return;
+      heldKeys.delete(dir);
+      recomputeKeyDir();
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && this.running) this.togglePause();
+    });
+
+    // ---- Touch: Floating Thumb Pad (default) or legacy full-screen drag. ----
+    const thumbBase = document.getElementById('thumbpadBase');
+    const thumbKnob = document.getElementById('thumbpadKnob');
+    const zoneTop = () => this.height * (1 - CONFIG.input.zoneHeightFraction);
+
+    const showThumbpad = (sx, sy) => {
+      clearTimeout(this.thumbpadFadeTimer);
+      thumbBase.style.left = sx + 'px';
+      thumbBase.style.top = sy + 'px';
+      thumbBase.classList.remove('hidden');
+      requestAnimationFrame(() => thumbBase.classList.add('active'));
+    };
+    const hideThumbpad = () => {
+      thumbBase.classList.remove('active');
+      this.thumbpadFadeTimer = setTimeout(() => thumbBase.classList.add('hidden'), CONFIG.input.fadeDelayMs);
+    };
+    const updateThumbpad = (anchor, sx, sy) => {
+      const dx = sx - anchor.x;
+      const dy = sy - anchor.y;
+      const dist = Math.hypot(dx, dy);
+      const { deadZonePx, maxRadiusPx, curveExponent } = CONFIG.input;
+      if (dist < deadZonePx) {
+        this.moveVector = { x: 0, y: 0, magnitude: 0 };
+        thumbKnob.style.transform = 'translate(0px, 0px)';
+        return;
+      }
+      const clamped = Math.min(dist, maxRadiusPx);
+      const linear = clamp((clamped - deadZonePx) / (maxRadiusPx - deadZonePx), 0, 1);
+      // exponent > 1 suppresses small deflections (precision) and ramps up
+      // sharply near full deflection (speed) — the curve the GDD asks for.
+      const curved = Math.pow(linear, curveExponent);
+      const nx = dx / dist, ny = dy / dist;
+      this.moveVector = { x: nx, y: ny, magnitude: curved };
+      // Knob visually follows the raw (linear) finger displacement so it
+      // reads as "attached to your thumb"; only the resulting speed is curved.
+      thumbKnob.style.transform = `translate(${nx * clamped * 0.7}px, ${ny * clamped * 0.7}px)`;
+    };
+
+    let anchor = null;
+
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       const t = e.touches[0];
-      if (t) updateFromScreen(t.clientX, t.clientY);
+      if (!t) return;
+      if (this.useThumbpad && this.running && !this.paused && t.clientY >= zoneTop()) {
+        anchor = { x: t.clientX, y: t.clientY };
+        this.thumbpadTouchId = t.identifier;
+        showThumbpad(anchor.x, anchor.y);
+        this.moveVector = { x: 0, y: 0, magnitude: 0 };
+      } else {
+        this.thumbpadTouchId = null;
+        updateFromScreen(t.clientX, t.clientY);
+      }
     }, { passive: false });
+
     this.canvas.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      const t = e.touches[0];
-      if (t) updateFromScreen(t.clientX, t.clientY);
+      const touches = Array.from(e.touches);
+      if (this.thumbpadTouchId !== null) {
+        const t = touches.find(t => t.identifier === this.thumbpadTouchId);
+        if (t && anchor) updateThumbpad(anchor, t.clientX, t.clientY);
+      } else {
+        const t = touches[0];
+        if (t) updateFromScreen(t.clientX, t.clientY);
+      }
     }, { passive: false });
+
+    const endThumbTouch = (e) => {
+      const stillDown = Array.from(e.touches).some(t => t.identifier === this.thumbpadTouchId);
+      if (this.thumbpadTouchId !== null && !stillDown) {
+        this.thumbpadTouchId = null;
+        anchor = null;
+        this.moveVector = { x: 0, y: 0, magnitude: 0 };
+        hideThumbpad();
+      }
+    };
+    this.canvas.addEventListener('touchend', endThumbTouch, { passive: true });
+    this.canvas.addEventListener('touchcancel', endThumbTouch, { passive: true });
+  }
+
+  /** Short vibration if haptics are enabled and the browser supports it.
+   *  Feature-detected — never assumed available (GDD 5.1). */
+  vibrate(ms) {
+    if (this.save.settings.haptics && navigator.vibrate) navigator.vibrate(ms);
   }
 
   bindUI() {
@@ -650,6 +819,67 @@ class Game {
       this.showScreen('mainMenu');
     });
     document.getElementById('btnWatchAd').addEventListener('click', () => this.watchRewardedAd());
+
+    // ---- Pause / Controls / Leave Run ----
+    document.getElementById('btnPause').addEventListener('click', () => this.pauseGame());
+    document.getElementById('btnResume').addEventListener('click', () => this.resumeGame());
+    document.getElementById('btnRestart').addEventListener('click', () => this.restartFromPause());
+    document.getElementById('btnControls').addEventListener('click', () => {
+      document.getElementById('controlsPanel').classList.toggle('hidden');
+    });
+    document.getElementById('btnLeaveRun').addEventListener('click', () => {
+      document.getElementById('pauseSheet').classList.add('hidden');
+      document.getElementById('leaveConfirm').classList.remove('hidden');
+    });
+    document.getElementById('btnLeaveConfirmYes').addEventListener('click', () => this.leaveRun());
+    document.getElementById('btnLeaveConfirmNo').addEventListener('click', () => {
+      document.getElementById('leaveConfirm').classList.add('hidden');
+      document.getElementById('pauseSheet').classList.remove('hidden');
+    });
+
+    document.getElementById('btnInputThumbpad').addEventListener('click', () => {
+      this.save.settings.inputMode = 'thumbpad';
+      saveGame(this.save);
+      this.syncControlsPanel();
+    });
+    document.getElementById('btnInputLegacy').addEventListener('click', () => {
+      this.save.settings.inputMode = 'legacy';
+      saveGame(this.save);
+      this.syncControlsPanel();
+    });
+    document.querySelectorAll('[data-sensitivity]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.save.settings.sensitivity = parseFloat(btn.dataset.sensitivity);
+        saveGame(this.save);
+        this.syncControlsPanel();
+      });
+    });
+    document.getElementById('btnHapticsOn').addEventListener('click', () => {
+      this.save.settings.haptics = true;
+      saveGame(this.save);
+      this.syncControlsPanel();
+      this.vibrate(30);
+    });
+    document.getElementById('btnHapticsOff').addEventListener('click', () => {
+      this.save.settings.haptics = false;
+      saveGame(this.save);
+      this.syncControlsPanel();
+    });
+
+    // ---- Rank badge: tap to expand/collapse full standings ----
+    document.getElementById('hud-rankBadge').addEventListener('click', () => {
+      document.getElementById('hud-topright').classList.toggle('hidden');
+    });
+
+    // Browser back / tab close mid-round shouldn't silently lose a run —
+    // native "leave site?" prompt is the only customizable-by-copy option
+    // browsers allow for this (GDD 5.2).
+    window.addEventListener('beforeunload', (e) => {
+      if (this.running && !this.paused) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
   }
 
   populateShop() {
@@ -715,10 +945,12 @@ class Game {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
     document.getElementById('hud').classList.toggle('hidden', true);
+    document.getElementById('pauseSheet').classList.add('hidden');
+    document.getElementById('leaveConfirm').classList.add('hidden');
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
   }
@@ -757,6 +989,7 @@ class Game {
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
     this.state = GameState.MATCH_SETUP;
+    this.paused = false;
     this.createObjects();
     this.createEntities();
     this.particles = [];
@@ -770,6 +1003,14 @@ class Game {
     this.lastSizeTierId = CONFIG.sizeTiers[0].id;
     this.running = true;
     this.state = GameState.PLAYING;
+
+    const hint = document.getElementById('mobile-hint');
+    hint.textContent = this.useThumbpad
+      ? 'Dotknij dolną część ekranu, aby sterować kciukiem'
+      : 'Dotknij i przeciągaj, aby sterować dziurą';
+    hint.classList.remove('hidden');
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => hint.classList.add('hidden'), 4000);
     this.lastTime = performance.now();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     this.rafId = requestAnimationFrame((t) => this.loop(t));
@@ -832,9 +1073,12 @@ class Game {
     });
   }
 
-  endRound() {
+  /** Stops the round, grants coins for the score reached so far, and
+   *  persists stats. Shared by a normal timeout end and an early Leave Run,
+   *  which only differ in whether the results screen is shown. */
+  finalizeRun() {
     this.running = false;
-    this.state = GameState.RESULTS;
+    this.paused = false;
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
 
@@ -845,6 +1089,13 @@ class Game {
     this.save.coins += coinsEarned;
     this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
     saveGame(this.save);
+
+    return { ranked, place, coinsEarned };
+  }
+
+  endRound() {
+    this.state = GameState.RESULTS;
+    const { ranked, place, coinsEarned } = this.finalizeRun();
 
     document.getElementById('finalPlace').textContent = '#' + place;
     document.getElementById('finalScore').textContent = this.player.score;
@@ -871,8 +1122,74 @@ class Game {
       score: this.player.score,
       place,
       durationMs: Math.round(performance.now() - this.runStartedAt),
-      coinsEarned
+      coinsEarned,
+      completed: true
     });
+  }
+
+  /* ---------- pause / leave run ---------- */
+
+  togglePause() {
+    if (this.paused) this.resumeGame(); else this.pauseGame();
+  }
+
+  pauseGame() {
+    if (!this.running || this.paused) return;
+    this.paused = true;
+    this.state = GameState.PAUSED;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    document.getElementById('controlsPanel').classList.add('hidden');
+    document.getElementById('pauseSheet').classList.remove('hidden');
+    this.syncControlsPanel();
+  }
+
+  resumeGame() {
+    if (!this.paused) return;
+    this.paused = false;
+    this.state = GameState.PLAYING;
+    document.getElementById('pauseSheet').classList.add('hidden');
+    document.getElementById('leaveConfirm').classList.add('hidden');
+    this.lastTime = performance.now();
+    this.rafId = requestAnimationFrame((t) => this.loop(t));
+  }
+
+  restartFromPause() {
+    document.getElementById('pauseSheet').classList.add('hidden');
+    this.startRound();
+  }
+
+  /** Casual mode has no forfeit penalty (that's reserved for future
+   *  ranked/daily modes) — the player keeps coins earned for the score
+   *  reached so far and returns straight to the menu, per GDD 5.2. */
+  leaveRun() {
+    document.getElementById('pauseSheet').classList.add('hidden');
+    document.getElementById('leaveConfirm').classList.add('hidden');
+    const durationMs = Math.round(performance.now() - this.runStartedAt);
+    const { place, coinsEarned } = this.finalizeRun();
+    this.state = GameState.MENU;
+    this.showScreen('mainMenu');
+    this.updateCoinDisplays();
+    this.analytics.track('run_end', {
+      runId: this.runId,
+      seed: this.runSeed,
+      score: this.player.score,
+      place,
+      durationMs,
+      coinsEarned,
+      completed: false
+    });
+    this.analytics.track('result_action', { action: 'leave_run' });
+  }
+
+  syncControlsPanel() {
+    const mode = this.save.settings.inputMode;
+    document.getElementById('btnInputThumbpad').classList.toggle('active', mode === 'thumbpad');
+    document.getElementById('btnInputLegacy').classList.toggle('active', mode === 'legacy');
+    document.querySelectorAll('[data-sensitivity]').forEach(btn => {
+      btn.classList.toggle('active', parseFloat(btn.dataset.sensitivity) === this.save.settings.sensitivity);
+    });
+    document.getElementById('btnHapticsOn').classList.toggle('active', this.save.settings.haptics);
+    document.getElementById('btnHapticsOff').classList.toggle('active', !this.save.settings.haptics);
   }
 
   /* ---------- gameplay ---------- */
@@ -910,8 +1227,10 @@ class Game {
           this.triggerShake(b === this.player || a === this.player ? 10 : 4);
           if (a.isPlayer) {
             this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius) });
+            this.vibrate(40);
           } else if (b.isPlayer) {
             this.analytics.track('player_eaten', { by: a.name, playerSize: Math.round(b.radius) });
+            this.vibrate([30, 40, 30]);
           }
           b.shrinkAndRespawn();
         }
@@ -934,6 +1253,26 @@ class Game {
     }
   }
 
+  /** Picks the active input source and moves the player accordingly.
+   *  Priority: keyboard (explicit accessibility input) > active Thumb Pad
+   *  touch > mouse/legacy-drag chase. On a touch device in Thumb Pad mode
+   *  with no finger down, the player correctly stands still instead of
+   *  drifting toward a stale pointer position. */
+  applyPlayerMovement(dt) {
+    const sensitivity = this.save.settings.sensitivity || 1;
+    if (this.keyDir.x !== 0 || this.keyDir.y !== 0) {
+      this.player.moveDirection(this.keyDir.x, this.keyDir.y, 1, sensitivity, dt);
+      return;
+    }
+    if (this.thumbpadTouchId !== null) {
+      this.player.moveDirection(this.moveVector.x, this.moveVector.y, this.moveVector.magnitude, sensitivity, dt);
+      return;
+    }
+    if (!this.useThumbpad || !this.isTouchDevice) {
+      this.player.moveToward(this.pointerWorld.x, this.pointerWorld.y, dt);
+    }
+  }
+
   update(dt) {
     this.timeRemaining -= dt;
     if (this.timeRemaining <= 0) {
@@ -942,7 +1281,7 @@ class Game {
       return;
     }
 
-    this.player.moveToward(this.pointerWorld.x, this.pointerWorld.y, dt);
+    this.applyPlayerMovement(dt);
     for (const bot of this.bots) bot.update(dt, this);
 
     for (const obj of this.objects) obj.update(dt);
@@ -982,11 +1321,29 @@ class Game {
 
   updateHUD() {
     document.getElementById('timerValue').textContent = Math.ceil(this.timeRemaining);
+    const timerWarning = this.timeRemaining <= 15;
     document.getElementById('timerValue').classList.toggle('warning', this.timeRemaining <= 10);
+    document.getElementById('timerRing').classList.toggle('warning', timerWarning);
+    const ringCircumference = 169.6; // 2 * PI * r(27), matches the SVG circle in index.html
+    const timeFraction = clamp(this.timeRemaining / ROUND_TIME, 0, 1);
+    document.getElementById('timerRing').style.strokeDashoffset = String(ringCircumference * (1 - timeFraction));
+
     document.getElementById('sizeValue').textContent = Math.round(this.player.radius);
     document.getElementById('scoreValue').textContent = this.player.score;
 
+    const tiers = CONFIG.sizeTiers;
+    const tierIdx = tiers.findIndex(t => t.id === this.lastSizeTierId);
+    const current = tiers[tierIdx];
+    const next = tiers[tierIdx + 1];
+    const tierPct = next
+      ? clamp((this.player.radius - current.minRadius) / (next.minRadius - current.minRadius), 0, 1) * 100
+      : 100;
+    document.getElementById('tierProgressBar').style.width = tierPct + '%';
+
     const ranked = [this.player, ...this.bots].slice().sort((a, b) => b.radius - a.radius);
+    const place = ranked.indexOf(this.player) + 1;
+    document.getElementById('rankValue').textContent = `#${place}/${ranked.length}`;
+
     const list = document.getElementById('leaderboardList');
     list.innerHTML = '';
     ranked.forEach((h, i) => {
@@ -1068,6 +1425,52 @@ class Game {
     ctx.restore();
   }
 
+  /** Edge arrows pointing at nearby larger rivals that are currently
+   *  off-screen — contextual danger readability (GDD 5.3/5.4), kept to
+   *  the single nearest threat to avoid visual noise. */
+  drawDangerIndicators(ctx) {
+    const detectionRange = 700;
+    const margin = 34;
+    let nearest = null, nearestDist = Infinity;
+
+    for (const bot of this.bots) {
+      if (bot.radius <= this.player.radius * EAT_HOLE_RATIO) continue;
+      const d = dist(this.player.x, this.player.y, bot.x, bot.y);
+      if (d > detectionRange || d >= nearestDist) continue;
+
+      const screenX = bot.x - this.camera.x + this.width / 2;
+      const screenY = bot.y - this.camera.y + this.height / 2;
+      const onScreen = screenX >= 0 && screenX <= this.width && screenY >= 0 && screenY <= this.height;
+      if (onScreen) continue;
+
+      nearest = { screenX, screenY };
+      nearestDist = d;
+    }
+    if (!nearest) return;
+
+    const cx = this.width / 2, cy = this.height / 2;
+    const angle = Math.atan2(nearest.screenY - cy, nearest.screenX - cx);
+    const ex = clamp(cx + Math.cos(angle) * (cx - margin), margin, this.width - margin);
+    const ey = clamp(cy + Math.sin(angle) * (cy - margin), margin, this.height - margin);
+
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.translate(ex, ey);
+    ctx.rotate(angle);
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 200);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#ff007f';
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#ff007f';
+    ctx.beginPath();
+    ctx.moveTo(14, 0);
+    ctx.lineTo(-10, -9);
+    ctx.lineTo(-10, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   render(time) {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -1093,7 +1496,8 @@ class Game {
 
     ctx.restore();
 
-    this.drawMinimap(ctx);
+    if (this.showMinimap) this.drawMinimap(ctx);
+    this.drawDangerIndicators(ctx);
   }
 
   loop(now) {

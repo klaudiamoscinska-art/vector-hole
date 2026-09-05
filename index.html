@@ -15,27 +15,90 @@
 
   <!-- ===================== IN-GAME HUD ===================== -->
   <div id="hud" class="hidden">
+    <button id="btnPause" class="hud-icon-btn" aria-label="Pauza">❚❚</button>
+
+    <div id="hud-timer" class="hud-panel hud-timer">
+      <svg class="timer-ring" viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="timer-ring-bg" cx="32" cy="32" r="27"></circle>
+        <circle id="timerRing" class="timer-ring-fg" cx="32" cy="32" r="27"></circle>
+      </svg>
+      <span id="timerValue" class="hud-value timer">120</span>
+    </div>
+
     <div id="hud-topleft" class="hud-panel">
-      <div class="hud-row">
-        <span class="hud-label">CZAS</span>
-        <span id="timerValue" class="hud-value timer">120</span>
-      </div>
       <div class="hud-row">
         <span class="hud-label">ROZMIAR</span>
         <span id="sizeValue" class="hud-value size">10</span>
       </div>
-      <div class="hud-row">
+      <div class="tier-progress-track"><div id="tierProgressBar" class="tier-progress-bar"></div></div>
+      <div class="hud-row hud-row-sub">
         <span class="hud-label">WYNIK</span>
         <span id="scoreValue" class="hud-value score">0</span>
       </div>
     </div>
 
-    <div id="hud-topright" class="hud-panel">
+    <button id="hud-rankBadge" class="hud-panel hud-rank-badge" aria-label="Pokaż pełny ranking">
+      <span class="hud-label">RANKING</span>
+      <span id="rankValue" class="hud-value rank">#1/6</span>
+    </button>
+
+    <div id="hud-topright" class="hud-panel hidden">
       <div class="leaderboard-title">🏆 NA ŻYWO</div>
       <ol id="leaderboardList"></ol>
     </div>
 
     <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
+
+    <div id="thumbpadBase" class="thumbpad-base hidden">
+      <div id="thumbpadKnob" class="thumbpad-knob"></div>
+    </div>
+  </div>
+
+  <!-- ===================== PAUSE SHEET ===================== -->
+  <div id="pauseSheet" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title">PAUZA</h2>
+      <button id="btnResume" class="btn btn-primary">WZNÓW</button>
+      <button id="btnRestart" class="btn btn-secondary">RESTART RUNDY</button>
+      <button id="btnControls" class="btn btn-secondary">STEROWANIE</button>
+
+      <div id="controlsPanel" class="controls-panel hidden">
+        <div class="control-row">
+          <span class="control-label">Tryb sterowania</span>
+          <div class="control-toggle">
+            <button id="btnInputThumbpad" class="toggle-btn">Kciuk (pad)</button>
+            <button id="btnInputLegacy" class="toggle-btn">Przeciąganie</button>
+          </div>
+        </div>
+        <div class="control-row">
+          <span class="control-label">Czułość</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-sensitivity="0.75">Niska</button>
+            <button class="toggle-btn" data-sensitivity="1">Normalna</button>
+            <button class="toggle-btn" data-sensitivity="1.3">Wysoka</button>
+          </div>
+        </div>
+        <div class="control-row">
+          <span class="control-label">Haptyka</span>
+          <div class="control-toggle">
+            <button id="btnHapticsOn" class="toggle-btn">Wł.</button>
+            <button id="btnHapticsOff" class="toggle-btn">Wył.</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnLeaveRun" class="btn btn-danger">OPUŚĆ RUNDĘ</button>
+    </div>
+  </div>
+
+  <!-- ===================== LEAVE RUN CONFIRM ===================== -->
+  <div id="leaveConfirm" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title">OPUŚCIĆ RUNDĘ?</h2>
+      <p class="hint-text">Wrócisz do menu głównego. Monety za dotychczasowy wynik zostaną zapisane.</p>
+      <button id="btnLeaveConfirmYes" class="btn btn-danger">TAK, OPUŚĆ</button>
+      <button id="btnLeaveConfirmNo" class="btn btn-secondary">ANULUJ</button>
+    </div>
   </div>
 
   <!-- ===================== MAIN MENU ===================== -->

@@ -118,8 +118,8 @@ phase's acceptance criteria intact.
 
 | Phase | Scope | Priority | Status |
 |---|---|---|---|
-| **1** | P0 instrumentation baseline: state machine, config/tuning layer, feature flags, seeded RNG abstraction + run/session IDs, versioned save + migration, analytics event stub, ambiguous-HUD-string fix | P0 | **Shipped this patch** |
-| 2 | Floating Thumb Pad input (with legacy drag toggle), pause/leave-run sheet, HUD v2 (explicit Size/Score/Rank, collapsible standings, contextual minimap) | P0/P1 | Not started |
+| 1 | P0 instrumentation baseline: state machine, config/tuning layer, feature flags, seeded RNG abstraction + run/session IDs, versioned save + migration, analytics event stub, ambiguous-HUD-string fix | P0 | Shipped |
+| **2** | Floating Thumb Pad input (with legacy drag toggle), pause/leave-run sheet, HUD v2 (explicit Size/Score/Rank, collapsible standings, contextual minimap) | P0/P1 | **Shipped this patch** |
 | 3 | Game-feel/juice pass: size-aware eat feedback, growth-tier ring transitions, combo readability, can-eat/danger cues | P0 | Not started |
 | 4 | Evolution moments (2/run, 3-card weighted offer, run-only mutations) + Overdrive/City Shift finale (≥2 variants) | P1 | Not started |
 | 5 | Seeded chunk generator: `DistrictDefinition`/chunk templates/spawn budgets/validators, ship Neon Downtown + 1 modifier | P1 | Not started |
@@ -252,9 +252,135 @@ narrow mobile viewport.
   (procedural districts) or Phase 6 (hub) makes the file unwieldy, rather
   than deciding unilaterally to split it.
 
-**Next recommended phase**: Phase 2 (Floating Thumb Pad + pause/leave +
-HUD v2), per GDD §15.2 Sprint 1's own definition of done ("works on an
-iPhone viewport, zero HUD/control overlap, legacy input behind a flag") —
-it's the single highest impact/effort ratio item not yet done, and it is
-a prerequisite for the evolution-card UI in Phase 4 (perk picker must not
-collide with the control zone).
+**Next recommended phase (superseded — see §5)**: Phase 2 shipped next;
+Phase 3 (game-feel/juice pass) is next up.
+
+## 5. Phase 2 — what shipped in this patch
+
+**Files changed**: `index.html`, `style.css`, `game.js`. Still zero
+dependencies, zero build step, same three-file architecture (the pause
+sheet and leave-run confirm reuse the existing `.screen`/`.screen-inner`
+markup pattern instead of inventing a new one).
+
+**Floating Thumb Pad (input v2)**:
+- New default touch control for new saves: touch-down inside the bottom
+  35% of the screen (`CONFIG.input.zoneHeightFraction`) anchors a
+  translucent joystick wherever the thumb lands — the hole is never
+  required to sit under the finger. Dead zone 10px, max radius 55px,
+  a `magnitude^1.6` response curve (precision near center, speed near
+  full deflection), knob visually tracks the raw finger offset while the
+  resulting move speed uses the curved value. Fades out 400ms after
+  release (`CONFIG.input.fadeDelayMs`).
+- **Legacy direct-drag is preserved**, selectable from the pause sheet's
+  Controls panel (`settings.inputMode`), and is what any pre-Phase-2 save
+  keeps using until the player opts in (see migration note below).
+- **`CONFIG.flags.inputThumbPad`** is a global kill switch: set it `false`
+  and every save falls back to legacy drag regardless of its own setting
+  — a safety net if the new control needs to be pulled without a code
+  revert.
+- Desktop is unaffected: mouse chase-drag behavior is byte-for-byte the
+  same as before. Added WASD/arrow-key movement as an accessibility
+  option (GDD 5.1); holding a key takes priority over the mouse for that
+  frame.
+- Sensitivity (Low/Normal/High → ×0.75/1/1.3) and a haptics toggle
+  (`navigator.vibrate`, feature-detected, never assumed present) are
+  exposed in the same panel and persisted in the save.
+- **Save schema bumped to v3**: `settings.inputMode` defaults to
+  `'thumbpad'` for new saves; a v2→v3 migration also flips any existing
+  `'legacy'` default forward, since this is a pre-launch prototype with
+  no real players who could have deliberately chosen legacy yet — a
+  judgment call documented here rather than made silently. Also adds
+  `settings.minimap: 'auto'`.
+
+**Pause / Leave Run**:
+- Compact pause button, top-left corner, safe-area aware
+  (`env(safe-area-inset-*)`), reachable at any point in a round; `Escape`
+  pauses on desktop too.
+- Pause sheet: Resume, Restart, Controls (expands the input/sensitivity/
+  haptics panel described above), Leave Run. No fake "close app" button
+  was added, per the GDD's explicit instruction.
+- Leaving a run has no forfeit penalty — casual mode only exists today
+  (ranked/daily are Phase 9+); the player keeps the coins their score so
+  far would have earned and returns straight to the main menu without a
+  results screen, per GDD 5.2. `run_end` now carries a `completed: false`
+  flag for this path (true for a normal timeout end) instead of inventing
+  a new analytics event.
+- `beforeunload` shows the browser's native "leave site?" prompt while a
+  round is running and not paused — browsers do not allow a custom
+  message here, so this is the correct/only available implementation
+  of "don't accidentally lose your run to browser back/tab close."
+- **Not implemented**: a Sound toggle. The GDD's pause sheet mock
+  includes "Sound/Haptics," but this prototype has no audio system at
+  all yet (confirmed in the Phase 1 audit) — adding a toggle with nothing
+  behind it would be exactly the kind of fake feature GDD §16 warns
+  against. Haptics shipped; Sound will land with the audio pass
+  (GDD §9, not yet scheduled).
+
+**HUD v2**:
+- **Timer** moved to top-center as the strongest signal: a bigger number
+  plus an SVG ring (`stroke-dashoffset`, depleting clockwise) that
+  switches to the danger color in the final 15 seconds.
+- **Size/tier** panel (top-left, below the pause button) now shows the
+  size number plus a thin progress bar toward the next internal size
+  tier (the same `CONFIG.sizeTiers` added in Phase 1 for analytics) —
+  visual-only for now; Phase 4's evolution offers will hang off the same
+  thresholds. Score is kept as a smaller secondary line in the same
+  panel rather than removed, since the GDD's "never show ambiguous
+  numbers" rule is about labeling, not about deleting score entirely.
+- **Rank** collapses to a small `#place/total` badge (top-right); tapping
+  it expands/collapses the existing full "NA ŻYWO" standings list below
+  it. A separate "nearby standings" mini-list was considered and
+  deliberately skipped as unnecessary complexity for what the collapsed
+  badge already communicates — flagged here rather than silently
+  dropped.
+- **Minimap** now defaults to hidden below `CONFIG.input.minimapAutoHideWidth`
+  (700px) and can be forced on/off via `settings.minimap`
+  (`'auto'|'on'|'off'`) — verified hidden on a 375px viewport, shown on
+  1280px.
+- **Danger edge indicator**: a single pulsing arrow at the screen edge
+  points toward the nearest off-screen rival that could eat the player,
+  within 700px — capped to one indicator to avoid the visual noise the
+  GDD explicitly warns about.
+- Contextual, short-lived hint text at round start (control-mode-specific
+  copy, auto-hides after 4s) replaces the old always-on static hint.
+
+**Verified via Playwright** (both `hasTouch` mobile contexts and a plain
+desktop context, plus manual screenshot review at 375×667 and 390×844):
+default new-save settings; a real synthetic touch drag through the Thumb
+Pad producing the expected direction/speed and DOM knob transform;
+thumb-pad correctly disengaging (and fading) on release; desktop mouse
+chase-drag unchanged; WASD movement; `Escape` pause; pause → Controls →
+switch to legacy → Resume; pause → Leave Run → confirm → back to menu
+with coins credited and `run_end{completed:false}` fired; rank badge
+expand/collapse; minimap hidden at 375px / shown at 1280px; a full round
+to the existing results screen (still showing the Phase 1 `Rozmiar {r} •
+Wynik {s}` fix) with no console errors in any run.
+
+**Acceptance criteria for Phase 2** (GDD §15.2 Sprint 1 DoD): works on an
+iPhone-class viewport with zero HUD/control overlap (confirmed by
+screenshot); legacy input reachable behind a setting, not deleted; pause
+and leave-run both function without losing saved progress.
+
+**Explicitly not touched**: evolution/Overdrive, procedural districts,
+hub, shop, economy values beyond what Phase 1 already centralized,
+world/bot/object logic, rendering of the world itself (only new
+screen-space HUD/indicator drawing was added).
+
+**Remaining risks / follow-ups**:
+- Left/right-handed placement (GDD 5.1) was not implemented as a
+  separate setting — a floating (not fixed-position) joystick anchors
+  wherever the thumb lands, which already satisfies the practical intent
+  for most single-thumb play; a true handedness bias would only matter
+  for edge-clipping correction near screen borders and was judged not
+  worth the added settings surface yet. Revisit if playtesting shows a
+  need.
+- The `curveExponent` (1.6) and `zoneHeightFraction` (0.35) are first-pass
+  values, not yet A/B tested — they live in `CONFIG.input` specifically
+  so they can be tuned without touching the input code.
+- Danger indicator only tracks bots, not future hazards/districts —
+  expected to extend naturally once Phase 5 adds world hazards.
+
+**Next recommended phase**: Phase 3 (game-feel/juice pass — size-aware
+eat feedback, growth-tier ring transitions, combo readability), since it
+builds directly on the HUD/size-tier groundwork just shipped and is
+still P0 priority per GDD §15.1.

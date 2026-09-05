@@ -75,15 +75,136 @@ html, body {
   box-shadow: 0 0 18px rgba(0, 243, 255, 0.15);
 }
 
-#hud-topleft {
-  top: 16px;
-  left: 16px;
-  min-width: 140px;
+/* ---- Pause button (top-left corner, safe-area aware) ---- */
+
+.hud-icon-btn {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 20;
 }
 
+/* ---- Timer: top-center, strongest signal ---- */
+
+.hud-timer {
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.timer-ring-bg {
+  fill: none;
+  stroke: rgba(0, 243, 255, 0.12);
+  stroke-width: 4;
+}
+
+.timer-ring-fg {
+  fill: none;
+  stroke: var(--neon-cyan);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 169.6;
+  stroke-dashoffset: 0;
+  transition: stroke 0.2s ease;
+}
+
+.timer-ring-fg.warning {
+  stroke: var(--neon-pink);
+}
+
+.hud-timer .hud-value.timer {
+  font-size: 22px;
+  z-index: 1;
+}
+
+/* ---- Size/tier panel: top-left ---- */
+
+#hud-topleft {
+  top: calc(58px + env(safe-area-inset-top, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  min-width: 130px;
+}
+
+.tier-progress-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(57, 255, 20, 0.15);
+  overflow: hidden;
+  margin: 4px 0 6px;
+}
+
+.tier-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--neon-green);
+  box-shadow: 0 0 6px var(--neon-green);
+  transition: width 0.2s ease;
+}
+
+.hud-row-sub {
+  opacity: 0.8;
+}
+
+.hud-row-sub .hud-value {
+  font-size: 14px;
+}
+
+/* ---- Rank badge (collapsed): top-right ---- */
+
+.hud-rank-badge {
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  pointer-events: auto;
+  font-family: inherit;
+}
+
+.hud-value.rank {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px var(--neon-cyan);
+  font-size: 16px;
+}
+
+/* ---- Full standings panel (expanded on tap) ---- */
+
 #hud-topright {
-  top: 16px;
-  right: 16px;
+  top: calc(58px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
   min-width: 210px;
   max-width: 260px;
 }
@@ -198,6 +319,106 @@ html, body {
   #mobile-hint {
     display: none;
   }
+}
+
+/* ===================== FLOATING THUMB PAD ===================== */
+/* Anchors wherever the thumb touches down inside the lower control zone
+   (see CONFIG.input.zoneHeightFraction in game.js). Translucent, fades
+   out ~0.4s after release, never a fixed on-screen joystick graphic. */
+
+.thumbpad-base {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  margin-left: -55px;
+  margin-top: -55px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 243, 255, 0.35);
+  background: rgba(0, 243, 255, 0.06);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 15;
+}
+
+.thumbpad-base.active {
+  opacity: 1;
+  transition: opacity 0.05s ease;
+}
+
+.thumbpad-knob {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  left: 50%;
+  top: 50%;
+  margin-left: -23px;
+  margin-top: -23px;
+  border-radius: 50%;
+  background: rgba(0, 243, 255, 0.28);
+  border: 1px solid rgba(0, 243, 255, 0.6);
+  box-shadow: 0 0 14px rgba(0, 243, 255, 0.45);
+}
+
+/* ===================== PAUSE / CONTROLS / LEAVE CONFIRM ===================== */
+
+.btn-danger {
+  background: transparent;
+  color: var(--neon-pink);
+  border-color: rgba(255, 0, 127, 0.45);
+}
+
+.btn-danger:hover {
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 14px rgba(255, 0, 127, 0.35);
+}
+
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-label {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: rgba(230, 250, 255, 0.65);
+}
+
+.control-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 8px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.toggle-btn.active {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  background: rgba(0, 243, 255, 0.12);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
 }
 
 /* ===================== SCREENS (Menu / Shop / GameOver / Ad) ===================== */
@@ -545,6 +766,38 @@ html, body {
 
   #leaderboardList li {
     font-size: 11px;
+  }
+
+  .hud-timer {
+    width: 62px;
+    height: 62px;
+  }
+
+  .hud-timer .hud-value.timer {
+    font-size: 17px;
+  }
+
+  .hud-rank-badge {
+    min-width: 70px;
+    padding: 6px 10px;
+  }
+
+  .hud-value.rank {
+    font-size: 13px;
+  }
+
+  .thumbpad-base {
+    width: 92px;
+    height: 92px;
+    margin-left: -46px;
+    margin-top: -46px;
+  }
+
+  .thumbpad-knob {
+    width: 38px;
+    height: 38px;
+    margin-left: -19px;
+    margin-top: -19px;
   }
 
   .screen-inner {
