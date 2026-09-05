@@ -119,7 +119,8 @@ phase's acceptance criteria intact.
 | Phase | Scope | Priority | Status |
 |---|---|---|---|
 | 1 | P0 instrumentation baseline: state machine, config/tuning layer, feature flags, seeded RNG abstraction + run/session IDs, versioned save + migration, analytics event stub, ambiguous-HUD-string fix | P0 | Shipped |
-| **2** | Floating Thumb Pad input (with legacy drag toggle), pause/leave-run sheet, HUD v2 (explicit Size/Score/Rank, collapsible standings, contextual minimap) | P0/P1 | **Shipped this patch** |
+| 2 | Floating Thumb Pad input (with legacy drag toggle), pause/leave-run sheet, HUD v2 (explicit Size/Score/Rank, collapsible standings, contextual minimap) | P0/P1 | Shipped |
+| **3** | Game-feel/juice pass: size-scaled eat feedback, growth-tier pulse, combo system + fading combo text, can-eat/danger readability | P0 | **Shipped this patch** |
 | 3 | Game-feel/juice pass: size-aware eat feedback, growth-tier ring transitions, combo readability, can-eat/danger cues | P0 | Not started |
 | 4 | Evolution moments (2/run, 3-card weighted offer, run-only mutations) + Overdrive/City Shift finale (≥2 variants) | P1 | Not started |
 | 5 | Seeded chunk generator: `DistrictDefinition`/chunk templates/spawn budgets/validators, ship Neon Downtown + 1 modifier | P1 | Not started |
@@ -252,8 +253,7 @@ narrow mobile viewport.
   (procedural districts) or Phase 6 (hub) makes the file unwieldy, rather
   than deciding unilaterally to split it.
 
-**Next recommended phase (superseded — see §5)**: Phase 2 shipped next;
-Phase 3 (game-feel/juice pass) is next up.
+**Next recommended phase (superseded — see §5)**: Phase 2 shipped next.
 
 ## 5. Phase 2 — what shipped in this patch
 
@@ -380,7 +380,109 @@ screen-space HUD/indicator drawing was added).
 - Danger indicator only tracks bots, not future hazards/districts —
   expected to extend naturally once Phase 5 adds world hazards.
 
-**Next recommended phase**: Phase 3 (game-feel/juice pass — size-aware
-eat feedback, growth-tier ring transitions, combo readability), since it
-builds directly on the HUD/size-tier groundwork just shipped and is
-still P0 priority per GDD §15.1.
+**Next recommended phase (superseded — see §6)**: Phase 3 shipped next.
+
+## 6. Phase 3 — what shipped in this patch
+
+**Files changed**: `game.js` only. No new DOM elements were needed — all
+new feedback is canvas-drawn (world-space) or reuses existing HUD/particle
+plumbing, so `index.html`/`style.css` are untouched this phase.
+
+**Size-scaled eat feedback** (GDD 5.4 "eat feedback zależny od
+wielkości"): a new `Game.triggerEatFeedback(x, y, color, eatenRadius,
+isPlayerInvolved)` replaces the old fixed `spawnParticles(...,14)` /
+`spawnParticles(...,26)` calls at both eat sites (object eaten,
+rival-hole eaten). Tiers are radius-based
+(`CONFIG.juice.eatTiers.tinyMaxRadius/mediumMaxRadius`): tiny = a small
+particle puff and no shake; medium = a bigger pulse of particles plus a
+small camera shake; giant = a heavy particle burst, stronger shake, and a
+new expanding-ring **`Ripple`** effect. Camera shake is dampened for
+non-player eats (bots eating each other) so the screen doesn't jolt for
+events the player didn't cause.
+
+**Growth-tier transition pulse**: `checkSizeTier()` (added in Phase 1 for
+analytics only) now also fires a green ripple + particle burst + a short
+haptic tick around the player the moment their radius crosses one of the
+existing `CONFIG.sizeTiers` thresholds. This is intentionally cosmetic
+only — no stat or gameplay change — since the real evolution
+system with player-facing choices is Phase 4's job; this just makes
+growth *feel* like it's happening, today.
+
+**Combo system**: consecutive player eats within
+`CONFIG.juice.combo.windowSeconds` (1.6s) build a combo counter and a
+score multiplier (`1 + step×(count-1)`, capped at
+`CONFIG.juice.combo.maxMultiplier`), applied to both object value and
+rival-eat score. A gold "×N.N COMBO (count)" text floats above the
+player (canvas-drawn) and fades smoothly over
+`CONFIG.juice.combo.fadeSeconds` (0.6s) once the window lapses, instead
+of disappearing abruptly — verified with a frame-by-frame simulation
+(`updateCombo(0.05)` × 50) showing full opacity through the window and a
+linear fade after. This is a **baseline, non-perk combo** — Phase 4's
+"Combo Reactor" mutation is expected to extend the same window rather
+than replace this system.
+
+**Can-eat readability**: `WorldObject.draw(ctx, highlight)` gained an
+optional breathing rim, only drawn for objects within a narrow band
+around the player's exact eat threshold
+(`CONFIG.juice.canEatHighlightBandLow/High`, computed per-frame in
+`Game.canEatHighlight()`). Objects far below or above the threshold get
+`highlight = 0` and render exactly as before — this was explicitly
+scoped to avoid the "visual noise on tiny objects" the GDD warns against.
+
+**Danger readability**: `Game.drawDangerHalos()` draws a soft pulsing
+red radial gradient behind any bot that both threatens the player
+(bigger by `EAT_HOLE_RATIO`) and is within `CONFIG.juice.dangerHaloRange`
+(260px), on top of the Phase 2 off-screen edge arrow. A new
+`updateDangerWarnings()` fires a single short haptic buzz the moment a
+given threat *enters* that range (tracked per-bot in a `Set`, cleared
+when it leaves) instead of buzzing continuously while it lingers.
+
+**Verified via Playwright**: tiny/medium/giant eat feedback tiers
+(particle counts, shake, ripple-on-giant) with real gameplay objects;
+score-with-multiplier arithmetic (a tracked eat sequence produced the
+exact expected `score: 24` from a ×1 then ×1.15 combo); combo
+count/multiplier/alpha across a controlled 50-frame simulation at a
+realistic 0.05s step (matches the real loop's per-frame `dt` cap),
+confirming the fade only starts once the window actually lapses; the
+can-eat highlight returning `0` for a trivially-eatable object and `1`
+for one sitting exactly on the threshold band; a growth-tier crossing
+producing exactly one ripple; a danger-range entry producing exactly one
+`dangerWarned` flag. A full-scene screenshot at 390×844 shows the combo
+text, the danger halo, and the can-eat rim all rendering simultaneously
+without visually competing (color hierarchy holds: gold = combo/reward,
+warm red = danger, existing per-object neon = normal state) and without
+covering the pause button, timer, size panel, or rank badge added in
+Phase 2.
+
+**Explicitly not touched**: no audio was added (still no audio system in
+this prototype — GDD 5.4's "rośnie rytm audio" / pitch-ramp combo cue and
+5.4's "bass hit" on giant eats are both audio-dependent and stay a gap
+until the audio pass, GDD §9, same reasoning as skipping the Sound
+toggle in Phase 2). Evolution cards, Overdrive, and any UI beyond the
+existing HUD are still Phase 4+.
+
+**Remaining risks / follow-ups**:
+- The combo score multiplier is a real (if modest, capped at ×2.5)
+  scoring change, not purely cosmetic — flagging this explicitly since
+  "game-feel" work is expected to stay visual-only; it was judged in
+  scope because the GDD's own P0 game-feel bullet list names "combo ...
+  mnożnik" directly, but a future economy-tuning pass (Phase 7) should
+  treat this as a formalized part of the scoring model rather than
+  reopen it as an oversight.
+- `CONFIG.juice.*` values (tier radii, combo window/step/cap, highlight
+  band, danger range) are first-pass numbers, not yet playtested or
+  A/B'd — they're centralized in `CONFIG` specifically so that can happen
+  without touching this code.
+- Danger halo/warning and the edge arrow (Phase 2) currently both key off
+  the same `EAT_HOLE_RATIO` threat definition but are computed
+  independently each frame; if a future hazard type is added (Phase 5
+  districts) it should extend `updateDangerWarnings()` rather than grow
+  a third parallel threat-detection pass.
+
+**Next recommended phase**: Phase 4 (Evolution moments + Overdrive/City
+Shift finale) — the GDD's own highest-priority differentiator ("Golden
+Shot") and the next P1 item, and it now has real groundwork to build on:
+the size tiers driving `size_tier` analytics and the growth-pulse ripple
+are exactly the thresholds an evolution offer would trigger from, and
+the HUD's perk-picker placement is already constrained to stay clear of
+the Phase 2 control zone.

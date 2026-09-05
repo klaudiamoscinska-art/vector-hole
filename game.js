@@ -40,6 +40,14 @@ const CONFIG = {
     fadeDelayMs: 400,
     minimapAutoHideWidth: 700 // below this viewport width, minimap defaults off
   },
+  // Phase 3 game-feel/juice tuning.
+  juice: {
+    eatTiers: { tinyMaxRadius: 10, mediumMaxRadius: 24 }, // above mediumMaxRadius = "giant" eat
+    combo: { windowSeconds: 1.6, stepBonus: 0.15, maxMultiplier: 2.5, fadeSeconds: 0.6 },
+    canEatHighlightBandLow: 0.85,  // rim-highlight objects whose (threshold / radius) falls in
+    canEatHighlightBandHigh: 1.15, // this band around 1.0 -- "you're close to being able to eat this"
+    dangerHaloRange: 260
+  },
   // Size tiers used for analytics (`size_tier` events) and future evolution
   // visuals (GDD P2). Not yet shown in the HUD or tied to any visual change.
   sizeTiers: [
@@ -292,6 +300,40 @@ class Particle {
   }
 }
 
+/* ----------------------- Ripple (expanding ring, for "giant" eats and growth-tier pulses) ----------------------- */
+
+class Ripple {
+  constructor(x, y, color, startRadius, endRadius, duration) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.startRadius = startRadius;
+    this.endRadius = endRadius;
+    this.maxLife = duration;
+    this.life = duration;
+  }
+
+  update(dt) {
+    this.life -= dt;
+  }
+
+  get dead() { return this.life <= 0; }
+
+  draw(ctx) {
+    const t = 1 - clamp(this.life / this.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = 1 - t;
+    ctx.strokeStyle = this.color;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = this.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, lerp(this.startRadius, this.endRadius, t), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 /* ----------------------- WorldObject ----------------------- */
 
 class WorldObject {
@@ -335,9 +377,27 @@ class WorldObject {
 
   get consumed() { return this.eating && this.eatT >= 1; }
 
-  draw(ctx) {
+  /** highlight (0..1): "you're close to being able to eat this" breathing
+   *  rim, drawn only for objects near the player's eat threshold so tiny
+   *  trivially-eatable objects stay visually quiet (GDD 5.4). */
+  draw(ctx, highlight) {
     const scale = this.eating ? Math.max(0, 1 - this.eatT) : 1;
     if (scale <= 0) return;
+
+    if (highlight > 0 && !this.eating) {
+      const breathe = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+      ctx.save();
+      ctx.globalAlpha = highlight * (0.35 + 0.35 * breathe);
+      ctx.strokeStyle = this.color;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = this.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius * (1.35 + 0.1 * breathe), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rotation);
@@ -609,6 +669,7 @@ class Game {
     this.save = loadSave();
     this.playCount = 0;
     this.particles = [];
+    this.ripples = [];
     this.objects = [];
     this.bots = [];
     this.camera = { x: WORLD_W / 2, y: WORLD_H / 2 };
@@ -617,6 +678,11 @@ class Game {
     this.lastTime = 0;
     this.shake = 0;
     this.adPendingCoins = 0;
+    this.comboCount = 0;
+    this.comboMultiplier = 1;
+    this.comboTimer = 0;
+    this.comboDisplayAlpha = 0;
+    this.dangerWarned = new Set();
     this.adUsedThisRound = false;
 
     this.sessionId = generateId('session');
@@ -993,6 +1059,12 @@ class Game {
     this.createObjects();
     this.createEntities();
     this.particles = [];
+    this.ripples = [];
+    this.comboCount = 0;
+    this.comboMultiplier = 1;
+    this.comboTimer = 0;
+    this.comboDisplayAlpha = 0;
+    this.dangerWarned = new Set();
     this.timeRemaining = ROUND_TIME;
     this.adUsedThisRound = false;
     this.runId = generateId('run');
@@ -1202,6 +1274,35 @@ class Game {
     this.shake = Math.max(this.shake, amount);
   }
 
+  /** Eat feedback scaled by what got eaten: tiny = a subtle tick, medium =
+   *  pulse + particles, giant = heavier shake + particles + a ring ripple
+   *  (GDD 5.4 — "eat feedback zależny od wielkości"). */
+  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved) {
+    const { tinyMaxRadius, mediumMaxRadius } = CONFIG.juice.eatTiers;
+    let particles, shakeAmt, giant;
+    if (eatenRadius <= tinyMaxRadius) {
+      particles = 8; shakeAmt = 0; giant = false;
+    } else if (eatenRadius <= mediumMaxRadius) {
+      particles = 16; shakeAmt = 3; giant = false;
+    } else {
+      particles = 30; shakeAmt = 10; giant = true;
+    }
+    this.spawnParticles(x, y, color, particles);
+    if (shakeAmt > 0) this.triggerShake(isPlayerInvolved ? shakeAmt : shakeAmt * 0.4);
+    if (giant) this.ripples.push(new Ripple(x, y, color, eatenRadius * 0.6, eatenRadius * 3, 0.5));
+  }
+
+  /** Bumps the player's combo (consecutive eats within the combo window)
+   *  and returns the current score multiplier. Fades out smoothly rather
+   *  than cutting abruptly when the window lapses (see update()). */
+  registerCombo() {
+    this.comboCount++;
+    this.comboTimer = CONFIG.juice.combo.windowSeconds;
+    this.comboMultiplier = clamp(1 + (this.comboCount - 1) * CONFIG.juice.combo.stepBonus, 1, CONFIG.juice.combo.maxMultiplier);
+    this.comboDisplayAlpha = 1;
+    return this.comboMultiplier;
+  }
+
   handleObjectEating(hole) {
     for (const obj of this.objects) {
       if (obj.eating) continue;
@@ -1222,9 +1323,9 @@ class Game {
         const d = dist(a.x, a.y, b.x, b.y);
         if (d < a.radius * 0.75) {
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
-          a.score += Math.round(b.radius * 2);
-          this.spawnParticles(b.x, b.y, b.isPlayer ? '#00f3ff' : b.edgeColor, 26);
-          this.triggerShake(b === this.player || a === this.player ? 10 : 4);
+          const multiplier = a.isPlayer ? this.registerCombo() : 1;
+          a.score += Math.round(b.radius * 2 * multiplier);
+          this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#00f3ff' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer);
           if (a.isPlayer) {
             this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius) });
             this.vibrate(40);
@@ -1250,6 +1351,12 @@ class Game {
     if (current.id !== this.lastSizeTierId) {
       this.lastSizeTierId = current.id;
       this.analytics.track('size_tier', { tier: current.id, radius: Math.round(this.player.radius) });
+      // Growth-tier transition pulse: purely cosmetic today (green = positive
+      // per the GDD 5.4 color hierarchy); Phase 4 attaches real evolution
+      // offers to these same thresholds.
+      this.ripples.push(new Ripple(this.player.x, this.player.y, '#39ff14', this.player.radius, this.player.radius * 2.5, 0.5));
+      this.spawnParticles(this.player.x, this.player.y, '#39ff14', 20);
+      this.vibrate(60);
     }
   }
 
@@ -1293,8 +1400,9 @@ class Game {
       if (obj.consumed) {
         const hole = obj.eater;
         hole.growFromArea(Math.PI * obj.radius * obj.radius * GROW_K_OBJ);
-        hole.score += obj.value;
-        this.spawnParticles(obj.x, obj.y, obj.color, 14);
+        const multiplier = hole.isPlayer ? this.registerCombo() : 1;
+        hole.score += Math.round(obj.value * multiplier);
+        this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer);
         if (hole.isPlayer && !this.firstEatTracked) {
           this.firstEatTracked = true;
           this.analytics.track('first_eat', { objectTier: obj.tier });
@@ -1308,6 +1416,11 @@ class Game {
 
     this.particles.forEach(p => p.update(dt));
     this.particles = this.particles.filter(p => !p.dead);
+    this.ripples.forEach(r => r.update(dt));
+    this.ripples = this.ripples.filter(r => !r.dead);
+
+    this.updateCombo(dt);
+    this.updateDangerWarnings();
 
     this.camera.x = clamp(this.player.x, this.width / 2, WORLD_W - this.width / 2);
     this.camera.y = clamp(this.player.y, this.height / 2, WORLD_H - this.height / 2);
@@ -1317,6 +1430,42 @@ class Game {
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
     this.updateHUD();
+  }
+
+  /** Combo window countdown; fades the on-screen combo text smoothly over
+   *  CONFIG.juice.combo.fadeSeconds once the window lapses, rather than
+   *  cutting it abruptly (GDD 5.4). */
+  updateCombo(dt) {
+    if (this.comboTimer > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) {
+        this.comboTimer = 0;
+        this.comboCount = 0;
+        this.comboMultiplier = 1;
+      }
+    }
+    if (this.comboCount > 0) {
+      this.comboDisplayAlpha = 1;
+    } else if (this.comboDisplayAlpha > 0) {
+      this.comboDisplayAlpha = Math.max(0, this.comboDisplayAlpha - dt / CONFIG.juice.combo.fadeSeconds);
+    }
+  }
+
+  /** One-shot haptic warning the moment a threatening rival first enters
+   *  danger range, re-armed once it leaves — avoids buzzing continuously
+   *  while a threat lingers nearby (GDD 5.4: "haptic warning przy wejściu
+   *  w strefę"). */
+  updateDangerWarnings() {
+    for (const bot of this.bots) {
+      const isThreat = bot.radius > this.player.radius * EAT_HOLE_RATIO;
+      const inRange = isThreat && dist(this.player.x, this.player.y, bot.x, bot.y) <= CONFIG.juice.dangerHaloRange;
+      if (inRange && !this.dangerWarned.has(bot)) {
+        this.dangerWarned.add(bot);
+        this.vibrate(25);
+      } else if (!inRange && this.dangerWarned.has(bot)) {
+        this.dangerWarned.delete(bot);
+      }
+    }
   }
 
   updateHUD() {
@@ -1487,17 +1636,70 @@ class Game {
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
 
     this.drawGrid(ctx);
-    for (const obj of this.objects) obj.draw(ctx);
+    for (const obj of this.objects) obj.draw(ctx, this.canEatHighlight(obj));
+    this.drawDangerHalos(ctx);
     for (const p of this.particles) p.draw(ctx);
+    for (const r of this.ripples) r.draw(ctx);
 
     const holes = [...this.bots, this.player];
     holes.sort((a, b) => a.radius - b.radius);
     for (const h of holes) h.draw(ctx, time);
 
+    this.drawComboText(ctx);
+
     ctx.restore();
 
     if (this.showMinimap) this.drawMinimap(ctx);
     this.drawDangerIndicators(ctx);
+  }
+
+  /** 0..1 "close to threshold" highlight strength for the can-eat breathing
+   *  rim; 0 for objects far from the boundary (avoids visual noise on
+   *  trivially-eatable tiny objects). */
+  canEatHighlight(obj) {
+    if (obj.radius >= this.player.radius) return 0;
+    const ratio = (this.player.radius * EAT_OBJ_RATIO) / obj.radius;
+    const { canEatHighlightBandLow: lo, canEatHighlightBandHigh: hi } = CONFIG.juice;
+    if (ratio < lo || ratio > hi) return 0;
+    const mid = (lo + hi) / 2;
+    return 1 - clamp(Math.abs(ratio - mid) / (mid - lo), 0, 1);
+  }
+
+  /** Soft warm halo behind rivals large enough to threaten the player and
+   *  close enough to matter — danger readability (GDD 5.4). */
+  drawDangerHalos(ctx) {
+    for (const bot of this.bots) {
+      if (bot.radius <= this.player.radius * EAT_HOLE_RATIO) continue;
+      const d = dist(this.player.x, this.player.y, bot.x, bot.y);
+      if (d > CONFIG.juice.dangerHaloRange) continue;
+      const strength = 1 - d / CONFIG.juice.dangerHaloRange;
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 300);
+      ctx.save();
+      ctx.globalAlpha = strength * 0.35 * pulse;
+      const grad = ctx.createRadialGradient(bot.x, bot.y, bot.radius * 0.5, bot.x, bot.y, bot.radius * 2.2);
+      grad.addColorStop(0, '#ff3860');
+      grad.addColorStop(1, 'rgba(255, 56, 96, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(bot.x, bot.y, bot.radius * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /** Floating "xN COMBO" text above the player, fading smoothly instead of
+   *  cutting abruptly when the combo window lapses (GDD 5.4). */
+  drawComboText(ctx) {
+    if (this.comboCount < 2 || this.comboDisplayAlpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = this.comboDisplayAlpha;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#ffd700';
+    ctx.font = 'bold 18px Segoe UI, sans-serif';
+    ctx.fillText(`x${this.comboMultiplier.toFixed(1)} COMBO (${this.comboCount})`, this.player.x, this.player.y - this.player.radius - 28);
+    ctx.restore();
   }
 
   loop(now) {
