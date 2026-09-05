@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vector Hole: Eat the Neon City</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===================== GAME CANVAS ===================== -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- ===================== IN-GAME HUD ===================== -->
+  <div id="hud" class="hidden">
+    <div id="hud-topleft" class="hud-panel">
+      <div class="hud-row">
+        <span class="hud-label">CZAS</span>
+        <span id="timerValue" class="hud-value timer">120</span>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">ROZMIAR</span>
+        <span id="sizeValue" class="hud-value size">10</span>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">WYNIK</span>
+        <span id="scoreValue" class="hud-value score">0</span>
+      </div>
+    </div>
+
+    <div id="hud-topright" class="hud-panel">
+      <div class="leaderboard-title">🏆 NA ŻYWO</div>
+      <ol id="leaderboardList"></ol>
+    </div>
+
+    <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
+  </div>
+
+  <!-- ===================== MAIN MENU ===================== -->
+  <div id="mainMenu" class="screen">
+    <div class="screen-inner">
+      <h1 class="title-glow">VECTOR <span class="accent">HOLE</span></h1>
+      <p class="subtitle">EAT THE NEON CITY</p>
+
+      <div class="coin-display">
+        <span class="coin-icon">◈</span>
+        <span id="coinCountMenu">0</span> monet
+      </div>
+
+      <button id="btnStart" class="btn btn-primary">GRAJ (2:00)</button>
+      <button id="btnShop" class="btn btn-secondary">SKLEP ZE SKINAMI</button>
+
+      <p class="hint-text">Steruj myszką lub dotykiem. Pożeraj mniejsze obiekty i boty, unikaj większych!</p>
+    </div>
+  </div>
+
+  <!-- ===================== SHOP SCREEN ===================== -->
+  <div id="shopScreen" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title">SKLEP ZE SKINAMI</h2>
+      <div class="coin-display">
+        <span class="coin-icon">◈</span>
+        <span id="coinCountShop">0</span> monet
+      </div>
+
+      <div id="skinGrid" class="skin-grid"></div>
+
+      <button id="btnShopBack" class="btn btn-secondary">POWRÓT</button>
+    </div>
+  </div>
+
+  <!-- ===================== GAME OVER SCREEN ===================== -->
+  <div id="gameOverScreen" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title">KONIEC RUNDY</h2>
+
+      <div class="result-summary">
+        <div class="result-place" id="finalPlace">#1</div>
+        <div class="result-score">Wynik: <span id="finalScore">0</span></div>
+        <div class="result-coins">Zdobyte monety: <span id="finalCoins">0</span></div>
+      </div>
+
+      <ol id="finalLeaderboard" class="final-leaderboard"></ol>
+
+      <button id="btnWatchAd" class="btn btn-gold">📺 OBEJRZYJ REKLAMĘ = x2 MONET</button>
+      <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ PONOWNIE</button>
+      <button id="btnMenu" class="btn btn-secondary">MENU GŁÓWNE</button>
+    </div>
+  </div>
+
+  <!-- ===================== FULLSCREEN AD OVERLAY (placeholder) ===================== -->
+  <div id="adOverlay" class="screen hidden">
+    <div class="screen-inner ad-inner">
+      <p class="ad-label">REKLAMA</p>
+      <h2>Sponsor Vector Hole</h2>
+      <div class="ad-progress-track">
+        <div id="adProgressBar" class="ad-progress-bar"></div>
+      </div>
+      <p id="adCountdown" class="ad-countdown">5</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
