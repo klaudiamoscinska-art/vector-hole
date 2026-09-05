@@ -40,7 +40,7 @@ Pushing to `main` triggers `.github/workflows/deploy-pages.yml`, which deploys t
 
 ### World and coordinate spaces
 
-The game world is a fixed 3000×3000px plane (`WORLD_W`/`WORLD_H`), independent of screen size. `Game` owns a `camera` (`{x, y}`) that follows the player, clamped to world bounds. `Game.render()` applies one `ctx.translate` for world-space drawing (grid, `WorldObject`s, `Particle`s/`Ripple`s, `Hole`s, the can-eat rim, danger halos, bounty/scanner markers); `drawMinimap()` and `drawDangerIndicators()` reset the transform to draw in screen space afterward. The minimap auto-hides below `CONFIG.input.minimapAutoHideWidth` unless `settings.minimap` overrides it.
+The game world is a fixed 3000×3000px plane (`WORLD_W`/`WORLD_H`), independent of screen size. `Game` owns a `camera` (`{x, y}`) that follows the player, clamped to world bounds. `Game.render()` applies one `ctx.translate` for world-space drawing (grid, `WorldObject`s, `Particle`s/`Ripple`s, `Hole`s, the can-eat rim, danger halos, bounty/scanner markers); `drawMinimap()` and `drawDangerIndicators()` reset the transform to draw in screen space afterward. The minimap is visible by default on every viewport — an earlier pass auto-hid it below 700px width, which was effectively every phone, read as "the minimap is missing," and was reverted; only `settings.minimap === 'off'` hides it now.
 
 ### Input
 
@@ -65,12 +65,12 @@ Two evolution offers per run trigger at `CONFIG.evolution.triggerRadii` (player 
 
 ### Meta: Hub, Shop v2, Profile, Daily Challenge
 
-- The main menu doubles as a **Neon Core Hub skeleton**: a City Core meter (`save.hub.coreCharge`, +12%/run, wraps at 100%) and a mission-text stub, alongside Play / Daily / Workshop / Profile.
+- The main menu doubles as a **Neon Core Hub skeleton**: a bordered `.hub-card` holds the City Core meter (`save.hub.coreCharge`, +12%/run, wraps at 100%, shown as both a bar and a `%` number) plus a mission-text stub and runs-played count; Daily/Workshop/Profile are a 3-tile icon grid (`.hub-modules`) below the primary GRAJ button, not stacked plain buttons — that visual distinction is what makes it read as a hub rather than a menu.
 - **Workshop** (`shopScreen`) has two tabs: ring skins (`SKINS`, Coins) and a second cosmetic category, auras (`AURAS`, Coins or Prisms) — Prisms trickle in slowly from progression (`stats.runsPlayed % 3 === 0`) since there's no IAP adapter to sell them.
 - **Run Setup** (`runSetupScreen`) offers casual-only consumable tools (`RUN_TOOLS`: Shield, Magnet), Coins-only, consumed at round start (`Game.confirmRunSetup()`).
 - **Profile**: an optional display name (never required before the first run), passed through a placeholder blocklist (`moderateName()` — explicitly **not** production moderation, just a non-empty safeguard) plus a stable guest ID.
 - **Share**: `Game.shareResult()` uses `navigator.share` (feature-detected via `canShare`) with a clipboard-copy fallback — never assumes Web Share exists.
-- **Daily Seed Challenge**: `startDailyChallenge()` seeds a round from the UTC date so every player gets the same layout/modifier/Overdrive that day; tracked locally in `save.daily` (no backend leaderboard exists — see plan doc for why that's a later, explicitly-deferred phase).
+- **Daily Seed Challenge**: `startDailyChallenge()` seeds a round from the UTC date so every player gets the same layout/modifier/Overdrive that day; tracked locally in `save.daily` (no backend leaderboard exists — see plan doc for why that's a later, explicitly-deferred phase). It has an explicit goal and reward, not just a different seed: the Hub shows the score to beat (`dailyGoalText`), and `CONFIG.daily` grants a completion bonus plus a bigger bonus (Coins + Prisms) for a new record, both called out on the results screen.
 
 ### What's deliberately not built
 

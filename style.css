@@ -179,34 +179,47 @@ html, body {
   font-size: 14px;
 }
 
-/* ---- Rank badge (collapsed): top-right ---- */
+/* ---- Live standings: top-right, visible by default ----
+   Shows the full "who's ahead of you" list always; tapping the header
+   collapses it to just the rank line for players who want less on
+   screen, but the default view is the complete list (GDD 5.3 — this was
+   collapsed-by-default in an earlier pass and read as "missing"). */
 
-.hud-rank-badge {
+#hud-topright {
   top: calc(12px + env(safe-area-inset-top, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
-  min-width: 90px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  cursor: pointer;
+  min-width: 190px;
+  max-width: 240px;
   pointer-events: auto;
+}
+
+.standings-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 6px;
+  cursor: pointer;
   font-family: inherit;
+  color: inherit;
 }
 
 .hud-value.rank {
   color: var(--neon-cyan);
   text-shadow: 0 0 8px var(--neon-cyan);
-  font-size: 16px;
+  font-size: 15px;
 }
 
-/* ---- Full standings panel (expanded on tap) ---- */
+.hud-standings.collapsed #leaderboardList {
+  display: none;
+}
 
-#hud-topright {
-  top: calc(58px + env(safe-area-inset-top, 0px));
-  right: calc(12px + env(safe-area-inset-right, 0px));
-  min-width: 210px;
-  max-width: 260px;
+.hud-standings.collapsed .standings-header {
+  margin-bottom: 0;
 }
 
 .hud-row {
@@ -258,8 +271,6 @@ html, body {
   font-size: 12px;
   letter-spacing: 1px;
   color: rgba(230, 250, 255, 0.7);
-  margin-bottom: 6px;
-  text-align: center;
 }
 
 #leaderboardList {
@@ -543,19 +554,103 @@ html, body {
   transition: width 0.4s ease;
 }
 
-.hub-mission {
-  margin-top: -2px;
+.hub-title {
+  font-size: 34px;
+  margin-bottom: 0;
 }
 
-.hub-row {
-  display: flex;
-  gap: 10px;
+.hub-subtitle {
+  margin-bottom: 2px;
+}
+
+/* The hub "room": a distinct bordered card makes it read as an actual
+   hub screen instead of a plain menu with extra buttons on it. */
+.hub-card {
   width: 100%;
-  max-width: 320px;
+  max-width: 340px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(0, 243, 255, 0.05);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 0 18px rgba(0, 243, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.hub-half {
-  flex: 1;
+.hub-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(230, 250, 255, 0.75);
+}
+
+.hub-charge-value {
+  color: var(--neon-cyan);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-card-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: rgba(230, 250, 255, 0.6);
+}
+
+.hub-mission-text {
+  text-align: left;
+}
+
+.hub-runs-stat {
+  white-space: nowrap;
+}
+
+/* Module tiles: the visual signal that this is a hub, not a menu list. */
+.hub-modules {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.hub-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-main);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.hub-tile:hover {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0, 243, 255, 0.25);
+}
+
+.hub-tile:active {
+  transform: scale(0.96);
+}
+
+.hub-tile-icon {
+  font-size: 20px;
+}
+
+.hub-tile-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .text-input {
@@ -988,11 +1083,6 @@ html, body {
 
   .hud-timer .hud-value.timer {
     font-size: 17px;
-  }
-
-  .hud-rank-badge {
-    min-width: 70px;
-    padding: 6px 10px;
   }
 
   .hud-value.rank {
