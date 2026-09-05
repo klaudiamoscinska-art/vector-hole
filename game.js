@@ -5,24 +5,130 @@
    Vanilla Canvas game — classes: Game, Hole, Bot, WorldObject, Particle
    ========================================================= */
 
-/* ----------------------- Constants ----------------------- */
+/* ----------------------- Config layer (data-driven tuning + feature flags) -----------------------
+   All gameplay/economy tunables live here so future phases (RemoteConfig,
+   A/B tests, difficulty tuning) have one place to change values without
+   touching gameplay code. Existing top-level consts below are kept as
+   aliases into this object so the rest of the file is untouched. */
 
-const WORLD_W = 3000;
-const WORLD_H = 3000;
-const ROUND_TIME = 120; // seconds
-const GRID_SIZE = 100;
-const NUM_BOTS = 5;
+const CONFIG = {
+  version: '2.0.0-p0',
+  world: { width: 3000, height: 3000, gridSize: 100 },
+  round: { duration: 120 },
+  bots: { count: 5 },
+  hole: { baseRadius: 22, minRadius: 14, baseSpeed: 150 },
+  eating: {
+    objRatio: 0.9,   // object must be smaller than hole.radius * this
+    holeRatio: 1.15, // attacker must be bigger than defender.radius * this
+    growObj: 0.4,
+    growHole: 0.55,
+    eatAnimTime: 0.28,
+    invulnTime: 2.0
+  },
+  economy: {
+    coinsPerScorePoint: 5, // score / this + coinsBase
+    coinsBase: 10,
+    adRewardMultiplier: 2
+  },
+  // Size tiers used for analytics (`size_tier` events) and future evolution
+  // visuals (GDD P2). Not yet shown in the HUD or tied to any visual change.
+  sizeTiers: [
+    { id: 'spark', minRadius: 0 },
+    { id: 'pulse', minRadius: 30 },
+    { id: 'core', minRadius: 45 },
+    { id: 'vortex', minRadius: 65 },
+    { id: 'singularity', minRadius: 90 }
+  ],
+  // Feature flags for systems introduced in later Golden Shot V2 phases.
+  // Everything defaults to the current (pre-V2) behavior.
+  flags: {
+    inputThumbPad: false,       // Phase 2: Floating Thumb Pad control
+    evolutionSystem: false,     // Phase 4: evolution cards + Overdrive
+    proceduralDistricts: false, // Phase 5: seeded chunk generator
+    hub: false,                 // Phase 6: Neon Core Hub
+    shopV2: false,              // Phase 7: shop categories/loadout
+    dailyChallenge: false,      // Phase 9: daily seed challenge
+    monetizationAdapters: false,// Phase 11: real ad/IAP SDK adapters
+    analyticsConsoleLog: true   // Phase 1: log analytics events to console
+  }
+};
 
-const BASE_RADIUS = 22;
-const MIN_RADIUS = 14;
-const BASE_SPEED = 150; // px/s
+/* ----------------------- Constants (aliases into CONFIG) ----------------------- */
 
-const EAT_OBJ_RATIO = 0.9;   // object must be smaller than hole.radius * this
-const EAT_HOLE_RATIO = 1.15; // attacker must be bigger than defender.radius * this
-const GROW_K_OBJ = 0.4;
-const GROW_K_HOLE = 0.55;
-const EAT_ANIM_TIME = 0.28;
-const INVULN_TIME = 2.0;
+const WORLD_W = CONFIG.world.width;
+const WORLD_H = CONFIG.world.height;
+const ROUND_TIME = CONFIG.round.duration; // seconds
+const GRID_SIZE = CONFIG.world.gridSize;
+const NUM_BOTS = CONFIG.bots.count;
+
+const BASE_RADIUS = CONFIG.hole.baseRadius;
+const MIN_RADIUS = CONFIG.hole.minRadius;
+const BASE_SPEED = CONFIG.hole.baseSpeed; // px/s
+
+const EAT_OBJ_RATIO = CONFIG.eating.objRatio;
+const EAT_HOLE_RATIO = CONFIG.eating.holeRatio;
+const GROW_K_OBJ = CONFIG.eating.growObj;
+const GROW_K_HOLE = CONFIG.eating.growHole;
+const EAT_ANIM_TIME = CONFIG.eating.eatAnimTime;
+const INVULN_TIME = CONFIG.eating.invulnTime;
+
+/* ----------------------- App state machine ----------------------- */
+
+const GameState = {
+  BOOT: 'BOOT',
+  MENU: 'MENU',
+  MATCH_SETUP: 'MATCH_SETUP',
+  PLAYING: 'PLAYING',
+  PAUSED: 'PAUSED', // reserved for Phase 2 (pause/leave-run sheet)
+  RESULTS: 'RESULTS'
+};
+
+/* ----------------------- Seeded RNG abstraction ----------------------- */
+
+/** Deterministic PRNG (mulberry32). Not yet wired into gameplay spawning —
+ *  that lands with the seeded chunk generator (Phase 5). For now this backs
+ *  per-run seed/ID generation so runs can be identified and, eventually,
+ *  reproduced (daily challenge, bug repro). */
+class SeededRNG {
+  constructor(seed) {
+    this.seed = seed >>> 0;
+  }
+  next() {
+    let t = (this.seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+
+function generateSeed() {
+  return ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0);
+}
+
+function generateId(prefix) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/* ----------------------- Analytics (provider-agnostic stub) -----------------------
+   Minimum event set per the Golden Shot V2 spec. Events that depend on
+   systems not yet built (ftue_step, evolution_offer/pick, overdrive_start,
+   iap_intent, share_click, profile_created, account_linked,
+   daily_challenge_start/end) are intentionally NOT fired yet — they will be
+   added alongside the features that produce them, in later phases. */
+class Analytics {
+  constructor() {
+    this.queue = [];
+    this.maxQueue = 200;
+  }
+  track(name, props) {
+    const event = { name, props: props || {}, ts: Date.now() };
+    this.queue.push(event);
+    if (this.queue.length > this.maxQueue) this.queue.shift();
+    if (CONFIG.flags.analyticsConsoleLog) {
+      console.log('[analytics]', name, event.props);
+    }
+  }
+}
 
 const TIERS = {
   small: { color: '#00f3ff', minR: 6, maxR: 9, value: 1, subtypes: ['tree', 'lamp'], count: 90 },
@@ -48,7 +154,8 @@ const SKINS = [
   { id: 'white', name: 'Plasma White', price: 200, color: '#ffffff' }
 ];
 
-const SAVE_KEY = 'vectorHoleSave_v1';
+const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
+const SAVE_SCHEMA_VERSION = 2;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -66,15 +173,53 @@ function pickUnique(arr, n) {
   return out;
 }
 
+function defaultSave() {
+  return {
+    schemaVersion: SAVE_SCHEMA_VERSION,
+    coins: 0,
+    prisms: 0,
+    owned: ['rainbow'],
+    selected: 'rainbow',
+    guestId: generateId('guest'),
+    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true },
+    stats: { runsPlayed: 0 }
+  };
+}
+
+/** Upgrades any older save shape to SAVE_SCHEMA_VERSION, preserving player
+ *  progress. Add a new `if (data.schemaVersion < N)` branch per future
+ *  schema change instead of replacing this function. */
+function migrateSave(data) {
+  if (!data || typeof data !== 'object') return defaultSave();
+  if (!Array.isArray(data.owned) || typeof data.coins !== 'number') return defaultSave();
+
+  if (!data.schemaVersion) {
+    // v1 (no schemaVersion field) -> v2: add currencies/settings/profile stubs
+    return {
+      schemaVersion: 2,
+      coins: data.coins,
+      prisms: 0,
+      owned: data.owned,
+      selected: data.selected || 'rainbow',
+      guestId: generateId('guest'),
+      settings: { inputMode: 'legacy', sensitivity: 1, haptics: true },
+      stats: { runsPlayed: 0 }
+    };
+  }
+
+  return data;
+}
+
 function loadSave() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
-      const data = JSON.parse(raw);
-      if (data && Array.isArray(data.owned) && typeof data.coins === 'number') return data;
+      const migrated = migrateSave(JSON.parse(raw));
+      saveGame(migrated);
+      return migrated;
     }
   } catch (e) { /* ignore corrupted save */ }
-  return { coins: 0, owned: ['rainbow'], selected: 'rainbow' };
+  return defaultSave();
 }
 
 function saveGame(save) {
@@ -433,12 +578,24 @@ class Game {
     this.adPendingCoins = 0;
     this.adUsedThisRound = false;
 
+    this.sessionId = generateId('session');
+    this.analytics = new Analytics();
+    this.state = GameState.BOOT;
+
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.bindInput();
     this.bindUI();
     this.populateShop();
     this.updateCoinDisplays();
+
+    this.state = GameState.MENU;
+    this.analytics.track('session_start', { sessionId: this.sessionId, configVersion: CONFIG.version });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        this.analytics.track('session_end', { sessionId: this.sessionId });
+      }
+    });
   }
 
   /* ---------- setup ---------- */
@@ -477,11 +634,19 @@ class Game {
 
   bindUI() {
     document.getElementById('btnStart').addEventListener('click', () => this.startRound());
-    document.getElementById('btnShop').addEventListener('click', () => this.showScreen('shopScreen'));
+    document.getElementById('btnShop').addEventListener('click', () => {
+      this.analytics.track('shop_view', {});
+      this.showScreen('shopScreen');
+    });
     document.getElementById('btnShopBack').addEventListener('click', () => this.showScreen('mainMenu'));
-    document.getElementById('btnPlayAgain').addEventListener('click', () => this.requestPlayAgain());
+    document.getElementById('btnPlayAgain').addEventListener('click', () => {
+      this.analytics.track('result_action', { action: 'play_again' });
+      this.requestPlayAgain();
+    });
     document.getElementById('btnMenu').addEventListener('click', () => {
+      this.analytics.track('result_action', { action: 'menu' });
       this.updateCoinDisplays();
+      this.state = GameState.MENU;
       this.showScreen('mainMenu');
     });
     document.getElementById('btnWatchAd').addEventListener('click', () => this.watchRewardedAd());
@@ -530,7 +695,9 @@ class Game {
       this.save.coins -= skin.price;
       this.save.owned.push(skin.id);
       this.save.selected = skin.id;
+      this.analytics.track('soft_purchase', { skinId: skin.id, price: skin.price, currency: 'coins' });
     } else {
+      this.analytics.track('cosmetic_preview', { skinId: skin.id, price: skin.price, affordable: false });
       return;
     }
     saveGame(this.save);
@@ -589,27 +756,42 @@ class Game {
   startRound() {
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
+    this.state = GameState.MATCH_SETUP;
     this.createObjects();
     this.createEntities();
     this.particles = [];
     this.timeRemaining = ROUND_TIME;
     this.adUsedThisRound = false;
+    this.runId = generateId('run');
+    this.runSeed = generateSeed();
+    this.rng = new SeededRNG(this.runSeed);
+    this.runStartedAt = performance.now();
+    this.firstEatTracked = false;
+    this.lastSizeTierId = CONFIG.sizeTiers[0].id;
     this.running = true;
+    this.state = GameState.PLAYING;
     this.lastTime = performance.now();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     this.rafId = requestAnimationFrame((t) => this.loop(t));
+    this.analytics.track('run_start', {
+      runId: this.runId,
+      seed: this.runSeed,
+      skin: this.player.skin,
+      playCount: this.playCount
+    });
   }
 
   requestPlayAgain() {
     this.playCount++;
     if (this.playCount % 2 === 0) {
-      this.showInterstitialAd(() => this.startRound());
+      this.showInterstitialAd('interstitial', () => this.startRound());
     } else {
       this.startRound();
     }
   }
 
-  showInterstitialAd(onDone) {
+  showInterstitialAd(context, onDone) {
+    this.analytics.track('ad_started', { context });
     this.showScreen('adOverlay');
     const bar = document.getElementById('adProgressBar');
     const countdown = document.getElementById('adCountdown');
@@ -633,29 +815,35 @@ class Game {
   watchRewardedAd() {
     if (this.adUsedThisRound) return;
     this.adUsedThisRound = true;
+    this.analytics.track('ad_offer', { context: 'result_double_coins' });
     const btn = document.getElementById('btnWatchAd');
     btn.disabled = true;
-    this.showInterstitialAd(() => {
-      this.save.coins += this.adPendingCoins;
+    this.showInterstitialAd('rewarded_double_coins', () => {
+      const total = Math.round(this.adPendingCoins * CONFIG.economy.adRewardMultiplier);
+      const bonus = total - this.adPendingCoins;
+      this.save.coins += bonus;
       saveGame(this.save);
-      document.getElementById('finalCoins').textContent = this.adPendingCoins * 2;
+      document.getElementById('finalCoins').textContent = total;
       btn.textContent = 'ODEBRANO x2 ✓';
       this.hideAllOverlays();
       document.getElementById('gameOverScreen').classList.remove('hidden');
       this.updateCoinDisplays();
+      this.analytics.track('ad_reward_granted', { context: 'result_double_coins', bonus });
     });
   }
 
   endRound() {
     this.running = false;
+    this.state = GameState.RESULTS;
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
 
     const ranked = [this.player, ...this.bots].slice().sort((a, b) => b.radius - a.radius);
     const place = ranked.indexOf(this.player) + 1;
-    const coinsEarned = Math.floor(this.player.score / 5) + 10;
+    const coinsEarned = Math.floor(this.player.score / CONFIG.economy.coinsPerScorePoint) + CONFIG.economy.coinsBase;
     this.adPendingCoins = coinsEarned;
     this.save.coins += coinsEarned;
+    this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
     saveGame(this.save);
 
     document.getElementById('finalPlace').textContent = '#' + place;
@@ -667,7 +855,7 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h === this.player) li.classList.add('is-player');
-      li.innerHTML = `<span>#${i + 1} ${h.name}</span><span>${Math.round(h.radius)} pkt: ${h.score}</span>`;
+      li.innerHTML = `<span>#${i + 1} ${h.name}</span><span>Rozmiar ${Math.round(h.radius)} • Wynik ${h.score}</span>`;
       list.appendChild(li);
     });
 
@@ -676,6 +864,15 @@ class Game {
 
     this.showScreen('gameOverScreen');
     this.updateCoinDisplays();
+
+    this.analytics.track('run_end', {
+      runId: this.runId,
+      seed: this.runSeed,
+      score: this.player.score,
+      place,
+      durationMs: Math.round(performance.now() - this.runStartedAt),
+      coinsEarned
+    });
   }
 
   /* ---------- gameplay ---------- */
@@ -711,9 +908,29 @@ class Game {
           a.score += Math.round(b.radius * 2);
           this.spawnParticles(b.x, b.y, b.isPlayer ? '#00f3ff' : b.edgeColor, 26);
           this.triggerShake(b === this.player || a === this.player ? 10 : 4);
+          if (a.isPlayer) {
+            this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius) });
+          } else if (b.isPlayer) {
+            this.analytics.track('player_eaten', { by: a.name, playerSize: Math.round(b.radius) });
+          }
           b.shrinkAndRespawn();
         }
       }
+    }
+  }
+
+  /** Fires a `size_tier` analytics event the first time the player's radius
+   *  crosses into a new tier this run. Tiers are analytics-only for now
+   *  (Phase 4 will attach visuals/evolution offers to the same thresholds). */
+  checkSizeTier() {
+    const tiers = CONFIG.sizeTiers;
+    let current = tiers[0];
+    for (const tier of tiers) {
+      if (this.player.radius >= tier.minRadius) current = tier;
+    }
+    if (current.id !== this.lastSizeTierId) {
+      this.lastSizeTierId = current.id;
+      this.analytics.track('size_tier', { tier: current.id, radius: Math.round(this.player.radius) });
     }
   }
 
@@ -739,11 +956,16 @@ class Game {
         hole.growFromArea(Math.PI * obj.radius * obj.radius * GROW_K_OBJ);
         hole.score += obj.value;
         this.spawnParticles(obj.x, obj.y, obj.color, 14);
+        if (hole.isPlayer && !this.firstEatTracked) {
+          this.firstEatTracked = true;
+          this.analytics.track('first_eat', { objectTier: obj.tier });
+        }
         obj.respawn(obj.tier, false);
       }
     }
 
     this.handleHoleCollisions();
+    this.checkSizeTier();
 
     this.particles.forEach(p => p.update(dt));
     this.particles = this.particles.filter(p => !p.dead);
