@@ -700,7 +700,89 @@ criteria" list:
   specifically so that tuning pass doesn't require touching this code
   later.
 
-**Next recommended phase**: Phase 10/11 only once real usage data
-justifies backend investment (per the GDD's own KPI-gate guidance) —
-until then, the highest-value next work is playtesting and tuning the
-`CONFIG` values shipped across Phases 3–9, not adding more systems.
+**Next recommended phase (superseded — see §8)**: Phase 10/11 was the
+plan; user feedback on the shipped build came first.
+
+## 8. Post-ship feedback pass — regressions fixed, Hub redesigned
+
+After Phases 1–9 shipped and deployed, direct user feedback on the live
+build identified two real regressions and three areas where the
+"scoped down" implementation read as missing rather than intentionally
+lean. All five are fixed in this patch; the underlying lesson (noted
+here so it isn't relearned) is that Phase 2's HUD cleanup and Phase 6's
+"skeleton" framing were each individually reasonable calls, but their
+combined effect removed visible, previously-working functionality
+(minimap, live standings) and didn't give the Hub enough presence to
+read as one — a good reminder that "scope it down" and "quietly remove
+something a player could already see" are not the same decision.
+
+**1. Minimap was gone in practice.** Phase 2 added an auto-hide-below-
+700px-width rule for the minimap "to reduce clutter on small phones" —
+but essentially every phone in portrait is under 700px, so this
+defaulted the minimap to *off* for nearly everyone, not just small
+screens. Fixed: `Game.resize()` now shows the minimap on every viewport
+unless the player explicitly sets `settings.minimap` to `'off'`.
+
+**2. The live standings list defaulted to collapsed.** Phase 2 replaced
+the always-visible "who's ahead of you" panel with a tap-to-expand
+badge, defaulting to collapsed — which meant the panel a player used to
+see immediately was now invisible until they discovered they had to tap
+it. Fixed: `#hud-topright` is the standings panel itself, visible by
+default with the rank line as its header; tapping that header still
+collapses it down to just the rank line for players who want less on
+screen, but expanded is now the default, not something to find.
+
+**3. The Daily Seed Challenge had no visible goal or reward.** It
+seeded a round deterministically but never told the player why that
+mattered. Fixed: the Hub now shows the actual goal before starting
+("pobij dzisiejszy rekord (`N` pkt)" or "pierwsza próba dziś") via
+`dailyGoalText`, and a completion reward (`CONFIG.daily.
+completionBonusCoins`, +30) plus a new-record bonus
+(`newRecordBonusCoins`/`newRecordBonusPrisms`, +50 coins/+3 Prisms) is
+granted and called out explicitly on the results screen
+(`#dailyResultLine`) — "NOWY REKORD!" or the completion bonus amount,
+not just a generic coin total.
+
+**4. The pre-round Run Setup screen was unlabeled and confusing.** Its
+copy referenced "tryb casual" (casual mode) as if a different mode
+existed to contrast it with — it doesn't, so the phrase was pure jargon
+with nothing to anchor it. Retitled to "WYBIERZ WSPARCIE" with copy that
+states outright that pressing START with nothing selected is the normal
+path, and clearer per-tool descriptions (what Shield/Magnet actually do
+in plain terms). The Rush Hour modifier's in-round toast now explains
+its effect ("rywale są szybsi w tej rundzie") instead of just naming it.
+
+**5. The Hub didn't read as a hub.** The GDD explicitly allows a first
+Hub pass to be "2D, not explorable 3D" — but what shipped was closer to
+"menu with two extra stacked buttons," which is a different thing from
+a hub skeleton and was reasonably read as "there is no hub." Redesigned
+the main menu's structure, not just its copy:
+- A bordered **Core card** (`.hub-card`) now holds the City Core meter
+  with an explicit percentage number, the mission-text stub, and a runs-
+  played counter — giving the meter enough presence to register as a
+  hub module instead of a thin progress bar between other elements.
+- Play/Daily/Workshop/Profile are no longer stacked full-width buttons;
+  Daily/Workshop/Profile are now a 3-tile icon grid (`.hub-modules`) —
+  the same visual language a real hub's module row would use — with
+  GRAJ kept as the one full-width primary action above them, since
+  starting a run is still the single most important thing to do here.
+
+None of this changes the underlying scope call from §3/§7 (still no
+backend, still no full district generator, still no real IAP) — it's a
+UI/UX correction to how the already-decided scope was presented, not a
+reopening of what was deliberately deferred.
+
+**Verified**: Playwright confirms `showMinimap` is `true` by default and
+the standings panel starts un-collapsed on a fresh load; a forced Daily
+run with a beaten score produces the exact expected bonus text and
+`save.daily`/`save.coins`/`save.prisms` updates; a full pause → evolution
+→ Overdrive → results playthrough still completes with zero console
+errors after the HTML/CSS restructuring. Screenshot review at 390×844
+confirms the Hub card + module grid layout, the restored minimap +
+standings panel together in one HUD screenshot, the reworded Run Setup
+screen, and the Daily Challenge reward line on results.
+
+**Next recommended phase**: still Phase 10/11 only once usage data
+justifies it (per §7) — but the more immediate next step, given this
+feedback round, is getting the same kind of direct play-it-yourself
+review on the Hub/Daily changes before assuming they've fully landed.

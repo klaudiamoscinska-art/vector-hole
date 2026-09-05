@@ -30,6 +30,13 @@ const CONFIG = {
     coinsBase: 10,
     adRewardMultiplier: 2
   },
+  // Phase 9 fix: the Daily Seed Challenge needs an explicit goal (beat
+  // today's best) and a reward for playing it, not just a different seed.
+  daily: {
+    completionBonusCoins: 30,
+    newRecordBonusCoins: 50,
+    newRecordBonusPrisms: 3
+  },
   // Floating Thumb Pad tuning (Phase 2). Legacy direct-drag stays available
   // via settings.inputMode and is unaffected by these values.
   input: {
@@ -221,9 +228,9 @@ const AURAS = [
 // Phase 7 casual run tools: consumable per-run boosters, Coins-only, casual
 // mode only (no ranked/daily equivalent exists yet to keep them fair for).
 const RUN_TOOLS = [
-  { id: 'none', name: 'Brak', price: 0, desc: 'Zwykła runda.' },
-  { id: 'shield', name: 'Tarcza', price: 40, desc: 'Chroni przed 1 starciem z większym rywalem.' },
-  { id: 'magnet', name: 'Magnes', price: 30, desc: 'Przyciąga obiekty przez pierwsze 8 s rundy.' }
+  { id: 'none', name: 'Bez dodatku', price: 0, desc: 'Zwykły start, bez żadnego efektu. Zawsze darmowe.' },
+  { id: 'shield', name: 'Tarcza', price: 40, desc: 'Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.' },
+  { id: 'magnet', name: 'Magnes', price: 30, desc: 'Przez pierwsze 8 s rundy obiekty same lecą w Twoją stronę.' }
 ];
 
 // Phase 4: Golden Shot evolution mutations — run-only, never sold or kept
@@ -885,11 +892,12 @@ class Game {
     this.canvas.style.width = this.width + 'px';
     this.canvas.style.height = this.height + 'px';
     this.dpr = dpr;
-    // Minimap is only genuinely useful on wider viewports; on small phones
-    // it's too cramped to read (GDD 5.3), so hide it by default there unless
-    // the player explicitly turned it on/off in settings.
+    // Minimap defaults to visible on every viewport — an earlier pass
+    // auto-hid it below 700px, which is effectively every phone in
+    // portrait and read as the minimap being missing entirely. Only an
+    // explicit "off" now hides it; "auto"/"on" both show it.
     const pref = this.save ? this.save.settings.minimap : 'auto';
-    this.showMinimap = pref === 'on' || (pref === 'auto' && this.width >= CONFIG.input.minimapAutoHideWidth);
+    this.showMinimap = pref !== 'off';
   }
 
   /** True while the Floating Thumb Pad should handle touch (feature flag is
@@ -1122,9 +1130,11 @@ class Game {
       this.syncControlsPanel();
     });
 
-    // ---- Rank badge: tap to expand/collapse full standings ----
+    // ---- Standings header: tap to collapse to just the rank line.
+    // Visible/expanded by default -- this is the "who's ahead of you"
+    // panel and should never start hidden. ----
     document.getElementById('hud-rankBadge').addEventListener('click', () => {
-      document.getElementById('hud-topright').classList.toggle('hidden');
+      document.getElementById('hud-topright').classList.toggle('collapsed');
     });
 
     // Browser back / tab close mid-round shouldn't silently lose a run —
@@ -1341,9 +1351,19 @@ class Game {
     document.getElementById('prismCountMenu').textContent = this.save.prisms || 0;
     document.getElementById('prismCountShop').textContent = this.save.prisms || 0;
     document.getElementById('hubCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
+    document.getElementById('hubChargeValue').textContent = (this.save.hub.coreCharge || 0) + '%';
     document.getElementById('hubMissionText').textContent = this.hubMilestoneReached
       ? 'City Core naładowany! Neon City odblokowuje kolejny fragment.'
       : 'Zjedz 5 rywali w jednej rundzie.';
+    document.getElementById('hubRunsValue').textContent = this.save.stats.runsPlayed || 0;
+
+    const { dateKey } = dailySeedForDate(new Date());
+    const goalText = document.getElementById('dailyGoalText');
+    if (this.save.daily.lastSeedDate === dateKey) {
+      goalText.textContent = `Cel: pobij dzisiejszy rekord (${this.save.daily.lastSeedScore} pkt). Nagroda: +${CONFIG.daily.completionBonusCoins} monet, a za nowy rekord +${CONFIG.daily.newRecordBonusCoins} monet i +${CONFIG.daily.newRecordBonusPrisms} pryzmatów.`;
+    } else {
+      goalText.textContent = `Twoja pierwsza próba dziś — ten sam układ mapy co u wszystkich graczy. Nagroda za ukończenie: +${CONFIG.daily.completionBonusCoins} monet.`;
+    }
   }
 
   showScreen(id) {
@@ -1472,7 +1492,7 @@ class Game {
     hint.textContent = (this.useThumbpad
       ? 'Dotknij dolną część ekranu, aby sterować kciukiem'
       : 'Dotknij i przeciągaj, aby sterować dziurą')
-      + (this.modifier === 'rush_hour' ? ' • Modyfikator: RUSH HOUR' : '');
+      + (this.modifier === 'rush_hour' ? ' • RUSH HOUR: rywale są szybsi w tej rundzie!' : '');
     hint.classList.remove('hidden');
     clearTimeout(this.hintTimer);
     this.hintTimer = setTimeout(() => hint.classList.add('hidden'), 4000);
@@ -1567,13 +1587,27 @@ class Game {
     // small trickle from progression (GDD 10.1's "slowly earned" clause).
     if (this.save.stats.runsPlayed % 3 === 0) this.save.prisms = (this.save.prisms || 0) + 1;
 
+    // Phase 9 fix: give the Daily Seed Challenge an explicit goal (beat
+    // today's best) and its own reward, not just a different seed with no
+    // point to it.
+    this.dailyResult = null;
     if (this.isDailyRun) {
       const { dateKey } = dailySeedForDate(new Date());
-      const isNewBest = this.save.daily.lastSeedDate !== dateKey || this.player.score > this.save.daily.lastSeedScore;
+      const previousBest = this.save.daily.lastSeedDate === dateKey ? this.save.daily.lastSeedScore : 0;
+      const isNewBest = this.player.score > previousBest;
+      let dailyBonusCoins = CONFIG.daily.completionBonusCoins;
+      let dailyBonusPrisms = 0;
       if (isNewBest) {
+        dailyBonusCoins += CONFIG.daily.newRecordBonusCoins;
+        dailyBonusPrisms = CONFIG.daily.newRecordBonusPrisms;
         this.save.daily = { lastSeedDate: dateKey, lastSeedScore: this.player.score };
       }
-      this.analytics.track('daily_challenge_end', { dateKey, score: this.player.score, isNewBest });
+      this.save.coins += dailyBonusCoins;
+      this.save.prisms = (this.save.prisms || 0) + dailyBonusPrisms;
+      this.dailyResult = { isNewBest, previousBest, dailyBonusCoins, dailyBonusPrisms };
+      this.analytics.track('daily_challenge_end', {
+        dateKey, score: this.player.score, isNewBest, dailyBonusCoins, dailyBonusPrisms
+      });
     }
 
     saveGame(this.save);
@@ -1597,6 +1631,17 @@ class Game {
     }
 
     document.getElementById('resultCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
+
+    const dailyLine = document.getElementById('dailyResultLine');
+    if (this.dailyResult) {
+      const r = this.dailyResult;
+      dailyLine.textContent = r.isNewBest
+        ? `🗓️ WYZWANIE DNIA: NOWY REKORD! +${r.dailyBonusCoins} monet, +${r.dailyBonusPrisms} pryzmatów`
+        : `🗓️ WYZWANIE DNIA ukończone: +${r.dailyBonusCoins} monet (rekord dnia: ${r.previousBest})`;
+      dailyLine.classList.remove('hidden');
+    } else {
+      dailyLine.classList.add('hidden');
+    }
 
     const list = document.getElementById('finalLeaderboard');
     list.innerHTML = '';

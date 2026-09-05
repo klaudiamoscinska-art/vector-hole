@@ -37,13 +37,11 @@
       </div>
     </div>
 
-    <button id="hud-rankBadge" class="hud-panel hud-rank-badge" aria-label="Pokaż pełny ranking">
-      <span class="hud-label">RANKING</span>
-      <span id="rankValue" class="hud-value rank">#1/6</span>
-    </button>
-
-    <div id="hud-topright" class="hud-panel hidden">
-      <div class="leaderboard-title">🏆 NA ŻYWO</div>
+    <div id="hud-topright" class="hud-panel hud-standings">
+      <button id="hud-rankBadge" class="standings-header" aria-label="Zwiń/rozwiń pełny ranking">
+        <span class="leaderboard-title">🏆 NA ŻYWO</span>
+        <span id="rankValue" class="hud-value rank">#1/6</span>
+      </button>
       <ol id="leaderboardList"></ol>
     </div>
 
@@ -110,9 +108,21 @@
 
   <!-- ===================== MAIN MENU / NEON CORE HUB (skeleton) ===================== -->
   <div id="mainMenu" class="screen">
-    <div class="screen-inner">
-      <h1 class="title-glow">VECTOR <span class="accent">HOLE</span></h1>
-      <p class="subtitle">EAT THE NEON CITY</p>
+    <div class="screen-inner hub-inner">
+      <h1 class="title-glow hub-title">VECTOR <span class="accent">HOLE</span></h1>
+      <p class="subtitle hub-subtitle">EAT THE NEON CITY</p>
+
+      <div class="hub-card">
+        <div class="hub-card-header">
+          <span class="hub-card-label">🌀 NEON CORE HUB</span>
+          <span id="hubChargeValue" class="hub-charge-value">0%</span>
+        </div>
+        <div class="hub-meter-track"><div id="hubCoreBar" class="hub-meter-bar"></div></div>
+        <div class="hub-card-footer">
+          <span id="hubMissionText" class="hub-mission-text">Zjedz 5 rywali w jednej rundzie.</span>
+          <span class="hub-runs-stat">Rund: <span id="hubRunsValue">0</span></span>
+        </div>
+      </div>
 
       <div class="currency-row">
         <div class="coin-display">
@@ -125,19 +135,23 @@
         </div>
       </div>
 
-      <div class="hub-meter-row">
-        <span class="hud-label">CITY CORE</span>
-        <div class="hub-meter-track"><div id="hubCoreBar" class="hub-meter-bar"></div></div>
-      </div>
-      <p id="hubMissionText" class="hint-text hub-mission">Zjedz 5 rywali w jednej rundzie.</p>
-
       <button id="btnStart" class="btn btn-primary">GRAJ (2:00)</button>
-      <button id="btnDaily" class="btn btn-secondary">🗓️ WYZWANIE DNIA</button>
 
-      <div class="hub-row">
-        <button id="btnShop" class="btn btn-secondary hub-half">WARSZTAT</button>
-        <button id="btnProfile" class="btn btn-secondary hub-half">PROFIL</button>
+      <div class="hub-modules">
+        <button id="btnDaily" class="hub-tile">
+          <span class="hub-tile-icon">🗓️</span>
+          <span class="hub-tile-label">WYZWANIE<br>DNIA</span>
+        </button>
+        <button id="btnShop" class="hub-tile">
+          <span class="hub-tile-icon">🛠️</span>
+          <span class="hub-tile-label">WARSZTAT</span>
+        </button>
+        <button id="btnProfile" class="hub-tile">
+          <span class="hub-tile-icon">👤</span>
+          <span class="hub-tile-label">PROFIL</span>
+        </button>
       </div>
+      <p id="dailyGoalText" class="hint-text daily-goal">Ten sam układ mapy co u wszystkich dzisiaj. Cel: pobij swój dzisiejszy rekord.</p>
 
       <p class="hint-text">Steruj myszką lub dotykiem. Pożeraj mniejsze obiekty i boty, unikaj większych!</p>
     </div>
@@ -158,10 +172,10 @@
   <!-- ===================== RUN SETUP (casual run tools) ===================== -->
   <div id="runSetupScreen" class="screen hidden">
     <div class="screen-inner">
-      <h2 class="section-title">PRZED RUNDĄ</h2>
-      <p class="hint-text">Wybierz narzędzie na tę rundę (tylko tryb casual).</p>
+      <h2 class="section-title">WYBIERZ WSPARCIE</h2>
+      <p class="hint-text">Opcjonalnie kup jednorazowy dodatek na tę rundę za monety — albo od razu naciśnij START i zagraj bez niczego.</p>
       <div id="runToolGrid" class="run-tool-grid"></div>
-      <button id="btnConfirmStart" class="btn btn-primary">START</button>
+      <button id="btnConfirmStart" class="btn btn-primary">START RUNDY (2:00)</button>
       <button id="btnRunSetupBack" class="btn btn-secondary">POWRÓT</button>
     </div>
   </div>
@@ -206,6 +220,8 @@
       </div>
 
       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
+
+      <p id="dailyResultLine" class="hint-text daily-result hidden"></p>
 
       <div class="hub-meter-row">
         <span class="hud-label">City Core</span>
