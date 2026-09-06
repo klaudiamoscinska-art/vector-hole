@@ -11,6 +11,24 @@
   --panel-bg: rgba(10, 10, 20, 0.75);
   --panel-border: rgba(0, 243, 255, 0.35);
   --text-main: #e6faff;
+
+  /* GDD 4.0 §5 "app chrome" palette — the flat navy/cyan look of the
+     Miasto/Dzielnice/Warsztat mockups. Deliberately separate from the
+     neon/bg-black vars above: those still drive the in-round HUD,
+     evolution cards and canvas world (untouched cyberpunk look — GDD 4.0
+     doesn't mock up gameplay screens, only the meta/hub screens below). */
+  --nc-bg: #0a1220;
+  --nc-panel: #101d33;
+  --nc-panel-2: #0c1830;
+  --nc-border: rgba(255, 255, 255, 0.08);
+  --nc-border-strong: rgba(34, 211, 238, 0.45);
+  --nc-cyan: #22d3ee;
+  --nc-cyan-soft: rgba(34, 211, 238, 0.14);
+  --nc-text: #f2f8ff;
+  --nc-text-dim: rgba(242, 248, 255, 0.6);
+  --nc-text-dim-2: rgba(242, 248, 255, 0.38);
+  --nc-green: #34d399;
+  --nc-gold: #fbbf24;
 }
 
 * {
@@ -549,11 +567,8 @@ html, body {
   justify-content: center;
 }
 
-.prism-display {
-  color: #b026ff;
-  border-color: rgba(176, 38, 255, 0.35);
-  background: rgba(176, 38, 255, 0.08);
-  text-shadow: 0 0 8px rgba(176, 38, 255, 0.6);
+.prism-display .coin-icon {
+  color: #c084fc;
 }
 
 .hub-meter-row {
@@ -578,11 +593,6 @@ html, body {
   background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
   box-shadow: 0 0 8px var(--neon-cyan);
   transition: width 0.4s ease;
-}
-
-.hub-title {
-  font-size: 34px;
-  margin-bottom: 0;
 }
 
 /* The hub "room": a distinct bordered card makes it read as an actual
@@ -615,20 +625,6 @@ html, body {
 
 /* ===================== MIASTO / CORE CITY HERO (Vector Hole v4 / GDD 4.0 §5.1/§8) ===================== */
 
-.hub-header {
-  width: 100%;
-  max-width: 340px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.hub-header .hub-title {
-  font-size: 20px;
-  text-align: left;
-}
-
 .hub-header-right {
   display: flex;
   flex-direction: column;
@@ -640,115 +636,269 @@ html, body {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--panel-border);
-  color: var(--text-main);
-  font-size: 16px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
+  color: var(--nc-text);
   cursor: pointer;
   align-self: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-gear-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .hub-gear-btn:active {
   transform: scale(0.94);
 }
 
+.hub-eyebrow-label {
+  width: 100%;
+  max-width: 340px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--nc-text-dim);
+  text-align: left;
+}
+
 .hub-hero {
   align-items: center;
   text-align: center;
+  gap: 10px;
 }
 
-.hub-hero-ring {
+.hub-hero-stage {
+  position: relative;
+  width: 176px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-skyline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--nc-cyan);
+  opacity: 0.85;
+}
+
+.hub-ring-svg {
+  position: absolute;
+  width: 116px;
+  height: 116px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+.hub-ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 10;
+}
+
+.hub-ring-fill {
+  fill: none;
+  stroke: var(--nc-cyan);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 439.8;
+  stroke-dashoffset: 439.8;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.hub-hero-ring-text {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
 }
 
 .hub-hero-pct {
-  font-size: 40px;
+  font-size: 26px;
   font-weight: 800;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 16px var(--neon-cyan);
+  color: var(--nc-text);
   font-variant-numeric: tabular-nums;
 }
 
 .hub-hero-level {
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  color: rgba(230, 250, 255, 0.7);
+  font-size: 8.5px;
+  letter-spacing: 0.3px;
+  color: var(--nc-text-dim);
+  max-width: 90px;
+  line-height: 1.25;
 }
 
 .hub-hero-caption {
   margin: 0;
   font-size: 11px;
-  color: rgba(230, 250, 255, 0.55);
+  color: var(--nc-text-dim);
   text-align: center;
 }
 
-.hub-level-dots {
+.hub-reward-chips {
+  width: 100%;
+}
+
+.hub-reward-chip-label {
+  font-size: 10px;
+  color: var(--nc-text-dim);
+  margin-bottom: 6px;
+}
+
+.hub-reward-chips-row {
+  display: flex;
+  gap: 8px;
+}
+
+.hub-reward-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: var(--nc-panel-2);
+  border: 1px solid var(--nc-border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--nc-text);
+}
+
+.hub-reward-chip-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--nc-cyan);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  margin: 2px 0;
+  font-size: 15px;
 }
 
-.hub-level-dot {
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: rgba(230, 250, 255, 0.5);
-}
-
-.hub-level-dot.done {
-  border-color: var(--neon-green);
-  color: var(--neon-green);
-}
-
-.hub-level-dot.current {
-  border-color: var(--neon-cyan);
-  color: var(--neon-cyan);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.35);
-}
-
-.hub-reward-card {
+.hub-reward-chip-icon svg {
   width: 100%;
+  height: 100%;
+}
+
+/* ---- Level dots: checkmark (done) — filled dot (current) — hollow ring (next) ---- */
+.hub-level-dots {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  padding: 2px 6px 0;
+}
+
+.hub-level-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.hub-level-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 215, 0, 0.06);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  font-size: 11px;
-  text-align: left;
+  justify-content: center;
+  color: var(--nc-text-dim-2);
+}
+
+.hub-level-circle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.hub-level-circle-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--nc-cyan);
+}
+
+.hub-level-item.done .hub-level-circle {
+  border-color: var(--nc-green);
+  color: var(--nc-green);
+}
+
+.hub-level-item.current .hub-level-circle {
+  border-color: var(--nc-cyan);
+}
+
+.hub-level-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--nc-text-dim-2);
+}
+
+.hub-level-item.done .hub-level-label {
+  color: var(--nc-green);
+}
+
+.hub-level-item.current .hub-level-label {
+  color: var(--nc-cyan);
+}
+
+.hub-level-connector {
+  flex: 1;
+  max-width: 46px;
+  height: 2px;
+  margin: 10px 6px 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.hub-level-connector.filled {
+  background: var(--nc-cyan);
 }
 
 .hub-info-panel {
   width: 100%;
   max-width: 340px;
   padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
+  text-align: left;
 }
 
 .hub-info-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 700;
-  margin-bottom: 4px;
-  color: rgba(230, 250, 255, 0.75);
+  margin-bottom: 6px;
+  color: var(--nc-text);
+}
+
+.hub-info-title svg {
+  width: 14px;
+  height: 14px;
+  color: var(--nc-cyan);
+  flex-shrink: 0;
 }
 
 .hub-info-list {
   margin: 0;
   padding-left: 18px;
   font-size: 11px;
-  color: rgba(230, 250, 255, 0.65);
-  line-height: 1.5;
+  color: var(--nc-text-dim);
+  line-height: 1.6;
 }
 
 .hub-cta-row {
@@ -763,7 +913,64 @@ html, body {
 }
 
 .hub-unlock-hint {
-  color: var(--neon-pink);
+  color: #fb7185;
+}
+
+.hub-next-reward-row {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
+  color: var(--nc-text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hub-next-reward-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--nc-gold);
+  flex-shrink: 0;
+}
+
+.hub-next-reward-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.hub-next-reward-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--nc-text-dim);
+}
+
+.hub-next-reward-text strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--nc-text);
+  letter-spacing: normal;
+}
+
+.hub-next-reward-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--nc-text-dim-2);
+  flex-shrink: 0;
+}
+
+.hub-next-reward-chevron svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* ===================== WYZWANIA (Vector Hole v4 / GDD 4.0 §5.4) ===================== */
@@ -780,56 +987,87 @@ html, body {
 
 /* ===================== CAMPAIGN MODE (Vector Hole v3) ===================== */
 
-.district-map {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+/* District picker: a compact horizontal chip strip (not in the GDD
+   mockup, which shows one district's detail view already selected --
+   see the HTML comment on #districtMap for why this exists). */
+.district-strip {
+  display: flex;
+  /* flex-shrink:0 matters here: .screen-inner is itself a flex column with
+     overflow-y:auto, and a flex item that sets its own overflow (this
+     strip's overflow-x:auto) gets an automatic minimum size of 0 per the
+     flexbox spec -- without this it got crushed to ~0 height whenever the
+     screen's content ran taller than the viewport. */
+  flex-shrink: 0;
   gap: 8px;
   width: 100%;
   max-width: 360px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .district-node {
+  flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 6px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 2px solid rgba(255, 255, 255, 0.14);
-  color: var(--text-main);
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
+  color: var(--nc-text-dim);
   font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .district-node.locked {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.district-node.teaser {
-  border-style: dashed;
-}
-
 .district-node.active {
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 14px rgba(0, 243, 255, 0.3);
-}
-
-.district-node-name {
-  font-size: 12px;
-  font-weight: 700;
+  border-color: var(--nc-cyan);
+  color: var(--nc-text);
+  background: var(--nc-cyan-soft);
 }
 
 .district-node-status {
-  font-size: 11px;
-  color: var(--neon-gold);
+  font-size: 10px;
+  color: var(--nc-text-dim-2);
+}
+
+.district-node.active .district-node-status {
+  color: var(--nc-cyan);
+}
+
+/* GDD 4.0 §5.2/§8.4: district name + its OWN rebuild % (never Core City %). */
+.district-name {
+  width: 100%;
+  max-width: 360px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--nc-text);
+  text-align: left;
+  margin: 4px 0 0;
+}
+
+.district-rebuild-line {
+  width: 100%;
+  max-width: 360px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--nc-cyan);
+  text-align: left;
+  margin: 0 0 4px;
 }
 
 .mission-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   max-width: 360px;
 }
@@ -838,67 +1076,123 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-main);
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
+  color: var(--nc-text);
   font-family: inherit;
-  font-size: 13px;
   cursor: pointer;
   text-align: left;
 }
 
-.mission-row.selected {
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
+.mission-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.mission-row.done {
-  color: var(--neon-green);
+.mission-row-id {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--nc-text-dim);
+}
+
+.mission-row-name {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mission-row-status {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--nc-text-dim-2);
+}
+
+.mission-row-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nc-text-dim-2);
+}
+
+.mission-row-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.mission-row-medal {
+  font-size: 13px;
+}
+
+.mission-row.done .mission-row-id,
+.mission-row.done .mission-row-status,
+.mission-row.done .mission-row-icon {
+  color: var(--nc-green);
+}
+
+.mission-row.selected {
+  border-color: var(--nc-border-strong);
+}
+
+.mission-row.selected .mission-row-id,
+.mission-row.selected .mission-row-status,
+.mission-row.selected .mission-row-icon {
+  color: var(--nc-cyan);
 }
 
 .mission-row.locked {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .mission-detail {
   width: 100%;
   max-width: 360px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
   text-align: left;
 }
 
 .mission-detail-name {
   font-size: 15px;
   font-weight: 700;
-  color: var(--neon-cyan);
+  color: var(--nc-cyan);
   margin-bottom: 4px;
 }
 
 .mission-detail-line {
   font-size: 12px;
-  color: rgba(230, 250, 255, 0.75);
+  color: var(--nc-text-dim);
   margin-bottom: 3px;
 }
 
 .mission-detail-nela {
   font-style: italic;
-  color: rgba(230, 250, 255, 0.55);
+  color: var(--nc-text-dim-2);
 }
 
 .mission-detail-reward {
-  color: var(--neon-gold);
+  color: var(--nc-gold);
 }
 
 .mission-medals-footnote {
-  font-size: 10px;
-  opacity: 0.55;
-  margin: -6px 0 0;
+  font-size: 11px;
+  color: var(--nc-text-dim);
+  line-height: 1.5;
+  margin: -2px 0 0;
 }
 
 .mission-result-medal {
@@ -992,6 +1286,15 @@ html, body {
   min-width: 70px;
   font-size: 10px;
   padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.shop-tabs .toggle-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ===================== WARSZTAT LIVE PREVIEW (Vector Hole v4 / GDD 4.0 §5.3) ===================== */
@@ -1001,68 +1304,154 @@ html, body {
   max-width: 340px;
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
+}
+
+.warsztat-preview-top {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(0, 243, 255, 0.04);
-  border: 1px solid var(--panel-border);
+  gap: 14px;
 }
 
 .warsztat-preview-label {
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 1px;
-  color: rgba(230, 250, 255, 0.6);
+  color: var(--nc-text);
+}
+
+.warsztat-preview-sublabel {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--nc-text-dim);
+  margin-top: 2px;
 }
 
 .warsztat-preview-stage {
   position: relative;
-  width: 88px;
-  height: 88px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.warsztat-preview-glow {
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--nc-cyan-soft) 0%, transparent 70%);
 }
 
 .warsztat-preview-trail {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   border-radius: 50%;
-  border: 2px dashed transparent;
-  animation: preview-spin 6s linear infinite;
+  border: 2px solid transparent;
+  border-top-color: var(--nc-cyan);
+  border-right-color: var(--nc-cyan);
+  opacity: 0.55;
+  animation: preview-spin 4s linear infinite;
 }
 
 .warsztat-preview-ring {
-  width: 56px;
-  height: 56px;
+  position: absolute;
+  inset: 12px;
   border-radius: 50%;
-  border: 3px solid var(--neon-cyan);
-  background: #000;
+  border: 3px solid var(--nc-cyan);
+  background: #030a14;
+  box-shadow: 0 0 18px var(--nc-cyan);
 }
+
+.warsztat-preview-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px;
+  border-radius: 50%;
+  background: var(--nc-cyan);
+}
+
+.warsztat-preview-particle.p1 { animation: preview-orbit 5s linear infinite; }
+.warsztat-preview-particle.p2 { animation: preview-orbit 7s linear infinite reverse; opacity: 0.6; }
+.warsztat-preview-particle.p3 { animation: preview-orbit 6.5s linear infinite; opacity: 0.4; }
 
 @keyframes preview-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
+@keyframes preview-orbit {
+  from { transform: rotate(0deg) translateX(38px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(38px) rotate(-360deg); }
+}
+
 .warsztat-active-list {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
+}
+
+.warsztat-active-list-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--nc-text-dim);
+  margin-bottom: 2px;
 }
 
 .warsztat-active-row {
   display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: rgba(230, 250, 255, 0.7);
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
 }
 
-.warsztat-active-row span:last-child {
-  color: var(--text-main);
+.warsztat-active-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--nc-cyan);
+  flex-shrink: 0;
+}
+
+.warsztat-active-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.warsztat-active-name {
+  flex: 1;
+  color: var(--nc-text-dim);
+}
+
+.warsztat-active-value {
+  color: var(--nc-text);
   font-weight: 700;
+}
+
+.skin-grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  max-width: 340px;
+}
+
+.skin-grid-header-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--nc-text);
+}
+
+.skin-grid-header-count {
+  font-size: 11px;
+  color: var(--nc-text-dim);
 }
 
 .run-tool-grid {
@@ -1155,7 +1544,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 30%, rgba(0, 40, 60, 0.55) 0%, rgba(0, 0, 0, 0.92) 70%);
+  /* GDD 4.0 §5: flat navy, not the old radial cyan/black vignette —
+     matches the Miasto/Dzielnice/Warsztat mockups exactly. */
+  background: var(--nc-bg);
   animation: fade-in 0.25s ease-out;
 }
 
@@ -1177,61 +1568,73 @@ html, body {
   text-align: center;
 }
 
-.title-glow {
-  font-size: 48px;
-  font-weight: 900;
-  letter-spacing: 4px;
-  margin: 0;
-  color: #fff;
-  text-shadow:
-    0 0 10px var(--neon-cyan),
-    0 0 22px var(--neon-cyan),
-    0 0 40px rgba(0, 243, 255, 0.6);
-  animation: pulse-title 2.4s ease-in-out infinite;
+/* ===================== APP HEADER (Vector Hole v4 / GDD 4.0 §5) =====================
+   The "VECTOR HOLE" eyebrow + big screen title + currency/gear row shared,
+   pixel-for-pixel, by the Miasto/Dzielnice/Warsztat/Wyzwania mockups. */
+.app-header {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
 }
 
-.title-glow .accent {
-  color: var(--neon-pink);
-  text-shadow:
-    0 0 10px var(--neon-pink),
-    0 0 22px var(--neon-pink),
-    0 0 40px rgba(255, 0, 127, 0.6);
+.app-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--nc-text-dim);
+  text-align: left;
 }
 
-@keyframes pulse-title {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.25); }
+.app-title {
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--nc-text);
+  text-align: left;
+}
+
+.app-title-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--nc-cyan);
 }
 
 .section-title {
-  font-size: 26px;
-  letter-spacing: 2px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
   margin: 0 0 4px;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 10px var(--neon-cyan);
+  color: var(--nc-text);
 }
 
 .coin-display {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--neon-gold);
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-  background: rgba(255, 215, 0, 0.08);
-  border: 1px solid rgba(255, 215, 0, 0.35);
-  padding: 6px 16px;
+  color: var(--nc-text);
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
+  padding: 6px 14px;
   border-radius: 20px;
 }
 
 .coin-icon {
-  font-size: 18px;
+  font-size: 15px;
+  color: var(--nc-cyan);
 }
 
 .hint-text {
   font-size: 12px;
-  color: rgba(230, 250, 255, 0.55);
+  color: var(--nc-text-dim);
   max-width: 360px;
   line-height: 1.5;
   margin-top: 4px;
@@ -1243,14 +1646,24 @@ html, body {
   width: 100%;
   max-width: 320px;
   padding: 14px 20px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 1px;
-  border-radius: 10px;
-  border: 2px solid transparent;
+  letter-spacing: 0.5px;
+  border-radius: 14px;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .btn:active {
@@ -1267,25 +1680,25 @@ html, body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--neon-cyan), #0077ff);
-  color: #001018;
-  box-shadow: 0 0 18px rgba(0, 243, 255, 0.55);
+  background: var(--nc-cyan);
+  color: #04141f;
+  box-shadow: 0 4px 14px rgba(34, 211, 238, 0.25);
 }
 
 .btn-primary:hover {
-  filter: brightness(1.15);
-  box-shadow: 0 0 28px rgba(0, 243, 255, 0.8);
+  filter: brightness(1.08);
+  box-shadow: 0 4px 18px rgba(34, 211, 238, 0.4);
 }
 
 .btn-secondary {
-  background: transparent;
-  color: var(--text-main);
-  border-color: rgba(230, 250, 255, 0.35);
+  background: var(--nc-panel);
+  color: var(--nc-text);
+  border-color: var(--nc-border);
 }
 
 .btn-secondary:hover {
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 14px rgba(0, 243, 255, 0.35);
+  border-color: var(--nc-cyan);
+  color: var(--nc-cyan);
 }
 
 .btn-gold {
@@ -1304,63 +1717,94 @@ html, body {
 
 .skin-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
   width: 100%;
-  max-width: 420px;
-  margin: 8px 0;
+  max-width: 340px;
+  margin: 4px 0;
 }
 
 .skin-card {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 12px 6px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-border);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  text-align: left;
+  transition: border-color 0.15s ease;
 }
 
 .skin-card:hover {
-  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .skin-card.selected {
-  border-color: #fff;
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.4);
+  border-color: var(--nc-cyan);
 }
 
 .skin-card.locked {
-  opacity: 0.55;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.skin-card-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--nc-cyan);
+  color: #04141f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skin-card-check svg {
+  width: 10px;
+  height: 10px;
 }
 
 .skin-swatch {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: #000;
+  background: #04101c;
   border: 4px solid;
+  flex-shrink: 0;
+}
+
+.skin-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .skin-name {
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--nc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .skin-price {
-  font-size: 11px;
-  color: var(--neon-gold);
+  font-size: 10px;
+  color: var(--nc-text-dim);
 }
 
 .skin-owned-badge {
   font-size: 10px;
-  color: var(--neon-green);
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: var(--nc-green);
+  letter-spacing: 0.3px;
 }
 
 /* ===================== GAME OVER ===================== */
@@ -1578,28 +2022,51 @@ html, body {
   display: flex;
   justify-content: space-around;
   padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
-  background: rgba(6, 8, 16, 0.9);
-  border-top: 1px solid var(--panel-border);
-  backdrop-filter: blur(6px);
+  background: var(--nc-panel);
+  border-top: 1px solid var(--nc-border);
 }
 
 .nav-tab {
+  position: relative;
   flex: 1;
   max-width: 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 4px 2px;
+  gap: 3px;
+  padding: 4px 2px 6px;
   background: transparent;
   border: none;
-  color: rgba(230, 250, 255, 0.55);
+  color: var(--nc-text-dim-2);
   font-family: inherit;
   cursor: pointer;
 }
 
 .nav-tab-icon {
-  font-size: 18px;
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.nav-tab-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* GDD 4.0 mockup: a locked tab stays visible (dimmed) with a small lock
+   badge overlay -- it is never simply hidden. */
+.nav-tab-lock {
+  position: absolute;
+  right: -5px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  color: var(--nc-text-dim);
+}
+
+.nav-tab.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .nav-tab-label {
@@ -1609,8 +2076,19 @@ html, body {
 }
 
 .nav-tab.active {
-  color: var(--neon-cyan);
-  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+  color: var(--nc-cyan);
+}
+
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--nc-cyan);
 }
 
 .nav-tab:active {
