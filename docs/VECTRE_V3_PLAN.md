@@ -183,3 +183,63 @@ how prior phases were checked:
 No FPS/perf profiling and no real-device touch testing were done — the
 GDD's own disclaimer about not being able to confirm real performance
 applies here too.
+
+## 7. Vector Hole v4 — player feedback pass
+
+A follow-up pass fixing eight issues reported after playing this build, all
+in `game.js`/`index.html`/`style.css` (no schema bump — no save-shape
+change):
+
+1. **Minimap only showed large/green objects** (Arena) and only
+   landmark/node/pylon (Campaign) — both minimaps now draw every live
+   object/entity, colored and sized by tier/type.
+2. **No way back to the main menu from a mission** — the mission result
+   screen only had Next/Retry/Map; added a MENU GŁÓWNE button, and gave
+   Campaign its own `leaveCampaignMission()` (see #5's root cause below)
+   instead of reusing Arena's `finalizeRun()`.
+3. **Evolution/power cards didn't stop gameplay** — offers used to only
+   slow the world (`slowMotionFactor`) with a 5s forced auto-pick and no
+   way to decline. `loop()` now skips `update()`/`updateCampaign()`
+   entirely while a card offer is open (a true pause, not just a slow
+   one), a "POMIŃ" button lets the player close the offer without picking,
+   and `autoPickMs` is now a 20s AFK-only safety net. Cards also gained a
+   small inline-SVG icon per mutation/power and much shorter `desc` text.
+4. **No play-area bounds in Campaign** — `Hole.moveToward()`/
+   `moveDirection()` only ever clamped to the shared 3000×3000 world, not
+   to a mission's much smaller `CONFIG.campaign.bounds` box, so the player
+   (or a bot) could wander into empty space outside the box with none of
+   the mission's entities in sight. Added `clampToCampaignBounds()` (player
+   + bots) and a dashed boundary rectangle so the edge is visible.
+5. **Pause sheet's restart button always started a random Arena round** —
+   `restartFromPause()` called `startRound()` unconditionally, even mid-
+   mission; it now restarts the current mission in Campaign mode. The
+   pause sheet's "leave" button had the same bug in spirit: `leaveRun()`
+   ran Arena-only `finalizeRun()` side effects (City Core charge, daily
+   mission check) even when leaving a mission; it now calls the new
+   `leaveCampaignMission()` for Campaign instead.
+6. **Park Impulsów missions had long empty-board stretches** — M06
+   ("Zielona fala")'s capsule waves were 40s apart (`[0, 40, 80]`); once a
+   wave was cleared (well under 40s), the board sat empty for ~15-20s
+   waiting for the next one. Tightened to `[0, 18, 34]`. Separately, M05's
+   gate entities were invisible: `CONFIG.campaign.entityRadius` had no
+   `gate` key, so gates drew at `radius=undefined` (NaN geometry, silently
+   skipped by the canvas spec) — added `gate: 18`.
+7. **Board objects didn't signal the mission goal** — added
+   `campaignGoalEntityTypes()` (derived from the mission's `goal`) and a
+   pulsing gold ring drawn behind whichever entities currently count
+   toward it, so the goal text and the objects to look for are visually
+   tied together.
+8. **Campaign entity icons were too generic to read at a glance** — `prop`
+   (plain square), `vehicle` (plain rectangle), `capsule` (hexagon), and
+   `marker` (plain triangle) were redrawn as a traffic-cone, a car
+   silhouette (body + roof + two wheels), a pill split down the middle,
+   and a flag on a pole, respectively — still simple line art, just
+   recognizable as the specific object each type represents.
+
+Verified via the same throwaway-Playwright-script approach as prior
+passes: driving all 8 missions to completion with dt-stepped
+`updateCampaign()` calls (confirmed M06's empty-board gap collapsed from
+~34s total to a single sub-2s blip), screenshotting the new icons/
+boundary/goal-highlight/card overlay, and scripted checks that the round
+truly freezes (timer and player position unchanged) while a card offer is
+open and resumes immediately on skip.

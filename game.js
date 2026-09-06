@@ -65,8 +65,8 @@ const CONFIG = {
   evolution: {
     triggerRadii: [45, 65],  // fires once each, aligned with the 'core'/'vortex' size tiers
     cardCount: 3,
-    slowMotionFactor: 0.25, // world speed while a card is pending; not a full pause (GDD 4.1)
-    autoPickMs: 5000,        // avoid soft-locking flow if the player doesn't choose
+    autoPickMs: 20000,       // safety net only (an explicit "skip" button covers the normal case) --
+                             // long because the offer now fully pauses the round instead of just slowing it
     magnetRadius: 160,
     magnetPull: 90,
     slipstreamComboThreshold: 3,
@@ -95,7 +95,7 @@ const CONFIG = {
     hitInvulnMs: 2000,
     entityRadius: {
       fragment: 7, prop: 13, vehicle: 19, capsule: 10, marker: 12,
-      node: 16, pylon: 15, landmark: 46
+      node: 16, pylon: 15, landmark: 46, gate: 18
     },
     gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
     nelaDisplaySeconds: 4.5,
@@ -260,17 +260,32 @@ const RUN_TOOLS = [
   { id: 'magnet', name: 'Magnes', price: 30, desc: 'Przez pierwsze 8 s rundy obiekty same lecą w Twoją stronę.' }
 ];
 
+// Simple neon-line-art glyphs for the evolution/power cards (SVG, inline —
+// no assets/build step). Keyed by `icon` on MUTATIONS/CAMPAIGN_POWERS below.
+// Player feedback: the cards should show what a tool *does* instead of
+// relying on the player to read a paragraph of text under time pressure.
+const CARD_ICONS = {
+  magnet: '<path d="M7 3v9a5 5 0 0010 0V3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M7 3h4M13 3h4" stroke="currentColor" stroke-width="2.2"/>',
+  bolt: '<path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/>',
+  shield: '<path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z" fill="none" stroke="currentColor" stroke-width="2.2"/>',
+  clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.2" fill="none"/>',
+  radar: '<circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M8 12a4 4 0 018 0M5 12a7 7 0 0114 0" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  burst: '<circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  target: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>'
+};
+
 // Phase 4: Golden Shot evolution mutations — run-only, never sold or kept
 // between rounds, so the ranked/daily leaderboard (once it exists) stays
-// fair (GDD 4.1).
+// fair (GDD 4.1). desc kept to a few words per player feedback ("reduce
+// the amount of text"); icon points into CARD_ICONS above.
 const MUTATIONS = [
-  { id: 'magnet_pulse', name: 'Magnet Pulse', desc: 'Lekko przyciąga pobliskie obiekty.', weight: 3, color: '#00f3ff' },
-  { id: 'slipstream', name: 'Slipstream', desc: 'Speed boost po udanym combo.', weight: 3, color: '#39ff14' },
-  { id: 'phase_edge', name: 'Phase Edge', desc: 'Dłuższa ochrona po starciu z rywalem.', weight: 2, color: '#b026ff' },
-  { id: 'combo_reactor', name: 'Combo Reactor', desc: 'Dłuższe okno combo.', weight: 3, color: '#ffd700' },
-  { id: 'scanner', name: 'Scanner', desc: 'Co kilka sekund wskazuje wartościowy klaster.', weight: 2, color: '#00f3ff' },
-  { id: 'shockwave', name: 'Shockwave', desc: 'Po wzroście odpycha małe obiekty.', weight: 2, color: '#ff007f' },
-  { id: 'bounty_core', name: 'Bounty Core', desc: 'Oznacza rywala — zjedzenie daje bonus.', weight: 2, color: '#ffae00' }
+  { id: 'magnet_pulse', name: 'Magnet Pulse', desc: 'Przyciąga obiekty.', icon: 'magnet', weight: 3, color: '#00f3ff' },
+  { id: 'slipstream', name: 'Slipstream', desc: 'Boost po combo.', icon: 'bolt', weight: 3, color: '#39ff14' },
+  { id: 'phase_edge', name: 'Phase Edge', desc: 'Dłuższa ochrona.', icon: 'shield', weight: 2, color: '#b026ff' },
+  { id: 'combo_reactor', name: 'Combo Reactor', desc: 'Dłuższe combo.', icon: 'clock', weight: 3, color: '#ffd700' },
+  { id: 'scanner', name: 'Scanner', desc: 'Wskazuje cel.', icon: 'radar', weight: 2, color: '#00f3ff' },
+  { id: 'shockwave', name: 'Shockwave', desc: 'Odpycha obiekty.', icon: 'burst', weight: 2, color: '#ff007f' },
+  { id: 'bounty_core', name: 'Bounty Core', desc: 'Bonus za rywala.', icon: 'target', weight: 2, color: '#ffae00' }
 ];
 
 /* ----------------------- Campaign mode (GDD 3.1 / "Vector Hole v3") -----------------------
@@ -318,10 +333,10 @@ const CAMPAIGN_ENTITY_STATS = {
 // MUTATIONS pool above (kept untouched so Arena's already-tuned balance
 // doesn't shift). Exact numbers per GDD §08.
 const CAMPAIGN_POWERS = [
-  { id: 'magnes', name: 'Magnes', desc: 'Przyciąga już jadalne fragmenty w promieniu 1,4x.', color: '#00f3ff' },
-  { id: 'reaktor', name: 'Reaktor', desc: 'Okno combo rośnie z 1,5 s do 2,1 s.', color: '#ffd700' },
-  { id: 'impuls', name: 'Impuls', desc: 'Po awansie tieru: +20% prędkości na 2 s.', color: '#39ff14' },
-  { id: 'skaner', name: 'Skaner', desc: 'Co 8 s wskazuje najbliższe osiągalne skupisko.', color: '#b026ff' }
+  { id: 'magnes', name: 'Magnes', desc: 'Przyciąga fragmenty.', icon: 'magnet', color: '#00f3ff' },
+  { id: 'reaktor', name: 'Reaktor', desc: 'Dłuższe combo.', icon: 'clock', color: '#ffd700' },
+  { id: 'impuls', name: 'Impuls', desc: '+prędkość po tierze.', icon: 'bolt', color: '#39ff14' },
+  { id: 'skaner', name: 'Skaner', desc: 'Wskazuje skupisko.', icon: 'radar', color: '#b026ff' }
 ];
 
 // Hub district map (mockup in GDD §09). Only Plac Neonów / Park Impulsów
@@ -385,7 +400,11 @@ const CAMPAIGN_MISSIONS = [
     id: 'M06', district: 'park', order: 2, name: 'Zielona fala', timeLimit: 120,
     goal: { type: 'eatCount', entityType: 'capsule', count: 18, label: 'Pochłoń 18 impulsowych kapsuł' },
     medal: { type: 'comboAtLeast', count: 6, label: 'Zbierz 6 w jednym combo' },
-    setup: { capsuleWaves: [0, 40, 80], capsulesPerWave: 8, bots: 0 },
+    // Waves 40s/80s apart used to leave the board completely empty for
+    // ~15-20s at a time once a wave was cleared (player feedback: "the
+    // board stays empty until time runs out") -- tightened so the next
+    // wave lands well before the previous one is fully eaten.
+    setup: { capsuleWaves: [0, 18, 34], capsulesPerWave: 8, bots: 0 },
     nela: { start: 'Podążaj za falą, nie za przypadkiem.', success: 'Energia płynie dalej.' },
     reward: { coins: 50 }
   },
@@ -869,7 +888,7 @@ class CampaignEntity {
     this.eatT = 0;
   }
 
-  draw(ctx) {
+  draw(ctx, isGoal) {
     if (!this.live || this.consumed) return;
     const scale = this.eating ? Math.max(0, 1 - this.eatT) : 1;
     if (scale <= 0) return;
@@ -878,6 +897,21 @@ class CampaignEntity {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.scale(scale, scale);
+
+    // Ties board objects to the mission goal text at a glance (player
+    // feedback: objects should visually signal what the player should be
+    // looking for) -- landmark/gate already communicate this through their
+    // own always-visible state, so only the plain pickups need the ring.
+    if (isGoal && this.type !== 'gate' && this.type !== 'landmark' && !this.eating) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 220);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,215,0,${0.3 + 0.35 * pulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     switch (this.type) {
       case 'fragment': {
@@ -889,38 +923,55 @@ class CampaignEntity {
         break;
       }
       case 'prop': {
+        // Traffic-cone silhouette (GDD label "ławki i pachołki") instead of
+        // a plain square -- reads as a specific street object at a glance.
         const color = this.cluster === 'B' ? '#ff9d00' : '#39ff14';
         ctx.strokeStyle = color; ctx.lineWidth = 2;
         ctx.shadowBlur = 10; ctx.shadowColor = color;
-        ctx.strokeRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6);
+        ctx.beginPath();
+        ctx.moveTo(0, -r); ctx.lineTo(r * 0.75, r * 0.8); ctx.lineTo(-r * 0.75, r * 0.8);
+        ctx.closePath(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r * 0.4, r * 0.4); ctx.lineTo(r * 0.4, r * 0.4); ctx.stroke();
         break;
       }
       case 'vehicle': {
-        ctx.strokeStyle = '#ff007f'; ctx.lineWidth = 2;
+        // Simple car silhouette (body + roof bump + two wheels) instead of
+        // a plain rectangle.
+        ctx.strokeStyle = ctx.fillStyle = '#ff007f'; ctx.lineWidth = 2;
         ctx.shadowBlur = 12; ctx.shadowColor = '#ff007f';
-        ctx.strokeRect(-r, -r * 0.55, r * 2, r * 1.1);
+        ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
+        ctx.beginPath(); ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
         break;
       }
       case 'capsule': {
-        ctx.strokeStyle = ctx.fillStyle = '#39ff14';
+        // Pill/capsule shape split down the middle, instead of a hexagon.
+        ctx.strokeStyle = '#39ff14';
         ctx.shadowBlur = 14; ctx.shadowColor = '#39ff14';
+        ctx.save();
+        ctx.rotate(Math.PI / 4);
         ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
-          const px = Math.cos(a) * r, py = Math.sin(a) * r;
-          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-        }
-        ctx.closePath(); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2); ctx.fill();
+        ctx.moveTo(-r * 0.5, -r);
+        ctx.lineTo(r * 0.5, -r);
+        ctx.arc(r * 0.5, 0, r, -Math.PI / 2, Math.PI / 2);
+        ctx.lineTo(-r * 0.5, r);
+        ctx.arc(-r * 0.5, 0, r, Math.PI / 2, -Math.PI / 2);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r * 0.5, 0); ctx.lineTo(r * 0.5, 0); ctx.stroke();
+        ctx.restore();
         break;
       }
       case 'marker': {
+        // Flag on a pole (waypoint marker) instead of a plain triangle.
         const color = this.route === 'B' ? '#b026ff' : '#ffd700';
         ctx.strokeStyle = ctx.fillStyle = color;
         ctx.shadowBlur = 14; ctx.shadowColor = color;
+        ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(0, -r); ctx.lineTo(r * 0.9, r * 0.75); ctx.lineTo(-r * 0.9, r * 0.75);
-        ctx.closePath(); ctx.stroke();
+        ctx.moveTo(-r * 0.6, -r); ctx.lineTo(r * 0.8, -r * 0.55); ctx.lineTo(-r * 0.6, -r * 0.1);
+        ctx.closePath(); ctx.fill();
         break;
       }
       case 'node': {
@@ -1457,6 +1508,15 @@ class Game {
     document.getElementById('btnCampaign').addEventListener('click', () => this.openCampaignScreen());
     document.getElementById('btnCampaignBack').addEventListener('click', () => this.showScreen('mainMenu'));
     document.getElementById('btnPlayMission').addEventListener('click', () => this.startCampaignMission(this.selectedMissionId));
+    // Player feedback: every level needs a way back to the main menu --
+    // the mission result screen previously only offered Next/Retry/Map.
+    document.getElementById('btnMissionMenu').addEventListener('click', () => {
+      this.updateCoinDisplays();
+      this.state = GameState.MENU;
+      this.showScreen('mainMenu');
+    });
+
+    document.getElementById('btnEvolutionSkip').addEventListener('click', () => this.skipEvolutionOffer());
 
     document.getElementById('btnProfile').addEventListener('click', () => this.openProfileScreen());
     document.getElementById('btnSaveProfile').addEventListener('click', () => this.saveProfile());
@@ -1855,6 +1915,18 @@ class Game {
     return { x: rand(b.minX + padding, b.maxX - padding), y: rand(b.minY + padding, b.maxY - padding) };
   }
 
+  /** Hole.moveToward()/moveDirection() only clamp to the shared 3000x3000
+   *  world, so without this a player (or bot) could wander straight out of
+   *  the mission's much smaller CONFIG.campaign.bounds box into empty
+   *  space with none of the mission's entities in it (player feedback:
+   *  going outside the map area leaves the player unable to find
+   *  themselves again -- the play area needs to stay bounded). */
+  clampToCampaignBounds(hole) {
+    const b = CONFIG.campaign.bounds;
+    hole.x = clamp(hole.x, b.minX + hole.radius, b.maxX - hole.radius);
+    hole.y = clamp(hole.y, b.minY + hole.radius, b.maxY - hole.radius);
+  }
+
   campaignPlayerTier() {
     const units = this.mission ? this.mission.growthUnits : 0;
     let current = CAMPAIGN_TIERS[0];
@@ -1867,8 +1939,20 @@ class Game {
   campaignEntityColor(type) {
     return {
       fragment: '#00f3ff', prop: '#39ff14', vehicle: '#ff007f', capsule: '#39ff14',
-      marker: '#ffd700', node: '#ffae00', pylon: '#00f3ff', landmark: '#ffd700'
+      marker: '#ffd700', node: '#ffae00', pylon: '#00f3ff', landmark: '#ffd700', gate: '#00f3ff'
     }[type] || '#fff';
+  }
+
+  /** Which campaign entity type(s) the *current* mission goal is about --
+   *  used to visually tie board objects to the goal text (player feedback:
+   *  elements on the board should make it obvious what to look for). */
+  campaignGoalEntityTypes() {
+    const g = this.mission.def.goal;
+    const types = new Set();
+    if (g.type === 'eatCount') types.add(g.entityType);
+    if (g.type === 'gatesPassed') types.add('gate');
+    if (g.type === 'activateAndDevour') { types.add(g.activator); types.add('landmark'); }
+    return types;
   }
 
   /* ---- Hub campaign map / mission select ---- */
@@ -2309,7 +2393,8 @@ class Game {
       const btn = document.createElement('button');
       btn.className = 'evolution-card';
       btn.style.borderColor = power.color;
-      btn.innerHTML = `<span class="evolution-card-name" style="color:${power.color}">${power.name}</span><span class="evolution-card-desc">${power.desc}</span>`;
+      btn.innerHTML = `<span class="evolution-card-icon" style="color:${power.color}"><svg viewBox="0 0 24 24">${CARD_ICONS[power.icon] || ''}</svg></span>` +
+        `<span class="evolution-card-name" style="color:${power.color}">${power.name}</span><span class="evolution-card-desc">${power.desc}</span>`;
       btn.addEventListener('click', () => this.pickCampaignPower(power.id));
       grid.appendChild(btn);
     });
@@ -2399,7 +2484,8 @@ class Game {
     m.timeRemaining = Math.max(0, m.def.timeLimit - m.elapsed);
 
     this.applyPlayerMovement(dt);
-    for (const bot of this.bots) this.updateCampaignBot(bot, dt);
+    this.clampToCampaignBounds(this.player);
+    for (const bot of this.bots) { this.updateCampaignBot(bot, dt); this.clampToCampaignBounds(bot); }
     for (const e of this.campaignEntities) e.update(dt, m.elapsed);
 
     this.handleCampaignEating();
@@ -2535,7 +2621,9 @@ class Game {
     ctx.save();
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
     this.drawGrid(ctx);
-    for (const e of this.campaignEntities) e.draw(ctx);
+    this.drawCampaignBoundary(ctx);
+    const goalTypes = this.campaignGoalEntityTypes();
+    for (const e of this.campaignEntities) e.draw(ctx, goalTypes.has(e.type));
     this.drawScannerTarget(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const r of this.ripples) r.draw(ctx);
@@ -2548,6 +2636,22 @@ class Game {
     ctx.restore();
 
     if (this.showMinimap) this.drawCampaignMinimap(ctx);
+  }
+
+  /** Dashed rectangle around the mission's actual play area (a 1400x1400
+   *  sub-box of the shared 3000x3000 world, see CONFIG.campaign.bounds) --
+   *  without this, nothing on screen showed where the mission area ended,
+   *  and a player who wandered past the edge (world-clamp is still the
+   *  full 3000x3000 world) found an empty grid with none of the mission's
+   *  entities in sight (player feedback: the play area should be bounded). */
+  drawCampaignBoundary(ctx) {
+    const b = CONFIG.campaign.bounds;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,243,255,0.35)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([14, 10]);
+    ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
+    ctx.restore();
   }
 
   drawCampaignMinimap(ctx) {
@@ -2564,12 +2668,17 @@ class Game {
     ctx.fillRect(px, py, size, size);
     ctx.strokeRect(px, py, size, size);
 
+    // Every live entity gets a dot, not just landmark/node/pylon -- the
+    // minimap used to hide fragments/props/vehicles/capsules/markers/gates
+    // entirely (player feedback: the map should represent everything).
     const toMini = (x, y) => ({ x: px + (x - b.minX) * scaleX, y: py + (y - b.minY) * scaleY });
     for (const e of this.campaignEntities) {
-      if (e.consumed || (e.type !== 'landmark' && e.type !== 'node' && e.type !== 'pylon')) continue;
+      if (e.consumed || !e.live) continue;
+      const big = e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate';
+      const size = big ? 3 : 1.6;
       const p = toMini(e.x, e.y);
-      ctx.fillStyle = e.type === 'landmark' ? '#ffd700' : '#ffae00';
-      ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+      ctx.fillStyle = e.type === 'landmark' ? '#ffd700' : this.campaignEntityColor(e.type);
+      ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
     }
     for (const bot of this.bots) {
       const p = toMini(bot.x, bot.y);
@@ -2916,9 +3025,18 @@ class Game {
     this.rafId = requestAnimationFrame((t) => this.loop(t));
   }
 
+  /** Restarts whatever is actually running. Used to unconditionally call
+   *  startRound() (a new random Arena round), which meant restarting from
+   *  the pause sheet mid-mission silently dropped the player into Arena
+   *  instead of replaying the mission they paused (player feedback: the
+   *  restart button should restart the current mission). */
   restartFromPause() {
     document.getElementById('pauseSheet').classList.add('hidden');
-    this.startRound();
+    if (this.mode === 'campaign' && this.mission) {
+      this.startCampaignMission(this.mission.def.id);
+    } else {
+      this.startRound();
+    }
   }
 
   /** Casual mode has no forfeit penalty (that's reserved for future
@@ -2927,6 +3045,10 @@ class Game {
   leaveRun() {
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
+    if (this.mode === 'campaign') {
+      this.leaveCampaignMission();
+      return;
+    }
     const durationMs = Math.round(performance.now() - this.runStartedAt);
     const { place, coinsEarned } = this.finalizeRun();
     this.state = GameState.MENU;
@@ -2942,6 +3064,28 @@ class Game {
       completed: false
     });
     this.analytics.track('result_action', { action: 'leave_run' });
+  }
+
+  /** Abandoning a mission is not an Arena run: it must not run
+   *  finalizeRun()'s Arena-only side effects (City Core charge, daily
+   *  mission check, ranked-style rankHoles()) which don't apply to
+   *  Campaign, and it goes straight back to the main menu instead of a
+   *  results screen -- this is what lets the pause sheet's "leave" button
+   *  work correctly from inside a mission (player feedback: every level
+   *  needs a way back to the main menu). */
+  leaveCampaignMission() {
+    this.running = false;
+    this.paused = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    document.getElementById('hud').classList.add('hidden');
+    if (this.mission) {
+      this.mission.ended = true;
+      this.analytics.track('mission_end', {
+        missionId: this.mission.def.id, success: false, medalEarned: false, firstClear: false, abandoned: true
+      });
+    }
+    this.state = GameState.MENU;
+    this.showScreen('mainMenu');
   }
 
   syncControlsPanel() {
@@ -3119,10 +3263,11 @@ class Game {
     return chosen;
   }
 
-  /** Fires an evolution moment: slows the world (doesn't fully stop it —
-   *  GDD 4.1) and shows up to CONFIG.evolution.cardCount cards above the
-   *  Thumb Pad zone. Auto-picks the first option after autoPickMs so an
-   *  idle/AFK player can never soft-lock the round. */
+  /** Fires an evolution moment: fully pauses the round (player feedback --
+   *  it used to only slow down via slowMotionFactor) and shows up to
+   *  CONFIG.evolution.cardCount cards above the Thumb Pad zone. The player
+   *  can pick a card or hit "POMIŃ" to close the window without picking;
+   *  autoPickMs is only a safety net against an AFK tab. */
   offerEvolution() {
     this.evolutionPending = true;
     const cards = this.pickMutationCards();
@@ -3134,7 +3279,8 @@ class Game {
       const btn = document.createElement('button');
       btn.className = 'evolution-card';
       btn.style.borderColor = m.color;
-      btn.innerHTML = `<span class="evolution-card-name" style="color:${m.color}">${m.name}</span><span class="evolution-card-desc">${m.desc}</span>`;
+      btn.innerHTML = `<span class="evolution-card-icon" style="color:${m.color}"><svg viewBox="0 0 24 24">${CARD_ICONS[m.icon] || ''}</svg></span>` +
+        `<span class="evolution-card-name" style="color:${m.color}">${m.name}</span><span class="evolution-card-desc">${m.desc}</span>`;
       btn.addEventListener('click', () => this.pickMutation(m.id));
       grid.appendChild(btn);
     });
@@ -3159,6 +3305,19 @@ class Game {
     if (id === 'magnet_pulse') this.magnetUntil = Infinity;
     if (id === 'combo_reactor') this.comboWindowOverride = CONFIG.juice.combo.windowSeconds * 1.6;
     if (id === 'bounty_core') this.assignBountyTarget();
+  }
+
+  /** "POMIŃ" — closes the evolution/power overlay without picking anything
+   *  (player feedback: the player must be able to close the window, not
+   *  just pick or wait out the auto-pick timer). Shared by both Arena
+   *  mutations and Campaign powers since they reuse the same overlay. */
+  skipEvolutionOffer() {
+    if (!this.evolutionPending) return;
+    clearTimeout(this.evolutionAutoPickTimer);
+    this.evolutionPending = false;
+    document.getElementById('evolutionOverlay').classList.add('hidden');
+    document.getElementById('evolutionCards').classList.remove('count-2');
+    this.analytics.track('evolution_skip', { mode: this.mode === 'campaign' ? 'campaign' : 'arena' });
   }
 
   /** Marks the nearest eligible rival as a Bounty target (crown marker,
@@ -3445,11 +3604,17 @@ class Game {
     ctx.fillRect(px, py, size, size);
     ctx.strokeRect(px, py, size, size);
 
+    // Every object tier gets a dot, not just 'large' -- previously the
+    // minimap only showed large (green) objects, which read as "the map
+    // only tracks green things" (player feedback).
     for (const obj of this.objects) {
-      if (obj.tier !== 'large') continue;
-      ctx.fillStyle = 'rgba(57,255,20,0.7)';
-      ctx.fillRect(px + obj.x * scale, py + obj.y * scale, 2, 2);
+      const tierDef = TIERS[obj.tier];
+      const dotSize = obj.tier === 'large' ? 2.6 : obj.tier === 'medium' ? 2 : 1.3;
+      ctx.globalAlpha = obj.tier === 'large' ? 0.85 : obj.tier === 'medium' ? 0.65 : 0.45;
+      ctx.fillStyle = tierDef.color;
+      ctx.fillRect(px + obj.x * scale - dotSize / 2, py + obj.y * scale - dotSize / 2, dotSize, dotSize);
     }
+    ctx.globalAlpha = 1;
     for (const bot of this.bots) {
       ctx.fillStyle = bot.edgeColor;
       ctx.beginPath();
@@ -3647,14 +3812,22 @@ class Game {
     const rawDt = Math.min(0.05, (now - this.lastTime) / 1000);
     this.lastTime = now;
     if (this.running) {
-      // Evolution offers slow the world instead of fully pausing it
-      // (GDD 4.1) -- keeps the round feeling alive while picking a card.
-      const dt = this.evolutionPending ? rawDt * CONFIG.evolution.slowMotionFactor : rawDt;
-      if (this.mode === 'campaign') {
-        this.updateCampaign(dt);
+      // Evolution/power offers used to only slow the world (GDD 4.1's
+      // slowMotionFactor), never fully stopping it, with a 5s auto-pick --
+      // player feedback: gameplay should actually stop so there's real
+      // time to read the cards and choose (or explicitly skip) instead of
+      // racing a moving world and a countdown. update()/updateCampaign()
+      // are skipped entirely (not just fed dt=0) so collision/eating
+      // checks can't keep re-firing every frame against positions that are
+      // frozen but still overlapping (e.g. a bot already touching the
+      // player when the offer opens).
+      if (this.evolutionPending) {
+        if (this.mode === 'campaign') this.renderCampaign(now / 1000); else this.render(now / 1000);
+      } else if (this.mode === 'campaign') {
+        this.updateCampaign(rawDt);
         this.renderCampaign(now / 1000);
       } else {
-        this.update(dt);
+        this.update(rawDt);
         this.render(now / 1000);
       }
       this.rafId = requestAnimationFrame((t) => this.loop(t));
