@@ -129,56 +129,56 @@
     </div>
   </div>
 
-  <!-- ===================== MAIN MENU / NEON CORE HUB (skeleton) ===================== -->
+  <!-- ===================== MIASTO / CORE CITY (main hub) ===================== -->
   <div id="mainMenu" class="screen">
-    <div class="screen-inner hub-inner">
-      <h1 class="title-glow hub-title">VECTOR <span class="accent">HOLE</span></h1>
-      <p class="subtitle hub-subtitle">EAT THE NEON CITY</p>
+    <div class="screen-inner hub-inner nav-screen">
+      <div class="hub-header">
+        <h1 class="title-glow hub-title">MIASTO <span class="accent">/ CORE CITY</span></h1>
+        <div class="hub-header-right">
+          <div class="currency-row">
+            <div class="coin-display">
+              <span class="coin-icon">◈</span>
+              <span id="coinCountMenu">0</span>
+            </div>
+            <div class="coin-display prism-display">
+              <span class="coin-icon">◆</span>
+              <span id="prismCountMenu">0</span>
+            </div>
+          </div>
+          <button id="btnProfile" class="hub-gear-btn" aria-label="Ustawienia i profil">⚙</button>
+        </div>
+      </div>
 
-      <div class="hub-card">
-        <div class="hub-card-header">
-          <span class="hub-card-label">🌀 NEON CORE HUB</span>
-          <span id="hubChargeValue" class="hub-charge-value">0%</span>
+      <div class="hub-card hub-hero">
+        <div class="hub-hero-ring">
+          <span id="hubChargeValue" class="hub-hero-pct">0%</span>
+          <span id="hubLevelLabel" class="hub-hero-level">LVL 1 · do następnej nagrody</span>
         </div>
         <div class="hub-meter-track"><div id="hubCoreBar" class="hub-meter-bar"></div></div>
-        <div class="hub-card-footer">
-          <span id="hubMissionText" class="hub-mission-text">Zjedz 5 rywali w jednej rundzie.</span>
-          <span class="hub-runs-stat">Rund: <span id="hubRunsValue">0</span></span>
+        <p class="hub-hero-caption">Postęp za GRAJ 2:00 i Wyzwanie dnia</p>
+
+        <div class="hub-level-dots" id="hubLevelDots"></div>
+
+        <div class="hub-reward-card">
+          <span class="hub-reward-icon">🎁</span>
+          <span id="hubRewardPreview" class="hub-reward-text">Po 100% odblokujesz: Trail „Impuls” + 150 monet</span>
         </div>
       </div>
 
-      <div class="currency-row">
-        <div class="coin-display">
-          <span class="coin-icon">◈</span>
-          <span id="coinCountMenu">0</span>
-        </div>
-        <div class="coin-display prism-display">
-          <span class="coin-icon">◆</span>
-          <span id="prismCountMenu">0</span>
-        </div>
+      <div class="hub-info-panel">
+        <div class="hub-info-title">ℹ️ Jak to działa?</div>
+        <ul class="hub-info-list">
+          <li>2-minutowe rundy napełniają Core City</li>
+          <li>Misje kampanii są w zakładce Dzielnice</li>
+          <li>Nagrody z Core City trafiają do Warsztatu</li>
+        </ul>
       </div>
 
-      <button id="btnStart" class="btn btn-primary">GRAJ (2:00)</button>
-
-      <div class="hub-modules">
-        <button id="btnCampaign" class="hub-tile hub-tile-featured">
-          <span class="hub-tile-icon">🏙️</span>
-          <span class="hub-tile-label">KAMPANIA</span>
-        </button>
-        <button id="btnDaily" class="hub-tile">
-          <span class="hub-tile-icon">🗓️</span>
-          <span class="hub-tile-label">WYZWANIE<br>DNIA</span>
-        </button>
-        <button id="btnShop" class="hub-tile">
-          <span class="hub-tile-icon">🛠️</span>
-          <span class="hub-tile-label">WARSZTAT</span>
-        </button>
-        <button id="btnProfile" class="hub-tile">
-          <span class="hub-tile-icon">👤</span>
-          <span class="hub-tile-label">PROFIL</span>
-        </button>
+      <div class="hub-cta-row">
+        <button id="btnStart" class="btn btn-primary">GRAJ 2:00</button>
+        <button id="btnDaily" class="btn btn-secondary">WYZWANIE DNIA</button>
       </div>
-      <p id="dailyGoalText" class="hint-text daily-goal">Ten sam układ mapy co u wszystkich dzisiaj. Cel: pobij swój dzisiejszy rekord.</p>
+      <p id="hubUnlockHint" class="hint-text hub-unlock-hint hidden"></p>
 
       <p class="hint-text">Steruj myszką lub dotykiem. Pożeraj mniejsze obiekty i boty, unikaj większych!</p>
     </div>
@@ -207,15 +207,18 @@
     </div>
   </div>
 
-  <!-- ===================== CAMPAIGN MAP (Vector Hole v3) ===================== -->
+  <!-- ===================== DZIELNICE — kampania i misje (Vector Hole v4 / GDD 4.0 §5.2) =====================
+       Anti-confusion rule (§8.4): this screen shows per-district rebuild
+       progress ("ODBUDOWA: X% · Y z Z misji"), never the big Core City %. -->
   <div id="campaignScreen" class="screen hidden">
-    <div class="screen-inner">
-      <h2 class="section-title">KAMPANIA</h2>
-      <p class="hint-text">Odzyskaj miasto: jedna dzielnica na raz, jedna misja na raz.</p>
+    <div class="screen-inner nav-screen">
+      <h2 class="section-title" id="districtTitle">DZIELNICE</h2>
+      <p class="hint-text" id="districtRebuildLine">Odzyskaj miasto: jedna dzielnica na raz, jedna misja na raz.</p>
 
       <div id="districtMap" class="district-map"></div>
 
       <div id="missionList" class="mission-list"></div>
+      <p class="hint-text mission-medals-footnote">Medale są opcjonalne. Nie blokują kolejnych misji.</p>
 
       <div class="mission-detail">
         <div class="mission-detail-name" id="missionDetailName">—</div>
@@ -252,7 +255,7 @@
 
   <!-- ===================== SHOP SCREEN (Workshop v2) ===================== -->
   <div id="shopScreen" class="screen hidden">
-    <div class="screen-inner">
+    <div class="screen-inner nav-screen">
       <h2 class="section-title">WARSZTAT</h2>
       <div class="currency-row">
         <div class="coin-display">
@@ -265,15 +268,63 @@
         </div>
       </div>
 
+      <!-- "PODGLĄD NA ŻYWO" (GDD 4.0 §5.3) — pure CSS/SVG preview, no assets. -->
+      <div class="warsztat-preview">
+        <div class="warsztat-preview-label">PODGLĄD NA ŻYWO</div>
+        <div class="warsztat-preview-stage">
+          <div id="warsztatPreviewTrail" class="warsztat-preview-trail"></div>
+          <div id="warsztatPreviewRing" class="warsztat-preview-ring"></div>
+        </div>
+        <div class="warsztat-active-list">
+          <div class="warsztat-active-row"><span>Rdzeń</span><span id="warsztatActiveCore">—</span></div>
+          <div class="warsztat-active-row"><span>Trail</span><span id="warsztatActiveTrail">—</span></div>
+          <div class="warsztat-active-row"><span>Efekt</span><span id="warsztatActiveEffect">—</span></div>
+          <div class="warsztat-active-row"><span>Overdrive</span><span id="warsztatActiveOverdrive">—</span></div>
+        </div>
+      </div>
+
       <div class="shop-tabs">
-        <button id="tabSkins" class="toggle-btn active">RING</button>
-        <button id="tabAuras" class="toggle-btn">AURA</button>
+        <button id="tabSkins" class="toggle-btn active">RDZEŃ</button>
+        <button id="tabAuras" class="toggle-btn">TRAIL</button>
+        <button id="tabEffects" class="toggle-btn">EFEKT</button>
+        <button id="tabOverdrive" class="toggle-btn">OVERDRIVE</button>
       </div>
 
       <div id="skinGrid" class="skin-grid"></div>
       <div id="auraGrid" class="skin-grid hidden"></div>
+      <div id="effectGrid" class="skin-grid hidden"></div>
+      <div id="overdriveSkinGrid" class="skin-grid hidden"></div>
 
       <button id="btnShopBack" class="btn btn-secondary">POWRÓT</button>
+    </div>
+  </div>
+
+  <!-- ===================== WYZWANIA (GDD 4.0 §5.4) =====================
+       Daily rotating mission + Daily Seed Challenge, both with a UTC
+       countdown to the next reset. MVP scope per §5.4: no live-ops events
+       screen yet, just Daily + countdown. -->
+  <div id="challengesScreen" class="screen hidden">
+    <div class="screen-inner nav-screen">
+      <h2 class="section-title">WYZWANIA</h2>
+      <p class="hint-text">Reset o 00:00 UTC · za <span id="challengeCountdown">--:--:--</span></p>
+
+      <div class="hub-card challenge-card">
+        <div class="hub-card-header">
+          <span class="hub-card-label">🎯 MISJA DNIA</span>
+        </div>
+        <p id="hubMissionText" class="hub-mission-text">—</p>
+      </div>
+
+      <div class="hub-card challenge-card">
+        <div class="hub-card-header">
+          <span class="hub-card-label">🗓️ WYZWANIE DNIA</span>
+          <span class="challenge-streak">🔥 <span id="dailyStreakValue">0</span> dni</span>
+        </div>
+        <p id="dailyGoalText" class="hint-text daily-goal">—</p>
+        <button id="btnPlayDaily" class="btn btn-primary">ZAGRAJ WYZWANIE DNIA</button>
+      </div>
+
+      <button id="btnChallengesBack" class="btn btn-secondary">DO MIASTA</button>
     </div>
   </div>
 
@@ -318,6 +369,25 @@
       </div>
       <p id="adCountdown" class="ad-countdown">5</p>
     </div>
+  </div>
+
+  <!-- ===================== BOTTOM NAV (GDD 4.0 §5.1/§5.2/§5.3/§5.4) =====================
+       One persistent nav shown across the 4 hub screens instead of
+       duplicating markup per screen. Tabs unlock per §5.5 -- see
+       Game.renderBottomNav(). -->
+  <div id="bottomNav" class="bottom-nav hidden">
+    <button id="btnNavMiasto" class="nav-tab" data-nav="mainMenu">
+      <span class="nav-tab-icon">🏙️</span><span class="nav-tab-label">Miasto</span>
+    </button>
+    <button id="btnNavDzielnice" class="nav-tab" data-nav="campaignScreen">
+      <span class="nav-tab-icon">🗺️</span><span class="nav-tab-label">Dzielnice</span>
+    </button>
+    <button id="btnNavWarsztat" class="nav-tab" data-nav="shopScreen">
+      <span class="nav-tab-icon">🛠️</span><span class="nav-tab-label">Warsztat</span>
+    </button>
+    <button id="btnNavWyzwania" class="nav-tab" data-nav="challengesScreen">
+      <span class="nav-tab-icon">🏆</span><span class="nav-tab-label">Wyzwania</span>
+    </button>
   </div>
 
 </div>
