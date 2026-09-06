@@ -83,12 +83,27 @@
   </div>
 
   <!-- ===================== PAUSE SHEET ===================== -->
-  <div id="pauseSheet" class="screen hidden">
-    <div class="screen-inner">
+  <div id="pauseSheet" class="screen overlay-screen hidden">
+    <div class="screen-inner pause-panel">
       <h2 class="section-title">PAUZA</h2>
-      <button id="btnResume" class="btn btn-primary">WZNÓW</button>
-      <button id="btnRestart" class="btn btn-secondary">RESTART RUNDY</button>
-      <button id="btnControls" class="btn btn-secondary">STEROWANIE</button>
+      <div class="pause-divider"></div>
+
+      <button id="btnResume" class="btn btn-primary pause-btn">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        WRÓĆ DO GRY
+      </button>
+      <button id="btnRestart" class="btn btn-secondary pause-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.6 6.36"/><path d="M3 21v-6h6"/></svg>
+        RESTART MISJI / RUNDY
+      </button>
+      <button id="btnControls" class="btn btn-secondary pause-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="4"/><circle cx="8" cy="13" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.3" fill="currentColor" stroke="none"/></svg>
+        STEROWANIE
+      </button>
+      <button id="btnQuickEquip" class="btn btn-secondary pause-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/></svg>
+        ZMIEŃ WYGLĄD
+      </button>
 
       <div id="controlsPanel" class="controls-panel hidden">
         <div class="control-row">
@@ -115,13 +130,58 @@
         </div>
       </div>
 
-      <button id="btnLeaveRun" class="btn btn-danger">OPUŚĆ RUNDĘ</button>
+      <button id="btnLeaveRun" class="btn btn-danger pause-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/><line x1="9" y1="12" x2="20" y2="12"/><path d="m16 8 4 4-4 4"/></svg>
+        WYJDŹ DO MIASTA
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== QUICK EQUIP POPUP (v5: design/screens/wybor_narzedzia.svg) =====================
+       Opened from Pauza -- lets the player cycle to another OWNED cosmetic
+       per category without leaving the run for the full Warsztat screen. -->
+  <div id="quickEquipScreen" class="screen overlay-screen hidden">
+    <div class="screen-inner tool-popup-panel">
+      <h2 class="section-title">WYBIERZ NARZĘDZIE</h2>
+      <p class="hint-text tool-popup-sub">Rozgrywka zatrzymana</p>
+
+      <button id="quickEquipAura" class="tool-card" data-category="aura">
+        <span class="tool-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg></span>
+        <span class="tool-card-body">
+          <span class="tool-card-name">—</span>
+          <span class="tool-card-desc">Trail — ślad za rdzeniem</span>
+        </span>
+        <span class="tool-card-radio"></span>
+      </button>
+
+      <button id="quickEquipEffect" class="tool-card" data-category="effect">
+        <span class="tool-card-icon"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+        <span class="tool-card-body">
+          <span class="tool-card-name">—</span>
+          <span class="tool-card-desc">Efekt pochłaniania</span>
+        </span>
+        <span class="tool-card-radio"></span>
+      </button>
+
+      <button id="quickEquipOverdrive" class="tool-card" data-category="overdriveSkin">
+        <span class="tool-card-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg></span>
+        <span class="tool-card-body">
+          <span class="tool-card-name">—</span>
+          <span class="tool-card-desc">Overdrive — finał rundy</span>
+        </span>
+        <span class="tool-card-radio"></span>
+      </button>
+
+      <div class="tool-popup-cta-row">
+        <button id="btnQuickEquipApply" class="btn btn-primary">WYBIERZ</button>
+        <button id="btnQuickEquipClose" class="btn btn-secondary">ZAMKNIJ</button>
+      </div>
     </div>
   </div>
 
   <!-- ===================== LEAVE RUN CONFIRM ===================== -->
-  <div id="leaveConfirm" class="screen hidden">
-    <div class="screen-inner">
+  <div id="leaveConfirm" class="screen overlay-screen hidden">
+    <div class="screen-inner pause-panel">
       <h2 class="section-title">OPUŚCIĆ RUNDĘ?</h2>
       <p class="hint-text">Wrócisz do menu głównego. Monety za dotychczasowy wynik zostaną zapisane.</p>
       <button id="btnLeaveConfirmYes" class="btn btn-danger">TAK, OPUŚĆ</button>
@@ -443,38 +503,107 @@
         </div>
       </div>
 
-      <p class="hint-text">Reset o 00:00 UTC · za <span id="challengeCountdown">--:--:--</span></p>
-
-      <div class="hub-card challenge-card">
-        <div class="hub-card-header">
-          <span class="hub-card-label">🎯 MISJA DNIA</span>
+      <!-- v5: design/screens/wyzwania.svg -- Daily Seed Challenge gets the
+           big hero treatment (icon, countdown, reward track); the rotating
+           daily mission + streak stay as a secondary card below it. -->
+      <div class="daily-hero-card">
+        <div class="daily-hero-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M12 12.5l1.1 2.3 2.5.3-1.8 1.8.4 2.6-2.2-1.2-2.2 1.2.4-2.6-1.8-1.8 2.5-.3z" fill="currentColor" stroke="none"/></svg>
         </div>
-        <p id="hubMissionText" class="hub-mission-text">—</p>
+        <h2 class="daily-hero-title">WYZWANIE DNIA</h2>
+        <p id="dailyGoalText" class="daily-hero-sub">—</p>
+
+        <div class="daily-countdown">
+          <span class="daily-countdown-label">RESETUJE SIĘ ZA</span>
+          <span class="daily-countdown-value" id="challengeCountdown">--:--:--</span>
+        </div>
+
+        <div class="daily-reward-track">
+          <div class="daily-reward-box">
+            <span class="daily-reward-label">PIERWSZE UKOŃCZENIE</span>
+            <span class="daily-reward-value" id="dailyRewardFirst">—</span>
+          </div>
+          <div class="daily-reward-box daily-reward-box-gold">
+            <span class="daily-reward-label">CEL PREMIUM / ZŁOTY</span>
+            <span class="daily-reward-value daily-reward-gold" id="dailyRewardBest">—</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnPlayDaily" class="btn btn-primary">
+        ZAGRAJ WYZWANIE
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
+      </button>
+
+      <div class="hub-info-panel">
+        <div class="hub-info-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 11h1v5h1"/></svg>
+          Jak to działa?
+        </div>
+        <ul class="hub-info-list">
+          <li>Jedno Daily aktywne na dobę</li>
+          <li>Pierwsze ukończenie daje największy bonus</li>
+          <li>Nagrody trafiają do Warsztatu</li>
+        </ul>
       </div>
 
       <div class="hub-card challenge-card">
         <div class="hub-card-header">
-          <span class="hub-card-label">🗓️ WYZWANIE DNIA</span>
+          <span class="hub-card-label">🎯 MISJA DNIA</span>
           <span class="challenge-streak">🔥 <span id="dailyStreakValue">0</span> dni</span>
         </div>
-        <p id="dailyGoalText" class="hint-text daily-goal">—</p>
-        <button id="btnPlayDaily" class="btn btn-primary">ZAGRAJ WYZWANIE DNIA</button>
+        <p id="hubMissionText" class="hub-mission-text">—</p>
       </div>
 
       <button id="btnChallengesBack" class="btn btn-secondary">DO MIASTA</button>
     </div>
   </div>
 
-  <!-- ===================== GAME OVER SCREEN ===================== -->
+  <!-- ===================== GAME OVER SCREEN (v5: design/screens/wynik_rundy.svg) ===================== -->
   <div id="gameOverScreen" class="screen hidden">
-    <div class="screen-inner">
-      <h2 class="section-title">KONIEC RUNDY</h2>
+    <div class="screen-inner result-screen">
+      <div class="result-eyebrow">KONIEC RUNDY</div>
       <div id="resultTag" class="result-tag hidden"></div>
 
-      <div class="result-summary">
-        <div class="result-place" id="finalPlace">#1</div>
-        <div class="result-score">Wynik: <span id="finalScore">0</span></div>
-        <div class="result-coins">Zdobyte monety: <span id="finalCoins">0</span></div>
+      <div class="result-hero">
+        <div class="result-hero-label">WYNIK</div>
+        <div class="result-hero-row">
+          <div class="result-hero-score" id="finalScore">0</div>
+          <div id="resultPbBadge" class="result-pb-badge hidden">NOWY PB</div>
+        </div>
+      </div>
+
+      <div class="result-badges">
+        <div class="result-badge">
+          <span class="result-badge-label">ROZMIAR / TIER</span>
+          <span class="result-badge-value" id="resultTierLabel">T1 · MAŁY</span>
+        </div>
+        <div class="result-badge">
+          <span class="result-badge-label">MIEJSCE</span>
+          <span class="result-badge-value result-badge-gold" id="finalPlace">#1</span>
+        </div>
+      </div>
+
+      <div class="result-card result-coins-card">
+        <span class="result-coins-icon">◇</span>
+        <div class="result-coins-body">
+          <span class="result-card-label">ZDOBYTE MONETY</span>
+          <span class="result-coins-value">+<span id="finalCoins">0</span> monet</span>
+        </div>
+      </div>
+
+      <div class="result-card result-core-card">
+        <span class="result-card-label">POSTĘP CORE CITY</span>
+        <div class="result-core-row">
+          <span class="result-core-pct" id="resultCoreBefore">0%</span>
+          <span class="result-core-arrow">→</span>
+          <span class="result-core-pct result-core-pct-after" id="resultCoreAfter">0%</span>
+          <span class="result-core-gain" id="resultCoreGain">+0%</span>
+        </div>
+        <div class="result-core-track">
+          <div id="resultCoreBarBefore" class="result-core-bar-before"></div>
+          <div id="resultCoreBar" class="result-core-bar-after"></div>
+        </div>
       </div>
 
       <p class="hint-text win-rule-caption">Wygrywa najwyższy wynik. Rozmiar to tylko rozstrzygnięcie remisu.</p>
@@ -484,15 +613,10 @@
       <p id="missionResultLine" class="hint-text mission-result hidden"></p>
       <p id="hubMilestoneLine" class="hint-text hub-milestone-result hidden"></p>
 
-      <div class="hub-meter-row">
-        <span class="hud-label">City Core</span>
-        <div class="hub-meter-track"><div id="resultCoreBar" class="hub-meter-bar"></div></div>
-      </div>
-
-      <button id="btnWatchAd" class="btn btn-gold">📺 OBEJRZYJ REKLAMĘ = x2 MONET</button>
-      <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ PONOWNIE</button>
+      <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ JESZCZE RAZ</button>
+      <button id="btnWatchAd" class="btn btn-gold">OGLĄDAJ REKLAMĘ · X2 MONET</button>
       <button id="btnShare" class="btn btn-secondary">🔗 UDOSTĘPNIJ WYNIK</button>
-      <button id="btnMenu" class="btn btn-secondary">MENU GŁÓWNE</button>
+      <button id="btnMenu" class="btn btn-link">Wróć do Miasta</button>
     </div>
   </div>
 
