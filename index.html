@@ -45,12 +45,34 @@
       <ol id="leaderboardList"></ol>
     </div>
 
+    <!-- Campaign-only goal panel (GDD §06 HUD zones: "Pod górą: Cel + pasek
+         wzrostu"). Hidden in Arena/Daily; shown in place of the size/score/
+         standings panels while a mission is running. -->
+    <div id="hud-goal" class="hud-panel hidden">
+      <div class="hud-row">
+        <span class="hud-label">CEL</span>
+        <span id="missionGoalProgress" class="hud-value goal">0/1</span>
+      </div>
+      <div class="hud-goal-text" id="missionGoalLabel">—</div>
+      <div class="tier-progress-track"><div id="missionTierBar" class="tier-progress-bar"></div></div>
+      <div class="hud-row hud-row-sub">
+        <span class="hud-label" id="missionTierLabel">Fragmenty</span>
+        <span class="hud-label">⏱ <span id="missionTimerValue">0</span>s</span>
+      </div>
+      <div class="hud-row hud-row-sub">
+        <span class="hud-label">WYNIK</span>
+        <span id="missionScoreValue" class="hud-value score">0</span>
+      </div>
+    </div>
+
+    <div id="nelaToast" class="nela-toast hidden"></div>
+
     <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
 
     <div id="overdriveBanner" class="overdrive-banner hidden">⚡ OVERDRIVE — CITY SHIFT ⚡</div>
 
     <div id="evolutionOverlay" class="evolution-overlay hidden">
-      <div class="evolution-title">EWOLUCJA — wybierz mutację</div>
+      <div class="evolution-title">EWOLUCJA — wybierz opcję</div>
       <div id="evolutionCards" class="evolution-cards"></div>
     </div>
 
@@ -138,6 +160,10 @@
       <button id="btnStart" class="btn btn-primary">GRAJ (2:00)</button>
 
       <div class="hub-modules">
+        <button id="btnCampaign" class="hub-tile hub-tile-featured">
+          <span class="hub-tile-icon">🏙️</span>
+          <span class="hub-tile-label">KAMPANIA</span>
+        </button>
         <button id="btnDaily" class="hub-tile">
           <span class="hub-tile-icon">🗓️</span>
           <span class="hub-tile-label">WYZWANIE<br>DNIA</span>
@@ -180,6 +206,48 @@
     </div>
   </div>
 
+  <!-- ===================== CAMPAIGN MAP (Vector Hole v3) ===================== -->
+  <div id="campaignScreen" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title">KAMPANIA</h2>
+      <p class="hint-text">Odzyskaj miasto: jedna dzielnica na raz, jedna misja na raz.</p>
+
+      <div id="districtMap" class="district-map"></div>
+
+      <div id="missionList" class="mission-list"></div>
+
+      <div class="mission-detail">
+        <div class="mission-detail-name" id="missionDetailName">—</div>
+        <div class="mission-detail-line" id="missionDetailGoal">—</div>
+        <div class="mission-detail-line" id="missionDetailMedal">—</div>
+        <div class="mission-detail-line mission-detail-nela" id="missionDetailNela">—</div>
+        <div class="mission-detail-line mission-detail-reward" id="missionDetailReward">—</div>
+      </div>
+
+      <button id="btnPlayMission" class="btn btn-primary">GRAJ: MISJA</button>
+      <button id="btnCampaignBack" class="btn btn-secondary">DO MIASTA</button>
+    </div>
+  </div>
+
+  <!-- ===================== MISSION RESULT (Vector Hole v3) ===================== -->
+  <div id="missionResultScreen" class="screen hidden">
+    <div class="screen-inner">
+      <h2 class="section-title" id="missionResultTitle">MISJA UKOŃCZONA</h2>
+      <p class="hint-text mission-result-nela" id="missionResultNela">—</p>
+
+      <div class="result-summary">
+        <div class="result-score">Wynik: <span id="missionResultScore">0</span></div>
+      </div>
+
+      <p class="mission-result-medal" id="missionResultMedal">—</p>
+      <p class="hint-text mission-result-reward" id="missionResultReward">—</p>
+
+      <button id="btnMissionNext" class="btn btn-primary">DALEJ</button>
+      <button id="btnMissionRetry" class="btn btn-secondary">SPRÓBUJ PONOWNIE</button>
+      <button id="btnMissionMap" class="btn btn-secondary">MAPA DZIELNIC</button>
+    </div>
+  </div>
+
   <!-- ===================== SHOP SCREEN (Workshop v2) ===================== -->
   <div id="shopScreen" class="screen hidden">
     <div class="screen-inner">
@@ -219,6 +287,7 @@
         <div class="result-coins">Zdobyte monety: <span id="finalCoins">0</span></div>
       </div>
 
+      <p class="hint-text win-rule-caption">Wygrywa najwyższy wynik. Rozmiar to tylko rozstrzygnięcie remisu.</p>
       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
 
       <p id="dailyResultLine" class="hint-text daily-result hidden"></p>

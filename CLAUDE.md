@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Vector Hole: Eat the Neon City** — a top-down, hole.io-style browser game, now built out as the "Golden Shot V2" hybrid-casual product per `docs/VECTRE_V2_PLAN.md` (the full audit + phased roadmap + per-phase changelog — read it before making architectural changes). Vanilla HTML/CSS/JS with zero dependencies and no build step, deliberately kept to exactly three files:
+**Vector Hole: Eat the Neon City** — a top-down, hole.io-style browser game, built out as the "Golden Shot V2" hybrid-casual product per `docs/VECTRE_V2_PLAN.md`, then extended with a mission-driven **Campaign mode** ("Vector Hole v3") per `docs/VECTRE_V3_PLAN.md` (both are full audit + roadmap + changelog docs — read the relevant one before making architectural changes). Vanilla HTML/CSS/JS with zero dependencies and no build step, deliberately kept to exactly three files:
 
-- `index.html` — canvas element, in-game HUD overlays, and every screen (hub/menu, run setup, shop, profile, pause sheet, evolution cards, game-over, ad) all present in the DOM at once, toggled via the `.hidden` class.
+- `index.html` — canvas element, in-game HUD overlays, and every screen (hub/menu, run setup, shop, profile, pause sheet, evolution cards, game-over, ad, campaign map, mission result) all present in the DOM at once, toggled via the `.hidden` class.
 - `style.css` — cyberpunk neon visual system, responsive layout (desktop + touch/mobile), CSS animations for pulsing neon glows.
-- `game.js` — all game logic, in one (long) file, using ES6 classes: `Game`, `Hole`, `Bot extends Hole`, `WorldObject`, `Particle`, `Ripple`, `SeededRNG`, `Analytics`.
+- `game.js` — all game logic, in one (long) file, using ES6 classes: `Game`, `Hole`, `Bot extends Hole`, `WorldObject`, `CampaignEntity`, `Particle`, `Ripple`, `SeededRNG`, `Analytics`.
 
-This project went through Golden Shot V2 Phases 1–9 in one pass (see `docs/VECTRE_V2_PLAN.md` §4–§9 for the exact scope and honest gaps of each). The file is now large; **do not split it into multiple files or introduce a build step without first flagging that decision to the user** — the "exactly three files, zero dependencies" constraint is a deliberate, repeated instruction, not an oversight.
+This project went through Golden Shot V2 Phases 1–9 in one pass (see `docs/VECTRE_V2_PLAN.md` §4–§9 for the exact scope and honest gaps of each), then Campaign mode in a second pass (see `docs/VECTRE_V3_PLAN.md`). The file is now large; **do not split it into multiple files or introduce a build step without first flagging that decision to the user** — the "exactly three files, zero dependencies" constraint is a deliberate, repeated instruction, not an oversight.
 
 ## Commands
 
@@ -36,7 +36,8 @@ Pushing to `main` triggers `.github/workflows/deploy-pages.yml`, which deploys t
 - **`GameState`** enum (`BOOT/MENU/MATCH_SETUP/PLAYING/PAUSED/RESULTS`) is tracked on `Game.state` and updated at the same call sites that already drove screen changes.
 - **`SeededRNG`** (mulberry32) backs `Game.rng`, created fresh per round from `Game.runSeed`. It seeds the *initial* world layout only (see `seededRand()`'s doc comment) — mid-round randomness (bot wandering, object respawn after being eaten, particles) intentionally stays on `Math.random()`. The Daily Seed Challenge (`dailySeedForDate()`) derives a deterministic seed from the UTC calendar date.
 - **`Analytics`** is a console-log stub (`Game.analytics.track(name, props)`) with an in-memory ring buffer. Wired at most of the GDD's minimum event list; a few events tied to systems that still don't exist (backend accounts, IAP) are documented as not-fired rather than faked.
-- **Save schema** is versioned (`SAVE_SCHEMA_VERSION`, currently 5) with a `migrateSave()` chain — add a new `if (data.schemaVersion < N)` branch per future change rather than replacing the function. The `localStorage` key itself (`vectorHoleSave_v1`) never changes.
+- **Save schema** is versioned (`SAVE_SCHEMA_VERSION`, currently 6) with a `migrateSave()` chain — add a new `if (data.schemaVersion < N)` branch per future change rather than replacing the function. The `localStorage` key itself (`vectorHoleSave_v1`) never changes.
+- **Ranking is always by score**, with radius/name as documented tiebreakers, via the shared `rankHoles()` helper — used by the live HUD rank badge, Arena's `finalizeRun()`/results screen, and nowhere else needs its own sort. Don't reintroduce a radius-based sort for "who's winning" (see `docs/VECTRE_V3_PLAN.md` §2 for the bug this fixed).
 
 ### World and coordinate spaces
 
@@ -73,6 +74,18 @@ Two evolution offers per run trigger at `CONFIG.evolution.triggerRadii` (player 
 - **Share**: `Game.shareResult()` uses `navigator.share` (feature-detected via `canShare`) with a clipboard-copy fallback — never assumes Web Share exists.
 - **Daily Seed Challenge**: `startDailyChallenge()` seeds a round from the UTC date so every player gets the same layout/modifier/Overdrive that day; tracked locally in `save.daily` (no backend leaderboard exists — see plan doc for why that's a later, explicitly-deferred phase). It has an explicit goal and reward, not just a different seed: the Hub shows the score to beat (`dailyGoalText`), and `CONFIG.daily` grants a completion bonus plus a bigger bonus (Coins + Prisms) for a new record, both called out on the results screen.
 
+### Campaign mode (Vector Hole v3)
+
+A second simulation from Arena, switched via `Game.mode` ('arena' | 'campaign') and dispatched in `Game.loop()` to either `update()`/`render()` (Arena) or `updateCampaign()`/`renderCampaign()` (Campaign) — they don't share entity lists, so Arena's tuned `WorldObject`/`TIERS` balance can't regress from Campaign changes and vice versa.
+
+- **Entities**: `CampaignEntity` (fragment/prop/vehicle/capsule/marker/node/pylon/landmark/gate), stats and per-type eat-gating in `CAMPAIGN_ENTITY_STATS`. Growth uses its own tier ladder, `CAMPAIGN_TIERS` (T1–T6, independent of Arena's `sizeTiers`) — a tier threshold gates which entity types are eatable, and T4 gates whether a mission's landmark ("big eat") can be reached at all.
+- **Missions**: `CAMPAIGN_MISSIONS` (8, districts `plac`/`park` in `DISTRICTS`) — each has a `goal` (eatCount/comboChain/gatesPassed/activateAndDevour), an optional `medal`, a curated `setup` spawned by `Game.buildCampaignMission()`, NELA narration lines, and a first-clear reward. `Game.checkCampaignGoal()` / `Game.endCampaignMission()` drive success/fail; there is no failure state beyond running out of time (no elimination).
+- **Powers**: `CAMPAIGN_POWERS` (Magnes/Reaktor/Impuls/Skaner) — a separate, smaller pool from Arena's `MUTATIONS`, offered once per mission via `Game.offerCampaignPowers()` (reuses the same evolution overlay DOM/CSS as Arena's evolution cards).
+- **Hub**: the "KAMPANIA" hub tile opens `campaignScreen` (district map + mission list/detail, `Game.renderCampaignMap()`); mission end shows `missionResultScreen`, not Arena's `gameOverScreen`.
+- Save progress lives in `save.campaign` (`unlockedDistricts`/`completed`/`medals`), independent of Arena's `save.hub`/`save.daily`/`save.mission`.
+
+See `docs/VECTRE_V3_PLAN.md` for the full scope call (which districts/missions are built vs. roadmap-only) and known simplifications (bots are passive wanderers, gates/pylons are simplified, balance is unverified).
+
 ### What's deliberately not built
 
-No backend of any kind (daily/global leaderboards, cloud save, accounts are all local-only). No real ad/IAP SDK — `showInterstitialAd()`/`watchRewardedAd()` are still a timed fake progress bar. No full authored chunk/district generator (`CONFIG.flags.proceduralDistricts` stays `false`) — only a single seed-driven "Rush Hour" run modifier exists as a lightweight stand-in. No audio system. Check `docs/VECTRE_V2_PLAN.md` before assuming any of these exist or extending them further.
+No backend of any kind (daily/global leaderboards, cloud save, accounts are all local-only). No real ad/IAP SDK — `showInterstitialAd()`/`watchRewardedAd()` are still a timed fake progress bar. No full authored chunk/district generator (`CONFIG.flags.proceduralDistricts` stays `false`) — only a single seed-driven "Rush Hour" run modifier exists as a lightweight stand-in. No audio system. Campaign districts beyond Plac Neonów/Park Impulsów (Port, Galeria, ...) have zero authored content in the GDD and show as locked teasers on the map only — see `docs/VECTRE_V3_PLAN.md` §1/§4. Check the relevant plan doc before assuming any of these exist or extending them further.

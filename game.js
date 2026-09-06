@@ -12,7 +12,7 @@
    aliases into this object so the rest of the file is untouched. */
 
 const CONFIG = {
-  version: '2.0.0-p0',
+  version: '3.0.0-campaign',
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
@@ -84,6 +84,26 @@ const CONFIG = {
     bonusObjectCount: 10,
     bonusObjectValue: 15
   },
+  // Vector Hole v3 (GDD 3.1) campaign mode. Kept separate from `eating`/
+  // `juice` above so Arena's already-tuned balance is untouched.
+  campaign: {
+    baseRadius: 20,
+    comboWindowSeconds: 1.5,   // GDD 07: "kolejne pożarcie w 1,5 s"
+    comboMaxMultiplier: 2.0,   // GDD 07: "combo 1,0-2,0 mnoży punkty, nie wzrost"
+    growthAreaScale: 6,        // growthUnits -> Hole area gain, for a readable radius curve
+    hitPenaltyFraction: 0.25,  // GDD 07: contact with a bigger bot costs 25% of current growth
+    hitInvulnMs: 2000,
+    entityRadius: {
+      fragment: 7, prop: 13, vehicle: 19, capsule: 10, marker: 12,
+      node: 16, pylon: 15, landmark: 46
+    },
+    gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
+    nelaDisplaySeconds: 4.5,
+    // A 1400x1400 box centered in the shared 3000x3000 world (see
+    // buildCampaignMission) — keeps a 60-120s mission's travel distances
+    // reasonable without changing Hole's world-bound clamp constants.
+    bounds: { minX: 800, maxX: 2200, minY: 800, maxY: 2200 }
+  },
   // Size tiers used for analytics (`size_tier` events) and future evolution
   // visuals (GDD P2). Not yet shown in the HUD or tied to any visual change.
   sizeTiers: [
@@ -104,7 +124,8 @@ const CONFIG = {
     shopV2: true,           // Phase 7: shop categories/loadout + Prisms
     dailyChallenge: true,   // Phase 9: daily seed challenge (local-only, no backend leaderboard)
     monetizationAdapters: false, // real ad/IAP SDKs — deliberately not added (no secrets/store creds in-repo)
-    analyticsConsoleLog: true    // Phase 1: log analytics events to console
+    analyticsConsoleLog: true,   // Phase 1: log analytics events to console
+    campaignMode: true           // Vector Hole v3: mission-driven Campaign alongside Arena
   }
 };
 
@@ -252,10 +273,160 @@ const MUTATIONS = [
   { id: 'bounty_core', name: 'Bounty Core', desc: 'Oznacza rywala — zjedzenie daje bonus.', weight: 2, color: '#ffae00' }
 ];
 
+/* ----------------------- Campaign mode (GDD 3.1 / "Vector Hole v3") -----------------------
+   A second, mission-driven game mode alongside the existing 120s Arena
+   round. Per the GDD's own explicit scope call ("Najmniejszy zakres, który
+   warto zbudować: jedna dzielnica, cztery misje... Pozostałe misje w tym
+   dokumencie to plan rozszerzenia") the two districts actually authored
+   with full mission text (Plac Neonów 01-04, Park Impulsów 05-08) are
+   built; districts III-VI have no authored content in the GDD and stay a
+   documented roadmap entry (see docs/VECTRE_V3_PLAN.md), matching how
+   proceduralDistricts already stays a flag with no generator behind it.
+   Campaign is intentionally a separate simulation from Arena (own entity
+   list, own growth/tier model) so the already-tuned Arena/Daily/Ranked-
+   adjacent economy in TIERS/CONFIG.eating is untouched. */
+
+// GDD 07: growthUnits is a tier model independent of the old HUD's radius
+// number. A tier threshold unlocks a *class* of eatable object; radius is
+// still what drives rendering/eat-radius math (via Hole.growFromArea), but
+// campaign missions gate eating and the landmark "big eat" off tier, not
+// raw radius, so the numbers in the GDD table are reproduced here as-is.
+const CAMPAIGN_TIERS = [
+  { id: 'T1', name: 'Fragmenty', minUnits: 0 },
+  { id: 'T2', name: 'Ławki i pachołki', minUnits: 10 },
+  { id: 'T3', name: 'Małe pojazdy', minUnits: 30 },
+  { id: 'T4', name: 'Kioski i cele misji', minUnits: 70 },
+  { id: 'T5', name: 'Duże pojazdy', minUnits: 140 },
+  { id: 'T6', name: 'Cele finałowe', minUnits: 250 }
+];
+
+// growth/score/minimum-tier per campaign entity type (GDD 07: growth gain
+// 1/3/6/10/18/32, base score 5/15/30/50/90/160 across the six tiers).
+const CAMPAIGN_ENTITY_STATS = {
+  fragment: { growth: 1, score: 5, minTier: 1, label: 'fragment' },
+  prop: { growth: 3, score: 15, minTier: 2, label: 'element uliczny' },
+  vehicle: { growth: 6, score: 30, minTier: 3, label: 'pojazd' },
+  capsule: { growth: 3, score: 15, minTier: 1, label: 'kapsuła' },
+  marker: { growth: 10, score: 50, minTier: 2, label: 'znacznik' },
+  node: { growth: 10, score: 50, minTier: 3, label: 'węzeł' },
+  pylon: { growth: 10, score: 50, minTier: 3, label: 'pylon' },
+  landmark: { growth: 32, score: 160, minTier: 4, label: 'landmark' }
+};
+
+// The GDD's "four powers are enough for the first test" (§08): a small,
+// campaign-only, run-only power pool distinct from Arena's 7-mutation
+// MUTATIONS pool above (kept untouched so Arena's already-tuned balance
+// doesn't shift). Exact numbers per GDD §08.
+const CAMPAIGN_POWERS = [
+  { id: 'magnes', name: 'Magnes', desc: 'Przyciąga już jadalne fragmenty w promieniu 1,4x.', color: '#00f3ff' },
+  { id: 'reaktor', name: 'Reaktor', desc: 'Okno combo rośnie z 1,5 s do 2,1 s.', color: '#ffd700' },
+  { id: 'impuls', name: 'Impuls', desc: 'Po awansie tieru: +20% prędkości na 2 s.', color: '#39ff14' },
+  { id: 'skaner', name: 'Skaner', desc: 'Co 8 s wskazuje najbliższe osiągalne skupisko.', color: '#b026ff' }
+];
+
+// Hub district map (mockup in GDD §09). Only Plac Neonów / Park Impulsów
+// have authored missions; Port/Galeria are shown as locked teasers on the
+// map (not playable) to match the mockup without inventing content.
+const DISTRICTS = [
+  { id: 'plac', name: 'Plac Neonów', order: 1, missions: ['M01', 'M02', 'M03', 'M04'] },
+  { id: 'park', name: 'Park Impulsów', order: 2, missions: ['M05', 'M06', 'M07', 'M08'] },
+  { id: 'port', name: 'Port', order: 3, missions: [], locked: true },
+  { id: 'galeria', name: 'Galeria', order: 4, missions: [], locked: true }
+];
+
+// Rozdział I (Plac Neonów) + Rozdział II (Park Impulsów) — the two chapters
+// the GDD writes out in full (cel/medal/układ/NELA/nagroda per mission).
+// `setup` drives buildCampaignMission()'s spawn layout; `goal`/`medal` drive
+// checkCampaignGoal(); numeric balance is explicitly a "propozycja do
+// sprawdzenia" per the GDD's own disclaimer, not a measured target.
+const CAMPAIGN_MISSIONS = [
+  {
+    id: 'M01', district: 'plac', order: 1, name: 'Pierwszy apetyt', timeLimit: 60,
+    goal: { type: 'eatCount', entityType: 'fragment', count: 12, label: 'Pochłoń 12 fragmentów energii' },
+    medal: { type: 'timeUnder', seconds: 35, label: 'Ukończ w 35 s' },
+    setup: { fragments: 18, bots: 0 },
+    nela: { start: 'Zacznij od drobiazgów. Każdy zasila Twój rdzeń.', success: 'Pierwsze światła wróciły!' },
+    reward: { coins: 40 }
+  },
+  {
+    id: 'M02', district: 'plac', order: 2, name: 'Dobra trasa', timeLimit: 90,
+    goal: { type: 'eatCount', entityType: 'prop', count: 8, label: 'Pochłoń 8 elementów ulicznych' },
+    medal: { type: 'visitBothClusters', label: 'Odwiedź oba skupiska' },
+    setup: { fragments: 14, props: 12, clusters: 2, bots: 0 },
+    nela: { start: 'Nie wszystko naraz. Wybierz swoją trasę.', success: 'Plac nabiera kształtu.' },
+    reward: { coins: 40 }
+  },
+  {
+    id: 'M03', district: 'plac', order: 3, name: 'Łańcuch reakcji', timeLimit: 90,
+    goal: { type: 'comboChain', count: 12, label: 'Zbuduj serię 12 pożarć' },
+    medal: { type: 'timeUnder', seconds: 25, label: 'Ukończ w 25 s' },
+    setup: { fragments: 20, arcLayout: true, bots: 0 },
+    nela: { start: 'Połącz kolejne kęsy. Nie zgub rytmu.', success: 'Właśnie uruchomiłaś reakcję łańcuchową.' },
+    reward: { coins: 40 }
+  },
+  {
+    id: 'M04', district: 'plac', order: 4, name: 'Pierwszy wielki kęs', timeLimit: 120,
+    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'kino', minTier: 4, label: 'Wyłącz 2 węzły i pochłoń neonowe kino' },
+    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
+    setup: { fragments: 12, props: 8, vehicles: 6, nodes: 2, landmark: 'kino', bots: 1 },
+    evolutionOffer: { atSeconds: 30, count: 2 },
+    nela: { start: 'Kino jest za duże? Jeszcze.', success: 'Kino odzyskane. Park otwarty!' },
+    reward: { coins: 60, unlockDistrict: 'park' }
+  },
+  {
+    id: 'M05', district: 'park', order: 1, name: 'Pierwszy impuls', timeLimit: 90,
+    goal: { type: 'gatesPassed', count: 2, label: 'Przekrocz 2 różne bramy w ich bezpiecznym oknie' },
+    medal: { type: 'comboUnbroken', label: 'Przejdź bez przerwania combo' },
+    setup: { fragments: 14, props: 6, gates: 2, bots: 0 },
+    nela: { start: 'Poczekaj na impuls. Wtedy ruszaj.', success: 'Park znów oddycha.' },
+    reward: { coins: 50 }
+  },
+  {
+    id: 'M06', district: 'park', order: 2, name: 'Zielona fala', timeLimit: 120,
+    goal: { type: 'eatCount', entityType: 'capsule', count: 18, label: 'Pochłoń 18 impulsowych kapsuł' },
+    medal: { type: 'comboAtLeast', count: 6, label: 'Zbierz 6 w jednym combo' },
+    setup: { capsuleWaves: [0, 40, 80], capsulesPerWave: 8, bots: 0 },
+    nela: { start: 'Podążaj za falą, nie za przypadkiem.', success: 'Energia płynie dalej.' },
+    reward: { coins: 50 }
+  },
+  {
+    id: 'M07', district: 'park', order: 3, name: 'Dwie drogi', timeLimit: 120,
+    goal: { type: 'eatCount', entityType: 'marker', count: 3, label: 'Odzyskaj 3 znaczniki ogrodu' },
+    medal: { type: 'bothRoutesUsed', label: 'Użyj obu tras' },
+    setup: { fragments: 16, props: 6, markers: 4, bots: 0 },
+    nela: { start: 'Skrót kusi. Obejście też prowadzi do celu.', success: 'Masz własny sposób na ten park.' },
+    reward: { coins: 50 }
+  },
+  {
+    id: 'M08', district: 'park', order: 4, name: 'Serce ogrodu', timeLimit: 120,
+    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'fontanna', minTier: 4, label: 'Naładuj 3 pylony i pochłoń fontannę' },
+    medal: { type: 'pylonsUnbroken', label: 'Aktywuj pylony w jednej serii' },
+    setup: { fragments: 12, props: 8, vehicles: 6, pylons: 3, landmark: 'fontanna', bots: 1 },
+    nela: { start: 'Jeszcze trzy impulsy. Obudź serce ogrodu.', success: 'Fontanna wróciła. Port czeka!' },
+    reward: { coins: 70 }
+  }
+];
+
+function campaignMissionById(id) { return CAMPAIGN_MISSIONS.find(m => m.id === id); }
+function campaignDistrictOf(missionId) {
+  const m = campaignMissionById(missionId);
+  return m ? DISTRICTS.find(d => d.id === m.district) : null;
+}
+
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 5;
+const SAVE_SCHEMA_VERSION = 6;
 
 /* ----------------------- Utilities ----------------------- */
+
+/** Single, explicit win rule shared by the live HUD rank and the results
+ *  screen (GDD P0-01): highest score wins; radius (then name) only breaks
+ *  a tie. Before this fix, live rank and finalizeRun() both sorted by
+ *  radius while the HUD/results labeled the number "Wynik" (score) —
+ *  which could visibly disagree with score order, exactly the "#5 has
+ *  219 pts, #6 has 277" inconsistency the GDD audit flagged. */
+function rankHoles(holes) {
+  return holes.slice().sort((a, b) => (b.score - a.score) || (b.radius - a.radius) || a.name.localeCompare(b.name));
+}
 
 function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
@@ -323,7 +494,10 @@ function defaultSave() {
     stats: { runsPlayed: 0 },
     hub: { coreCharge: 0 },
     daily: { lastSeedDate: null, lastSeedScore: 0 },
-    mission: { dateKey: null, completed: false }
+    mission: { dateKey: null, completed: false },
+    // v6: campaign progress. unlockedDistricts always includes the first
+    // district so a fresh save can play Mission 01 with no prior unlock.
+    campaign: { unlockedDistricts: ['plac'], completed: {}, medals: {} }
   };
 }
 
@@ -385,6 +559,16 @@ function migrateSave(data) {
       ...data,
       schemaVersion: 5,
       mission: data.mission || { dateKey: null, completed: false }
+    };
+  }
+
+  if (data.schemaVersion < 6) {
+    // v5 -> v6: campaign mode (Vector Hole v3 / GDD 3.1) — district/mission
+    // progress and per-mission medals, local-only like everything else.
+    data = {
+      ...data,
+      schemaVersion: 6,
+      campaign: data.campaign || { unlockedDistricts: ['plac'], completed: {}, medals: {} }
     };
   }
 
@@ -620,6 +804,177 @@ class WorldObject {
           ctx.lineTo(r * 0.8, off);
           ctx.stroke();
         }
+        break;
+      }
+    }
+    ctx.restore();
+  }
+}
+
+/* ----------------------- CampaignEntity (Vector Hole v3 mission objects) -----------------------
+   Deliberately separate from WorldObject: campaign missions are small,
+   curated layouts (not the Arena's random-pool-of-3-tiers world), and each
+   type (node/gate/capsule/marker/pylon/landmark) has its own activation
+   rule instead of a uniform "smaller than my radius" eat check. */
+
+class CampaignEntity {
+  constructor(type, x, y, opts) {
+    this.type = type;
+    this.x = x;
+    this.y = y;
+    this.radius = CONFIG.campaign.entityRadius[type];
+    this.stats = CAMPAIGN_ENTITY_STATS[type];
+    this.eating = false;
+    this.eatT = 0;
+    this.consumed = false;
+    this.spawnAt = 0;   // seconds into the mission before this entity is live (capsule waves)
+    this.cluster = null; // 'A' | 'B' — Mission 02 medal
+    this.route = null;   // 'A' | 'B' — Mission 07 medal
+    this.phase = 0;      // gate cycle position
+    if (type === 'node' || type === 'pylon') this.active = true; // true = not yet disabled/charged
+    if (type === 'landmark') this.unlocked = false;
+    if (type === 'gate') this.passCooldown = 0;
+    Object.assign(this, opts || {});
+  }
+
+  get live() { return this.spawnAt <= 0 || this._elapsed >= this.spawnAt; }
+
+  get isGateOpen() {
+    const { cycleSeconds, openSeconds } = CONFIG.campaign.gate;
+    return (this.phase % cycleSeconds) < openSeconds;
+  }
+
+  get isGateTelegraphing() {
+    const { cycleSeconds, openSeconds, telegraphSeconds } = CONFIG.campaign.gate;
+    const t = this.phase % cycleSeconds;
+    return t >= openSeconds - telegraphSeconds && t < openSeconds;
+  }
+
+  update(dt, missionElapsed) {
+    this._elapsed = missionElapsed;
+    if (this.type === 'gate') {
+      this.phase += dt;
+      if (this.passCooldown > 0) this.passCooldown -= dt;
+      return;
+    }
+    if (this.eating) {
+      this.eatT += dt / (this.type === 'landmark' ? 0.8 : EAT_ANIM_TIME);
+      if (this.eatT >= 1) this.consumed = true;
+    }
+  }
+
+  startEating() {
+    if (this.eating) return;
+    this.eating = true;
+    this.eatT = 0;
+  }
+
+  draw(ctx) {
+    if (!this.live || this.consumed) return;
+    const scale = this.eating ? Math.max(0, 1 - this.eatT) : 1;
+    if (scale <= 0) return;
+    const r = this.radius;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(scale, scale);
+
+    switch (this.type) {
+      case 'fragment': {
+        ctx.strokeStyle = ctx.fillStyle = '#00f3ff';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
+        ctx.beginPath();
+        ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0);
+        ctx.closePath(); ctx.fill();
+        break;
+      }
+      case 'prop': {
+        const color = this.cluster === 'B' ? '#ff9d00' : '#39ff14';
+        ctx.strokeStyle = color; ctx.lineWidth = 2;
+        ctx.shadowBlur = 10; ctx.shadowColor = color;
+        ctx.strokeRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6);
+        break;
+      }
+      case 'vehicle': {
+        ctx.strokeStyle = '#ff007f'; ctx.lineWidth = 2;
+        ctx.shadowBlur = 12; ctx.shadowColor = '#ff007f';
+        ctx.strokeRect(-r, -r * 0.55, r * 2, r * 1.1);
+        break;
+      }
+      case 'capsule': {
+        ctx.strokeStyle = ctx.fillStyle = '#39ff14';
+        ctx.shadowBlur = 14; ctx.shadowColor = '#39ff14';
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          const px = Math.cos(a) * r, py = Math.sin(a) * r;
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case 'marker': {
+        const color = this.route === 'B' ? '#b026ff' : '#ffd700';
+        ctx.strokeStyle = ctx.fillStyle = color;
+        ctx.shadowBlur = 14; ctx.shadowColor = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -r); ctx.lineTo(r * 0.9, r * 0.75); ctx.lineTo(-r * 0.9, r * 0.75);
+        ctx.closePath(); ctx.stroke();
+        break;
+      }
+      case 'node': {
+        const color = this.active ? '#ffae00' : 'rgba(255,255,255,0.25)';
+        ctx.strokeStyle = color; ctx.lineWidth = 3;
+        ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        if (this.active) {
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, r * 0.4);
+          ctx.moveTo(r * 0.4, -r * 0.4); ctx.lineTo(-r * 0.4, r * 0.4);
+          ctx.stroke();
+        }
+        break;
+      }
+      case 'pylon': {
+        const color = this.active ? '#00f3ff' : 'rgba(255,255,255,0.25)';
+        ctx.strokeStyle = color; ctx.lineWidth = 3;
+        ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
+        ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2); ctx.stroke();
+        break;
+      }
+      case 'landmark': {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+        const color = this.unlocked ? '#ffd700' : 'rgba(255, 215, 0, 0.35)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = this.unlocked ? 24 + 8 * pulse : 6;
+        ctx.shadowColor = color;
+        if (!this.unlocked) ctx.setLineDash([10, 8]);
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        if (!this.unlocked) {
+          ctx.fillStyle = 'rgba(255,255,255,0.6)';
+          ctx.font = 'bold 18px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🔒', 0, 0);
+        }
+        break;
+      }
+      case 'gate': {
+        const open = this.isGateOpen;
+        const telegraph = this.isGateTelegraphing;
+        const color = !open ? 'rgba(255,255,255,0.2)' : telegraph ? '#ffae00' : '#00f3ff';
+        ctx.strokeStyle = color; ctx.lineWidth = 5;
+        ctx.shadowBlur = open ? 16 : 4; ctx.shadowColor = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 2.4); ctx.lineTo(0, r * 2.4);
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -r * 2.4, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, r * 2.4, 6, 0, Math.PI * 2); ctx.fill();
         break;
       }
     }
@@ -888,6 +1243,16 @@ class Game {
     // Phase 9: Daily Seed Challenge
     this.isDailyRun = false;
 
+    // Vector Hole v3: Campaign mode state (see the "Campaign mode" section
+    // of the class below). 'arena' covers the existing quickplay + Daily
+    // Seed Challenge; 'campaign' is the new mission-driven mode.
+    this.mode = 'arena';
+    this.campaignEntities = [];
+    this.mission = null;
+    this.selectedDistrictId = null;
+    this.selectedMissionId = null;
+    this.campaignSpawn = null;
+
     // Daily mission (real progress tracking, replaces the old static line)
     this.activeMission = null;
     this.missionProgressPeak = 0;
@@ -1088,6 +1453,10 @@ class Game {
     document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
     document.getElementById('btnDaily').addEventListener('click', () => this.startDailyChallenge());
+
+    document.getElementById('btnCampaign').addEventListener('click', () => this.openCampaignScreen());
+    document.getElementById('btnCampaignBack').addEventListener('click', () => this.showScreen('mainMenu'));
+    document.getElementById('btnPlayMission').addEventListener('click', () => this.startCampaignMission(this.selectedMissionId));
 
     document.getElementById('btnProfile').addEventListener('click', () => this.openProfileScreen());
     document.getElementById('btnSaveProfile').addEventListener('click', () => this.saveProfile());
@@ -1411,7 +1780,7 @@ class Game {
   }
 
   showScreen(id) {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'profileScreen', 'runSetupScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
     document.getElementById('hud').classList.toggle('hidden', true);
@@ -1420,7 +1789,7 @@ class Game {
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'profileScreen', 'runSetupScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
   }
@@ -1475,14 +1844,757 @@ class Game {
     return this.rng.next() < 0.35 ? 'rush_hour' : 'none';
   }
 
+  /* ---------- Campaign mode (Vector Hole v3 / GDD 3.1) ----------
+     A second simulation from Arena: its own entity list (campaignEntities,
+     CampaignEntity instances), its own growth/tier model (growthUnits ->
+     CAMPAIGN_TIERS), driven by updateCampaign()/renderCampaign() instead
+     of update()/render(). Arena, Daily and their save fields are untouched. */
+
+  randomInCampaignBounds(padding) {
+    const b = CONFIG.campaign.bounds;
+    return { x: rand(b.minX + padding, b.maxX - padding), y: rand(b.minY + padding, b.maxY - padding) };
+  }
+
+  campaignPlayerTier() {
+    const units = this.mission ? this.mission.growthUnits : 0;
+    let current = CAMPAIGN_TIERS[0];
+    for (const t of CAMPAIGN_TIERS) if (units >= t.minUnits) current = t;
+    return current;
+  }
+
+  campaignTierIndex(tierId) { return CAMPAIGN_TIERS.findIndex(t => t.id === tierId) + 1; }
+
+  campaignEntityColor(type) {
+    return {
+      fragment: '#00f3ff', prop: '#39ff14', vehicle: '#ff007f', capsule: '#39ff14',
+      marker: '#ffd700', node: '#ffae00', pylon: '#00f3ff', landmark: '#ffd700'
+    }[type] || '#fff';
+  }
+
+  /* ---- Hub campaign map / mission select ---- */
+
+  openCampaignScreen() {
+    this.renderCampaignMap();
+    this.showScreen('campaignScreen');
+  }
+
+  renderCampaignMap() {
+    const wrap = document.getElementById('districtMap');
+    wrap.innerHTML = '';
+    DISTRICTS.forEach(d => {
+      const unlocked = this.save.campaign.unlockedDistricts.includes(d.id);
+      const node = document.createElement('button');
+      node.className = 'district-node' + (unlocked ? ' unlocked' : ' locked') + (d.locked ? ' teaser' : '');
+      node.disabled = !unlocked || d.locked;
+      const doneCount = d.missions.filter(id => this.save.campaign.completed[id]).length;
+      const status = d.locked ? 'wkrótce' : (unlocked ? `${doneCount}/${d.missions.length}` : '🔒');
+      node.innerHTML = `<span class="district-node-name">${d.name}</span><span class="district-node-status">${status}</span>`;
+      node.addEventListener('click', () => this.selectCampaignDistrict(d.id));
+      wrap.appendChild(node);
+    });
+    const playableUnlocked = DISTRICTS.filter(d => this.save.campaign.unlockedDistricts.includes(d.id) && !d.locked);
+    const remembered = this.selectedDistrictId && playableUnlocked.find(d => d.id === this.selectedDistrictId);
+    this.selectCampaignDistrict(remembered ? this.selectedDistrictId : playableUnlocked[0].id);
+  }
+
+  selectCampaignDistrict(districtId) {
+    this.selectedDistrictId = districtId;
+    const nodes = document.querySelectorAll('#districtMap .district-node');
+    const districtIdx = DISTRICTS.findIndex(d => d.id === districtId);
+    nodes.forEach((el, i) => el.classList.toggle('active', i === districtIdx));
+
+    const district = DISTRICTS.find(d => d.id === districtId);
+    const list = document.getElementById('missionList');
+    list.innerHTML = '';
+    let firstPlayableId = null;
+    district.missions.forEach((id, i) => {
+      const def = campaignMissionById(id);
+      const done = !!this.save.campaign.completed[id];
+      const prevDone = i === 0 || this.save.campaign.completed[district.missions[i - 1]];
+      if (prevDone && !firstPlayableId) firstPlayableId = id;
+      const row = document.createElement('button');
+      row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '');
+      row.disabled = !prevDone;
+      const medal = this.save.campaign.medals[id];
+      row.innerHTML = `<span class="mission-row-name">${done ? '✓' : (prevDone ? '▶' : '🔒')} ${def.order}. ${def.name}</span><span class="mission-row-medal">${medal ? '🏅' : ''}</span>`;
+      row.addEventListener('click', () => this.selectCampaignMission(id));
+      list.appendChild(row);
+    });
+    this.selectCampaignMission(firstPlayableId || district.missions[0]);
+  }
+
+  selectCampaignMission(missionId) {
+    const def = campaignMissionById(missionId);
+    this.selectedMissionId = missionId;
+    document.getElementById('missionDetailName').textContent = `${def.order}. ${def.name}`;
+    document.getElementById('missionDetailGoal').textContent = 'Cel: ' + def.goal.label;
+    document.getElementById('missionDetailMedal').textContent = 'Medal: ' + def.medal.label;
+    document.getElementById('missionDetailNela').textContent = `NELA: „${def.nela.start}”`;
+    document.getElementById('missionDetailReward').textContent = this.save.campaign.completed[missionId]
+      ? 'Ukończona — możesz zagrać ponownie dla wprawy.'
+      : `Pierwsze ukończenie: +${def.reward.coins} monet${def.reward.unlockDistrict ? ' + nowa dzielnica' : ''}.`;
+
+    const district = DISTRICTS.find(d => d.id === def.district);
+    const idxInDistrict = district.missions.indexOf(missionId);
+    const prevDone = idxInDistrict === 0 || this.save.campaign.completed[district.missions[idxInDistrict - 1]];
+    document.getElementById('btnPlayMission').disabled = !prevDone;
+    document.querySelectorAll('#missionList .mission-row').forEach((el, i) => el.classList.toggle('selected', district.missions[i] === missionId));
+  }
+
+  /* ---- Mission build/spawn ---- */
+
+  buildCampaignMission(def) {
+    this.campaignEntities = [];
+    this.campaignSpawn = null;
+    const s = def.setup;
+    const b = CONFIG.campaign.bounds;
+    const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
+
+    const addMany = (type, count, posFn, extra) => {
+      for (let i = 0; i < count; i++) {
+        const p = posFn ? posFn(i) : this.randomInCampaignBounds(40);
+        const opts = typeof extra === 'function' ? extra(i) : extra;
+        this.campaignEntities.push(new CampaignEntity(type, p.x, p.y, opts));
+      }
+    };
+
+    if (s.arcLayout) {
+      // Mission 03: fragments laid along a loop so a fast, close-quarters
+      // combo chain (goal: comboChain 12) is actually reachable in 90 s.
+      const radius = 260;
+      const count = s.fragments || 20;
+      this.campaignSpawn = { x: cx - radius - 30, y: cy };
+      addMany('fragment', count, (i) => {
+        const a = (i / count) * Math.PI * 1.7 - Math.PI * 0.85;
+        return { x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius };
+      });
+    } else {
+      if (s.fragments) addMany('fragment', s.fragments);
+      if (s.props && s.clusters) {
+        const half = Math.ceil(s.props / 2);
+        addMany('prop', half, () => ({ x: rand(b.minX + 40, cx - 60), y: rand(b.minY + 40, b.maxY - 40) }), { cluster: 'A' });
+        addMany('prop', s.props - half, () => ({ x: rand(cx + 60, b.maxX - 40), y: rand(b.minY + 40, b.maxY - 40) }), { cluster: 'B' });
+      } else if (s.props) {
+        addMany('prop', s.props);
+      }
+      if (s.vehicles) addMany('vehicle', s.vehicles);
+    }
+
+    if (s.markers) {
+      const half = Math.ceil(s.markers / 2);
+      addMany('marker', half, () => ({ x: rand(b.minX + 60, cx - 100), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'A' });
+      addMany('marker', s.markers - half, () => ({ x: rand(cx + 100, b.maxX - 60), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'B' });
+    }
+
+    if (s.capsuleWaves) {
+      s.capsuleWaves.forEach(waveStart => {
+        addMany('capsule', s.capsulesPerWave || 8, null, { spawnAt: waveStart });
+      });
+    }
+
+    if (s.gates) {
+      for (let i = 0; i < s.gates; i++) {
+        const t = (i + 1) / (s.gates + 1);
+        const gx = lerp(b.minX + 80, b.maxX - 80, t);
+        this.campaignEntities.push(new CampaignEntity('gate', gx, cy, { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }));
+      }
+    }
+
+    if (s.nodes) {
+      for (let i = 0; i < s.nodes; i++) {
+        const p = this.randomInCampaignBounds(80);
+        this.campaignEntities.push(new CampaignEntity('node', p.x, p.y));
+      }
+    }
+    if (s.pylons) {
+      for (let i = 0; i < s.pylons; i++) {
+        const a = (i / s.pylons) * Math.PI * 2;
+        this.campaignEntities.push(new CampaignEntity('pylon', cx + Math.cos(a) * 180, cy + Math.sin(a) * 180));
+      }
+    }
+    if (def.goal.landmark) {
+      const landmark = new CampaignEntity('landmark', cx, cy, { landmarkId: def.goal.landmark });
+      this.campaignEntities.push(landmark);
+      this.mission.landmark = landmark;
+    }
+  }
+
+  startCampaignMission(missionId) {
+    const def = campaignMissionById(missionId || this.selectedMissionId);
+    if (!def) return;
+    this.mode = 'campaign';
+    this.hideAllOverlays();
+    document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('hud-topleft').classList.add('hidden');
+    document.getElementById('hud-topright').classList.add('hidden');
+    document.getElementById('hud-timer').classList.add('hidden');
+    document.getElementById('hud-goal').classList.remove('hidden');
+    this.state = GameState.MATCH_SETUP;
+    this.paused = false;
+
+    this.runId = generateId('run');
+    this.runSeed = generateSeed();
+    this.rng = new SeededRNG(this.runSeed);
+
+    this.player = new Hole(this.playerDisplayName(), 0, 0, true);
+    this.player.skin = this.save.selected;
+    this.player.auraId = this.save.auras.selected;
+    this.player.radius = CONFIG.campaign.baseRadius;
+
+    this.objects = [];
+    this.particles = [];
+    this.ripples = [];
+    this.comboCount = 0;
+    this.comboMultiplier = 1;
+    this.comboTimer = 0;
+    this.comboWindowOverride = CONFIG.campaign.comboWindowSeconds;
+    this.comboDisplayAlpha = 0;
+
+    this.activeMutations = new Set();
+    this.evolutionPending = false;
+    clearTimeout(this.evolutionAutoPickTimer);
+    this.speedBoostUntil = 0;
+    this.scannerTimer = 0;
+    this.scannerTarget = null;
+    this.shake = 0;
+
+    this.mission = {
+      def,
+      elapsed: 0,
+      timeRemaining: def.timeLimit,
+      growthUnits: 0,
+      tierId: 'T1',
+      progress: 0,
+      progressTarget: 1,
+      nodesDisabled: 0,
+      pylonsCharged: 0,
+      gatesPassed: new Set(),
+      markersRoutes: new Set(),
+      clustersVisited: new Set(),
+      eatenByType: {},
+      bestCombo: 0,
+      comboBroken: false,
+      pylonPhaseStarted: false,
+      pylonPhaseDone: false,
+      pylonComboBroken: false,
+      maxComboDuringCapsule: 0,
+      botHitCount: 0,
+      landmark: null,
+      evolutionOffered: false,
+      ended: false,
+      _wasComboActive: false
+    };
+
+    this.buildCampaignMission(def);
+
+    if (this.campaignSpawn) {
+      this.player.x = this.campaignSpawn.x;
+      this.player.y = this.campaignSpawn.y;
+    } else {
+      const start = this.randomInCampaignBounds(60);
+      this.player.x = start.x;
+      this.player.y = start.y;
+    }
+
+    this.bots = [];
+    for (let i = 0; i < (def.setup.bots || 0); i++) {
+      const p = this.randomInCampaignBounds(150);
+      const bot = new Bot(BOT_NAME_POOL[i], p.x, p.y);
+      bot.radius = CONFIG.hole.baseRadius * 1.1;
+      this.bots.push(bot);
+    }
+
+    this.camera.x = this.player.x;
+    this.camera.y = this.player.y;
+
+    this.running = true;
+    this.state = GameState.PLAYING;
+    this.showNelaToast(def.nela.start);
+    this.updateCampaignHUD();
+    this.analytics.track('mission_start', { missionId: def.id, district: def.district });
+
+    this.lastTime = performance.now();
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = requestAnimationFrame((t) => this.loop(t));
+  }
+
+  /* ---- Mission update loop ---- */
+
+  updateCampaignBot(bot, dt) {
+    if (!bot.wanderTarget || dist(bot.x, bot.y, bot.wanderTarget.x, bot.wanderTarget.y) < 40) {
+      bot.wanderTarget = this.randomInCampaignBounds(80);
+    }
+    bot.moveToward(bot.wanderTarget.x, bot.wanderTarget.y, dt);
+  }
+
+  handleCampaignEating() {
+    const tier = this.campaignTierIndex(this.campaignPlayerTier().id);
+    for (const e of this.campaignEntities) {
+      if (e.consumed || e.eating || !e.live) continue;
+      if (e.type === 'gate') continue;
+      if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
+      if (e.type === 'landmark' && !e.unlocked) continue;
+      if (tier < e.stats.minTier) continue;
+      const d = dist(this.player.x, this.player.y, e.x, e.y);
+      if (d < this.player.radius * 0.85 + e.radius * 0.3) e.startEating();
+    }
+  }
+
+  tryUnlockCampaignLandmark() {
+    const m = this.mission;
+    const goal = m.def.goal;
+    if (goal.type !== 'activateAndDevour' || !m.landmark || m.landmark.unlocked) return;
+    const activated = goal.activator === 'node' ? m.nodesDisabled : m.pylonsCharged;
+    if (activated >= goal.count) {
+      m.landmark.unlocked = true;
+      this.showNelaToast('Droga otwarta. Dosięgnij celu, gdy będziesz gotowa.');
+    }
+  }
+
+  resolveCampaignEntity(e) {
+    const m = this.mission;
+    const stats = e.stats;
+    const multiplier = this.registerCombo();
+    this.player.growFromArea(stats.growth * CONFIG.campaign.growthAreaScale * Math.PI);
+    m.growthUnits += stats.growth;
+    this.player.score += Math.round(stats.score * multiplier);
+    this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e.type), e.radius, true);
+    this.vibrate(e.type === 'landmark' ? [60, 40, 60] : 30);
+
+    const newTier = this.campaignPlayerTier();
+    if (newTier.id !== m.tierId) {
+      m.tierId = newTier.id;
+      this.ripples.push(new Ripple(this.player.x, this.player.y, '#39ff14', this.player.radius, this.player.radius * 2.5, 0.5));
+      if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
+    }
+
+    if (e.type === 'node') { e.active = false; m.nodesDisabled++; this.tryUnlockCampaignLandmark(); }
+    if (e.type === 'pylon') {
+      e.active = false;
+      if (!m.pylonPhaseStarted) { m.pylonPhaseStarted = true; m.pylonComboBroken = false; }
+      m.pylonsCharged++;
+      if (m.pylonsCharged >= m.def.goal.count) m.pylonPhaseDone = true;
+      this.tryUnlockCampaignLandmark();
+    }
+    if (e.type === 'marker' && e.route) m.markersRoutes.add(e.route);
+    if (e.type === 'prop' && e.cluster) m.clustersVisited.add(e.cluster);
+    if (e.type === 'capsule') m.maxComboDuringCapsule = Math.max(m.maxComboDuringCapsule, this.comboCount);
+    if (e.type === 'landmark') {
+      this.triggerShake(16);
+      this.spawnParticles(e.x, e.y, '#ffd700', 40);
+      this.ripples.push(new Ripple(e.x, e.y, '#ffd700', e.radius, e.radius * 3.5, 0.8));
+      this.analytics.track('big_eat', { missionId: m.def.id, landmark: e.landmarkId });
+    }
+
+    m.eatenByType[e.type] = (m.eatenByType[e.type] || 0) + 1;
+  }
+
+  handleCampaignGates() {
+    const m = this.mission;
+    for (const e of this.campaignEntities) {
+      if (e.type !== 'gate') continue;
+      const d = dist(this.player.x, this.player.y, e.x, e.y);
+      if (d < this.player.radius + 16 && e.passCooldown <= 0) {
+        e.passCooldown = 0.6;
+        if (e.isGateOpen) {
+          if (!m.gatesPassed.has(e)) {
+            m.gatesPassed.add(e);
+            this.spawnParticles(e.x, e.y, '#00f3ff', 14);
+            this.vibrate(30);
+          }
+        } else {
+          // Closed: a soft bounce, not a hard block or a random penalty —
+          // GDD 08 "poznaj rytm otwarcia zamiast losowej kary".
+          const dx = this.player.x - e.x, dy = this.player.y - e.y;
+          const dd = Math.hypot(dx, dy) || 1;
+          this.player.x += (dx / dd) * 26;
+          this.player.y += (dy / dd) * 26;
+          this.spawnParticles(e.x, e.y, '#ff007f', 6);
+        }
+      }
+    }
+  }
+
+  handleCampaignCollisions() {
+    const m = this.mission;
+    for (const bot of this.bots) {
+      if (this.player.invulnerable || bot.invulnerable) continue;
+      const d = dist(this.player.x, this.player.y, bot.x, bot.y);
+      const touchDist = Math.max(this.player.radius, bot.radius) * 0.75;
+      if (d < touchDist && bot.radius > this.player.radius * EAT_HOLE_RATIO) {
+        // GDD 07: contact with a bigger bot costs a fraction of current
+        // growth and breaks combo, with brief safe invulnerability — not
+        // Arena's shrink-to-base-radius (campaign's early missions must
+        // not teach through sudden elimination).
+        const loss = m.growthUnits * CONFIG.campaign.hitPenaltyFraction;
+        m.growthUnits = Math.max(0, m.growthUnits - loss);
+        this.player.growFromArea(-loss * CONFIG.campaign.growthAreaScale * Math.PI);
+        this.comboCount = 0; this.comboMultiplier = 1; this.comboTimer = 0;
+        this.player.invulnerableUntil = performance.now() + CONFIG.campaign.hitInvulnMs;
+        m.botHitCount++;
+        this.triggerShake(8);
+        this.spawnParticles(this.player.x, this.player.y, '#ff3860', 20);
+        this.vibrate([30, 40, 30]);
+        this.analytics.track('mission_bot_hit', { missionId: m.def.id });
+      }
+    }
+  }
+
+  /** Campaign-only power effects (GDD §08): Magnes/Reaktor/Impuls/Skaner.
+   *  Reaktor just widens comboWindowOverride at pick time; Impuls fires
+   *  from resolveCampaignEntity() on a tier advance. This only handles the
+   *  continuous ones (Magnes' pull, Skaner's ping). */
+  updateMutationEffectsCampaign(dt) {
+    if (this.activeMutations.has('magnes')) {
+      const range = this.player.radius * 1.4;
+      const tier = this.campaignTierIndex(this.campaignPlayerTier().id);
+      for (const e of this.campaignEntities) {
+        if (e.consumed || e.eating || !e.live) continue;
+        if (e.type === 'gate' || e.type === 'landmark') continue;
+        if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
+        if (tier < e.stats.minTier) continue;
+        const d = dist(this.player.x, this.player.y, e.x, e.y);
+        if (d > 0 && d < range) {
+          const pull = 140 * (1 - d / range);
+          e.x -= ((e.x - this.player.x) / d) * pull * dt;
+          e.y -= ((e.y - this.player.y) / d) * pull * dt;
+        }
+      }
+    }
+
+    this.player.tempSpeedMult = performance.now() < this.speedBoostUntil ? 1.2 : 1; // Impuls: +20%
+
+    if (this.activeMutations.has('skaner')) {
+      this.scannerTimer -= dt;
+      if (this.scannerTimer <= 0) {
+        this.scannerTimer = 8; // GDD 08: "co 8 s"
+        let best = null, bestD = Infinity;
+        for (const e of this.campaignEntities) {
+          if (e.consumed || e.eating || !e.live || e.type === 'gate') continue;
+          const d = dist(this.player.x, this.player.y, e.x, e.y);
+          if (d < bestD) { best = e; bestD = d; }
+        }
+        if (best) {
+          this.scannerTarget = best;
+          this.scannerTargetUntil = performance.now() + 2500;
+          this.ripples.push(new Ripple(best.x, best.y, '#b026ff', best.radius, best.radius * 3, 0.6));
+        }
+      }
+    }
+  }
+
+  checkCampaignEvolutionOffer() {
+    const m = this.mission;
+    const offer = m.def.evolutionOffer;
+    if (!offer || m.evolutionOffered || this.evolutionPending) return;
+    if (m.elapsed >= offer.atSeconds) {
+      m.evolutionOffered = true;
+      this.offerCampaignPowers(offer.count || 2);
+    }
+  }
+
+  /** FTUE-respecting single power choice (GDD 08: "jedna moc z dwóch, po
+   *  zatrzymaniu inputu"; GDD's FTUE table: no explicit choice before
+   *  Mission 04). Reuses the existing evolution overlay/slow-motion so no
+   *  new DOM/CSS pause pattern is needed. */
+  offerCampaignPowers(count) {
+    this.evolutionPending = true;
+    const cards = pickUnique(CAMPAIGN_POWERS, count);
+    this.analytics.track('evolution_offer', { options: cards.map(c => c.id), mode: 'campaign' });
+
+    const grid = document.getElementById('evolutionCards');
+    grid.innerHTML = '';
+    grid.classList.toggle('count-2', cards.length === 2);
+    cards.forEach(power => {
+      const btn = document.createElement('button');
+      btn.className = 'evolution-card';
+      btn.style.borderColor = power.color;
+      btn.innerHTML = `<span class="evolution-card-name" style="color:${power.color}">${power.name}</span><span class="evolution-card-desc">${power.desc}</span>`;
+      btn.addEventListener('click', () => this.pickCampaignPower(power.id));
+      grid.appendChild(btn);
+    });
+    document.getElementById('evolutionOverlay').classList.remove('hidden');
+    this.vibrate(40);
+
+    clearTimeout(this.evolutionAutoPickTimer);
+    this.evolutionAutoPickTimer = setTimeout(() => {
+      if (this.evolutionPending && cards[0]) this.pickCampaignPower(cards[0].id);
+    }, CONFIG.evolution.autoPickMs);
+  }
+
+  pickCampaignPower(id) {
+    if (!this.evolutionPending) return;
+    clearTimeout(this.evolutionAutoPickTimer);
+    this.evolutionPending = false;
+    this.activeMutations.add(id);
+    document.getElementById('evolutionOverlay').classList.add('hidden');
+    document.getElementById('evolutionCards').classList.remove('count-2');
+    this.analytics.track('evolution_pick', { mutation: id, mode: 'campaign' });
+    this.vibrate(50);
+    if (id === 'reaktor') this.comboWindowOverride = 2.1;
+  }
+
+  checkCampaignGoal() {
+    const m = this.mission;
+    if (m.ended) return;
+    const g = m.def.goal;
+    let progress = 0, target = 1, done = false;
+    switch (g.type) {
+      case 'eatCount':
+        progress = m.eatenByType[g.entityType] || 0;
+        target = g.count;
+        done = progress >= target;
+        break;
+      case 'comboChain':
+        m.bestCombo = Math.max(m.bestCombo, this.comboCount);
+        progress = m.bestCombo;
+        target = g.count;
+        done = progress >= target;
+        break;
+      case 'gatesPassed':
+        progress = m.gatesPassed.size;
+        target = g.count;
+        done = progress >= target;
+        break;
+      case 'activateAndDevour': {
+        const activated = g.activator === 'node' ? m.nodesDisabled : m.pylonsCharged;
+        target = g.count + 1; // the activators, plus the landmark bite itself
+        done = !!(m.landmark && m.landmark.consumed);
+        progress = done ? target : Math.min(activated, g.count);
+        break;
+      }
+    }
+    m.progress = progress;
+    m.progressTarget = target;
+    if (done) this.endCampaignMission(true);
+  }
+
+  showNelaToast(text) {
+    const el = document.getElementById('nelaToast');
+    el.textContent = 'NELA: „' + text + '”';
+    el.classList.remove('hidden');
+    requestAnimationFrame(() => el.classList.add('visible'));
+    clearTimeout(this.nelaTimer);
+    this.nelaTimer = setTimeout(() => el.classList.remove('visible'), CONFIG.campaign.nelaDisplaySeconds * 1000);
+  }
+
+  updateCampaignHUD() {
+    const m = this.mission;
+    document.getElementById('missionTimerValue').textContent = Math.ceil(m.timeRemaining);
+    document.getElementById('missionGoalLabel').textContent = m.def.goal.label;
+    document.getElementById('missionGoalProgress').textContent = `${Math.min(m.progress, m.progressTarget)}/${m.progressTarget}`;
+    const tier = this.campaignPlayerTier();
+    document.getElementById('missionTierLabel').textContent = tier.name;
+    const idx = CAMPAIGN_TIERS.indexOf(tier);
+    const next = CAMPAIGN_TIERS[idx + 1];
+    const pct = next ? clamp((m.growthUnits - tier.minUnits) / (next.minUnits - tier.minUnits), 0, 1) * 100 : 100;
+    document.getElementById('missionTierBar').style.width = pct + '%';
+    document.getElementById('missionScoreValue').textContent = this.player.score;
+  }
+
+  updateCampaign(dt) {
+    const m = this.mission;
+    if (m.ended) return;
+    m.elapsed += dt;
+    m.timeRemaining = Math.max(0, m.def.timeLimit - m.elapsed);
+
+    this.applyPlayerMovement(dt);
+    for (const bot of this.bots) this.updateCampaignBot(bot, dt);
+    for (const e of this.campaignEntities) e.update(dt, m.elapsed);
+
+    this.handleCampaignEating();
+    for (const e of this.campaignEntities) {
+      if (e.consumed && !e._resolved) {
+        e._resolved = true;
+        this.resolveCampaignEntity(e);
+      }
+    }
+    this.handleCampaignGates();
+    this.handleCampaignCollisions();
+    this.updateMutationEffectsCampaign(dt);
+    this.updateCombo(dt);
+    if (this.comboCount === 0 && m._wasComboActive) {
+      m.comboBroken = true;
+      if (m.pylonPhaseStarted && !m.pylonPhaseDone) m.pylonComboBroken = true;
+    }
+    m._wasComboActive = this.comboCount > 0;
+
+    this.checkCampaignEvolutionOffer();
+    this.checkCampaignGoal();
+    if (m.ended) return;
+
+    this.particles.forEach(p => p.update(dt));
+    this.particles = this.particles.filter(p => !p.dead);
+    this.ripples.forEach(r => r.update(dt));
+    this.ripples = this.ripples.filter(r => !r.dead);
+
+    this.camera.x = clamp(this.player.x, this.width / 2, WORLD_W - this.width / 2);
+    this.camera.y = clamp(this.player.y, this.height / 2, WORLD_H - this.height / 2);
+    if (WORLD_W < this.width) this.camera.x = WORLD_W / 2;
+    if (WORLD_H < this.height) this.camera.y = WORLD_H / 2;
+    if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
+
+    this.updateCampaignHUD();
+
+    if (m.timeRemaining <= 0) this.endCampaignMission(false);
+  }
+
+  /* ---- Mission end / result screen ---- */
+
+  endCampaignMission(success) {
+    const m = this.mission;
+    if (m.ended) return;
+    m.ended = true;
+    this.running = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    document.getElementById('hud').classList.add('hidden');
+
+    let medalEarned = false;
+    const medal = m.def.medal;
+    if (success) {
+      switch (medal.type) {
+        case 'timeUnder': medalEarned = m.elapsed <= medal.seconds; break;
+        case 'visitBothClusters': medalEarned = m.clustersVisited.has('A') && m.clustersVisited.has('B'); break;
+        case 'noBotHit': medalEarned = m.botHitCount === 0; break;
+        case 'comboUnbroken': medalEarned = !m.comboBroken; break;
+        case 'comboAtLeast': medalEarned = m.maxComboDuringCapsule >= medal.count; break;
+        case 'bothRoutesUsed': medalEarned = m.markersRoutes.has('A') && m.markersRoutes.has('B'); break;
+        case 'pylonsUnbroken': medalEarned = !m.pylonComboBroken; break;
+      }
+    }
+
+    let firstClear = false;
+    if (success && !this.save.campaign.completed[m.def.id]) {
+      firstClear = true;
+      this.save.campaign.completed[m.def.id] = true;
+      this.save.coins += m.def.reward.coins;
+      if (m.def.reward.unlockDistrict && !this.save.campaign.unlockedDistricts.includes(m.def.reward.unlockDistrict)) {
+        this.save.campaign.unlockedDistricts.push(m.def.reward.unlockDistrict);
+      }
+    }
+    if (medalEarned) this.save.campaign.medals[m.def.id] = true;
+    saveGame(this.save);
+
+    this.analytics.track('mission_end', {
+      missionId: m.def.id, success, medalEarned, firstClear,
+      durationMs: Math.round(m.elapsed * 1000)
+    });
+
+    this.showMissionResultScreen(success, medalEarned, firstClear);
+  }
+
+  showMissionResultScreen(success, medalEarned, firstClear) {
+    const m = this.mission;
+    const def = m.def;
+    document.getElementById('missionResultTitle').textContent = success ? 'MISJA UKOŃCZONA' : 'CZAS MINĄŁ';
+    document.getElementById('missionResultNela').textContent = success
+      ? `NELA: „${def.nela.success}”`
+      : 'Spróbuj jeszcze raz — teraz znasz już trasę.';
+    document.getElementById('missionResultScore').textContent = this.player.score;
+    document.getElementById('missionResultMedal').textContent = medalEarned
+      ? `🏅 Medal: ${def.medal.label}`
+      : `Medal nieukończony: ${def.medal.label}`;
+    document.getElementById('missionResultMedal').classList.toggle('earned', medalEarned);
+    document.getElementById('missionResultReward').textContent = firstClear
+      ? `+${def.reward.coins} monet (pierwsze ukończenie)${def.reward.unlockDistrict ? ' + nowa dzielnica!' : ''}`
+      : (success ? 'Nagroda za pierwsze ukończenie już odebrana wcześniej.' : 'Brak nagrody — czas minął.');
+
+    const district = DISTRICTS.find(d => d.id === def.district);
+    const idx = district.missions.indexOf(def.id);
+    const nextId = success ? district.missions[idx + 1] : null;
+    const btnNext = document.getElementById('btnMissionNext');
+    if (nextId) {
+      btnNext.textContent = `DALEJ: MISJA ${campaignMissionById(nextId).order}`;
+      btnNext.classList.remove('hidden');
+      btnNext.onclick = () => this.startCampaignMission(nextId);
+    } else if (success) {
+      btnNext.textContent = 'DZIELNICA UKOŃCZONA — DO MAPY';
+      btnNext.classList.remove('hidden');
+      btnNext.onclick = () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
+    } else {
+      btnNext.classList.add('hidden');
+    }
+    document.getElementById('btnMissionRetry').onclick = () => this.startCampaignMission(def.id);
+    document.getElementById('btnMissionMap').onclick = () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
+
+    this.updateCoinDisplays();
+    this.showScreen('missionResultScreen');
+  }
+
+  /* ---- Campaign rendering ---- */
+
+  renderCampaign(time) {
+    const ctx = this.ctx;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    let shakeX = 0, shakeY = 0;
+    if (this.shake > 0) { shakeX = rand(-this.shake, this.shake); shakeY = rand(-this.shake, this.shake); }
+
+    ctx.save();
+    ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
+    this.drawGrid(ctx);
+    for (const e of this.campaignEntities) e.draw(ctx);
+    this.drawScannerTarget(ctx);
+    for (const p of this.particles) p.draw(ctx);
+    for (const r of this.ripples) r.draw(ctx);
+
+    const holes = [...this.bots, this.player];
+    holes.sort((a, b) => a.radius - b.radius);
+    for (const h of holes) h.draw(ctx, time);
+
+    this.drawComboText(ctx);
+    ctx.restore();
+
+    if (this.showMinimap) this.drawCampaignMinimap(ctx);
+  }
+
+  drawCampaignMinimap(ctx) {
+    const size = 130, margin = 16;
+    const px = this.width - size - margin, py = this.height - size - margin;
+    const b = CONFIG.campaign.bounds;
+    const scaleX = size / (b.maxX - b.minX), scaleY = size / (b.maxY - b.minY);
+
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.strokeStyle = 'rgba(0,243,255,0.4)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(px, py, size, size);
+    ctx.strokeRect(px, py, size, size);
+
+    const toMini = (x, y) => ({ x: px + (x - b.minX) * scaleX, y: py + (y - b.minY) * scaleY });
+    for (const e of this.campaignEntities) {
+      if (e.consumed || (e.type !== 'landmark' && e.type !== 'node' && e.type !== 'pylon')) continue;
+      const p = toMini(e.x, e.y);
+      ctx.fillStyle = e.type === 'landmark' ? '#ffd700' : '#ffae00';
+      ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+    }
+    for (const bot of this.bots) {
+      const p = toMini(bot.x, bot.y);
+      ctx.fillStyle = bot.edgeColor;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+    const pp = toMini(this.player.x, this.player.y);
+    ctx.fillStyle = '#00f3ff';
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   /* ---------- round flow ---------- */
 
   /** options.seed forces a specific seed (Daily Seed Challenge);
    *  options.daily marks the run so endRound() records a daily best. */
   startRound(options) {
     options = options || {};
+    this.mode = 'arena';
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('hud-topleft').classList.remove('hidden');
+    document.getElementById('hud-topright').classList.remove('hidden');
+    document.getElementById('hud-timer').classList.remove('hidden');
+    document.getElementById('hud-goal').classList.add('hidden');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
 
@@ -1625,7 +2737,7 @@ class Game {
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
 
-    const ranked = [this.player, ...this.bots].slice().sort((a, b) => b.radius - a.radius);
+    const ranked = rankHoles([this.player, ...this.bots]);
     const place = ranked.indexOf(this.player) + 1;
     const coinsEarned = Math.floor(this.player.score / CONFIG.economy.coinsPerScorePoint) + CONFIG.economy.coinsBase;
     this.adPendingCoins = coinsEarned;
@@ -1756,7 +2868,7 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h === this.player) li.classList.add('is-player');
-      li.innerHTML = `<span>#${i + 1} ${h.name}</span><span>Rozmiar ${Math.round(h.radius)} • Wynik ${h.score}</span>`;
+      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${h.name}</span><span class="fl-score">${h.score} pkt</span><span class="fl-size">Ø ${Math.round(h.radius)}</span>`;
       list.appendChild(li);
     });
 
@@ -1878,7 +2990,10 @@ class Game {
     this.comboCount++;
     // Combo Reactor mutation (Phase 4) extends the window for this run only.
     this.comboTimer = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
-    this.comboMultiplier = clamp(1 + (this.comboCount - 1) * CONFIG.juice.combo.stepBonus, 1, CONFIG.juice.combo.maxMultiplier);
+    // Campaign uses its own multiplier cap (GDD 07: "combo 1,0-2,0 mnoży
+    // punkty, nie wzrost"); Arena/Daily keep their existing tuned cap.
+    const maxMultiplier = this.mode === 'campaign' ? CONFIG.campaign.comboMaxMultiplier : CONFIG.juice.combo.maxMultiplier;
+    this.comboMultiplier = clamp(1 + (this.comboCount - 1) * CONFIG.juice.combo.stepBonus, 1, maxMultiplier);
     this.comboDisplayAlpha = 1;
     if (this.activeMutations.has('slipstream') && this.comboCount >= CONFIG.evolution.slipstreamComboThreshold) {
       this.speedBoostUntil = performance.now() + CONFIG.evolution.slipstreamMs;
@@ -2271,7 +3386,7 @@ class Game {
       : 100;
     document.getElementById('tierProgressBar').style.width = tierPct + '%';
 
-    const ranked = [this.player, ...this.bots].slice().sort((a, b) => b.radius - a.radius);
+    const ranked = rankHoles([this.player, ...this.bots]);
     const place = ranked.indexOf(this.player) + 1;
     document.getElementById('rankValue').textContent = `#${place}/${ranked.length}`;
 
@@ -2280,7 +3395,7 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h.isPlayer) li.classList.add('is-player');
-      li.innerHTML = `<span class="lb-rank">#${i + 1}</span><span class="lb-name">${h.name}</span><span class="lb-size">${Math.round(h.radius)}</span>`;
+      li.innerHTML = `<span class="lb-rank">#${i + 1}</span><span class="lb-name">${h.name}</span><span class="lb-size">${h.score} pkt</span>`;
       list.appendChild(li);
     });
   }
@@ -2535,8 +3650,13 @@ class Game {
       // Evolution offers slow the world instead of fully pausing it
       // (GDD 4.1) -- keeps the round feeling alive while picking a card.
       const dt = this.evolutionPending ? rawDt * CONFIG.evolution.slowMotionFactor : rawDt;
-      this.update(dt);
-      this.render(now / 1000);
+      if (this.mode === 'campaign') {
+        this.updateCampaign(dt);
+        this.renderCampaign(now / 1000);
+      } else {
+        this.update(dt);
+        this.render(now / 1000);
+      }
       this.rafId = requestAnimationFrame((t) => this.loop(t));
     }
   }
