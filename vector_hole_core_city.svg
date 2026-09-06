@@ -1,0 +1,506 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 400 800"
+  width="100%"
+  height="100%"
+  preserveAspectRatio="xMidYMid meet"
+  fill="none"
+  shape-rendering="geometricPrecision"
+  text-rendering="geometricPrecision" xmlns:c2pa="http://c2pa.org/manifest"><metadata><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTowNTE1NGNhZC00MmUyLTRiZjgtOTZmMi0zNWNjNjliMzVmMTAAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaINvz+/b4NRQEXLytLQM51IAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDo1M2Y5YmMyOC1iNWRkLTQ1MTEtODk2ZS1iY2RlMTdkYTYyMzhscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNoZOozjsGeZTprs2cR6xaV4AAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggYkjynjj8vi4oavLMKDtu8MfSxz20Zf4fqeFCt6ztzEikZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaOYi10/9xxHPKco5yEQriPYAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIEu+Hb04+MZHBMP2moGvnj3LmOA1JFSI/ty35nLEbK9+ZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GQFIZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjA1MTU0Y2FkLTQyZTItNGJmOC05NmYyLTM1Y2M2OWIzNWYxMC9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOjA5NTg3NGQ2LTgzYjUtNDYxMy04ZWVhLTA3Yzg4ZjdjODgxZHJjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCBiSPKeOPy+Lihq8swoO27wx9LHPbRl/h+p4UK3rO3MSKJjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFgg1pepshn1svOuWG3beTgmZ6dumUF3+138j5/jYfAcC/WiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFgg9MlHT1/eB2o+ZYtR1/V1EG7DP8NjCgkN+GtOfBDIO7V0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQHsUAJ+1LERvTo6yRFNw+0HAAXUUyW9VJK7DUJxrFXDjqECZohd4uDG4FpcVWL5Rt7cuXH7sC19sg7koRZLt/V8=</c2pa:manifest></metadata>
+
+<defs>
+  <linearGradient id="bgGradient" x1="200" y1="0" x2="200" y2="800" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#04101D"/>
+    <stop offset="50%" stop-color="#061725"/>
+    <stop offset="100%" stop-color="#081C2B"/>
+  </linearGradient>
+
+  <linearGradient id="heroPanelGradient" x1="200" y1="78" x2="200" y2="474" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#0A2032"/>
+    <stop offset="50%" stop-color="#071A29"/>
+    <stop offset="100%" stop-color="#061725"/>
+  </linearGradient>
+
+  <linearGradient id="panelGradient" x1="200" y1="0" x2="200" y2="100" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#0A2032"/>
+    <stop offset="100%" stop-color="#071725"/>
+  </linearGradient>
+
+  <linearGradient id="ctaGradient" x1="16" y1="484" x2="212" y2="530" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#68F5FC"/>
+    <stop offset="55%" stop-color="#50F0FA"/>
+    <stop offset="100%" stop-color="#37DCEB"/>
+  </linearGradient>
+
+  <pattern id="microGrid" patternUnits="userSpaceOnUse" width="16" height="16">
+    <line x1="0" y1="0" x2="0" y2="16" stroke="#14354A" stroke-width="0.55"/>
+    <line x1="0" y1="0" x2="16" y2="0" stroke="#14354A" stroke-width="0.55"/>
+  </pattern>
+
+  <pattern id="majorGrid" patternUnits="userSpaceOnUse" width="64" height="64">
+    <line x1="0" y1="0" x2="0" y2="64" stroke="#1C4357" stroke-width="0.7"/>
+    <line x1="0" y1="0" x2="64" y2="0" stroke="#1C4357" stroke-width="0.7"/>
+  </pattern>
+
+  <filter id="glowCyanSoft" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="2" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+
+  <filter id="glowCyanStrong" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="3.6" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+
+  <filter id="glowYellow" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="1.8" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+
+  <filter id="activeNodeGlow" x="-80%" y="-80%" width="260%" height="260%">
+    <feGaussianBlur stdDeviation="2.8" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+
+  <linearGradient id="gridMaskGradient" x1="200" y1="78" x2="200" y2="474" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+    <stop offset="30%" stop-color="#FFFFFF" stop-opacity="1"/>
+    <stop offset="65%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+    <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.1"/>
+  </linearGradient>
+  <mask id="gridFadeMask">
+    <rect x="16" y="78" width="368" height="396" fill="url(#gridMaskGradient)"/>
+  </mask>
+
+  <linearGradient id="cityFadeMaskGradient" x1="200" y1="105" x2="200" y2="290" gradientUnits="userSpaceOnUse">
+    <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.55"/>
+    <stop offset="20%" stop-color="#FFFFFF" stop-opacity="1"/>
+    <stop offset="58%" stop-color="#FFFFFF" stop-opacity="1"/>
+    <stop offset="78%" stop-color="#FFFFFF" stop-opacity="0.65"/>
+    <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+  </linearGradient>
+  <mask id="cityFadeMask">
+    <rect x="16" y="100" width="368" height="200" fill="url(#cityFadeMaskGradient)"/>
+  </mask>
+
+  <clipPath id="heroClip">
+    <rect x="16" y="78" width="368" height="396" rx="14"/>
+  </clipPath>
+</defs>
+
+<!-- SCREEN BACKGROUND -->
+<g id="screen-background">
+  <rect x="0" y="0" width="400" height="800" fill="url(#bgGradient)"/>
+  <g id="background-tech" opacity="0.05">
+    <rect x="0" y="0" width="400" height="800" fill="url(#majorGrid)"/>
+  </g>
+  <g opacity="0.1" stroke="#2BCBDD" stroke-width="0.6">
+    <line x1="0" y1="600" x2="60" y2="600"/>
+    <line x1="340" y1="60" x2="400" y2="60"/>
+    <line x1="0" y1="780" x2="40" y2="780"/>
+  </g>
+</g>
+
+<!-- HEADER -->
+<g id="header">
+  <g id="brand">
+    <text x="18" y="25" font-family="Arial, Helvetica, sans-serif" font-size="7.2" font-weight="700" letter-spacing="1.35" fill="#AFC4D5">VECTOR HOLE</text>
+    <text x="18" y="47" font-family="Arial, Helvetica, sans-serif" font-size="25.5" font-weight="800" fill="#F5FAFF">MIASTO</text>
+    <text x="18" y="63" font-family="Arial, Helvetica, sans-serif" font-size="11.2" font-weight="700" letter-spacing="0.3" fill="#C6D5E3">CORE CITY</text>
+  </g>
+
+  <g id="coin-balance">
+    <rect x="264" y="18" width="76" height="40" rx="10" fill="#081A2A" stroke="#315A72" stroke-width="1"/>
+    <g transform="translate(279,38)">
+      <path d="M -7 0 L 0 -7 L 7 0 L 0 7 Z" fill="none" stroke="#EFCB63" stroke-width="1.4"/>
+      <path d="M -3.2 0 L 0 -3.2 L 3.2 0 L 0 3.2 Z" fill="#EFCB63" opacity="0.85"/>
+    </g>
+    <text x="304" y="42" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#EFCB63" text-anchor="middle">195</text>
+  </g>
+
+  <g id="settings">
+    <rect x="348" y="18" width="36" height="40" rx="10" fill="#081A2A" stroke="#315A72" stroke-width="1"/>
+    <g transform="translate(366,38)" stroke="#AFC4D5" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle r="3.4"/>
+      <g id="gear-teeth">
+        <line x1="0" y1="-9" x2="0" y2="-6.2"/>
+        <line x1="0" y1="9" x2="0" y2="6.2"/>
+        <line x1="-9" y1="0" x2="-6.2" y2="0"/>
+        <line x1="9" y1="0" x2="6.2" y2="0"/>
+        <line x1="-6.36" y1="-6.36" x2="-4.4" y2="-4.4"/>
+        <line x1="6.36" y1="6.36" x2="4.4" y2="4.4"/>
+        <line x1="-6.36" y1="6.36" x2="-4.4" y2="4.4"/>
+        <line x1="6.36" y1="-6.36" x2="4.4" y2="-4.4"/>
+      </g>
+      <circle r="7" opacity="0.5"/>
+    </g>
+  </g>
+</g>
+
+<!-- HERO -->
+<g id="hero">
+  <rect id="hero-background" x="16" y="78" width="368" height="396" rx="14" fill="url(#heroPanelGradient)" stroke="#315A72" stroke-width="1"/>
+
+  <g id="hero-grid" clip-path="url(#heroClip)" mask="url(#gridFadeMask)">
+    <rect x="16" y="78" width="368" height="396" fill="url(#microGrid)" opacity="0.18"/>
+    <rect x="16" y="78" width="368" height="396" fill="url(#majorGrid)" opacity="0.12"/>
+  </g>
+
+  <text id="hero-heading" x="27" y="101" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.25" fill="#B8CADA">META POSTĘP</text>
+
+  <!-- CORE CITY SKYLINE -->
+  <g id="core-city" clip-path="url(#heroClip)">
+
+    <g id="city-halo-glow">
+      <path d="M 127 174 Q 200 108 274 178" stroke="#2BCBDD" stroke-width="3" opacity="0.14" fill="none" filter="url(#glowCyanSoft)"/>
+    </g>
+    <g id="city-halo">
+      <path d="M 127 174 Q 200 108 274 178" stroke="#2BCBDD" stroke-width="0.9" opacity="0.8" fill="none"/>
+    </g>
+
+    <g id="city-rear" mask="url(#cityFadeMask)" opacity="0.9">
+      <!-- rear L -->
+      <rect x="90" y="196" width="10" height="44" fill="#0A2233" stroke="#276F84" stroke-width="0.7"/>
+      <rect x="103" y="182" width="14" height="58" fill="#0A2233" stroke="#276F84" stroke-width="0.7"/>
+      <rect x="283" y="188" width="12" height="52" fill="#0A2233" stroke="#276F84" stroke-width="0.7"/>
+      <rect x="298" y="200" width="10" height="40" fill="#0A2233" stroke="#276F84" stroke-width="0.7"/>
+      <line x1="94" y1="204" x2="94" y2="234" stroke="#188DA7" stroke-width="0.6" opacity="0.4"/>
+      <line x1="109" y1="190" x2="109" y2="234" stroke="#188DA7" stroke-width="0.6" opacity="0.45"/>
+      <line x1="288" y1="196" x2="288" y2="234" stroke="#188DA7" stroke-width="0.6" opacity="0.4"/>
+    </g>
+
+    <g id="city-mid" mask="url(#cityFadeMask)">
+      <!-- Building L1 -->
+      <g id="bldg-L1">
+        <rect x="86" y="200" width="10" height="40" fill="#0B2434" stroke="#315A72" stroke-width="0.9"/>
+        <ellipse cx="91" cy="195" rx="7" ry="2.4" fill="none" stroke="#2BCBDD" stroke-width="0.8"/>
+        <line x1="91" y1="195" x2="91" y2="186" stroke="#2BCBDD" stroke-width="0.9"/>
+        <circle cx="91" cy="185" r="1.2" fill="#50F0FA"/>
+        <line x1="89" y1="208" x2="89" y2="212" stroke="#2BCBDD" stroke-width="0.7" opacity="0.6"/>
+        <line x1="93" y1="216" x2="93" y2="220" stroke="#2BCBDD" stroke-width="0.7" opacity="0.6"/>
+      </g>
+      <!-- Building L2 -->
+      <g id="bldg-L2">
+        <path d="M 108 240 L 108 188 L 117 182 L 126 188 L 126 240 Z" fill="#0B2434" stroke="#315A72" stroke-width="0.9"/>
+        <line x1="112" y1="196" x2="112" y2="232" stroke="#2BCBDD" stroke-width="0.7" opacity="0.55"/>
+        <line x1="117" y1="192" x2="117" y2="232" stroke="#50F0FA" stroke-width="0.8" opacity="0.7"/>
+        <line x1="122" y1="196" x2="122" y2="232" stroke="#2BCBDD" stroke-width="0.7" opacity="0.55"/>
+        <rect x="110" y="200" width="2" height="4" fill="#50F0FA" opacity="0.6"/>
+        <rect x="119" y="210" width="2" height="4" fill="#50F0FA" opacity="0.6"/>
+      </g>
+      <!-- Building L3 -->
+      <g id="bldg-L3">
+        <path d="M 129 240 L 129 166 L 136 158 L 145 163 L 145 240 Z" fill="#0C2637" stroke="#315A72" stroke-width="1"/>
+        <line x1="133" y1="176" x2="133" y2="232" stroke="#50F0FA" stroke-width="0.8" opacity="0.7"/>
+        <line x1="139" y1="172" x2="139" y2="232" stroke="#2BCBDD" stroke-width="0.7" opacity="0.55"/>
+        <rect x="131" y="185" width="2.4" height="5" fill="#50F0FA" opacity="0.7"/>
+        <rect x="137" y="198" width="2.4" height="5" fill="#2BCBDD" opacity="0.6"/>
+        <rect x="131" y="210" width="2.4" height="5" fill="#50F0FA" opacity="0.6"/>
+      </g>
+      <!-- Building L4 -->
+      <g id="bldg-L4">
+        <rect x="152" y="188" width="16" height="52" fill="#0B2434" stroke="#315A72" stroke-width="0.9"/>
+        <rect x="158" y="174" width="10" height="14" fill="#0B2434" stroke="#315A72" stroke-width="0.9"/>
+        <line x1="156" y1="196" x2="156" y2="234" stroke="#2BCBDD" stroke-width="0.7" opacity="0.55"/>
+        <line x1="163" y1="196" x2="163" y2="234" stroke="#50F0FA" stroke-width="0.7" opacity="0.65"/>
+        <rect x="160" y="178" width="2" height="4" fill="#50F0FA" opacity="0.7"/>
+      </g>
+      <!-- Building L5 -->
+      <g id="bldg-L5">
+        <rect x="105" y="222" width="46" height="18" fill="#091E2C" stroke="#276F84" stroke-width="0.8"/>
+        <line x1="112" y1="226" x2="144" y2="226" stroke="#2BCBDD" stroke-width="0.6" opacity="0.5"/>
+      </g>
+
+      <!-- Building R1 -->
+      <g id="bldg-R1">
+        <path d="M 222 240 L 222 168 L 232 161 L 243 167 L 243 240 Z" fill="#0C2637" stroke="#315A72" stroke-width="1"/>
+        <line x1="226" y1="178" x2="226" y2="232" stroke="#50F0FA" stroke-width="0.8" opacity="0.7"/>
+        <line x1="237" y1="174" x2="237" y2="232" stroke="#2BCBDD" stroke-width="0.7" opacity="0.5"/>
+        <rect x="228" y="188" width="2.2" height="5" fill="#50F0FA" opacity="0.65"/>
+        <rect x="228" y="204" width="2.2" height="5" fill="#2BCBDD" opacity="0.55"/>
+      </g>
+      <!-- Building R2 -->
+      <g id="bldg-R2">
+        <path d="M 245 240 L 245 186 L 253 176 L 262 186 L 262 240 Z" fill="#0B2434" stroke="#315A72" stroke-width="0.9"/>
+        <line x1="249" y1="196" x2="249" y2="232" stroke="#2BCBDD" stroke-width="0.7" opacity="0.55"/>
+        <line x1="256" y1="192" x2="256" y2="232" stroke="#50F0FA" stroke-width="0.7" opacity="0.6"/>
+      </g>
+      <!-- Building R3 -->
+      <g id="bldg-R3">
+        <rect x="268" y="196" width="15" height="44" fill="#0A2233" stroke="#276F84" stroke-width="0.8"/>
+        <ellipse cx="275.5" cy="190" rx="6" ry="2" fill="none" stroke="#2BCBDD" stroke-width="0.7"/>
+        <line x1="275.5" y1="190" x2="275.5" y2="181" stroke="#2BCBDD" stroke-width="0.8"/>
+        <circle cx="275.5" cy="180" r="1.1" fill="#50F0FA"/>
+        <line x1="272" y1="206" x2="272" y2="210" stroke="#2BCBDD" stroke-width="0.6" opacity="0.5"/>
+      </g>
+      <!-- Building R4 -->
+      <g id="bldg-R4">
+        <rect x="289" y="203" width="20" height="41" fill="#0B2434" stroke="#315A72" stroke-width="0.9"/>
+        <line x1="294" y1="210" x2="294" y2="238" stroke="#2BCBDD" stroke-width="0.7" opacity="0.5"/>
+        <line x1="300" y1="210" x2="300" y2="238" stroke="#50F0FA" stroke-width="0.7" opacity="0.6"/>
+        <line x1="305" y1="210" x2="305" y2="238" stroke="#2BCBDD" stroke-width="0.7" opacity="0.5"/>
+      </g>
+      <!-- Building R5 -->
+      <g id="bldg-R5">
+        <rect x="312" y="213" width="16" height="31" fill="#091E2C" stroke="#276F84" stroke-width="0.8"/>
+        <line x1="317" y1="218" x2="317" y2="240" stroke="#2BCBDD" stroke-width="0.6" opacity="0.5"/>
+      </g>
+    </g>
+
+    <!-- CENTRAL TOWER -->
+    <g id="city-front-glow">
+      <path d="M 182 240 L 182 158 L 190 151 L 190 132 L 196 127 L 196 115 L 200 109 L 204 115 L 204 127 L 211 133 L 211 151 L 218 157 L 218 240"
+        stroke="#50F0FA" stroke-width="3.4" opacity="0.16" fill="none" filter="url(#glowCyanSoft)"/>
+    </g>
+    <g id="city-front">
+      <path d="M 182 240 L 182 158 L 190 151 L 190 132 L 196 127 L 196 115 L 200 109 L 204 115 L 204 127 L 211 133 L 211 151 L 218 157 L 218 240 Z"
+        fill="#0C2637" stroke="#50F0FA" stroke-width="1.2"/>
+      <!-- facade subdivisions -->
+      <line x1="188" y1="165" x2="188" y2="236" stroke="#2BCBDD" stroke-width="0.7" opacity="0.55"/>
+      <line x1="194" y1="140" x2="194" y2="236" stroke="#50F0FA" stroke-width="0.8" opacity="0.75"/>
+      <line x1="200" y1="118" x2="200" y2="236" stroke="#68F5FC" stroke-width="0.9" opacity="0.85"/>
+      <line x1="206" y1="140" x2="206" y2="236" stroke="#50F0FA" stroke-width="0.8" opacity="0.75"/>
+      <line x1="212" y1="165" x2="212" y2="236" stroke="#2BCBDD" stroke-width="0.7" opacity="0.55"/>
+      <!-- inset window rows -->
+      <rect x="185" y="175" width="2" height="5" fill="#50F0FA" opacity="0.75"/>
+      <rect x="191" y="185" width="2" height="5" fill="#68F5FC" opacity="0.8"/>
+      <rect x="197" y="150" width="2" height="5" fill="#68F5FC" opacity="0.8"/>
+      <rect x="203" y="150" width="2" height="5" fill="#68F5FC" opacity="0.8"/>
+      <rect x="209" y="185" width="2" height="5" fill="#50F0FA" opacity="0.75"/>
+      <rect x="185" y="200" width="2" height="5" fill="#2BCBDD" opacity="0.6"/>
+      <rect x="213" y="200" width="2" height="5" fill="#2BCBDD" opacity="0.6"/>
+      <rect x="185" y="220" width="2" height="5" fill="#50F0FA" opacity="0.7"/>
+      <rect x="213" y="220" width="2" height="5" fill="#50F0FA" opacity="0.7"/>
+      <!-- shoulders -->
+      <path d="M 182 158 L 190 151 L 190 160 L 182 166 Z" fill="#0A2032" stroke="#315A72" stroke-width="0.7"/>
+      <path d="M 218 157 L 211 151 L 211 160 L 218 166 Z" fill="#0A2032" stroke="#315A72" stroke-width="0.7"/>
+    </g>
+
+    <!-- diamond emblem -->
+    <g id="tower-emblem" transform="translate(200,164)">
+      <path d="M 0 -9.5 L 6.5 0 L 0 9.5 L -6.5 0 Z" fill="none" stroke="#50F0FA" stroke-width="2.2" opacity="0.25" filter="url(#glowCyanSoft)"/>
+      <path d="M 0 -8.5 L 5.5 0 L 0 8.5 L -5.5 0 Z" fill="#0B2434" stroke="#68F5FC" stroke-width="1.1"/>
+    </g>
+
+    <!-- CENTRAL SPIRE -->
+    <g id="city-spire">
+      <line x1="200" y1="132" x2="200" y2="106" stroke="#68F5FC" stroke-width="1.4" opacity="0.9"/>
+      <line x1="200" y1="132" x2="200" y2="106" stroke="#50F0FA" stroke-width="3" opacity="0.18" filter="url(#glowCyanSoft)"/>
+      <circle cx="200" cy="104" r="1.6" fill="#68F5FC"/>
+      <line x1="197" y1="122" x2="203" y2="122" stroke="#2BCBDD" stroke-width="0.8" opacity="0.6"/>
+    </g>
+
+    <!-- tech particles -->
+    <g id="city-tech-details" stroke="#2BCBDD" fill="#2BCBDD">
+      <circle cx="98" cy="160" r="1" opacity="0.6"/>
+      <circle cx="300" cy="150" r="1.1" opacity="0.55"/>
+      <path d="M 160 130 L 163 130 M 161.5 128.5 L 161.5 131.5" stroke-width="0.7" opacity="0.5"/>
+      <path d="M 250 135 L 253 135 M 251.5 133.5 L 251.5 136.5" stroke-width="0.7" opacity="0.5"/>
+      <circle cx="120" cy="205" r="0.9" opacity="0.4"/>
+      <circle cx="280" cy="210" r="0.9" opacity="0.4"/>
+      <path d="M 340 190 L 342 192 M 342 190 L 340 192" stroke-width="0.6" opacity="0.5"/>
+    </g>
+
+    <!-- FLOATING PLATFORM -->
+    <g id="city-platform">
+      <path d="M 68 239 L 105 232 L 155 231 L 200 227 L 245 231 L 295 232 L 332 239 L 314 246 L 273 249 L 253 258 L 147 258 L 127 249 L 86 246 Z"
+        fill="#0A2233" stroke="#315A72" stroke-width="1"/>
+      <path d="M 68 239 L 105 232 L 155 231 L 200 227 L 245 231 L 295 232 L 332 239" fill="none" stroke="#50F0FA" stroke-width="1" opacity="0.85"/>
+      <path d="M 86 246 L 127 249 L 147 258 L 253 258 L 273 249 L 314 246" fill="none" stroke="#188DA7" stroke-width="0.8" opacity="0.6"/>
+      <line x1="105" y1="232" x2="127" y2="249" stroke="#2BCBDD" stroke-width="0.6" opacity="0.45"/>
+      <line x1="155" y1="231" x2="147" y2="258" stroke="#2BCBDD" stroke-width="0.6" opacity="0.45"/>
+      <line x1="245" y1="231" x2="253" y2="258" stroke="#2BCBDD" stroke-width="0.6" opacity="0.45"/>
+      <line x1="295" y1="232" x2="273" y2="249" stroke="#2BCBDD" stroke-width="0.6" opacity="0.45"/>
+      <line x1="200" y1="227" x2="200" y2="258" stroke="#50F0FA" stroke-width="0.7" opacity="0.5"/>
+    </g>
+  </g>
+
+  <!-- PROGRESS RING -->
+  <g id="progress">
+    <circle id="progress-outer-ring" cx="200" cy="278" r="61" fill="none" stroke="#2BCBDD" stroke-width="0.8" opacity="0.45"/>
+    <circle id="progress-track" cx="200" cy="278" r="55" fill="none" stroke="#36546B" stroke-width="7" opacity="0.95"/>
+    <circle id="progress-glow" cx="200" cy="278" r="55" fill="none" stroke="#50F0FA" stroke-width="11" opacity="0.2"
+      stroke-linecap="round" stroke-dasharray="345.575" stroke-dashoffset="82.938"
+      transform="rotate(-90 200 278)" filter="url(#glowCyanStrong)"/>
+    <circle id="progress-active" cx="200" cy="278" r="55" fill="none" stroke="#50F0FA" stroke-width="7"
+      stroke-linecap="round" stroke-dasharray="345.575" stroke-dashoffset="82.938"
+      transform="rotate(-90 200 278)"/>
+    <circle cx="200" cy="278" r="47" fill="#061421" opacity="0.97" stroke="#1B4055" stroke-width="0.8"/>
+
+    <g id="progress-copy" text-anchor="middle">
+      <text x="200" y="283" font-family="Arial, Helvetica, sans-serif" font-size="39" font-weight="800" fill="#F5FAFF">76%</text>
+      <text x="200" y="302" font-family="Arial, Helvetica, sans-serif" font-size="8" font-weight="500" fill="#C6D5E3">LVL 2 · do następnej</text>
+      <text x="200" y="312" font-family="Arial, Helvetica, sans-serif" font-size="8" font-weight="500" fill="#C6D5E3">nagrody</text>
+    </g>
+  </g>
+
+  <text x="200" y="339" font-family="Arial, Helvetica, sans-serif" font-size="7.8" font-weight="400" fill="#94A9BB" text-anchor="middle">Postęp za GRAJ 2:00 i Wyzwanie dnia.</text>
+
+  <!-- REWARD CARD -->
+  <g id="reward-card">
+    <rect x="96" y="348" width="208" height="64" rx="9" fill="#071827" stroke="#315A72" stroke-width="0.9"/>
+    <text x="200" y="361" font-family="Arial, Helvetica, sans-serif" font-size="7.2" font-weight="600" fill="#C6D5E3" text-anchor="middle">Po 100% odblokujesz:</text>
+    <line x1="200" y1="368" x2="200" y2="404" stroke="#24475C" stroke-width="0.8"/>
+
+    <g id="reward-trail">
+      <path d="M 138 388 Q 148 372 168 380" stroke="#50F0FA" stroke-width="3" opacity="0.18" fill="none" filter="url(#glowCyanSoft)"/>
+      <path d="M 138 388 Q 148 372 168 380" stroke="#50F0FA" stroke-width="2" fill="none"/>
+      <path d="M 141 385 Q 149 374 163 378" stroke="#2BCBDD" stroke-width="1.4" fill="none"/>
+      <path d="M 144 382 Q 150 376 158 377" stroke="#188DA7" stroke-width="1" fill="none"/>
+      <circle cx="168" cy="380" r="1.1" fill="#68F5FC"/>
+      <circle cx="163" cy="378" r="0.8" fill="#68F5FC" opacity="0.7"/>
+      <text x="151" y="404" font-family="Arial, Helvetica, sans-serif" font-size="8.1" fill="#F5FAFF" text-anchor="middle">Trail Impuls</text>
+    </g>
+
+    <g id="reward-coins">
+      <ellipse cx="249.5" cy="386" rx="8" ry="3.4" fill="none" stroke="#EFCB63" stroke-width="1.5" filter="url(#glowYellow)"/>
+      <ellipse cx="249.5" cy="381" rx="8" ry="3.4" fill="#0B2434" stroke="#EFCB63" stroke-width="1.5"/>
+      <ellipse cx="249.5" cy="381" rx="4.2" ry="1.6" fill="none" stroke="#FFE077" stroke-width="0.8"/>
+      <line x1="241.5" y1="381" x2="241.5" y2="386" stroke="#EFCB63" stroke-width="1.2"/>
+      <line x1="257.5" y1="381" x2="257.5" y2="386" stroke="#EFCB63" stroke-width="1.2"/>
+      <text x="252" y="404" font-family="Arial, Helvetica, sans-serif" font-size="8.1" fill="#F5FAFF" text-anchor="middle">+150 monet</text>
+    </g>
+  </g>
+
+  <!-- LEVEL PROGRESSION TRACK -->
+  <g id="level-track">
+    <line x1="96" y1="432" x2="200" y2="432" stroke="#50F0FA" stroke-width="2"/>
+    <line x1="200" y1="432" x2="304" y2="432" stroke="#36546B" stroke-width="2"/>
+
+    <g id="lvl-1-node">
+      <circle cx="96" cy="432" r="10" fill="#071827" stroke="#50F0FA" stroke-width="1.6"/>
+      <path d="M 91 432 L 95 436 L 102 428" stroke="#50F0FA" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="96" y="452" font-family="Arial, Helvetica, sans-serif" font-size="7.8" font-weight="600" fill="#AFC4D5" text-anchor="middle">LVL 1</text>
+    </g>
+
+    <g id="lvl-2-node">
+      <circle cx="200" cy="432" r="14" fill="none" stroke="#50F0FA" stroke-width="4" opacity="0.22" filter="url(#activeNodeGlow)"/>
+      <circle cx="200" cy="432" r="11" fill="#0A2233" stroke="#50F0FA" stroke-width="2"/>
+      <circle cx="200" cy="432" r="5" fill="#50F0FA"/>
+      <text x="200" y="452" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="700" fill="#50F0FA" text-anchor="middle">LVL 2</text>
+    </g>
+
+    <g id="lvl-3-node">
+      <circle cx="304" cy="432" r="10" fill="#0A1C2B" stroke="#607B92" stroke-width="1.5"/>
+      <text x="304" y="452" font-family="Arial, Helvetica, sans-serif" font-size="7.8" font-weight="600" fill="#819BB1" text-anchor="middle">LVL 3</text>
+    </g>
+  </g>
+</g>
+
+<!-- CTA ROW -->
+<g id="cta-row">
+  <g id="cta-play">
+    <rect x="16" y="484" width="196" height="46" rx="10" fill="url(#ctaGradient)"/>
+    <text x="103" y="513" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="800" fill="#07131E" text-anchor="middle">GRAJ 2:00</text>
+    <path d="M 178 499 L 178 515 L 190 507 Z" fill="#07131E"/>
+  </g>
+
+  <g id="cta-daily">
+    <rect x="220" y="484" width="164" height="46" rx="10" fill="#071827" stroke="#50F0FA" stroke-width="1.2"/>
+    <g transform="translate(239,496)" stroke="#50F0FA" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="3" width="20" height="18" rx="2"/>
+      <line x1="5" y1="0" x2="5" y2="6"/>
+      <line x1="15" y1="0" x2="15" y2="6"/>
+      <line x1="0" y1="9" x2="20" y2="9"/>
+      <path d="M 10 12 L 11.3 14.6 L 14.2 15 L 12.1 17 L 12.6 19.9 L 10 18.5 L 7.4 19.9 L 7.9 17 L 5.8 15 L 8.7 14.6 Z" fill="#50F0FA" stroke="none"/>
+    </g>
+    <text x="310" y="512" font-family="Arial, Helvetica, sans-serif" font-size="10.4" font-weight="700" fill="#F5FAFF" text-anchor="middle">WYZWANIE DNIA</text>
+  </g>
+</g>
+
+<!-- INFO PANEL -->
+<g id="info-panel">
+  <rect x="16" y="540" width="368" height="82" rx="11" fill="url(#panelGradient)" stroke="#315A72" stroke-width="0.9"/>
+  <circle cx="42" cy="561" r="10" fill="none" stroke="#50F0FA" stroke-width="1.3"/>
+  <circle cx="42" cy="557" r="1" fill="#50F0FA"/>
+  <line x1="42" y1="560" x2="42" y2="566" stroke="#50F0FA" stroke-width="1.3" stroke-linecap="round"/>
+  <text x="70" y="558" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="700" fill="#F5FAFF">Jak to działa?</text>
+
+  <circle cx="74" cy="575" r="2.1" fill="#50F0FA"/>
+  <text x="85" y="577" font-family="Arial, Helvetica, sans-serif" font-size="8.1" fill="#9DB1C2">2-minutowe rundy napełniają Core City</text>
+
+  <circle cx="74" cy="590" r="2.1" fill="#50F0FA"/>
+  <text x="85" y="592" font-family="Arial, Helvetica, sans-serif" font-size="8.1" fill="#9DB1C2">Misje kampanii są w zakładce Dzielnice</text>
+
+  <circle cx="74" cy="605" r="2.1" fill="#50F0FA"/>
+  <text x="85" y="607" font-family="Arial, Helvetica, sans-serif" font-size="8.1" fill="#9DB1C2">Nagrody z Core City trafiają do Warsztatu</text>
+</g>
+
+<!-- NEXT REWARD ROW -->
+<g id="next-reward">
+  <rect x="16" y="632" width="368" height="52" rx="10" fill="url(#panelGradient)" stroke="#315A72" stroke-width="0.9"/>
+
+  <g transform="translate(32,646)" stroke="#50F0FA" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="6" width="22" height="14" rx="1.5"/>
+    <rect x="-1" y="2" width="24" height="5" rx="1.5"/>
+    <line x1="11" y1="2" x2="11" y2="20"/>
+    <path d="M 8 -1 Q 11 -4 14 -1" />
+  </g>
+
+  <line x1="67" y1="642" x2="67" y2="674" stroke="#315A72" stroke-width="0.8"/>
+
+  <text x="84" y="652" font-family="Arial, Helvetica, sans-serif" font-size="6.6" font-weight="700" letter-spacing="0.3" fill="#819BB1">NASTĘPNA NAGRODA:</text>
+  <text x="84" y="670" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="700" fill="#50F0FA">Trail Impuls</text>
+
+  <path d="M 357 652 L 363 658 L 357 664" fill="none" stroke="#9DB1C2" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+
+<!-- BOTTOM NAVIGATION -->
+<g id="bottom-navigation">
+  <rect x="16" y="696" width="368" height="74" rx="12" fill="#071827" stroke="#315A72" stroke-width="0.9"/>
+
+  <g id="nav-city">
+    <g transform="translate(62,720)" stroke="#50F0FA" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -9 8 L -9 -2 L 0 -9 L 9 -2 L 9 8 Z"/>
+      <line x1="-3" y1="8" x2="-3" y2="1"/>
+      <line x1="3" y1="8" x2="3" y2="1"/>
+    </g>
+    <text x="62" y="750" font-family="Arial, Helvetica, sans-serif" font-size="8" font-weight="700" fill="#50F0FA" text-anchor="middle">Miasto</text>
+    <rect x="50" y="760" width="24" height="3" rx="1.5" fill="#50F0FA"/>
+  </g>
+
+  <g id="nav-districts">
+    <g transform="translate(154,720)" stroke="#839BAF" stroke-width="1.2" fill="none">
+      <rect x="-8" y="-8" width="6.5" height="6.5" rx="1.3"/>
+      <rect x="1.5" y="-8" width="6.5" height="6.5" rx="1.3"/>
+      <rect x="-8" y="1.5" width="6.5" height="6.5" rx="1.3"/>
+      <rect x="1.5" y="1.5" width="6.5" height="6.5" rx="1.3"/>
+    </g>
+    <text x="154" y="750" font-family="Arial, Helvetica, sans-serif" font-size="7.8" font-weight="500" fill="#819BB1" text-anchor="middle">Dzielnice</text>
+  </g>
+
+  <g id="nav-workshop">
+    <g transform="translate(246,720)" stroke="#839BAF" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 -8 A 4 4 0 1 0 8 -4 L 3 1"/>
+      <line x1="3" y1="1" x2="-8" y2="8"/>
+      <circle cx="-8" cy="8" r="1.2" fill="#839BAF" stroke="none"/>
+    </g>
+    <text x="246" y="750" font-family="Arial, Helvetica, sans-serif" font-size="7.8" fill="#819BB1" text-anchor="middle">Warsztat</text>
+  </g>
+
+  <g id="nav-challenges">
+    <g transform="translate(338,720)" stroke="#839BAF" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -6 -8 L 6 -8 L 6 -2 A 6 6 0 0 1 -6 -2 Z"/>
+      <line x1="0" y1="4" x2="0" y2="7"/>
+      <line x1="-4" y1="7" x2="4" y2="7"/>
+      <path d="M -6 -7 L -9 -7 L -9 -3 A 3 3 0 0 0 -6 0"/>
+      <path d="M 6 -7 L 9 -7 L 9 -3 A 3 3 0 0 1 6 0"/>
+    </g>
+    <text x="338" y="750" font-family="Arial, Helvetica, sans-serif" font-size="7.8" fill="#819BB1" text-anchor="middle">Wyzwania</text>
+  </g>
+</g>
+
+</svg>
