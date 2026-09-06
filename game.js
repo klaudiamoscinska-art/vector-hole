@@ -342,6 +342,19 @@ const CARD_ICONS = {
   target: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>'
 };
 
+// Miasto's "Po 100% odblokujesz" reward chip (GDD 4.0 §5.1) needs an icon
+// matching whichever Warsztat category CORE_CITY_LEVEL_REWARDS grants next
+// -- full <svg> markup (not CARD_ICONS' bare <path>) since it's injected
+// via innerHTML directly, not through the evolution-card template.
+const REWARD_CATEGORY_ICONS = {
+  skin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>',
+  aura: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg>',
+  effect: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
+  overdrive: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>',
+  bundle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9h18M12 9v12"/></svg>',
+  bonus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+
 // Phase 4: Golden Shot evolution mutations — run-only, never sold or kept
 // between rounds, so the ranked/daily leaderboard (once it exists) stays
 // fair (GDD 4.1). desc kept to a few words per player feedback ("reduce
@@ -1496,6 +1509,15 @@ class Game {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.save = loadSave();
+    // GDD 4.0 §5.3 Warsztat select-then-equip flow: what's currently
+    // previewed in each of the 4 cosmetic categories, reset to the saved
+    // (actually equipped) loadout whenever openWarsztatScreen() runs.
+    this.pendingLoadout = {
+      skin: this.save.selected,
+      aura: this.save.auras.selected,
+      effect: this.save.effects.selected,
+      overdriveSkin: this.save.overdriveSkins.selected
+    };
     this.playCount = 0;
     this.particles = [];
     this.ripples = [];
@@ -1781,10 +1803,14 @@ class Game {
 
     document.getElementById('btnEvolutionSkip').addEventListener('click', () => this.skipEvolutionOffer());
 
-    document.getElementById('btnProfile').addEventListener('click', () => this.openProfileScreen());
+    // GDD 4.0 §5: every hub screen's header repeats the same ⚙ gear button.
+    document.querySelectorAll('.hub-gear-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.openProfileScreen());
+    });
     document.getElementById('btnSaveProfile').addEventListener('click', () => this.saveProfile());
     document.getElementById('btnProfileBack').addEventListener('click', () => this.showScreen('mainMenu'));
     document.getElementById('btnShopBack').addEventListener('click', () => this.showScreen('mainMenu'));
+    document.getElementById('btnEquip').addEventListener('click', () => this.onEquipClick());
     // GDD 4.0 §5.3: Warsztat has 4 equip categories (Rdzeń/Trail/Efekt
     // pochłaniania/Overdrive) instead of the old 2 (Ring/Aura tabs).
     const shopTabs = [
@@ -1799,6 +1825,7 @@ class Game {
           document.getElementById(t).classList.toggle('active', t === tab);
           document.getElementById(g).classList.toggle('hidden', g !== grid);
         });
+        this.updateCosmeticUnlockedCount();
       });
     });
 
@@ -1884,12 +1911,17 @@ class Game {
    *  (unlockSource set — the Core City ladder / mission rewards) show their
    *  unlock source instead of a price and aren't buyable from here (GDD
    *  §5.3: "czytelne źródło blokady: Misja / Core City / Daily / Sklep"). */
-  renderCosmeticGrid(gridId, items, ownedList, selectedId, onPick) {
+  /** Cards show the *pending* loadout (this.pendingLoadout), not the saved
+   *  one -- GDD 4.0 §5.3's two-step flow: tap an owned card to preview it
+   *  (updates "PODGLĄD NA ŻYWO" immediately, for free), tap "ZAŁÓŻ" to
+   *  actually commit the whole 4-category loadout at once. Buying an item
+   *  still spends currency and unlocks it immediately either way. */
+  renderCosmeticGrid(gridId, items, ownedList, pendingId, onPick) {
     const grid = document.getElementById(gridId);
     grid.innerHTML = '';
     items.forEach(item => {
       const owned = ownedList.includes(item.id);
-      const selected = selectedId === item.id;
+      const selected = pendingId === item.id;
       const card = document.createElement('div');
       card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
 
@@ -1906,15 +1938,25 @@ class Game {
       }
       card.appendChild(swatch);
 
+      const body = document.createElement('div');
+      body.className = 'skin-card-body';
       const name = document.createElement('div');
       name.className = 'skin-name';
       name.textContent = item.name;
-      card.appendChild(name);
+      body.appendChild(name);
 
       const meta = document.createElement('div');
       meta.className = owned ? 'skin-owned-badge' : 'skin-price';
       meta.textContent = owned ? (selected ? 'WYBRANY' : 'POSIADANE') : this.cosmeticLockLabel(item);
-      card.appendChild(meta);
+      body.appendChild(meta);
+      card.appendChild(body);
+
+      if (selected) {
+        const check = document.createElement('span');
+        check.className = 'skin-card-check';
+        check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
+        card.appendChild(check);
+      }
 
       card.addEventListener('click', () => onPick(item));
       grid.appendChild(card);
@@ -1923,33 +1965,51 @@ class Game {
 
   cosmeticLockLabel(item) {
     if (item.unlockSource) {
-      return item.unlockSource.type === 'coreCity' ? `CORE CITY LVL ${item.unlockSource.level}` : `MISJA ${item.unlockSource.id}`;
+      return item.unlockSource.type === 'coreCity'
+        ? `🔒 CORE CITY LVL ${item.unlockSource.level}`
+        : `🔒 MISJA ${item.unlockSource.id}`;
     }
     if (item.priceType === 'prisms') return `◆ ${item.pricePrisms}`;
-    return `◈ ${item.priceCoins != null ? item.priceCoins : item.price}`;
+    return `◇ ${item.priceCoins != null ? item.priceCoins : item.price}`;
+  }
+
+  /** GDD 4.0 §5.3's "6 / 24 ODBLOKOWANE" counter, for whichever category
+   *  tab is currently visible. */
+  updateCosmeticUnlockedCount() {
+    const categories = {
+      skinGrid: [SKINS, this.save.owned],
+      auraGrid: [AURAS, this.save.auras.owned],
+      effectGrid: [EAT_EFFECTS, this.save.effects.owned],
+      overdriveSkinGrid: [OVERDRIVE_SKINS, this.save.overdriveSkins.owned]
+    };
+    const activeId = Object.keys(categories).find(id => !document.getElementById(id).classList.contains('hidden'));
+    if (!activeId) return;
+    const [items, owned] = categories[activeId];
+    document.getElementById('cosmeticUnlockedCount').textContent = `${owned.length} / ${items.length} ODBLOKOWANE`;
   }
 
   populateShop() {
-    this.renderCosmeticGrid('skinGrid', SKINS, this.save.owned, this.save.selected, skin => this.onSkinClick(skin));
+    this.renderCosmeticGrid('skinGrid', SKINS, this.save.owned, this.pendingLoadout.skin, skin => this.onSkinClick(skin));
+    this.updateCosmeticUnlockedCount();
   }
 
   onSkinClick(skin) {
     const owned = this.save.owned.includes(skin.id);
     if (owned) {
-      this.save.selected = skin.id;
+      this.pendingLoadout.skin = skin.id;
     } else if (skin.unlockSource) {
       this.analytics.track('cosmetic_preview', { skinId: skin.id, locked: true });
       return;
     } else if (this.save.coins >= skin.price) {
       this.save.coins -= skin.price;
       this.save.owned.push(skin.id);
-      this.save.selected = skin.id;
+      this.pendingLoadout.skin = skin.id;
       this.analytics.track('soft_purchase', { skinId: skin.id, price: skin.price, currency: 'coins' });
+      saveGame(this.save);
     } else {
       this.analytics.track('cosmetic_preview', { skinId: skin.id, price: skin.price, affordable: false });
       return;
     }
-    saveGame(this.save);
     this.populateShop();
     this.updateCoinDisplays();
     this.updateWarsztatPreview();
@@ -1959,13 +2019,14 @@ class Game {
    *  sink alongside Coins (GDD 10.1/10.2). Renamed "Trail" in the Warsztat
    *  UI per GDD 4.0 §5.3, same following-glow render path underneath. */
   populateAuras() {
-    this.renderCosmeticGrid('auraGrid', AURAS, this.save.auras.owned, this.save.auras.selected, aura => this.onAuraClick(aura));
+    this.renderCosmeticGrid('auraGrid', AURAS, this.save.auras.owned, this.pendingLoadout.aura, aura => this.onAuraClick(aura));
+    this.updateCosmeticUnlockedCount();
   }
 
   onAuraClick(aura) {
     const owned = this.save.auras.owned.includes(aura.id);
     if (owned) {
-      this.save.auras.selected = aura.id;
+      this.pendingLoadout.aura = aura.id;
     } else if (aura.unlockSource) {
       this.analytics.track('cosmetic_preview', { auraId: aura.id, locked: true });
       return;
@@ -1976,8 +2037,9 @@ class Game {
       }
       this.save.prisms -= aura.pricePrisms;
       this.save.auras.owned.push(aura.id);
-      this.save.auras.selected = aura.id;
+      this.pendingLoadout.aura = aura.id;
       this.analytics.track('soft_purchase', { auraId: aura.id, price: aura.pricePrisms, currency: 'prisms' });
+      saveGame(this.save);
     } else {
       if (this.save.coins < aura.priceCoins) {
         this.analytics.track('cosmetic_preview', { auraId: aura.id, affordable: false });
@@ -1985,10 +2047,10 @@ class Game {
       }
       this.save.coins -= aura.priceCoins;
       this.save.auras.owned.push(aura.id);
-      this.save.auras.selected = aura.id;
+      this.pendingLoadout.aura = aura.id;
       this.analytics.track('soft_purchase', { auraId: aura.id, price: aura.priceCoins, currency: 'coins' });
+      saveGame(this.save);
     }
-    saveGame(this.save);
     this.populateAuras();
     this.updateCoinDisplays();
     this.updateWarsztatPreview();
@@ -1997,25 +2059,26 @@ class Game {
   /** GDD 4.0 §5.3 category 3: "Efekt pochłaniania" — see the color override
    *  in triggerEatFeedback(). 'classic' (free, color: null) is always owned. */
   populateEffects() {
-    this.renderCosmeticGrid('effectGrid', EAT_EFFECTS, this.save.effects.owned, this.save.effects.selected, effect => this.onEffectClick(effect));
+    this.renderCosmeticGrid('effectGrid', EAT_EFFECTS, this.save.effects.owned, this.pendingLoadout.effect, effect => this.onEffectClick(effect));
+    this.updateCosmeticUnlockedCount();
   }
 
   onEffectClick(effect) {
     const owned = this.save.effects.owned.includes(effect.id);
     if (owned) {
-      this.save.effects.selected = effect.id;
+      this.pendingLoadout.effect = effect.id;
     } else if (effect.unlockSource) {
       this.analytics.track('cosmetic_preview', { effectId: effect.id, locked: true });
       return;
     } else if (this.save.coins >= (effect.priceCoins || 0)) {
       this.save.coins -= (effect.priceCoins || 0);
       this.save.effects.owned.push(effect.id);
-      this.save.effects.selected = effect.id;
+      this.pendingLoadout.effect = effect.id;
       this.analytics.track('soft_purchase', { effectId: effect.id, price: effect.priceCoins || 0, currency: 'coins' });
+      saveGame(this.save);
     } else {
       return;
     }
-    saveGame(this.save);
     this.populateEffects();
     this.updateCoinDisplays();
     this.updateWarsztatPreview();
@@ -2024,28 +2087,45 @@ class Game {
   /** GDD 4.0 §5.3 category 4: "Overdrive" — a cosmetic tint on Arena's
    *  existing seeded Overdrive finish, see checkOverdriveTrigger(). */
   populateOverdriveSkins() {
-    this.renderCosmeticGrid('overdriveSkinGrid', OVERDRIVE_SKINS, this.save.overdriveSkins.owned, this.save.overdriveSkins.selected, skin => this.onOverdriveSkinClick(skin));
+    this.renderCosmeticGrid('overdriveSkinGrid', OVERDRIVE_SKINS, this.save.overdriveSkins.owned, this.pendingLoadout.overdriveSkin, skin => this.onOverdriveSkinClick(skin));
+    this.updateCosmeticUnlockedCount();
   }
 
   onOverdriveSkinClick(skin) {
     const owned = this.save.overdriveSkins.owned.includes(skin.id);
     if (owned) {
-      this.save.overdriveSkins.selected = skin.id;
+      this.pendingLoadout.overdriveSkin = skin.id;
     } else if (skin.unlockSource) {
       this.analytics.track('cosmetic_preview', { overdriveSkinId: skin.id, locked: true });
       return;
     } else if (this.save.coins >= (skin.priceCoins || 0)) {
       this.save.coins -= (skin.priceCoins || 0);
       this.save.overdriveSkins.owned.push(skin.id);
-      this.save.overdriveSkins.selected = skin.id;
+      this.pendingLoadout.overdriveSkin = skin.id;
       this.analytics.track('soft_purchase', { overdriveSkinId: skin.id, price: skin.priceCoins || 0, currency: 'coins' });
+      saveGame(this.save);
     } else {
       return;
     }
-    saveGame(this.save);
     this.populateOverdriveSkins();
     this.updateCoinDisplays();
     this.updateWarsztatPreview();
+  }
+
+  /** GDD 4.0 §5.3 "ZAŁÓŻ" — commits the pending loadout (built up across
+   *  all 4 tabs) to the actual save all at once. */
+  onEquipClick() {
+    this.save.selected = this.pendingLoadout.skin;
+    this.save.auras.selected = this.pendingLoadout.aura;
+    this.save.effects.selected = this.pendingLoadout.effect;
+    this.save.overdriveSkins.selected = this.pendingLoadout.overdriveSkin;
+    saveGame(this.save);
+    this.analytics.track('loadout_equip', { ...this.pendingLoadout });
+    this.populateShop();
+    this.populateAuras();
+    this.populateEffects();
+    this.populateOverdriveSkins();
+    this.vibrate(30);
   }
 
   /** GDD 4.0 §5.5: Warsztat unlocks after M02 clears OR the player already
@@ -2059,6 +2139,15 @@ class Game {
 
   openWarsztatScreen() {
     this.analytics.track('shop_view', {});
+    // Reset the pending preview to whatever is actually equipped -- any
+    // unconfirmed taps from a previous visit are discarded, matching the
+    // ZAŁÓŻ button's "this is a preview until you confirm it" contract.
+    this.pendingLoadout = {
+      skin: this.save.selected,
+      aura: this.save.auras.selected,
+      effect: this.save.effects.selected,
+      overdriveSkin: this.save.overdriveSkins.selected
+    };
     this.populateShop();
     this.populateAuras();
     this.populateEffects();
@@ -2068,12 +2157,18 @@ class Game {
   }
 
   /** "PODGLĄD NA ŻYWO" panel (GDD 4.0 §5.3 mockup) — a pure CSS/SVG vector
-   *  preview of the equipped loadout, no image assets. */
+   *  preview of the *pending* loadout (see renderCosmeticGrid's doc),
+   *  falling back to the saved one before Warsztat has been opened yet
+   *  (e.g. right after boot, before pendingLoadout exists). */
   updateWarsztatPreview() {
-    const skin = SKINS.find(s => s.id === this.save.selected) || SKINS[0];
-    const aura = AURAS.find(a => a.id === this.save.auras.selected);
-    const effect = EAT_EFFECTS.find(e => e.id === this.save.effects.selected);
-    const overdrive = OVERDRIVE_SKINS.find(o => o.id === this.save.overdriveSkins.selected);
+    const pending = this.pendingLoadout || {
+      skin: this.save.selected, aura: this.save.auras.selected,
+      effect: this.save.effects.selected, overdriveSkin: this.save.overdriveSkins.selected
+    };
+    const skin = SKINS.find(s => s.id === pending.skin) || SKINS[0];
+    const aura = AURAS.find(a => a.id === pending.aura);
+    const effect = EAT_EFFECTS.find(e => e.id === pending.effect);
+    const overdrive = OVERDRIVE_SKINS.find(o => o.id === pending.overdriveSkin);
 
     const ring = document.getElementById('warsztatPreviewRing');
     if (skin.rainbow) {
@@ -2086,7 +2181,9 @@ class Game {
       ring.style.boxShadow = `0 0 24px ${skin.color}`;
     }
     const trail = document.getElementById('warsztatPreviewTrail');
-    trail.style.borderColor = (aura && aura.color) || 'transparent';
+    trail.style.borderTopColor = (aura && aura.color) || 'var(--nc-cyan)';
+    trail.style.borderRightColor = (aura && aura.color) || 'var(--nc-cyan)';
+    trail.style.opacity = aura && aura.id !== 'none' ? '0.8' : '0.25';
 
     document.getElementById('warsztatActiveCore').textContent = skin.name;
     document.getElementById('warsztatActiveTrail').textContent = (aura && aura.name) || 'Brak';
@@ -2175,19 +2272,29 @@ class Game {
   updateCoinDisplays() {
     document.getElementById('coinCountMenu').textContent = this.save.coins;
     document.getElementById('coinCountShop').textContent = this.save.coins;
+    document.getElementById('coinCountDistricts').textContent = this.save.coins;
+    document.getElementById('coinCountChallenges').textContent = this.save.coins;
     document.getElementById('prismCountMenu').textContent = this.save.prisms || 0;
     document.getElementById('prismCountShop').textContent = this.save.prisms || 0;
+    document.getElementById('prismCountDistricts').textContent = this.save.prisms || 0;
+    document.getElementById('prismCountChallenges').textContent = this.save.prisms || 0;
 
     // GDD 4.0 §8.3 Miasto/Core City copy: percent + "LVL X · do następnej
-    // nagrody" + a preview of what 100% unlocks next.
+    // nagrody" + a preview of what 100% unlocks next, rendered as a real
+    // circular progress ring (GDD 4.0 §5.1 mockup) instead of a linear bar.
     const level = this.save.hub.coreLevel || 1;
-    document.getElementById('hubCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
-    document.getElementById('hubChargeValue').textContent = (this.save.hub.coreCharge || 0) + '%';
+    const pct = this.save.hub.coreCharge || 0;
+    const RING_CIRCUMFERENCE = 439.8; // 2 * PI * r(70), see .hub-ring-fill
+    document.getElementById('hubRingFill').style.strokeDashoffset = RING_CIRCUMFERENCE * (1 - pct / 100);
+    document.getElementById('hubChargeValue').textContent = pct + '%';
     document.getElementById('hubLevelLabel').textContent = `LVL ${level} · do następnej nagrody`;
     const nextReward = CORE_CITY_LEVEL_REWARDS[level + 1];
-    document.getElementById('hubRewardPreview').textContent = nextReward
-      ? `Po 100% odblokujesz: ${nextReward.label} + ${nextReward.coins} monet`
-      : `Po 100% odblokujesz: +${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    const nextRewardLabel = nextReward ? nextReward.label : 'Premia';
+    const nextRewardCoins = nextReward ? nextReward.coins : CONFIG.hub.milestoneFallbackCoins;
+    document.getElementById('hubRewardChip1').textContent = nextRewardLabel;
+    document.getElementById('hubRewardChip2').textContent = `+${nextRewardCoins} monet`;
+    document.getElementById('hubRewardChip1Icon').innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(nextReward)];
+    document.getElementById('hubRewardPreview').textContent = nextRewardLabel;
     this.renderHubLevelDots(level);
 
     const arenaUnlocked = this.isArenaUnlocked();
@@ -2213,18 +2320,48 @@ class Game {
     document.getElementById('dailyStreakValue').textContent = this.save.daily.streak || 0;
   }
 
-  /** Three dots (poprzedni / aktualny / następny poziom) around the
-   *  player's current Core City level -- GDD 4.0 §5.1 mockup's
-   *  "LVL1 → LVL2 → LVL3" progress row, generalized to any level. */
+  /** Which REWARD_CATEGORY_ICONS entry matches a CORE_CITY_LEVEL_REWARDS
+   *  row -- LVL6's "Zestaw" grants all four at once (bundle), LVL7+'s
+   *  fallback has no def at all (bonus). */
+  coreCityRewardCategory(rewardDef) {
+    if (!rewardDef) return 'bonus';
+    const categoryCount = ['skinId', 'auraId', 'effectId', 'overdriveSkinId'].filter(k => rewardDef[k]).length;
+    if (categoryCount > 1) return 'bundle';
+    if (rewardDef.skinId) return 'skin';
+    if (rewardDef.auraId) return 'aura';
+    if (rewardDef.effectId) return 'effect';
+    if (rewardDef.overdriveSkinId) return 'overdrive';
+    return 'bonus';
+  }
+
+  /** Three circles connected by a track (poprzedni / aktualny / następny
+   *  poziom) -- GDD 4.0 §5.1 mockup's "✓ LVL1 — ● LVL2 — ○ LVL3" progress
+   *  row, generalized to any level: done levels get a checkmark, the
+   *  current level a filled dot, future levels stay hollow. */
   renderHubLevelDots(level) {
     const wrap = document.getElementById('hubLevelDots');
     wrap.innerHTML = '';
-    const shown = [Math.max(1, level - 1), level, level + 1];
-    shown.forEach(n => {
-      const dot = document.createElement('span');
-      dot.className = 'hub-level-dot' + (n === level ? ' current' : '') + (n < level ? ' done' : '');
-      dot.textContent = n < level ? '✓' : `LVL ${n}`;
-      wrap.appendChild(dot);
+    // LVL1 is the starting state with no prior level -- show it plus the
+    // next two, rather than duplicating LVL1 via max(1, level-1).
+    const shown = level === 1 ? [1, 2, 3] : [level - 1, level, level + 1];
+    shown.forEach((n, i) => {
+      if (i > 0) {
+        const connector = document.createElement('div');
+        connector.className = 'hub-level-connector' + (shown[i - 1] < level ? ' filled' : '');
+        wrap.appendChild(connector);
+      }
+      const item = document.createElement('div');
+      item.className = 'hub-level-item' + (n === level ? ' current' : '') + (n < level ? ' done' : '');
+      const circle = document.createElement('div');
+      circle.className = 'hub-level-circle';
+      if (n < level) circle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
+      else if (n === level) circle.innerHTML = '<div class="hub-level-circle-dot"></div>';
+      item.appendChild(circle);
+      const label = document.createElement('div');
+      label.className = 'hub-level-label';
+      label.textContent = `LVL ${n}`;
+      item.appendChild(label);
+      wrap.appendChild(item);
     });
   }
 
@@ -2284,7 +2421,11 @@ class Game {
     tabs.forEach(t => {
       const btn = document.getElementById(t.btn);
       btn.classList.toggle('active', t.screen === activeScreenId);
-      btn.classList.toggle('hidden', !t.unlocked);
+      // GDD 4.0 mockup: a locked tab stays visible (dimmed, unclickable)
+      // with a small lock badge -- never simply hidden.
+      btn.classList.toggle('locked', !t.unlocked);
+      const lockBadge = btn.querySelector('.nav-tab-lock');
+      if (lockBadge) lockBadge.classList.toggle('hidden', t.unlocked);
     });
   }
 
@@ -2410,15 +2551,15 @@ class Game {
     DISTRICTS.forEach(d => {
       const unlocked = this.save.campaign.unlockedDistricts.includes(d.id);
       const node = document.createElement('button');
-      node.className = 'district-node' + (unlocked ? ' unlocked' : ' locked') + (d.locked ? ' teaser' : '');
-      node.disabled = !unlocked || d.locked;
+      node.className = 'district-node' + (unlocked ? '' : ' locked');
+      node.disabled = !unlocked;
       const doneCount = d.missions.filter(id => this.save.campaign.completed[id]).length;
-      const status = d.locked ? 'wkrótce' : (unlocked ? `${doneCount}/${d.missions.length}` : '🔒');
+      const status = unlocked ? `${doneCount}/${d.missions.length}` : '🔒';
       node.innerHTML = `<span class="district-node-name">${d.name}</span><span class="district-node-status">${status}</span>`;
       node.addEventListener('click', () => this.selectCampaignDistrict(d.id));
       wrap.appendChild(node);
     });
-    const playableUnlocked = DISTRICTS.filter(d => this.save.campaign.unlockedDistricts.includes(d.id) && !d.locked);
+    const playableUnlocked = DISTRICTS.filter(d => this.save.campaign.unlockedDistricts.includes(d.id));
     const remembered = this.selectedDistrictId && playableUnlocked.find(d => d.id === this.selectedDistrictId);
     this.selectCampaignDistrict(remembered ? this.selectedDistrictId : playableUnlocked[0].id);
   }
@@ -2441,19 +2582,34 @@ class Game {
     const list = document.getElementById('missionList');
     list.innerHTML = '';
     let firstPlayableId = null;
+    let medalCount = 0;
+    // GDD 4.0 §5.2 mockup: each row is "M0X / name / status caps line",
+    // with a checkmark (done) or play icon (current) on the right --
+    // never plain emoji, matching the mockup's clean line-icon language.
+    const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
+    const PLAY_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
+    const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
     district.missions.forEach((id, i) => {
       const def = campaignMissionById(id);
       const done = !!this.save.campaign.completed[id];
       const prevDone = i === 0 || this.save.campaign.completed[district.missions[i - 1]];
       if (prevDone && !firstPlayableId) firstPlayableId = id;
+      if (this.save.campaign.medals[id]) medalCount++;
       const row = document.createElement('button');
       row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '');
       row.disabled = !prevDone;
-      const medal = this.save.campaign.medals[id];
-      row.innerHTML = `<span class="mission-row-name">${done ? '✓' : (prevDone ? '▶' : '🔒')} ${def.order}. ${def.name}</span><span class="mission-row-medal">${medal ? '🏅' : ''}</span>`;
+      const icon = done ? CHECK_ICON : (prevDone ? PLAY_ICON : LOCK_ICON);
+      const status = done ? 'UKOŃCZONA · POWTÓRZ' : (prevDone ? 'DOSTĘPNA · GRAJ' : 'ZABLOKOWANA');
+      row.innerHTML = `<span class="mission-row-main">` +
+        `<span class="mission-row-id">M${String(def.order).padStart(2, '0')}</span>` +
+        `<span class="mission-row-name">${def.name}</span>` +
+        `<span class="mission-row-status">${status}</span>` +
+        `</span><span class="mission-row-icon">${icon}</span>`;
       row.addEventListener('click', () => this.selectCampaignMission(id));
       list.appendChild(row);
     });
+    document.getElementById('missionMedalsFootnote').innerHTML =
+      `Medale: ${medalCount}/${district.missions.length} · opcjonalne.<br>Nie blokują kolejnych misji.`;
     this.selectCampaignMission(firstPlayableId || district.missions[0]);
   }
 
