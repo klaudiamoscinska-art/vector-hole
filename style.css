@@ -27,7 +27,6 @@ html, body {
   background: var(--bg-black);
   font-family: 'Segoe UI', 'Trebuchet MS', system-ui, sans-serif;
   color: var(--text-main);
-  touch-action: none;
   user-select: none;
 }
 
@@ -47,6 +46,11 @@ html, body {
   display: block;
   background: #000;
   cursor: none;
+  /* GDD P0-02: touch-action:none scoped to the game field itself, not
+     every screen/menu (it used to sit on html/body, blocking things like
+     scroll on an overflowing settings/campaign panel for no gameplay
+     reason). The thumbpad below needs the same scoping. */
+  touch-action: none;
 }
 
 .hidden {
@@ -612,10 +616,15 @@ html, body {
 /* Module tiles: the visual signal that this is a hub, not a menu list. */
 .hub-modules {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   width: 100%;
   max-width: 340px;
+}
+
+.hub-tile-featured {
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.15);
 }
 
 .hub-tile {
@@ -651,6 +660,183 @@ html, body {
   letter-spacing: 0.5px;
   line-height: 1.2;
   text-align: center;
+}
+
+/* ===================== CAMPAIGN MODE (Vector Hole v3) ===================== */
+
+.district-map {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.district-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-main);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.district-node.locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.district-node.teaser {
+  border-style: dashed;
+}
+
+.district-node.active {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 14px rgba(0, 243, 255, 0.3);
+}
+
+.district-node-name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.district-node-status {
+  font-size: 11px;
+  color: var(--neon-gold);
+}
+
+.mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.mission-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mission-row.selected {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
+}
+
+.mission-row.done {
+  color: var(--neon-green);
+}
+
+.mission-row.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mission-detail {
+  width: 100%;
+  max-width: 360px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+
+.mission-detail-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  margin-bottom: 4px;
+}
+
+.mission-detail-line {
+  font-size: 12px;
+  color: rgba(230, 250, 255, 0.75);
+  margin-bottom: 3px;
+}
+
+.mission-detail-nela {
+  font-style: italic;
+  color: rgba(230, 250, 255, 0.55);
+}
+
+.mission-detail-reward {
+  color: var(--neon-gold);
+}
+
+.mission-result-medal {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(230, 250, 255, 0.5);
+}
+
+.mission-result-medal.earned {
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+/* ---- In-round campaign HUD: replaces the size/score/standings panels ---- */
+
+#hud-goal {
+  top: calc(58px + env(safe-area-inset-top, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  max-width: 320px;
+}
+
+.hud-value.goal {
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  font-size: 16px;
+}
+
+.hud-goal-text {
+  font-size: 13px;
+  margin: 2px 0 6px;
+}
+
+.nela-toast {
+  position: absolute;
+  top: calc(140px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+  max-width: min(88vw, 380px);
+  padding: 8px 16px;
+  background: var(--panel-bg);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 16px;
+  font-size: 12px;
+  font-style: italic;
+  color: rgba(255, 215, 0, 0.9);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.nela-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.evolution-cards.count-2 {
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .text-input {
@@ -785,6 +971,8 @@ html, body {
   padding: 32px 28px;
   max-width: 480px;
   width: 90%;
+  max-height: 100%;
+  overflow-y: auto;
   text-align: center;
 }
 
@@ -1012,13 +1200,16 @@ html, body {
 }
 
 .final-leaderboard li {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 34px 1fr 64px 56px;
+  align-items: center;
+  gap: 6px;
   padding: 7px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 14px;
+  font-size: 13px;
+  text-align: left;
 }
 
 .final-leaderboard li.is-player {
@@ -1026,6 +1217,32 @@ html, body {
   border-color: rgba(0, 243, 255, 0.45);
   color: var(--neon-cyan);
   font-weight: 700;
+}
+
+.final-leaderboard .fl-rank {
+  opacity: 0.7;
+}
+
+.final-leaderboard .fl-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.final-leaderboard .fl-score {
+  color: var(--neon-gold);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.final-leaderboard .fl-size {
+  opacity: 0.6;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.win-rule-caption {
+  margin: -4px 0 2px;
 }
 
 /* ===================== AD OVERLAY ===================== */
