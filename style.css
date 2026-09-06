@@ -3,32 +3,42 @@
    ========================================================= */
 
 :root {
-  --neon-cyan: #00f3ff;
-  --neon-pink: #ff007f;
-  --neon-green: #39ff14;
-  --neon-gold: #ffd700;
+  --neon-cyan: #50F0FA;
+  --neon-pink: #FF54AD;
+  --neon-green: #46D99A;
+  --neon-gold: #EFCB63;
+  --neon-violet: #9875FF;
   --bg-black: #000000;
   --panel-bg: rgba(10, 10, 20, 0.75);
-  --panel-border: rgba(0, 243, 255, 0.35);
+  --panel-border: rgba(80, 240, 250, 0.35);
   --text-main: #e6faff;
 
-  /* GDD 4.0 §5 "app chrome" palette — the flat navy/cyan look of the
-     Miasto/Dzielnice/Warsztat mockups. Deliberately separate from the
-     neon/bg-black vars above: those still drive the in-round HUD,
-     evolution cards and canvas world (untouched cyberpunk look — GDD 4.0
-     doesn't mock up gameplay screens, only the meta/hub screens below). */
-  --nc-bg: #0a1220;
-  --nc-panel: #101d33;
-  --nc-panel-2: #0c1830;
+  /* Vector Hole v5 UI pass — palette lifted verbatim from
+     design/reference/asset_bible.svg's "PALETA IMPLEMENTACYJNA" and applied
+     across the Miasto/Dzielnice/Warsztat/Wyzwania/Pauza/Wynik mockups in
+     design/screens/. Deliberately separate from the neon/bg-black vars
+     above: those still drive the in-round HUD and canvas world (the
+     cyberpunk look — the mockups only cover the meta/hub screens + pause +
+     results, not raw gameplay). */
+  --nc-bg: #04101D;
+  --nc-bg-2: #081C2B;
+  --nc-panel: #0A2032;
+  --nc-panel-2: #071725;
   --nc-border: rgba(255, 255, 255, 0.08);
-  --nc-border-strong: rgba(34, 211, 238, 0.45);
-  --nc-cyan: #22d3ee;
-  --nc-cyan-soft: rgba(34, 211, 238, 0.14);
+  --nc-border-strong: rgba(80, 240, 250, 0.45);
+  --nc-panel-border: #315A72;
+  --nc-cyan: #50F0FA;
+  --nc-cyan-bright: #68F5FC;
+  --nc-cyan-dim: #37DCEB;
+  --nc-cyan-soft: rgba(80, 240, 250, 0.14);
+  --nc-cta-gradient: linear-gradient(90deg, #68F5FC 0%, #50F0FA 55%, #37DCEB 100%);
   --nc-text: #f2f8ff;
   --nc-text-dim: rgba(242, 248, 255, 0.6);
   --nc-text-dim-2: rgba(242, 248, 255, 0.38);
-  --nc-green: #34d399;
-  --nc-gold: #fbbf24;
+  --nc-green: #46D99A;
+  --nc-gold: #EFCB63;
+  --nc-pink: #FF54AD;
+  --nc-violet: #9875FF;
 }
 
 * {
@@ -42,7 +52,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-black);
+  background: linear-gradient(180deg, var(--nc-bg) 0%, var(--nc-bg-2) 100%);
   font-family: 'Segoe UI', 'Trebuchet MS', system-ui, sans-serif;
   color: var(--text-main);
   user-select: none;
@@ -94,7 +104,7 @@ html, body {
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   backdrop-filter: blur(4px);
-  box-shadow: 0 0 18px rgba(0, 243, 255, 0.15);
+  box-shadow: 0 0 18px rgba(80, 240, 250, 0.15);
 }
 
 /* ---- Pause button (top-left corner, safe-area aware) ---- */
@@ -145,7 +155,7 @@ html, body {
 
 .timer-ring-bg {
   fill: none;
-  stroke: rgba(0, 243, 255, 0.12);
+  stroke: rgba(80, 240, 250, 0.12);
   stroke-width: 4;
 }
 
@@ -180,7 +190,7 @@ html, body {
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: rgba(57, 255, 20, 0.15);
+  background: rgba(70, 217, 154, 0.15);
   overflow: hidden;
   margin: 4px 0 6px;
 }
@@ -318,8 +328,8 @@ html, body {
 }
 
 #leaderboardList li.is-player {
-  background: rgba(0, 243, 255, 0.12);
-  border: 1px solid rgba(0, 243, 255, 0.4);
+  background: rgba(80, 240, 250, 0.12);
+  border: 1px solid rgba(80, 240, 250, 0.4);
   color: var(--neon-cyan);
   font-weight: 700;
 }
@@ -366,8 +376,8 @@ html, body {
   margin-left: -55px;
   margin-top: -55px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 243, 255, 0.35);
-  background: rgba(0, 243, 255, 0.06);
+  border: 2px solid rgba(80, 240, 250, 0.35);
+  background: rgba(80, 240, 250, 0.06);
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -388,22 +398,130 @@ html, body {
   margin-left: -23px;
   margin-top: -23px;
   border-radius: 50%;
-  background: rgba(0, 243, 255, 0.28);
-  border: 1px solid rgba(0, 243, 255, 0.6);
-  box-shadow: 0 0 14px rgba(0, 243, 255, 0.45);
+  background: rgba(80, 240, 250, 0.28);
+  border: 1px solid rgba(80, 240, 250, 0.6);
+  box-shadow: 0 0 14px rgba(80, 240, 250, 0.45);
 }
 
-/* ===================== PAUSE / CONTROLS / LEAVE CONFIRM ===================== */
+/* ===================== PAUSE / CONTROLS / LEAVE CONFIRM (v5: design/screens/pauza.svg, wybor_narzedzia.svg) ===================== */
 
-.btn-danger {
-  background: transparent;
-  color: var(--neon-pink);
-  border-color: rgba(255, 0, 127, 0.45);
+/* In-run overlays (pause, leave-confirm, quick-equip) sit over the frozen
+   last-drawn canvas frame instead of replacing it with a solid screen —
+   the mockups show a dimmed gameplay scrim behind a centered panel. */
+.overlay-screen {
+  background: rgba(4, 16, 29, 0.78) !important;
 }
 
-.btn-danger:hover {
-  border-color: var(--neon-pink);
-  box-shadow: 0 0 14px rgba(255, 0, 127, 0.35);
+.pause-panel, .tool-popup-panel {
+  width: 100%;
+  max-width: 320px;
+  padding: 28px 22px;
+  border-radius: 16px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-panel-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.pause-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--nc-border);
+  margin: -4px 0 8px;
+}
+
+.pause-btn {
+  justify-content: flex-start;
+  padding-left: 24px;
+}
+
+.pause-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tool-popup-sub {
+  margin: -4px 0 8px;
+}
+
+.tool-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: var(--nc-panel-2);
+  border: 1px solid var(--nc-border);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--nc-text);
+}
+
+.tool-card-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--nc-cyan);
+  color: var(--nc-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+}
+
+.tool-card-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tool-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-card-name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tool-card-desc {
+  font-size: 10px;
+  color: var(--nc-text-dim);
+}
+
+.tool-card-radio {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--nc-border-strong);
+  background: var(--nc-panel-2);
+}
+
+.tool-card.selected {
+  border-color: var(--nc-cyan);
+}
+
+.tool-card.selected .tool-card-radio {
+  border-color: var(--nc-cyan);
+  background: var(--nc-cyan);
+  box-shadow: inset 0 0 0 3px var(--nc-panel-2);
+}
+
+.tool-popup-cta-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.tool-popup-cta-row .btn {
+  max-width: none;
 }
 
 .controls-panel {
@@ -450,8 +568,8 @@ html, body {
 .toggle-btn.active {
   border-color: var(--neon-cyan);
   color: var(--neon-cyan);
-  background: rgba(0, 243, 255, 0.12);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
+  background: rgba(80, 240, 250, 0.12);
+  box-shadow: 0 0 10px rgba(80, 240, 250, 0.25);
 }
 
 /* ===================== EVOLUTION CARDS (Phase 4) ===================== */
@@ -468,7 +586,7 @@ html, body {
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 14px;
-  box-shadow: 0 0 24px rgba(0, 243, 255, 0.25);
+  box-shadow: 0 0 24px rgba(80, 240, 250, 0.25);
   pointer-events: auto;
   z-index: 25;
   text-align: center;
@@ -478,7 +596,7 @@ html, body {
   font-size: 12px;
   letter-spacing: 1px;
   color: var(--neon-gold);
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
   margin-bottom: 8px;
 }
 
@@ -571,28 +689,202 @@ html, body {
   color: #c084fc;
 }
 
-.hub-meter-row {
-  width: 100%;
-  max-width: 320px;
+/* ===================== RESULT SCREEN HERO (v5: design/screens/wynik_rundy.svg) ===================== */
+
+.result-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  color: var(--nc-text-dim);
+}
+
+.result-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.result-hero-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nc-text-dim);
+}
+
+.result-hero-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.hub-meter-track {
+.result-hero-score {
+  font-size: 46px;
+  font-weight: 800;
+  color: var(--nc-text);
+  text-shadow: 0 0 22px rgba(80, 240, 250, 0.65);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-pb-badge {
+  padding: 5px 12px;
+  border-radius: 12px;
+  background: var(--nc-panel-2);
+  border: 1px solid var(--nc-gold);
+  color: var(--nc-gold);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.result-badges {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.result-badge {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-panel-border);
+}
+
+.result-badge-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--nc-text-dim);
+}
+
+.result-badge-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--nc-text);
+}
+
+.result-badge-gold {
+  color: var(--nc-gold);
+  font-size: 18px;
+}
+
+.result-card {
+  width: 100%;
+  max-width: 340px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--nc-panel);
+  border: 1px solid var(--nc-panel-border);
+  text-align: left;
+}
+
+.result-card-label {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--nc-text-dim);
+}
+
+.result-coins-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-coins-icon {
+  font-size: 22px;
+  color: var(--nc-gold);
+  filter: drop-shadow(0 0 6px rgba(239, 203, 99, 0.6));
+}
+
+.result-coins-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.result-coins-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--nc-gold);
+}
+
+.result-core-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+
+.result-core-pct {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--nc-cyan);
+}
+
+.result-core-pct-after {
+  color: var(--nc-text);
+}
+
+.result-core-arrow {
+  font-size: 11px;
+  color: var(--nc-text-dim);
+}
+
+.result-core-gain {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--nc-green);
+}
+
+.result-core-track {
+  position: relative;
   height: 8px;
   border-radius: 4px;
-  background: rgba(0, 243, 255, 0.12);
+  background: var(--nc-panel-2);
+  border: 1px solid var(--nc-border);
   overflow: hidden;
 }
 
-.hub-meter-bar {
+.result-core-bar-before,
+.result-core-bar-after {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
-  box-shadow: 0 0 8px var(--neon-cyan);
-  transition: width 0.4s ease;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.result-core-bar-before {
+  background: #36546B;
+}
+
+.result-core-bar-after {
+  background: var(--nc-cyan);
+  box-shadow: 0 0 8px rgba(80, 240, 250, 0.5);
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--nc-text-dim);
+  font-weight: 600;
+  box-shadow: none;
+  padding: 6px;
+}
+
+.btn-link:hover {
+  color: var(--nc-cyan);
 }
 
 /* The hub "room": a distinct bordered card makes it read as an actual
@@ -602,9 +894,9 @@ html, body {
   max-width: 340px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(0, 243, 255, 0.05);
+  background: rgba(80, 240, 250, 0.05);
   border: 1px solid var(--panel-border);
-  box-shadow: 0 0 18px rgba(0, 243, 255, 0.12);
+  box-shadow: 0 0 18px rgba(80, 240, 250, 0.12);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -973,7 +1265,7 @@ html, body {
   height: 100%;
 }
 
-/* ===================== WYZWANIA (Vector Hole v4 / GDD 4.0 §5.4) ===================== */
+/* ===================== WYZWANIA (v5: design/screens/wyzwania.svg) ===================== */
 
 .challenge-card {
   align-items: stretch;
@@ -981,8 +1273,108 @@ html, body {
 
 .challenge-streak {
   font-size: 12px;
-  color: var(--neon-gold);
+  color: var(--nc-gold);
   white-space: nowrap;
+}
+
+.daily-hero-card {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0B2A3C 0%, #071A29 100%);
+  border: 1px solid var(--nc-cyan);
+  box-shadow: 0 0 24px rgba(80, 240, 250, 0.12);
+}
+
+.daily-hero-icon {
+  width: 30px;
+  height: 30px;
+  color: var(--nc-cyan);
+  filter: drop-shadow(0 0 6px rgba(80, 240, 250, 0.5));
+}
+
+.daily-hero-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.daily-hero-title {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--nc-text);
+}
+
+.daily-hero-sub {
+  margin: 0;
+  font-size: 11px;
+  color: var(--nc-text-dim);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.daily-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 10px 0 4px;
+}
+
+.daily-countdown-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--nc-text-dim);
+}
+
+.daily-countdown-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--nc-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-reward-track {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.daily-reward-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 9px;
+  background: var(--nc-panel-2);
+  border: 1px solid var(--nc-border);
+}
+
+.daily-reward-label {
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--nc-text-dim);
+  text-align: center;
+}
+
+.daily-reward-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--nc-cyan);
+}
+
+.daily-reward-gold {
+  color: var(--nc-gold);
 }
 
 /* ===================== CAMPAIGN MODE (Vector Hole v3) ===================== */
@@ -1203,7 +1595,7 @@ html, body {
 
 .mission-result-medal.earned {
   color: var(--neon-gold);
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
 }
 
 /* ---- In-round campaign HUD: replaces the size/score/standings panels ---- */
@@ -1217,7 +1609,7 @@ html, body {
 
 .hud-value.goal {
   color: var(--neon-gold);
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
   font-size: 16px;
 }
 
@@ -1234,11 +1626,11 @@ html, body {
   max-width: min(88vw, 380px);
   padding: 8px 16px;
   background: var(--panel-bg);
-  border: 1px solid rgba(255, 215, 0, 0.4);
+  border: 1px solid rgba(239, 203, 99, 0.4);
   border-radius: 16px;
   font-size: 12px;
   font-style: italic;
-  color: rgba(255, 215, 0, 0.9);
+  color: rgba(239, 203, 99, 0.9);
   text-align: center;
   opacity: 0;
   transition: opacity 0.25s ease, transform 0.25s ease;
@@ -1270,7 +1662,7 @@ html, body {
 .text-input:focus {
   outline: none;
   border-color: var(--neon-cyan);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.35);
+  box-shadow: 0 0 10px rgba(80, 240, 250, 0.35);
 }
 
 .shop-tabs {
@@ -1479,7 +1871,7 @@ html, body {
 
 .run-tool-card.selected {
   border-color: var(--neon-cyan);
-  box-shadow: 0 0 12px rgba(0, 243, 255, 0.3);
+  box-shadow: 0 0 12px rgba(80, 240, 250, 0.3);
 }
 
 .run-tool-name {
@@ -1497,7 +1889,7 @@ html, body {
   margin: -4px auto 6px;
   padding: 4px 14px;
   border-radius: 14px;
-  background: rgba(255, 0, 127, 0.15);
+  background: rgba(255, 84, 173, 0.15);
   border: 1px solid var(--neon-pink);
   color: var(--neon-pink);
   font-size: 12px;
@@ -1516,20 +1908,20 @@ html, body {
 
 .daily-result {
   color: var(--neon-cyan);
-  background: rgba(0, 243, 255, 0.08);
-  border: 1px solid rgba(0, 243, 255, 0.3);
+  background: rgba(80, 240, 250, 0.08);
+  border: 1px solid rgba(80, 240, 250, 0.3);
 }
 
 .mission-result {
   color: var(--neon-gold);
-  background: rgba(255, 215, 0, 0.08);
-  border: 1px solid rgba(255, 215, 0, 0.3);
+  background: rgba(239, 203, 99, 0.08);
+  border: 1px solid rgba(239, 203, 99, 0.3);
 }
 
 .hub-milestone-result {
-  color: #b026ff;
-  background: rgba(176, 38, 255, 0.08);
-  border: 1px solid rgba(176, 38, 255, 0.35);
+  color: #9875FF;
+  background: rgba(152, 117, 255, 0.08);
+  border: 1px solid rgba(152, 117, 255, 0.35);
 }
 
 /* ===================== SCREENS (Menu / Shop / GameOver / Ad) ===================== */
@@ -1544,9 +1936,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* GDD 4.0 §5: flat navy, not the old radial cyan/black vignette —
-     matches the Miasto/Dzielnice/Warsztat mockups exactly. */
-  background: var(--nc-bg);
+  /* v5: the same subtle top-to-bottom navy gradient as every screen mockup
+     in design/screens/, not a flat fill. */
+  background: linear-gradient(180deg, var(--nc-bg) 0%, var(--nc-bg-2) 100%);
   animation: fade-in 0.25s ease-out;
 }
 
@@ -1680,20 +2072,20 @@ html, body {
 }
 
 .btn-primary {
-  background: var(--nc-cyan);
-  color: #04141f;
-  box-shadow: 0 4px 14px rgba(34, 211, 238, 0.25);
+  background: var(--nc-cta-gradient);
+  color: #07131E;
+  box-shadow: 0 4px 14px rgba(80, 240, 250, 0.25);
 }
 
 .btn-primary:hover {
   filter: brightness(1.08);
-  box-shadow: 0 4px 18px rgba(34, 211, 238, 0.4);
+  box-shadow: 0 4px 18px rgba(80, 240, 250, 0.4);
 }
 
 .btn-secondary {
-  background: var(--nc-panel);
+  background: var(--nc-panel-2);
   color: var(--nc-text);
-  border-color: var(--nc-border);
+  border-color: var(--nc-panel-border);
 }
 
 .btn-secondary:hover {
@@ -1701,16 +2093,24 @@ html, body {
   color: var(--nc-cyan);
 }
 
+/* Outlined gold "watch an ad" style — design/screens/wynik_rundy.svg's
+   cta-rewarded-ad is a dark panel with a gold outline, not a filled gold
+   button (that treatment is reserved for the CTA gradient above). */
 .btn-gold {
-  background: linear-gradient(135deg, #ffd700, #ff9d00);
-  color: #221600;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.55);
-  animation: pulse-gold 1.6s ease-in-out infinite;
+  background: var(--nc-panel-2);
+  color: var(--nc-gold);
+  border-color: var(--nc-gold);
+  box-shadow: none;
+  animation: none;
+}
+
+.btn-gold:hover {
+  box-shadow: 0 0 14px rgba(239, 203, 99, 0.35);
 }
 
 @keyframes pulse-gold {
-  0%, 100% { box-shadow: 0 0 14px rgba(255, 215, 0, 0.45); }
-  50% { box-shadow: 0 0 28px rgba(255, 215, 0, 0.85); }
+  0%, 100% { box-shadow: 0 0 14px rgba(239, 203, 99, 0.45); }
+  50% { box-shadow: 0 0 28px rgba(239, 203, 99, 0.85); }
 }
 
 /* ===================== SHOP ===================== */
@@ -1821,7 +2221,7 @@ html, body {
   font-size: 40px;
   font-weight: 900;
   color: var(--neon-gold);
-  text-shadow: 0 0 16px rgba(255, 215, 0, 0.7);
+  text-shadow: 0 0 16px rgba(239, 203, 99, 0.7);
 }
 
 .result-score {
@@ -1859,8 +2259,8 @@ html, body {
 }
 
 .final-leaderboard li.is-player {
-  background: rgba(0, 243, 255, 0.12);
-  border-color: rgba(0, 243, 255, 0.45);
+  background: rgba(80, 240, 250, 0.12);
+  border-color: rgba(80, 240, 250, 0.45);
   color: var(--neon-cyan);
   font-weight: 700;
 }
@@ -1895,7 +2295,7 @@ html, body {
 
 .ad-inner {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 215, 0, 0.3);
+  border: 1px solid rgba(239, 203, 99, 0.3);
   border-radius: 14px;
   padding: 48px 32px;
 }

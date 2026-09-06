@@ -131,11 +131,11 @@ const CONFIG = {
   // Size tiers used for analytics (`size_tier` events) and future evolution
   // visuals (GDD P2). Not yet shown in the HUD or tied to any visual change.
   sizeTiers: [
-    { id: 'spark', minRadius: 0 },
-    { id: 'pulse', minRadius: 30 },
-    { id: 'core', minRadius: 45 },
-    { id: 'vortex', minRadius: 65 },
-    { id: 'singularity', minRadius: 90 }
+    { id: 'spark', minRadius: 0, label: 'T1 · MAŁY' },
+    { id: 'pulse', minRadius: 30, label: 'T2 · ŚREDNI' },
+    { id: 'core', minRadius: 45, label: 'T3 · DUŻY' },
+    { id: 'vortex', minRadius: 65, label: 'T4 · WIELKI' },
+    { id: 'singularity', minRadius: 90, label: 'T5 · KOLOSALNY' }
   ],
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
@@ -243,10 +243,16 @@ class Analytics {
   }
 }
 
+// Subtypes/line-art match design/reference/asset_bible.svg's 8-object
+// bestiary 1:1 (latarnia/ławka/drzewo small; samochód/kiosk/skrzynia/
+// fontanna medium) plus 'skyscraper' (Arena's own "large tier" building,
+// not in the bible) and 'portal' (the bible's violet functional accent,
+// used only for the Overdrive "portal_rain" bonus wave — see
+// spawnPortalRain()).
 const TIERS = {
-  small: { color: '#00f3ff', minR: 6, maxR: 9, value: 1, subtypes: ['tree', 'lamp'], count: 90 },
-  medium: { color: '#ff007f', minR: 14, maxR: 20, value: 5, subtypes: ['car', 'house'], count: 45 },
-  large: { color: '#39ff14', minR: 28, maxR: 42, value: 20, subtypes: ['skyscraper'], count: 16 }
+  small: { color: '#50F0FA', minR: 6, maxR: 9, value: 1, subtypes: ['latarnia', 'drzewo', 'lawka'], count: 90 },
+  medium: { color: '#FF54AD', minR: 14, maxR: 20, value: 5, subtypes: ['samochod', 'kiosk', 'skrzynia', 'fontanna'], count: 45 },
+  large: { color: '#46D99A', minR: 28, maxR: 42, value: 20, subtypes: ['skyscraper'], count: 16 }
 };
 
 const BOT_NAME_POOL = [
@@ -255,15 +261,15 @@ const BOT_NAME_POOL = [
   'SynthWolf', 'ZeroPulse', 'HexShadow'
 ];
 
-const BOT_COLORS = ['#ff007f', '#39ff14', '#ffae00', '#b026ff', '#00f3ff', '#ff3860'];
+const BOT_COLORS = ['#FF54AD', '#46D99A', '#EFCB63', '#9875FF', '#50F0FA', '#ff3860'];
 
 const SKINS = [
   { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true },
-  { id: 'cyan', name: 'Cyber Cyan', price: 50, color: '#00f3ff' },
-  { id: 'pink', name: 'Hot Pink', price: 50, color: '#ff007f' },
-  { id: 'green', name: 'Toxic Green', price: 75, color: '#39ff14' },
-  { id: 'purple', name: 'Ultra Violet', price: 100, color: '#b026ff' },
-  { id: 'gold', name: 'Neon Gold', price: 150, color: '#ffd700' },
+  { id: 'cyan', name: 'Cyber Cyan', price: 50, color: '#50F0FA' },
+  { id: 'pink', name: 'Hot Pink', price: 50, color: '#FF54AD' },
+  { id: 'green', name: 'Toxic Green', price: 75, color: '#46D99A' },
+  { id: 'purple', name: 'Ultra Violet', price: 100, color: '#9875FF' },
+  { id: 'gold', name: 'Neon Gold', price: 150, color: '#EFCB63' },
   { id: 'white', name: 'Plasma White', price: 200, color: '#ffffff' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
@@ -281,10 +287,10 @@ const SKINS = [
 // internally since it's the same following-glow render path (Hole's aura).
 const AURAS = [
   { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins' },
-  { id: 'spark', name: 'Spark Aura', priceCoins: 120, priceType: 'coins', color: '#00f3ff' },
-  { id: 'ember', name: 'Ember Aura', pricePrisms: 15, priceType: 'prisms', color: '#ff007f' },
-  { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#b026ff' },
-  { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#39ff14', unlockSource: { type: 'coreCity', level: 2 } },
+  { id: 'spark', name: 'Spark Aura', priceCoins: 120, priceType: 'coins', color: '#50F0FA' },
+  { id: 'ember', name: 'Ember Aura', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD' },
+  { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#9875FF' },
+  { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#46D99A', unlockSource: { type: 'coreCity', level: 2 } },
   { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } }
 ];
 
@@ -293,7 +299,7 @@ const AURAS = [
 // per-object-type colors (color: null means "don't override").
 const EAT_EFFECTS = [
   { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
-  { id: 'pixel_burst', name: 'Pixel Burst', priceCoins: null, color: '#ffd700', unlockSource: { type: 'coreCity', level: 4 } },
+  { id: 'pixel_burst', name: 'Pixel Burst', priceCoins: null, color: '#EFCB63', unlockSource: { type: 'coreCity', level: 4 } },
   { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } }
 ];
 
@@ -303,7 +309,7 @@ const EAT_EFFECTS = [
 // the banner/glow color.
 const OVERDRIVE_SKINS = [
   { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
-  { id: 'fala', name: 'Fala', priceCoins: null, color: '#00f3ff', unlockSource: { type: 'coreCity', level: 5 } },
+  { id: 'fala', name: 'Fala', priceCoins: null, color: '#50F0FA', unlockSource: { type: 'coreCity', level: 5 } },
   { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ff00ea', unlockSource: { type: 'coreCity', level: 6 } }
 ];
 
@@ -360,13 +366,13 @@ const REWARD_CATEGORY_ICONS = {
 // fair (GDD 4.1). desc kept to a few words per player feedback ("reduce
 // the amount of text"); icon points into CARD_ICONS above.
 const MUTATIONS = [
-  { id: 'magnet_pulse', name: 'Magnet Pulse', desc: 'Przyciąga obiekty.', icon: 'magnet', weight: 3, color: '#00f3ff' },
-  { id: 'slipstream', name: 'Slipstream', desc: 'Boost po combo.', icon: 'bolt', weight: 3, color: '#39ff14' },
-  { id: 'phase_edge', name: 'Phase Edge', desc: 'Dłuższa ochrona.', icon: 'shield', weight: 2, color: '#b026ff' },
-  { id: 'combo_reactor', name: 'Combo Reactor', desc: 'Dłuższe combo.', icon: 'clock', weight: 3, color: '#ffd700' },
-  { id: 'scanner', name: 'Scanner', desc: 'Wskazuje cel.', icon: 'radar', weight: 2, color: '#00f3ff' },
-  { id: 'shockwave', name: 'Shockwave', desc: 'Odpycha obiekty.', icon: 'burst', weight: 2, color: '#ff007f' },
-  { id: 'bounty_core', name: 'Bounty Core', desc: 'Bonus za rywala.', icon: 'target', weight: 2, color: '#ffae00' }
+  { id: 'magnet_pulse', name: 'Magnet Pulse', desc: 'Przyciąga obiekty.', icon: 'magnet', weight: 3, color: '#50F0FA' },
+  { id: 'slipstream', name: 'Slipstream', desc: 'Boost po combo.', icon: 'bolt', weight: 3, color: '#46D99A' },
+  { id: 'phase_edge', name: 'Phase Edge', desc: 'Dłuższa ochrona.', icon: 'shield', weight: 2, color: '#9875FF' },
+  { id: 'combo_reactor', name: 'Combo Reactor', desc: 'Dłuższe combo.', icon: 'clock', weight: 3, color: '#EFCB63' },
+  { id: 'scanner', name: 'Scanner', desc: 'Wskazuje cel.', icon: 'radar', weight: 2, color: '#50F0FA' },
+  { id: 'shockwave', name: 'Shockwave', desc: 'Odpycha obiekty.', icon: 'burst', weight: 2, color: '#FF54AD' },
+  { id: 'bounty_core', name: 'Bounty Core', desc: 'Bonus za rywala.', icon: 'target', weight: 2, color: '#EFCB63' }
 ];
 
 /* ----------------------- Campaign mode (GDD 3.1 / "Vector Hole v3") -----------------------
@@ -414,10 +420,10 @@ const CAMPAIGN_ENTITY_STATS = {
 // MUTATIONS pool above (kept untouched so Arena's already-tuned balance
 // doesn't shift). Exact numbers per GDD §08.
 const CAMPAIGN_POWERS = [
-  { id: 'magnes', name: 'Magnes', desc: 'Przyciąga fragmenty.', icon: 'magnet', color: '#00f3ff' },
-  { id: 'reaktor', name: 'Reaktor', desc: 'Dłuższe combo.', icon: 'clock', color: '#ffd700' },
-  { id: 'impuls', name: 'Impuls', desc: '+prędkość po tierze.', icon: 'bolt', color: '#39ff14' },
-  { id: 'skaner', name: 'Skaner', desc: 'Wskazuje skupisko.', icon: 'radar', color: '#b026ff' }
+  { id: 'magnes', name: 'Magnes', desc: 'Przyciąga fragmenty.', icon: 'magnet', color: '#50F0FA' },
+  { id: 'reaktor', name: 'Reaktor', desc: 'Dłuższe combo.', icon: 'clock', color: '#EFCB63' },
+  { id: 'impuls', name: 'Impuls', desc: '+prędkość po tierze.', icon: 'bolt', color: '#46D99A' },
+  { id: 'skaner', name: 'Skaner', desc: 'Wskazuje skupisko.', icon: 'radar', color: '#9875FF' }
 ];
 
 // Hub district map. GDD 4.0 §6 authors the full 24-mission campaign (all
@@ -1030,46 +1036,121 @@ class WorldObject {
     const r = this.radius;
 
     switch (this.subtype) {
-      case 'tree':
+      // ---- small tier: design/reference/asset_bible.svg "LATARNIA" ----
+      case 'latarnia':
         ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.moveTo(0, r);
+        ctx.lineTo(0, -r * 0.8);
+        ctx.moveTo(-r * 0.5, r);
+        ctx.lineTo(r * 0.5, r);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2);
+        ctx.moveTo(-r * 0.35, -r * 0.8);
+        ctx.lineTo(r * 0.35, -r * 0.8);
+        ctx.lineTo(r * 0.22, -r * 0.45);
+        ctx.lineTo(-r * 0.22, -r * 0.45);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.95, r * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      // ---- small tier: "DRZEWO" (trunk + hollow canopy, no more double-circle) ----
+      case 'drzewo':
+        ctx.beginPath();
+        ctx.moveTo(0, r * 0.15);
+        ctx.lineTo(0, r);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.15, r * 0.75, 0, Math.PI * 2);
         ctx.stroke();
         break;
 
-      case 'lamp':
+      // ---- small tier: "ŁAWKA" (bench — seat rails + 4 legs) ----
+      case 'lawka':
         ctx.beginPath();
-        ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2);
-        ctx.stroke();
-        for (let i = 0; i < 4; i++) {
-          const a = (i / 4) * Math.PI * 2;
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6);
-          ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-          ctx.stroke();
-        }
-        break;
-
-      case 'car':
-        ctx.strokeRect(-r, -r * 0.55, r * 2, r * 1.1);
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.3, -r * 0.55);
-        ctx.lineTo(-r * 0.3, r * 0.55);
-        ctx.moveTo(r * 0.3, -r * 0.55);
-        ctx.lineTo(r * 0.3, r * 0.55);
+        ctx.moveTo(-r, -r * 0.2);
+        ctx.lineTo(r, -r * 0.2);
+        ctx.moveTo(-r, r * 0.2);
+        ctx.lineTo(r, r * 0.2);
+        ctx.moveTo(-r * 0.85, r * 0.2);
+        ctx.lineTo(-r * 0.85, r * 0.7);
+        ctx.moveTo(r * 0.85, r * 0.2);
+        ctx.lineTo(r * 0.85, r * 0.7);
+        ctx.moveTo(-r, -r * 0.6);
+        ctx.lineTo(-r, -r * 0.2);
+        ctx.moveTo(r, -r * 0.6);
+        ctx.lineTo(r, -r * 0.2);
         ctx.stroke();
         break;
 
-      case 'house':
-        ctx.strokeRect(-r * 0.75, -r * 0.75, r * 1.5, r * 1.5);
+      // ---- medium tier: "SAMOCHÓD" (hatchback silhouette + windshield + wheels) ----
+      case 'samochod':
         ctx.beginPath();
-        ctx.moveTo(-r * 0.75, -r * 0.75);
-        ctx.lineTo(r * 0.75, r * 0.75);
+        ctx.moveTo(-r * 0.9, r * 0.2);
+        ctx.lineTo(-r * 0.7, -r * 0.3);
+        ctx.lineTo(r * 0.7, -r * 0.3);
+        ctx.lineTo(r * 0.9, r * 0.2);
+        ctx.lineTo(r * 0.9, r * 0.5);
+        ctx.lineTo(-r * 0.9, r * 0.5);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.5, -r * 0.3);
+        ctx.lineTo(-r * 0.35, -r * 0.65);
+        ctx.lineTo(r * 0.35, -r * 0.65);
+        ctx.lineTo(r * 0.5, -r * 0.3);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(-r * 0.5, r * 0.5, r * 0.15, 0, Math.PI * 2);
+        ctx.arc(r * 0.5, r * 0.5, r * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      // ---- medium tier: "KIOSK" (triangular roof + body + window) ----
+      case 'kiosk':
+        ctx.beginPath();
+        ctx.moveTo(-r, -r * 0.375);
+        ctx.lineTo(0, -r);
+        ctx.lineTo(r, -r * 0.375);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.strokeRect(-r * 0.875, -r * 0.375, r * 1.75, r * 1.25);
+        ctx.strokeRect(-r * 0.375, 0, r * 0.75, r * 0.5);
+        break;
+
+      // ---- medium tier: "SKRZYNIA" (crate — box + lid seam) ----
+      case 'skrzynia':
+        ctx.strokeRect(-r, -r * 0.75, r * 2, r * 1.5);
+        ctx.beginPath();
+        ctx.moveTo(-r, -r * 0.15);
+        ctx.lineTo(r, -r * 0.15);
+        ctx.moveTo(0, -r * 0.75);
+        ctx.lineTo(0, -r * 0.15);
         ctx.stroke();
         break;
 
+      // ---- medium tier: "FONTANNA" (basin + rim + spout + spray) ----
+      case 'fontanna':
+        ctx.beginPath();
+        ctx.ellipse(0, r * 0.78, r, r * 0.28, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, r * 0.22, r * 0.56, r * 0.17, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, r * 0.22);
+        ctx.lineTo(0, -r * 0.78);
+        ctx.moveTo(0, -r * 0.78);
+        ctx.quadraticCurveTo(-r * 0.44, -r * 0.33, -r * 0.78, r * 0.33);
+        ctx.moveTo(0, -r * 0.78);
+        ctx.quadraticCurveTo(r * 0.44, -r * 0.33, r * 0.78, r * 0.33);
+        ctx.stroke();
+        break;
+
+      // ---- large tier: "big eat" building (kept as-is; not in the bible's
+      // 8-object bestiary, distinct silhouette for the biggest tier). ----
       case 'skyscraper': {
         ctx.strokeRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6);
         ctx.strokeRect(-r * 0.5, -r * 0.5, r, r);
@@ -1085,6 +1166,22 @@ class WorldObject {
         }
         break;
       }
+
+      // ---- Overdrive "portal_rain" bonus objects only (see
+      // spawnPortalRain()) — the bible's violet functional-accent glyph. ----
+      case 'portal':
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha *= 0.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.625, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha *= (0.4 / 0.6);
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
     }
     ctx.restore();
   }
@@ -1165,7 +1262,7 @@ class CampaignEntity {
     if (isGoal && this.type !== 'gate' && this.type !== 'landmark' && !this.eating) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 220);
       ctx.save();
-      ctx.strokeStyle = `rgba(255,215,0,${0.3 + 0.35 * pulse})`;
+      ctx.strokeStyle = `rgba(239, 203, 99,${0.3 + 0.35 * pulse})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(0, 0, r * 1.8, 0, Math.PI * 2);
@@ -1175,8 +1272,8 @@ class CampaignEntity {
 
     switch (this.type) {
       case 'fragment': {
-        ctx.strokeStyle = ctx.fillStyle = '#00f3ff';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
+        ctx.strokeStyle = ctx.fillStyle = '#50F0FA';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#50F0FA';
         ctx.beginPath();
         ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0);
         ctx.closePath(); ctx.fill();
@@ -1185,7 +1282,7 @@ class CampaignEntity {
       case 'prop': {
         // Traffic-cone silhouette (GDD label "ławki i pachołki") instead of
         // a plain square -- reads as a specific street object at a glance.
-        const color = this.cluster === 'B' ? '#ff9d00' : '#39ff14';
+        const color = this.cluster === 'B' ? '#ff9d00' : '#46D99A';
         ctx.strokeStyle = color; ctx.lineWidth = 2;
         ctx.shadowBlur = 10; ctx.shadowColor = color;
         ctx.beginPath();
@@ -1197,8 +1294,8 @@ class CampaignEntity {
       case 'vehicle': {
         // Simple car silhouette (body + roof bump + two wheels) instead of
         // a plain rectangle.
-        ctx.strokeStyle = ctx.fillStyle = '#ff007f'; ctx.lineWidth = 2;
-        ctx.shadowBlur = 12; ctx.shadowColor = '#ff007f';
+        ctx.strokeStyle = ctx.fillStyle = '#FF54AD'; ctx.lineWidth = 2;
+        ctx.shadowBlur = 12; ctx.shadowColor = '#FF54AD';
         ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
         ctx.beginPath(); ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0); ctx.stroke();
         ctx.beginPath(); ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
@@ -1207,8 +1304,8 @@ class CampaignEntity {
       }
       case 'capsule': {
         // Pill/capsule shape split down the middle, instead of a hexagon.
-        ctx.strokeStyle = '#39ff14';
-        ctx.shadowBlur = 14; ctx.shadowColor = '#39ff14';
+        ctx.strokeStyle = '#46D99A';
+        ctx.shadowBlur = 14; ctx.shadowColor = '#46D99A';
         ctx.save();
         ctx.rotate(Math.PI / 4);
         ctx.beginPath();
@@ -1225,7 +1322,7 @@ class CampaignEntity {
       }
       case 'marker': {
         // Flag on a pole (waypoint marker) instead of a plain triangle.
-        const color = this.route === 'B' ? '#b026ff' : '#ffd700';
+        const color = this.route === 'B' ? '#9875FF' : '#EFCB63';
         ctx.strokeStyle = ctx.fillStyle = color;
         ctx.shadowBlur = 14; ctx.shadowColor = color;
         ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
@@ -1235,7 +1332,7 @@ class CampaignEntity {
         break;
       }
       case 'node': {
-        const color = this.active ? '#ffae00' : 'rgba(255,255,255,0.25)';
+        const color = this.active ? '#EFCB63' : 'rgba(255,255,255,0.25)';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
@@ -1248,7 +1345,7 @@ class CampaignEntity {
         break;
       }
       case 'pylon': {
-        const color = this.active ? '#00f3ff' : 'rgba(255,255,255,0.25)';
+        const color = this.active ? '#50F0FA' : 'rgba(255,255,255,0.25)';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
         ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
@@ -1257,7 +1354,7 @@ class CampaignEntity {
       }
       case 'landmark': {
         const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        const color = this.unlocked ? '#ffd700' : 'rgba(255, 215, 0, 0.35)';
+        const color = this.unlocked ? '#EFCB63' : 'rgba(239, 203, 99, 0.35)';
         ctx.strokeStyle = color;
         ctx.lineWidth = 4;
         ctx.shadowBlur = this.unlocked ? 24 + 8 * pulse : 6;
@@ -1278,7 +1375,7 @@ class CampaignEntity {
       case 'gate': {
         const open = this.isGateOpen;
         const telegraph = this.isGateTelegraphing;
-        const color = !open ? 'rgba(255,255,255,0.2)' : telegraph ? '#ffae00' : '#00f3ff';
+        const color = !open ? 'rgba(255,255,255,0.2)' : telegraph ? '#EFCB63' : '#50F0FA';
         ctx.strokeStyle = color; ctx.lineWidth = 5;
         ctx.shadowBlur = open ? 16 : 4; ctx.shadowColor = color;
         ctx.beginPath();
@@ -1419,7 +1516,7 @@ class Hole {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
     ctx.shadowBlur = 6;
-    ctx.shadowColor = this.isPlayer ? '#00f3ff' : '#ff007f';
+    ctx.shadowColor = this.isPlayer ? '#50F0FA' : '#FF54AD';
     ctx.fillText(this.name, this.x, this.y - this.radius - 10);
     ctx.restore();
   }
@@ -1853,6 +1950,12 @@ class Game {
       document.getElementById('pauseSheet').classList.add('hidden');
       document.getElementById('leaveConfirm').classList.remove('hidden');
     });
+    document.getElementById('btnQuickEquip').addEventListener('click', () => this.openQuickEquip());
+    document.getElementById('quickEquipAura').addEventListener('click', () => this.cycleQuickEquip('aura'));
+    document.getElementById('quickEquipEffect').addEventListener('click', () => this.cycleQuickEquip('effect'));
+    document.getElementById('quickEquipOverdrive').addEventListener('click', () => this.cycleQuickEquip('overdriveSkin'));
+    document.getElementById('btnQuickEquipApply').addEventListener('click', () => this.closeQuickEquip(true));
+    document.getElementById('btnQuickEquipClose').addEventListener('click', () => this.closeQuickEquip(false));
     document.getElementById('btnLeaveConfirmYes').addEventListener('click', () => this.leaveRun());
     document.getElementById('btnLeaveConfirmNo').addEventListener('click', () => {
       document.getElementById('leaveConfirm').classList.add('hidden');
@@ -2128,6 +2231,60 @@ class Game {
     this.vibrate(30);
   }
 
+  /** v5: design/screens/wybor_narzedzia.svg — a quick-swap popup opened
+   *  from Pauza so the player can cycle to another OWNED cosmetic per
+   *  category without leaving the run for the full Warsztat screen. Reuses
+   *  the same `pendingLoadout` + onEquipClick() the Warsztat tabs already
+   *  commit through, instead of a second equip code path. */
+  openQuickEquip() {
+    this.pendingLoadout.aura = this.save.auras.selected;
+    this.pendingLoadout.effect = this.save.effects.selected;
+    this.pendingLoadout.overdriveSkin = this.save.overdriveSkins.selected;
+    this.renderQuickEquip();
+    document.getElementById('pauseSheet').classList.add('hidden');
+    document.getElementById('quickEquipScreen').classList.remove('hidden');
+  }
+
+  closeQuickEquip(apply) {
+    if (apply) {
+      this.onEquipClick();
+    } else {
+      this.pendingLoadout.aura = this.save.auras.selected;
+      this.pendingLoadout.effect = this.save.effects.selected;
+      this.pendingLoadout.overdriveSkin = this.save.overdriveSkins.selected;
+    }
+    document.getElementById('quickEquipScreen').classList.add('hidden');
+    document.getElementById('pauseSheet').classList.remove('hidden');
+  }
+
+  cycleQuickEquip(category) {
+    const table = {
+      aura: { items: AURAS, ownedKey: 'auras' },
+      effect: { items: EAT_EFFECTS, ownedKey: 'effects' },
+      overdriveSkin: { items: OVERDRIVE_SKINS, ownedKey: 'overdriveSkins' }
+    };
+    const { items, ownedKey } = table[category];
+    const owned = items.filter(it => this.save[ownedKey].owned.includes(it.id));
+    if (owned.length < 2) return; // nothing else unlocked to cycle to
+    const idx = owned.findIndex(it => it.id === this.pendingLoadout[category]);
+    this.pendingLoadout[category] = owned[(idx + 1) % owned.length].id;
+    this.renderQuickEquip();
+  }
+
+  renderQuickEquip() {
+    const rows = [
+      { category: 'aura', items: AURAS, defaultId: 'none', el: 'quickEquipAura' },
+      { category: 'effect', items: EAT_EFFECTS, defaultId: 'classic', el: 'quickEquipEffect' },
+      { category: 'overdriveSkin', items: OVERDRIVE_SKINS, defaultId: 'classic', el: 'quickEquipOverdrive' }
+    ];
+    rows.forEach(row => {
+      const item = row.items.find(it => it.id === this.pendingLoadout[row.category]) || row.items[0];
+      const card = document.getElementById(row.el);
+      card.querySelector('.tool-card-name').textContent = item.name;
+      card.classList.toggle('selected', item.id !== row.defaultId);
+    });
+  }
+
   /** GDD 4.0 §5.5: Warsztat unlocks after M02 clears OR the player already
    *  owns a cosmetic beyond the free defaults (whichever comes first — a
    *  player who somehow already has a cosmetic shouldn't be locked out). */
@@ -2318,6 +2475,8 @@ class Game {
       goalText.textContent = `Twoja pierwsza próba dziś — ten sam układ mapy co u wszystkich graczy. Nagroda za ukończenie: +${CONFIG.daily.completionBonusCoins} monet.`;
     }
     document.getElementById('dailyStreakValue').textContent = this.save.daily.streak || 0;
+    document.getElementById('dailyRewardFirst').textContent = `+${CONFIG.hub.coreCity.dailyFirstClearGain}% Core City`;
+    document.getElementById('dailyRewardBest').textContent = `+${CONFIG.hub.coreCity.dailyNewBestGain}% Core City`;
   }
 
   /** Which REWARD_CATEGORY_ICONS entry matches a CORE_CITY_LEVEL_REWARDS
@@ -2521,8 +2680,8 @@ class Game {
 
   campaignEntityColor(type) {
     return {
-      fragment: '#00f3ff', prop: '#39ff14', vehicle: '#ff007f', capsule: '#39ff14',
-      marker: '#ffd700', node: '#ffae00', pylon: '#00f3ff', landmark: '#ffd700', gate: '#00f3ff'
+      fragment: '#50F0FA', prop: '#46D99A', vehicle: '#FF54AD', capsule: '#46D99A',
+      marker: '#EFCB63', node: '#EFCB63', pylon: '#50F0FA', landmark: '#EFCB63', gate: '#50F0FA'
     }[type] || '#fff';
   }
 
@@ -2854,7 +3013,7 @@ class Game {
     const newTier = this.campaignPlayerTier();
     if (newTier.id !== m.tierId) {
       m.tierId = newTier.id;
-      this.ripples.push(new Ripple(this.player.x, this.player.y, '#39ff14', this.player.radius, this.player.radius * 2.5, 0.5));
+      this.ripples.push(new Ripple(this.player.x, this.player.y, '#46D99A', this.player.radius, this.player.radius * 2.5, 0.5));
       if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
     }
 
@@ -2871,8 +3030,8 @@ class Game {
     if (e.type === 'capsule') m.maxComboDuringCapsule = Math.max(m.maxComboDuringCapsule, this.comboCount);
     if (e.type === 'landmark') {
       this.triggerShake(16);
-      this.spawnParticles(e.x, e.y, '#ffd700', 40);
-      this.ripples.push(new Ripple(e.x, e.y, '#ffd700', e.radius, e.radius * 3.5, 0.8));
+      this.spawnParticles(e.x, e.y, '#EFCB63', 40);
+      this.ripples.push(new Ripple(e.x, e.y, '#EFCB63', e.radius, e.radius * 3.5, 0.8));
       this.analytics.track('big_eat', { missionId: m.def.id, landmark: e.landmarkId });
     }
 
@@ -2889,7 +3048,7 @@ class Game {
         if (e.isGateOpen) {
           if (!m.gatesPassed.has(e)) {
             m.gatesPassed.add(e);
-            this.spawnParticles(e.x, e.y, '#00f3ff', 14);
+            this.spawnParticles(e.x, e.y, '#50F0FA', 14);
             this.vibrate(30);
           }
         } else {
@@ -2899,7 +3058,7 @@ class Game {
           const dd = Math.hypot(dx, dy) || 1;
           this.player.x += (dx / dd) * 26;
           this.player.y += (dy / dd) * 26;
-          this.spawnParticles(e.x, e.y, '#ff007f', 6);
+          this.spawnParticles(e.x, e.y, '#FF54AD', 6);
         }
       }
     }
@@ -2967,7 +3126,7 @@ class Game {
         if (best) {
           this.scannerTarget = best;
           this.scannerTargetUntil = performance.now() + 2500;
-          this.ripples.push(new Ripple(best.x, best.y, '#b026ff', best.radius, best.radius * 3, 0.6));
+          this.ripples.push(new Ripple(best.x, best.y, '#9875FF', best.radius, best.radius * 3, 0.6));
         }
       }
     }
@@ -3259,7 +3418,7 @@ class Game {
   drawCampaignBoundary(ctx) {
     const b = CONFIG.campaign.bounds;
     ctx.save();
-    ctx.strokeStyle = 'rgba(0,243,255,0.35)';
+    ctx.strokeStyle = 'rgba(80, 240, 250,0.35)';
     ctx.lineWidth = 3;
     ctx.setLineDash([14, 10]);
     ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
@@ -3275,7 +3434,7 @@ class Game {
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.strokeStyle = 'rgba(0,243,255,0.4)';
+    ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
     ctx.lineWidth = 1;
     ctx.fillRect(px, py, size, size);
     ctx.strokeRect(px, py, size, size);
@@ -3289,7 +3448,7 @@ class Game {
       const big = e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate';
       const size = big ? 3 : 1.6;
       const p = toMini(e.x, e.y);
-      ctx.fillStyle = e.type === 'landmark' ? '#ffd700' : this.campaignEntityColor(e.type);
+      ctx.fillStyle = e.type === 'landmark' ? '#EFCB63' : this.campaignEntityColor(e.type);
       ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
     }
     for (const bot of this.bots) {
@@ -3298,7 +3457,7 @@ class Game {
       ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill();
     }
     const pp = toMini(this.player.x, this.player.y);
-    ctx.fillStyle = '#00f3ff';
+    ctx.fillStyle = '#50F0FA';
     ctx.beginPath(); ctx.arc(pp.x, pp.y, 3.5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
@@ -3570,11 +3729,26 @@ class Game {
 
   endRound() {
     this.state = GameState.RESULTS;
+    const corePctBefore = this.save.hub.coreCharge || 0;
+    const bestArenaScoreBefore = this.save.stats.bestArenaScore || 0;
     const { ranked, place, coinsEarned } = this.finalizeRun();
+    const corePctAfter = this.save.hub.coreCharge || 0;
 
     document.getElementById('finalPlace').textContent = '#' + place;
     document.getElementById('finalScore').textContent = this.player.score;
     document.getElementById('finalCoins').textContent = coinsEarned;
+
+    // v5 result hero (design/screens/wynik_rundy.svg): big glowing score,
+    // a size-tier badge reusing CONFIG.sizeTiers (previously tracked only
+    // for analytics — see checkSizeTier()'s doc comment), and a "new PB"
+    // badge next to the score itself.
+    let sizeTier = CONFIG.sizeTiers[0];
+    for (const tier of CONFIG.sizeTiers) {
+      if (this.player.radius >= tier.minRadius) sizeTier = tier;
+    }
+    document.getElementById('resultTierLabel').textContent = sizeTier.label;
+    const isNewPb = this.isDailyRun ? !!(this.dailyResult && this.dailyResult.isNewBest) : this.player.score > bestArenaScoreBefore;
+    document.getElementById('resultPbBadge').classList.toggle('hidden', !isNewPb);
 
     const tag = document.getElementById('resultTag');
     if (this.overdriveActive && this.overdriveTag) {
@@ -3584,7 +3758,25 @@ class Game {
       tag.classList.add('hidden');
     }
 
-    document.getElementById('resultCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
+    document.getElementById('resultCoreBefore').textContent = Math.round(corePctBefore) + '%';
+    document.getElementById('resultCoreAfter').textContent = Math.round(corePctAfter) + '%';
+    const leveledUp = corePctAfter < corePctBefore; // crossed 100% at least once
+    const coreGainPct = Math.max(0, Math.round(corePctAfter - corePctBefore + (leveledUp ? 100 : 0)));
+    document.getElementById('resultCoreGain').textContent = '+' + coreGainPct + '%';
+    // Two-tone delta bar: a dim "before" segment plus a bright "gained"
+    // segment stacked right after it, so the gain itself stays visible
+    // instead of one bar simply overdrawing the other.
+    const barBefore = document.getElementById('resultCoreBarBefore');
+    const barAfter = document.getElementById('resultCoreBar');
+    if (leveledUp) {
+      barBefore.style.width = '100%';
+      barAfter.style.left = '0%';
+      barAfter.style.width = corePctAfter + '%';
+    } else {
+      barBefore.style.width = corePctBefore + '%';
+      barAfter.style.left = corePctBefore + '%';
+      barAfter.style.width = Math.min(coreGainPct, 100 - corePctBefore) + '%';
+    }
 
     const dailyLine = document.getElementById('dailyResultLine');
     if (this.dailyResult) {
@@ -3624,7 +3816,7 @@ class Game {
     });
 
     document.getElementById('btnWatchAd').disabled = false;
-    document.getElementById('btnWatchAd').textContent = '📺 OBEJRZYJ REKLAMĘ = x2 MONET';
+    document.getElementById('btnWatchAd').textContent = 'OGLĄDAJ REKLAMĘ · X2 MONET';
 
     this.showScreen('gameOverScreen');
     this.updateCoinDisplays();
@@ -3816,7 +4008,7 @@ class Game {
           // of softening it (Phase Edge softens; Shield blocks outright).
           if (b.isPlayer && this.shieldCharges > 0) {
             this.shieldCharges--;
-            this.spawnParticles(b.x, b.y, '#00f3ff', 20);
+            this.spawnParticles(b.x, b.y, '#50F0FA', 20);
             this.vibrate(60);
             continue;
           }
@@ -3826,7 +4018,7 @@ class Game {
           const isBounty = a.isPlayer && b === this.bountyTarget;
           a.score += Math.round(b.radius * 2 * multiplier) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
           if (isBounty) this.bountyTarget = null;
-          this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#00f3ff' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer);
+          this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer);
           if (a.isPlayer) {
             this.rivalsEatenThisRun++;
             this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius), bounty: isBounty });
@@ -3874,8 +4066,8 @@ class Game {
       // hierarchy). Phase 4's evolution offers trigger from the same
       // radius crossings via CONFIG.evolution.triggerRadii, checked
       // separately in checkEvolutionTriggers() below.
-      this.ripples.push(new Ripple(this.player.x, this.player.y, '#39ff14', this.player.radius, this.player.radius * 2.5, 0.5));
-      this.spawnParticles(this.player.x, this.player.y, '#39ff14', 20);
+      this.ripples.push(new Ripple(this.player.x, this.player.y, '#46D99A', this.player.radius, this.player.radius * 2.5, 0.5));
+      this.spawnParticles(this.player.x, this.player.y, '#46D99A', 20);
       this.vibrate(60);
 
       if (this.activeMutations.has('shockwave')) {
@@ -3887,7 +4079,7 @@ class Game {
             obj.y += ((obj.y - this.player.y) / d) * push;
           }
         }
-        this.ripples.push(new Ripple(this.player.x, this.player.y, '#ff007f', this.player.radius, CONFIG.evolution.shockwaveRadius, 0.4));
+        this.ripples.push(new Ripple(this.player.x, this.player.y, '#FF54AD', this.player.radius, CONFIG.evolution.shockwaveRadius, 0.4));
       }
     }
   }
@@ -4023,7 +4215,8 @@ class Game {
       const pos = this.randomWorldPos(obj.radius + 20);
       obj.x = pos.x;
       obj.y = pos.y;
-      obj.color = '#ffd700';
+      obj.subtype = 'portal';
+      obj.color = '#9875FF';
       obj.value = CONFIG.overdrive.bonusObjectValue;
       this.objects.push(obj);
     }
@@ -4060,7 +4253,7 @@ class Game {
         if (best) {
           this.scannerTarget = best;
           this.scannerTargetUntil = now + 2000;
-          this.ripples.push(new Ripple(best.x, best.y, '#00f3ff', best.radius, best.radius * 3, 0.6));
+          this.ripples.push(new Ripple(best.x, best.y, '#50F0FA', best.radius, best.radius * 3, 0.6));
         }
       }
     }
@@ -4222,7 +4415,7 @@ class Game {
     const endY = this.camera.y + this.height / 2;
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(0, 243, 255, 0.08)';
+    ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = startX; x <= endX; x += GRID_SIZE) {
@@ -4237,7 +4430,7 @@ class Game {
     ctx.restore();
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 0, 127, 0.5)';
+    ctx.strokeStyle = 'rgba(255, 84, 173, 0.5)';
     ctx.lineWidth = 3;
     ctx.strokeRect(0, 0, WORLD_W, WORLD_H);
     ctx.restore();
@@ -4253,7 +4446,7 @@ class Game {
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.strokeStyle = 'rgba(0,243,255,0.4)';
+    ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
     ctx.lineWidth = 1;
     ctx.fillRect(px, py, size, size);
     ctx.strokeRect(px, py, size, size);
@@ -4275,7 +4468,7 @@ class Game {
       ctx.arc(px + bot.x * scale, py + bot.y * scale, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = '#00f3ff';
+    ctx.fillStyle = '#50F0FA';
     ctx.beginPath();
     ctx.arc(px + this.player.x * scale, py + this.player.y * scale, 3.5, 0, Math.PI * 2);
     ctx.fill();
@@ -4324,9 +4517,9 @@ class Game {
     ctx.rotate(angle);
     const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 200);
     ctx.globalAlpha = pulse;
-    ctx.fillStyle = '#ff007f';
+    ctx.fillStyle = '#FF54AD';
     ctx.shadowBlur = 12;
-    ctx.shadowColor = '#ff007f';
+    ctx.shadowColor = '#FF54AD';
     ctx.beginPath();
     ctx.moveTo(14, 0);
     ctx.lineTo(-10, -9);
@@ -4387,9 +4580,9 @@ class Game {
     const b = this.bountyTarget;
     ctx.save();
     ctx.translate(b.x, b.y - b.radius - 18);
-    ctx.fillStyle = '#ffae00';
+    ctx.fillStyle = '#EFCB63';
     ctx.shadowBlur = 10;
-    ctx.shadowColor = '#ffae00';
+    ctx.shadowColor = '#EFCB63';
     ctx.font = 'bold 16px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('👑', 0, 0);
@@ -4403,9 +4596,9 @@ class Game {
     const t = this.scannerTarget;
     ctx.save();
     ctx.globalAlpha = 0.7;
-    ctx.strokeStyle = '#00f3ff';
+    ctx.strokeStyle = '#50F0FA';
     ctx.shadowBlur = 14;
-    ctx.shadowColor = '#00f3ff';
+    ctx.shadowColor = '#50F0FA';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(t.x, t.y, t.radius * 1.8, 0, Math.PI * 2);
@@ -4454,9 +4647,9 @@ class Game {
     ctx.save();
     ctx.globalAlpha = this.comboDisplayAlpha;
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffd700';
+    ctx.fillStyle = '#EFCB63';
     ctx.shadowBlur = 12;
-    ctx.shadowColor = '#ffd700';
+    ctx.shadowColor = '#EFCB63';
     ctx.font = 'bold 18px Segoe UI, sans-serif';
     ctx.fillText(`x${this.comboMultiplier.toFixed(1)} COMBO (${this.comboCount})`, this.player.x, this.player.y - this.player.radius - 28);
     ctx.restore();
