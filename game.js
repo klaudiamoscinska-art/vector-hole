@@ -37,11 +37,35 @@ const CONFIG = {
     newRecordBonusCoins: 50,
     newRecordBonusPrisms: 3
   },
-  // Fallback reward once every skin AND aura is already unlocked, so a
-  // City Core milestone always grants *something* real.
+  // GDD 4.0 §7.3/§8: Core City is the long-term meta bar. It is filled
+  // ONLY by Arena (GRAJ 2:00) and Daily runs -- Campaign missions never
+  // touch it (§4.3 "Misje NIE napełniają Core City", enforced by
+  // finalizeRun() being an Arena/Daily-only code path; endCampaignMission()
+  // never calls it). Gains are additive per §7.3's table; overflow past
+  // 100% carries into the next level rather than being discarded.
   hub: {
+    coreCity: {
+      arenaCompleteGain: 8,
+      arenaTop3Gain: 2,     // place 1-3 (additive with completeGain)
+      arenaFirstGain: 3,    // place 1 only (additive on top of the Top3 bonus)
+      arenaNewPbGain: 2,    // new personal-best score this run, max once per round
+      dailyFirstClearGain: 20, // first Daily completion of the UTC day
+      dailyNewBestGain: 10     // "premium/gold" bonus: a new Daily best this run
+    },
+    // Fallback reward once level 6 (and every skin/aura/effect/overdrive
+    // skin from the ladder) is already owned -- GDD §8.2's own disclaimer
+    // that a "seasonal/prestige loop" beyond LVL6 is out of scope for now.
     milestoneFallbackCoins: 100,
     milestoneFallbackPrisms: 10
+  },
+  // GDD 4.0 §5.5 unlock order: Dzielnice (campaign) is always available;
+  // everything else gates off campaign mission completion so a fresh save
+  // is onboarded through the campaign first.
+  unlockGates: {
+    arena: 'M01',   // GRAJ 2:00 / Wyzwanie dnia's underlying round unlocks after M01
+    warsztat: 'M02', // or first owned cosmetic beyond the free defaults, see isWarsztatUnlocked()
+    wyzwania: 'M04',  // Wyzwanie dnia tab + full bottom nav
+    fullNav: 'M04'
   },
   // Floating Thumb Pad tuning (Phase 2). Legacy direct-drag stays available
   // via settings.inputMode and is unaffected by these values.
@@ -240,17 +264,61 @@ const SKINS = [
   { id: 'green', name: 'Toxic Green', price: 75, color: '#39ff14' },
   { id: 'purple', name: 'Ultra Violet', price: 100, color: '#b026ff' },
   { id: 'gold', name: 'Neon Gold', price: 150, color: '#ffd700' },
-  { id: 'white', name: 'Plasma White', price: 200, color: '#ffffff' }
+  { id: 'white', name: 'Plasma White', price: 200, color: '#ffffff' },
+  // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
+  // only granted on the campaign's last mission clear (see reward.unlockSkin
+  // in CAMPAIGN_MISSIONS + endCampaignMission()).
+  { id: 'aurora', name: 'Aurora Finału', price: null, color: '#7cffcb', unlockSource: { type: 'mission', id: 'M24' } },
+  // GDD 4.0 §8.2 Core City reward ladder (never for sale, granted by
+  // grantCoreCityLevelReward() — see CORE_CITY_LEVEL_REWARDS below).
+  { id: 'krysztal', name: 'Kryształ', price: null, color: '#8ce8ff', unlockSource: { type: 'coreCity', level: 3 } },
+  { id: 'pryzmat', name: 'Pryzmat', price: null, rainbow: true, unlockSource: { type: 'coreCity', level: 6 } }
 ];
 
 // Phase 7 shop v2: a second cosmetic category beyond ring skins, purchasable
-// with either currency to give Prisms an actual sink (GDD 10.1/10.2).
+// with either currency to give Prisms an actual sink (GDD 10.1/10.2). GDD
+// 4.0 §5.3 renames this Warsztat category "Trail" -- kept as `AURAS`
+// internally since it's the same following-glow render path (Hole's aura).
 const AURAS = [
   { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins' },
   { id: 'spark', name: 'Spark Aura', priceCoins: 120, priceType: 'coins', color: '#00f3ff' },
   { id: 'ember', name: 'Ember Aura', pricePrisms: 15, priceType: 'prisms', color: '#ff007f' },
-  { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#b026ff' }
+  { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#b026ff' },
+  { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#39ff14', unlockSource: { type: 'coreCity', level: 2 } },
+  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } }
 ];
+
+// GDD 4.0 §5.3 Warsztat category 3: "Efekt pochłaniania" -- the eat/absorb
+// particle burst (see triggerEatFeedback()). 'classic' keeps today's
+// per-object-type colors (color: null means "don't override").
+const EAT_EFFECTS = [
+  { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
+  { id: 'pixel_burst', name: 'Pixel Burst', priceCoins: null, color: '#ffd700', unlockSource: { type: 'coreCity', level: 4 } },
+  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } }
+];
+
+// GDD 4.0 §5.3 Warsztat category 4: "Overdrive" -- a cosmetic tint on
+// Arena's existing seeded Overdrive finish (see checkOverdriveTrigger()).
+// Doesn't change which variant (blackout/portal_rain) is picked -- only
+// the banner/glow color.
+const OVERDRIVE_SKINS = [
+  { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
+  { id: 'fala', name: 'Fala', priceCoins: null, color: '#00f3ff', unlockSource: { type: 'coreCity', level: 5 } },
+  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ff00ea', unlockSource: { type: 'coreCity', level: 6 } }
+];
+
+// GDD 4.0 §8.2 "Progi i nagrody" -- what completing each Core City level
+// grants. Keyed by the level the player *arrives at* (LVL1 is the starting
+// state and grants nothing). Level 7+ has no authored reward (§8.2's own
+// "beyond LVL6 is a seasonal/prestige loop, out of scope" disclaimer) so
+// grantCoreCityLevelReward() falls back to hub.milestoneFallbackCoins/Prisms.
+const CORE_CITY_LEVEL_REWARDS = {
+  2: { auraId: 'impuls', coins: 150, label: 'Trail „Impuls”' },
+  3: { skinId: 'krysztal', coins: 200, label: 'Rdzeń „Kryształ”' },
+  4: { effectId: 'pixel_burst', coins: 250, label: 'Efekt „Pixel Burst”' },
+  5: { overdriveSkinId: 'fala', coins: 300, label: 'Overdrive „Fala”' },
+  6: { skinId: 'pryzmat', auraId: 'pryzmat', effectId: 'pryzmat', overdriveSkinId: 'pryzmat', badge: 'pryzmat', coins: 400, label: 'Zestaw „Pryzmat” + odznaka' }
+};
 
 // Phase 7 casual run tools: consumable per-run boosters, Coins-only, casual
 // mode only (no ranked/daily equivalent exists yet to keep them fair for).
@@ -339,14 +407,17 @@ const CAMPAIGN_POWERS = [
   { id: 'skaner', name: 'Skaner', desc: 'Wskazuje skupisko.', icon: 'radar', color: '#b026ff' }
 ];
 
-// Hub district map (mockup in GDD §09). Only Plac Neonów / Park Impulsów
-// have authored missions; Port/Galeria are shown as locked teasers on the
-// map (not playable) to match the mockup without inventing content.
+// Hub district map. GDD 4.0 §6 authors the full 24-mission campaign (all
+// six districts); each district unlocks off the previous one's mission 4
+// reward (see CAMPAIGN_MISSIONS' reward.unlockDistrict), so `locked` here
+// only ever matters for a fresh save before Plac Neonów is cleared.
 const DISTRICTS = [
   { id: 'plac', name: 'Plac Neonów', order: 1, missions: ['M01', 'M02', 'M03', 'M04'] },
   { id: 'park', name: 'Park Impulsów', order: 2, missions: ['M05', 'M06', 'M07', 'M08'] },
-  { id: 'port', name: 'Port', order: 3, missions: [], locked: true },
-  { id: 'galeria', name: 'Galeria', order: 4, missions: [], locked: true }
+  { id: 'port', name: 'Port Syntez', order: 3, missions: ['M09', 'M10', 'M11', 'M12'] },
+  { id: 'galeria', name: 'Galeria Glitch', order: 4, missions: ['M13', 'M14', 'M15', 'M16'] },
+  { id: 'dachy', name: 'Dachy Prądu', order: 5, missions: ['M17', 'M18', 'M19', 'M20'] },
+  { id: 'rdzen', name: 'Rdzeń Miasta', order: 6, missions: ['M21', 'M22', 'M23', 'M24'] }
 ];
 
 // Rozdział I (Plac Neonów) + Rozdział II (Park Impulsów) — the two chapters
@@ -421,8 +492,149 @@ const CAMPAIGN_MISSIONS = [
     goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'fontanna', minTier: 4, label: 'Naładuj 3 pylony i pochłoń fontannę' },
     medal: { type: 'pylonsUnbroken', label: 'Aktywuj pylony w jednej serii' },
     setup: { fragments: 12, props: 8, vehicles: 6, pylons: 3, landmark: 'fontanna', bots: 1 },
+    evolutionOffer: { atSeconds: 30, count: 2 },
     nela: { start: 'Jeszcze trzy impulsy. Obudź serce ogrodu.', success: 'Fontanna wróciła. Port czeka!' },
+    reward: { coins: 70, unlockDistrict: 'port' }
+  },
+
+  // Rozdział III (Port Syntez) — GDD 4.0 §6 table rows M09-M12.
+  {
+    id: 'M09', district: 'port', order: 1, name: 'Dostawa energii', timeLimit: 90,
+    goal: { type: 'eatCount', entityType: 'prop', count: 12, label: 'Pochłoń 12 modułów skrzyń' },
+    medal: { type: 'timeUnder', seconds: 55, label: 'Ukończ w 55 s' },
+    setup: { fragments: 12, props: 18, bots: 0 },
+    nela: { start: 'Port stoi bez prądu. Zacznij od skrzyń przy nabrzeżu.', success: 'Pierwsza dostawa dotarła.' },
+    reward: { coins: 60 }
+  },
+  {
+    id: 'M10', district: 'port', order: 2, name: 'Pełny załadunek', timeLimit: 100,
+    goal: { type: 'eatCount', entityType: 'marker', count: 3, label: 'Wyczyść 3 oznaczone palety' },
+    medal: { type: 'bothRoutesUsed', label: 'Użyj obu tras' },
+    setup: { fragments: 12, props: 10, markers: 4, bots: 0 },
+    nela: { start: 'Palety mają swój porządek. Znajdź oznaczone.', success: 'Załadunek kompletny.' },
+    reward: { coins: 60 }
+  },
+  {
+    id: 'M11', district: 'port', order: 3, name: 'Konwój', timeLimit: 110,
+    goal: { type: 'eatCount', entityType: 'vehicle', count: 6, label: 'Pochłoń 6 pojazdów konwoju' },
+    medal: { type: 'comboUnbroken', label: 'Przejdź bez przerwania combo' },
+    setup: { fragments: 12, props: 8, vehicles: 10, bots: 1 },
+    nela: { start: 'Konwój rusza. Nie zgub żadnego pojazdu.', success: 'Ruchome cele w końcu stanęły.' },
+    reward: { coins: 60 }
+  },
+  {
+    id: 'M12', district: 'port', order: 4, name: 'Upadek dźwigu', timeLimit: 120,
+    goal: { type: 'activateAndDevour', activator: 'node', count: 3, landmark: 'dzwig', minTier: 4, label: 'Zbierz 3 zasilacze i pochłoń dźwig' },
+    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
+    setup: { fragments: 14, props: 8, vehicles: 6, nodes: 3, landmark: 'dzwig', bots: 1 },
+    evolutionOffer: { atSeconds: 30, count: 2 },
+    nela: { start: 'Trzy zasilacze, jeden wielki dźwig. Ruszaj.', success: 'Dźwig opadł. Galeria się otwiera!' },
+    reward: { coins: 80, unlockDistrict: 'galeria' }
+  },
+
+  // Rozdział IV (Galeria Glitch) — GDD 4.0 §6 table rows M13-M16.
+  {
+    id: 'M13', district: 'galeria', order: 1, name: 'Druga strona', timeLimit: 90,
+    goal: { type: 'eatCount', entityType: 'marker', count: 6, label: 'Użyj portalu i zbierz 6 kryształów' },
+    medal: { type: 'timeUnder', seconds: 65, label: 'Ukończ w 65 s' },
+    setup: { fragments: 12, markers: 8, gates: 1, bots: 0 },
+    nela: { start: 'Portal migocze — przejdź, gdy jest otwarty.', success: 'Druga strona galerii odzyskana.' },
     reward: { coins: 70 }
+  },
+  {
+    id: 'M14', district: 'galeria', order: 2, name: 'Witryny do odzyskania', timeLimit: 100,
+    goal: { type: 'eatCount', entityType: 'marker', count: 3, label: 'Wyczyść 3 witryny' },
+    medal: { type: 'comboAtLeast', count: 5, label: 'Zbierz 5 w jednym combo' },
+    setup: { fragments: 14, markers: 5, bots: 0 },
+    nela: { start: 'Witryny wciąż świecą starym światłem. Zgaś je.', success: 'Nowe reklamy migają nad placem.' },
+    reward: { coins: 70 }
+  },
+  {
+    id: 'M15', district: 'galeria', order: 3, name: 'Przed zamknięciem', timeLimit: 110,
+    goal: { type: 'eatCount', entityType: 'marker', count: 4, label: 'Zbierz 4 klucze sektorów' },
+    medal: { type: 'timeUnder', seconds: 75, label: 'Ukończ w 75 s' },
+    setup: { fragments: 12, props: 6, markers: 6, bots: 1 },
+    nela: { start: 'Sektory zamykają się jeden po drugim. Pospiesz się.', success: 'Wszystkie sektory otwarte na nowo.' },
+    reward: { coins: 70 }
+  },
+  {
+    id: 'M16', district: 'galeria', order: 4, name: 'Kaskada luster', timeLimit: 120,
+    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'galeria_glowna', minTier: 4, label: 'Aktywuj 3 lustra i pochłoń galerię' },
+    medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra w jednej serii' },
+    setup: { fragments: 12, props: 8, vehicles: 4, pylons: 3, landmark: 'galeria_glowna', bots: 1 },
+    evolutionOffer: { atSeconds: 30, count: 2 },
+    nela: { start: 'Trzy lustra, jedna kaskada światła. Rozpal ją.', success: 'Galeria lśni jak nowa. Dachy czekają!' },
+    reward: { coins: 90, unlockDistrict: 'dachy' }
+  },
+
+  // Rozdział V (Dachy Prądu) — GDD 4.0 §6 table rows M17-M20.
+  {
+    id: 'M17', district: 'dachy', order: 1, name: 'Nad miastem', timeLimit: 90,
+    goal: { type: 'eatCount', entityType: 'prop', count: 14, label: 'Pochłoń 14 modułów dachowych' },
+    medal: { type: 'timeUnder', seconds: 60, label: 'Ukończ w 60 s' },
+    setup: { fragments: 10, props: 20, bots: 0 },
+    nela: { start: 'Dachy Prądu widać z każdego okna. Zacznij od góry.', success: 'Pierwszy dach znów świeci.' },
+    reward: { coins: 80 }
+  },
+  {
+    id: 'M18', district: 'dachy', order: 2, name: 'Tor lotu', timeLimit: 110,
+    goal: { type: 'gatesPassed', count: 3, label: 'Wyczyść 3 pasy przelotu' },
+    medal: { type: 'comboUnbroken', label: 'Przejdź bez przerwania combo' },
+    setup: { fragments: 12, props: 6, gates: 3, bots: 0 },
+    nela: { start: 'Trzy pasy, trzy rytmy. Ucz się każdego z osobna.', success: 'Tor lotu czysty od krawędzi do krawędzi.' },
+    reward: { coins: 80 }
+  },
+  {
+    id: 'M19', district: 'dachy', order: 3, name: 'Cel w zasięgu', timeLimit: 110,
+    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'iglica_wejscie', minTier: 4, label: 'Zasil 2 mostki i otwórz iglicę' },
+    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
+    setup: { fragments: 12, props: 8, vehicles: 4, nodes: 2, landmark: 'iglica_wejscie', bots: 1 },
+    nela: { start: 'Dwa mostki dzielą Cię od iglicy. Zasil je.', success: 'Wejście otwarte. Iglica czeka.' },
+    reward: { coins: 80 }
+  },
+  {
+    id: 'M20', district: 'dachy', order: 4, name: 'Iglica', timeLimit: 120,
+    goal: { type: 'eatCount', entityType: 'landmark', count: 1, label: 'Pochłoń centralną iglicę' },
+    medal: { type: 'timeUnder', seconds: 90, label: 'Ukończ w 90 s' },
+    setup: { fragments: 14, props: 10, vehicles: 6, landmark: 'iglica', bots: 1 },
+    evolutionOffer: { atSeconds: 30, count: 2 },
+    nela: { start: 'Najbardziej epicki landmark przed finałem. Idź po niego.', success: 'Iglica pochłonięta. Rdzeń Miasta się budzi!' },
+    reward: { coins: 100, unlockDistrict: 'rdzen' }
+  },
+
+  // Rozdział VI (Rdzeń Miasta) — GDD 4.0 §6 table rows M21-M24, kampanii finał.
+  {
+    id: 'M21', district: 'rdzen', order: 1, name: 'Powrót sygnału', timeLimit: 90,
+    goal: { type: 'eatCount', entityType: 'marker', count: 4, label: 'Odzyskaj 4 emitery' },
+    medal: { type: 'timeUnder', seconds: 60, label: 'Ukończ w 60 s' },
+    setup: { fragments: 12, markers: 6, bots: 0 },
+    nela: { start: 'Sygnał milczy od dawna. Znajdź emitery.', success: 'Sygnał wraca do Rdzenia.' },
+    reward: { coins: 90 }
+  },
+  {
+    id: 'M22', district: 'rdzen', order: 2, name: 'Czytelny chaos', timeLimit: 110,
+    goal: { type: 'eatCount', entityType: 'fragment', count: 20, label: 'Pochłoń 20 fragmentów w 3 sektorach' },
+    medal: { type: 'comboAtLeast', count: 8, label: 'Zbierz 8 w jednym combo' },
+    setup: { fragments: 30, props: 6, bots: 1 },
+    nela: { start: 'Chaos ma swój rytm, jeśli wiesz gdzie patrzeć.', success: 'Kontrolowany chaos miasta ustał.' },
+    reward: { coins: 90 }
+  },
+  {
+    id: 'M23', district: 'rdzen', order: 3, name: 'Ostatni obwód', timeLimit: 120,
+    goal: { type: 'eatCount', entityType: 'node', count: 4, label: 'Naładuj finalny obwód z 4 węzłów' },
+    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
+    setup: { fragments: 14, props: 8, nodes: 4, bots: 1 },
+    nela: { start: 'Wysokie napięcie. Cztery węzły, jedna szansa.', success: 'Obwód zamknięty. Ostatni krok.' },
+    reward: { coins: 90 }
+  },
+  {
+    id: 'M24', district: 'rdzen', order: 4, name: 'Miasto na nowo', timeLimit: 120,
+    goal: { type: 'eatCount', entityType: 'landmark', count: 1, label: 'Pochłoń główny rdzeń miasta' },
+    medal: { type: 'timeUnder', seconds: 95, label: 'Ukończ w 95 s' },
+    setup: { fragments: 16, props: 10, vehicles: 8, landmark: 'rdzen_miasta_glowny', bots: 1 },
+    evolutionOffer: { atSeconds: 30, count: 2 },
+    nela: { start: 'Wielki finał całej kampanii. Miasto patrzy.', success: 'Miasto odzyskane. Neonowa Warszawa znów żyje.' },
+    reward: { coins: 120, unlockSkin: 'aurora' }
   }
 ];
 
@@ -433,7 +645,7 @@ function campaignDistrictOf(missionId) {
 }
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 6;
+const SAVE_SCHEMA_VERSION = 7;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -483,6 +695,14 @@ function dailySeedForDate(date) {
   return { seed: hash >>> 0, dateKey: key };
 }
 
+/** The UTC calendar day before `dateKey` (YYYY-MM-DD), for the Daily
+ *  streak counter (GDD 4.0 §5.4's "Wyzwania" tab wants to show a streak). */
+function previousDateKey(dateKey) {
+  const d = new Date(dateKey + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 // A small rotating mission pool: one is active per UTC calendar day (same
 // hashing approach as the Daily Seed Challenge, so it needs no backend).
 // Progress is tracked live during a round and checked at round end —
@@ -510,13 +730,20 @@ function defaultSave() {
     displayName: null, // guest-first: never required before the first run (GDD P6)
     guestId: generateId('guest'),
     settings: { inputMode: 'thumbpad', sensitivity: 1, haptics: true, minimap: 'auto' },
-    stats: { runsPlayed: 0 },
-    hub: { coreCharge: 0 },
-    daily: { lastSeedDate: null, lastSeedScore: 0 },
+    stats: { runsPlayed: 0, bestArenaScore: 0 },
+    // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
+    // coreCharge is the 0-100 progress toward the *next* level.
+    hub: { coreCharge: 0, coreLevel: 1 },
+    daily: { lastSeedDate: null, lastSeedScore: 0, streak: 0, lastPlayedDate: null },
     mission: { dateKey: null, completed: false },
     // v6: campaign progress. unlockedDistricts always includes the first
     // district so a fresh save can play Mission 01 with no prior unlock.
-    campaign: { unlockedDistricts: ['plac'], completed: {}, medals: {} }
+    campaign: { unlockedDistricts: ['plac'], completed: {}, medals: {} },
+    // v7: two more Warsztat cosmetic categories (GDD 4.0 §5.3) alongside
+    // owned/selected (ring skins) and auras (trail).
+    effects: { owned: ['classic'], selected: 'classic' },
+    overdriveSkins: { owned: ['classic'], selected: 'classic' },
+    badges: []
   };
 }
 
@@ -588,6 +815,26 @@ function migrateSave(data) {
       ...data,
       schemaVersion: 6,
       campaign: data.campaign || { unlockedDistricts: ['plac'], completed: {}, medals: {} }
+    };
+  }
+
+  if (data.schemaVersion < 7) {
+    // v6 -> v7: Vector Hole v4 (GDD 4.0) — Core City becomes a leveled bar
+    // (coreLevel + the §8.2 reward ladder) instead of a flat repeating
+    // "fill to 100%" milestone; two more Warsztat cosmetic categories
+    // (Efekt pochłaniania / Overdrive); a Daily streak counter; campaign now
+    // authors all 6 districts (DISTRICTS/CAMPAIGN_MISSIONS need no save
+    // migration of their own -- unlockedDistricts/completed/medals are
+    // already keyed by id and stay valid, new districts just start absent).
+    data = {
+      ...data,
+      schemaVersion: 7,
+      stats: { ...data.stats, bestArenaScore: data.stats.bestArenaScore || 0 },
+      hub: { coreCharge: (data.hub && data.hub.coreCharge) || 0, coreLevel: (data.hub && data.hub.coreLevel) || 1 },
+      daily: { ...data.daily, streak: data.daily.streak || 0, lastPlayedDate: data.daily.lastPlayedDate || null },
+      effects: data.effects || { owned: ['classic'], selected: 'classic' },
+      overdriveSkins: data.overdriveSkins || { owned: ['classic'], selected: 'classic' },
+      badges: data.badges || []
     };
   }
 
@@ -1310,6 +1557,8 @@ class Game {
     this.rivalsEatenThisRun = 0;
     this.missionJustCompleted = false;
     this.hubMilestoneReward = null;
+    this.hubMilestoneRewards = [];
+    this.hubMilestoneReached = false;
 
     this.sessionId = generateId('session');
     this.analytics = new Analytics();
@@ -1328,8 +1577,11 @@ class Game {
     this.bindUI();
     this.populateShop();
     this.updateCoinDisplays();
+    this.updateChallengeCountdown();
+    setInterval(() => this.updateChallengeCountdown(), 1000);
 
     this.state = GameState.MENU;
+    this.showScreen('mainMenu'); // also renders the bottom nav for the initial screen
     this.analytics.track('session_start', { sessionId: this.sessionId, configVersion: CONFIG.version });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
@@ -1496,6 +1748,7 @@ class Game {
 
   bindUI() {
     document.getElementById('btnStart').addEventListener('click', () => {
+      if (!this.isArenaUnlocked()) return;
       this.selectedRunTool = 'none';
       this.populateRunToolGrid();
       this.showScreen('runSetupScreen');
@@ -1503,9 +1756,19 @@ class Game {
     document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
     document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
-    document.getElementById('btnDaily').addEventListener('click', () => this.startDailyChallenge());
+    // GDD 4.0 §5.1: Miasto's secondary CTA opens the Wyzwania tab (goal
+    // text/countdown/streak live there); the tab's own button actually
+    // starts the round.
+    document.getElementById('btnDaily').addEventListener('click', () => this.openChallengesScreen());
+    document.getElementById('btnPlayDaily').addEventListener('click', () => this.startDailyChallenge());
+    document.getElementById('btnChallengesBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
-    document.getElementById('btnCampaign').addEventListener('click', () => this.openCampaignScreen());
+    // GDD 4.0 §5.1-§5.4 bottom nav (Miasto/Dzielnice/Warsztat/Wyzwania).
+    document.getElementById('btnNavMiasto').addEventListener('click', () => this.showScreen('mainMenu'));
+    document.getElementById('btnNavDzielnice').addEventListener('click', () => this.openCampaignScreen());
+    document.getElementById('btnNavWarsztat').addEventListener('click', () => { if (this.isWarsztatUnlocked()) this.openWarsztatScreen(); });
+    document.getElementById('btnNavWyzwania').addEventListener('click', () => { if (this.isWyzwaniaUnlocked()) this.openChallengesScreen(); });
+
     document.getElementById('btnCampaignBack').addEventListener('click', () => this.showScreen('mainMenu'));
     document.getElementById('btnPlayMission').addEventListener('click', () => this.startCampaignMission(this.selectedMissionId));
     // Player feedback: every level needs a way back to the main menu --
@@ -1521,24 +1784,22 @@ class Game {
     document.getElementById('btnProfile').addEventListener('click', () => this.openProfileScreen());
     document.getElementById('btnSaveProfile').addEventListener('click', () => this.saveProfile());
     document.getElementById('btnProfileBack').addEventListener('click', () => this.showScreen('mainMenu'));
-
-    document.getElementById('btnShop').addEventListener('click', () => {
-      this.analytics.track('shop_view', {});
-      this.populateAuras();
-      this.showScreen('shopScreen');
-    });
     document.getElementById('btnShopBack').addEventListener('click', () => this.showScreen('mainMenu'));
-    document.getElementById('tabSkins').addEventListener('click', () => {
-      document.getElementById('tabSkins').classList.add('active');
-      document.getElementById('tabAuras').classList.remove('active');
-      document.getElementById('skinGrid').classList.remove('hidden');
-      document.getElementById('auraGrid').classList.add('hidden');
-    });
-    document.getElementById('tabAuras').addEventListener('click', () => {
-      document.getElementById('tabAuras').classList.add('active');
-      document.getElementById('tabSkins').classList.remove('active');
-      document.getElementById('auraGrid').classList.remove('hidden');
-      document.getElementById('skinGrid').classList.add('hidden');
+    // GDD 4.0 §5.3: Warsztat has 4 equip categories (Rdzeń/Trail/Efekt
+    // pochłaniania/Overdrive) instead of the old 2 (Ring/Aura tabs).
+    const shopTabs = [
+      { tab: 'tabSkins', grid: 'skinGrid' },
+      { tab: 'tabAuras', grid: 'auraGrid' },
+      { tab: 'tabEffects', grid: 'effectGrid' },
+      { tab: 'tabOverdrive', grid: 'overdriveSkinGrid' }
+    ];
+    shopTabs.forEach(({ tab, grid }) => {
+      document.getElementById(tab).addEventListener('click', () => {
+        shopTabs.forEach(({ tab: t, grid: g }) => {
+          document.getElementById(t).classList.toggle('active', t === tab);
+          document.getElementById(g).classList.toggle('hidden', g !== grid);
+        });
+      });
     });
 
     document.getElementById('btnPlayAgain').addEventListener('click', () => {
@@ -1618,45 +1879,67 @@ class Game {
     });
   }
 
-  populateShop() {
-    const grid = document.getElementById('skinGrid');
+  /** Generic renderer shared by all 4 Warsztat cosmetic categories (GDD 4.0
+   *  §5.3: Rdzeń/Trail/Efekt pochłaniania/Overdrive). Reward-only items
+   *  (unlockSource set — the Core City ladder / mission rewards) show their
+   *  unlock source instead of a price and aren't buyable from here (GDD
+   *  §5.3: "czytelne źródło blokady: Misja / Core City / Daily / Sklep"). */
+  renderCosmeticGrid(gridId, items, ownedList, selectedId, onPick) {
+    const grid = document.getElementById(gridId);
     grid.innerHTML = '';
-    SKINS.forEach(skin => {
-      const owned = this.save.owned.includes(skin.id);
-      const selected = this.save.selected === skin.id;
+    items.forEach(item => {
+      const owned = ownedList.includes(item.id);
+      const selected = selectedId === item.id;
       const card = document.createElement('div');
       card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
 
       const swatch = document.createElement('div');
       swatch.className = 'skin-swatch';
-      if (skin.rainbow) {
+      if (item.rainbow) {
         swatch.style.borderColor = '#fff';
         swatch.style.backgroundImage = 'conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red)';
+      } else if (item.color) {
+        swatch.style.borderColor = item.color;
+        swatch.style.boxShadow = `0 0 10px ${item.color}`;
       } else {
-        swatch.style.borderColor = skin.color;
-        swatch.style.boxShadow = `0 0 10px ${skin.color}`;
+        swatch.style.borderColor = 'rgba(255,255,255,0.3)';
       }
       card.appendChild(swatch);
 
       const name = document.createElement('div');
       name.className = 'skin-name';
-      name.textContent = skin.name;
+      name.textContent = item.name;
       card.appendChild(name);
 
       const meta = document.createElement('div');
       meta.className = owned ? 'skin-owned-badge' : 'skin-price';
-      meta.textContent = owned ? (selected ? 'WYBRANY' : 'POSIADANE') : `◈ ${skin.price}`;
+      meta.textContent = owned ? (selected ? 'WYBRANY' : 'POSIADANE') : this.cosmeticLockLabel(item);
       card.appendChild(meta);
 
-      card.addEventListener('click', () => this.onSkinClick(skin));
+      card.addEventListener('click', () => onPick(item));
       grid.appendChild(card);
     });
+  }
+
+  cosmeticLockLabel(item) {
+    if (item.unlockSource) {
+      return item.unlockSource.type === 'coreCity' ? `CORE CITY LVL ${item.unlockSource.level}` : `MISJA ${item.unlockSource.id}`;
+    }
+    if (item.priceType === 'prisms') return `◆ ${item.pricePrisms}`;
+    return `◈ ${item.priceCoins != null ? item.priceCoins : item.price}`;
+  }
+
+  populateShop() {
+    this.renderCosmeticGrid('skinGrid', SKINS, this.save.owned, this.save.selected, skin => this.onSkinClick(skin));
   }
 
   onSkinClick(skin) {
     const owned = this.save.owned.includes(skin.id);
     if (owned) {
       this.save.selected = skin.id;
+    } else if (skin.unlockSource) {
+      this.analytics.track('cosmetic_preview', { skinId: skin.id, locked: true });
+      return;
     } else if (this.save.coins >= skin.price) {
       this.save.coins -= skin.price;
       this.save.owned.push(skin.id);
@@ -1669,50 +1952,23 @@ class Game {
     saveGame(this.save);
     this.populateShop();
     this.updateCoinDisplays();
+    this.updateWarsztatPreview();
   }
 
   /** Phase 7 shop v2's second cosmetic category — gives Prisms an actual
-   *  sink alongside Coins (GDD 10.1/10.2). */
+   *  sink alongside Coins (GDD 10.1/10.2). Renamed "Trail" in the Warsztat
+   *  UI per GDD 4.0 §5.3, same following-glow render path underneath. */
   populateAuras() {
-    const grid = document.getElementById('auraGrid');
-    grid.innerHTML = '';
-    AURAS.forEach(aura => {
-      const owned = this.save.auras.owned.includes(aura.id);
-      const selected = this.save.auras.selected === aura.id;
-      const card = document.createElement('div');
-      card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
-
-      const swatch = document.createElement('div');
-      swatch.className = 'skin-swatch';
-      if (aura.color) {
-        swatch.style.borderColor = aura.color;
-        swatch.style.boxShadow = `0 0 10px ${aura.color}`;
-      } else {
-        swatch.style.borderColor = 'rgba(255,255,255,0.3)';
-      }
-      card.appendChild(swatch);
-
-      const name = document.createElement('div');
-      name.className = 'skin-name';
-      name.textContent = aura.name;
-      card.appendChild(name);
-
-      const meta = document.createElement('div');
-      meta.className = owned ? 'skin-owned-badge' : 'skin-price';
-      meta.textContent = owned
-        ? (selected ? 'WYBRANY' : 'POSIADANE')
-        : (aura.priceType === 'prisms' ? `◆ ${aura.pricePrisms}` : `◈ ${aura.priceCoins}`);
-      card.appendChild(meta);
-
-      card.addEventListener('click', () => this.onAuraClick(aura));
-      grid.appendChild(card);
-    });
+    this.renderCosmeticGrid('auraGrid', AURAS, this.save.auras.owned, this.save.auras.selected, aura => this.onAuraClick(aura));
   }
 
   onAuraClick(aura) {
     const owned = this.save.auras.owned.includes(aura.id);
     if (owned) {
       this.save.auras.selected = aura.id;
+    } else if (aura.unlockSource) {
+      this.analytics.track('cosmetic_preview', { auraId: aura.id, locked: true });
+      return;
     } else if (aura.priceType === 'prisms') {
       if (this.save.prisms < aura.pricePrisms) {
         this.analytics.track('cosmetic_preview', { auraId: aura.id, affordable: false });
@@ -1735,6 +1991,107 @@ class Game {
     saveGame(this.save);
     this.populateAuras();
     this.updateCoinDisplays();
+    this.updateWarsztatPreview();
+  }
+
+  /** GDD 4.0 §5.3 category 3: "Efekt pochłaniania" — see the color override
+   *  in triggerEatFeedback(). 'classic' (free, color: null) is always owned. */
+  populateEffects() {
+    this.renderCosmeticGrid('effectGrid', EAT_EFFECTS, this.save.effects.owned, this.save.effects.selected, effect => this.onEffectClick(effect));
+  }
+
+  onEffectClick(effect) {
+    const owned = this.save.effects.owned.includes(effect.id);
+    if (owned) {
+      this.save.effects.selected = effect.id;
+    } else if (effect.unlockSource) {
+      this.analytics.track('cosmetic_preview', { effectId: effect.id, locked: true });
+      return;
+    } else if (this.save.coins >= (effect.priceCoins || 0)) {
+      this.save.coins -= (effect.priceCoins || 0);
+      this.save.effects.owned.push(effect.id);
+      this.save.effects.selected = effect.id;
+      this.analytics.track('soft_purchase', { effectId: effect.id, price: effect.priceCoins || 0, currency: 'coins' });
+    } else {
+      return;
+    }
+    saveGame(this.save);
+    this.populateEffects();
+    this.updateCoinDisplays();
+    this.updateWarsztatPreview();
+  }
+
+  /** GDD 4.0 §5.3 category 4: "Overdrive" — a cosmetic tint on Arena's
+   *  existing seeded Overdrive finish, see checkOverdriveTrigger(). */
+  populateOverdriveSkins() {
+    this.renderCosmeticGrid('overdriveSkinGrid', OVERDRIVE_SKINS, this.save.overdriveSkins.owned, this.save.overdriveSkins.selected, skin => this.onOverdriveSkinClick(skin));
+  }
+
+  onOverdriveSkinClick(skin) {
+    const owned = this.save.overdriveSkins.owned.includes(skin.id);
+    if (owned) {
+      this.save.overdriveSkins.selected = skin.id;
+    } else if (skin.unlockSource) {
+      this.analytics.track('cosmetic_preview', { overdriveSkinId: skin.id, locked: true });
+      return;
+    } else if (this.save.coins >= (skin.priceCoins || 0)) {
+      this.save.coins -= (skin.priceCoins || 0);
+      this.save.overdriveSkins.owned.push(skin.id);
+      this.save.overdriveSkins.selected = skin.id;
+      this.analytics.track('soft_purchase', { overdriveSkinId: skin.id, price: skin.priceCoins || 0, currency: 'coins' });
+    } else {
+      return;
+    }
+    saveGame(this.save);
+    this.populateOverdriveSkins();
+    this.updateCoinDisplays();
+    this.updateWarsztatPreview();
+  }
+
+  /** GDD 4.0 §5.5: Warsztat unlocks after M02 clears OR the player already
+   *  owns a cosmetic beyond the free defaults (whichever comes first — a
+   *  player who somehow already has a cosmetic shouldn't be locked out). */
+  isWarsztatUnlocked() {
+    if (this.save.campaign.completed['M02']) return true;
+    return this.save.owned.length > 1 || this.save.auras.owned.length > 1
+      || this.save.effects.owned.length > 1 || this.save.overdriveSkins.owned.length > 1;
+  }
+
+  openWarsztatScreen() {
+    this.analytics.track('shop_view', {});
+    this.populateShop();
+    this.populateAuras();
+    this.populateEffects();
+    this.populateOverdriveSkins();
+    this.updateWarsztatPreview();
+    this.showScreen('shopScreen');
+  }
+
+  /** "PODGLĄD NA ŻYWO" panel (GDD 4.0 §5.3 mockup) — a pure CSS/SVG vector
+   *  preview of the equipped loadout, no image assets. */
+  updateWarsztatPreview() {
+    const skin = SKINS.find(s => s.id === this.save.selected) || SKINS[0];
+    const aura = AURAS.find(a => a.id === this.save.auras.selected);
+    const effect = EAT_EFFECTS.find(e => e.id === this.save.effects.selected);
+    const overdrive = OVERDRIVE_SKINS.find(o => o.id === this.save.overdriveSkins.selected);
+
+    const ring = document.getElementById('warsztatPreviewRing');
+    if (skin.rainbow) {
+      ring.style.borderColor = '#fff';
+      ring.style.background = 'conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red)';
+      ring.style.boxShadow = 'none';
+    } else {
+      ring.style.borderColor = skin.color;
+      ring.style.background = 'transparent';
+      ring.style.boxShadow = `0 0 24px ${skin.color}`;
+    }
+    const trail = document.getElementById('warsztatPreviewTrail');
+    trail.style.borderColor = (aura && aura.color) || 'transparent';
+
+    document.getElementById('warsztatActiveCore').textContent = skin.name;
+    document.getElementById('warsztatActiveTrail').textContent = (aura && aura.name) || 'Brak';
+    document.getElementById('warsztatActiveEffect').textContent = (effect && effect.name) || 'Klasyczny';
+    document.getElementById('warsztatActiveOverdrive').textContent = (overdrive && overdrive.name) || 'Klasyczny';
   }
 
   /** Phase 7 casual run tools — Coins-only, consumed at round start, no
@@ -1820,9 +2177,25 @@ class Game {
     document.getElementById('coinCountShop').textContent = this.save.coins;
     document.getElementById('prismCountMenu').textContent = this.save.prisms || 0;
     document.getElementById('prismCountShop').textContent = this.save.prisms || 0;
+
+    // GDD 4.0 §8.3 Miasto/Core City copy: percent + "LVL X · do następnej
+    // nagrody" + a preview of what 100% unlocks next.
+    const level = this.save.hub.coreLevel || 1;
     document.getElementById('hubCoreBar').style.width = (this.save.hub.coreCharge || 0) + '%';
     document.getElementById('hubChargeValue').textContent = (this.save.hub.coreCharge || 0) + '%';
-    document.getElementById('hubRunsValue').textContent = this.save.stats.runsPlayed || 0;
+    document.getElementById('hubLevelLabel').textContent = `LVL ${level} · do następnej nagrody`;
+    const nextReward = CORE_CITY_LEVEL_REWARDS[level + 1];
+    document.getElementById('hubRewardPreview').textContent = nextReward
+      ? `Po 100% odblokujesz: ${nextReward.label} + ${nextReward.coins} monet`
+      : `Po 100% odblokujesz: +${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    this.renderHubLevelDots(level);
+
+    const arenaUnlocked = this.isArenaUnlocked();
+    document.getElementById('btnStart').disabled = !arenaUnlocked;
+    document.getElementById('btnDaily').disabled = !arenaUnlocked;
+    const hint = document.getElementById('hubUnlockHint');
+    hint.classList.toggle('hidden', arenaUnlocked);
+    if (!arenaUnlocked) hint.textContent = 'Ukończ misję M01 w Dzielnicach, aby odblokować GRAJ 2:00.';
 
     const { dateKey } = dailySeedForDate(new Date());
     const { mission } = missionForDate(new Date());
@@ -1837,22 +2210,91 @@ class Game {
     } else {
       goalText.textContent = `Twoja pierwsza próba dziś — ten sam układ mapy co u wszystkich graczy. Nagroda za ukończenie: +${CONFIG.daily.completionBonusCoins} monet.`;
     }
+    document.getElementById('dailyStreakValue').textContent = this.save.daily.streak || 0;
+  }
+
+  /** Three dots (poprzedni / aktualny / następny poziom) around the
+   *  player's current Core City level -- GDD 4.0 §5.1 mockup's
+   *  "LVL1 → LVL2 → LVL3" progress row, generalized to any level. */
+  renderHubLevelDots(level) {
+    const wrap = document.getElementById('hubLevelDots');
+    wrap.innerHTML = '';
+    const shown = [Math.max(1, level - 1), level, level + 1];
+    shown.forEach(n => {
+      const dot = document.createElement('span');
+      dot.className = 'hub-level-dot' + (n === level ? ' current' : '') + (n < level ? ' done' : '');
+      dot.textContent = n < level ? '✓' : `LVL ${n}`;
+      wrap.appendChild(dot);
+    });
+  }
+
+  /** GDD 4.0 §5.4 Wyzwania tab: Daily rotating mission + Daily Seed
+   *  Challenge, both with a UTC countdown to the next reset. */
+  openChallengesScreen() {
+    if (!this.isWyzwaniaUnlocked()) return;
+    this.updateCoinDisplays();
+    this.updateChallengeCountdown();
+    this.showScreen('challengesScreen');
+  }
+
+  updateChallengeCountdown() {
+    const el = document.getElementById('challengeCountdown');
+    if (!el) return;
+    const now = new Date();
+    const nextUtcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    const remainingMs = Math.max(0, nextUtcMidnight - now.getTime());
+    const h = Math.floor(remainingMs / 3600000);
+    const m = Math.floor((remainingMs % 3600000) / 60000);
+    const s = Math.floor((remainingMs % 60000) / 1000);
+    el.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   showScreen(id) {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
     document.getElementById('hud').classList.toggle('hidden', true);
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
+    this.renderBottomNav(id);
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
+    document.getElementById('bottomNav').classList.add('hidden');
   }
+
+  /** GDD 4.0 §5.1-§5.4: one persistent bottom nav across the 4 hub screens.
+   *  §5.5 unlock order: Dzielnice is always available; Warsztat/Wyzwania
+   *  gate off campaign mission completion (Miasto itself has no gate --
+   *  it's the landing screen a fresh save opens on). */
+  renderBottomNav(activeScreenId) {
+    const NAV_SCREENS = ['mainMenu', 'campaignScreen', 'shopScreen', 'challengesScreen'];
+    const nav = document.getElementById('bottomNav');
+    nav.classList.toggle('hidden', !NAV_SCREENS.includes(activeScreenId));
+
+    const tabs = [
+      { btn: 'btnNavMiasto', screen: 'mainMenu', unlocked: true },
+      { btn: 'btnNavDzielnice', screen: 'campaignScreen', unlocked: true },
+      { btn: 'btnNavWarsztat', screen: 'shopScreen', unlocked: this.isWarsztatUnlocked() },
+      { btn: 'btnNavWyzwania', screen: 'challengesScreen', unlocked: this.isWyzwaniaUnlocked() }
+    ];
+    tabs.forEach(t => {
+      const btn = document.getElementById(t.btn);
+      btn.classList.toggle('active', t.screen === activeScreenId);
+      btn.classList.toggle('hidden', !t.unlocked);
+    });
+  }
+
+  /** GDD 4.0 §5.5: Arena's round (GRAJ 2:00 / Wyzwanie dnia) unlocks after
+   *  clearing M01 -- the campaign is the onboarding per §1's Player Journey. */
+  isArenaUnlocked() { return !!this.save.campaign.completed['M01']; }
+
+  /** GDD 4.0 §5.5: Wyzwanie dnia tab (and, per the same row, "full meta
+   *  navigation") unlocks after clearing M04. */
+  isWyzwaniaUnlocked() { return !!this.save.campaign.completed['M04']; }
 
   /* ---------- world setup ---------- */
 
@@ -1988,6 +2430,14 @@ class Game {
     nodes.forEach((el, i) => el.classList.toggle('active', i === districtIdx));
 
     const district = DISTRICTS.find(d => d.id === districtId);
+    // GDD 4.0 §8.4 anti-confusion: this header shows the district's OWN
+    // rebuild % (§6 "0/4, 1/4... nie używać wielkiego okręgu Core City"),
+    // never the Miasto/Core City percentage.
+    const doneCount = district.missions.filter(id => this.save.campaign.completed[id]).length;
+    const rebuildPct = Math.round((doneCount / district.missions.length) * 100);
+    document.getElementById('districtTitle').textContent = district.name.toUpperCase();
+    document.getElementById('districtRebuildLine').textContent = `ODBUDOWA: ${rebuildPct}% · ${doneCount} z ${district.missions.length} misji`;
+
     const list = document.getElementById('missionList');
     list.innerHTML = '';
     let firstPlayableId = null;
@@ -2557,6 +3007,9 @@ class Game {
       if (m.def.reward.unlockDistrict && !this.save.campaign.unlockedDistricts.includes(m.def.reward.unlockDistrict)) {
         this.save.campaign.unlockedDistricts.push(m.def.reward.unlockDistrict);
       }
+      if (m.def.reward.unlockSkin && !this.save.owned.includes(m.def.reward.unlockSkin)) {
+        this.save.owned.push(m.def.reward.unlockSkin);
+      }
     }
     if (medalEarned) this.save.campaign.medals[m.def.id] = true;
     saveGame(this.save);
@@ -2582,7 +3035,7 @@ class Game {
       : `Medal nieukończony: ${def.medal.label}`;
     document.getElementById('missionResultMedal').classList.toggle('earned', medalEarned);
     document.getElementById('missionResultReward').textContent = firstClear
-      ? `+${def.reward.coins} monet (pierwsze ukończenie)${def.reward.unlockDistrict ? ' + nowa dzielnica!' : ''}`
+      ? `+${def.reward.coins} monet (pierwsze ukończenie)${def.reward.unlockDistrict ? ' + nowa dzielnica!' : ''}${def.reward.unlockSkin ? ' + kosmetyk finałowy!' : ''}`
       : (success ? 'Nagroda za pierwsze ukończenie już odebrana wcześniej.' : 'Brak nagrody — czas minął.');
 
     const district = DISTRICTS.find(d => d.id === def.district);
@@ -2594,9 +3047,12 @@ class Game {
       btnNext.classList.remove('hidden');
       btnNext.onclick = () => this.startCampaignMission(nextId);
     } else if (success) {
-      btnNext.textContent = 'DZIELNICA UKOŃCZONA — DO MAPY';
+      const isFinalMission = district.order === DISTRICTS.length;
+      btnNext.textContent = isFinalMission ? 'KAMPANIA UKOŃCZONA — DO MIASTA' : 'DZIELNICA UKOŃCZONA — DO MAPY';
       btnNext.classList.remove('hidden');
-      btnNext.onclick = () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
+      btnNext.onclick = isFinalMission
+        ? () => { this.updateCoinDisplays(); this.showScreen('mainMenu'); }
+        : () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
     } else {
       btnNext.classList.add('hidden');
     }
@@ -2853,35 +3309,6 @@ class Game {
     this.save.coins += coinsEarned;
     this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
 
-    // Phase 6: every run charges the City Core meter (GDD §7 — "the hub
-    // must communicate it's building something after every few runs").
-    // A full meter grants a real, visible reward instead of just a
-    // congratulatory message: the next cosmetic the player doesn't own
-    // yet (skins first, then auras), or a currency bonus once everything
-    // is already unlocked.
-    this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + 12;
-    this.hubMilestoneReached = this.save.hub.coreCharge >= 100;
-    this.hubMilestoneReward = null;
-    if (this.hubMilestoneReached) {
-      this.save.hub.coreCharge = 0;
-      const nextSkin = SKINS.find(s => !this.save.owned.includes(s.id));
-      const nextAura = AURAS.find(a => !this.save.auras.owned.includes(a.id));
-      if (nextSkin) {
-        this.save.owned.push(nextSkin.id);
-        this.hubMilestoneReward = { type: 'skin', name: nextSkin.name };
-      } else if (nextAura) {
-        this.save.auras.owned.push(nextAura.id);
-        this.hubMilestoneReward = { type: 'aura', name: nextAura.name };
-      } else {
-        this.save.coins += CONFIG.hub.milestoneFallbackCoins;
-        this.save.prisms = (this.save.prisms || 0) + CONFIG.hub.milestoneFallbackPrisms;
-        this.hubMilestoneReward = {
-          type: 'bonus', coins: CONFIG.hub.milestoneFallbackCoins, prisms: CONFIG.hub.milestoneFallbackPrisms
-        };
-      }
-      this.analytics.track('result_action', { action: 'hub_milestone', reward: this.hubMilestoneReward });
-    }
-
     // Phase 7: Prisms have no IAP adapter yet, so the only earn path is a
     // small trickle from progression (GDD 10.1's "slowly earned" clause).
     if (this.save.stats.runsPlayed % 3 === 0) this.save.prisms = (this.save.prisms || 0) + 1;
@@ -2910,18 +3337,79 @@ class Game {
       if (isNewBest) {
         dailyBonusCoins += CONFIG.daily.newRecordBonusCoins;
         dailyBonusPrisms = CONFIG.daily.newRecordBonusPrisms;
-        this.save.daily = { lastSeedDate: dateKey, lastSeedScore: this.player.score };
       }
       this.save.coins += dailyBonusCoins;
       this.save.prisms = (this.save.prisms || 0) + dailyBonusPrisms;
-      this.dailyResult = { isNewBest, previousBest, dailyBonusCoins, dailyBonusPrisms };
+      // GDD 4.0 §5.4: the Wyzwania tab shows a streak, so track consecutive
+      // UTC days played -- independent of whether this run set a new best.
+      const streak = this.save.daily.lastPlayedDate === dateKey ? (this.save.daily.streak || 0)
+        : this.save.daily.lastPlayedDate === previousDateKey(dateKey) ? (this.save.daily.streak || 0) + 1
+        : 1;
+      this.save.daily = {
+        lastSeedDate: isNewBest ? dateKey : this.save.daily.lastSeedDate,
+        lastSeedScore: isNewBest ? this.player.score : this.save.daily.lastSeedScore,
+        streak, lastPlayedDate: dateKey
+      };
+      this.dailyResult = { isNewBest, previousBest, dailyBonusCoins, dailyBonusPrisms, streak };
       this.analytics.track('daily_challenge_end', {
-        dateKey, score: this.player.score, isNewBest, dailyBonusCoins, dailyBonusPrisms
+        dateKey, score: this.player.score, isNewBest, dailyBonusCoins, dailyBonusPrisms, streak
       });
+    }
+
+    // GDD 4.0 §7.2/§7.3: Core City is filled ONLY by Arena (GRAJ 2:00) and
+    // Daily runs -- Campaign missions never call finalizeRun() at all (see
+    // endCampaignMission() instead), so this is the one and only place
+    // Core City progress is granted. Gains are additive; overflow past
+    // 100% carries into the next level (§7.3's worked example: 92% + 20%
+    // => 100% grants the LVL reward, and the new level starts at 12%).
+    const cc = CONFIG.hub.coreCity;
+    let coreGain;
+    if (this.isDailyRun) {
+      coreGain = cc.dailyFirstClearGain + (this.dailyResult.isNewBest ? cc.dailyNewBestGain : 0);
+    } else {
+      coreGain = cc.arenaCompleteGain + (place <= 3 ? cc.arenaTop3Gain : 0) + (place === 1 ? cc.arenaFirstGain : 0);
+      if (this.player.score > (this.save.stats.bestArenaScore || 0)) {
+        this.save.stats.bestArenaScore = this.player.score;
+        coreGain += cc.arenaNewPbGain;
+      }
+    }
+    this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + coreGain;
+    this.hubMilestoneReached = false;
+    this.hubMilestoneRewards = [];
+    while (this.save.hub.coreCharge >= 100) {
+      this.save.hub.coreCharge -= 100;
+      this.save.hub.coreLevel = (this.save.hub.coreLevel || 1) + 1;
+      this.hubMilestoneReached = true;
+      this.hubMilestoneRewards.push(this.grantCoreCityLevelReward(this.save.hub.coreLevel));
+    }
+    this.hubMilestoneReward = this.hubMilestoneRewards[0] || null; // back-compat: single-reward UI reads this
+    if (this.hubMilestoneReached) {
+      this.analytics.track('result_action', { action: 'hub_milestone', level: this.save.hub.coreLevel, rewards: this.hubMilestoneRewards });
     }
 
     saveGame(this.save);
     return { ranked, place, coinsEarned };
+  }
+
+  /** GDD 4.0 §8.2's reward ladder for reaching Core City `level`. Grants
+   *  every cosmetic the level lists (already-owned ones are a no-op) plus
+   *  its coin bonus; level 7+ has no authored reward so it falls back to
+   *  the same "fallback" bonus the pre-v4 code granted once everything
+   *  was owned. */
+  grantCoreCityLevelReward(level) {
+    const def = CORE_CITY_LEVEL_REWARDS[level];
+    if (!def) {
+      this.save.coins += CONFIG.hub.milestoneFallbackCoins;
+      this.save.prisms = (this.save.prisms || 0) + CONFIG.hub.milestoneFallbackPrisms;
+      return { level, label: `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`, coins: CONFIG.hub.milestoneFallbackCoins };
+    }
+    if (def.skinId && !this.save.owned.includes(def.skinId)) this.save.owned.push(def.skinId);
+    if (def.auraId && !this.save.auras.owned.includes(def.auraId)) this.save.auras.owned.push(def.auraId);
+    if (def.effectId && !this.save.effects.owned.includes(def.effectId)) this.save.effects.owned.push(def.effectId);
+    if (def.overdriveSkinId && !this.save.overdriveSkins.owned.includes(def.overdriveSkinId)) this.save.overdriveSkins.owned.push(def.overdriveSkinId);
+    if (def.badge && !this.save.badges.includes(def.badge)) this.save.badges.push(def.badge);
+    this.save.coins += def.coins;
+    return { level, label: def.label, coins: def.coins };
   }
 
   endRound() {
@@ -2945,9 +3433,9 @@ class Game {
     const dailyLine = document.getElementById('dailyResultLine');
     if (this.dailyResult) {
       const r = this.dailyResult;
-      dailyLine.textContent = r.isNewBest
+      dailyLine.textContent = (r.isNewBest
         ? `🗓️ WYZWANIE DNIA: NOWY REKORD! +${r.dailyBonusCoins} monet, +${r.dailyBonusPrisms} pryzmatów`
-        : `🗓️ WYZWANIE DNIA ukończone: +${r.dailyBonusCoins} monet (rekord dnia: ${r.previousBest})`;
+        : `🗓️ WYZWANIE DNIA ukończone: +${r.dailyBonusCoins} monet (rekord dnia: ${r.previousBest})`) + ` · seria: ${r.streak} dni`;
       dailyLine.classList.remove('hidden');
     } else {
       dailyLine.classList.add('hidden');
@@ -2962,11 +3450,9 @@ class Game {
     }
 
     const hubLine = document.getElementById('hubMilestoneLine');
-    if (this.hubMilestoneReward) {
-      const r = this.hubMilestoneReward;
-      hubLine.textContent = r.type === 'bonus'
-        ? `🌀 CITY CORE NAŁADOWANY! Wszystko już odblokowane — +${r.coins} monet, +${r.prisms} pryzmatów`
-        : `🌀 CITY CORE NAŁADOWANY! Odblokowano nowy ${r.type === 'skin' ? 'skin' : 'efekt aury'}: ${r.name}`;
+    if (this.hubMilestoneReached) {
+      const summary = this.hubMilestoneRewards.map(r => `LVL ${r.level}: ${r.label} (+${r.coins} monet)`).join(' · ');
+      hubLine.textContent = `🌀 CORE CITY: ${summary}`;
       hubLine.classList.remove('hidden');
     } else {
       hubLine.classList.add('hidden');
@@ -3122,9 +3608,15 @@ class Game {
     } else {
       particles = 30; shakeAmt = 10; giant = true;
     }
-    this.spawnParticles(x, y, color, particles);
+    // GDD 4.0 §5.3 "Efekt pochłaniania" cosmetic: the player's selected
+    // burst color overrides the eaten object's own color, but only for
+    // eats the player caused ('classic' has color: null, i.e. no override).
+    const effectId = this.save && this.save.effects && this.save.effects.selected;
+    const effect = EAT_EFFECTS.find(e => e.id === effectId);
+    const burstColor = (isPlayerInvolved && effect && effect.color) || color;
+    this.spawnParticles(x, y, burstColor, particles);
     if (shakeAmt > 0) this.triggerShake(isPlayerInvolved ? shakeAmt : shakeAmt * 0.4);
-    if (giant) this.ripples.push(new Ripple(x, y, color, eatenRadius * 0.6, eatenRadius * 3, 0.5));
+    if (giant) this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 3, 0.5));
   }
 
   /** Bumps the player's combo (consecutive eats within the combo window)
@@ -3353,7 +3845,13 @@ class Game {
     this.analytics.track('overdrive_start', { variant: this.overdriveVariant, runId: this.runId });
     this.vibrate([60, 40, 60]);
 
+    // GDD 4.0 §5.3 "Overdrive" cosmetic: a tint on the existing seeded
+    // finish -- doesn't change which variant is picked, just its color.
+    const skinId = this.save && this.save.overdriveSkins && this.save.overdriveSkins.selected;
+    const skin = OVERDRIVE_SKINS.find(s => s.id === skinId);
     const banner = document.getElementById('overdriveBanner');
+    if (skin && skin.color) banner.style.setProperty('--overdrive-color', skin.color);
+    else banner.style.removeProperty('--overdrive-color');
     banner.classList.remove('hidden');
     setTimeout(() => banner.classList.add('hidden'), 3000);
 
