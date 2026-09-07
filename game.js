@@ -4046,8 +4046,7 @@ class Game {
 
     ctx.save();
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
-    this.drawGrid(ctx);
-    this.drawCampaignBoundary(ctx);
+    this.drawCampaignGrid(ctx);
     const goalTypes = this.campaignGoalEntityTypes();
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
     for (const e of this.campaignEntities) {
@@ -4068,18 +4067,46 @@ class Game {
     if (this.showMinimap) this.drawCampaignMinimap(ctx);
   }
 
-  /** Dashed rectangle around the mission's actual play area (a 1400x1400
-   *  sub-box of the shared 3000x3000 world, see CONFIG.campaign.bounds) --
-   *  without this, nothing on screen showed where the mission area ended,
-   *  and a player who wandered past the edge (world-clamp is still the
-   *  full 3000x3000 world) found an empty grid with none of the mission's
-   *  entities in sight (player feedback: the play area should be bounded). */
-  drawCampaignBoundary(ctx) {
+  /** Arena's own drawGrid() draws the grid lines out to the full
+   *  WORLD_W/WORLD_H and marks that true edge with a plain solid rect --
+   *  reaching it just means you've reached where the rendered map ends,
+   *  with nothing drawn beyond it. A mission's play area (CONFIG.campaign.
+   *  bounds, a 1400x1400 sub-box of the shared 3000x3000 world clamped by
+   *  clampToCampaignBounds()) used to reuse the *full-world* drawGrid()
+   *  plus a second, separate dashed cyan rectangle over it -- so the
+   *  visible grid kept going well past where movement actually stopped,
+   *  reading as an arbitrary inner fence with "more map" beyond it instead
+   *  of the map's own edge (player feedback: Campaign's play area should
+   *  feel bounded the same way Arena's is -- by where the map itself ends,
+   *  not a separate line drawn over an otherwise-open grid). Fix: grid
+   *  lines and the edge marker are both clipped to CONFIG.campaign.bounds,
+   *  same style as Arena's drawGrid(), so nothing renders past the actual
+   *  clamp and the bounds box reads as the map, not a fence inside one. */
+  drawCampaignGrid(ctx) {
     const b = CONFIG.campaign.bounds;
+    const startX = Math.max(b.minX, Math.floor((this.camera.x - this.width / 2) / GRID_SIZE) * GRID_SIZE);
+    const endX = Math.min(b.maxX, this.camera.x + this.width / 2);
+    const startY = Math.max(b.minY, Math.floor((this.camera.y - this.height / 2) / GRID_SIZE) * GRID_SIZE);
+    const endY = Math.min(b.maxY, this.camera.y + this.height / 2);
+
     ctx.save();
-    ctx.strokeStyle = 'rgba(80, 240, 250,0.35)';
+    ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = startX; x <= endX; x += GRID_SIZE) {
+      ctx.moveTo(x, Math.max(b.minY, this.camera.y - this.height / 2));
+      ctx.lineTo(x, Math.min(b.maxY, this.camera.y + this.height / 2));
+    }
+    for (let y = startY; y <= endY; y += GRID_SIZE) {
+      ctx.moveTo(Math.max(b.minX, this.camera.x - this.width / 2), y);
+      ctx.lineTo(Math.min(b.maxX, this.camera.x + this.width / 2), y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 84, 173, 0.5)';
     ctx.lineWidth = 3;
-    ctx.setLineDash([14, 10]);
     ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
     ctx.restore();
   }
