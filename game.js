@@ -404,8 +404,16 @@ const MUTATIONS = [
 // campaign missions gate eating and the landmark "big eat" off tier, not
 // raw radius, so the numbers in the GDD table are reproduced here as-is.
 const CAMPAIGN_TIERS = [
-  { id: 'T1', name: 'Fragmenty', minUnits: 0 },
-  { id: 'T2', name: 'Ławki i pachołki', minUnits: 10 },
+  { id: 'T1', name: 'Fragmenty energii', minUnits: 0 },
+  // "Ławki i pachołki" (old name) named an object -- pachołek -- that
+  // doesn't actually exist in OBJECT_CATALOG_SPEC.md's 24-object catalog
+  // (player feedback: eating a bench/lamp post/tree read as the HUD
+  // claiming it was a "fragment", because this tier NAME is unrelated to
+  // what was just eaten, it's just this growth checkpoint's flavor name --
+  // renamed to the catalog's own "elementy uliczne" term for the T2 prop
+  // tier, and updateCampaignHUD() now prefixes it with the tier id so it
+  // reads as a tier badge, not an eaten-object label).
+  { id: 'T2', name: 'Elementy uliczne', minUnits: 10 },
   { id: 'T3', name: 'Małe pojazdy', minUnits: 30 },
   { id: 'T4', name: 'Kioski i cele misji', minUnits: 70 },
   { id: 'T5', name: 'Duże pojazdy', minUnits: 140 },
@@ -436,12 +444,13 @@ const MARKER_GLYPHS = { M07: 'znacznik_ogrodu', M10: 'paleta', M13: 'krysztal', 
 const PROP_GLYPHS = { M09: 'skrzynia', M17: 'modul_dachowy' };
 const NODE_GLYPHS = { M04: 'wezel', M23: 'wezel', M12: 'zasilacz', M19: 'mostek' };
 // The catalog's "ogólne" (not tied to one mission) T2/T3 street objects --
-// latarnia/ławka/drzewo/kiosk/pachołek, per OBJECT_CATALOG_SPEC.md's master
-// table -- were still one plain triangle regardless of mission (a
-// pre-existing look, unchanged by the mission-object pass until this fix).
-// Every generic 'prop' spawn without a fixed PROP_GLYPHS entry (M09/M17)
-// now picks one of these at random per instance for street-scene variety.
-const PROP_STREET_GLYPHS = ['latarnia', 'lawka', 'drzewo', 'kiosk', 'pacholek'];
+// latarnia/ławka/drzewo/kiosk, exactly the 4 rows OBJECT_CATALOG_SPEC.md's
+// master table lists as "ogólny" (a 5th, "pachołek", was in here before but
+// isn't an object the catalog actually defines -- player feedback: it read
+// as an unlisted/made-up pickup). Every generic 'prop' spawn without a
+// fixed PROP_GLYPHS entry (M09/M17) picks one of these at random per
+// instance for street-scene variety.
+const PROP_STREET_GLYPHS = ['latarnia', 'lawka', 'drzewo', 'kiosk'];
 function randomStreetGlyph() { return PROP_STREET_GLYPHS[randInt(0, PROP_STREET_GLYPHS.length - 1)]; }
 
 // The GDD's "four powers are enough for the first test" (§08): a small,
@@ -1330,9 +1339,9 @@ class CampaignEntity {
           ctx.strokeRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1);
           ctx.beginPath(); ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0); ctx.stroke();
         } else {
-          // Generic "ogólne" street props (GDD label "ławki i pachołki"):
-          // latarnia/ławka/drzewo/kiosk/pachołek -- one of PROP_STREET_GLYPHS
-          // picked per instance in buildCampaignMission(), so a mission's
+          // Generic "ogólne" street props: latarnia/ławka/drzewo/kiosk --
+          // one of PROP_STREET_GLYPHS picked per instance in
+          // buildCampaignMission(), so a mission's
           // filler props read as a real street scene instead of one shape
           // repeated everywhere. Pink, T2 size tier -- cluster A/B (M02's
           // route medal) doesn't recolor the shape; the two clusters are
@@ -1377,7 +1386,7 @@ class CampaignEntity {
               ctx.strokeRect(-r * 0.875, -r * 0.375, r * 1.75, r * 1.25);
               ctx.strokeRect(-r * 0.375, 0, r * 0.75, r * 0.5);
               break;
-            default: // 'pacholek' -- the original placeholder cone, now named and one of five
+            default: // safety fallback -- randomStreetGlyph() only ever picks the 4 cases above
               ctx.beginPath();
               ctx.moveTo(0, -r); ctx.lineTo(r * 0.75, r * 0.8); ctx.lineTo(-r * 0.75, r * 0.8);
               ctx.closePath(); ctx.stroke();
@@ -3797,7 +3806,10 @@ class Game {
     document.getElementById('missionGoalLabel').textContent = m.def.goal.label;
     document.getElementById('missionGoalProgress').textContent = `${Math.min(m.progress, m.progressTarget)}/${m.progressTarget}`;
     const tier = this.campaignPlayerTier();
-    document.getElementById('missionTierLabel').textContent = tier.name;
+    // "T1 · Fragmenty energii", matching Arena's sizeTiers "T1 · MAŁY"
+    // convention -- this is the player's growth-tier badge, not a label for
+    // whatever was just eaten, so it needs the "Tx ·" prefix to read as one.
+    document.getElementById('missionTierLabel').textContent = `${tier.id} · ${tier.name}`;
     const idx = CAMPAIGN_TIERS.indexOf(tier);
     const next = CAMPAIGN_TIERS[idx + 1];
     const pct = next ? clamp((m.growthUnits - tier.minUnits) / (next.minUnits - tier.minUnits), 0, 1) * 100 : 100;
