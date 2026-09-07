@@ -424,6 +424,14 @@ const CAMPAIGN_ENTITY_STATS = {
 const MARKER_GLYPHS = { M07: 'znacznik_ogrodu', M10: 'paleta', M13: 'krysztal', M14: 'witryna', M15: 'klucz_sektora', M21: 'emiter' };
 const PROP_GLYPHS = { M09: 'skrzynia', M17: 'modul_dachowy' };
 const NODE_GLYPHS = { M04: 'wezel', M23: 'wezel', M12: 'zasilacz', M19: 'mostek' };
+// The catalog's "ogólne" (not tied to one mission) T2/T3 street objects --
+// latarnia/ławka/drzewo/kiosk/pachołek, per OBJECT_CATALOG_SPEC.md's master
+// table -- were still one plain triangle regardless of mission (a
+// pre-existing look, unchanged by the mission-object pass until this fix).
+// Every generic 'prop' spawn without a fixed PROP_GLYPHS entry (M09/M17)
+// now picks one of these at random per instance for street-scene variety.
+const PROP_STREET_GLYPHS = ['latarnia', 'lawka', 'drzewo', 'kiosk', 'pacholek'];
+function randomStreetGlyph() { return PROP_STREET_GLYPHS[randInt(0, PROP_STREET_GLYPHS.length - 1)]; }
 
 // The GDD's "four powers are enough for the first test" (§08): a small,
 // campaign-only, run-only power pool distinct from Arena's 7-mutation
@@ -1311,16 +1319,59 @@ class CampaignEntity {
           ctx.strokeRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1);
           ctx.beginPath(); ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0); ctx.stroke();
         } else {
-          // Traffic-cone silhouette (GDD label "ławki i pachołki", generic
-          // street props) instead of a plain square -- reads as a specific
-          // street object at a glance.
+          // Generic "ogólne" street props (GDD label "ławki i pachołki"):
+          // latarnia/ławka/drzewo/kiosk/pachołek, per
+          // vector_hole_full_object_catalog.svg -- one of PROP_STREET_GLYPHS
+          // picked per instance in buildCampaignMission(), so a mission's
+          // filler props read as a real street scene instead of one shape
+          // repeated everywhere. Cluster tint (M02's route medal) still
+          // applies on top, regardless of which shape.
           const color = this.cluster === 'B' ? '#ff9d00' : '#46D99A';
-          ctx.strokeStyle = color; ctx.lineWidth = 2;
+          ctx.strokeStyle = color; ctx.lineWidth = 1.6;
           ctx.shadowBlur = 10; ctx.shadowColor = color;
-          ctx.beginPath();
-          ctx.moveTo(0, -r); ctx.lineTo(r * 0.75, r * 0.8); ctx.lineTo(-r * 0.75, r * 0.8);
-          ctx.closePath(); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(-r * 0.4, r * 0.4); ctx.lineTo(r * 0.4, r * 0.4); ctx.stroke();
+          switch (this.glyph) {
+            case 'latarnia':
+              ctx.beginPath();
+              ctx.moveTo(0, r); ctx.lineTo(0, -r * 0.8);
+              ctx.moveTo(-r * 0.5, r); ctx.lineTo(r * 0.5, r);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(-r * 0.35, -r * 0.8); ctx.lineTo(r * 0.35, -r * 0.8);
+              ctx.lineTo(r * 0.22, -r * 0.45); ctx.lineTo(-r * 0.22, -r * 0.45);
+              ctx.closePath(); ctx.stroke();
+              ctx.beginPath(); ctx.arc(0, -r * 0.95, r * 0.14, 0, Math.PI * 2); ctx.fill();
+              break;
+            case 'lawka':
+              ctx.beginPath();
+              ctx.moveTo(-r, -r * 0.2); ctx.lineTo(r, -r * 0.2);
+              ctx.moveTo(-r, r * 0.2); ctx.lineTo(r, r * 0.2);
+              ctx.moveTo(-r * 0.85, r * 0.2); ctx.lineTo(-r * 0.85, r * 0.7);
+              ctx.moveTo(r * 0.85, r * 0.2); ctx.lineTo(r * 0.85, r * 0.7);
+              ctx.moveTo(-r, -r * 0.6); ctx.lineTo(-r, -r * 0.2);
+              ctx.moveTo(r, -r * 0.6); ctx.lineTo(r, -r * 0.2);
+              ctx.stroke();
+              break;
+            case 'drzewo':
+              ctx.beginPath();
+              ctx.moveTo(0, r * 0.15); ctx.lineTo(0, r);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(0, -r * 0.15, r * 0.75, 0, Math.PI * 2);
+              ctx.stroke();
+              break;
+            case 'kiosk':
+              ctx.beginPath();
+              ctx.moveTo(-r, -r * 0.375); ctx.lineTo(0, -r); ctx.lineTo(r, -r * 0.375);
+              ctx.closePath(); ctx.stroke();
+              ctx.strokeRect(-r * 0.875, -r * 0.375, r * 1.75, r * 1.25);
+              ctx.strokeRect(-r * 0.375, 0, r * 0.75, r * 0.5);
+              break;
+            default: // 'pacholek' -- the original placeholder cone, now named and one of five
+              ctx.beginPath();
+              ctx.moveTo(0, -r); ctx.lineTo(r * 0.75, r * 0.8); ctx.lineTo(-r * 0.75, r * 0.8);
+              ctx.closePath(); ctx.stroke();
+              ctx.beginPath(); ctx.moveTo(-r * 0.4, r * 0.4); ctx.lineTo(r * 0.4, r * 0.4); ctx.stroke();
+          }
         }
         break;
       }
@@ -3116,10 +3167,10 @@ class Game {
       const propGlyph = PROP_GLYPHS[def.id];
       if (s.props && s.clusters) {
         const half = Math.ceil(s.props / 2);
-        addMany('prop', half, () => ({ x: rand(b.minX + 40, cx - 60), y: rand(b.minY + 40, b.maxY - 40) }), { cluster: 'A' });
-        addMany('prop', s.props - half, () => ({ x: rand(cx + 60, b.maxX - 40), y: rand(b.minY + 40, b.maxY - 40) }), { cluster: 'B' });
+        addMany('prop', half, () => ({ x: rand(b.minX + 40, cx - 60), y: rand(b.minY + 40, b.maxY - 40) }), () => ({ cluster: 'A', glyph: propGlyph || randomStreetGlyph() }));
+        addMany('prop', s.props - half, () => ({ x: rand(cx + 60, b.maxX - 40), y: rand(b.minY + 40, b.maxY - 40) }), () => ({ cluster: 'B', glyph: propGlyph || randomStreetGlyph() }));
       } else if (s.props) {
-        addMany('prop', s.props, null, propGlyph ? { glyph: propGlyph } : null);
+        addMany('prop', s.props, null, () => ({ glyph: propGlyph || randomStreetGlyph() }));
       }
       if (s.vehicles) addMany('vehicle', s.vehicles);
     }
