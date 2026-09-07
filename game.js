@@ -1305,7 +1305,7 @@ class CampaignEntity {
       case 'prop': {
         if (this.glyph === 'skrzynia') {
           // Skrzynia (M09), per vector_hole_full_object_catalog.svg's obj-skrzynia.
-          const color = '#46D99A';
+          const color = '#50F0FA';
           ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
           ctx.strokeRect(-r * 0.85, -r * 0.6, r * 1.7, r * 1.2);
           ctx.beginPath();
@@ -1314,7 +1314,7 @@ class CampaignEntity {
           ctx.stroke();
         } else if (this.glyph === 'modul_dachowy') {
           // Moduł dachowy (M17), per obj-modul-dachowy.
-          const color = '#46D99A';
+          const color = '#50F0FA';
           ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
           ctx.strokeRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1);
           ctx.beginPath(); ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0); ctx.stroke();
@@ -1324,9 +1324,13 @@ class CampaignEntity {
           // vector_hole_full_object_catalog.svg -- one of PROP_STREET_GLYPHS
           // picked per instance in buildCampaignMission(), so a mission's
           // filler props read as a real street scene instead of one shape
-          // repeated everywhere. Cluster tint (M02's route medal) still
-          // applies on top, regardless of which shape.
-          const color = this.cluster === 'B' ? '#ff9d00' : '#46D99A';
+          // repeated everywhere. All cyan per the catalog (every one of
+          // these cards uses #50F0FA) -- cluster A/B (M02's route medal)
+          // no longer recolors the shape; the two clusters are already
+          // spatially distinct (left/right half of the map), so a color
+          // swap wasn't carrying information the player needed, and it was
+          // the wrong color anyway (see docs/VECTRE_V6_PLAN.md).
+          const color = '#50F0FA';
           ctx.strokeStyle = color; ctx.lineWidth = 1.6;
           ctx.shadowBlur = 10; ctx.shadowColor = color;
           switch (this.glyph) {
@@ -1377,26 +1381,33 @@ class CampaignEntity {
       }
       case 'vehicle': {
         // Simple car silhouette (body + roof bump + two wheels) instead of
-        // a plain rectangle.
-        ctx.strokeStyle = ctx.fillStyle = '#FF54AD'; ctx.lineWidth = 2;
-        ctx.shadowBlur = 12; ctx.shadowColor = '#FF54AD';
+        // a plain rectangle. Cyan per obj-samochod (general filler,
+        // appears in most missions) -- grey per obj-konwoj for M11's own
+        // convoy vehicles specifically (glyph: 'konwoj', set in
+        // buildCampaignMission()), which also get the tow-hitch accent the
+        // catalog draws only on that card. Was pink everywhere, matching
+        // neither.
+        const isKonwoj = this.glyph === 'konwoj';
+        const color = isKonwoj ? '#819BB1' : '#50F0FA';
+        ctx.strokeStyle = ctx.fillStyle = color; ctx.lineWidth = 2;
+        ctx.shadowBlur = 12; ctx.shadowColor = color;
         ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
         ctx.beginPath(); ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0); ctx.stroke();
         ctx.beginPath(); ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
-        // "Pojazd konwoju" (M11, only vehicle-goal mission) tow-hitch accent
-        // -- matches obj-konwoj's coupling mark, applied to all vehicles
-        // since it's the one vehicle look used everywhere in Campaign.
-        ctx.beginPath();
-        ctx.moveTo(r * 1.05, -r * 0.1); ctx.lineTo(r * 1.35, -r * 0.1);
-        ctx.moveTo(r * 1.2, -r * 0.25); ctx.lineTo(r * 1.2, r * 0.05);
-        ctx.stroke();
+        if (isKonwoj) {
+          ctx.beginPath();
+          ctx.moveTo(r * 1.05, -r * 0.1); ctx.lineTo(r * 1.35, -r * 0.1);
+          ctx.moveTo(r * 1.2, -r * 0.25); ctx.lineTo(r * 1.2, r * 0.05);
+          ctx.stroke();
+        }
         break;
       }
       case 'capsule': {
         // Pill/capsule shape split down the middle, instead of a hexagon.
-        ctx.strokeStyle = '#46D99A';
-        ctx.shadowBlur = 14; ctx.shadowColor = '#46D99A';
+        // Cyan per obj-kapsula (was green, didn't match the catalog).
+        ctx.strokeStyle = '#50F0FA';
+        ctx.shadowBlur = 14; ctx.shadowColor = '#50F0FA';
         ctx.save();
         ctx.rotate(Math.PI / 4);
         ctx.beginPath();
@@ -1426,8 +1437,8 @@ class CampaignEntity {
             break;
           }
           case 'paleta': {
-            // M10, per obj-paleta (pallet: frame + 3 slats).
-            const color = '#EFCB63';
+            // M10, per obj-paleta (pallet: frame + 3 slats). Cyan, was gold.
+            const color = '#50F0FA';
             ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
             ctx.strokeRect(-r * 0.9, -r * 0.35, r * 1.8, r * 0.7);
             ctx.beginPath();
@@ -1470,8 +1481,9 @@ class CampaignEntity {
             break;
           }
           case 'emiter': {
-            // M21, per obj-emiter (concentric rings + core dot).
-            const color = '#68F5FC';
+            // M21, per obj-emiter (concentric rings + core dot). Exact
+            // catalog cyan (was the brighter #68F5FC klucz shade).
+            const color = '#50F0FA';
             ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 12; ctx.shadowColor = color;
             ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.stroke();
             ctx.globalAlpha *= 0.5;
@@ -1514,9 +1526,15 @@ class CampaignEntity {
           ctx.stroke();
           break;
         }
-        const color = this.active ? '#EFCB63' : 'rgba(255,255,255,0.25)';
+        // Base hue per obj-wezel (violet) / obj-zasilacz (cyan) -- was a
+        // shared gold/white active-state scheme that matched neither.
+        // Active/inactive is now dimmer opacity on the same hue instead of
+        // swapping to a different color, so the object still reads as
+        // "this is a węzeł/zasilacz" even once it's used up.
+        const color = this.glyph === 'zasilacz' ? '#50F0FA' : '#9875FF';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
-        ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
+        ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
+        if (!this.active) ctx.globalAlpha *= 0.35;
         if (this.glyph === 'zasilacz') {
           // M12, per obj-zasilacz (charger body + bolt).
           ctx.strokeRect(-r * 0.55, -r * 0.75, r * 1.1, r * 1.5);
@@ -1540,9 +1558,12 @@ class CampaignEntity {
         break;
       }
       case 'pylon': {
-        const color = this.active ? '#50F0FA' : 'rgba(255,255,255,0.25)';
+        // Both pylon (M08) and lustro (M16) are violet per the catalog
+        // (obj-pylon, obj-lustro) -- was cyan/white, matching neither.
+        const color = '#9875FF';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
-        ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
+        ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
+        if (!this.active) ctx.globalAlpha *= 0.35;
         if (this.glyph === 'lustro') {
           // M16, per obj-lustro (tilted mirror panel + stand).
           ctx.save();
@@ -3023,11 +3044,32 @@ class Game {
 
   campaignTierIndex(tierId) { return CAMPAIGN_TIERS.findIndex(t => t.id === tierId) + 1; }
 
-  campaignEntityColor(type) {
+  /** Base display color for a campaign entity, matching
+   *  vector_hole_full_object_catalog.svg's per-object stroke colors exactly
+   *  (not the old type-only palette, which didn't match the catalog for
+   *  most glyphs). Used by CampaignEntity.draw() and here for particle
+   *  bursts/minimap dots, so an object's eat-feedback and minimap dot are
+   *  always the same color as its own icon. Mostek is the one glyph with a
+   *  real two-color state (unpowered/powered) instead of a single catalog
+   *  color, since the catalog only shows one static pose. */
+  campaignEntityColor(e) {
+    if (!e) return '#fff';
+    if (e.glyph === 'mostek') return e.mostekPowered ? '#50F0FA' : '#9875FF';
+    const glyphColors = {
+      znacznik_ogrodu: '#46D99A', paleta: '#50F0FA', krysztal: '#9875FF', witryna: '#9875FF',
+      klucz_sektora: '#68F5FC', emiter: '#50F0FA',
+      latarnia: '#50F0FA', lawka: '#50F0FA', drzewo: '#50F0FA', kiosk: '#50F0FA', pacholek: '#50F0FA',
+      skrzynia: '#50F0FA', modul_dachowy: '#50F0FA',
+      wezel: '#9875FF', zasilacz: '#50F0FA',
+      pylon: '#9875FF', lustro: '#9875FF',
+      konwoj: '#819BB1', samochod: '#50F0FA',
+      portal: '#9875FF', pas_przelotu: '#819BB1'
+    };
+    if (e.glyph && glyphColors[e.glyph]) return glyphColors[e.glyph];
     return {
-      fragment: '#50F0FA', prop: '#46D99A', vehicle: '#FF54AD', capsule: '#46D99A',
-      marker: '#EFCB63', node: '#EFCB63', pylon: '#50F0FA', landmark: '#EFCB63', gate: '#50F0FA'
-    }[type] || '#fff';
+      fragment: '#50F0FA', prop: '#50F0FA', vehicle: '#50F0FA', capsule: '#50F0FA',
+      marker: '#EFCB63', node: '#9875FF', pylon: '#9875FF', landmark: '#EFCB63', gate: '#50F0FA'
+    }[e.type] || '#fff';
   }
 
   /** Which campaign entity type(s) the *current* mission goal is about --
@@ -3172,7 +3214,10 @@ class Game {
       } else if (s.props) {
         addMany('prop', s.props, null, () => ({ glyph: propGlyph || randomStreetGlyph() }));
       }
-      if (s.vehicles) addMany('vehicle', s.vehicles);
+      // M11's vehicles ARE the goal ("Pojazd konwoju") -- grey per
+      // obj-konwoj; every other mission's vehicles are plain filler
+      // ("Samochód"), cyan per obj-samochod.
+      if (s.vehicles) addMany('vehicle', s.vehicles, null, def.id === 'M11' ? { glyph: 'konwoj' } : null);
     }
 
     if (s.markers) {
@@ -3414,7 +3459,7 @@ class Game {
     this.player.growFromArea(stats.growth * CONFIG.campaign.growthAreaScale * Math.PI);
     m.growthUnits += stats.growth;
     this.player.score += Math.round(stats.score * multiplier);
-    this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e.type), e.radius, true);
+    this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true);
     this.vibrate(e.type === 'landmark' ? [60, 40, 60] : 30);
 
     const newTier = this.campaignPlayerTier();
@@ -3945,7 +3990,7 @@ class Game {
       const big = e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate';
       const size = big ? 3 : 1.6;
       const p = toMini(e.x, e.y);
-      ctx.fillStyle = e.type === 'landmark' ? '#EFCB63' : this.campaignEntityColor(e.type);
+      ctx.fillStyle = e.type === 'landmark' ? '#EFCB63' : this.campaignEntityColor(e);
       ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
     }
     for (const bot of this.bots) {
