@@ -355,8 +355,33 @@ const CARD_ICONS = {
   clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.2" fill="none"/>',
   radar: '<circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M8 12a4 4 0 018 0M5 12a7 7 0 0114 0" fill="none" stroke="currentColor" stroke-width="1.8"/>',
   burst: '<circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>',
-  target: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>'
+  target: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>',
+  star: '<path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z" fill="currentColor"/>'
 };
+
+// Small per-entity-type glyphs for the campaign "CEL RUNDY" HUD (same
+// <path>-into-viewBox convention as CARD_ICONS above), each echoing that
+// type's own on-board CampaignEntity.draw() silhouette (fragment's diamond,
+// node's ring+X, pylon's mast, etc.) so the HUD icon and the board object
+// read as the same thing. Keyed by CampaignEntity `type`, plus 'gate' for
+// gatesPassed goals and 'combo' for comboChain goals (reuses CARD_ICONS.burst).
+const GOAL_ICONS = {
+  fragment: '<path d="M12 3l8 9-8 9-8-9z" fill="currentColor"/>',
+  capsule: '<rect x="7" y="2.5" width="10" height="19" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 12h10" stroke="currentColor" stroke-width="2"/>',
+  prop: '<path d="M4 8l8-4.5L20 8v9l-8 4.5L4 17z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 8l8 4.5M20 8l-8 4.5v9" stroke="currentColor" stroke-width="2" fill="none"/>',
+  vehicle: '<rect x="3" y="10" width="18" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 10a5 5 0 0110-0" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="7.5" cy="17" r="1.7" fill="currentColor"/><circle cx="16.5" cy="17" r="1.7" fill="currentColor"/>',
+  marker: '<path d="M6 21V3M6 3h12l-3.5 4.5L18 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+  node: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" stroke-width="2"/>',
+  pylon: '<path d="M12 8v13" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="2.2"/>',
+  landmark: CARD_ICONS.star,
+  gate: '<path d="M4 3v18M20 3v18M4 12h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'
+};
+
+// Fill color per CampaignEntity `type`, by size tier -- shared by
+// campaignEntityColor() (board/particle/minimap color) and the goal-icon
+// renderer below, so the HUD icon and the board object are always the same
+// hue too. See campaignEntityColor() for the full "why size, not identity" rationale.
+const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#46D99A', 4: '#EFCB63' };
 
 // Miasto's "Po 100% odblokujesz" reward chip (GDD 4.0 §5.1) needs an icon
 // matching whichever Warsztat category CORE_CITY_LEVEL_REWARDS grants next
@@ -509,7 +534,7 @@ const CAMPAIGN_MISSIONS = [
   },
   {
     id: 'M04', district: 'plac', order: 4, name: 'Pierwszy wielki kęs', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'kino', minTier: 4, label: 'Wyłącz 2 węzły i pochłoń neonowe kino' },
+    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'kino', minTier: 4, label: 'Wyłącz 2 węzły i pochłoń neonowe kino', activatorLabel: 'Wyłącz 2 węzły', landmarkLabel: 'Pochłoń neonowe kino' },
     medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
     setup: { fragments: 12, props: 8, vehicles: 6, nodes: 2, landmark: 'kino', bots: 1 },
     evolutionOffer: { atSeconds: 30, count: 2 },
@@ -546,7 +571,7 @@ const CAMPAIGN_MISSIONS = [
   },
   {
     id: 'M08', district: 'park', order: 4, name: 'Serce ogrodu', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'fontanna', minTier: 4, label: 'Naładuj 3 pylony i pochłoń fontannę' },
+    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'fontanna', minTier: 4, label: 'Naładuj 3 pylony i pochłoń fontannę', activatorLabel: 'Naładuj 3 pylony', landmarkLabel: 'Pochłoń fontannę' },
     medal: { type: 'pylonsUnbroken', label: 'Aktywuj pylony w jednej serii' },
     setup: { fragments: 12, props: 8, vehicles: 6, pylons: 3, landmark: 'fontanna', bots: 1 },
     evolutionOffer: { atSeconds: 30, count: 2 },
@@ -581,7 +606,7 @@ const CAMPAIGN_MISSIONS = [
   },
   {
     id: 'M12', district: 'port', order: 4, name: 'Upadek dźwigu', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'node', count: 3, landmark: 'dzwig', minTier: 4, label: 'Zbierz 3 zasilacze i pochłoń dźwig' },
+    goal: { type: 'activateAndDevour', activator: 'node', count: 3, landmark: 'dzwig', minTier: 4, label: 'Zbierz 3 zasilacze i pochłoń dźwig', activatorLabel: 'Zbierz 3 zasilacze', landmarkLabel: 'Pochłoń dźwig' },
     medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
     setup: { fragments: 14, props: 8, vehicles: 6, nodes: 3, landmark: 'dzwig', bots: 1 },
     evolutionOffer: { atSeconds: 30, count: 2 },
@@ -616,7 +641,7 @@ const CAMPAIGN_MISSIONS = [
   },
   {
     id: 'M16', district: 'galeria', order: 4, name: 'Kaskada luster', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'galeria_glowna', minTier: 4, label: 'Aktywuj 3 lustra i pochłoń galerię' },
+    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'galeria_glowna', minTier: 4, label: 'Aktywuj 3 lustra i pochłoń galerię', activatorLabel: 'Aktywuj 3 lustra', landmarkLabel: 'Pochłoń galerię' },
     medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra w jednej serii' },
     setup: { fragments: 12, props: 8, vehicles: 4, pylons: 3, landmark: 'galeria_glowna', bots: 1 },
     evolutionOffer: { atSeconds: 30, count: 2 },
@@ -643,7 +668,7 @@ const CAMPAIGN_MISSIONS = [
   },
   {
     id: 'M19', district: 'dachy', order: 3, name: 'Cel w zasięgu', timeLimit: 110,
-    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'iglica_wejscie', minTier: 4, label: 'Zasil 2 mostki i otwórz iglicę' },
+    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'iglica_wejscie', minTier: 4, label: 'Zasil 2 mostki i otwórz iglicę', activatorLabel: 'Zasil 2 mostki', landmarkLabel: 'Otwórz iglicę' },
     medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
     setup: { fragments: 12, props: 8, vehicles: 4, nodes: 2, landmark: 'iglica_wejscie', bots: 1 },
     nela: { start: 'Dwa mostki dzielą Cię od iglicy. Zasil je.', success: 'Wejście otwarte. Iglica czeka.' },
@@ -3091,9 +3116,51 @@ class Game {
       return !e.isGateOpen ? 'rgba(255,255,255,0.2)' : (e.isGateTelegraphing ? '#EFCB63' : '#50F0FA');
     }
     if (e.glyph === 'mostek') return e.mostekPowered ? '#50F0FA' : '#9875FF';
-    const sizeColors = { 1: '#50F0FA', 2: '#FF54AD', 3: '#46D99A', 4: '#EFCB63' };
     const stats = CAMPAIGN_ENTITY_STATS[e.type];
-    return stats ? sizeColors[stats.minTier] : '#fff';
+    return stats ? SIZE_TIER_COLORS[stats.minTier] : '#fff';
+  }
+
+  /** {icon, color} for one "CEL RUNDY" HUD row -- `type` is a
+   *  CampaignEntity type, or 'gate'/'combo' for the two goal shapes that
+   *  aren't keyed by entity type (gatesPassed/comboChain). */
+  campaignGoalIcon(type) {
+    if (type === 'combo') return { icon: CARD_ICONS.burst, color: '#EFCB63' };
+    if (type === 'gate') return { icon: GOAL_ICONS.gate, color: '#50F0FA' };
+    const stats = CAMPAIGN_ENTITY_STATS[type];
+    const color = type === 'landmark' ? '#EFCB63' : (stats ? SIZE_TIER_COLORS[stats.minTier] : '#fff');
+    return { icon: GOAL_ICONS[type] || GOAL_ICONS.fragment, color };
+  }
+
+  /** Rows for the "CEL RUNDY" HUD section: one per goal shape, two for
+   *  activateAndDevour (activator progress + the landmark bite itself),
+   *  so each row shows its own icon/label/progress instead of one
+   *  combined string+number that only ever describes half the goal. */
+  campaignGoalItems() {
+    const m = this.mission;
+    const g = m.def.goal;
+    // Computed straight from primitives (eatenByType/eatenByGlyph,
+    // gatesPassed, bestCombo) rather than m.progress/m.progressTarget --
+    // those mirror checkCampaignGoal()'s LAST run, which hasn't happened
+    // yet the first time updateCampaignHUD() renders a fresh mission.
+    switch (g.type) {
+      case 'eatCount': {
+        const progress = m.goalGlyph ? (m.eatenByGlyph[m.goalGlyph] || 0) : (m.eatenByType[g.entityType] || 0);
+        return [{ ...this.campaignGoalIcon(g.entityType), label: g.label, progress, target: g.count }];
+      }
+      case 'comboChain':
+        return [{ ...this.campaignGoalIcon('combo'), label: g.label, progress: m.bestCombo, target: g.count }];
+      case 'gatesPassed':
+        return [{ ...this.campaignGoalIcon('gate'), label: g.label, progress: m.gatesPassed.size, target: g.count }];
+      case 'activateAndDevour': {
+        const activated = g.activator === 'node' ? m.nodesDisabled : m.pylonsCharged;
+        return [
+          { ...this.campaignGoalIcon(g.activator), label: g.activatorLabel || g.label, progress: Math.min(activated, g.count), target: g.count },
+          { ...this.campaignGoalIcon('landmark'), label: g.landmarkLabel || 'Pochłoń cel', progress: (m.landmark && m.landmark.consumed) ? 1 : 0, target: 1 }
+        ];
+      }
+      default:
+        return [];
+    }
   }
 
   /** Which campaign entity type(s) the *current* mission goal is about --
@@ -3803,17 +3870,29 @@ class Game {
   updateCampaignHUD() {
     const m = this.mission;
     document.getElementById('missionTimerValue').textContent = Math.ceil(m.timeRemaining);
-    document.getElementById('missionGoalLabel').textContent = m.def.goal.label;
-    document.getElementById('missionGoalProgress').textContent = `${Math.min(m.progress, m.progressTarget)}/${m.progressTarget}`;
+
+    // "CEL RUNDY" section: one icon+label+progress row per goal shape (two
+    // for activateAndDevour, so activator progress and the landmark bite
+    // each get their own line instead of one combined string+number).
+    document.getElementById('missionGoalItems').innerHTML = this.campaignGoalItems().map(it => `
+      <div class="mission-goal-item">
+        <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
+        <span class="mission-goal-text">${it.label}</span>
+        <span class="mission-goal-count">${Math.min(it.progress, it.target)}/${it.target}</span>
+      </div>`).join('');
+
+    // "POZIOM POŻERANIA" section: growth-tier badge ("T1 · Fragmenty
+    // energii", matching Arena's sizeTiers "T1 · MAŁY" convention -- this
+    // is the player's growth checkpoint, not a label for whatever was just
+    // eaten) + progress toward the next tier.
     const tier = this.campaignPlayerTier();
-    // "T1 · Fragmenty energii", matching Arena's sizeTiers "T1 · MAŁY"
-    // convention -- this is the player's growth-tier badge, not a label for
-    // whatever was just eaten, so it needs the "Tx ·" prefix to read as one.
-    document.getElementById('missionTierLabel').textContent = `${tier.id} · ${tier.name}`;
+    document.getElementById('missionTierLabel').innerHTML = `<span class="tier-id">${tier.id}</span> · ${tier.name}`;
     const idx = CAMPAIGN_TIERS.indexOf(tier);
     const next = CAMPAIGN_TIERS[idx + 1];
     const pct = next ? clamp((m.growthUnits - tier.minUnits) / (next.minUnits - tier.minUnits), 0, 1) * 100 : 100;
     document.getElementById('missionTierBar').style.width = pct + '%';
+    document.getElementById('missionTierNextLabel').textContent = next ? `Postęp do ${next.id}` : 'Poziom maksymalny';
+
     document.getElementById('missionScoreValue').textContent = this.player.score;
   }
 
