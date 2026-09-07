@@ -1607,15 +1607,118 @@ html, body {
   max-width: 320px;
 }
 
-.hud-value.goal {
-  color: var(--neon-gold);
-  text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
-  font-size: 16px;
+/* Section headers ("CEL RUNDY" / "POZIOM POŻERANIA") -- same small-caps
+   label look as .hud-label, just its own line instead of paired with a
+   value, so each section of the goal panel reads as its own block. */
+.hud-goal-section-title {
+  font-size: 11px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px rgba(80, 240, 250, 0.4);
+  margin-bottom: 6px;
 }
 
-.hud-goal-text {
+.hud-goal-divider {
+  height: 1px;
+  background: var(--panel-border);
+  opacity: 0.5;
+  margin: 10px 0;
+}
+
+/* One icon+label+count row per goal shape (two for activateAndDevour --
+   see Game.campaignGoalItems()) instead of one combined string+number, so
+   each part of a multi-step goal reads on its own line. */
+.mission-goal-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mission-goal-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mission-goal-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.mission-goal-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.mission-goal-text {
+  flex: 1;
   font-size: 13px;
-  margin: 2px 0 6px;
+  color: var(--text-main);
+}
+
+.mission-goal-count {
+  flex: none;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
+}
+
+/* Growth-tier badge -- "T1 · Fragmenty energii" -- bigger/bolder than a
+   plain .hud-label since it's the section's headline value, not a caption. */
+.hud-value.tier {
+  font-size: 15px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(80, 240, 250, 0.5);
+  margin-bottom: 4px;
+}
+
+.hud-value.tier .tier-id {
+  font-size: 20px;
+}
+
+#missionTierNextLabel {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.hud-goal-footer {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.hud-goal-footer .hud-value {
+  font-size: 15px;
+}
+
+.hud-goal-footer-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-goal-footer-item:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.hud-goal-footer-sep {
+  width: 1px;
+  background: var(--panel-border);
+  opacity: 0.5;
+}
+
+.hud-goal-footer-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 3px;
+  color: currentColor;
 }
 
 .nela-toast {
