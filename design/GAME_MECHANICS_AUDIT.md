@@ -12,6 +12,15 @@
 >
 > **Stan na:** merge PR #12 (`Vector Hole v5: match UI to the 8 authored
 > screen mockups`), branch `main`.
+>
+> **Aktualizacja (Vector Hole v6):** §1.3, §3.4 i §3.5 poniżej zostały
+> zaktualizowane po pasie wzbogacenia obiektów planszy misji (unikalne
+> sprite'y per misja, unikalne landmarki, realne mechaniki Portalu/Mostku/
+> Pasu przelotu) — patrz `docs/VECTRE_V6_PLAN.md` po pełny opis tego, co
+> faktycznie powstało, i decyzje podjęte tam, gdzie brief zostawiał otwarte
+> pytania. Reszta dokumentu (Arena, meta/ekonomia, §1.1/§1.2/§1.4–§1.12,
+> §2, §3.1–§3.3, §3.6–§3.10) opisuje kod nietknięty w tym pasie i zostaje
+> bez zmian.
 
 ---
 
@@ -72,6 +81,34 @@ pożarć), `gatesPassed` (przejdź przez bramy w oknie czasowym),
 Misja 4 każdej dzielnicy kończy się landmarkiem i odblokowuje kolejną
 dzielnicę; M24 zamiast tego daje unikalny kosmetyk finałowy (`aurora`).
 Restart z pauzy restartuje **tę samą** misję, nie losową rundę Areny.
+
+**Bestiariusz obiektów Kampanii (v6, `design/assets/vector_hole_full_object_catalog.svg` +
+`design/gameplay/vector_hole_mission_board_finale.svg`):** te 4 typy celu
+zostają niezmienione (patrz też §3.5), ale obiekty na planszy misji nie
+wyglądają już jak jeden generyczny `pylon`/`marker` powtórzony wszędzie.
+`CampaignEntity` ma opcjonalne pole `glyph`, ustawiane per misja w
+`Game.buildCampaignMission()` (tabele `MARKER_GLYPHS`/`PROP_GLYPHS`/
+`NODE_GLYPHS` + osobny warunek dla dwóch misji typu `pylon`) — czysto
+wizualne, `CampaignEntity.draw()` rozgałęzia się po nim, ale
+`CAMPAIGN_ENTITY_STATS`/`checkCampaignGoal()`/`tryUnlockCampaignLandmark()`
+nadal operują wyłącznie na `type`, bez zmian:
+
+| `type` | `glyph` | Misje | Obiekt z GDD |
+|---|---|---|---|
+| `node` | `wezel` (domyślny) | M04, M23 | Węzeł |
+| `node` | `zasilacz` | M12 | Zasilacz |
+| `node` | `mostek` | M19 | Mostek — realna mechanika, patrz niżej |
+| `pylon` | `pylon` (domyślny) | M08 | Pylon (prawdziwa grafika zamiast placeholdera) |
+| `pylon` | `lustro` | M16 | Lustro |
+| `marker` | `znacznik_ogrodu`/`paleta`/`krysztal`/`witryna`/`klucz_sektora`/`emiter` | M07/M10/M13/M14/M15/M21 | odpowiednio |
+| `prop` | `skrzynia`/`modul_dachowy` | M09/M17 | odpowiednio (reszta `prop` zostaje generycznym pachołkiem) |
+
+Landmarki (`CampaignEntity.draw()` case `'landmark'`) mają teraz 6
+unikalnych sylwetek zamiast wspólnego pulsującego podwójnego okręgu —
+szczegóły w §3.4. Trzy obiekty z GDD, których czasownik to nie "pochłoń"
+(Portal M13, Mostek M19, Pas przelotu M18), mają realną logikę wykraczającą
+poza etykietę celu — szczegóły w §3.5. Pełny opis wszystkich decyzji:
+`docs/VECTRE_V6_PLAN.md` §3.
 
 ### 1.4 Runda Areny („GRAJ 2:00”) — pętla rdzenia gry
 
@@ -264,35 +301,65 @@ skonsolidował dwa istniejące systemy w jedną zakładkę zamiast kasować
 jeden), ale warto mieć świadomość, że nie jest to neutralne względem
 własnej filozofii GDD.
 
-### 3.4 Landmarki nie mają unikalnej grafiki mimo wyraźnego wymogu
+### 3.4 Landmarki mają teraz unikalną grafikę — **rozwiązane w v6**
 
 GDD (§10.6, pakiet assetów): *„Landmarks: Kino, fontanna, dźwig, galeria,
 iglica, rdzeń miasta”* — sugeruje 6 różnych sylwetek.
 
-W kodzie `CampaignEntity` przechowuje `landmarkId` (np. `'kino'`,
-`'fontanna'`, `'dzwig'`, `'galeria_glowna'`, `'iglica_wejscie'`) — ale to
-pole jest czytane **tylko** przy wysyłaniu zdarzenia analitycznego
-`big_eat`. Funkcja rysująca (`CampaignEntity.draw()`, przypadek `'landmark'`)
-w ogóle nie sprawdza `landmarkId` — **każdy** landmark w grze (kino w M04,
-fontanna w M08, dźwig w M12, galeria w M16, iglica w M20, rdzeń miasta w
-M24) renderuje się identycznie: pulsujący podwójny okrąg + kłódka gdy
-zablokowany. Sam typ celu (`activateAndDevour`) i etykieta tekstowa są za
-każdym razem inne i trafne — ale wizualnie to zawsze ten sam kształt.
+*(Stan przed v6, dla porządku: `CampaignEntity` przechowywał `landmarkId`,
+ale funkcja rysująca w ogóle go nie sprawdzała — każdy landmark renderował
+się identycznie: pulsujący podwójny okrąg + kłódka.)*
 
-### 3.5 24 misje: treść i liczby idealne, ale mechaniki spłaszczone do 4 szablonów
+Od v6 `CampaignEntity.draw()` (przypadek `'landmark'`) rozgałęzia się po
+`landmarkId` i rysuje 6 unikalnych sylwetek zgodnych z
+`design/gameplay/vector_hole_mission_board_finale.svg`: `kino` (M04),
+`fontanna` (M08), `dzwig` (M12), `galeria_glowna` (M16), `iglica` (M20),
+`rdzen_miasta_glowny` (M24, z dodatkowym złotym akcentem finału). Kłódka
+zostaje wspólnym overlayem na wierzchu, niezależnie od sylwetki. Dwa
+uczciwe uproszczenia, które zostały: (1) `iglica_wejscie` — własny,
+nieopisany w GDD "mini-landmark" M19 (patrz §3.5) — reużywa sylwetkę Iglicy
+w mniejszej skali zamiast dostawać 7. unikalny kształt znikąd; (2) pełna
+4-stanowa sekwencja "collapse" z `MISSION_BOARD_SPEC.md` §4 (cel aktywny →
+ładowanie → collapse → wchłonięty, z własnym timingiem 400–600ms) nie
+została zbudowana — landmark dostał tylko dodatkowy, cyjanowy wybuch
+cząstek nałożony na istniejący złoty, jako uproszczona wersja "rozpadu na
+fragmenty", zgodnie z tym, na co brief wprost pozwalał. Szczegóły:
+`docs/VECTRE_V6_PLAN.md` §3.2.
+
+### 3.5 24 misje: treść i liczby idealne, cztery szablony celu zostają — trzy z czterech obiektów-wyjątków mają teraz realną mechanikę (v6)
 
 Jak pokazano w §2, nazwy/nagrody/kolejność odblokowań misji są bez zarzutu.
-Ale GDD opisuje każdą misję jako mający **unikalny mechanicznie** twist
+GDD opisuje każdą misję jako mającą **unikalny mechanicznie** twist
 („Portal jako twist” w M13, „Kaskada luster” w M16, „Konwój” w M11, „Tor
-lotu” w M18 itd.) — w kodzie wszystkie 24 misje realizują się przez
+lotu” w M18 itd.) — w kodzie wszystkie 24 misje nadal realizują się przez
 **4 uniwersalne typy celu** (`eatCount`/`comboChain`/`gatesPassed`/
-`activateAndDevour`), różniące się tylko etykietą i typem zjadanej encji.
-Np. M13 „Użyj portalu i zbierz 6 kryształów” to mechanicznie zwykłe
-`eatCount` na encjach typu `marker` — **nie ma** faktycznego mechanizmu
-teleportacji przez portal. M16 „Kaskada luster” to `activateAndDevour` z
-aktywatorem `pylon` — nie ma efektu odbić/luster. To już jest udokumentowane
-uczciwie w `docs/VECTRE_V4_PLAN.md` §2.1 jako świadome uproszczenie, ale
-warto to mieć wypisane wprost obok GDD, bo z samego GDD to nie wynika.
+`activateAndDevour`, patrz też nowy opis bestiariusza w §1.3) — to się nie
+zmieniło i nie miało się zmienić (żaden z czterech szablonów celu nie był w
+zakresie pasu v6). To, co się zmieniło: dla 3 z 4 obiektów, które GDD opisuje
+innym czasownikiem niż "pochłoń" (`design/assets/OBJECT_CATALOG_SPEC.md`
+§2), goal type to już nie cała historia:
+
+- **Portal (M13)** — realny, stały teleporter (`Game.handlePortalTouch()`):
+  dotknięcie podczas "otwartego" okna przenosi gracza na stałą kotwicę po
+  drugiej stronie planszy, gdzie czeka klaster kryształów. Jednokierunkowy
+  i jednorazowy na rundę (decyzja opisana w `docs/VECTRE_V6_PLAN.md` §3.3).
+- **Mostek (M19)** — strukturalny (`Game.handleCampaignBridges()`): dotyk
+  zasila go w miejscu (ten sam wzrost/wynik co zwykły węzeł), ale obiekt
+  **zostaje** na planszy ze zmienionym wyglądem zamiast zniknąć —
+  `handleCampaignEating()` jawnie pomija encje z `glyph === 'mostek'`.
+- **Pas przelotu (M18)** — realna strefa (`Game.handleCorridorZone()`):
+  śledzi, z której strony gracz wszedł/wyszedł, i liczy "przejście" tylko
+  jeśli całe przecięcie strefy odbyło się podczas otwartego okna — nie
+  pojedynczy dotyk punktu.
+
+**M16 „Kaskada luster” pozostaje przykładem spłaszczenia** — to nadal
+zwykłe `activateAndDevour` z aktywatorem `pylon` (teraz z glifem `lustro`,
+patrz §1.3), bez żadnego efektu odbić. Brama (M05) była już poprawnie
+zaimplementowana przed v6 i nie została zmieniona. To wciąż udokumentowane
+uczciwie jako świadome uproszczenie (`docs/VECTRE_V4_PLAN.md` §2.1,
+`docs/VECTRE_V6_PLAN.md` §6) — wnioski: taksonomia 4 szablonów celu z GDD
+to nadal trafny opis *struktury* misji, ale nieprawdą jest już, że *żaden*
+obiekt-wyjątek nie ma realnej mechaniki poza etykietą.
 
 ### 3.6 Prisms (druga waluta) nie istnieją w GDD
 
@@ -358,15 +425,17 @@ warto to doprecyzować, jeśli GDD ma zostać zaktualizowany.
   Liczby, nazwy i reguły zgadzają się z kodem niemal 1:1.
 - **Warstwa rdzenia rozgrywki Areny (Evolution/Overdrive/sterowanie/combo)**
   — GDD 4.0 o niej praktycznie milczy; nie jest w jej zakresie.
-- **Kilka konkretnych obietnic** (realny twist Daily, unikalne landmarki,
-  Starter Pack/bundles, nazwy „Neon”/„Glitch”) — opisane w GDD, ale
-  niezaimplementowane lub zaimplementowane inaczej.
+- **Kilka konkretnych obietnic** (realny twist Daily, Starter Pack/bundles,
+  nazwy „Neon”/„Glitch”) — opisane w GDD, ale niezaimplementowane lub
+  zaimplementowane inaczej. Unikalne landmarki były na tej liście przed v6
+  — od v6 są zaimplementowane (§3.4), zdjęte stąd.
 - **Kilka realnych mechanik** (Prisms, RUN_TOOLS, Rush Hour, dwa systemy
   dzienne w jednej zakładce, badge’e) — istnieją w grze, ale GDD 4.0 ich nie
   wspomina.
 
 Żadna z tych rozbieżności nie jest „bugiem” — to naturalny efekt tego, że
-gra przeszła więcej faz (Golden Shot V2 → v3 Kampania → v4 GDD 4.0 → v5 UI)
-niż ten jeden dokument obejmuje. Ten plik ma służyć jako punkt odniesienia
-przy decyzji, czy dopisać brakujące sekcje do GDD, czy potraktować część
-z powyższych punktów jako rzeczy do zaimplementowania.
+gra przeszła więcej faz (Golden Shot V2 → v3 Kampania → v4 GDD 4.0 → v5 UI
+→ v6 wzbogacenie obiektów planszy misji) niż ten jeden dokument obejmuje.
+Ten plik ma służyć jako punkt odniesienia przy decyzji, czy dopisać
+brakujące sekcje do GDD, czy potraktować część z powyższych punktów jako
+rzeczy do zaimplementowania.

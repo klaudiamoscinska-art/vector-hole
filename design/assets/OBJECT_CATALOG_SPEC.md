@@ -1,5 +1,10 @@
 # Vector Hole — Pełny Katalog Obiektów Planszy Misji
 
+> **STATUS: zaimplementowane (Vector Hole v6),** wraz z otwartymi pytaniami
+> z sekcji 4 poniżej (Portal jednokierunkowy/jednorazowy, Mostek bez
+> osobnego "zasilacza" itd.) — decyzje i pełny opis: `docs/VECTRE_V6_PLAN.md`
+> §3.3. Ten dokument zostaje bez zmian jako zapis pierwotnej specyfikacji.
+
 Dokument towarzyszący plikowi `vector_hole_full_object_catalog.svg`.
 Uzupełnia (nie zastępuje) `MISSION_BOARD_SPEC.md` (landmarki i sekwencja finału)
 oraz `vector_hole_asset_bible.svg` (bazowe kształty ogólne).

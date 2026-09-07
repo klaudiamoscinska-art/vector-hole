@@ -415,6 +415,16 @@ const CAMPAIGN_ENTITY_STATS = {
   landmark: { growth: 32, score: 160, minTier: 4, label: 'landmark' }
 };
 
+// Per-mission visual glyph tables (mission-screen brief, Task 1): several
+// CampaignEntity `type`s are reused across multiple missions with different
+// GDD object names (e.g. 'marker' covers znacznik ogrodu/paleta/kryształ/
+// witryna/klucz sektora/emiter). `glyph` is a purely visual tag read by
+// CampaignEntity.draw() -- it never changes stats/goal logic, which stays
+// keyed by `type` exactly as before.
+const MARKER_GLYPHS = { M07: 'znacznik_ogrodu', M10: 'paleta', M13: 'krysztal', M14: 'witryna', M15: 'klucz_sektora', M21: 'emiter' };
+const PROP_GLYPHS = { M09: 'skrzynia', M17: 'modul_dachowy' };
+const NODE_GLYPHS = { M04: 'wezel', M23: 'wezel', M12: 'zasilacz', M19: 'mostek' };
+
 // The GDD's "four powers are enough for the first test" (§08): a small,
 // campaign-only, run-only power pool distinct from Arena's 7-mutation
 // MUTATIONS pool above (kept untouched so Arena's already-tuned balance
@@ -1208,6 +1218,11 @@ class CampaignEntity {
     this.route = null;   // 'A' | 'B' — Mission 07 medal
     this.phase = 0;      // gate cycle position
     if (type === 'node' || type === 'pylon') this.active = true; // true = not yet disabled/charged
+    // Mostek (M19): structural, per OBJECT_CATALOG_SPEC.md §2.2 -- unlike
+    // every other 'node', it's never eaten/removed. `mostekPowered` tracks
+    // its own on/off state instead of the shared `active` flag (which for
+    // every other node/pylon means "not yet consumed").
+    if (type === 'node' && opts && opts.glyph === 'mostek') this.mostekPowered = false;
     if (type === 'landmark') this.unlocked = false;
     if (type === 'gate') this.passCooldown = 0;
     Object.assign(this, opts || {});
@@ -1280,15 +1295,33 @@ class CampaignEntity {
         break;
       }
       case 'prop': {
-        // Traffic-cone silhouette (GDD label "ławki i pachołki") instead of
-        // a plain square -- reads as a specific street object at a glance.
-        const color = this.cluster === 'B' ? '#ff9d00' : '#46D99A';
-        ctx.strokeStyle = color; ctx.lineWidth = 2;
-        ctx.shadowBlur = 10; ctx.shadowColor = color;
-        ctx.beginPath();
-        ctx.moveTo(0, -r); ctx.lineTo(r * 0.75, r * 0.8); ctx.lineTo(-r * 0.75, r * 0.8);
-        ctx.closePath(); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-r * 0.4, r * 0.4); ctx.lineTo(r * 0.4, r * 0.4); ctx.stroke();
+        if (this.glyph === 'skrzynia') {
+          // Skrzynia (M09), per vector_hole_full_object_catalog.svg's obj-skrzynia.
+          const color = '#46D99A';
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
+          ctx.strokeRect(-r * 0.85, -r * 0.6, r * 1.7, r * 1.2);
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0);
+          ctx.moveTo(0, -r * 0.6); ctx.lineTo(0, 0);
+          ctx.stroke();
+        } else if (this.glyph === 'modul_dachowy') {
+          // Moduł dachowy (M17), per obj-modul-dachowy.
+          const color = '#46D99A';
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
+          ctx.strokeRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1);
+          ctx.beginPath(); ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0); ctx.stroke();
+        } else {
+          // Traffic-cone silhouette (GDD label "ławki i pachołki", generic
+          // street props) instead of a plain square -- reads as a specific
+          // street object at a glance.
+          const color = this.cluster === 'B' ? '#ff9d00' : '#46D99A';
+          ctx.strokeStyle = color; ctx.lineWidth = 2;
+          ctx.shadowBlur = 10; ctx.shadowColor = color;
+          ctx.beginPath();
+          ctx.moveTo(0, -r); ctx.lineTo(r * 0.75, r * 0.8); ctx.lineTo(-r * 0.75, r * 0.8);
+          ctx.closePath(); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-r * 0.4, r * 0.4); ctx.lineTo(r * 0.4, r * 0.4); ctx.stroke();
+        }
         break;
       }
       case 'vehicle': {
@@ -1300,6 +1333,13 @@ class CampaignEntity {
         ctx.beginPath(); ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0); ctx.stroke();
         ctx.beginPath(); ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
+        // "Pojazd konwoju" (M11, only vehicle-goal mission) tow-hitch accent
+        // -- matches obj-konwoj's coupling mark, applied to all vehicles
+        // since it's the one vehicle look used everywhere in Campaign.
+        ctx.beginPath();
+        ctx.moveTo(r * 1.05, -r * 0.1); ctx.lineTo(r * 1.35, -r * 0.1);
+        ctx.moveTo(r * 1.2, -r * 0.25); ctx.lineTo(r * 1.2, r * 0.05);
+        ctx.stroke();
         break;
       }
       case 'capsule': {
@@ -1321,26 +1361,130 @@ class CampaignEntity {
         break;
       }
       case 'marker': {
-        // Flag on a pole (waypoint marker) instead of a plain triangle.
-        const color = this.route === 'B' ? '#9875FF' : '#EFCB63';
-        ctx.strokeStyle = ctx.fillStyle = color;
-        ctx.shadowBlur = 14; ctx.shadowColor = color;
-        ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.6, -r); ctx.lineTo(r * 0.8, -r * 0.55); ctx.lineTo(-r * 0.6, -r * 0.1);
-        ctx.closePath(); ctx.fill();
+        switch (this.glyph) {
+          case 'znacznik_ogrodu': {
+            // M07, per obj-znacznik-ogrodu (leaf/drop shape).
+            const color = '#46D99A';
+            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
+            ctx.beginPath();
+            ctx.moveTo(0, -r);
+            ctx.bezierCurveTo(-r * 0.85, -r * 0.5, -r * 0.85, r * 0.5, 0, r);
+            ctx.bezierCurveTo(r * 0.85, r * 0.5, r * 0.85, -r * 0.5, 0, -r);
+            ctx.closePath();
+            ctx.stroke();
+            break;
+          }
+          case 'paleta': {
+            // M10, per obj-paleta (pallet: frame + 3 slats).
+            const color = '#EFCB63';
+            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
+            ctx.strokeRect(-r * 0.9, -r * 0.35, r * 1.8, r * 0.7);
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.55, -r * 0.35); ctx.lineTo(-r * 0.55, r * 0.35);
+            ctx.moveTo(0, -r * 0.35); ctx.lineTo(0, r * 0.35);
+            ctx.moveTo(r * 0.55, -r * 0.35); ctx.lineTo(r * 0.55, r * 0.35);
+            ctx.stroke();
+            break;
+          }
+          case 'krysztal': {
+            // M13, per obj-krysztal (pentagon gem) -- the payoff of the Portal twist.
+            const color = '#9875FF';
+            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 14; ctx.shadowColor = color;
+            ctx.beginPath();
+            ctx.moveTo(0, -r); ctx.lineTo(r * 0.85, -r * 0.15); ctx.lineTo(r * 0.6, r * 0.85);
+            ctx.lineTo(-r * 0.6, r * 0.85); ctx.lineTo(-r * 0.85, -r * 0.15);
+            ctx.closePath(); ctx.stroke();
+            ctx.globalAlpha *= 0.6;
+            ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r * 0.85); ctx.stroke();
+            break;
+          }
+          case 'witryna': {
+            // M14, per obj-witryna (storefront pane).
+            const color = '#9875FF';
+            ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 10; ctx.shadowColor = color;
+            ctx.strokeRect(-r * 0.9, -r * 0.75, r * 1.8, r * 1.5);
+            ctx.beginPath(); ctx.moveTo(-r * 0.9, -r * 0.2); ctx.lineTo(r * 0.9, -r * 0.2); ctx.stroke();
+            break;
+          }
+          case 'klucz_sektora': {
+            // M15, per obj-klucz (bow + shaft + teeth).
+            const color = '#68F5FC';
+            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
+            ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.15, r * 0.4, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, r * 0.1); ctx.lineTo(r * 0.75, r * 0.85);
+            ctx.moveTo(r * 0.35, r * 0.45); ctx.lineTo(r * 0.6, r * 0.2);
+            ctx.moveTo(r * 0.55, r * 0.65); ctx.lineTo(r * 0.8, r * 0.4);
+            ctx.stroke();
+            break;
+          }
+          case 'emiter': {
+            // M21, per obj-emiter (concentric rings + core dot).
+            const color = '#68F5FC';
+            ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 12; ctx.shadowColor = color;
+            ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha *= 0.5;
+            ctx.beginPath(); ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha *= 2;
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(0, 0, r * 0.15, 0, Math.PI * 2); ctx.fill();
+            break;
+          }
+          default: {
+            // Flag on a pole -- original generic marker look, kept as a
+            // fallback for any marker without a mission-specific glyph.
+            const color = this.route === 'B' ? '#9875FF' : '#EFCB63';
+            ctx.strokeStyle = ctx.fillStyle = color;
+            ctx.shadowBlur = 14; ctx.shadowColor = color;
+            ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.6, -r); ctx.lineTo(r * 0.8, -r * 0.55); ctx.lineTo(-r * 0.6, -r * 0.1);
+            ctx.closePath(); ctx.fill();
+          }
+        }
         break;
       }
       case 'node': {
+        if (this.glyph === 'mostek') {
+          // Mostek (M19), structural per OBJECT_CATALOG_SPEC.md §2.2: stays
+          // on the board and just switches look when powered, instead of
+          // fading out like every other node.
+          const powered = this.mostekPowered;
+          const color = powered ? '#50F0FA' : '#9875FF';
+          ctx.strokeStyle = color; ctx.lineWidth = 1.8;
+          ctx.shadowBlur = powered ? 16 : 6; ctx.shadowColor = color;
+          if (!powered) ctx.globalAlpha *= 0.75;
+          ctx.beginPath();
+          ctx.moveTo(-r * 1.1, r * 0.5); ctx.quadraticCurveTo(0, -r * 0.9, r * 1.1, r * 0.5);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(-r * 1.1, r * 0.5); ctx.lineTo(-r * 1.1, r * 0.85);
+          ctx.moveTo(r * 1.1, r * 0.5); ctx.lineTo(r * 1.1, r * 0.85);
+          ctx.stroke();
+          break;
+        }
         const color = this.active ? '#EFCB63' : 'rgba(255,255,255,0.25)';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-        if (this.active) {
-          ctx.beginPath();
-          ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, r * 0.4);
-          ctx.moveTo(r * 0.4, -r * 0.4); ctx.lineTo(-r * 0.4, r * 0.4);
-          ctx.stroke();
+        if (this.glyph === 'zasilacz') {
+          // M12, per obj-zasilacz (charger body + bolt).
+          ctx.strokeRect(-r * 0.55, -r * 0.75, r * 1.1, r * 1.5);
+          if (this.active) {
+            ctx.beginPath();
+            ctx.moveTo(r * 0.2, -r * 0.4); ctx.lineTo(-r * 0.15, r * 0.05);
+            ctx.lineTo(r * 0.05, r * 0.05); ctx.lineTo(-r * 0.2, r * 0.5);
+            ctx.stroke();
+          }
+        } else {
+          // wezel (M04/M23, default): ring + X, unchanged from the
+          // original generic node look.
+          ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+          if (this.active) {
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, r * 0.4);
+            ctx.moveTo(r * 0.4, -r * 0.4); ctx.lineTo(-r * 0.4, r * 0.4);
+            ctx.stroke();
+          }
         }
         break;
       }
@@ -1348,20 +1492,138 @@ class CampaignEntity {
         const color = this.active ? '#50F0FA' : 'rgba(255,255,255,0.25)';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 0; ctx.shadowColor = color;
-        ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2); ctx.stroke();
+        if (this.glyph === 'lustro') {
+          // M16, per obj-lustro (tilted mirror panel + stand).
+          ctx.save();
+          ctx.rotate(0.2);
+          ctx.strokeRect(-r * 0.42, -r * 0.9, r * 0.84, r * 1.8);
+          ctx.beginPath(); ctx.moveTo(0, r * 0.9); ctx.lineTo(0, r * 1.15); ctx.stroke();
+          ctx.restore();
+        } else {
+          // pylon (M08, default): mast + charge ring -- real graphic per
+          // vector_hole_full_object_catalog.svg's obj-pylon (was a
+          // placeholder line+circle before).
+          ctx.beginPath(); ctx.moveTo(0, -r * 0.3); ctx.lineTo(0, r); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.35, 0, Math.PI * 2); ctx.stroke();
+          if (this.active) {
+            ctx.globalAlpha *= 0.5;
+            ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+          }
+        }
         break;
       }
       case 'landmark': {
         const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        const color = this.unlocked ? '#EFCB63' : 'rgba(239, 203, 99, 0.35)';
+        const isFinale = this.landmarkId === 'rdzen_miasta_glowny';
+        const baseColor = isFinale ? '#EFCB63' : '#50F0FA';
+        const color = this.unlocked ? baseColor : 'rgba(239, 203, 99, 0.35)';
         ctx.strokeStyle = color;
-        ctx.lineWidth = 4;
-        ctx.shadowBlur = this.unlocked ? 24 + 8 * pulse : 6;
+        ctx.lineWidth = 1.6;
+        ctx.shadowBlur = this.unlocked ? 20 + 8 * pulse : 6;
         ctx.shadowColor = color;
         if (!this.unlocked) ctx.setLineDash([10, 8]);
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+
+        // Unique per-district silhouette (vector_hole_mission_board_finale.svg
+        // "LANDMARKI DZIELNIC") instead of the old generic double-ring for
+        // every landmark -- the locked padlock overlay below stays shared.
+        switch (this.landmarkId) {
+          case 'kino':
+            ctx.strokeRect(-r * 0.83, -r * 0.3, r * 1.66, r * 1.1);
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.83, -r * 0.3); ctx.lineTo(-r * 0.96, -r * 0.56);
+            ctx.lineTo(r * 0.96, -r * 0.56); ctx.lineTo(r * 0.83, -r * 0.3);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.65, -r * 0.56); ctx.lineTo(-r * 0.65, -r * 0.3);
+            ctx.moveTo(-r * 0.22, -r * 0.56); ctx.lineTo(-r * 0.22, -r * 0.3);
+            ctx.moveTo(r * 0.22, -r * 0.56); ctx.lineTo(r * 0.22, -r * 0.3);
+            ctx.moveTo(r * 0.65, -r * 0.56); ctx.lineTo(r * 0.65, -r * 0.3);
+            ctx.stroke();
+            ctx.strokeRect(-r * 0.52, r * 0.1, r * 1.04, r * 0.43);
+            if (this.unlocked) {
+              ctx.fillStyle = color;
+              [-0.3, 0, 0.3].forEach(dx => { ctx.beginPath(); ctx.arc(r * dx, r * 0.3, r * 0.05, 0, Math.PI * 2); ctx.fill(); });
+            }
+            break;
+          case 'fontanna':
+            ctx.beginPath();
+            ctx.ellipse(0, r * 0.65, r * 0.9, r * 0.2, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(0, r * 0.22, r * 0.48, r * 0.13, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, r * 0.22); ctx.lineTo(0, -r * 0.65);
+            ctx.moveTo(0, -r * 0.65); ctx.quadraticCurveTo(-r * 0.4, -r * 0.25, -r * 0.68, r * 0.22);
+            ctx.moveTo(0, -r * 0.65); ctx.quadraticCurveTo(r * 0.4, -r * 0.25, r * 0.68, r * 0.22);
+            ctx.stroke();
+            break;
+          case 'dzwig':
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.43, r * 0.85); ctx.lineTo(-r * 0.43, -r * 0.65);
+            ctx.lineTo(r * 0.65, -r * 0.65);
+            ctx.moveTo(-r * 0.43, -r * 0.35); ctx.lineTo(r * 0.35, -r * 0.65);
+            ctx.moveTo(r * 0.65, -r * 0.65); ctx.lineTo(r * 0.65, r * 0.13);
+            ctx.moveTo(-r * 0.43, r * 0.85); ctx.lineTo(-r * 0.09, r * 0.85);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(r * 0.56, r * 0.13); ctx.lineTo(r * 0.74, r * 0.13); ctx.lineTo(r * 0.65, r * 0.3);
+            ctx.closePath();
+            ctx.fillStyle = color; ctx.fill();
+            break;
+          case 'galeria_glowna':
+            ctx.strokeRect(-r * 0.7, -r * 0.65, r * 1.4, r * 1.3);
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.35, -r * 0.65); ctx.lineTo(-r * 0.35, r * 0.65);
+            ctx.moveTo(0, -r * 0.65); ctx.lineTo(0, r * 0.65);
+            ctx.moveTo(r * 0.35, -r * 0.65); ctx.lineTo(r * 0.35, r * 0.65);
+            ctx.stroke();
+            ctx.globalAlpha *= 0.6;
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.7, -r * 0.22); ctx.lineTo(r * 0.7, -r * 0.3);
+            ctx.moveTo(-r * 0.7, r * 0.17); ctx.lineTo(r * 0.7, r * 0.09);
+            ctx.stroke();
+            break;
+          case 'iglica':
+          case 'iglica_wejscie': {
+            // iglica_wejscie (M19's mid-mission gate landmark) reuses the
+            // same spire silhouette as the M20 boss Iglica, just smaller --
+            // MISSION_BOARD_SPEC.md only specs the 6 boss landmarks and
+            // doesn't cover this entity, so this is the simplest reasonable
+            // reuse rather than inventing a 7th silhouette from nothing.
+            const s = this.landmarkId === 'iglica' ? 1 : 0.62;
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.3 * s, r * 0.87 * s); ctx.lineTo(-r * 0.3 * s, r * 0.22 * s);
+            ctx.lineTo(-r * 0.13 * s, -r * 0.09 * s); ctx.lineTo(-r * 0.13 * s, -r * 0.43 * s);
+            ctx.lineTo(0, -r * 0.87 * s);
+            ctx.lineTo(r * 0.13 * s, -r * 0.43 * s); ctx.lineTo(r * 0.13 * s, -r * 0.09 * s);
+            ctx.lineTo(r * 0.3 * s, r * 0.22 * s); ctx.lineTo(r * 0.3 * s, r * 0.87 * s);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.22 * s, 0); ctx.lineTo(-r * 0.22 * s, r * 0.78 * s);
+            ctx.moveTo(r * 0.22 * s, 0); ctx.lineTo(r * 0.22 * s, r * 0.78 * s);
+            ctx.stroke();
+            break;
+          }
+          case 'rdzen_miasta_glowny':
+            ctx.beginPath();
+            ctx.moveTo(0, -r * 0.82); ctx.lineTo(r * 0.7, 0); ctx.lineTo(0, r * 0.82); ctx.lineTo(-r * 0.7, 0);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.strokeStyle = '#68F5FC';
+            ctx.beginPath();
+            ctx.moveTo(0, -r * 0.48); ctx.lineTo(r * 0.39, 0); ctx.lineTo(0, r * 0.48); ctx.lineTo(-r * 0.39, 0);
+            ctx.closePath();
+            ctx.stroke();
+            if (this.unlocked) { ctx.fillStyle = '#F5FAFF'; ctx.beginPath(); ctx.arc(0, 0, r * 0.09, 0, Math.PI * 2); ctx.fill(); }
+            break;
+          default:
+            // Fallback: original generic double-ring, for any landmarkId
+            // not covered above.
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+        }
         ctx.setLineDash([]);
         if (!this.unlocked) {
           ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -1373,6 +1635,38 @@ class CampaignEntity {
         break;
       }
       case 'gate': {
+        if (this.glyph === 'portal') {
+          // Portal (M13), per obj-portal (concentric rings) -- a fixed
+          // teleporter instead of a brama pillar.
+          const open = this.isGateOpen;
+          const color = open ? '#68F5FC' : '#9875FF';
+          ctx.strokeStyle = color; ctx.lineWidth = 1.6;
+          ctx.shadowBlur = open ? 18 : 6; ctx.shadowColor = color;
+          ctx.beginPath(); ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2); ctx.stroke();
+          ctx.globalAlpha *= 0.65;
+          ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2); ctx.stroke();
+          ctx.globalAlpha *= (0.4 / 0.65);
+          ctx.beginPath(); ctx.arc(0, 0, r * 0.2, 0, Math.PI * 2); ctx.stroke();
+          break;
+        }
+        if (this.glyph === 'pas_przelotu') {
+          // Pas przelotu (M18), per obj-pas-przelotu -- a lit corridor
+          // strip instead of a single brama pillar.
+          const open = this.isGateOpen;
+          const telegraph = this.isGateTelegraphing;
+          const color = !open ? 'rgba(255,255,255,0.2)' : telegraph ? '#EFCB63' : '#50F0FA';
+          const hw = this.zoneHalfWidth || r;
+          ctx.strokeStyle = color; ctx.lineWidth = 2;
+          ctx.shadowBlur = open ? 14 : 4; ctx.shadowColor = color;
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath(); ctx.moveTo(-hw, -r * 8); ctx.lineTo(-hw, r * 8); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hw, -r * 8); ctx.lineTo(hw, r * 8); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, 0); ctx.lineTo(-r * 0.4, r * 0.4);
+          ctx.stroke();
+          break;
+        }
         const open = this.isGateOpen;
         const telegraph = this.isGateTelegraphing;
         const color = !open ? 'rgba(255,255,255,0.2)' : telegraph ? '#EFCB63' : '#50F0FA';
@@ -2819,20 +3113,30 @@ class Game {
       });
     } else {
       if (s.fragments) addMany('fragment', s.fragments);
+      const propGlyph = PROP_GLYPHS[def.id];
       if (s.props && s.clusters) {
         const half = Math.ceil(s.props / 2);
         addMany('prop', half, () => ({ x: rand(b.minX + 40, cx - 60), y: rand(b.minY + 40, b.maxY - 40) }), { cluster: 'A' });
         addMany('prop', s.props - half, () => ({ x: rand(cx + 60, b.maxX - 40), y: rand(b.minY + 40, b.maxY - 40) }), { cluster: 'B' });
       } else if (s.props) {
-        addMany('prop', s.props);
+        addMany('prop', s.props, null, propGlyph ? { glyph: propGlyph } : null);
       }
       if (s.vehicles) addMany('vehicle', s.vehicles);
     }
 
     if (s.markers) {
-      const half = Math.ceil(s.markers / 2);
-      addMany('marker', half, () => ({ x: rand(b.minX + 60, cx - 100), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'A' });
-      addMany('marker', s.markers - half, () => ({ x: rand(cx + 100, b.maxX - 60), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'B' });
+      const glyph = MARKER_GLYPHS[def.id];
+      if (def.id === 'M13') {
+        // Portal twist (OBJECT_CATALOG_SPEC.md §2.3): the 6-8 crystals live
+        // only on the far side of the portal (see the `s.gates` branch
+        // below) instead of being split into the generic route A/B halves
+        // -- M13's medal isn't route-based, so that split was flavor-only.
+        addMany('marker', s.markers, () => ({ x: rand(cx + 140, b.maxX - 60), y: rand(b.minY + 60, b.maxY - 60) }), { glyph });
+      } else {
+        const half = Math.ceil(s.markers / 2);
+        addMany('marker', half, () => ({ x: rand(b.minX + 60, cx - 100), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'A', glyph });
+        addMany('marker', s.markers - half, () => ({ x: rand(cx + 100, b.maxX - 60), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'B', glyph });
+      }
     }
 
     if (s.capsuleWaves) {
@@ -2842,27 +3146,76 @@ class Game {
     }
 
     if (s.gates) {
-      for (let i = 0; i < s.gates; i++) {
-        const t = (i + 1) / (s.gates + 1);
-        const gx = lerp(b.minX + 80, b.maxX - 80, t);
-        this.campaignEntities.push(new CampaignEntity('gate', gx, cy, { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }));
+      if (def.id === 'M13') {
+        // Portal (OBJECT_CATALOG_SPEC.md §2.3, §4): a single fixed,
+        // one-way teleporter near the player's start, not a "pass through
+        // when open" brama. Decision (open question in the spec): one-way
+        // and single-use per run -- there's exactly one physical portal
+        // entity on the board, so a "return trip" has no natural anchor to
+        // teleport back from, and the mission goal never requires one.
+        const near = { x: b.minX + 140, y: cy };
+        const far = { x: b.maxX - 140, y: cy };
+        this.campaignSpawn = near;
+        this.campaignEntities.push(new CampaignEntity('gate', near.x, near.y, {
+          glyph: 'portal', phase: 0, portalAnchors: [near, far]
+        }));
+      } else if (def.id === 'M18') {
+        // Pas przelotu (OBJECT_CATALOG_SPEC.md §2.4): a corridor zone with
+        // entry/exit tracking (handleCorridorZone()) instead of a single
+        // point-touch gate -- "clearing" one means crossing all the way
+        // through while lit, not just touching its center.
+        for (let i = 0; i < s.gates; i++) {
+          const t = (i + 1) / (s.gates + 1);
+          const gx = lerp(b.minX + 80, b.maxX - 80, t);
+          this.campaignEntities.push(new CampaignEntity('gate', gx, cy, {
+            glyph: 'pas_przelotu', zoneHalfWidth: 90, phase: rand(0, CONFIG.campaign.gate.cycleSeconds)
+          }));
+        }
+      } else {
+        for (let i = 0; i < s.gates; i++) {
+          const t = (i + 1) / (s.gates + 1);
+          const gx = lerp(b.minX + 80, b.maxX - 80, t);
+          this.campaignEntities.push(new CampaignEntity('gate', gx, cy, { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }));
+        }
       }
     }
 
     if (s.nodes) {
+      const glyph = NODE_GLYPHS[def.id] || 'wezel';
       for (let i = 0; i < s.nodes; i++) {
         const p = this.randomInCampaignBounds(80);
-        this.campaignEntities.push(new CampaignEntity('node', p.x, p.y));
+        this.campaignEntities.push(new CampaignEntity('node', p.x, p.y, { glyph }));
       }
     }
     if (s.pylons) {
+      const glyph = def.id === 'M16' ? 'lustro' : 'pylon';
       for (let i = 0; i < s.pylons; i++) {
         const a = (i / s.pylons) * Math.PI * 2;
-        this.campaignEntities.push(new CampaignEntity('pylon', cx + Math.cos(a) * 180, cy + Math.sin(a) * 180));
+        this.campaignEntities.push(new CampaignEntity('pylon', cx + Math.cos(a) * 180, cy + Math.sin(a) * 180, { glyph }));
       }
     }
-    if (def.goal.landmark) {
-      const landmark = new CampaignEntity('landmark', cx, cy, { landmarkId: def.goal.landmark });
+    // Fix: read the landmark id from `setup.landmark`, not `goal.landmark`.
+    // M20 ("Iglica") and M24 ("Rdzeń Miasta") only set `setup.landmark` --
+    // their `goal` object has no `landmark` field at all (unlike M04/M08/
+    // M12/M16/M19, which duplicate the same id in both places) -- so the
+    // original `if (def.goal.landmark)` check never fired for them and no
+    // landmark entity was created, making those two missions (including the
+    // campaign finale) impossible to complete. `s.landmark` is present for
+    // every mission that needs one.
+    if (s.landmark) {
+      // Second fix, same root cause class: a plain eatCount landmark (M20,
+      // M24) has no activator to ever set `unlocked = true` (that only
+      // happens via tryUnlockCampaignLandmark(), which only runs for
+      // activateAndDevour missions) -- without this, handleCampaignEating()'s
+      // `if (e.type === 'landmark' && !e.unlocked) continue;` guard would
+      // leave those two landmarks permanently uneatable even once they
+      // exist. Both GDD labels ("Pochłoń centralną iglicę" / "Pochłoń
+      // główny rdzeń miasta") describe a direct big-eat with no priming
+      // step, so they simply start unlocked.
+      const landmark = new CampaignEntity('landmark', cx, cy, {
+        landmarkId: s.landmark,
+        unlocked: def.goal.type !== 'activateAndDevour'
+      });
       this.campaignEntities.push(landmark);
       this.mission.landmark = landmark;
     }
@@ -2981,6 +3334,9 @@ class Game {
     for (const e of this.campaignEntities) {
       if (e.consumed || e.eating || !e.live) continue;
       if (e.type === 'gate') continue;
+      // Mostek (M19) is structural -- it's powered in place by
+      // handleCampaignBridges(), never eaten/consumed like a regular node.
+      if (e.type === 'node' && e.glyph === 'mostek') continue;
       if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
       if (e.type === 'landmark' && !e.unlocked) continue;
       if (tier < e.stats.minTier) continue;
@@ -3030,7 +3386,13 @@ class Game {
     if (e.type === 'capsule') m.maxComboDuringCapsule = Math.max(m.maxComboDuringCapsule, this.comboCount);
     if (e.type === 'landmark') {
       this.triggerShake(16);
+      // Collapse (MISSION_BOARD_SPEC.md §4 "Stan 3"): a second, cyan
+      // fragment-colored burst layered under the existing gold one, so the
+      // landmark visibly breaks into T1-fragment-like debris instead of
+      // just fading out. Simplified per the brief -- no separate 4-state
+      // animation, this single extra burst is the "collapse" moment.
       this.spawnParticles(e.x, e.y, '#EFCB63', 40);
+      this.spawnParticles(e.x, e.y, '#50F0FA', 24);
       this.ripples.push(new Ripple(e.x, e.y, '#EFCB63', e.radius, e.radius * 3.5, 0.8));
       this.analytics.track('big_eat', { missionId: m.def.id, landmark: e.landmarkId });
     }
@@ -3038,10 +3400,93 @@ class Game {
     m.eatenByType[e.type] = (m.eatenByType[e.type] || 0) + 1;
   }
 
+  /** Mostek (M19, OBJECT_CATALOG_SPEC.md §2.2): the only real gameplay
+   *  difference from a regular node is that it never gets eaten/removed --
+   *  touching it "powers" it in place (same growth/score/combo reward as a
+   *  normal node eat) and it stays on the board with an active look.
+   *  Decision (open question in the spec): no separate "zasilacz" object --
+   *  touching the mostek itself powers it, the simplest reading of "zasil
+   *  mostek" that doesn't need a second entity type. */
+  handleCampaignBridges() {
+    const m = this.mission;
+    const tier = this.campaignTierIndex(this.campaignPlayerTier().id);
+    for (const e of this.campaignEntities) {
+      if (e.type !== 'node' || e.glyph !== 'mostek' || e.mostekPowered) continue;
+      if (tier < e.stats.minTier) continue;
+      const d = dist(this.player.x, this.player.y, e.x, e.y);
+      if (d >= this.player.radius * 0.85 + e.radius * 0.3) continue;
+      e.mostekPowered = true;
+      m.nodesDisabled++;
+      m.eatenByType[e.type] = (m.eatenByType[e.type] || 0) + 1;
+      const multiplier = this.registerCombo();
+      const stats = e.stats;
+      this.player.growFromArea(stats.growth * CONFIG.campaign.growthAreaScale * Math.PI);
+      m.growthUnits += stats.growth;
+      this.player.score += Math.round(stats.score * multiplier);
+      this.triggerEatFeedback(e.x, e.y, '#50F0FA', e.radius, true);
+      this.vibrate(30);
+      this.tryUnlockCampaignLandmark();
+    }
+  }
+
+  /** Portal (M13, OBJECT_CATALOG_SPEC.md §2.3/§4): a fixed, one-way,
+   *  single-use teleporter instead of a "pass through when open" brama.
+   *  Decisions (open questions in the spec, resolved here): one-way, since
+   *  there's exactly one physical portal entity and no natural anchor to
+   *  teleport back from; single-use per run, since the mission goal is
+   *  just reaching the far-side crystal cluster once, not repeat travel. */
+  handlePortalTouch(e) {
+    const d = dist(this.player.x, this.player.y, e.x, e.y);
+    if (d >= this.player.radius + e.radius || e.passCooldown > 0) return;
+    if (!e.isGateOpen) {
+      this.spawnParticles(e.x, e.y, '#FF54AD', 6);
+      return;
+    }
+    const dest = e.portalAnchors[1];
+    this.player.x = dest.x;
+    this.player.y = dest.y;
+    this.player.invulnerableUntil = performance.now() + 800;
+    e.passCooldown = 999; // effectively single-use for the rest of the mission
+    this.spawnParticles(e.x, e.y, '#9875FF', 18);
+    this.spawnParticles(dest.x, dest.y, '#9875FF', 18);
+    this.ripples.push(new Ripple(dest.x, dest.y, '#9875FF', 10, e.radius * 3, 0.5));
+    this.vibrate([30, 20, 30]);
+    this.analytics.track('mission_portal_use', { missionId: this.mission.def.id });
+  }
+
+  /** Pas przelotu (M18, OBJECT_CATALOG_SPEC.md §2.4): a corridor zone with
+   *  entry/exit tracking instead of a single point-touch gate -- "clearing"
+   *  one means crossing all the way through it while lit, not just
+   *  touching its center point. */
+  handleCorridorZone(e) {
+    const m = this.mission;
+    const hw = e.zoneHalfWidth || e.radius;
+    const inside = Math.abs(this.player.x - e.x) < hw;
+    if (inside && !e._corridorInside) {
+      e._corridorEnteredOpen = e.isGateOpen;
+      e._corridorEnterSide = this.player.x < e.x ? -1 : 1;
+    } else if (!inside && e._corridorInside) {
+      const exitSide = this.player.x < e.x ? -1 : 1;
+      const crossedThrough = exitSide !== e._corridorEnterSide;
+      if (crossedThrough && e._corridorEnteredOpen && e.isGateOpen) {
+        if (!m.gatesPassed.has(e)) {
+          m.gatesPassed.add(e);
+          this.spawnParticles(e.x, e.y, '#50F0FA', 16);
+          this.vibrate(30);
+        }
+      } else if (crossedThrough) {
+        this.spawnParticles(e.x, e.y, '#FF54AD', 8);
+      }
+    }
+    e._corridorInside = inside;
+  }
+
   handleCampaignGates() {
     const m = this.mission;
     for (const e of this.campaignEntities) {
       if (e.type !== 'gate') continue;
+      if (e.glyph === 'portal') { this.handlePortalTouch(e); continue; }
+      if (e.glyph === 'pas_przelotu') { this.handleCorridorZone(e); continue; }
       const d = dist(this.player.x, this.player.y, e.x, e.y);
       if (d < this.player.radius + 16 && e.passCooldown <= 0) {
         e.passCooldown = 0.6;
@@ -3254,6 +3699,7 @@ class Game {
     for (const e of this.campaignEntities) e.update(dt, m.elapsed);
 
     this.handleCampaignEating();
+    this.handleCampaignBridges();
     for (const e of this.campaignEntities) {
       if (e.consumed && !e._resolved) {
         e._resolved = true;
