@@ -114,7 +114,17 @@ const CONFIG = {
     baseRadius: 20,
     comboWindowSeconds: 1.5,   // GDD 07: "kolejne pożarcie w 1,5 s"
     comboMaxMultiplier: 2.0,   // GDD 07: "combo 1,0-2,0 mnoży punkty, nie wzrost"
-    growthAreaScale: 6,        // growthUnits -> Hole area gain, for a readable radius curve
+    // growthUnits -> Hole area gain. Since growFromArea() adds this
+    // directly to radius^2 (the *pi cancels out), radius = sqrt(baseRadius^2
+    // + growthUnits*growthAreaScale) -- e.g. at 6 (old value) a player who'd
+    // earned all 70 growth units needed to unlock a T4 landmark (radius 46)
+    // was only radius ~29, visibly *smaller* than the thing it had just
+    // grown enough to eat (player feedback: "the hole doesn't feel like
+    // it's growing to eat bigger things"). At 16, that same player is
+    // radius ~39 -- comfortably past every T1-T3 object it's already
+    // outgrown (landmark aside, which stays a deliberate "big eat" that's
+    // still bigger than the player, same as Arena's giant objects).
+    growthAreaScale: 16,
     hitPenaltyFraction: 0.25,  // GDD 07: contact with a bigger bot costs 25% of current growth
     hitInvulnMs: 2000,
     entityRadius: {
@@ -418,9 +428,10 @@ const CAMPAIGN_ENTITY_STATS = {
 // Per-mission visual glyph tables (mission-screen brief, Task 1): several
 // CampaignEntity `type`s are reused across multiple missions with different
 // GDD object names (e.g. 'marker' covers znacznik ogrodu/paleta/kryształ/
-// witryna/klucz sektora/emiter). `glyph` is a purely visual tag read by
-// CampaignEntity.draw() -- it never changes stats/goal logic, which stays
-// keyed by `type` exactly as before.
+// witryna/klucz sektora/emiter). `glyph` started as a purely visual tag,
+// but checkCampaignGoal() also reads it now (via computeCampaignGoalGlyph())
+// so a mission naming one specific object only counts progress from that
+// object, not any other same-`type` entity.
 const MARKER_GLYPHS = { M07: 'znacznik_ogrodu', M10: 'paleta', M13: 'krysztal', M14: 'witryna', M15: 'klucz_sektora', M21: 'emiter' };
 const PROP_GLYPHS = { M09: 'skrzynia', M17: 'modul_dachowy' };
 const NODE_GLYPHS = { M04: 'wezel', M23: 'wezel', M12: 'zasilacz', M19: 'mostek' };
@@ -506,7 +517,7 @@ const CAMPAIGN_MISSIONS = [
   },
   {
     id: 'M06', district: 'park', order: 2, name: 'Zielona fala', timeLimit: 120,
-    goal: { type: 'eatCount', entityType: 'capsule', count: 18, label: 'Pochłoń 18 impulsowych kapsuł' },
+    goal: { type: 'eatCount', entityType: 'capsule', count: 18, label: 'Pochłoń 18 kapsuł impulsu' },
     medal: { type: 'comboAtLeast', count: 6, label: 'Zbierz 6 w jednym combo' },
     // Waves 40s/80s apart used to leave the board completely empty for
     // ~15-20s at a time once a wave was cleared (player feedback: "the
@@ -537,7 +548,7 @@ const CAMPAIGN_MISSIONS = [
   // Rozdział III (Port Syntez) — GDD 4.0 §6 table rows M09-M12.
   {
     id: 'M09', district: 'port', order: 1, name: 'Dostawa energii', timeLimit: 90,
-    goal: { type: 'eatCount', entityType: 'prop', count: 12, label: 'Pochłoń 12 modułów skrzyń' },
+    goal: { type: 'eatCount', entityType: 'prop', count: 12, label: 'Pochłoń 12 skrzyń' },
     medal: { type: 'timeUnder', seconds: 55, label: 'Ukończ w 55 s' },
     setup: { fragments: 12, props: 18, bots: 0 },
     nela: { start: 'Port stoi bez prądu. Zacznij od skrzyń przy nabrzeżu.', success: 'Pierwsza dostawa dotarła.' },
@@ -650,7 +661,7 @@ const CAMPAIGN_MISSIONS = [
   },
   {
     id: 'M22', district: 'rdzen', order: 2, name: 'Czytelny chaos', timeLimit: 110,
-    goal: { type: 'eatCount', entityType: 'fragment', count: 20, label: 'Pochłoń 20 fragmentów w 3 sektorach' },
+    goal: { type: 'eatCount', entityType: 'fragment', count: 20, label: 'Pochłoń 20 fragmentów energii w 3 sektorach' },
     medal: { type: 'comboAtLeast', count: 8, label: 'Zbierz 8 w jednym combo' },
     setup: { fragments: 30, props: 6, bots: 1 },
     nela: { start: 'Chaos ma swój rytm, jeśli wiesz gdzie patrzeć.', success: 'Kontrolowany chaos miasta ustał.' },
@@ -1304,8 +1315,8 @@ class CampaignEntity {
       }
       case 'prop': {
         if (this.glyph === 'skrzynia') {
-          // Skrzynia (M09), per vector_hole_full_object_catalog.svg's obj-skrzynia.
-          const color = '#50F0FA';
+          // Skrzynia (M09) -- pink, T2 size tier (see campaignEntityColor()).
+          const color = '#FF54AD';
           ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
           ctx.strokeRect(-r * 0.85, -r * 0.6, r * 1.7, r * 1.2);
           ctx.beginPath();
@@ -1313,24 +1324,20 @@ class CampaignEntity {
           ctx.moveTo(0, -r * 0.6); ctx.lineTo(0, 0);
           ctx.stroke();
         } else if (this.glyph === 'modul_dachowy') {
-          // Moduł dachowy (M17), per obj-modul-dachowy.
-          const color = '#50F0FA';
+          // Moduł dachowy (M17) -- pink, T2 size tier.
+          const color = '#FF54AD';
           ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
           ctx.strokeRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1);
           ctx.beginPath(); ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0); ctx.stroke();
         } else {
           // Generic "ogólne" street props (GDD label "ławki i pachołki"):
-          // latarnia/ławka/drzewo/kiosk/pachołek, per
-          // vector_hole_full_object_catalog.svg -- one of PROP_STREET_GLYPHS
+          // latarnia/ławka/drzewo/kiosk/pachołek -- one of PROP_STREET_GLYPHS
           // picked per instance in buildCampaignMission(), so a mission's
           // filler props read as a real street scene instead of one shape
-          // repeated everywhere. All cyan per the catalog (every one of
-          // these cards uses #50F0FA) -- cluster A/B (M02's route medal)
-          // no longer recolors the shape; the two clusters are already
-          // spatially distinct (left/right half of the map), so a color
-          // swap wasn't carrying information the player needed, and it was
-          // the wrong color anyway (see docs/VECTRE_V6_PLAN.md).
-          const color = '#50F0FA';
+          // repeated everywhere. Pink, T2 size tier -- cluster A/B (M02's
+          // route medal) doesn't recolor the shape; the two clusters are
+          // already spatially distinct (left/right half of the map).
+          const color = '#FF54AD';
           ctx.strokeStyle = color; ctx.lineWidth = 1.6;
           ctx.shadowBlur = 10; ctx.shadowColor = color;
           switch (this.glyph) {
@@ -1381,14 +1388,12 @@ class CampaignEntity {
       }
       case 'vehicle': {
         // Simple car silhouette (body + roof bump + two wheels) instead of
-        // a plain rectangle. Cyan per obj-samochod (general filler,
-        // appears in most missions) -- grey per obj-konwoj for M11's own
-        // convoy vehicles specifically (glyph: 'konwoj', set in
-        // buildCampaignMission()), which also get the tow-hitch accent the
-        // catalog draws only on that card. Was pink everywhere, matching
-        // neither.
+        // a plain rectangle. Green, T3 size tier -- same hue for plain
+        // filler and M11's convoy vehicles (glyph: 'konwoj', set in
+        // buildCampaignMission()), which are the same size class; konwoj
+        // keeps its own tow-hitch accent as a shape distinction instead.
         const isKonwoj = this.glyph === 'konwoj';
-        const color = isKonwoj ? '#819BB1' : '#50F0FA';
+        const color = '#46D99A';
         ctx.strokeStyle = ctx.fillStyle = color; ctx.lineWidth = 2;
         ctx.shadowBlur = 12; ctx.shadowColor = color;
         ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
@@ -1405,7 +1410,7 @@ class CampaignEntity {
       }
       case 'capsule': {
         // Pill/capsule shape split down the middle, instead of a hexagon.
-        // Cyan per obj-kapsula (was green, didn't match the catalog).
+        // Cyan, T1 size tier (smallest, alongside fragment).
         ctx.strokeStyle = '#50F0FA';
         ctx.shadowBlur = 14; ctx.shadowColor = '#50F0FA';
         ctx.save();
@@ -1425,8 +1430,8 @@ class CampaignEntity {
       case 'marker': {
         switch (this.glyph) {
           case 'znacznik_ogrodu': {
-            // M07, per obj-znacznik-ogrodu (leaf/drop shape).
-            const color = '#46D99A';
+            // M07 (leaf/drop shape) -- pink, T2 size tier.
+            const color = '#FF54AD';
             ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
             ctx.beginPath();
             ctx.moveTo(0, -r);
@@ -1437,8 +1442,8 @@ class CampaignEntity {
             break;
           }
           case 'paleta': {
-            // M10, per obj-paleta (pallet: frame + 3 slats). Cyan, was gold.
-            const color = '#50F0FA';
+            // M10 (pallet: frame + 3 slats) -- pink, T2 size tier.
+            const color = '#FF54AD';
             ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
             ctx.strokeRect(-r * 0.9, -r * 0.35, r * 1.8, r * 0.7);
             ctx.beginPath();
@@ -1449,8 +1454,8 @@ class CampaignEntity {
             break;
           }
           case 'krysztal': {
-            // M13, per obj-krysztal (pentagon gem) -- the payoff of the Portal twist.
-            const color = '#9875FF';
+            // M13 (pentagon gem, the payoff of the Portal twist) -- pink, T2 size tier.
+            const color = '#FF54AD';
             ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 14; ctx.shadowColor = color;
             ctx.beginPath();
             ctx.moveTo(0, -r); ctx.lineTo(r * 0.85, -r * 0.15); ctx.lineTo(r * 0.6, r * 0.85);
@@ -1461,16 +1466,16 @@ class CampaignEntity {
             break;
           }
           case 'witryna': {
-            // M14, per obj-witryna (storefront pane).
-            const color = '#9875FF';
+            // M14 (storefront pane) -- pink, T2 size tier.
+            const color = '#FF54AD';
             ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 10; ctx.shadowColor = color;
             ctx.strokeRect(-r * 0.9, -r * 0.75, r * 1.8, r * 1.5);
             ctx.beginPath(); ctx.moveTo(-r * 0.9, -r * 0.2); ctx.lineTo(r * 0.9, -r * 0.2); ctx.stroke();
             break;
           }
           case 'klucz_sektora': {
-            // M15, per obj-klucz (bow + shaft + teeth).
-            const color = '#68F5FC';
+            // M15 (bow + shaft + teeth) -- pink, T2 size tier.
+            const color = '#FF54AD';
             ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
             ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.15, r * 0.4, 0, Math.PI * 2); ctx.stroke();
             ctx.beginPath();
@@ -1481,9 +1486,8 @@ class CampaignEntity {
             break;
           }
           case 'emiter': {
-            // M21, per obj-emiter (concentric rings + core dot). Exact
-            // catalog cyan (was the brighter #68F5FC klucz shade).
-            const color = '#50F0FA';
+            // M21 (concentric rings + core dot) -- pink, T2 size tier.
+            const color = '#FF54AD';
             ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 12; ctx.shadowColor = color;
             ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.stroke();
             ctx.globalAlpha *= 0.5;
@@ -1494,9 +1498,11 @@ class CampaignEntity {
             break;
           }
           default: {
-            // Flag on a pole -- original generic marker look, kept as a
-            // fallback for any marker without a mission-specific glyph.
-            const color = this.route === 'B' ? '#9875FF' : '#EFCB63';
+            // Flag on a pole -- fallback for any marker without a
+            // mission-specific glyph. Pink, T2 size tier -- route A/B
+            // (M07/M10's medal) is already spatially distinct, so it
+            // doesn't need its own color too.
+            const color = '#FF54AD';
             ctx.strokeStyle = ctx.fillStyle = color;
             ctx.shadowBlur = 14; ctx.shadowColor = color;
             ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
@@ -1526,12 +1532,10 @@ class CampaignEntity {
           ctx.stroke();
           break;
         }
-        // Base hue per obj-wezel (violet) / obj-zasilacz (cyan) -- was a
-        // shared gold/white active-state scheme that matched neither.
-        // Active/inactive is now dimmer opacity on the same hue instead of
-        // swapping to a different color, so the object still reads as
-        // "this is a węzeł/zasilacz" even once it's used up.
-        const color = this.glyph === 'zasilacz' ? '#50F0FA' : '#9875FF';
+        // Green, T3 size tier for both węzeł and zasilacz. Active/inactive
+        // is dimmer opacity on the same hue instead of swapping color, so
+        // the object still reads as itself even once it's used up.
+        const color = '#46D99A';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
         if (!this.active) ctx.globalAlpha *= 0.35;
@@ -1558,9 +1562,8 @@ class CampaignEntity {
         break;
       }
       case 'pylon': {
-        // Both pylon (M08) and lustro (M16) are violet per the catalog
-        // (obj-pylon, obj-lustro) -- was cyan/white, matching neither.
-        const color = '#9875FF';
+        // Both pylon (M08) and lustro (M16) are green, T3 size tier.
+        const color = '#46D99A';
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
         if (!this.active) ctx.globalAlpha *= 0.35;
@@ -1586,9 +1589,9 @@ class CampaignEntity {
       }
       case 'landmark': {
         const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        const isFinale = this.landmarkId === 'rdzen_miasta_glowny';
-        const baseColor = isFinale ? '#EFCB63' : '#50F0FA';
-        const color = this.unlocked ? baseColor : 'rgba(239, 203, 99, 0.35)';
+        // Gold, T4 size tier -- the biggest object class, same hue for
+        // every landmark (silhouette below is what tells them apart).
+        const color = this.unlocked ? '#EFCB63' : 'rgba(239, 203, 99, 0.35)';
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.6;
         ctx.shadowBlur = this.unlocked ? 20 + 8 * pulse : 6;
@@ -3044,32 +3047,44 @@ class Game {
 
   campaignTierIndex(tierId) { return CAMPAIGN_TIERS.findIndex(t => t.id === tierId) + 1; }
 
-  /** Base display color for a campaign entity, matching
-   *  vector_hole_full_object_catalog.svg's per-object stroke colors exactly
-   *  (not the old type-only palette, which didn't match the catalog for
-   *  most glyphs). Used by CampaignEntity.draw() and here for particle
-   *  bursts/minimap dots, so an object's eat-feedback and minimap dot are
-   *  always the same color as its own icon. Mostek is the one glyph with a
-   *  real two-color state (unpowered/powered) instead of a single catalog
-   *  color, since the catalog only shows one static pose. */
+  /** Which glyph (if any) an 'eatCount' goal is specifically about --
+   *  player feedback: eating some OTHER object of the same type/size must
+   *  not count toward a mission that names one particular object (e.g.
+   *  M09 wants skrzynia, not any prop). Every spawned entity of the goal's
+   *  type sharing one glyph (the normal case -- see MARKER_GLYPHS/
+   *  PROP_GLYPHS/NODE_GLYPHS) means the goal is that specific object, so
+   *  progress is scoped to it; a genuinely mixed spawn (M02's random
+   *  street props for a "any street element" goal) has no single glyph,
+   *  so progress keeps counting the whole type as before. */
+  computeCampaignGoalGlyph() {
+    const g = this.mission.def.goal;
+    if (g.type !== 'eatCount') return null;
+    const glyphs = new Set(this.campaignEntities.filter(e => e.type === g.entityType).map(e => e.glyph || null));
+    return glyphs.size === 1 ? [...glyphs][0] : null;
+  }
+
+  /** Base display color for a campaign entity, coded by SIZE (player
+   *  feedback: colors should tell you how big something is -- smallest
+   *  cyan, bigger pink, bigger still green, biggest gold -- same
+   *  small/medium/large convention as Arena's TIERS, not a rainbow of
+   *  per-object identity colors). Reuses CAMPAIGN_ENTITY_STATS' `minTier`
+   *  (how grown the player must be to eat it) as the size rung: T1
+   *  fragment/kapsuła, T2 elementy uliczne/znaczniki, T3 pojazdy/węzły/
+   *  pylony, T4 landmarki. Which *specific* object the mission wants is
+   *  shown separately by draw()'s pulsing gold `isGoal` ring, so the fill
+   *  color is free to encode size instead of identity. Gate glyphs
+   *  (brama/portal/pas przelotu) and mostek stay state-colored -- they're
+   *  structural, never eaten by growth, so a size color doesn't apply. */
   campaignEntityColor(e) {
     if (!e) return '#fff';
+    if (e.type === 'gate') {
+      if (e.glyph === 'portal') return e.isGateOpen ? '#68F5FC' : '#9875FF';
+      return !e.isGateOpen ? 'rgba(255,255,255,0.2)' : (e.isGateTelegraphing ? '#EFCB63' : '#50F0FA');
+    }
     if (e.glyph === 'mostek') return e.mostekPowered ? '#50F0FA' : '#9875FF';
-    const glyphColors = {
-      znacznik_ogrodu: '#46D99A', paleta: '#50F0FA', krysztal: '#9875FF', witryna: '#9875FF',
-      klucz_sektora: '#68F5FC', emiter: '#50F0FA',
-      latarnia: '#50F0FA', lawka: '#50F0FA', drzewo: '#50F0FA', kiosk: '#50F0FA', pacholek: '#50F0FA',
-      skrzynia: '#50F0FA', modul_dachowy: '#50F0FA',
-      wezel: '#9875FF', zasilacz: '#50F0FA',
-      pylon: '#9875FF', lustro: '#9875FF',
-      konwoj: '#819BB1', samochod: '#50F0FA',
-      portal: '#9875FF', pas_przelotu: '#819BB1'
-    };
-    if (e.glyph && glyphColors[e.glyph]) return glyphColors[e.glyph];
-    return {
-      fragment: '#50F0FA', prop: '#50F0FA', vehicle: '#50F0FA', capsule: '#50F0FA',
-      marker: '#EFCB63', node: '#9875FF', pylon: '#9875FF', landmark: '#EFCB63', gate: '#50F0FA'
-    }[e.type] || '#fff';
+    const sizeColors = { 1: '#50F0FA', 2: '#FF54AD', 3: '#46D99A', 4: '#EFCB63' };
+    const stats = CAMPAIGN_ENTITY_STATS[e.type];
+    return stats ? sizeColors[stats.minTier] : '#fff';
   }
 
   /** Which campaign entity type(s) the *current* mission goal is about --
@@ -3370,6 +3385,7 @@ class Game {
       markersRoutes: new Set(),
       clustersVisited: new Set(),
       eatenByType: {},
+      eatenByGlyph: {},
       bestCombo: 0,
       comboBroken: false,
       pylonPhaseStarted: false,
@@ -3384,6 +3400,7 @@ class Game {
     };
 
     this.buildCampaignMission(def);
+    this.mission.goalGlyph = this.computeCampaignGoalGlyph();
 
     if (this.campaignSpawn) {
       this.player.x = this.campaignSpawn.x;
@@ -3494,6 +3511,7 @@ class Game {
     }
 
     m.eatenByType[e.type] = (m.eatenByType[e.type] || 0) + 1;
+    if (e.glyph) m.eatenByGlyph[e.glyph] = (m.eatenByGlyph[e.glyph] || 0) + 1;
   }
 
   /** Mostek (M19, OBJECT_CATALOG_SPEC.md §2.2): the only real gameplay
@@ -3732,7 +3750,11 @@ class Game {
     let progress = 0, target = 1, done = false;
     switch (g.type) {
       case 'eatCount':
-        progress = m.eatenByType[g.entityType] || 0;
+        // Task 3 fix: a mission with one specific target glyph (the normal
+        // case) only counts eating THAT object; a genuinely mixed-glyph
+        // spawn (e.g. M02's random street props) keeps counting the whole
+        // type, since there's no single object it could mean.
+        progress = m.goalGlyph ? (m.eatenByGlyph[m.goalGlyph] || 0) : (m.eatenByType[g.entityType] || 0);
         target = g.count;
         done = progress >= target;
         break;
@@ -3936,7 +3958,11 @@ class Game {
     this.drawGrid(ctx);
     this.drawCampaignBoundary(ctx);
     const goalTypes = this.campaignGoalEntityTypes();
-    for (const e of this.campaignEntities) e.draw(ctx, goalTypes.has(e.type));
+    const goalGlyph = this.mission ? this.mission.goalGlyph : null;
+    for (const e of this.campaignEntities) {
+      const isGoal = goalTypes.has(e.type) && (!goalGlyph || e.glyph === goalGlyph);
+      e.draw(ctx, isGoal);
+    }
     this.drawScannerTarget(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const r of this.ripples) r.draw(ctx);
@@ -3990,7 +4016,7 @@ class Game {
       const big = e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate';
       const size = big ? 3 : 1.6;
       const p = toMini(e.x, e.y);
-      ctx.fillStyle = e.type === 'landmark' ? '#EFCB63' : this.campaignEntityColor(e);
+      ctx.fillStyle = this.campaignEntityColor(e);
       ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
     }
     for (const bot of this.bots) {
