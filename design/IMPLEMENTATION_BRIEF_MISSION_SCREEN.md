@@ -1,5 +1,10 @@
 # Vector Hole — Brief wdrożeniowy: rozbudowa ekranu misji
 
+> **STATUS: zaimplementowane (Vector Hole v6).** Ten brief opisuje
+> *intencję* zadania (jak GDD) — nie edytuję go wstecznie. Co faktycznie
+> powstało i jakie decyzje podjęto tam, gdzie brief zostawiał otwarte
+> pytania: `docs/VECTRE_V6_PLAN.md`.
+
 > **To jest zadanie budowy nowej funkcjonalności, nie opis tego, co już
 > działa.** `GAME_MECHANICS_AUDIT.md` pokazuje, że dziś (po PR #12) wszystkie
 > 24 misje kampanii są uproszczone do 4 uniwersalnych szablonów celu
