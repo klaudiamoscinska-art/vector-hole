@@ -1600,30 +1600,40 @@ html, body {
 
 /* ---- In-round campaign HUD: replaces the size/score/standings panels ---- */
 
+/* Compact + docked beside the pause button (not below it, full-width, the
+   way it launched) -- player feedback: it covered too much of the play
+   area. Every child rule below is scoped under #hud-goal so it only
+   shrinks this panel, not the shared .hud-panel/.hud-label sizing Arena's
+   panels also use. */
 #hud-goal {
-  top: calc(58px + env(safe-area-inset-top, 0px));
-  left: calc(12px + env(safe-area-inset-left, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: calc(58px + env(safe-area-inset-left, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
-  max-width: 320px;
+  max-width: 220px;
+  padding: 8px 12px;
+}
+
+#hud-goal .hud-label {
+  font-size: 9px;
 }
 
 /* Section headers ("CEL RUNDY" / "POZIOM POŻERANIA") -- same small-caps
    label look as .hud-label, just its own line instead of paired with a
    value, so each section of the goal panel reads as its own block. */
 .hud-goal-section-title {
-  font-size: 11px;
-  letter-spacing: 1px;
+  font-size: 9px;
+  letter-spacing: 0.6px;
   font-weight: 700;
   color: var(--neon-cyan);
   text-shadow: 0 0 6px rgba(80, 240, 250, 0.4);
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .hud-goal-divider {
   height: 1px;
   background: var(--panel-border);
   opacity: 0.5;
-  margin: 10px 0;
+  margin: 5px 0;
 }
 
 /* One icon+label+count row per goal shape (two for activateAndDevour --
@@ -1632,19 +1642,19 @@ html, body {
 .mission-goal-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .mission-goal-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
 }
 
 .mission-goal-icon {
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 13px;
+  height: 13px;
 }
 
 .mission-goal-icon svg {
@@ -1654,13 +1664,14 @@ html, body {
 
 .mission-goal-text {
   flex: 1;
-  font-size: 13px;
+  font-size: 10.5px;
+  line-height: 1.25;
   color: var(--text-main);
 }
 
 .mission-goal-count {
   flex: none;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--neon-gold);
@@ -1670,36 +1681,40 @@ html, body {
 /* Growth-tier badge -- "T1 · Fragmenty energii" -- bigger/bolder than a
    plain .hud-label since it's the section's headline value, not a caption. */
 .hud-value.tier {
-  font-size: 15px;
+  font-size: 11px;
   color: var(--neon-cyan);
   text-shadow: 0 0 8px rgba(80, 240, 250, 0.5);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .hud-value.tier .tier-id {
-  font-size: 20px;
+  font-size: 14px;
 }
 
 #missionTierNextLabel {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+#hud-goal .tier-progress-track {
+  margin: 2px 0 0;
 }
 
 .hud-goal-footer {
   display: flex;
   align-items: stretch;
-  gap: 12px;
+  gap: 8px;
 }
 
 .hud-goal-footer .hud-value {
-  font-size: 15px;
+  font-size: 11px;
 }
 
 .hud-goal-footer-item {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .hud-goal-footer-item:last-child {
@@ -1714,16 +1729,18 @@ html, body {
 }
 
 .hud-goal-footer-icon {
-  width: 14px;
-  height: 14px;
-  vertical-align: -2px;
-  margin-right: 3px;
+  width: 11px;
+  height: 11px;
+  vertical-align: -1px;
+  margin-right: 2px;
   color: currentColor;
 }
 
 .nela-toast {
   position: absolute;
-  top: calc(140px + env(safe-area-inset-top, 0px));
+  /* Cleared below #hud-goal's new, shorter, top-docked footprint (was
+     tuned for the old full-width panel that ran much taller). */
+  top: calc(175px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%) translateY(-6px);
   max-width: min(88vw, 380px);
