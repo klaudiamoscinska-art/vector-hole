@@ -3418,6 +3418,7 @@ class Game {
     document.getElementById('hud-topright').classList.add('hidden');
     document.getElementById('hud-timer').classList.add('hidden');
     document.getElementById('hud-goal').classList.remove('hidden');
+    document.getElementById('hud-goal-stats').classList.remove('hidden');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
 
@@ -4161,6 +4162,7 @@ class Game {
     document.getElementById('hud-topright').classList.remove('hidden');
     document.getElementById('hud-timer').classList.remove('hidden');
     document.getElementById('hud-goal').classList.add('hidden');
+    document.getElementById('hud-goal-stats').classList.add('hidden');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
 
