@@ -1609,7 +1609,7 @@ html, body {
   top: calc(12px + env(safe-area-inset-top, 0px));
   left: calc(58px + env(safe-area-inset-left, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
-  max-width: 220px;
+  max-width: 190px;
   padding: 8px 12px;
 }
 
@@ -1678,54 +1678,57 @@ html, body {
   text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
 }
 
-/* Growth-tier badge -- "T1 · Fragmenty energii" -- bigger/bolder than a
-   plain .hud-label since it's the section's headline value, not a caption. */
+/* POZIOM POŻERANIA as a whole reads as secondary to CEL RUNDY above it --
+   every size in here is a notch below that section's (9px title/10.5px
+   text vs. this section's 7.5px title/8px tier line), including the "T1"
+   badge, which used to jump up to 14px and dominate the panel. */
+.hud-goal-tier-section .hud-goal-section-title {
+  font-size: 7.5px;
+  margin-bottom: 2px;
+}
+
 .hud-value.tier {
-  font-size: 11px;
+  font-size: 8px;
   color: var(--neon-cyan);
   text-shadow: 0 0 8px rgba(80, 240, 250, 0.5);
   margin-bottom: 2px;
 }
 
 .hud-value.tier .tier-id {
-  font-size: 14px;
+  font-size: 9.5px;
 }
 
 #missionTierNextLabel {
   display: block;
+  font-size: 7.5px;
   margin-bottom: 2px;
 }
 
-#hud-goal .tier-progress-track {
-  margin: 2px 0 0;
+.hud-goal-tier-section .tier-progress-track {
+  height: 3px;
+  margin: 0;
 }
 
-.hud-goal-footer {
+/* Czas/Wynik split into their own small panel to the right of #hud-goal
+   (see index.html) -- a narrow vertical stack, not a horizontal row, since
+   there isn't much width left beside the goal panel on a phone screen. */
+#hud-goal-stats {
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: calc(256px + env(safe-area-inset-left, 0px));
+  padding: 8px 10px;
   display: flex;
-  align-items: stretch;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.hud-goal-footer .hud-value {
-  font-size: 11px;
-}
-
-.hud-goal-footer-item {
-  flex: 1;
+.hud-goal-stats-item {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
-.hud-goal-footer-item:last-child {
-  align-items: flex-end;
-  text-align: right;
-}
-
-.hud-goal-footer-sep {
-  width: 1px;
-  background: var(--panel-border);
-  opacity: 0.5;
+.hud-goal-stats-item .hud-value {
+  font-size: 12px;
 }
 
 .hud-goal-footer-icon {
