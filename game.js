@@ -533,7 +533,11 @@ const CAMPAIGN_POWERS = [
 // reward (see CAMPAIGN_MISSIONS' reward.unlockDistrict), so `locked` here
 // only ever matters for a fresh save before Plac Neonów is cleared.
 const DISTRICTS = [
-  { id: 'plac', name: 'Plac Neonów', order: 1, missions: ['M01', 'M02', 'M03', 'M04'] },
+  // M00 is a prologue tutorial (see CAMPAIGN_MISSIONS), not one of the
+  // GDD's 24 authored missions -- Plac Neonów has 5 entries here instead
+  // of the usual 4 per district so it can sit first without renumbering
+  // M01-M24 or their district arrays.
+  { id: 'plac', name: 'Plac Neonów', order: 1, missions: ['M00', 'M01', 'M02', 'M03', 'M04'] },
   { id: 'park', name: 'Park Impulsów', order: 2, missions: ['M05', 'M06', 'M07', 'M08'] },
   { id: 'port', name: 'Port Syntez', order: 3, missions: ['M09', 'M10', 'M11', 'M12'] },
   { id: 'galeria', name: 'Galeria Glitch', order: 4, missions: ['M13', 'M14', 'M15', 'M16'] },
@@ -547,6 +551,31 @@ const DISTRICTS = [
 // checkCampaignGoal(); numeric balance is explicitly a "propozycja do
 // sprawdzenia" per the GDD's own disclaimer, not a measured target.
 const CAMPAIGN_MISSIONS = [
+  // Prologue tutorial, not part of the GDD's 24-mission list. Player
+  // feedback: Arena should only ever show objects/mechanics the player has
+  // actually learned in Campaign -- unlocking Arena straight off M01 (which
+  // only teaches 'fragment') would leave nothing else eatable to grow into
+  // (T2+ objects stay locked until discovered), a softlock. M00 exists
+  // purely to front-load one T1/T2/T3 object each plus the "you can eat a
+  // smaller rival" mechanic (new to Campaign -- see handleCampaignCollisions())
+  // before Arena unlocks on it (see isArenaUnlocked()).
+  {
+    id: 'M00', district: 'plac', order: 0, name: 'Zanim zaczniesz', timeLimit: 60,
+    goal: {
+      type: 'tutorialChecklist',
+      label: 'Poznaj podstawy pochłaniania',
+      steps: [
+        { entityType: 'fragment', count: 3, label: 'Pochłoń 3 fragmenty energii' },
+        { entityType: 'prop', count: 2, label: 'Pochłoń 2 elementy uliczne' },
+        { entityType: 'vehicle', count: 1, label: 'Pochłoń 1 pojazd' },
+        { type: 'eatRival', count: 1, label: 'Pochłoń mniejszego rywala' }
+      ]
+    },
+    medal: { type: 'timeUnder', seconds: 45, label: 'Ukończ w 45 s' },
+    setup: { fragments: 10, props: 6, vehicles: 3, bots: 1 },
+    nela: { start: 'Zanim ruszysz na miasto — kilka podstaw.', success: 'Gotowa. Miasto czeka.' },
+    reward: { coins: 20 }
+  },
   {
     id: 'M01', district: 'plac', order: 1, name: 'Pierwszy apetyt', timeLimit: 60,
     goal: { type: 'eatCount', entityType: 'fragment', count: 12, label: 'Pochłoń 12 fragmentów energii' },
@@ -766,7 +795,7 @@ function campaignDistrictOf(missionId) {
 }
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 7;
+const SAVE_SCHEMA_VERSION = 8;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -878,7 +907,9 @@ function defaultSave() {
     mission: { dateKey: null, completed: false },
     // v6: campaign progress. unlockedDistricts always includes the first
     // district so a fresh save can play Mission 01 with no prior unlock.
-    campaign: { unlockedDistricts: ['plac'], completed: {}, medals: {} },
+    // v8: discoveredTypes/discoveredHoleEating track what Arena is allowed
+    // to show (see createObjects()) -- empty until M00 teaches them.
+    campaign: { unlockedDistricts: ['plac'], completed: {}, medals: {}, discoveredTypes: [], discoveredHoleEating: false },
     // v7: two more Warsztat cosmetic categories (GDD 4.0 §5.3) alongside
     // owned/selected (ring skins) and auras (trail).
     effects: { owned: ['classic'], selected: 'classic' },
@@ -975,6 +1006,27 @@ function migrateSave(data) {
       effects: data.effects || { owned: ['classic'], selected: 'classic' },
       overdriveSkins: data.overdriveSkins || { owned: ['classic'], selected: 'classic' },
       badges: data.badges || []
+    };
+  }
+
+  if (data.schemaVersion < 8) {
+    // v7 -> v8: Arena's object spawns are now gated by what the player has
+    // actually discovered in Campaign (player feedback: don't show
+    // elements/mechanics not yet learned) -- see createObjects() and the
+    // new M00 tutorial mission. A save that already has campaign progress
+    // or has played Arena before clearly already knows all of this; only a
+    // save with neither starts genuinely empty and re-earns discovery
+    // through M00 like a brand-new player would.
+    const alreadyExperienced = Object.keys(data.campaign.completed || {}).length > 0
+      || (data.stats && data.stats.runsPlayed > 0);
+    data = {
+      ...data,
+      schemaVersion: 8,
+      campaign: {
+        ...data.campaign,
+        discoveredTypes: data.campaign.discoveredTypes || (alreadyExperienced ? Object.keys(CAMPAIGN_ENTITY_STATS) : []),
+        discoveredHoleEating: data.campaign.discoveredHoleEating || alreadyExperienced
+      }
     };
   }
 
@@ -3074,8 +3126,15 @@ class Game {
   }
 
   /** GDD 4.0 §5.5: Arena's round (GRAJ 2:00 / Wyzwanie dnia) unlocks after
-   *  clearing M01 -- the campaign is the onboarding per §1's Player Journey. */
-  isArenaUnlocked() { return !!this.save.campaign.completed['M01']; }
+   *  clearing M00 -- the campaign is the onboarding per §1's Player
+   *  Journey. M00 (not M01) is the gate specifically because it's the
+   *  mission that guarantees a T1/T2/T3 object plus rival-eating are all
+   *  discovered (see save.campaign.discoveredTypes/discoveredHoleEating),
+   *  which createObjects() needs to avoid spawning an empty Arena. M01 is
+   *  also accepted so a save from before M00 existed (already migrated to
+   *  full discovery -- see migrateSave()'s v8 branch) doesn't relock an
+   *  Arena it already had. */
+  isArenaUnlocked() { return !!(this.save.campaign.completed['M00'] || this.save.campaign.completed['M01']); }
 
   /** GDD 4.0 §5.5: Wyzwanie dnia tab (and, per the same row, "full meta
    *  navigation") unlocks after clearing M04. */
@@ -3095,9 +3154,19 @@ class Game {
       : { x: rand(padding, WORLD_W - padding), y: rand(padding, WORLD_H - padding) };
   }
 
+  /** Arena only spawns object types the player has actually discovered in
+   *  Campaign (player feedback: don't show elements/mechanics the player
+   *  hasn't learned yet) -- see resolveCampaignEntity()'s discovery
+   *  tracking and M00's tutorial goal, which is also what isArenaUnlocked()
+   *  gates on. The `size === 0` fallback only matters for a corrupted/
+   *  hand-edited save, since a real player can't reach Arena without M00
+   *  (which guarantees fragment/prop/vehicle) already discovered. */
   createObjects(rng) {
     this.objects = [];
+    const discovered = new Set(this.save.campaign.discoveredTypes || []);
+    if (discovered.size === 0) Object.keys(CAMPAIGN_ENTITY_STATS).forEach(t => discovered.add(t));
     Object.keys(TIERS).forEach(tierName => {
+      if (tierName !== 'portal' && !discovered.has(tierName)) return;
       for (let i = 0; i < TIERS[tierName].count; i++) {
         this.objects.push(new WorldObject(tierName, rng));
       }
@@ -3248,6 +3317,16 @@ class Game {
           { ...this.campaignGoalIcon('landmark'), label: g.landmarkLabel || 'Pochłoń cel', progress: (m.landmark && m.landmark.consumed) ? 1 : 0, target: 1 }
         ];
       }
+      // M00's tutorial: one row per step (an entity-count step, or the
+      // "eat a smaller rival" step, which has no CampaignEntity type so it
+      // gets its own fixed icon/color instead of routing through
+      // campaignGoalIcon()).
+      case 'tutorialChecklist':
+        return g.steps.map(step => {
+          const progress = step.type === 'eatRival' ? m.rivalsEaten : (m.eatenByType[step.entityType] || 0);
+          const iconDef = step.type === 'eatRival' ? { icon: CARD_ICONS.target, color: '#ff3860' } : this.campaignGoalIcon(step.entityType);
+          return { ...iconDef, label: step.label, progress: Math.min(progress, step.count), target: step.count };
+        });
       default:
         return [];
     }
@@ -3262,6 +3341,7 @@ class Game {
     if (g.type === 'eatCount') types.add(g.entityType);
     if (g.type === 'gatesPassed') types.add('gate');
     if (g.type === 'activateAndDevour') { types.add(g.activator); types.add('landmark'); }
+    if (g.type === 'tutorialChecklist') for (const step of g.steps) if (step.entityType) types.add(step.entityType);
     return types;
   }
 
@@ -3550,6 +3630,7 @@ class Game {
       progressTarget: 1,
       nodesDisabled: 0,
       pylonsCharged: 0,
+      rivalsEaten: 0,
       gatesPassed: new Set(),
       markersRoutes: new Set(),
       clustersVisited: new Set(),
@@ -3647,6 +3728,15 @@ class Game {
     this.player.score += Math.round(stats.score * multiplier);
     this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true);
     this.vibrate(e.type === 'landmark' ? [60, 40, 60] : 30);
+
+    // Arena's world only spawns object types the player has actually
+    // discovered in Campaign (see createObjects()) -- record the first
+    // time each type is eaten, regardless of whether the mission is ever
+    // completed, since discovery is about exposure, not mission success.
+    if (!this.save.campaign.discoveredTypes.includes(e.type)) {
+      this.save.campaign.discoveredTypes.push(e.type);
+      saveGame(this.save);
+    }
 
     const newTier = this.campaignPlayerTier();
     if (newTier.id !== m.tierId) {
@@ -3798,7 +3888,8 @@ class Game {
       if (this.player.invulnerable || bot.invulnerable) continue;
       const d = dist(this.player.x, this.player.y, bot.x, bot.y);
       const touchDist = Math.max(this.player.radius, bot.radius) * 0.75;
-      if (d < touchDist && bot.radius > this.player.radius * EAT_HOLE_RATIO) {
+      if (d >= touchDist) continue;
+      if (bot.radius > this.player.radius * EAT_HOLE_RATIO) {
         // GDD 07: contact with a bigger bot costs a fraction of current
         // growth and breaks combo, with brief safe invulnerability — not
         // Arena's shrink-to-base-radius (campaign's early missions must
@@ -3813,6 +3904,30 @@ class Game {
         this.spawnParticles(this.player.x, this.player.y, '#ff3860', 20);
         this.vibrate([30, 40, 30]);
         this.analytics.track('mission_bot_hit', { missionId: m.def.id });
+      } else if (this.player.radius > bot.radius * EAT_HOLE_RATIO) {
+        // Rivals are prey too, once the player has outgrown them -- Campaign
+        // bots were pure threats before (a documented simplification), the
+        // same "bigger absorbs smaller" rule Arena already has, taught
+        // explicitly by M00's tutorial goal. No CampaignEntity stats exist
+        // for a generic rival, so growth/score are a fixed mid-tier-sized
+        // reward instead of a stats table lookup.
+        const multiplier = this.registerCombo();
+        this.player.growFromArea(Math.PI * bot.radius * bot.radius * GROW_K_HOLE);
+        m.growthUnits += 10;
+        this.player.score += Math.round(bot.radius * 2 * multiplier);
+        m.rivalsEaten++;
+        this.rivalsEatenThisRun++;
+        this.triggerEatFeedback(bot.x, bot.y, bot.edgeColor, bot.radius, true);
+        this.vibrate(40);
+        this.analytics.track('mission_rival_eaten', { missionId: m.def.id, rival: bot.name });
+        if (!this.save.campaign.discoveredHoleEating) {
+          this.save.campaign.discoveredHoleEating = true;
+          saveGame(this.save);
+        }
+        bot.radius = CONFIG.hole.baseRadius * 1.1;
+        const p = this.randomInCampaignBounds(150);
+        bot.x = p.x; bot.y = p.y;
+        bot.invulnerableUntil = performance.now() + INVULN_TIME * 1000;
       }
     }
   }
@@ -3943,6 +4058,15 @@ class Game {
         target = g.count + 1; // the activators, plus the landmark bite itself
         done = !!(m.landmark && m.landmark.consumed);
         progress = done ? target : Math.min(activated, g.count);
+        break;
+      }
+      case 'tutorialChecklist': {
+        target = g.steps.length;
+        progress = g.steps.filter(step => {
+          const stepProgress = step.type === 'eatRival' ? m.rivalsEaten : (m.eatenByType[step.entityType] || 0);
+          return stepProgress >= step.count;
+        }).length;
+        done = progress >= target;
         break;
       }
     }
