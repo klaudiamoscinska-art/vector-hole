@@ -2145,6 +2145,29 @@ body.touch-input #gameCanvas {
   color: var(--nc-cyan);
 }
 
+.btn-danger {
+  background: rgba(255, 84, 173, 0.1);
+  color: var(--nc-pink);
+  border-color: var(--nc-pink);
+}
+
+.btn-danger:hover {
+  background: rgba(255, 84, 173, 0.18);
+  box-shadow: 0 4px 14px rgba(255, 84, 173, 0.3);
+}
+
+/* Destructive account action, visually separated from the normal profile
+   actions above it so it isn't mistaken for one of them. */
+.profile-danger-zone {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--nc-panel-border);
+  display: flex;
+  justify-content: center;
+}
+
 /* Outlined gold "watch an ad" style — design/screens/wynik_rundy.svg's
    cta-rewarded-ad is a dark panel with a gold outline, not a filled gold
    button (that treatment is reserved for the CTA gradient above). */
