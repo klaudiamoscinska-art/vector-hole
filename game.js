@@ -263,25 +263,34 @@ class Analytics {
   }
 }
 
-// Subtypes/line-art match design/reference/asset_bible.svg's 8-object
-// bestiary 1:1 (latarnia/ławka/drzewo small; samochód/kiosk/skrzynia/
-// fontanna medium) plus 'skyscraper' (Arena's own "large tier" building,
-// not in the bible) and 'portal' (the bible's violet functional accent,
-// used only for the Overdrive "portal_rain" bonus wave — see
-// spawnPortalRain()).
-// `minSizeTier` indexes CONFIG.sizeTiers: a hole must have grown to at
-// least that tier (by radius) before objects of this TIERS group become
-// eatable at all, regardless of the EAT_OBJ_RATIO size check -- otherwise
-// a starting-size hole (radius 22) already satisfies the ratio check
-// against most 'medium' objects (up to radius 20) and can eat them
-// immediately, which read as a bug (player feedback: "I can eat T2 objects
-// right away, I should have to grow into them first, exactly like
-// Campaign's minTier gate"). small stays tier 0 (T1) so the starting
-// experience is unchanged; see getSizeTierIndex()/canEatWorldObjectTier().
+// Arena's object bestiary mirrors Campaign's CampaignEntity types 1:1
+// (player feedback: the two modes should use "dokładnie takie same
+// obiekty" -- exactly the same objects -- with Campaign as the reference
+// for every property, not just color). Each TIERS key matches one
+// CAMPAIGN_ENTITY_STATS type: color/radius/value/minSizeTier are taken
+// directly from Campaign's own values (SIZE_TIER_COLORS, entityRadius,
+// stats.score, stats.minTier), so an object is visually and mechanically
+// the same object in both modes. `subtypes` still gives multi-glyph types
+// (prop) visual variety, matching Campaign's own PROP_STREET_GLYPHS.
+// Arena-only objects with no Campaign counterpart (the old 'fontanna'/
+// 'skyscraper' pickups) were removed rather than kept as a divergent
+// bestiary; 'portal' remains a separate, ungated entry -- it's not part
+// of the shared bestiary, only ever spawned by spawnPortalRain() during
+// Overdrive (see that method's own doc comment).
+// `minSizeTier` indexes CONFIG.sizeTiers (T1..T5): a hole must have grown
+// to at least that tier before objects of this type become eatable at
+// all, regardless of the EAT_OBJ_RATIO size check -- see
+// getSizeTierIndex()/canEatWorldObjectTier().
 const TIERS = {
-  small: { color: '#50F0FA', minR: 6, maxR: 9, value: 1, subtypes: ['latarnia', 'drzewo', 'lawka'], count: 90, minSizeTier: 0 },
-  medium: { color: '#FF54AD', minR: 14, maxR: 20, value: 5, subtypes: ['samochod', 'kiosk', 'skrzynia', 'fontanna'], count: 45, minSizeTier: 1 },
-  large: { color: '#46D99A', minR: 28, maxR: 42, value: 20, subtypes: ['skyscraper'], count: 16, minSizeTier: 2 }
+  fragment: { color: '#50F0FA', minR: 7, maxR: 7, value: 5, subtypes: ['fragment'], count: 60, minSizeTier: 0 },
+  capsule: { color: '#50F0FA', minR: 10, maxR: 10, value: 15, subtypes: ['kapsula'], count: 30, minSizeTier: 0 },
+  prop: { color: '#FF54AD', minR: 13, maxR: 13, value: 15, subtypes: ['latarnia', 'drzewo', 'lawka', 'kiosk', 'skrzynia'], count: 35, minSizeTier: 1 },
+  marker: { color: '#FF54AD', minR: 12, maxR: 12, value: 50, subtypes: ['znacznik'], count: 10, minSizeTier: 1 },
+  vehicle: { color: '#46D99A', minR: 19, maxR: 19, value: 30, subtypes: ['samochod'], count: 8, minSizeTier: 2 },
+  node: { color: '#46D99A', minR: 16, maxR: 16, value: 50, subtypes: ['wezel'], count: 4, minSizeTier: 2 },
+  pylon: { color: '#46D99A', minR: 15, maxR: 15, value: 50, subtypes: ['pylon'], count: 4, minSizeTier: 2 },
+  landmark: { color: '#9875FF', minR: 46, maxR: 46, value: 160, subtypes: ['landmark'], count: 2, minSizeTier: 3 },
+  portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, subtypes: ['portal'], count: 0, minSizeTier: 0 }
 };
 
 const BOT_NAME_POOL = [
@@ -1148,7 +1157,32 @@ class WorldObject {
     const r = this.radius;
 
     switch (this.subtype) {
-      // ---- small tier: design/reference/asset_bible.svg "LATARNIA" ----
+      // ---- T1: "FRAGMENT ENERGII" (diamond -- same as Campaign's fragment) ----
+      case 'fragment':
+        ctx.beginPath();
+        ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0);
+        ctx.closePath();
+        ctx.fill();
+        break;
+
+      // ---- T1: "KAPSUŁA IMPULSU" (pill split down the middle -- same as
+      // Campaign's capsule) ----
+      case 'kapsula':
+        ctx.save();
+        ctx.rotate(Math.PI / 4);
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.5, -r);
+        ctx.lineTo(r * 0.5, -r);
+        ctx.arc(r * 0.5, 0, r, -Math.PI / 2, Math.PI / 2);
+        ctx.lineTo(-r * 0.5, r);
+        ctx.arc(-r * 0.5, 0, r, Math.PI / 2, -Math.PI / 2);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r * 0.5, 0); ctx.lineTo(r * 0.5, 0); ctx.stroke();
+        ctx.restore();
+        break;
+
+      // ---- T2: design/reference/asset_bible.svg "LATARNIA" ----
       case 'latarnia':
         ctx.beginPath();
         ctx.moveTo(0, r);
@@ -1168,7 +1202,7 @@ class WorldObject {
         ctx.fill();
         break;
 
-      // ---- small tier: "DRZEWO" (trunk + hollow canopy, no more double-circle) ----
+      // ---- T2: "DRZEWO" (trunk + hollow canopy, no more double-circle) ----
       case 'drzewo':
         ctx.beginPath();
         ctx.moveTo(0, r * 0.15);
@@ -1179,7 +1213,7 @@ class WorldObject {
         ctx.stroke();
         break;
 
-      // ---- small tier: "ŁAWKA" (bench — seat rails + 4 legs) ----
+      // ---- T2: "ŁAWKA" (bench — seat rails + 4 legs) ----
       case 'lawka':
         ctx.beginPath();
         ctx.moveTo(-r, -r * 0.2);
@@ -1197,21 +1231,7 @@ class WorldObject {
         ctx.stroke();
         break;
 
-      // ---- medium tier: "SAMOCHÓD" (body + roof arc + wheels -- same
-      // silhouette as Campaign's 'vehicle' glyph, so a car reads as the
-      // same object in both modes). ----
-      case 'samochod':
-        ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
-        ctx.beginPath();
-        ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
-        ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-
-      // ---- medium tier: "KIOSK" (triangular roof + body + window) ----
+      // ---- T2: "KIOSK" (triangular roof + body + window) ----
       case 'kiosk':
         ctx.beginPath();
         ctx.moveTo(-r, -r * 0.375);
@@ -1223,7 +1243,7 @@ class WorldObject {
         ctx.strokeRect(-r * 0.375, 0, r * 0.75, r * 0.5);
         break;
 
-      // ---- medium tier: "SKRZYNIA" (crate — box + lid seam) ----
+      // ---- T2: "SKRZYNIA" (crate — box + lid seam) ----
       case 'skrzynia':
         ctx.strokeRect(-r, -r * 0.75, r * 2, r * 1.5);
         ctx.beginPath();
@@ -1234,47 +1254,58 @@ class WorldObject {
         ctx.stroke();
         break;
 
-      // ---- medium tier: "FONTANNA" (basin + rim + spout + spray) ----
-      case 'fontanna':
+      // ---- T2: "ZNACZNIK" (flag on a pole -- same as Campaign's default
+      // marker glyph) ----
+      case 'znacznik':
+        ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
         ctx.beginPath();
-        ctx.ellipse(0, r * 0.78, r, r * 0.28, 0, 0, Math.PI * 2);
+        ctx.moveTo(-r * 0.6, -r); ctx.lineTo(r * 0.8, -r * 0.55); ctx.lineTo(-r * 0.6, -r * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        break;
+
+      // ---- T3: "SAMOCHÓD" (body + roof arc + wheels -- same silhouette
+      // as Campaign's 'vehicle' glyph, so a car reads as the same object
+      // in both modes). ----
+      case 'samochod':
+        ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
+        ctx.beginPath();
+        ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0);
         ctx.stroke();
         ctx.beginPath();
-        ctx.ellipse(0, r * 0.22, r * 0.56, r * 0.17, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
+        ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      // ---- T3: "WĘZEŁ" (ring + X -- same as Campaign's default node
+      // glyph, always drawn "active" since Arena objects have no
+      // activation state). ----
+      case 'wezel':
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(0, r * 0.22);
-        ctx.lineTo(0, -r * 0.78);
-        ctx.moveTo(0, -r * 0.78);
-        ctx.quadraticCurveTo(-r * 0.44, -r * 0.33, -r * 0.78, r * 0.33);
-        ctx.moveTo(0, -r * 0.78);
-        ctx.quadraticCurveTo(r * 0.44, -r * 0.33, r * 0.78, r * 0.33);
+        ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, r * 0.4);
+        ctx.moveTo(r * 0.4, -r * 0.4); ctx.lineTo(-r * 0.4, r * 0.4);
         ctx.stroke();
         break;
 
-      // ---- large tier: "big eat" building -- not in the bible's 8-object
-      // bestiary, distinct silhouette for the biggest tier. A tapered
-      // setback tower + spire + window bands, replacing the old generic
-      // nested-square-and-grid placeholder (the same "old default" look
-      // Campaign's landmarks moved away from in v6 -- see
-      // CampaignEntity.draw()'s landmark case doc comment). ----
-      case 'skyscraper': {
-        ctx.strokeRect(-r * 0.85, r * 0.25, r * 1.7, r * 0.75);  // base block
-        ctx.strokeRect(-r * 0.55, -r * 0.35, r * 1.1, r * 0.6);  // mid block
-        ctx.strokeRect(-r * 0.25, -r * 0.75, r * 0.5, r * 0.4);  // top block
-        ctx.beginPath();
-        ctx.moveTo(0, -r * 0.75);
-        ctx.lineTo(0, -r);
-        ctx.stroke();
-        ctx.globalAlpha *= 0.6;
-        for (const y of [r * 0.45, r * 0.7, r * 0.95]) {
-          ctx.beginPath();
-          ctx.moveTo(-r * 0.85, y);
-          ctx.lineTo(r * 0.85, y);
-          ctx.stroke();
-        }
+      // ---- T3: "PYLON" (mast + charge ring -- same as Campaign's default
+      // pylon glyph). ----
+      case 'pylon':
+        ctx.beginPath(); ctx.moveTo(0, -r * 0.3); ctx.lineTo(0, r); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.35, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha *= 0.5;
+        ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.6, 0, Math.PI * 2); ctx.stroke();
         break;
-      }
+
+      // ---- T4: "LANDMARK" (generic double-ring -- Arena has no
+      // per-mission silhouette identity, so this reuses Campaign's own
+      // shared fallback shape, always drawn at full brightness since
+      // Arena has no locked/unlocked state). ----
+      case 'landmark':
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.stroke();
+        break;
 
       // ---- Overdrive "portal_rain" bonus objects only (see
       // spawnPortalRain()) — the bible's violet functional-accent glyph. ----
@@ -4984,12 +5015,13 @@ class Game {
    *  pool once eaten, so no cleanup/tracking is needed after the round. */
   spawnPortalRain() {
     for (let i = 0; i < CONFIG.overdrive.bonusObjectCount; i++) {
-      const obj = new WorldObject('medium');
+      // TIERS.portal has minSizeTier 0 -- deliberately ungated, since this
+      // bonus wave is a comeback opportunity for whoever's behind (GDD
+      // 4.2), including a player who never grew past T1.
+      const obj = new WorldObject('portal');
       const pos = this.randomWorldPos(obj.radius + 20);
       obj.x = pos.x;
       obj.y = pos.y;
-      obj.subtype = 'portal';
-      obj.color = '#9875FF';
       obj.value = CONFIG.overdrive.bonusObjectValue;
       this.objects.push(obj);
     }
@@ -5225,17 +5257,18 @@ class Game {
     ctx.fillRect(px, py, size, size);
     ctx.strokeRect(px, py, size, size);
 
-    // Every object tier gets a dot, not just 'large' -- previously the
-    // minimap only showed large (green) objects, which read as "the map
-    // only tracks green things" (player feedback).
+    // Every object type gets a dot, not just the biggest ones -- previously
+    // the minimap only showed large (green) objects, which read as "the map
+    // only tracks green things" (player feedback). Sizing matches
+    // drawCampaignMinimap()'s own convention (node/pylon/landmark bigger
+    // than the rest) now that Arena's TIERS keys are the same type names.
     for (const obj of this.objects) {
       const tierDef = TIERS[obj.tier];
-      const dotSize = obj.tier === 'large' ? 2.6 : obj.tier === 'medium' ? 2 : 1.3;
-      ctx.globalAlpha = obj.tier === 'large' ? 0.85 : obj.tier === 'medium' ? 0.65 : 0.45;
+      const big = obj.tier === 'node' || obj.tier === 'pylon' || obj.tier === 'landmark';
+      const dotSize = big ? 3 : 1.6;
       ctx.fillStyle = tierDef.color;
       ctx.fillRect(px + obj.x * scale - dotSize / 2, py + obj.y * scale - dotSize / 2, dotSize, dotSize);
     }
-    ctx.globalAlpha = 1;
     for (const bot of this.bots) {
       ctx.fillStyle = bot.edgeColor;
       ctx.beginPath();
