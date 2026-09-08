@@ -560,21 +560,31 @@ const CAMPAIGN_MISSIONS = [
   // smaller rival" mechanic (new to Campaign -- see handleCampaignCollisions())
   // before Arena unlocks on it (see isArenaUnlocked()).
   {
-    id: 'M00', district: 'plac', order: 0, name: 'Zanim zaczniesz', timeLimit: 60,
+    id: 'M00', district: 'plac', order: 0, name: 'Zanim zaczniesz', timeLimit: 90,
+    // Step counts aren't arbitrary -- they match CAMPAIGN_TIERS' own growth
+    // thresholds (T2 at 10 units, T3 at 30) so the goal the player sees is
+    // never smaller than what canEatWorldObjectTier()-equivalent gating
+    // (handleCampaignEating()'s `tier < e.stats.minTier`) actually requires
+    // to unlock the next step's object (player feedback: needed "more blue
+    // dots" than the old count of 3, which unlocked nothing yet). fragment
+    // growth=1/unit -> 10 fragments reaches T2 (unlocks prop); prop
+    // growth=3/unit -> 7 more (10+7*3=31) reaches T3 (unlocks vehicle).
     goal: {
       type: 'tutorialChecklist',
       label: 'Poznaj podstawy pochłaniania',
       steps: [
-        { entityType: 'fragment', count: 3, label: 'Pochłoń 3 fragmenty energii' },
-        { entityType: 'prop', count: 2, label: 'Pochłoń 2 elementy uliczne' },
+        { entityType: 'fragment', count: 10, label: 'Pochłoń 10 fragmentów energii' },
+        { entityType: 'prop', count: 7, label: 'Pochłoń 7 elementów ulicznych' },
         { entityType: 'vehicle', count: 1, label: 'Pochłoń 1 pojazd' },
         { type: 'eatRival', count: 1, label: 'Pochłoń mniejszego rywala' }
       ]
     },
-    medal: { type: 'timeUnder', seconds: 45, label: 'Ukończ w 45 s' },
-    setup: { fragments: 10, props: 6, vehicles: 3, bots: 1 },
+    medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 70 s' },
+    // A couple more of each spawned than required (buffer, not everything
+    // has to be reachable) since Campaign entities don't respawn mid-mission.
+    setup: { fragments: 12, props: 9, vehicles: 3, bots: 1 },
     nela: {
-      start: 'Zanim ruszysz na miasto: zjedz kilka fragmentów energii, potem element uliczny i pojazd. Na koniec — dotknij mniejszego rywala, żeby go pochłonąć.',
+      start: 'Zanim ruszysz na miasto: pochłoń fragmenty energii, aż urośniesz na tyle, by zjeść coś większego — najpierw element uliczny, potem pojazd. Na koniec dotknij mniejszego rywala, żeby go pochłonąć.',
       success: 'Gotowa. Miasto czeka.'
     },
     reward: { coins: 20 }
@@ -2177,6 +2187,7 @@ class Game {
     this.activeMutations = new Set();
     this.evolutionOffersTriggered = new Set();
     this.evolutionPending = false;
+    this.introPending = false;
     this.evolutionAutoPickTimer = null;
     this.magnetUntil = 0;
     this.speedBoostUntil = 0;
@@ -2416,6 +2427,7 @@ class Game {
       this.showScreen('runSetupScreen');
     });
     document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
+    document.getElementById('btnTutorialIntroStart').addEventListener('click', () => this.dismissTutorialIntro());
     document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
     document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
@@ -3121,11 +3133,13 @@ class Game {
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
     document.getElementById('resetProfileConfirm').classList.add('hidden');
+    document.getElementById('tutorialIntroOverlay').classList.add('hidden');
+    this.introPending = false;
     this.renderBottomNav(id);
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
@@ -3646,6 +3660,7 @@ class Game {
 
     this.activeMutations = new Set();
     this.evolutionPending = false;
+    this.introPending = false;
     clearTimeout(this.evolutionAutoPickTimer);
     this.speedBoostUntil = 0;
     this.scannerTimer = 0;
@@ -3710,7 +3725,8 @@ class Game {
 
     this.running = true;
     this.state = GameState.PLAYING;
-    this.showNelaToast(def.nela.start);
+    if (def.goal.type === 'tutorialChecklist') this.showTutorialIntro(def.nela.start);
+    else this.showNelaToast(def.nela.start);
     this.updateCampaignHUD();
     this.analytics.track('mission_start', { missionId: def.id, district: def.district });
 
@@ -4149,6 +4165,23 @@ class Game {
     requestAnimationFrame(() => el.classList.add('visible'));
     clearTimeout(this.nelaTimer);
     this.nelaTimer = setTimeout(() => el.classList.remove('visible'), CONFIG.campaign.nelaDisplaySeconds * 1000);
+  }
+
+  /** M00's opening instructions, unlike every other mission's auto-fading
+   *  NELA toast: a blocking overlay that only closes on tap, freezing the
+   *  round via introPending (loop()'s same skip-update()-entirely
+   *  mechanism as the evolution offer) so the player reads at their own
+   *  pace and the clock/entities don't start until they're ready
+   *  (player feedback: "gracz decyduje kiedy zaczyna"). */
+  showTutorialIntro(text) {
+    this.introPending = true;
+    document.getElementById('tutorialIntroText').textContent = text;
+    document.getElementById('tutorialIntroOverlay').classList.remove('hidden');
+  }
+
+  dismissTutorialIntro() {
+    this.introPending = false;
+    document.getElementById('tutorialIntroOverlay').classList.add('hidden');
   }
 
   updateCampaignHUD() {
@@ -5667,8 +5700,9 @@ class Game {
       // are skipped entirely (not just fed dt=0) so collision/eating
       // checks can't keep re-firing every frame against positions that are
       // frozen but still overlapping (e.g. a bot already touching the
-      // player when the offer opens).
-      if (this.evolutionPending) {
+      // player when the offer opens). introPending (M00's blocking intro,
+      // see showTutorialIntro()) freezes the same way.
+      if (this.evolutionPending || this.introPending) {
         if (this.mode === 'campaign') this.renderCampaign(now / 1000); else this.render(now / 1000);
       } else if (this.mode === 'campaign') {
         this.updateCampaign(rawDt);
