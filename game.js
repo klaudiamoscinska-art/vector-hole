@@ -573,7 +573,10 @@ const CAMPAIGN_MISSIONS = [
     },
     medal: { type: 'timeUnder', seconds: 45, label: 'Ukończ w 45 s' },
     setup: { fragments: 10, props: 6, vehicles: 3, bots: 1 },
-    nela: { start: 'Zanim ruszysz na miasto — kilka podstaw.', success: 'Gotowa. Miasto czeka.' },
+    nela: {
+      start: 'Zanim ruszysz na miasto: zjedz kilka fragmentów energii, potem element uliczny i pojazd. Na koniec — dotknij mniejszego rywala, żeby go pochłonąć.',
+      success: 'Gotowa. Miasto czeka.'
+    },
     reward: { coins: 20 }
   },
   {
@@ -898,7 +901,10 @@ function defaultSave() {
     auras: { owned: ['none'], selected: 'none' },
     displayName: null, // guest-first: never required before the first run (GDD P6)
     guestId: generateId('guest'),
-    settings: { inputMode: 'thumbpad', sensitivity: 1, haptics: true, minimap: 'auto' },
+    // Player feedback: default to legacy direct-drag (chase the pointer/
+    // touch point) rather than the Floating Thumb Pad -- still switchable
+    // in Ustawienia (syncControlsPanel()'s "Tryb sterowania" toggle).
+    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto' },
     stats: { runsPlayed: 0, bestArenaScore: 0 },
     // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
     // coreCharge is the 0-100 progress toward the *next* level.
@@ -2409,6 +2415,7 @@ class Game {
       this.populateRunToolGrid();
       this.showScreen('runSetupScreen');
     });
+    document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
     document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
     document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
@@ -3013,9 +3020,14 @@ class Game {
     const arenaUnlocked = this.isArenaUnlocked();
     document.getElementById('btnStart').disabled = !arenaUnlocked;
     document.getElementById('btnDaily').disabled = !arenaUnlocked;
+    // Locked: hide the (disabled) normal CTAs entirely and offer a direct
+    // way into the M00 tutorial instead of just a hint pointing at
+    // Dzielnice (player feedback -- a button beats a disabled button).
+    document.getElementById('hubCtaRow').classList.toggle('hidden', !arenaUnlocked);
+    document.getElementById('btnStartTutorial').classList.toggle('hidden', arenaUnlocked);
     const hint = document.getElementById('hubUnlockHint');
     hint.classList.toggle('hidden', arenaUnlocked);
-    if (!arenaUnlocked) hint.textContent = 'Ukończ misję M01 w Dzielnicach, aby odblokować GRAJ 2:00.';
+    if (!arenaUnlocked) hint.textContent = 'Ukończ krótki tutorial powyżej, aby odblokować GRAJ 2:00.';
 
     const { dateKey } = dailySeedForDate(new Date());
     const { mission } = missionForDate(new Date());
@@ -3666,7 +3678,11 @@ class Game {
       landmark: null,
       evolutionOffered: false,
       ended: false,
-      _wasComboActive: false
+      _wasComboActive: false,
+      // M00's step-by-step NELA guidance (see updateTutorialGuidance()) --
+      // harmless no-ops for every other goal type.
+      tutorialStepDone: def.goal.type === 'tutorialChecklist' ? def.goal.steps.map(() => false) : [],
+      tutorialRivalHintShown: false
     };
 
     this.buildCampaignMission(def);
@@ -4095,6 +4111,37 @@ class Game {
     if (done) this.endCampaignMission(true);
   }
 
+  /** M00-only: explicit step-by-step NELA guidance on top of the CEL RUNDY
+   *  checklist (player feedback: the tutorial should clearly show what to
+   *  do next), since a plain progress list is easy to miss mid-round.
+   *  Fires a toast the moment each step is individually completed (naming
+   *  the next undone one), plus a one-time just-in-time nudge the instant
+   *  the player first outgrows the rival bot -- "eat a smaller rival" is a
+   *  brand-new mechanic here, not something CEL RUNDY alone makes obvious. */
+  updateTutorialGuidance() {
+    const m = this.mission;
+    const g = m.def.goal;
+    if (g.type !== 'tutorialChecklist' || m.ended) return;
+
+    g.steps.forEach((step, i) => {
+      if (m.tutorialStepDone[i]) return;
+      const stepProgress = step.type === 'eatRival' ? m.rivalsEaten : (m.eatenByType[step.entityType] || 0);
+      if (stepProgress < step.count) return;
+      m.tutorialStepDone[i] = true;
+      const nextIdx = g.steps.findIndex((s, j) => !m.tutorialStepDone[j] && j !== i);
+      this.showNelaToast(nextIdx === -1 ? 'Wszystko gotowe. Miasto czeka.' : `Świetnie! Teraz: ${g.steps[nextIdx].label.toLowerCase()}.`);
+    });
+
+    if (!m.tutorialRivalHintShown) {
+      const rivalIdx = g.steps.findIndex(s => s.type === 'eatRival');
+      const bot = this.bots[0];
+      if (rivalIdx !== -1 && !m.tutorialStepDone[rivalIdx] && bot && this.player.radius > bot.radius * EAT_HOLE_RATIO) {
+        m.tutorialRivalHintShown = true;
+        this.showNelaToast('Jesteś już większa od rywala — dotknij go, żeby go pochłonąć!');
+      }
+    }
+  }
+
   showNelaToast(text) {
     const el = document.getElementById('nelaToast');
     el.textContent = 'NELA: „' + text + '”';
@@ -4168,6 +4215,7 @@ class Game {
     this.checkCampaignEvolutionOffer();
     this.checkCampaignGoal();
     if (m.ended) return;
+    this.updateTutorialGuidance();
 
     this.particles.forEach(p => p.update(dt));
     this.particles = this.particles.filter(p => !p.dead);
