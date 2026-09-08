@@ -145,14 +145,17 @@ const CONFIG = {
     // match Arena's style (see drawCampaignGrid()), not its actual extent.
     bounds: { minX: 800, maxX: 2200, minY: 800, maxY: 2200 }
   },
-  // Size tiers used for analytics (`size_tier` events) and future evolution
-  // visuals (GDD P2). Not yet shown in the HUD or tied to any visual change.
+  // Size tiers used for analytics (`size_tier` events), the game-over result
+  // badge, and (since Arena's in-round HUD was unified with Campaign's tier
+  // strip) the live "T1"/"T2".../missionTierBadge. `shortId`/`color` mirror
+  // CAMPAIGN_TIERS' T1-T5 exactly (same cyan/pink/green/violet/silver) so a
+  // given tier number reads as the same color in both modes.
   sizeTiers: [
-    { id: 'spark', minRadius: 0, label: 'T1 · MAŁY' },
-    { id: 'pulse', minRadius: 30, label: 'T2 · ŚREDNI' },
-    { id: 'core', minRadius: 45, label: 'T3 · DUŻY' },
-    { id: 'vortex', minRadius: 65, label: 'T4 · WIELKI' },
-    { id: 'singularity', minRadius: 90, label: 'T5 · KOLOSALNY' }
+    { id: 'spark', minRadius: 0, label: 'T1 · MAŁY', shortId: 'T1', color: '#50F0FA' },
+    { id: 'pulse', minRadius: 30, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
+    { id: 'core', minRadius: 45, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
+    { id: 'vortex', minRadius: 65, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
+    { id: 'singularity', minRadius: 90, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
   ],
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
@@ -3439,11 +3442,13 @@ class Game {
     this.mode = 'campaign';
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
-    document.getElementById('hud-topleft').classList.add('hidden');
     document.getElementById('hud-topright').classList.add('hidden');
-    document.getElementById('hud-timer').classList.add('hidden');
     document.getElementById('hud-goal').classList.remove('hidden');
     document.getElementById('hud-tier-strip').classList.remove('hidden');
+    // Arena reserves extra right-side clearance in the tier strip for its
+    // (wider) standings panel -- not needed here since CEL RUNDY's box is
+    // narrower and it's what the strip's default spacing was tuned for.
+    document.getElementById('hud-tier-strip').classList.remove('clears-standings');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
 
@@ -4202,11 +4207,15 @@ class Game {
     this.mode = 'arena';
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
-    document.getElementById('hud-topleft').classList.remove('hidden');
     document.getElementById('hud-topright').classList.remove('hidden');
-    document.getElementById('hud-timer').classList.remove('hidden');
     document.getElementById('hud-goal').classList.add('hidden');
-    document.getElementById('hud-tier-strip').classList.add('hidden');
+    // Arena now reuses Campaign's compact tier-strip (Czas/tier badge/Wynik)
+    // instead of its own separate timer ring + size/score panel (player
+    // feedback: the two modes' in-round HUD should look and behave the
+    // same); only the standings panel on the right stays Arena-specific,
+    // since Arena has no mission goal to show there.
+    document.getElementById('hud-tier-strip').classList.remove('hidden');
+    document.getElementById('hud-tier-strip').classList.add('clears-standings');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
 
@@ -5103,26 +5112,27 @@ class Game {
     }
   }
 
+  /** Arena's in-round HUD reuses the same tier-strip markup as Campaign's
+   *  updateCampaignHUD() (Czas/tier bar+badge/Wynik) -- only the standings
+   *  panel on the right is Arena-specific, in place of Campaign's CEL RUNDY
+   *  box, since Arena rounds have no mission goal to show there. */
   updateHUD() {
-    document.getElementById('timerValue').textContent = Math.ceil(this.timeRemaining);
-    const timerWarning = this.timeRemaining <= 15;
-    document.getElementById('timerValue').classList.toggle('warning', this.timeRemaining <= 10);
-    document.getElementById('timerRing').classList.toggle('warning', timerWarning);
-    const ringCircumference = 169.6; // 2 * PI * r(27), matches the SVG circle in index.html
-    const timeFraction = clamp(this.timeRemaining / ROUND_TIME, 0, 1);
-    document.getElementById('timerRing').style.strokeDashoffset = String(ringCircumference * (1 - timeFraction));
-
-    document.getElementById('sizeValue').textContent = Math.round(this.player.radius);
-    document.getElementById('scoreValue').textContent = this.player.score;
+    document.getElementById('missionTimerValue').textContent = Math.ceil(this.timeRemaining);
+    document.getElementById('missionScoreValue').textContent = this.player.score;
 
     const tiers = CONFIG.sizeTiers;
     const tierIdx = tiers.findIndex(t => t.id === this.lastSizeTierId);
-    const current = tiers[tierIdx];
+    const tier = tiers[tierIdx];
     const next = tiers[tierIdx + 1];
     const tierPct = next
-      ? clamp((this.player.radius - current.minRadius) / (next.minRadius - current.minRadius), 0, 1) * 100
+      ? clamp((this.player.radius - tier.minRadius) / (next.minRadius - tier.minRadius), 0, 1) * 100
       : 100;
-    document.getElementById('tierProgressBar').style.width = tierPct + '%';
+    document.getElementById('missionTierBar').style.width = tierPct + '%';
+    const badge = document.getElementById('missionTierBadge');
+    badge.textContent = tier.shortId;
+    badge.style.color = tier.color;
+    badge.style.textShadow = `0 0 6px ${tier.color}`;
+    badge.title = `${tier.label}${next ? ` · Postęp do ${next.shortId}` : ' · Poziom maksymalny'}`;
 
     const ranked = rankHoles([this.player, ...this.bots]);
     const place = ranked.indexOf(this.player) + 1;
