@@ -961,6 +961,22 @@ function defaultSave() {
   };
 }
 
+/** Maps a CAMPAIGN_MISSIONS `setup` block to the TIERS/CAMPAIGN_ENTITY_STATS
+ *  type(s) it actually spawns (see migrateSave()'s v8 branch). `gates` is
+ *  intentionally omitted -- Brama has no eatable TIERS/Arena equivalent. */
+function entityTypesFromMissionSetup(setup) {
+  const types = [];
+  if (setup.fragments) types.push('fragment');
+  if (setup.props) types.push('prop');
+  if (setup.vehicles) types.push('vehicle');
+  if (setup.capsuleWaves || setup.capsulesPerWave) types.push('capsule');
+  if (setup.markers) types.push('marker');
+  if (setup.nodes) types.push('node');
+  if (setup.pylons) types.push('pylon');
+  if (setup.landmark) types.push('landmark');
+  return types;
+}
+
 /** Upgrades any older save shape to SAVE_SCHEMA_VERSION, preserving player
  *  progress. Add a new `if (data.schemaVersion < N)` branch per future
  *  schema change instead of replacing this function. */
@@ -1056,19 +1072,41 @@ function migrateSave(data) {
     // v7 -> v8: Arena's object spawns are now gated by what the player has
     // actually discovered in Campaign (player feedback: don't show
     // elements/mechanics not yet learned) -- see createObjects() and the
-    // new M00 tutorial mission. A save that already has campaign progress
-    // or has played Arena before clearly already knows all of this; only a
-    // save with neither starts genuinely empty and re-earns discovery
-    // through M00 like a brand-new player would.
-    const alreadyExperienced = Object.keys(data.campaign.completed || {}).length > 0
-      || (data.stats && data.stats.runsPlayed > 0);
+    // new M00 tutorial mission. A save that has played Arena before (back
+    // when it spawned every TIERS type unconditionally) has genuinely
+    // already seen the full bestiary there, so it gets full discovery. But
+    // a save with *only* campaign progress used to also get the full
+    // bestiary just for finishing any one completed mission -- that was a
+    // bug (reported: T4/T5 objects like the landmark showing up in Arena
+    // after growing large, despite never having touched a landmark/node/
+    // pylon mission in Campaign): completing e.g. M01 (fragment-only)
+    // instantly unlocked everything. Fixed by deriving discoveredTypes from
+    // the `setup` of each mission the save has actually completed --
+    // exactly the types that mission's own Arena-mirrored bestiary
+    // (see WorldObject's doc comment) spawned for it.
+    const playedArenaBefore = !!(data.stats && data.stats.runsPlayed > 0);
+    const completedIds = Object.keys(data.campaign.completed || {});
+    let derivedTypes = [];
+    if (playedArenaBefore) {
+      derivedTypes = Object.keys(CAMPAIGN_ENTITY_STATS);
+    } else if (completedIds.length > 0) {
+      const derived = new Set();
+      completedIds.forEach(id => {
+        const mission = CAMPAIGN_MISSIONS.find(m => m.id === id);
+        if (mission && mission.setup) entityTypesFromMissionSetup(mission.setup).forEach(t => derived.add(t));
+      });
+      derivedTypes = Array.from(derived);
+    }
     data = {
       ...data,
       schemaVersion: 8,
       campaign: {
         ...data.campaign,
-        discoveredTypes: data.campaign.discoveredTypes || (alreadyExperienced ? Object.keys(CAMPAIGN_ENTITY_STATS) : []),
-        discoveredHoleEating: data.campaign.discoveredHoleEating || alreadyExperienced
+        discoveredTypes: data.campaign.discoveredTypes || derivedTypes,
+        // Hole-eating (devouring a smaller bot) is only actually taught by
+        // M00's dedicated tutorial step -- other missions never exposed it
+        // pre-v8 (bots were pure hazards, see CampaignEntity's doc comment).
+        discoveredHoleEating: data.campaign.discoveredHoleEating || playedArenaBefore || completedIds.includes('M00')
       }
     };
   }
