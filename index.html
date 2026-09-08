@@ -319,6 +319,21 @@
     </div>
   </div>
 
+  <!-- ===================== TUTORIAL INTRO (M00 only) =====================
+       Blocking overlay shown at the tutorial mission's start -- unlike
+       every other mission's opening NELA toast (which auto-fades), this
+       one only closes on tap and freezes the round (Game.introPending,
+       same freeze mechanism as the evolution offer) until then, so the
+       player reads it at their own pace and decides when the clock
+       starts (player feedback). -->
+  <div id="tutorialIntroOverlay" class="screen overlay-screen hidden">
+    <div class="screen-inner pause-panel">
+      <h2 class="section-title">ZANIM ZACZNIESZ</h2>
+      <p class="hint-text" id="tutorialIntroText">—</p>
+      <button id="btnTutorialIntroStart" class="btn btn-primary">ZACZYNAM</button>
+    </div>
+  </div>
+
   <!-- ===================== RUN SETUP (casual run tools) ===================== -->
   <div id="runSetupScreen" class="screen hidden">
     <div class="screen-inner">
