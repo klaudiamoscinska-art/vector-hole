@@ -435,11 +435,14 @@ const MUTATIONS = [
 // still what drives rendering/eat-radius math (via Hole.growFromArea), but
 // campaign missions gate eating and the landmark "big eat" off tier, not
 // raw radius, so the numbers in the GDD table are reproduced here as-is.
-// Tier badge colors reuse SIZE_TIER_COLORS' exact hexes (T1-T4: same
-// cyan/pink/green/gold used everywhere else for object-size tiers), then
-// extend with the remaining palette color (violet) for T5 and repeat gold
-// for T6 since both T4 ("cele misji") and T6 ("cele finałowe") are the
-// same "target" flavor -- no new hardcoded neon hex introduced.
+// Tier badge colors: a full unique-per-tier set (player feedback: wanted
+// one universal color per tier, not two tiers sharing a hue). T1-T3 reuse
+// SIZE_TIER_COLORS' exact hexes (same cyan/pink/green used everywhere else
+// for object-size tiers); T4 takes the palette's violet; T6 takes gold
+// (freed up from T4). T5 uses a metallic silver that isn't part of the
+// core neon accent palette (asset_bible.svg's five hues are all spoken for
+// by the other five tiers) -- a deliberate one-off addition for this
+// six-way tier ladder, not a general-purpose palette color.
 const CAMPAIGN_TIERS = [
   { id: 'T1', name: 'Fragmenty energii', minUnits: 0, color: '#50F0FA' },
   // "Ławki i pachołki" (old name) named an object -- pachołek -- that
@@ -452,8 +455,8 @@ const CAMPAIGN_TIERS = [
   // reads as a tier badge, not an eaten-object label).
   { id: 'T2', name: 'Elementy uliczne', minUnits: 10, color: '#FF54AD' },
   { id: 'T3', name: 'Małe pojazdy', minUnits: 30, color: '#46D99A' },
-  { id: 'T4', name: 'Kioski i cele misji', minUnits: 70, color: '#EFCB63' },
-  { id: 'T5', name: 'Duże pojazdy', minUnits: 140, color: '#9875FF' },
+  { id: 'T4', name: 'Kioski i cele misji', minUnits: 70, color: '#9875FF' },
+  { id: 'T5', name: 'Duże pojazdy', minUnits: 140, color: '#CBD5E1' },
   { id: 'T6', name: 'Cele finałowe', minUnits: 250, color: '#EFCB63' }
 ];
 
