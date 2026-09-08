@@ -3949,10 +3949,19 @@ class Game {
     this.ripples.forEach(r => r.update(dt));
     this.ripples = this.ripples.filter(r => !r.dead);
 
-    this.camera.x = clamp(this.player.x, this.width / 2, WORLD_W - this.width / 2);
-    this.camera.y = clamp(this.player.y, this.height / 2, WORLD_H - this.height / 2);
-    if (WORLD_W < this.width) this.camera.x = WORLD_W / 2;
-    if (WORLD_H < this.height) this.camera.y = WORLD_H / 2;
+    // Camera is framed to CONFIG.campaign.bounds, not the shared WORLD_W/H --
+    // the player is already clamped to that smaller box (clampToCampaignBounds),
+    // so following it against the full 3000x3000 world let the camera drift
+    // past the box edge and reveal empty world beyond the pink boundary line
+    // (Arena avoids this because its own player clamp and camera clamp both
+    // use WORLD_W/H). This only changes how the camera frames the box --
+    // movement extent is untouched.
+    const cb = CONFIG.campaign.bounds;
+    const cbW = cb.maxX - cb.minX, cbH = cb.maxY - cb.minY;
+    this.camera.x = clamp(this.player.x, cb.minX + this.width / 2, cb.maxX - this.width / 2);
+    this.camera.y = clamp(this.player.y, cb.minY + this.height / 2, cb.maxY - this.height / 2);
+    if (cbW < this.width) this.camera.x = (cb.minX + cb.maxX) / 2;
+    if (cbH < this.height) this.camera.y = (cb.minY + cb.maxY) / 2;
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
     this.updateCampaignHUD();
@@ -4155,6 +4164,16 @@ class Game {
     const pp = toMini(this.player.x, this.player.y);
     ctx.fillStyle = '#50F0FA';
     ctx.beginPath(); ctx.arc(pp.x, pp.y, 3.5, 0, Math.PI * 2); ctx.fill();
+
+    // Viewport-frame hint, matching Arena's drawMinimap() -- shows the
+    // currently visible on-screen area within the bounds box.
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.strokeRect(
+      px + (this.camera.x - this.width / 2 - b.minX) * scaleX,
+      py + (this.camera.y - this.height / 2 - b.minY) * scaleY,
+      this.width * scaleX,
+      this.height * scaleY
+    );
     ctx.restore();
   }
 
