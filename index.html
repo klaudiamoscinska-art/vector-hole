@@ -253,7 +253,7 @@
         <div class="hub-level-dots" id="hubLevelDots"></div>
       </div>
 
-      <div class="hub-cta-row">
+      <div class="hub-cta-row" id="hubCtaRow">
         <button id="btnStart" class="btn btn-primary">
           GRAJ 2:00
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
@@ -263,6 +263,13 @@
           WYZWANIE DNIA
         </button>
       </div>
+      <!-- Shown instead of hub-cta-row while Arena is still locked (see
+           Game.updateCoinDisplays()) -- a direct way in, not just a disabled
+           GRAJ 2:00 and a hint text pointing at Dzielnice. -->
+      <button id="btnStartTutorial" class="btn btn-primary hidden">
+        ROZPOCZNIJ TUTORIAL
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
+      </button>
       <p id="hubUnlockHint" class="hint-text hub-unlock-hint hidden"></p>
 
       <div class="hub-info-panel">
