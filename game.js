@@ -435,8 +435,13 @@ const MUTATIONS = [
 // still what drives rendering/eat-radius math (via Hole.growFromArea), but
 // campaign missions gate eating and the landmark "big eat" off tier, not
 // raw radius, so the numbers in the GDD table are reproduced here as-is.
+// Tier badge colors reuse SIZE_TIER_COLORS' exact hexes (T1-T4: same
+// cyan/pink/green/gold used everywhere else for object-size tiers), then
+// extend with the remaining palette color (violet) for T5 and repeat gold
+// for T6 since both T4 ("cele misji") and T6 ("cele finałowe") are the
+// same "target" flavor -- no new hardcoded neon hex introduced.
 const CAMPAIGN_TIERS = [
-  { id: 'T1', name: 'Fragmenty energii', minUnits: 0 },
+  { id: 'T1', name: 'Fragmenty energii', minUnits: 0, color: '#50F0FA' },
   // "Ławki i pachołki" (old name) named an object -- pachołek -- that
   // doesn't actually exist in OBJECT_CATALOG_SPEC.md's 24-object catalog
   // (player feedback: eating a bench/lamp post/tree read as the HUD
@@ -445,11 +450,11 @@ const CAMPAIGN_TIERS = [
   // renamed to the catalog's own "elementy uliczne" term for the T2 prop
   // tier, and updateCampaignHUD() now prefixes it with the tier id so it
   // reads as a tier badge, not an eaten-object label).
-  { id: 'T2', name: 'Elementy uliczne', minUnits: 10 },
-  { id: 'T3', name: 'Małe pojazdy', minUnits: 30 },
-  { id: 'T4', name: 'Kioski i cele misji', minUnits: 70 },
-  { id: 'T5', name: 'Duże pojazdy', minUnits: 140 },
-  { id: 'T6', name: 'Cele finałowe', minUnits: 250 }
+  { id: 'T2', name: 'Elementy uliczne', minUnits: 10, color: '#FF54AD' },
+  { id: 'T3', name: 'Małe pojazdy', minUnits: 30, color: '#46D99A' },
+  { id: 'T4', name: 'Kioski i cele misji', minUnits: 70, color: '#EFCB63' },
+  { id: 'T5', name: 'Duże pojazdy', minUnits: 140, color: '#9875FF' },
+  { id: 'T6', name: 'Cele finałowe', minUnits: 250, color: '#EFCB63' }
 ];
 
 // growth/score/minimum-tier per campaign entity type (GDD 07: growth gain
@@ -3906,6 +3911,8 @@ class Game {
     document.getElementById('missionTierBar').style.width = pct + '%';
     const badge = document.getElementById('missionTierBadge');
     badge.textContent = tier.id;
+    badge.style.color = tier.color;
+    badge.style.textShadow = `0 0 6px ${tier.color}`;
     badge.title = `${tier.name}${next ? ` · Postęp do ${next.id}` : ' · Poziom maksymalny'}`;
 
     document.getElementById('missionScoreValue').textContent = this.player.score;
@@ -4165,15 +4172,17 @@ class Game {
     ctx.fillStyle = '#50F0FA';
     ctx.beginPath(); ctx.arc(pp.x, pp.y, 3.5, 0, Math.PI * 2); ctx.fill();
 
-    // Viewport-frame hint, matching Arena's drawMinimap() -- shows the
-    // currently visible on-screen area within the bounds box.
+    // Viewport-frame hint: a small square centered on the camera, not a
+    // rectangle proportional to the actual (non-square) screen aspect --
+    // the bounds box is only 1400x1400, so a true proportional viewport
+    // rect reads as too big/rectangular on a 130px-square minimap (player
+    // feedback). Kept minimal and square instead, same spirit as Arena's
+    // frame (shows roughly where the camera is) without the screen-shape
+    // baggage.
+    const camMini = toMini(this.camera.x, this.camera.y);
+    const frameSize = 16;
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.strokeRect(
-      px + (this.camera.x - this.width / 2 - b.minX) * scaleX,
-      py + (this.camera.y - this.height / 2 - b.minY) * scaleY,
-      this.width * scaleX,
-      this.height * scaleY
-    );
+    ctx.strokeRect(camMini.x - frameSize / 2, camMini.y - frameSize / 2, frameSize, frameSize);
     ctx.restore();
   }
 
