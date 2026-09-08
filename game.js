@@ -1252,19 +1252,25 @@ class WorldObject {
         ctx.stroke();
         break;
 
-      // ---- large tier: "big eat" building (kept as-is; not in the bible's
-      // 8-object bestiary, distinct silhouette for the biggest tier). ----
+      // ---- large tier: "big eat" building -- not in the bible's 8-object
+      // bestiary, distinct silhouette for the biggest tier. A tapered
+      // setback tower + spire + window bands, replacing the old generic
+      // nested-square-and-grid placeholder (the same "old default" look
+      // Campaign's landmarks moved away from in v6 -- see
+      // CampaignEntity.draw()'s landmark case doc comment). ----
       case 'skyscraper': {
-        ctx.strokeRect(-r * 0.8, -r * 0.8, r * 1.6, r * 1.6);
-        ctx.strokeRect(-r * 0.5, -r * 0.5, r, r);
-        const grid = 3;
-        for (let i = 1; i < grid; i++) {
-          const off = -r * 0.8 + (i / grid) * r * 1.6;
+        ctx.strokeRect(-r * 0.85, r * 0.25, r * 1.7, r * 0.75);  // base block
+        ctx.strokeRect(-r * 0.55, -r * 0.35, r * 1.1, r * 0.6);  // mid block
+        ctx.strokeRect(-r * 0.25, -r * 0.75, r * 0.5, r * 0.4);  // top block
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.75);
+        ctx.lineTo(0, -r);
+        ctx.stroke();
+        ctx.globalAlpha *= 0.6;
+        for (const y of [r * 0.45, r * 0.7, r * 0.95]) {
           ctx.beginPath();
-          ctx.moveTo(off, -r * 0.8);
-          ctx.lineTo(off, r * 0.8);
-          ctx.moveTo(-r * 0.8, off);
-          ctx.lineTo(r * 0.8, off);
+          ctx.moveTo(-r * 0.85, y);
+          ctx.lineTo(r * 0.85, y);
           ctx.stroke();
         }
         break;
