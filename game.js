@@ -117,19 +117,29 @@ const CONFIG = {
     // growthUnits -> Hole area gain. Since growFromArea() adds this
     // directly to radius^2 (the *pi cancels out), radius = sqrt(baseRadius^2
     // + growthUnits*growthAreaScale) -- e.g. at 6 (old value) a player who'd
-    // earned all 70 growth units needed to unlock a T4 landmark (radius 46)
-    // was only radius ~29, visibly *smaller* than the thing it had just
-    // grown enough to eat (player feedback: "the hole doesn't feel like
-    // it's growing to eat bigger things"). At 16, that same player is
-    // radius ~39 -- comfortably past every T1-T3 object it's already
-    // outgrown (landmark aside, which stays a deliberate "big eat" that's
-    // still bigger than the player, same as Arena's giant objects).
+    // earned all 70 growth units needed to unlock a T4 landmark was only
+    // radius ~29, visibly *smaller* than the thing it had just grown
+    // enough to eat (player feedback: "the hole doesn't feel like it's
+    // growing to eat bigger things"). At 16, growth within a tier reaches
+    // and then passes that tier's own entity size before the *next* tier's
+    // threshold -- see entityRadius's own doc comment for why those are
+    // deliberately sized bigger than an un-grown hole in the first place.
     growthAreaScale: 16,
     hitPenaltyFraction: 0.25,  // GDD 07: contact with a bigger bot costs 25% of current growth
     hitInvulnMs: 2000,
+    // T2+ entities (prop/marker/vehicle/node/pylon/landmark) are sized
+    // bigger than a hole that hasn't reached their unlock tier yet
+    // (player feedback: "rozmiary ikonek... przed urośnięciem dziury
+    // powinny być od niej większe" -- before growing, they should look too
+    // big to eat, not smaller-and-inviting while still tier-locked). T1
+    // fragment/capsule stay small since they're eatable from the very
+    // first frame, no lock to visually signal.
     entityRadius: {
-      fragment: 7, prop: 13, vehicle: 19, capsule: 10, marker: 12,
-      node: 16, pylon: 15, landmark: 46, gate: 18
+      fragment: 7, capsule: 10,
+      prop: 26, marker: 25,
+      vehicle: 38, node: 36, pylon: 36,
+      landmark: 56,
+      gate: 18
     },
     gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
     nelaDisplaySeconds: 4.5,
@@ -284,12 +294,12 @@ class Analytics {
 const TIERS = {
   fragment: { color: '#50F0FA', minR: 7, maxR: 7, value: 5, subtypes: ['fragment'], count: 60, minSizeTier: 0 },
   capsule: { color: '#50F0FA', minR: 10, maxR: 10, value: 15, subtypes: ['kapsula'], count: 30, minSizeTier: 0 },
-  prop: { color: '#FF54AD', minR: 13, maxR: 13, value: 15, subtypes: ['latarnia', 'drzewo', 'lawka', 'kiosk', 'skrzynia'], count: 35, minSizeTier: 1 },
-  marker: { color: '#FF54AD', minR: 12, maxR: 12, value: 50, subtypes: ['znacznik'], count: 10, minSizeTier: 1 },
-  vehicle: { color: '#46D99A', minR: 19, maxR: 19, value: 30, subtypes: ['samochod'], count: 8, minSizeTier: 2 },
-  node: { color: '#46D99A', minR: 16, maxR: 16, value: 50, subtypes: ['wezel'], count: 4, minSizeTier: 2 },
-  pylon: { color: '#46D99A', minR: 15, maxR: 15, value: 50, subtypes: ['pylon'], count: 4, minSizeTier: 2 },
-  landmark: { color: '#9875FF', minR: 46, maxR: 46, value: 160, subtypes: ['landmark'], count: 2, minSizeTier: 3 },
+  prop: { color: '#FF54AD', minR: 26, maxR: 26, value: 15, subtypes: ['latarnia', 'drzewo', 'lawka', 'kiosk', 'skrzynia'], count: 35, minSizeTier: 1 },
+  marker: { color: '#FF54AD', minR: 25, maxR: 25, value: 50, subtypes: ['znacznik'], count: 10, minSizeTier: 1 },
+  vehicle: { color: '#46D99A', minR: 38, maxR: 38, value: 30, subtypes: ['samochod'], count: 8, minSizeTier: 2 },
+  node: { color: '#46D99A', minR: 36, maxR: 36, value: 50, subtypes: ['wezel'], count: 4, minSizeTier: 2 },
+  pylon: { color: '#46D99A', minR: 36, maxR: 36, value: 50, subtypes: ['pylon'], count: 4, minSizeTier: 2 },
+  landmark: { color: '#9875FF', minR: 56, maxR: 56, value: 160, subtypes: ['landmark'], count: 2, minSizeTier: 3 },
   portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, subtypes: ['portal'], count: 0, minSizeTier: 0 }
 };
 
