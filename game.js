@@ -269,10 +269,19 @@ class Analytics {
 // not in the bible) and 'portal' (the bible's violet functional accent,
 // used only for the Overdrive "portal_rain" bonus wave — see
 // spawnPortalRain()).
+// `minSizeTier` indexes CONFIG.sizeTiers: a hole must have grown to at
+// least that tier (by radius) before objects of this TIERS group become
+// eatable at all, regardless of the EAT_OBJ_RATIO size check -- otherwise
+// a starting-size hole (radius 22) already satisfies the ratio check
+// against most 'medium' objects (up to radius 20) and can eat them
+// immediately, which read as a bug (player feedback: "I can eat T2 objects
+// right away, I should have to grow into them first, exactly like
+// Campaign's minTier gate"). small stays tier 0 (T1) so the starting
+// experience is unchanged; see getSizeTierIndex()/canEatWorldObjectTier().
 const TIERS = {
-  small: { color: '#50F0FA', minR: 6, maxR: 9, value: 1, subtypes: ['latarnia', 'drzewo', 'lawka'], count: 90 },
-  medium: { color: '#FF54AD', minR: 14, maxR: 20, value: 5, subtypes: ['samochod', 'kiosk', 'skrzynia', 'fontanna'], count: 45 },
-  large: { color: '#46D99A', minR: 28, maxR: 42, value: 20, subtypes: ['skyscraper'], count: 16 }
+  small: { color: '#50F0FA', minR: 6, maxR: 9, value: 1, subtypes: ['latarnia', 'drzewo', 'lawka'], count: 90, minSizeTier: 0 },
+  medium: { color: '#FF54AD', minR: 14, maxR: 20, value: 5, subtypes: ['samochod', 'kiosk', 'skrzynia', 'fontanna'], count: 45, minSizeTier: 1 },
+  large: { color: '#46D99A', minR: 28, maxR: 42, value: 20, subtypes: ['skyscraper'], count: 16, minSizeTier: 2 }
 };
 
 const BOT_NAME_POOL = [
@@ -767,6 +776,25 @@ function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
+
+/** Index into CONFIG.sizeTiers for a given hole radius -- Arena's own
+ *  growth-tier ladder (T1-T5), used to gate which TIERS object group a
+ *  hole has grown enough to eat (see canEatWorldObjectTier()), the same
+ *  way Campaign gates CampaignEntity types by campaignPlayerTier(). */
+function getSizeTierIndex(radius) {
+  const tiers = CONFIG.sizeTiers;
+  let idx = 0;
+  for (let i = 0; i < tiers.length; i++) if (radius >= tiers[i].minRadius) idx = i;
+  return idx;
+}
+
+/** Whether a hole of the given radius has grown into the size tier a
+ *  WorldObject's TIERS group requires (small/medium/large -> T1/T2/T3),
+ *  independent of the EAT_OBJ_RATIO check against that specific object's
+ *  instance radius. */
+function canEatWorldObjectTier(radius, obj) {
+  return getSizeTierIndex(radius) >= TIERS[obj.tier].minSizeTier;
+}
 function pickUnique(arr, n, rng) {
   const pool = arr.slice();
   const out = [];
@@ -1987,7 +2015,7 @@ class Bot extends Hole {
 
     let obj = null, objDist = Infinity;
     for (const o of game.objects) {
-      if (o.eating || o.radius >= this.radius * EAT_OBJ_RATIO) continue;
+      if (o.eating || o.radius >= this.radius * EAT_OBJ_RATIO || !canEatWorldObjectTier(this.radius, o)) continue;
       const d = dist(this.x, this.y, o.x, o.y);
       if (d < 480 && d < objDist) { obj = o; objDist = d; }
     }
@@ -4727,6 +4755,7 @@ class Game {
     for (const obj of this.objects) {
       if (obj.eating) continue;
       if (obj.radius >= hole.radius * EAT_OBJ_RATIO) continue;
+      if (!canEatWorldObjectTier(hole.radius, obj)) continue;
       const d = dist(hole.x, hole.y, obj.x, obj.y);
       if (d < hole.radius * 0.85) obj.startEating(hole);
     }
@@ -4967,7 +4996,7 @@ class Game {
 
     if (now < this.magnetUntil || now < this.toolMagnetUntil) {
       for (const obj of this.objects) {
-        if (obj.eating || obj.radius >= this.player.radius * EAT_OBJ_RATIO) continue;
+        if (obj.eating || obj.radius >= this.player.radius * EAT_OBJ_RATIO || !canEatWorldObjectTier(this.player.radius, obj)) continue;
         const d = dist(this.player.x, this.player.y, obj.x, obj.y);
         if (d > 0 && d < CONFIG.evolution.magnetRadius) {
           const pull = CONFIG.evolution.magnetPull * (1 - d / CONFIG.evolution.magnetRadius);
@@ -5350,6 +5379,7 @@ class Game {
    *  trivially-eatable tiny objects). */
   canEatHighlight(obj) {
     if (obj.radius >= this.player.radius) return 0;
+    if (!canEatWorldObjectTier(this.player.radius, obj)) return 0;
     const ratio = (this.player.radius * EAT_OBJ_RATIO) / obj.radius;
     const { canEatHighlightBandLow: lo, canEatHighlightBandHigh: hi } = CONFIG.juice;
     if (ratio < lo || ratio > hi) return 0;
