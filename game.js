@@ -5466,8 +5466,14 @@ class Game {
     const tierIdx = tiers.findIndex(t => t.id === this.lastSizeTierId);
     const tier = tiers[tierIdx];
     const next = tiers[tierIdx + 1];
+    // T1's minRadius is 0, but a round always starts at BASE_RADIUS (22), so
+    // using tier.minRadius as the fill floor made the bar open ~73% full
+    // with no visible room left to show progress toward T2 (player report:
+    // "nie widać ile brakuje do kolejnego poziomu"). Floor at BASE_RADIUS
+    // instead so the bar always fills from empty at round start.
+    const floor = Math.max(tier.minRadius, BASE_RADIUS);
     const tierPct = next
-      ? clamp((this.player.radius - tier.minRadius) / (next.minRadius - tier.minRadius), 0, 1) * 100
+      ? clamp((this.player.radius - floor) / (next.minRadius - floor), 0, 1) * 100
       : 100;
     document.getElementById('missionTierBar').style.width = tierPct + '%';
     const badge = document.getElementById('missionTierBadge');
