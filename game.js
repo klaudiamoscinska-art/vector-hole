@@ -134,11 +134,15 @@ const CONFIG = {
     gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
     nelaDisplaySeconds: 4.5,
     // A 1400x1400 box centered in the shared 3000x3000 world (see
-    // buildCampaignMission) where a mission's entities are laid out and
-    // what drawCampaignMinimap() frames — keeps a 60-120s mission's travel
-    // distances between objects reasonable. NOT a movement wall: player/bot
-    // movement is bounded only by Hole's own world clamp (WORLD_W/WORLD_H),
-    // same as Arena (see randomInCampaignBounds()'s doc comment).
+    // buildCampaignMission) — the mission's actual playable area: entities
+    // spawn here, drawCampaignMinimap() frames it, and clampToCampaignBounds()
+    // holds player/bot movement to it. Player feedback (round-tripped twice):
+    // letting movement extend past this into the empty rest of the 3000x3000
+    // shared world (matching Arena's own, much larger, fully-populated world)
+    // let the player wander off "the map" into nothing, since Campaign's
+    // objects -- unlike Arena's TIERS pool -- are curated to just this box.
+    // Keep clamping movement here; only the boundary's on-screen look should
+    // match Arena's style (see drawCampaignGrid()), not its actual extent.
     bounds: { minX: 800, maxX: 2200, minY: 800, maxY: 2200 }
   },
   // Size tiers used for analytics (`size_tier` events) and future evolution
@@ -3058,20 +3062,27 @@ class Game {
      CAMPAIGN_TIERS), driven by updateCampaign()/renderCampaign() instead
      of update()/render(). Arena, Daily and their save fields are untouched. */
 
-  /** CONFIG.campaign.bounds is the curated *layout* area (where entities
-   *  spawn, and what drawCampaignMinimap() frames) -- not a movement wall.
-   *  Player/bot movement is bounded only by Hole.moveToward()/
-   *  moveDirection()'s own shared-world clamp (WORLD_W/WORLD_H), exactly
-   *  like Arena: player feedback was that Campaign's play area felt walled
-   *  in by a boundary line reached almost immediately (the old
-   *  clampToCampaignBounds() additionally clamped movement to this same
-   *  smaller box, and drawCampaignBoundary()/drawCampaignGrid() drew its
-   *  edge) -- removed so driving to an edge means the actual map edge, the
-   *  same rare, distant thing it is in Arena, while missions still spawn
-   *  their curated entity layout in this same compact area as before. */
   randomInCampaignBounds(padding) {
     const b = CONFIG.campaign.bounds;
     return { x: rand(b.minX + padding, b.maxX - padding), y: rand(b.minY + padding, b.maxY - padding) };
+  }
+
+  /** Hole.moveToward()/moveDirection() only clamp to the shared 3000x3000
+   *  world, so without this a player (or bot) could wander straight out of
+   *  the mission's much smaller CONFIG.campaign.bounds box into empty
+   *  space with none of the mission's entities in it (player feedback,
+   *  reported directly against the live game: "mogę wyjechać poza obszar
+   *  namalowany na mapie" -- the player could leave the area the mission
+   *  actually paints/populates. An earlier pass removed this clamp
+   *  entirely to make the boundary feel more distant, like Arena's --
+   *  wrong fix: Arena's world clamp matches its content's full extent
+   *  (TIERS objects spawn across all of WORLD_W/WORLD_H), Campaign's
+   *  doesn't, so widening the *clamp* without widening *where entities
+   *  spawn* just let the player drive into a real void). */
+  clampToCampaignBounds(hole) {
+    const b = CONFIG.campaign.bounds;
+    hole.x = clamp(hole.x, b.minX + hole.radius, b.maxX - hole.radius);
+    hole.y = clamp(hole.y, b.minY + hole.radius, b.maxY - hole.radius);
   }
 
   campaignPlayerTier() {
@@ -3907,7 +3918,8 @@ class Game {
     m.timeRemaining = Math.max(0, m.def.timeLimit - m.elapsed);
 
     this.applyPlayerMovement(dt);
-    for (const bot of this.bots) this.updateCampaignBot(bot, dt);
+    this.clampToCampaignBounds(this.player);
+    for (const bot of this.bots) { this.updateCampaignBot(bot, dt); this.clampToCampaignBounds(bot); }
     for (const e of this.campaignEntities) e.update(dt, m.elapsed);
 
     this.handleCampaignEating();
@@ -4049,7 +4061,7 @@ class Game {
 
     ctx.save();
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
-    this.drawGrid(ctx);
+    this.drawCampaignGrid(ctx);
     const goalTypes = this.campaignGoalEntityTypes();
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
     for (const e of this.campaignEntities) {
@@ -4068,6 +4080,45 @@ class Game {
     ctx.restore();
 
     if (this.showMinimap) this.drawCampaignMinimap(ctx);
+  }
+
+  /** Arena's own drawGrid() draws the grid lines out to the full
+   *  WORLD_W/WORLD_H and marks that true edge with a plain solid rect --
+   *  reaching it just means you've reached where the rendered map ends,
+   *  with nothing drawn beyond it. Reusing that directly for Campaign
+   *  would draw a full-world grid the player could then wander into past
+   *  CONFIG.campaign.bounds (see clampToCampaignBounds()'s doc comment for
+   *  why that clamp is back) with nothing there -- so grid lines and the
+   *  edge marker are instead clipped to CONFIG.campaign.bounds, same
+   *  style as Arena's drawGrid(), so nothing renders past the actual
+   *  clamp and the bounds box reads as the map, not a fence inside one. */
+  drawCampaignGrid(ctx) {
+    const b = CONFIG.campaign.bounds;
+    const startX = Math.max(b.minX, Math.floor((this.camera.x - this.width / 2) / GRID_SIZE) * GRID_SIZE);
+    const endX = Math.min(b.maxX, this.camera.x + this.width / 2);
+    const startY = Math.max(b.minY, Math.floor((this.camera.y - this.height / 2) / GRID_SIZE) * GRID_SIZE);
+    const endY = Math.min(b.maxY, this.camera.y + this.height / 2);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = startX; x <= endX; x += GRID_SIZE) {
+      ctx.moveTo(x, Math.max(b.minY, this.camera.y - this.height / 2));
+      ctx.lineTo(x, Math.min(b.maxY, this.camera.y + this.height / 2));
+    }
+    for (let y = startY; y <= endY; y += GRID_SIZE) {
+      ctx.moveTo(Math.max(b.minX, this.camera.x - this.width / 2), y);
+      ctx.lineTo(Math.min(b.maxX, this.camera.x + this.width / 2), y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 84, 173, 0.5)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
+    ctx.restore();
   }
 
   drawCampaignMinimap(ctx) {
