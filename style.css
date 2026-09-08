@@ -73,12 +73,22 @@ html, body {
   height: 100%;
   display: block;
   background: #000;
-  cursor: none;
+  /* Desktop mouse play is direct-drag (the hole chases the pointer, see
+     applyPlayerMovement()) -- hiding the cursor here left mouse players
+     with zero visual feedback for where they were pointing (player
+     feedback: "can't see where I am"). Touch devices get `cursor: none`
+     below instead, since there's no mouse pointer to show and the
+     Thumb Pad already renders its own on-screen joystick. */
+  cursor: crosshair;
   /* GDD P0-02: touch-action:none scoped to the game field itself, not
      every screen/menu (it used to sit on html/body, blocking things like
      scroll on an overflowing settings/campaign panel for no gameplay
      reason). The thumbpad below needs the same scoping. */
   touch-action: none;
+}
+
+body.touch-input #gameCanvas {
+  cursor: none;
 }
 
 .hidden {

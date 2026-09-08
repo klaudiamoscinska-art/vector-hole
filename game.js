@@ -2154,6 +2154,10 @@ class Game {
 
   bindInput() {
     this.isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    // Only touch devices get the cursor hidden (see #gameCanvas / body.touch-input
+    // in style.css) -- desktop mouse play needs the native cursor visible since
+    // it's the only feedback for where the direct-drag pointer target is.
+    document.body.classList.toggle('touch-input', this.isTouchDevice);
     this.pointerWorld = { x: WORLD_W / 2, y: WORLD_H / 2 };
     const updateFromScreen = (sx, sy) => {
       this.pointerWorld = {
