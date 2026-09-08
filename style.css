@@ -1600,26 +1600,82 @@ html, body {
 
 /* ---- In-round campaign HUD: replaces the size/score/standings panels ---- */
 
-/* Compact + docked beside the pause button (not below it, full-width, the
-   way it launched) -- player feedback: it covered too much of the play
-   area. Every child rule below is scoped under #hud-goal so it only
-   shrinks this panel, not the shared .hud-panel/.hud-label sizing Arena's
-   panels also use. */
-#hud-goal {
+/* Left cluster beside the pause button: Czas pill / pasek ładowania /
+   Wynik pill, all one compact row -- replaces the old stacked "POZIOM
+   POŻERANIA" text block with just a bar + tier badge (player feedback:
+   the growth tier is secondary info, it doesn't need its own titled
+   section). CEL RUNDY moved out to its own box on the right (below). */
+#hud-tier-strip {
   top: calc(12px + env(safe-area-inset-top, 0px));
   left: calc(58px + env(safe-area-inset-left, 0px));
+  /* Clears #hud-goal's own right:12px + max-width:150px footprint, plus an
+     8px gap between the two panels. */
+  right: calc(170px + env(safe-area-inset-right, 0px));
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-pill {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hud-pill .hud-label {
+  font-size: 9px;
+}
+
+.hud-pill .hud-value {
+  font-size: 12px;
+}
+
+.hud-tier-bar {
+  flex: 1 1 auto;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hud-tier-bolt {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--neon-cyan);
+}
+
+.hud-tier-bar .tier-progress-track {
+  flex: 1;
+  height: 4px;
+  margin: 0;
+}
+
+.hud-tier-badge {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px rgba(80, 240, 250, 0.4);
+  cursor: default;
+}
+
+/* CEL RUNDY: its own box on the right (the corner Arena's standings panel
+   uses, empty during Campaign) instead of a wide strip next to the pause
+   button. */
+#hud-goal {
+  top: calc(12px + env(safe-area-inset-top, 0px));
   right: calc(12px + env(safe-area-inset-right, 0px));
-  max-width: 190px;
-  padding: 8px 12px;
+  max-width: 150px;
+  padding: 8px 10px;
 }
 
 #hud-goal .hud-label {
   font-size: 9px;
 }
 
-/* Section headers ("CEL RUNDY" / "POZIOM POŻERANIA") -- same small-caps
-   label look as .hud-label, just its own line instead of paired with a
-   value, so each section of the goal panel reads as its own block. */
 .hud-goal-section-title {
   font-size: 9px;
   letter-spacing: 0.6px;
@@ -1627,13 +1683,6 @@ html, body {
   color: var(--neon-cyan);
   text-shadow: 0 0 6px rgba(80, 240, 250, 0.4);
   margin-bottom: 3px;
-}
-
-.hud-goal-divider {
-  height: 1px;
-  background: var(--panel-border);
-  opacity: 0.5;
-  margin: 5px 0;
 }
 
 /* One icon+label+count row per goal shape (two for activateAndDevour --
@@ -1664,7 +1713,7 @@ html, body {
 
 .mission-goal-text {
   flex: 1;
-  font-size: 10.5px;
+  font-size: 10px;
   line-height: 1.25;
   color: var(--text-main);
 }
@@ -1676,59 +1725,6 @@ html, body {
   font-variant-numeric: tabular-nums;
   color: var(--neon-gold);
   text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
-}
-
-/* POZIOM POŻERANIA as a whole reads as secondary to CEL RUNDY above it --
-   every size in here is a notch below that section's (9px title/10.5px
-   text vs. this section's 7.5px title/8px tier line), including the "T1"
-   badge, which used to jump up to 14px and dominate the panel. */
-.hud-goal-tier-section .hud-goal-section-title {
-  font-size: 7.5px;
-  margin-bottom: 2px;
-}
-
-.hud-value.tier {
-  font-size: 8px;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 8px rgba(80, 240, 250, 0.5);
-  margin-bottom: 2px;
-}
-
-.hud-value.tier .tier-id {
-  font-size: 9.5px;
-}
-
-#missionTierNextLabel {
-  display: block;
-  font-size: 7.5px;
-  margin-bottom: 2px;
-}
-
-.hud-goal-tier-section .tier-progress-track {
-  height: 3px;
-  margin: 0;
-}
-
-/* Czas/Wynik split into their own small panel to the right of #hud-goal
-   (see index.html) -- a narrow vertical stack, not a horizontal row, since
-   there isn't much width left beside the goal panel on a phone screen. */
-#hud-goal-stats {
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  left: calc(256px + env(safe-area-inset-left, 0px));
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hud-goal-stats-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.hud-goal-stats-item .hud-value {
-  font-size: 12px;
 }
 
 .hud-goal-footer-icon {

@@ -45,35 +45,35 @@
       <ol id="leaderboardList"></ol>
     </div>
 
-    <!-- Campaign-only goal panel (GDD §06 HUD zones: "Pod górą: Cel + pasek
+    <!-- Campaign-only top strip (GDD §06 HUD zones: "Pod górą: Cel + pasek
          wzrostu"). Hidden in Arena/Daily; shown in place of the size/score/
-         standings panels while a mission is running. -->
-    <div id="hud-goal" class="hud-panel hidden">
-      <div class="hud-goal-section-title">CEL RUNDY</div>
-      <div id="missionGoalItems" class="mission-goal-items"></div>
-
-      <div class="hud-goal-divider"></div>
-
-      <div class="hud-goal-tier-section">
-        <div class="hud-goal-section-title">POZIOM POŻERANIA</div>
-        <div class="hud-value tier" id="missionTierLabel"><span class="tier-id">T1</span> · Fragmenty energii</div>
-        <div class="hud-label" id="missionTierNextLabel">Postęp do T2</div>
-        <div class="tier-progress-track"><div id="missionTierBar" class="tier-progress-bar"></div></div>
-      </div>
-    </div>
-
-    <!-- Czas/Wynik, split out into their own small panel to the right of
-         #hud-goal (shown/hidden together with it -- see startCampaignMission()/
-         startRound()) so #hud-goal itself stays focused on the goal + tier. -->
-    <div id="hud-goal-stats" class="hud-panel hud-goal-stats hidden">
-      <div class="hud-goal-stats-item">
+         standings panels while a mission is running. Czas/pasek ładowania/
+         Wynik cluster beside the pause button; CEL RUNDY moved to its own
+         box on the right (the same corner Arena's standings panel uses,
+         empty during Campaign) -- player feedback: a single wide strip
+         covered too much of the play area, splitting it left/right like
+         this leaves the screen's center clear. -->
+    <div id="hud-tier-strip" class="hud-panel hud-tier-strip hidden">
+      <div class="hud-pill hud-pill-time">
         <span class="hud-label">Czas</span>
         <span class="hud-value timer"><svg class="hud-goal-footer-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.2" fill="none"/></svg><span id="missionTimerValue">0</span> s</span>
       </div>
-      <div class="hud-goal-stats-item">
+
+      <div class="hud-tier-bar">
+        <svg class="hud-tier-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/></svg>
+        <div class="tier-progress-track"><div id="missionTierBar" class="tier-progress-bar"></div></div>
+        <span class="hud-tier-badge" id="missionTierBadge">T1</span>
+      </div>
+
+      <div class="hud-pill hud-pill-score">
         <span class="hud-label">Wynik</span>
         <span class="hud-value score"><svg class="hud-goal-footer-icon" viewBox="0 0 24 24"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z" fill="currentColor"/></svg><span id="missionScoreValue">0</span></span>
       </div>
+    </div>
+
+    <div id="hud-goal" class="hud-panel hud-goal-box hidden">
+      <div class="hud-goal-section-title">CEL RUNDY</div>
+      <div id="missionGoalItems" class="mission-goal-items"></div>
     </div>
 
     <div id="nelaToast" class="nela-toast hidden"></div>

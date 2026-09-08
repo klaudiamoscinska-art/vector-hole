@@ -3420,7 +3420,7 @@ class Game {
     document.getElementById('hud-topright').classList.add('hidden');
     document.getElementById('hud-timer').classList.add('hidden');
     document.getElementById('hud-goal').classList.remove('hidden');
-    document.getElementById('hud-goal-stats').classList.remove('hidden');
+    document.getElementById('hud-tier-strip').classList.remove('hidden');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
 
@@ -3884,17 +3884,18 @@ class Game {
         <span class="mission-goal-count">${Math.min(it.progress, it.target)}/${it.target}</span>
       </div>`).join('');
 
-    // "POZIOM POŻERANIA" section: growth-tier badge ("T1 · Fragmenty
-    // energii", matching Arena's sizeTiers "T1 · MAŁY" convention -- this
-    // is the player's growth checkpoint, not a label for whatever was just
-    // eaten) + progress toward the next tier.
+    // Growth-tier "pasek ładowania": a compact bar + badge (e.g. "T1"),
+    // not a label for whatever was just eaten -- title attr carries the
+    // full tier name + next-tier caption for a hover/long-press tooltip
+    // instead of a permanently-visible text block.
     const tier = this.campaignPlayerTier();
-    document.getElementById('missionTierLabel').innerHTML = `<span class="tier-id">${tier.id}</span> · ${tier.name}`;
     const idx = CAMPAIGN_TIERS.indexOf(tier);
     const next = CAMPAIGN_TIERS[idx + 1];
     const pct = next ? clamp((m.growthUnits - tier.minUnits) / (next.minUnits - tier.minUnits), 0, 1) * 100 : 100;
     document.getElementById('missionTierBar').style.width = pct + '%';
-    document.getElementById('missionTierNextLabel').textContent = next ? `Postęp do ${next.id}` : 'Poziom maksymalny';
+    const badge = document.getElementById('missionTierBadge');
+    badge.textContent = tier.id;
+    badge.title = `${tier.name}${next ? ` · Postęp do ${next.id}` : ' · Poziom maksymalny'}`;
 
     document.getElementById('missionScoreValue').textContent = this.player.score;
   }
@@ -4119,7 +4120,7 @@ class Game {
     document.getElementById('hud-topright').classList.remove('hidden');
     document.getElementById('hud-timer').classList.remove('hidden');
     document.getElementById('hud-goal').classList.add('hidden');
-    document.getElementById('hud-goal-stats').classList.add('hidden');
+    document.getElementById('hud-tier-strip').classList.add('hidden');
     this.state = GameState.MATCH_SETUP;
     this.paused = false;
 
