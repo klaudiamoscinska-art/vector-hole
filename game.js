@@ -391,7 +391,10 @@ const GOAL_ICONS = {
 // campaignEntityColor() (board/particle/minimap color) and the goal-icon
 // renderer below, so the HUD icon and the board object are always the same
 // hue too. See campaignEntityColor() for the full "why size, not identity" rationale.
-const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#46D99A', 4: '#EFCB63' };
+// Mirrors CAMPAIGN_TIERS' T1-T4 exactly (cyan/pink/green/violet) so an
+// object's eat-gate color always matches the growth-tier badge that
+// unlocks it (T4 moved to violet when T5/T6 were added -- see CAMPAIGN_TIERS).
+const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#46D99A', 4: '#9875FF' };
 
 // Miasto's "Po 100% odblokujesz" reward chip (GDD 4.0 §5.1) needs an icon
 // matching whichever Warsztat category CORE_CITY_LEVEL_REWARDS grants next
@@ -1166,26 +1169,17 @@ class WorldObject {
         ctx.stroke();
         break;
 
-      // ---- medium tier: "SAMOCHÓD" (hatchback silhouette + windshield + wheels) ----
+      // ---- medium tier: "SAMOCHÓD" (body + roof arc + wheels -- same
+      // silhouette as Campaign's 'vehicle' glyph, so a car reads as the
+      // same object in both modes). ----
       case 'samochod':
+        ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
         ctx.beginPath();
-        ctx.moveTo(-r * 0.9, r * 0.2);
-        ctx.lineTo(-r * 0.7, -r * 0.3);
-        ctx.lineTo(r * 0.7, -r * 0.3);
-        ctx.lineTo(r * 0.9, r * 0.2);
-        ctx.lineTo(r * 0.9, r * 0.5);
-        ctx.lineTo(-r * 0.9, r * 0.5);
-        ctx.closePath();
+        ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(-r * 0.5, -r * 0.3);
-        ctx.lineTo(-r * 0.35, -r * 0.65);
-        ctx.lineTo(r * 0.35, -r * 0.65);
-        ctx.lineTo(r * 0.5, -r * 0.3);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(-r * 0.5, r * 0.5, r * 0.15, 0, Math.PI * 2);
-        ctx.arc(r * 0.5, r * 0.5, r * 0.15, 0, Math.PI * 2);
+        ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
+        ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
         ctx.fill();
         break;
 
@@ -1641,9 +1635,10 @@ class CampaignEntity {
       }
       case 'landmark': {
         const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        // Gold, T4 size tier -- the biggest object class, same hue for
-        // every landmark (silhouette below is what tells them apart).
-        const color = this.unlocked ? '#EFCB63' : 'rgba(239, 203, 99, 0.35)';
+        // Violet, T4 size tier (SIZE_TIER_COLORS) -- the biggest object
+        // class, same hue for every landmark (silhouette below is what
+        // tells them apart).
+        const color = this.unlocked ? '#9875FF' : 'rgba(152, 117, 255, 0.35)';
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.6;
         ctx.shadowBlur = this.unlocked ? 20 + 8 * pulse : 6;
@@ -3154,8 +3149,10 @@ class Game {
   campaignGoalIcon(type) {
     if (type === 'combo') return { icon: CARD_ICONS.burst, color: '#EFCB63' };
     if (type === 'gate') return { icon: GOAL_ICONS.gate, color: '#50F0FA' };
+    // landmark's minTier (4) already resolves to SIZE_TIER_COLORS[4] below --
+    // no separate override needed now that it's the same violet as the board object.
     const stats = CAMPAIGN_ENTITY_STATS[type];
-    const color = type === 'landmark' ? '#EFCB63' : (stats ? SIZE_TIER_COLORS[stats.minTier] : '#fff');
+    const color = stats ? SIZE_TIER_COLORS[stats.minTier] : '#fff';
     return { icon: GOAL_ICONS[type] || GOAL_ICONS.fragment, color };
   }
 
@@ -3607,13 +3604,13 @@ class Game {
     if (e.type === 'landmark') {
       this.triggerShake(16);
       // Collapse (MISSION_BOARD_SPEC.md §4 "Stan 3"): a second, cyan
-      // fragment-colored burst layered under the existing gold one, so the
-      // landmark visibly breaks into T1-fragment-like debris instead of
-      // just fading out. Simplified per the brief -- no separate 4-state
-      // animation, this single extra burst is the "collapse" moment.
-      this.spawnParticles(e.x, e.y, '#EFCB63', 40);
+      // fragment-colored burst layered under the existing violet one, so
+      // the landmark visibly breaks into T1-fragment-like debris instead
+      // of just fading out. Simplified per the brief -- no separate
+      // 4-state animation, this single extra burst is the "collapse" moment.
+      this.spawnParticles(e.x, e.y, '#9875FF', 40);
       this.spawnParticles(e.x, e.y, '#50F0FA', 24);
-      this.ripples.push(new Ripple(e.x, e.y, '#EFCB63', e.radius, e.radius * 3.5, 0.8));
+      this.ripples.push(new Ripple(e.x, e.y, '#9875FF', e.radius, e.radius * 3.5, 0.8));
       this.analytics.track('big_eat', { missionId: m.def.id, landmark: e.landmarkId });
     }
 
