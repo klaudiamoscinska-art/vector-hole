@@ -2443,6 +2443,13 @@ class Game {
     });
     document.getElementById('btnSaveProfile').addEventListener('click', () => this.saveProfile());
     document.getElementById('btnProfileBack').addEventListener('click', () => this.showScreen('mainMenu'));
+    document.getElementById('btnResetProfile').addEventListener('click', () => {
+      document.getElementById('resetProfileConfirm').classList.remove('hidden');
+    });
+    document.getElementById('btnResetProfileNo').addEventListener('click', () => {
+      document.getElementById('resetProfileConfirm').classList.add('hidden');
+    });
+    document.getElementById('btnResetProfileYes').addEventListener('click', () => this.resetProfile());
     document.getElementById('btnShopBack').addEventListener('click', () => this.showScreen('mainMenu'));
     document.getElementById('btnEquip').addEventListener('click', () => this.onEquipClick());
     // GDD 4.0 §5.3: Warsztat has 4 equip categories (Rdzeń/Trail/Efekt
@@ -2929,6 +2936,18 @@ class Game {
     this.showScreen('mainMenu');
   }
 
+  /** Full local wipe (coins/prisms, cosmetics, campaign/hub/daily progress,
+   *  stats) back to a brand-new guest profile -- confirmed via
+   *  #resetProfileConfirm first, since this can't be undone. Reloads
+   *  rather than resetting `this.save` in place, so every piece of runtime
+   *  state (active screens, cached campaign progress, etc.) re-initializes
+   *  from the fresh save exactly like a real first launch would. */
+  resetProfile() {
+    this.analytics.track('profile_reset', {});
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+  }
+
   startDailyChallenge() {
     const { seed, dateKey } = dailySeedForDate(new Date());
     this.analytics.track('daily_challenge_start', { dateKey, seed });
@@ -3089,11 +3108,12 @@ class Game {
     document.getElementById('hud').classList.toggle('hidden', true);
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
+    document.getElementById('resetProfileConfirm').classList.add('hidden');
     this.renderBottomNav(id);
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');

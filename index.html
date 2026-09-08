@@ -296,6 +296,19 @@
       <button id="btnSaveProfile" class="btn btn-primary">ZAPISZ</button>
       <div class="hint-text">Gość ID: <span id="guestIdLabel"></span></div>
       <button id="btnProfileBack" class="btn btn-secondary">POWRÓT</button>
+      <div class="profile-danger-zone">
+        <button id="btnResetProfile" class="btn btn-danger">RESETUJ PROFIL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== RESET PROFILE CONFIRM ===================== -->
+  <div id="resetProfileConfirm" class="screen overlay-screen hidden">
+    <div class="screen-inner pause-panel">
+      <h2 class="section-title">ZRESETOWAĆ PROFIL?</h2>
+      <p class="hint-text">Tej operacji nie można cofnąć. Stracisz bezpowrotnie: całą postać kampanii i odblokowane dzielnice, poziom Neon Core, monety i pryzmaty, kupione kosmetyki, statystyki i rekordy Areny.</p>
+      <button id="btnResetProfileYes" class="btn btn-danger">TAK, RESETUJ</button>
+      <button id="btnResetProfileNo" class="btn btn-secondary">ANULUJ</button>
     </div>
   </div>
 
