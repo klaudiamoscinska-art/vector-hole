@@ -569,14 +569,31 @@ const CAMPAIGN_MISSIONS = [
     // dots" than the old count of 3, which unlocked nothing yet). fragment
     // growth=1/unit -> 10 fragments reaches T2 (unlocks prop); prop
     // growth=3/unit -> 7 more (10+7*3=31) reaches T3 (unlocks vehicle).
+    // Each step carries its own `intro` -- shown full-screen and blocking
+    // (see showTutorialStepIntro()/updateTutorialGuidance()), one step at a
+    // time, instead of the opening overlay listing all four up front
+    // (player feedback: the first instruction should only talk about the
+    // first step, then the next window only about the next one, etc.).
     goal: {
       type: 'tutorialChecklist',
       label: 'Poznaj podstawy pochłaniania',
       steps: [
-        { entityType: 'fragment', count: 10, label: 'Pochłoń 10 fragmentów energii' },
-        { entityType: 'prop', count: 7, label: 'Pochłoń 7 elementów ulicznych' },
-        { entityType: 'vehicle', count: 1, label: 'Pochłoń 1 pojazd' },
-        { type: 'eatRival', count: 1, label: 'Pochłoń mniejszego rywala' }
+        {
+          entityType: 'fragment', count: 10, label: 'Pochłoń 10 fragmentów energii',
+          intro: 'Dotykaj fragmentów energii, żeby je pochłaniać. Potrzebujesz sporo, by urosnąć na tyle, żeby zjeść coś większego.'
+        },
+        {
+          entityType: 'prop', count: 7, label: 'Pochłoń 7 elementów ulicznych',
+          intro: 'Urosłaś! Teraz pochłoń elementy uliczne — latarnie, ławki, drzewa i inne drobiazgi na ulicach.'
+        },
+        {
+          entityType: 'vehicle', count: 1, label: 'Pochłoń 1 pojazd',
+          intro: 'Jeszcze większa! Znajdź i pochłoń pojazd.'
+        },
+        {
+          type: 'eatRival', count: 1, label: 'Pochłoń mniejszego rywala',
+          intro: 'Ostatni krok: znajdź rywala mniejszego od siebie i dotknij go, żeby go pochłonąć.'
+        }
       ]
     },
     medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 70 s' },
@@ -3693,8 +3710,11 @@ class Game {
       landmark: null,
       evolutionOffered: false,
       ended: false,
+      // Set the instant the goal is met, before the success-pause timeout
+      // actually calls endCampaignMission() -- see beginMissionSuccess().
+      finishing: false,
       _wasComboActive: false,
-      // M00's step-by-step NELA guidance (see updateTutorialGuidance()) --
+      // M00's step-by-step guidance (see updateTutorialGuidance()) --
       // harmless no-ops for every other goal type.
       tutorialStepDone: def.goal.type === 'tutorialChecklist' ? def.goal.steps.map(() => false) : [],
       tutorialRivalHintShown: false
@@ -3725,7 +3745,7 @@ class Game {
 
     this.running = true;
     this.state = GameState.PLAYING;
-    if (def.goal.type === 'tutorialChecklist') this.showTutorialIntro(def.nela.start);
+    if (def.goal.type === 'tutorialChecklist') this.showTutorialStepIntro(0);
     else this.showNelaToast(def.nela.start);
     this.updateCampaignHUD();
     this.analytics.track('mission_start', { missionId: def.id, district: def.district });
@@ -4081,7 +4101,7 @@ class Game {
 
   checkCampaignGoal() {
     const m = this.mission;
-    if (m.ended) return;
+    if (m.ended || m.finishing) return;
     const g = m.def.goal;
     let progress = 0, target = 1, done = false;
     switch (g.type) {
@@ -4124,28 +4144,47 @@ class Game {
     }
     m.progress = progress;
     m.progressTarget = target;
-    if (done) this.endCampaignMission(true);
+    if (done) this.beginMissionSuccess();
   }
 
-  /** M00-only: explicit step-by-step NELA guidance on top of the CEL RUNDY
-   *  checklist (player feedback: the tutorial should clearly show what to
-   *  do next), since a plain progress list is easy to miss mid-round.
-   *  Fires a toast the moment each step is individually completed (naming
-   *  the next undone one), plus a one-time just-in-time nudge the instant
-   *  the player first outgrows the rival bot -- "eat a smaller rival" is a
-   *  brand-new mechanic here, not something CEL RUNDY alone makes obvious. */
+  /** A beat of "absorption" juice between hitting the goal and the mission
+   *  result screen cutting in (player feedback: "chwilę oddechu zanim
+   *  wyskakuje okno że ukończyłeś") -- a particle/ripple burst on the
+   *  player plus a short pause, instead of an instant cut. m.finishing
+   *  (distinct from m.ended) blocks the goal/timeout checks from firing
+   *  again during the pause while leaving updateCampaign() itself running,
+   *  so the burst and the clock UI keep animating. Guards `this.mission
+   *  === m` in the timeout in case the player leaves and starts a new
+   *  mission before it fires. */
+  beginMissionSuccess() {
+    const m = this.mission;
+    m.finishing = true;
+    this.triggerShake(10);
+    this.spawnParticles(this.player.x, this.player.y, '#46D99A', 40);
+    this.ripples.push(new Ripple(this.player.x, this.player.y, '#46D99A', this.player.radius, this.player.radius * 3, 0.7));
+    this.vibrate([40, 30, 40]);
+    setTimeout(() => { if (this.mission === m) this.endCampaignMission(true); }, 900);
+  }
+
+  /** M00-only: the moment each step is individually completed, block on the
+   *  same full-screen overlay the mission opened with -- showing ONLY the
+   *  next step's own `intro` -- instead of a small toast (player feedback:
+   *  "po każdym etapie zamiast małego komunikatu ma być takie okienko jak
+   *  na początku"). Plus a one-time just-in-time nudge (a lightweight
+   *  toast, not blocking, since it fires mid-play rather than at a step
+   *  boundary) the instant the player first outgrows the rival bot. */
   updateTutorialGuidance() {
     const m = this.mission;
     const g = m.def.goal;
-    if (g.type !== 'tutorialChecklist' || m.ended) return;
+    if (g.type !== 'tutorialChecklist' || m.ended || m.finishing) return;
 
     g.steps.forEach((step, i) => {
       if (m.tutorialStepDone[i]) return;
       const stepProgress = step.type === 'eatRival' ? m.rivalsEaten : (m.eatenByType[step.entityType] || 0);
       if (stepProgress < step.count) return;
       m.tutorialStepDone[i] = true;
-      const nextIdx = g.steps.findIndex((s, j) => !m.tutorialStepDone[j] && j !== i);
-      this.showNelaToast(nextIdx === -1 ? 'Wszystko gotowe. Miasto czeka.' : `Świetnie! Teraz: ${g.steps[nextIdx].label.toLowerCase()}.`);
+      const nextIdx = g.steps.findIndex((s, j) => !m.tutorialStepDone[j]);
+      if (nextIdx !== -1) this.showTutorialStepIntro(nextIdx);
     });
 
     if (!m.tutorialRivalHintShown) {
@@ -4156,6 +4195,10 @@ class Game {
         this.showNelaToast('Jesteś już większa od rywala — dotknij go, żeby go pochłonąć!');
       }
     }
+  }
+
+  showTutorialStepIntro(stepIndex) {
+    this.showTutorialIntro(this.mission.def.goal.steps[stepIndex].intro);
   }
 
   showNelaToast(text) {
@@ -4272,7 +4315,7 @@ class Game {
 
     this.updateCampaignHUD();
 
-    if (m.timeRemaining <= 0) this.endCampaignMission(false);
+    if (m.timeRemaining <= 0 && !m.finishing) this.endCampaignMission(false);
   }
 
   /* ---- Mission end / result screen ---- */
