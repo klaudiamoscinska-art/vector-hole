@@ -139,63 +139,6 @@ body.touch-input #gameCanvas {
   z-index: 20;
 }
 
-/* ---- Timer: top-center, strongest signal ---- */
-
-.hud-timer {
-  top: calc(10px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: 76px;
-  height: 76px;
-  padding: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.timer-ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.timer-ring-bg {
-  fill: none;
-  stroke: rgba(80, 240, 250, 0.12);
-  stroke-width: 4;
-}
-
-.timer-ring-fg {
-  fill: none;
-  stroke: var(--neon-cyan);
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-dasharray: 169.6;
-  stroke-dashoffset: 0;
-  transition: stroke 0.2s ease;
-}
-
-.timer-ring-fg.warning {
-  stroke: var(--neon-pink);
-}
-
-.hud-timer .hud-value.timer {
-  font-size: 22px;
-  z-index: 1;
-}
-
-/* ---- Size/tier panel: top-left ---- */
-
-#hud-topleft {
-  top: calc(58px + env(safe-area-inset-top, 0px));
-  left: calc(12px + env(safe-area-inset-left, 0px));
-  min-width: 130px;
-}
-
 .tier-progress-track {
   width: 100%;
   height: 4px;
@@ -211,14 +154,6 @@ body.touch-input #gameCanvas {
   background: var(--neon-green);
   box-shadow: 0 0 6px var(--neon-green);
   transition: width 0.2s ease;
-}
-
-.hud-row-sub {
-  opacity: 0.8;
-}
-
-.hud-row-sub .hud-value {
-  font-size: 14px;
 }
 
 /* ---- Live standings: top-right, visible by default ----
@@ -264,18 +199,6 @@ body.touch-input #gameCanvas {
   margin-bottom: 0;
 }
 
-.hud-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-
-.hud-row:last-child {
-  margin-bottom: 0;
-}
-
 .hud-label {
   font-size: 11px;
   letter-spacing: 1px;
@@ -291,17 +214,6 @@ body.touch-input #gameCanvas {
 .hud-value.timer {
   color: var(--neon-cyan);
   text-shadow: 0 0 8px var(--neon-cyan);
-}
-
-.hud-value.timer.warning {
-  color: var(--neon-pink);
-  text-shadow: 0 0 10px var(--neon-pink);
-  animation: pulse-warning 0.6s infinite alternate;
-}
-
-.hud-value.size {
-  color: var(--neon-green);
-  text-shadow: 0 0 8px var(--neon-green);
 }
 
 .hud-value.score {
@@ -1608,13 +1520,16 @@ body.touch-input #gameCanvas {
   text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
 }
 
-/* ---- In-round campaign HUD: replaces the size/score/standings panels ---- */
+/* ---- In-round HUD top strip: shared by Arena and Campaign ---- */
 
 /* Left cluster beside the pause button: Czas pill / pasek ładowania /
    Wynik pill, all one compact row -- replaces the old stacked "POZIOM
-   POŻERANIA" text block with just a bar + tier badge (player feedback:
-   the growth tier is secondary info, it doesn't need its own titled
-   section). CEL RUNDY moved out to its own box on the right (below). */
+   POŻERANIA" text block (Campaign) and the separate timer-ring + size/
+   score panel (Arena) with just a bar + tier badge (player feedback: the
+   growth tier is secondary info, it doesn't need its own titled section,
+   and the two modes' in-round HUD should look and behave the same). In
+   Campaign, CEL RUNDY sits in its own box on the right (below); in Arena
+   that corner shows the standings panel instead (.clears-standings below). */
 #hud-tier-strip {
   top: calc(12px + env(safe-area-inset-top, 0px));
   left: calc(58px + env(safe-area-inset-left, 0px));
@@ -1625,6 +1540,14 @@ body.touch-input #gameCanvas {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Arena shows the (wider) standings panel in the same corner Campaign
+   uses for CEL RUNDY -- reserve enough right-side clearance for its
+   max-width:240px/160px (desktop/mobile) footprint instead of the goal
+   box's narrower 150px one. */
+#hud-tier-strip.clears-standings {
+  right: calc(260px + env(safe-area-inset-right, 0px));
 }
 
 .hud-pill {
@@ -2470,9 +2393,19 @@ body.touch-input #gameCanvas {
     font-size: 34px;
   }
 
-  #hud-topleft, #hud-topright {
+  #hud-topright {
     padding: 8px 12px;
     min-width: 110px;
+    max-width: 160px;
+  }
+
+  /* #hud-topright's own max-width shrinks to 160px above -- match the
+     tier strip's reserved clearance to it here too, same as the
+     170px/#hud-goal pairing it's based on (see #hud-tier-strip.clears-
+     standings), otherwise the 260px desktop value starves the strip of
+     width on small screens and its pills wrap under the standings box. */
+  #hud-tier-strip.clears-standings {
+    right: calc(180px + env(safe-area-inset-right, 0px));
   }
 
   .hud-value {
@@ -2483,21 +2416,8 @@ body.touch-input #gameCanvas {
     font-size: 9px;
   }
 
-  #hud-topright {
-    max-width: 160px;
-  }
-
   #leaderboardList li {
     font-size: 11px;
-  }
-
-  .hud-timer {
-    width: 62px;
-    height: 62px;
-  }
-
-  .hud-timer .hud-value.timer {
-    font-size: 17px;
   }
 
   .hud-value.rank {

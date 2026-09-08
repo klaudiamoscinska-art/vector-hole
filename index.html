@@ -17,26 +17,6 @@
   <div id="hud" class="hidden">
     <button id="btnPause" class="hud-icon-btn" aria-label="Pauza">❚❚</button>
 
-    <div id="hud-timer" class="hud-panel hud-timer">
-      <svg class="timer-ring" viewBox="0 0 64 64" aria-hidden="true">
-        <circle class="timer-ring-bg" cx="32" cy="32" r="27"></circle>
-        <circle id="timerRing" class="timer-ring-fg" cx="32" cy="32" r="27"></circle>
-      </svg>
-      <span id="timerValue" class="hud-value timer">120</span>
-    </div>
-
-    <div id="hud-topleft" class="hud-panel">
-      <div class="hud-row">
-        <span class="hud-label">ROZMIAR</span>
-        <span id="sizeValue" class="hud-value size">10</span>
-      </div>
-      <div class="tier-progress-track"><div id="tierProgressBar" class="tier-progress-bar"></div></div>
-      <div class="hud-row hud-row-sub">
-        <span class="hud-label">WYNIK</span>
-        <span id="scoreValue" class="hud-value score">0</span>
-      </div>
-    </div>
-
     <div id="hud-topright" class="hud-panel hud-standings">
       <button id="hud-rankBadge" class="standings-header" aria-label="Zwiń/rozwiń pełny ranking">
         <span class="leaderboard-title">🏆 NA ŻYWO</span>
@@ -45,14 +25,13 @@
       <ol id="leaderboardList"></ol>
     </div>
 
-    <!-- Campaign-only top strip (GDD §06 HUD zones: "Pod górą: Cel + pasek
-         wzrostu"). Hidden in Arena/Daily; shown in place of the size/score/
-         standings panels while a mission is running. Czas/pasek ładowania/
-         Wynik cluster beside the pause button; CEL RUNDY moved to its own
-         box on the right (the same corner Arena's standings panel uses,
-         empty during Campaign) -- player feedback: a single wide strip
-         covered too much of the play area, splitting it left/right like
-         this leaves the screen's center clear. -->
+    <!-- Shared in-round top strip (GDD §06 HUD zones: "Pod górą: Cel + pasek
+         wzrostu"), used by both Arena and Campaign -- Czas/pasek ładowania/
+         Wynik cluster beside the pause button. In Campaign, CEL RUNDY sits
+         in its own box on the right; in Arena that same corner shows the
+         standings panel above instead, since Arena rounds have no mission
+         goal (player feedback: the two modes' in-round HUD should look and
+         behave the same). -->
     <div id="hud-tier-strip" class="hud-panel hud-tier-strip hidden">
       <div class="hud-pill hud-pill-time">
         <span class="hud-label">Czas</span>
