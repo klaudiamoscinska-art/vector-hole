@@ -87,7 +87,7 @@ const CONFIG = {
   },
   // Phase 4: Evolution moments (run-only mutation picks) + Overdrive/City Shift.
   evolution: {
-    triggerRadii: [45, 65],  // fires once each, aligned with the 'core'/'vortex' size tiers
+    triggerRadii: [33, 43],  // fires once each, aligned with the 'core'/'vortex' size tiers
     cardCount: 3,
     autoPickMs: 20000,       // safety net only (an explicit "skip" button covers the normal case) --
                              // long because the offer now fully pauses the round instead of just slowing it
@@ -114,16 +114,11 @@ const CONFIG = {
     baseRadius: 20,
     comboWindowSeconds: 1.5,   // GDD 07: "kolejne pożarcie w 1,5 s"
     comboMaxMultiplier: 2.0,   // GDD 07: "combo 1,0-2,0 mnoży punkty, nie wzrost"
-    // growthUnits -> Hole area gain. Since growFromArea() adds this
-    // directly to radius^2 (the *pi cancels out), radius = sqrt(baseRadius^2
-    // + growthUnits*growthAreaScale) -- e.g. at 6 (old value) a player who'd
-    // earned all 70 growth units needed to unlock a T4 landmark was only
-    // radius ~29, visibly *smaller* than the thing it had just grown
-    // enough to eat (player feedback: "the hole doesn't feel like it's
-    // growing to eat bigger things"). At 16, growth within a tier reaches
-    // and then passes that tier's own entity size before the *next* tier's
-    // threshold -- see entityRadius's own doc comment for why those are
-    // deliberately sized bigger than an un-grown hole in the first place.
+    // Only used for the hitPenaltyFraction shrink below now -- per-entity
+    // eat growth moved to Arena's radius-based GROW_K_OBJ formula (see
+    // resolveCampaignEntity()'s doc comment) since growthUnits*scale grew
+    // the hole far too little on a T2+ eat (prop/marker/vehicle/node/
+    // pylon), independent of how big the eaten object actually was.
     growthAreaScale: 16,
     hitPenaltyFraction: 0.25,  // GDD 07: contact with a bigger bot costs 25% of current growth
     hitInvulnMs: 2000,
@@ -160,12 +155,20 @@ const CONFIG = {
   // strip) the live "T1"/"T2".../missionTierBadge. `shortId`/`color` mirror
   // CAMPAIGN_TIERS' T1-T5 exactly (same cyan/pink/green/violet/silver) so a
   // given tier number reads as the same color in both modes.
+  // minRadius is derived from CAMPAIGN_TIERS' own minUnits (10/30/70/140),
+  // converted into Arena's area-conserving radius space via fragment's
+  // growth (fragment = 1 Campaign growth-unit = pi*7^2*GROW_K_OBJ = 19.6
+  // radius^2 in Arena): r = sqrt(BASE_RADIUS^2 + minUnits*19.6). Player
+  // feedback: the old thresholds (30/45/65/90, picked independently of
+  // Campaign's economy) needed roughly 2x as many fragments to cross T1->T2
+  // as Campaign's own pacing, so Arena felt far grindier than Campaign for
+  // the exact same "T1" tier.
   sizeTiers: [
     { id: 'spark', minRadius: 0, label: 'T1 · MAŁY', shortId: 'T1', color: '#50F0FA' },
-    { id: 'pulse', minRadius: 30, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
-    { id: 'core', minRadius: 45, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
-    { id: 'vortex', minRadius: 65, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
-    { id: 'singularity', minRadius: 90, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
+    { id: 'pulse', minRadius: 26, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
+    { id: 'core', minRadius: 33, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
+    { id: 'vortex', minRadius: 43, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
+    { id: 'singularity', minRadius: 57, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
   ],
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
@@ -3843,7 +3846,14 @@ class Game {
     const m = this.mission;
     const stats = e.stats;
     const multiplier = this.registerCombo();
-    this.player.growFromArea(stats.growth * CONFIG.campaign.growthAreaScale * Math.PI);
+    // Physical growth now scales off the eaten entity's own radius, the
+    // same GROW_K_OBJ formula Arena uses for WorldObject eats (player
+    // feedback: T2+ eats -- prop/marker/vehicle/node/pylon -- barely moved
+    // the hole's radius here, since the old flat growthUnits*scale formula
+    // ignored how big the thing you just ate actually was). `growthUnits`
+    // stays on its own flat-unit track below -- CAMPAIGN_TIERS thresholds,
+    // mission goals, and the landmark unlock gate are unaffected.
+    this.player.growFromArea(Math.PI * e.radius * e.radius * GROW_K_OBJ);
     m.growthUnits += stats.growth;
     this.player.score += Math.round(stats.score * multiplier);
     this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true);
@@ -3913,7 +3923,9 @@ class Game {
       m.eatenByType[e.type] = (m.eatenByType[e.type] || 0) + 1;
       const multiplier = this.registerCombo();
       const stats = e.stats;
-      this.player.growFromArea(stats.growth * CONFIG.campaign.growthAreaScale * Math.PI);
+      // Same radius-based growth formula as resolveCampaignEntity() -- see
+      // its doc comment.
+      this.player.growFromArea(Math.PI * e.radius * e.radius * GROW_K_OBJ);
       m.growthUnits += stats.growth;
       this.player.score += Math.round(stats.score * multiplier);
       this.triggerEatFeedback(e.x, e.y, '#50F0FA', e.radius, true);
