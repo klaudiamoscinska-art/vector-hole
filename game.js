@@ -18,7 +18,9 @@ const CONFIG = {
   bots: { count: 5 },
   hole: { baseRadius: 22, minRadius: 14, baseSpeed: 150 },
   eating: {
-    objRatio: 0.9,   // object must be smaller than hole.radius * this
+    // World-object eating has no size-ratio requirement, only the
+    // TIERS/canEatWorldObjectTier() growth-tier gate (matching Campaign's
+    // own tier-only gate) -- holeRatio below is hole-vs-hole only.
     holeRatio: 1.15, // attacker must be bigger than defender.radius * this
     growObj: 0.4,
     growHole: 0.55,
@@ -81,13 +83,11 @@ const CONFIG = {
   juice: {
     eatTiers: { tinyMaxRadius: 10, mediumMaxRadius: 24 }, // above mediumMaxRadius = "giant" eat
     combo: { windowSeconds: 1.6, stepBonus: 0.15, maxMultiplier: 2.5, fadeSeconds: 0.6 },
-    canEatHighlightBandLow: 0.85,  // rim-highlight objects whose (threshold / radius) falls in
-    canEatHighlightBandHigh: 1.15, // this band around 1.0 -- "you're close to being able to eat this"
     dangerHaloRange: 260
   },
   // Phase 4: Evolution moments (run-only mutation picks) + Overdrive/City Shift.
   evolution: {
-    triggerRadii: [43, 63],  // fires once each, aligned with the 'core'/'vortex' size tiers
+    triggerRadii: [33, 43],  // fires once each, aligned with the 'core'/'vortex' size tiers
     cardCount: 3,
     autoPickMs: 20000,       // safety net only (an explicit "skip" button covers the normal case) --
                              // long because the offer now fully pauses the round instead of just slowing it
@@ -155,33 +155,26 @@ const CONFIG = {
   // strip) the live "T1"/"T2".../missionTierBadge. `shortId`/`color` mirror
   // CAMPAIGN_TIERS' T1-T5 exactly (same cyan/pink/green/violet/silver) so a
   // given tier number reads as the same color in both modes.
-  // minRadius per tier is the *larger* of two floors:
-  //  (a) a campaign-pacing floor, so Arena doesn't need drastically more T1
-  //      fragments than Campaign to cross the same tier boundary -- derived
-  //      from CAMPAIGN_TIERS' own minUnits (10/30/70/140) converted into
-  //      Arena's area-conserving radius space via fragment's growth
-  //      (fragment = 1 Campaign growth-unit = pi*7^2*GROW_K_OBJ = 19.6
-  //      radius^2 in Arena): r = sqrt(BASE_RADIUS^2 + minUnits*19.6) ->
-  //      ~26/~33/~43/~57;
-  //  (b) a physical eat-ratio floor, so the tier badge never flips before a
-  //      hole can actually fit that tier's own objects through
-  //      canEatWorldObjectTier()'s EAT_OBJ_RATIO (0.9) check -- otherwise
-  //      the badge reads "T2" while every pink prop/marker is still too big
-  //      to eat (player feedback: "T2 already showing, still can't eat the
-  //      pink ones" -- an actual regression from using floor (a) alone,
-  //      since prop's own radius (26) needs hole radius > 26/0.9 = 28.9, a
-  //      bigger floor than (a)'s ~26). ceil(maxObjRadiusInTier / 0.9):
-  //  T2 (prop 26, marker 25) -> 29, T3 (vehicle 38, node/pylon 36) -> 43,
-  //  T4 (landmark 56) -> 63. T5 has no gated TIERS entry, so instead of
-  //  floor (a) in isolation (which would put it *below* T4's ratio-raised
-  //  63, breaking the tiers' required ascending order) it continues floor
-  //  (a)'s pacing from T4's actual radius: r5 = sqrt(63^2 + (140-70)*19.6).
+  // minRadius per tier is derived purely from CAMPAIGN_TIERS' own minUnits
+  // (10/30/70/140) converted into Arena's area-conserving radius space via
+  // fragment's growth (fragment = 1 Campaign growth-unit = pi*7^2*GROW_K_OBJ
+  // = 19.6 radius^2 in Arena): r = sqrt(BASE_RADIUS^2 + minUnits*19.6) ->
+  // 26/33/43/57. This is the *only* floor now (player feedback: Arena and
+  // Campaign must take the exact same number of T1 pickups to cross a given
+  // tier boundary -- an earlier pass also raised these thresholds to clear
+  // world objects' old 0.9x-of-hole-radius physical size check, which fixed
+  // the "T2 badge shows before pink objects are eatable" symptom but pushed
+  // T1->T2 from Campaign's 10 fragments up to 19, breaking that parity. The
+  // actual fix is that world-object eating no longer has a physical
+  // size-ratio requirement at all -- see canEatWorldObjectTier()'s doc
+  // comment -- so there's no physical floor left to reconcile with the
+  // campaign-pacing one).
   sizeTiers: [
     { id: 'spark', minRadius: 0, label: 'T1 · MAŁY', shortId: 'T1', color: '#50F0FA' },
-    { id: 'pulse', minRadius: 29, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
-    { id: 'core', minRadius: 43, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
-    { id: 'vortex', minRadius: 63, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
-    { id: 'singularity', minRadius: 73, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
+    { id: 'pulse', minRadius: 26, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
+    { id: 'core', minRadius: 33, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
+    { id: 'vortex', minRadius: 43, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
+    { id: 'singularity', minRadius: 57, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
   ],
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
@@ -211,7 +204,6 @@ const BASE_RADIUS = CONFIG.hole.baseRadius;
 const MIN_RADIUS = CONFIG.hole.minRadius;
 const BASE_SPEED = CONFIG.hole.baseSpeed; // px/s
 
-const EAT_OBJ_RATIO = CONFIG.eating.objRatio;
 const EAT_HOLE_RATIO = CONFIG.eating.holeRatio;
 const GROW_K_OBJ = CONFIG.eating.growObj;
 const GROW_K_HOLE = CONFIG.eating.growHole;
@@ -300,13 +292,20 @@ class Analytics {
 // (prop) visual variety, matching Campaign's own PROP_STREET_GLYPHS.
 // Arena-only objects with no Campaign counterpart (the old 'fontanna'/
 // 'skyscraper' pickups) were removed rather than kept as a divergent
-// bestiary; 'portal' remains a separate, ungated entry -- it's not part
-// of the shared bestiary, only ever spawned by spawnPortalRain() during
-// Overdrive (see that method's own doc comment).
+// bestiary; 'portal' remains a separate entry outside the shared bestiary
+// (Campaign has no equivalent pickup at all), only ever spawned by
+// spawnPortalRain() during Overdrive (see that method's own doc comment),
+// but it's still tier-gated like everything else here -- see minSizeTier
+// below (player feedback: eating violet objects before growing to their
+// size read as a bug; letting this one bonus-wave type skip the growth
+// gate broke the "arena and campaign are exactly the same gameplay" rule
+// just as much as a missing tier check would have).
 // `minSizeTier` indexes CONFIG.sizeTiers (T1..T5): a hole must have grown
 // to at least that tier before objects of this type become eatable at
-// all, regardless of the EAT_OBJ_RATIO size check -- see
-// getSizeTierIndex()/canEatWorldObjectTier().
+// all -- see getSizeTierIndex()/canEatWorldObjectTier(). This is the only
+// eat-eligibility gate for world objects (no physical size-ratio check),
+// matching Campaign's own `tier < e.stats.minTier` gate in
+// handleCampaignEating() exactly.
 const TIERS = {
   fragment: { color: '#50F0FA', minR: 7, maxR: 7, value: 5, subtypes: ['fragment'], count: 60, minSizeTier: 0 },
   capsule: { color: '#50F0FA', minR: 10, maxR: 10, value: 15, subtypes: ['kapsula'], count: 30, minSizeTier: 0 },
@@ -316,7 +315,10 @@ const TIERS = {
   node: { color: '#46D99A', minR: 36, maxR: 36, value: 50, subtypes: ['wezel'], count: 4, minSizeTier: 2 },
   pylon: { color: '#46D99A', minR: 36, maxR: 36, value: 50, subtypes: ['pylon'], count: 4, minSizeTier: 2 },
   landmark: { color: '#9875FF', minR: 56, maxR: 56, value: 160, subtypes: ['landmark'], count: 2, minSizeTier: 3 },
-  portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, subtypes: ['portal'], count: 0, minSizeTier: 0 }
+  // Shares landmark's tier (3, T4) rather than its own ratio-derived floor --
+  // both are the palette's violet/T4 accent color, so a player who has not
+  // yet reached T4 shouldn't be able to eat either one.
+  portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, subtypes: ['portal'], count: 0, minSizeTier: 3 }
 };
 
 const BOT_NAME_POOL = [
@@ -883,9 +885,16 @@ function getSizeTierIndex(radius) {
 }
 
 /** Whether a hole of the given radius has grown into the size tier a
- *  WorldObject's TIERS group requires (small/medium/large -> T1/T2/T3),
- *  independent of the EAT_OBJ_RATIO check against that specific object's
- *  instance radius. */
+ *  WorldObject's TIERS group requires (small/medium/large -> T1/T2/T3) --
+ *  the *only* eat-eligibility gate for world objects (no physical size-ratio
+ *  check against that specific object's instance radius), matching
+ *  Campaign's own `tier < e.stats.minTier` gate in handleCampaignEating()
+ *  exactly (player feedback: arena and campaign must be exactly the same
+ *  gameplay, missions being campaign's only addition). Object eating used
+ *  to also require the object to be smaller than 0.9x the hole's radius,
+ *  which Campaign never had; that physical floor is gone, not just relaxed
+ *  -- hole-vs-hole eating still has its own ratio requirement, EAT_HOLE_RATIO,
+ *  shared by both modes. */
 function canEatWorldObjectTier(radius, obj) {
   return getSizeTierIndex(radius) >= TIERS[obj.tier].minSizeTier;
 }
@@ -2201,7 +2210,7 @@ class Bot extends Hole {
 
     let obj = null, objDist = Infinity;
     for (const o of game.objects) {
-      if (o.eating || o.radius >= this.radius * EAT_OBJ_RATIO || !canEatWorldObjectTier(this.radius, o)) continue;
+      if (o.eating || !canEatWorldObjectTier(this.radius, o)) continue;
       const d = dist(this.x, this.y, o.x, o.y);
       if (d < 480 && d < objDist) { obj = o; objDist = d; }
     }
@@ -5132,7 +5141,6 @@ class Game {
   handleObjectEating(hole) {
     for (const obj of this.objects) {
       if (obj.eating) continue;
-      if (obj.radius >= hole.radius * EAT_OBJ_RATIO) continue;
       if (!canEatWorldObjectTier(hole.radius, obj)) continue;
       const d = dist(hole.x, hole.y, obj.x, obj.y);
       if (d < hole.radius * 0.85) obj.startEating(hole);
@@ -5375,7 +5383,7 @@ class Game {
 
     if (now < this.magnetUntil || now < this.toolMagnetUntil) {
       for (const obj of this.objects) {
-        if (obj.eating || obj.radius >= this.player.radius * EAT_OBJ_RATIO || !canEatWorldObjectTier(this.player.radius, obj)) continue;
+        if (obj.eating || !canEatWorldObjectTier(this.player.radius, obj)) continue;
         const d = dist(this.player.x, this.player.y, obj.x, obj.y);
         if (d > 0 && d < CONFIG.evolution.magnetRadius) {
           const pull = CONFIG.evolution.magnetPull * (1 - d / CONFIG.evolution.magnetRadius);
@@ -5760,17 +5768,18 @@ class Game {
     ctx.restore();
   }
 
-  /** 0..1 "close to threshold" highlight strength for the can-eat breathing
-   *  rim; 0 for objects far from the boundary (avoids visual noise on
-   *  trivially-eatable tiny objects). */
+  /** 0..1 can-eat breathing-rim strength; 0 for objects the player can't
+   *  (yet) eat, or for trivially-eatable tiny ones (avoids visual noise on
+   *  every fragment/capsule on screen). Object eat-eligibility is a tier
+   *  gate with no physical size-ratio component (see
+   *  canEatWorldObjectTier()'s doc comment), so unlike the old ratio-band
+   *  version this is a flat 1 for anything currently eatable rather than a
+   *  fading "getting close" value -- there's no partial state left to show. */
   canEatHighlight(obj) {
     if (obj.radius >= this.player.radius) return 0;
+    if (obj.radius <= CONFIG.juice.eatTiers.tinyMaxRadius) return 0;
     if (!canEatWorldObjectTier(this.player.radius, obj)) return 0;
-    const ratio = (this.player.radius * EAT_OBJ_RATIO) / obj.radius;
-    const { canEatHighlightBandLow: lo, canEatHighlightBandHigh: hi } = CONFIG.juice;
-    if (ratio < lo || ratio > hi) return 0;
-    const mid = (lo + hi) / 2;
-    return 1 - clamp(Math.abs(ratio - mid) / (mid - lo), 0, 1);
+    return 1;
   }
 
   /** Soft warm halo behind rivals large enough to threaten the player and
