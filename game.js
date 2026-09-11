@@ -87,7 +87,7 @@ const CONFIG = {
   },
   // Phase 4: Evolution moments (run-only mutation picks) + Overdrive/City Shift.
   evolution: {
-    triggerRadii: [33, 43],  // fires once each, aligned with the 'core'/'vortex' size tiers
+    triggerRadii: [43, 63],  // fires once each, aligned with the 'core'/'vortex' size tiers
     cardCount: 3,
     autoPickMs: 20000,       // safety net only (an explicit "skip" button covers the normal case) --
                              // long because the offer now fully pauses the round instead of just slowing it
@@ -155,20 +155,33 @@ const CONFIG = {
   // strip) the live "T1"/"T2".../missionTierBadge. `shortId`/`color` mirror
   // CAMPAIGN_TIERS' T1-T5 exactly (same cyan/pink/green/violet/silver) so a
   // given tier number reads as the same color in both modes.
-  // minRadius is derived from CAMPAIGN_TIERS' own minUnits (10/30/70/140),
-  // converted into Arena's area-conserving radius space via fragment's
-  // growth (fragment = 1 Campaign growth-unit = pi*7^2*GROW_K_OBJ = 19.6
-  // radius^2 in Arena): r = sqrt(BASE_RADIUS^2 + minUnits*19.6). Player
-  // feedback: the old thresholds (30/45/65/90, picked independently of
-  // Campaign's economy) needed roughly 2x as many fragments to cross T1->T2
-  // as Campaign's own pacing, so Arena felt far grindier than Campaign for
-  // the exact same "T1" tier.
+  // minRadius per tier is the *larger* of two floors:
+  //  (a) a campaign-pacing floor, so Arena doesn't need drastically more T1
+  //      fragments than Campaign to cross the same tier boundary -- derived
+  //      from CAMPAIGN_TIERS' own minUnits (10/30/70/140) converted into
+  //      Arena's area-conserving radius space via fragment's growth
+  //      (fragment = 1 Campaign growth-unit = pi*7^2*GROW_K_OBJ = 19.6
+  //      radius^2 in Arena): r = sqrt(BASE_RADIUS^2 + minUnits*19.6) ->
+  //      ~26/~33/~43/~57;
+  //  (b) a physical eat-ratio floor, so the tier badge never flips before a
+  //      hole can actually fit that tier's own objects through
+  //      canEatWorldObjectTier()'s EAT_OBJ_RATIO (0.9) check -- otherwise
+  //      the badge reads "T2" while every pink prop/marker is still too big
+  //      to eat (player feedback: "T2 already showing, still can't eat the
+  //      pink ones" -- an actual regression from using floor (a) alone,
+  //      since prop's own radius (26) needs hole radius > 26/0.9 = 28.9, a
+  //      bigger floor than (a)'s ~26). ceil(maxObjRadiusInTier / 0.9):
+  //  T2 (prop 26, marker 25) -> 29, T3 (vehicle 38, node/pylon 36) -> 43,
+  //  T4 (landmark 56) -> 63. T5 has no gated TIERS entry, so instead of
+  //  floor (a) in isolation (which would put it *below* T4's ratio-raised
+  //  63, breaking the tiers' required ascending order) it continues floor
+  //  (a)'s pacing from T4's actual radius: r5 = sqrt(63^2 + (140-70)*19.6).
   sizeTiers: [
     { id: 'spark', minRadius: 0, label: 'T1 · MAŁY', shortId: 'T1', color: '#50F0FA' },
-    { id: 'pulse', minRadius: 26, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
-    { id: 'core', minRadius: 33, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
-    { id: 'vortex', minRadius: 43, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
-    { id: 'singularity', minRadius: 57, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
+    { id: 'pulse', minRadius: 29, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
+    { id: 'core', minRadius: 43, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
+    { id: 'vortex', minRadius: 63, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
+    { id: 'singularity', minRadius: 73, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
   ],
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
