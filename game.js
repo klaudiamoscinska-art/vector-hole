@@ -499,14 +499,18 @@ const REWARD_CATEGORY_ICONS = {
 // between rounds, so the ranked/daily leaderboard (once it exists) stays
 // fair (GDD 4.1). desc kept to a few words per player feedback ("reduce
 // the amount of text"); icon points into CARD_ICONS above.
+// Player feedback ("nie rozumiem ewolucji... nie wiem co wybieram"):
+// every card now has a plain-Polish name, a short tag saying WHEN it
+// works, and a one-sentence `desc` with the real numbers from CONFIG --
+// plus a looping demo (drawPowerDemo()) instead of a bare icon.
 const MUTATIONS = [
-  { id: 'magnet_pulse', name: 'Magnet Pulse', desc: 'Przyciąga obiekty.', icon: 'magnet', weight: 3, color: '#50F0FA' },
-  { id: 'slipstream', name: 'Slipstream', desc: 'Boost po combo.', icon: 'bolt', weight: 3, color: '#46D99A' },
-  { id: 'phase_edge', name: 'Phase Edge', desc: 'Dłuższa ochrona.', icon: 'shield', weight: 2, color: '#9875FF' },
-  { id: 'combo_reactor', name: 'Combo Reactor', desc: 'Dłuższe combo.', icon: 'clock', weight: 3, color: '#EFCB63' },
-  { id: 'scanner', name: 'Scanner', desc: 'Wskazuje cel.', icon: 'radar', weight: 2, color: '#50F0FA' },
-  { id: 'shockwave', name: 'Shockwave', desc: 'Odpycha obiekty.', icon: 'burst', weight: 2, color: '#FF54AD' },
-  { id: 'bounty_core', name: 'Bounty Core', desc: 'Bonus za rywala.', icon: 'target', weight: 2, color: '#EFCB63' }
+  { id: 'magnet_pulse', name: 'Magnes', tag: 'CAŁĄ RUNDĘ', desc: 'Obiekty, które możesz zjeść, same lecą do Ciebie z odległości ok. 160 px.', icon: 'magnet', weight: 3, color: '#50F0FA' },
+  { id: 'slipstream', name: 'Turbo combo', tag: 'PO COMBO ×3', desc: 'Zjedz 3 rzeczy szybko po sobie, a dostaniesz +60% prędkości na 1,5 s.', icon: 'bolt', weight: 3, color: '#46D99A' },
+  { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Po zjedzeniu przez rywala odradzasz się nietykalna przez 4 s zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
+  { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz 2,6 s zamiast 1,6 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
+  { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie, żebyś wiedziała, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
+  { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM POZIOMIE', desc: 'Gdy urośniesz o poziom, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
+  { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Najbliższy rywal dostaje koronę. Zjedz go, a zgarniesz +40 punktów ekstra.', icon: 'target', weight: 2, color: '#EFCB63' }
 ];
 
 /* ----------------------- Campaign mode (GDD 3.1 / "Vector Hole v3") -----------------------
@@ -595,10 +599,10 @@ function randomStreetGlyph() { return PROP_STREET_GLYPHS[randInt(0, PROP_STREET_
 // MUTATIONS pool above (kept untouched so Arena's already-tuned balance
 // doesn't shift). Exact numbers per GDD §08.
 const CAMPAIGN_POWERS = [
-  { id: 'magnes', name: 'Magnes', desc: 'Przyciąga fragmenty.', icon: 'magnet', color: '#50F0FA' },
-  { id: 'reaktor', name: 'Reaktor', desc: 'Dłuższe combo.', icon: 'clock', color: '#EFCB63' },
-  { id: 'impuls', name: 'Impuls', desc: '+prędkość po tierze.', icon: 'bolt', color: '#46D99A' },
-  { id: 'skaner', name: 'Skaner', desc: 'Wskazuje skupisko.', icon: 'radar', color: '#9875FF' }
+  { id: 'magnes', name: 'Magnes', tag: 'CAŁĄ MISJĘ', desc: 'Obiekty, które możesz zjeść, same płyną do Ciebie, gdy są blisko.', icon: 'magnet', color: '#50F0FA' },
+  { id: 'reaktor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kęsami masz 2,1 s zamiast 1,5 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', color: '#EFCB63' },
+  { id: 'impuls', name: 'Impuls', tag: 'NA NOWYM POZIOMIE', desc: 'Za każdym razem, gdy urośniesz o poziom, dostajesz +20% prędkości na 2 s.', icon: 'bolt', color: '#46D99A' },
+  { id: 'skaner', name: 'Skaner', tag: 'CO 8 S', desc: 'Co 8 s podświetla najbliższy obiekt, żebyś wiedziała, dokąd jechać.', icon: 'radar', color: '#9875FF' }
 ];
 
 // Hub district map. GDD 4.0 §6 authors the full 24-mission campaign (all
@@ -1784,6 +1788,7 @@ function drawSpiralArms(ctx, r, colors, angle, arms) {
   ctx.save();
   const baseAlpha = ctx.globalAlpha;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   for (let a = 0; a < arms; a++) {
     const base = angle + (a / arms) * Math.PI * 2;
     const col = colors[a % colors.length];
@@ -1807,6 +1812,391 @@ function drawSpiralArms(ctx, r, colors, angle, arms) {
 
 /** Cheap stable per-object phase so neighbours don't bob in sync. */
 function artSeed(x, y) { return ((x * 0.013 + y * 0.029) % (Math.PI * 2)); }
+
+/* ----------------------- Screen art (hub city, district tiles, daily map, power demos) -----------------------
+   Player feedback: the meta screens were flat text panels ("mało
+   efektowne"). These canvas renderers give each one a living picture:
+   Miasto's Core City literally builds itself up as it charges, each
+   Dzielnica is a little skyline that lights up as its missions clear, the
+   Wyzwania tab shows today's real map, and every evolution card plays a
+   tiny looping demo of what it does. */
+
+/** Fits a canvas' backing store to its CSS box (x DPR) and returns
+ *  {ctx, w, h} in CSS pixels, or null while it's not laid out. */
+function prepCanvas(canvas) {
+  if (!canvas) return null;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return null;
+  const dpr = window.devicePixelRatio || 1;
+  const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+  if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+
+const CITY_SLOT_COUNT = 18;
+const CITY_STARTER_COUNT = 3;
+
+/** Deterministic Core City layout: slot x/width/height plus the order the
+ *  buildings get built in. Later builds are taller, so the skyline grows
+ *  both denser and higher as Core City levels up. */
+function cityLayout() {
+  if (cityLayout.cache) return cityLayout.cache;
+  const rng = new SeededRNG(0xC17);
+  const order = [];
+  for (let i = 0; i < CITY_SLOT_COUNT; i++) order.push(i);
+  for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rng.next() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  const slots = [];
+  for (let i = 0; i < CITY_SLOT_COUNT; i++) {
+    slots.push({ x: (i + 0.5) / CITY_SLOT_COUNT, w: 0.65 + rng.next() * 0.5, seed: rng.next() * 1000, antenna: rng.next() < 0.35 });
+  }
+  order.forEach((slotIdx, k) => { slots[slotIdx].buildRank = k; slots[slotIdx].h = 0.2 + 0.68 * (k / (CITY_SLOT_COUNT - 1)) * (0.8 + rng.next() * 0.25); });
+  const stars = [];
+  for (let i = 0; i < 40; i++) stars.push({ x: rng.next(), y: rng.next() * 0.55, s: 0.6 + rng.next() * 1.2, p: rng.next() * 6 });
+  cityLayout.cache = { slots, stars };
+  return cityLayout.cache;
+}
+
+const CITY_PALETTE = ['#50F0FA', '#9875FF', '#FF54AD', '#46D99A', '#EFCB63'];
+
+/** Draws the Core City skyline. `progress` is 0..1 of the full city (one
+ *  sixth of the way per Core City level, LVL6 = every building standing). */
+function drawCityScene(canvas, progress, t) {
+  const c = prepCanvas(canvas);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const { slots, stars } = cityLayout();
+  const ground = h - 18;
+
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#030b16'); sky.addColorStop(0.75, '#0a1d33'); sky.addColorStop(1, '#0d2a40');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+  stars.forEach(s => {
+    ctx.globalAlpha = 0.35 + 0.35 * Math.sin(t * 1.5 + s.p);
+    ctx.fillStyle = '#cfefff';
+    ctx.fillRect(s.x * w, s.y * h, s.s, s.s);
+  });
+  ctx.globalAlpha = 1;
+  // City glow on the horizon grows with the city itself.
+  const glow = ctx.createRadialGradient(w / 2, ground, 0, w / 2, ground, w * 0.7);
+  glow.addColorStop(0, `rgba(80, 240, 250, ${0.12 + 0.25 * progress})`); glow.addColorStop(1, 'rgba(80, 240, 250, 0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+
+  // Three starter buildings always stand, so a brand-new city isn't empty;
+  // Core City progress builds the remaining 15.
+  const built = CITY_STARTER_COUNT + progress * (CITY_SLOT_COUNT - CITY_STARTER_COUNT);
+  const slotW = w / CITY_SLOT_COUNT;
+  // Draw back-to-front by height so tall towers don't hide behind houses.
+  const sorted = slots.slice().sort((a, b) => b.h - a.h);
+  sorted.forEach(s => {
+    const bw = slotW * s.w * 1.25;
+    const x = s.x * w - bw / 2;
+    const fullH = s.h * (ground - 14);
+    const col = CITY_PALETTE[s.buildRank % CITY_PALETTE.length];
+    const state = s.buildRank < Math.floor(built) ? 'built' : (s.buildRank === Math.floor(built) ? 'building' : 'ghost');
+    if (state === 'ghost') {
+      if (s.buildRank > Math.floor(built) + 3) return; // only hint at the next few
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = 'rgba(160, 200, 230, 0.18)'; ctx.lineWidth = 1;
+      ctx.strokeRect(x, ground - fullH, bw, fullH);
+      ctx.setLineDash([]);
+      return;
+    }
+    const frac = state === 'built' ? 1 : (built - Math.floor(built));
+    const bh = Math.max(2, fullH * frac);
+    const top = ground - bh;
+    const body = ctx.createLinearGradient(0, top, 0, ground);
+    body.addColorStop(0, shadeColor(col, -0.55)); body.addColorStop(1, shadeColor(col, -0.85));
+    ctx.fillStyle = body; ctx.fillRect(x, top, bw, bh);
+    ctx.save();
+    ctx.shadowBlur = 8; ctx.shadowColor = col;
+    ctx.strokeStyle = col; ctx.lineWidth = 1.2;
+    ctx.strokeRect(x + 0.5, top + 0.5, bw - 1, bh - 1);
+    ctx.restore();
+    // Windows: a seeded grid, each window flickering on its own phase.
+    const cols = Math.max(1, Math.floor(bw / 6)), rows = Math.floor(bh / 7);
+    for (let r = 0; r < rows; r++) {
+      for (let k = 0; k < cols; k++) {
+        const ph = (s.seed + r * 7.3 + k * 3.1);
+        const on = Math.sin(ph) > -0.2 && Math.sin(t * 0.7 + ph * 1.3) > -0.85;
+        if (!on) continue;
+        ctx.fillStyle = Math.sin(ph * 2.1) > 0.6 ? '#ffffff' : shadeColor(col, 0.35);
+        ctx.globalAlpha = 0.55 + 0.35 * Math.sin(ph * 0.9);
+        ctx.fillRect(x + 2 + k * (bw - 3) / cols, top + 4 + r * 7, Math.max(1.5, (bw - 3) / cols - 2.5), 3);
+      }
+    }
+    ctx.globalAlpha = 1;
+    if (state === 'building') {
+      // Scaffold outline of the final height + a crane with a blinking light.
+      ctx.setLineDash([3, 2]);
+      ctx.strokeStyle = 'rgba(239, 203, 99, 0.7)'; ctx.lineWidth = 1;
+      ctx.strokeRect(x, ground - fullH, bw, fullH);
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#EFCB63'; ctx.lineWidth = 1.5;
+      const cx = x + bw / 2, cTop = ground - fullH - 10;
+      ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, cTop); ctx.lineTo(cx + bw * 1.1, cTop); ctx.moveTo(cx, cTop); ctx.lineTo(cx - bw * 0.4, cTop); ctx.stroke();
+      const hookY = cTop + 6 + 4 * Math.sin(t * 2);
+      ctx.beginPath(); ctx.moveTo(cx + bw, cTop); ctx.lineTo(cx + bw, hookY); ctx.stroke();
+      if (Math.sin(t * 6) > 0) { ctx.fillStyle = '#ff3860'; ctx.beginPath(); ctx.arc(cx, cTop - 2, 2, 0, Math.PI * 2); ctx.fill(); }
+    } else if (s.antenna && bh > 40) {
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x + bw / 2, top); ctx.lineTo(x + bw / 2, top - 9); ctx.stroke();
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 3 + s.seed);
+      ctx.fillStyle = '#ff3860'; ctx.beginPath(); ctx.arc(x + bw / 2, top - 10, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  });
+
+  // Ground + reflection strip.
+  const g2 = ctx.createLinearGradient(0, ground, 0, h);
+  g2.addColorStop(0, 'rgba(80, 240, 250, 0.35)'); g2.addColorStop(1, 'rgba(80, 240, 250, 0)');
+  ctx.fillStyle = g2; ctx.fillRect(0, ground, w, h - ground);
+  ctx.strokeStyle = 'rgba(80, 240, 250, 0.8)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, ground + 0.5); ctx.lineTo(w, ground + 0.5); ctx.stroke();
+  // A slow scan line sweeping the skyline -- "the city is alive".
+  const sx = ((t * 40) % (w + 80)) - 40;
+  const scan = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0);
+  scan.addColorStop(0, 'rgba(80,240,250,0)'); scan.addColorStop(0.5, 'rgba(80,240,250,0.07)'); scan.addColorStop(1, 'rgba(80,240,250,0)');
+  ctx.fillStyle = scan; ctx.fillRect(sx - 30, 0, 60, ground);
+}
+
+const DISTRICT_COLORS = { plac: '#50F0FA', park: '#46D99A', port: '#EFCB63', galeria: '#FF54AD', dachy: '#9875FF', rdzen: '#CBD5E1' };
+
+/** The boss landmark of a district (its missions' `setup.landmark`, last one wins). */
+function districtLandmarkId(district) {
+  let id = null;
+  district.missions.forEach(mid => { const m = campaignMissionById(mid); if (m && m.setup && m.setup.landmark) id = m.setup.landmark; });
+  return id;
+}
+
+/** One district tile: a small skyline that lights up building by building
+ *  as missions clear, with the district's boss landmark in front (dim and
+ *  padlocked until the district is fully rebuilt). */
+function drawDistrictTile(canvas, district, done, total, unlocked, t) {
+  const c = prepCanvas(canvas);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const col = DISTRICT_COLORS[district.id] || '#50F0FA';
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, unlocked ? shadeColor(col, -0.86) : '#060d16');
+  bg.addColorStop(1, unlocked ? shadeColor(col, -0.7) : '#09131f');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  const rng = new SeededRNG(district.order * 977);
+  const ground = h - 8;
+  const n = 9;
+  const frac = total ? done / total : 0;
+  for (let i = 0; i < n; i++) {
+    const bw = w / n * (0.7 + rng.next() * 0.25);
+    const bx = (i + 0.5) * w / n - bw / 2;
+    const bh = (0.25 + rng.next() * 0.45) * h;
+    const lit = unlocked && (i + 0.5) / n <= frac + 0.001;
+    ctx.fillStyle = lit ? shadeColor(col, -0.55) : 'rgba(30, 50, 70, 0.6)';
+    ctx.fillRect(bx, ground - bh, bw, bh);
+    if (lit) {
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.strokeRect(bx + 0.5, ground - bh + 0.5, bw - 1, bh - 1);
+      for (let y = ground - bh + 4; y < ground - 3; y += 6) {
+        for (let x = bx + 2; x < bx + bw - 3; x += 5) {
+          if (Math.sin(x * 1.7 + y * 0.9 + t * 0.8) > -0.3) { ctx.fillStyle = shadeColor(col, 0.4); ctx.fillRect(x, y, 2, 2); }
+        }
+      }
+    }
+  }
+  ctx.fillStyle = unlocked ? rgbaColor(col, 0.5) : 'rgba(120,140,160,0.2)';
+  ctx.fillRect(0, ground, w, 1);
+  const lm = districtLandmarkId(district);
+  if (lm && unlocked) {
+    const complete = done >= total;
+    const e = new CampaignEntity('landmark', w * 0.5, h * 0.5, { landmarkId: lm });
+    e.unlocked = complete;
+    e.radius = h * 0.36;
+    ctx.save();
+    if (!complete) ctx.globalAlpha = 0.6;
+    e.draw(ctx, false);
+    ctx.restore();
+  }
+  if (!unlocked) {
+    ctx.fillStyle = 'rgba(4, 16, 29, 0.55)'; ctx.fillRect(0, 0, w, h);
+  }
+}
+
+/** Today's real Daily Seed Challenge layout as a mini-map: every object
+ *  dot in its tier color, plus where you'll spawn. */
+function drawDailyMapPreview(canvas, layout, t) {
+  const c = prepCanvas(canvas);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  ctx.fillStyle = '#030b16'; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)'; ctx.lineWidth = 1;
+  for (let i = 1; i < 10; i++) {
+    ctx.beginPath(); ctx.moveTo(i * w / 10, 0); ctx.lineTo(i * w / 10, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * h / 10); ctx.lineTo(w, i * h / 10); ctx.stroke();
+  }
+  const sx = w / WORLD_W, sy = h / WORLD_H;
+  layout.objects.forEach(o => {
+    const big = o.tier === 'node' || o.tier === 'pylon' || o.tier === 'landmark';
+    const s = big ? 3.5 : (o.tier === 'fragment' ? 1.6 : 2.4);
+    ctx.fillStyle = TIERS[o.tier].color;
+    ctx.fillRect(o.x * sx - s / 2, o.y * sy - s / 2, s, s);
+  });
+  const px = layout.spawn.x * sx, py = layout.spawn.y * sy;
+  const pulse = (t % 1.6) / 1.6;
+  ctx.strokeStyle = `rgba(255,255,255,${1 - pulse})`; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(px, py, 4 + pulse * 12, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+}
+
+/* ---- Evolution / power card demos ----
+   Each card plays a ~2.4 s loop showing its effect on a tiny board, so the
+   player sees what they're picking instead of decoding an icon. */
+const POWER_DEMO_FOR = {
+  magnet_pulse: 'magnet', magnes: 'magnet',
+  slipstream: 'speed', impuls: 'tierSpeed',
+  phase_edge: 'shield',
+  combo_reactor: 'combo', reaktor: 'combo',
+  scanner: 'scanner', skaner: 'scanner',
+  shockwave: 'shockwave',
+  bounty_core: 'bounty'
+};
+
+function demoHole(cache, x, y, r, color) {
+  const hole = cache.hole || (cache.hole = new Hole('', 0, 0, true));
+  hole.skin = 'custom'; hole.edgeColor = color; hole.auraId = 'none';
+  hole.x = x; hole.y = y; hole.radius = r;
+  return hole;
+}
+
+function demoFragment(ctx, x, y, t, color, scale = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+  drawObjectArt(ctx, 'fragment', color || TIERS.fragment.color, 6, t, x * 0.1, { live: false });
+  ctx.restore();
+}
+
+function drawPowerDemo(canvas, powerId, color, t) {
+  const c = prepCanvas(canvas);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const cache = canvas._demo || (canvas._demo = {});
+  const cx = w / 2, cy = h / 2;
+  const L = 2.4, f = (t % L) / L;
+  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.7);
+  bg.addColorStop(0, rgbaColor(color, 0.18)); bg.addColorStop(1, 'rgba(4,16,29,0)');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  const R = Math.min(w, h) * 0.17;
+  const kind = POWER_DEMO_FOR[powerId] || 'magnet';
+
+  if (kind === 'magnet') {
+    ctx.setLineDash([3, 4]); ctx.strokeStyle = rgbaColor(color, 0.5); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, w * 0.42, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 + 0.4;
+      const p = (f + i / 6) % 1;
+      const d = lerp(w * 0.42, R * 0.3, p * p);
+      ctx.strokeStyle = rgbaColor(color, 0.35 * p); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (d + 8), cy + Math.sin(a) * (d + 8)); ctx.lineTo(cx + Math.cos(a) * (d + 2), cy + Math.sin(a) * (d + 2)); ctx.stroke();
+      demoFragment(ctx, cx + Math.cos(a) * d, cy + Math.sin(a) * d, t, null, 1 - p * 0.6);
+    }
+    demoHole(cache, cx, cy, R, color).draw(ctx, t);
+  } else if (kind === 'speed' || kind === 'tierSpeed') {
+    // Hole runs across eating a chain; after the 3rd bite it surges.
+    const xs = [0.28, 0.42, 0.56];
+    const boostAt = 0.6;
+    const px = f < boostAt ? lerp(w * 0.12, w * 0.6, f / boostAt) : lerp(w * 0.6, w * 1.15, (f - boostAt) / (1 - boostAt));
+    xs.forEach(x => { if (px < x * w + 4) demoFragment(ctx, x * w, cy, t); });
+    if (f > boostAt) {
+      for (let i = 0; i < 5; i++) {
+        ctx.strokeStyle = rgbaColor(color, 0.6 - i * 0.1); ctx.lineWidth = 2;
+        const yy = cy - R * 0.7 + i * R * 0.35;
+        ctx.beginPath(); ctx.moveTo(px - R - 6 - i * 3, yy); ctx.lineTo(px - R - 26 - i * 5, yy); ctx.stroke();
+      }
+    }
+    if (kind === 'tierSpeed' && f > boostAt - 0.05 && f < boostAt + 0.2) {
+      const k = (f - boostAt + 0.05) / 0.25;
+      ctx.strokeStyle = rgbaColor(color, 1 - k); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px, cy, R + k * R * 1.5, 0, Math.PI * 2); ctx.stroke();
+    }
+    demoHole(cache, px, cy, R * (f > boostAt ? 1.1 : 1), color).draw(ctx, t);
+    ctx.fillStyle = color; ctx.font = 'bold 11px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+    if (f > boostAt) ctx.fillText(kind === 'tierSpeed' ? '+20%' : '+60%', w * 0.5, h * 0.2);
+  } else if (kind === 'shield') {
+    const hit = f > 0.3 && f < 0.45;
+    const rx = lerp(w * 1.1, w * 0.62, Math.min(1, f / 0.35));
+    const enemy = cache.enemy || (cache.enemy = new Hole('', 0, 0, false));
+    enemy.skin = 'custom'; enemy.edgeColor = '#ff3860'; enemy.x = f < 0.45 ? rx : lerp(w * 0.62, w * 1.2, (f - 0.45) / 0.55); enemy.y = cy; enemy.radius = R * 1.5;
+    demoHole(cache, w * 0.36, cy, R, color).draw(ctx, t);
+    enemy.draw(ctx, t);
+    const sh = 0.5 + 0.5 * Math.sin(t * 8);
+    ctx.strokeStyle = rgbaColor(color, f > 0.3 ? 0.5 + 0.4 * sh : 0.25); ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(w * 0.36, cy, R + 7, 0, Math.PI * 2); ctx.stroke();
+    if (f > 0.3) {
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(w * 0.36, cy, R + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - (f - 0.3) / 0.7)); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('4 s', w * 0.36, cy - R - 18);
+    }
+    if (hit) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(w * 0.5, cy, 6, 0, Math.PI * 2); ctx.fill(); }
+  } else if (kind === 'combo') {
+    const bites = [0.12, 0.42, 0.72];
+    const xs = [0.25, 0.5, 0.75];
+    let combo = 0, lastBite = -1;
+    bites.forEach((b, i) => { if (f >= b) { combo = i + 1; lastBite = b; } else demoFragment(ctx, xs[i] * w, cy - R * 0.2, t); });
+    const px = lerp(w * 0.1, w * 0.85, f);
+    demoHole(cache, px, cy - R * 0.2, R * 0.9, color).draw(ctx, t);
+    // Combo window bar: long enough to bridge the gaps.
+    const left = lastBite < 0 ? 0 : Math.max(0, 1 - (f - lastBite) / 0.45);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(w * 0.15, h * 0.82, w * 0.7, 5);
+    ctx.fillStyle = color; ctx.fillRect(w * 0.15, h * 0.82, w * 0.7 * left, 5);
+    if (combo > 0) {
+      ctx.fillStyle = color; ctx.font = 'bold 12px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`COMBO ×${combo}`, w / 2, h * 0.2);
+    }
+  } else if (kind === 'scanner') {
+    demoHole(cache, w * 0.3, h * 0.62, R * 0.9, color).draw(ctx, t);
+    const tx = w * 0.74, ty = h * 0.3;
+    ctx.save(); ctx.translate(tx, ty);
+    drawObjectArt(ctx, 'samochod', TIERS.vehicle.color, 12, t, 1, { live: false });
+    ctx.restore();
+    demoFragment(ctx, w * 0.2, h * 0.25, t); demoFragment(ctx, w * 0.62, h * 0.75, t);
+    const ping = f % 0.5 / 0.5;
+    ctx.strokeStyle = rgbaColor(color, 1 - ping); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tx, ty, 14 + ping * 16, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = rgbaColor(color, 0.7); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(w * 0.3, h * 0.62); ctx.lineTo(tx, ty); ctx.stroke(); ctx.setLineDash([]);
+  } else if (kind === 'shockwave') {
+    const pop = f > 0.25 ? Math.min(1, (f - 0.25) / 0.5) : 0;
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const d = R * 1.8 + pop * w * 0.25;
+      demoFragment(ctx, cx + Math.cos(a) * d, cy + Math.sin(a) * d, t, i % 2 ? TIERS.prop.color : null, 0.9);
+    }
+    if (pop > 0 && pop < 1) {
+      ctx.strokeStyle = rgbaColor(color, 1 - pop); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, R + pop * w * 0.4, 0, Math.PI * 2); ctx.stroke();
+    }
+    demoHole(cache, cx, cy, R * (f > 0.25 ? 1.2 : 1), color).draw(ctx, t);
+    if (f > 0.2 && f < 0.5) { ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('T2!', cx, cy - R - 10); }
+  } else if (kind === 'bounty') {
+    const ex = w * 0.66, ey = cy;
+    const eaten = f > 0.62;
+    const px = lerp(w * 0.18, ex, Math.min(1, f / 0.62));
+    if (!eaten) {
+      const enemy = cache.enemy || (cache.enemy = new Hole('', 0, 0, false));
+      enemy.skin = 'custom'; enemy.edgeColor = '#FF54AD'; enemy.x = ex; enemy.y = ey; enemy.radius = R * 0.8;
+      enemy.draw(ctx, t);
+      ctx.fillStyle = color;
+      const cy2 = ey - R * 0.8 - 10;
+      ctx.beginPath(); ctx.moveTo(ex - 8, cy2 + 6); ctx.lineTo(ex - 8, cy2 - 2); ctx.lineTo(ex - 4, cy2 + 2); ctx.lineTo(ex, cy2 - 5); ctx.lineTo(ex + 4, cy2 + 2); ctx.lineTo(ex + 8, cy2 - 2); ctx.lineTo(ex + 8, cy2 + 6); ctx.closePath(); ctx.fill();
+    }
+    demoHole(cache, px, cy, R * 1.25, '#50F0FA').draw(ctx, t);
+    if (eaten) {
+      const k = (f - 0.62) / 0.38;
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = color; ctx.font = 'bold 14px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('+40', ex, ey - R - 6 - k * 14); ctx.globalAlpha = 1;
+    }
+  }
+}
 
 class WorldObject {
   constructor(tierName, rng) {
@@ -3548,22 +3938,91 @@ class Game {
 
   /** Keeps the Warsztat hole canvases animated while the screen is open
    *  (stops itself once shopScreen is hidden). */
-  startWarsztatAnim() {
-    if (this.warsztatRaf) return;
+  startWarsztatAnim() { this.startScreenAnim(); }
+
+  /** One RAF loop for every animated canvas outside the game board
+   *  (Miasto's city, Dzielnice tiles, Warsztat previews, the daily map,
+   *  evolution card demos); it stops by itself once none is visible. */
+  startScreenAnim() {
+    if (this.screenAnimRaf) return;
+    const visible = id => !document.getElementById(id).classList.contains('hidden');
     const tick = (now) => {
-      if (document.getElementById('shopScreen').classList.contains('hidden')) { this.warsztatRaf = null; return; }
-      this.renderWarsztatCanvases(now / 1000);
-      this.warsztatRaf = requestAnimationFrame(tick);
+      const t = now / 1000;
+      let any = false;
+      if (visible('mainMenu')) {
+        if (this.isFirstRun()) this.drawHoleThumb(document.getElementById('hubWelcomeHole'), this.save.selected, 'none', t, null, null, 0.85);
+        else this.renderHubCity(t);
+        any = true;
+      }
+      if (visible('campaignScreen')) { this.renderDistrictTiles(t); any = true; }
+      if (visible('shopScreen')) { this.renderWarsztatCanvases(t); any = true; }
+      if (visible('challengesScreen')) { this.renderDailyMap(t); any = true; }
+      if (visible('evolutionOverlay')) { this.renderPowerDemos(t); any = true; }
+      this.screenAnimRaf = any ? requestAnimationFrame(tick) : null;
     };
-    this.warsztatRaf = requestAnimationFrame(tick);
+    this.screenAnimRaf = requestAnimationFrame(tick);
+  }
+
+  /** 0..1 share of the Core City skyline standing: one sixth per level
+   *  (LVL6 = complete), the current level's charge building the next part. */
+  hubCityTargetProgress() {
+    const level = this.save.hub.coreLevel || 1;
+    return clamp(((level - 1) + (this.save.hub.coreCharge || 0) / 100) / 5, 0, 1);
+  }
+
+  /** The city animates up to its real progress -- coming back to Miasto
+   *  after a round, the new buildings rise in front of you. */
+  renderHubCity(t) {
+    const target = this.hubCityTargetProgress();
+    if (this.hubCityShown == null || target < this.hubCityShown) this.hubCityShown = target;
+    const dt = this.hubCityLastT ? Math.min(0.05, t - this.hubCityLastT) : 0;
+    this.hubCityLastT = t;
+    // Ease toward the target (~1.5 s for any jump), never overshooting.
+    if (this.hubCityShown < target) this.hubCityShown = Math.min(target, this.hubCityShown + Math.max(dt * 0.03, (target - this.hubCityShown) * dt * 2.2));
+    drawCityScene(document.getElementById('hubCityCanvas'), this.hubCityShown, t);
+  }
+
+  renderDistrictTiles(t) {
+    document.querySelectorAll('#districtMap canvas.district-tile-canvas').forEach(cv => {
+      const d = DISTRICTS.find(x => x.id === cv.dataset.district);
+      const done = d.missions.filter(id => this.save.campaign.completed[id]).length;
+      drawDistrictTile(cv, d, done, d.missions.length, this.save.campaign.unlockedDistricts.includes(d.id), t);
+    });
+  }
+
+  renderDailyMap(t) {
+    if (this.dailyLayout) drawDailyMapPreview(document.getElementById('dailyMapCanvas'), this.dailyLayout, t);
+  }
+
+  renderPowerDemos(t) {
+    document.querySelectorAll('#evolutionCards canvas.evolution-demo').forEach(cv => drawPowerDemo(cv, cv.dataset.power, cv.dataset.color, t));
+  }
+
+  /** Replays the Daily Seed Challenge's seeded setup (modifier roll, then
+   *  createObjects(), then the player's spawn -- the same rng order as
+   *  startRound()/createEntities()) without starting a round, for the
+   *  Wyzwania tab's map preview. */
+  computeDailyLayout() {
+    const { seed, dateKey } = dailySeedForDate(new Date());
+    const saved = { rng: this.rng, objects: this.objects, modifier: this.modifier };
+    this.rng = new SeededRNG(seed);
+    const modifier = this.pickModifier();
+    this.createObjects(this.rng);
+    const spawn = this.randomWorldPos(300, this.rng);
+    const layout = { dateKey, modifier, spawn, objects: this.objects.map(o => ({ tier: o.tier, x: o.x, y: o.y })) };
+    Object.assign(this, saved);
+    return layout;
   }
 
   renderWarsztatCanvases(time) {
     const p = this.pendingLoadout || { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected };
     const effect = EAT_EFFECTS.find(e => e.id === p.effect);
     const effectColor = (effect && effect.color) || TIERS.fragment.color;
+    const skin = SKINS.find(sk => sk.id === p.skin);
+    const glowColor = (skin && skin.color) || '#9875FF';
     this.drawHoleThumb(document.getElementById('warsztatPreviewCanvas'), p.skin, p.aura, time,
-      (ctx, R) => this.drawPreviewEat(ctx, R, time, effectColor));
+      (ctx, R) => this.drawPreviewEat(ctx, R, time, effectColor),
+      (ctx, w, h) => this.drawWarsztatStage(ctx, w, h, glowColor, time), 0.62);
     document.querySelectorAll('#shopScreen canvas.hole-swatch').forEach(cv => {
       if (!cv.offsetParent) return; // inactive tab
       this.drawHoleThumb(cv, cv.dataset.skin || p.skin, cv.dataset.aura || 'none', time);
@@ -3573,23 +4032,47 @@ class Game {
   /** Draws a nameless Hole into a small canvas with the exact in-round
    *  Hole.draw() at a standard radius, scaled to fit -- so ring thickness,
    *  vortex and trail proportions match the board 1:1. */
-  drawHoleThumb(canvas, skinId, auraId, time, extras) {
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    const px = Math.round((canvas.clientWidth || 44) * dpr);
-    if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
-    const ctx = canvas.getContext('2d');
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, px, px);
+  drawHoleThumb(canvas, skinId, auraId, time, extras, background, zoom = 1) {
+    const c = prepCanvas(canvas);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    if (background) background(ctx, w, h);
     const R = 30, extent = R + 15; // aura ring sits at R + 8..11 with a 6 px stroke
-    const k = px / (2 * extent);
-    ctx.setTransform(k, 0, 0, k, px / 2, px / 2);
+    const k = Math.min(w, h) / (2 * extent) * zoom;
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(k, k);
     const hole = canvas._hole || (canvas._hole = new Hole('', 0, 0, true));
     hole.skin = skinId;
     hole.auraId = auraId;
     hole.radius = R;
     hole.draw(ctx, time);
     if (extras) extras(ctx, R, hole);
+    ctx.restore();
+  }
+
+  /** Warsztat hero backdrop: a glowing showroom floor in the skin's color
+   *  with a perspective grid and a slowly turning platform ring. */
+  drawWarsztatStage(ctx, w, h, color, t) {
+    const glow = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.6);
+    glow.addColorStop(0, rgbaColor(color, 0.28)); glow.addColorStop(1, 'rgba(4,16,29,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+    const horizon = h * 0.55;
+    ctx.strokeStyle = rgbaColor(color, 0.16); ctx.lineWidth = 1;
+    for (let i = -8; i <= 8; i++) {
+      ctx.beginPath(); ctx.moveTo(w / 2 + i * 8, horizon); ctx.lineTo(w / 2 + i * w * 0.18, h); ctx.stroke();
+    }
+    for (let i = 0; i < 5; i++) {
+      const y = horizon + (h - horizon) * Math.pow((i + ((t * 0.4) % 1)) / 5, 1.8);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(w / 2, h / 2 + Math.min(w, h) * 0.32);
+    ctx.scale(1, 0.28);
+    ctx.strokeStyle = rgbaColor(color, 0.55); ctx.lineWidth = 3;
+    ctx.setLineDash([14, 10]); ctx.lineDashOffset = -t * 30;
+    ctx.beginPath(); ctx.arc(0, 0, Math.min(w, h) * 0.42, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
   }
 
   /** Preview loop: a fragment drifts into the hole every 1.8 s and bursts
@@ -3718,15 +4201,13 @@ class Game {
     document.getElementById('prismCountDistricts').textContent = this.save.prisms || 0;
     document.getElementById('prismCountChallenges').textContent = this.save.prisms || 0;
 
-    // GDD 4.0 §8.3 Miasto/Core City copy: percent + "LVL X · do następnej
-    // nagrody" + a preview of what 100% unlocks next, rendered as a real
-    // circular progress ring (GDD 4.0 §5.1 mockup) instead of a linear bar.
+    // GDD 4.0 §8.3 Miasto/Core City copy: level + percent toward the next
+    // reward over the living city canvas (renderHubCity()), plus a bar.
     const level = this.save.hub.coreLevel || 1;
     const pct = this.save.hub.coreCharge || 0;
-    const RING_CIRCUMFERENCE = 439.8; // 2 * PI * r(70), see .hub-ring-fill
-    document.getElementById('hubRingFill').style.strokeDashoffset = RING_CIRCUMFERENCE * (1 - pct / 100);
-    document.getElementById('hubChargeValue').textContent = pct + '%';
-    document.getElementById('hubLevelLabel').textContent = `LVL ${level} · do następnej nagrody`;
+    document.getElementById('hubChargeValue').textContent = Math.round(pct) + '%';
+    document.getElementById('hubLevelLabel').textContent = `LVL ${level}`;
+    document.getElementById('hubCityBar').style.width = pct + '%';
     const nextReward = CORE_CITY_LEVEL_REWARDS[level + 1];
     const nextRewardLabel = nextReward ? nextReward.label : 'Premia';
     const nextRewardCoins = nextReward ? nextReward.coins : CONFIG.hub.milestoneFallbackCoins;
@@ -3754,8 +4235,22 @@ class Game {
     const { mission } = missionForDate(new Date());
     const missionDoneToday = this.save.mission.dateKey === dateKey && this.save.mission.completed;
     document.getElementById('hubMissionText').textContent = missionDoneToday
-      ? `Misja dnia ukończona! Wróć jutro po nową. (+${mission.rewardCoins} monet odebrane)`
-      : `Misja dnia: ${mission.name} (+${mission.rewardCoins} monet)`;
+      ? `${mission.name} — ukończona! Wróć jutro po nową. (+${mission.rewardCoins} monet odebrane)`
+      : `${mission.name} · nagroda +${mission.rewardCoins} monet`;
+    const missionStatus = document.getElementById('hubMissionStatus');
+    missionStatus.textContent = missionDoneToday ? '✓ UKOŃCZONA' : 'DO ZROBIENIA';
+    missionStatus.classList.toggle('done', missionDoneToday);
+    const streak = this.save.daily.streak || 0;
+    const streakWrap = document.getElementById('streakDays');
+    streakWrap.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+      const d = document.createElement('span');
+      d.className = 'streak-day' + (i < Math.min(streak, 7) ? ' lit' : '') + (i === Math.min(streak, 7) ? ' next' : '');
+      d.textContent = i < Math.min(streak, 7) ? '🔥' : String(i + 1);
+      streakWrap.appendChild(d);
+    }
+    document.getElementById('dailyDateLabel').textContent =
+      new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', timeZone: 'UTC' }).toUpperCase();
 
     const goalText = document.getElementById('dailyGoalText');
     if (this.save.daily.lastSeedDate === dateKey) {
@@ -4055,36 +4550,48 @@ class Game {
    *  row, generalized to any level: done levels get a checkmark, the
    *  current level a filled dot, future levels stay hollow. */
   renderHubLevelDots(level) {
+    // Milestone road (player feedback: the old three dots never changed and
+    // didn't say what each level gives): six stops with the reward icon of
+    // each level, filled up to where Core City actually is, with the
+    // current level's charge running along the segment to the next stop.
     const wrap = document.getElementById('hubLevelDots');
     wrap.innerHTML = '';
-    // LVL1 is the starting state with no prior level -- show it plus the
-    // next two, rather than duplicating LVL1 via max(1, level-1).
-    const shown = level === 1 ? [1, 2, 3] : [level - 1, level, level + 1];
-    shown.forEach((n, i) => {
-      if (i > 0) {
-        const connector = document.createElement('div');
-        connector.className = 'hub-level-connector' + (shown[i - 1] < level ? ' filled' : '');
-        wrap.appendChild(connector);
+    const first = Math.max(1, Math.min(level - 1, 100));
+    const pct = (this.save.hub.coreCharge || 0) / 100;
+    for (let n = first; n < first + 6; n++) {
+      if (n > first) {
+        const seg = document.createElement('div');
+        seg.className = 'hub-level-connector';
+        const fill = document.createElement('div');
+        fill.className = 'hub-level-connector-fill';
+        fill.style.width = (n <= level ? 100 : n === level + 1 ? pct * 100 : 0) + '%';
+        seg.appendChild(fill);
+        wrap.appendChild(seg);
       }
       const item = document.createElement('div');
-      item.className = 'hub-level-item' + (n === level ? ' current' : '') + (n < level ? ' done' : '');
+      item.className = 'hub-level-item' + (n === level ? ' current' : '') + (n < level ? ' done' : '') + (n === level + 1 ? ' next' : '');
       const circle = document.createElement('div');
       circle.className = 'hub-level-circle';
-      if (n < level) circle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
-      else if (n === level) circle.innerHTML = '<div class="hub-level-circle-dot"></div>';
+      const def = CORE_CITY_LEVEL_REWARDS[n];
+      if (n <= level) circle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
+      else circle.innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(def)];
       item.appendChild(circle);
       const label = document.createElement('div');
       label.className = 'hub-level-label';
       label.textContent = `LVL ${n}`;
       item.appendChild(label);
       wrap.appendChild(item);
-    });
+    }
   }
+
 
   /** GDD 4.0 §5.4 Wyzwania tab: Daily rotating mission + Daily Seed
    *  Challenge, both with a UTC countdown to the next reset. */
   openChallengesScreen() {
     if (!this.isWyzwaniaUnlocked()) return;
+    const { dateKey } = dailySeedForDate(new Date());
+    if (!this.dailyLayout || this.dailyLayout.dateKey !== dateKey) this.dailyLayout = this.computeDailyLayout();
+    document.getElementById('dailyModifierBadge').classList.toggle('hidden', this.dailyLayout.modifier !== 'rush_hour');
     this.updateCoinDisplays();
     this.updateChallengeCountdown();
     this.showScreen('challengesScreen');
@@ -4100,6 +4607,8 @@ class Game {
     const m = Math.floor((remainingMs % 3600000) / 60000);
     const s = Math.floor((remainingMs % 60000) / 1000);
     el.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    const ring = document.getElementById('challengeCountdownRing');
+    if (ring) ring.style.strokeDashoffset = 175.9 * (1 - remainingMs / 86400000); // 2*PI*28
   }
 
   showScreen(id) {
@@ -4116,6 +4625,7 @@ class Game {
     const visitedFeature = { shopScreen: 'warsztat', challengesScreen: 'wyzwania' }[id];
     if (visitedFeature) this.markUnlockVisited(visitedFeature);
     this.renderBottomNav(id);
+    this.startScreenAnim();
   }
 
   hideAllOverlays() {
@@ -4390,12 +4900,19 @@ class Game {
     DISTRICTS.forEach(d => {
       const unlocked = this.save.campaign.unlockedDistricts.includes(d.id);
       const node = document.createElement('button');
-      node.className = 'district-node' + (unlocked ? '' : ' locked');
+      // A little skyline per district (drawDistrictTile()) that lights up
+      // as its missions clear, with its boss landmark in front -- player
+      // feedback: the districts should be visualised to pull you in.
+      node.className = 'district-node district-tile' + (unlocked ? '' : ' locked');
+      node.style.setProperty('--district-color', DISTRICT_COLORS[d.id] || '#50F0FA');
       const doneCount = d.missions.filter(id => this.save.campaign.completed[id]).length;
-      const status = unlocked ? `${doneCount}/${d.missions.length}` : '🔒';
       const isNew = unlocked && this.isUnlockFresh('district:' + d.id);
       node.classList.toggle('is-new', isNew);
-      node.innerHTML = `<span class="district-node-name">${d.name}</span><span class="district-node-status">${isNew ? 'NOWA' : status}</span>`;
+      const pctDone = Math.round(doneCount / d.missions.length * 100);
+      node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"></canvas>` +
+        `<span class="district-tile-info"><span class="district-node-name">${d.name}</span>` +
+        `<span class="district-node-status">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : '🔒 ZABLOKOWANA')}</span>` +
+        `<span class="district-tile-bar"><span style="width:${unlocked ? pctDone : 0}%"></span></span></span>`;
       node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
       wrap.appendChild(node);
     });
@@ -5075,26 +5592,43 @@ class Game {
     this.evolutionPending = true;
     const cards = pickUnique(CAMPAIGN_POWERS, count);
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id), mode: 'campaign' });
-
-    const grid = document.getElementById('evolutionCards');
-    grid.innerHTML = '';
-    grid.classList.toggle('count-2', cards.length === 2);
-    cards.forEach(power => {
-      const btn = document.createElement('button');
-      btn.className = 'evolution-card';
-      btn.style.borderColor = power.color;
-      btn.innerHTML = `<span class="evolution-card-icon" style="color:${power.color}"><svg viewBox="0 0 24 24">${CARD_ICONS[power.icon] || ''}</svg></span>` +
-        `<span class="evolution-card-name" style="color:${power.color}">${power.name}</span><span class="evolution-card-desc">${power.desc}</span>`;
-      btn.addEventListener('click', () => this.pickCampaignPower(power.id));
-      grid.appendChild(btn);
-    });
-    document.getElementById('evolutionOverlay').classList.remove('hidden');
-    this.vibrate(40);
-
+    this.showPowerCards(cards, id => this.pickCampaignPower(id), 'Działa do końca tej misji. Gra czeka, aż wybierzesz.');
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionAutoPickTimer = setTimeout(() => {
       if (this.evolutionPending && cards[0]) this.pickCampaignPower(cards[0].id);
     }, CONFIG.evolution.autoPickMs);
+  }
+
+  /** Shared card list for Arena mutations and Campaign powers: a looping
+   *  demo of the effect, a plain name, a WHEN tag and a one-line description
+   *  with real numbers (player feedback: the old 3 tiny icon cards didn't
+   *  say what you were picking). */
+  showPowerCards(cards, onPick, subtitle) {
+    const grid = document.getElementById('evolutionCards');
+    grid.innerHTML = '';
+    cards.forEach((card, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'evolution-card';
+      btn.style.setProperty('--card-color', card.color);
+      btn.style.animationDelay = `${i * 0.08}s`;
+      btn.innerHTML =
+        `<canvas class="evolution-demo" data-power="${card.id}" data-color="${card.color}"></canvas>` +
+        `<span class="evolution-card-body">` +
+          `<span class="evolution-card-top"><span class="evolution-card-name">${card.name}</span>` +
+          `<span class="evolution-card-tag">${card.tag || ''}</span></span>` +
+          `<span class="evolution-card-desc">${card.desc}</span>` +
+        `</span>`;
+      btn.addEventListener('click', () => onPick(card.id));
+      grid.appendChild(btn);
+    });
+    document.getElementById('evolutionSub').textContent = subtitle;
+    const bar = document.getElementById('evolutionTimerBar');
+    bar.style.animation = 'none';
+    void bar.offsetWidth;
+    bar.style.animation = `evolution-timer ${CONFIG.evolution.autoPickMs}ms linear forwards`;
+    document.getElementById('evolutionOverlay').classList.remove('hidden');
+    this.vibrate(40);
+    this.startScreenAnim();
   }
 
   pickCampaignPower(id) {
@@ -6223,21 +6757,7 @@ class Game {
     this.evolutionPending = true;
     const cards = this.pickMutationCards();
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id) });
-
-    const grid = document.getElementById('evolutionCards');
-    grid.innerHTML = '';
-    cards.forEach(m => {
-      const btn = document.createElement('button');
-      btn.className = 'evolution-card';
-      btn.style.borderColor = m.color;
-      btn.innerHTML = `<span class="evolution-card-icon" style="color:${m.color}"><svg viewBox="0 0 24 24">${CARD_ICONS[m.icon] || ''}</svg></span>` +
-        `<span class="evolution-card-name" style="color:${m.color}">${m.name}</span><span class="evolution-card-desc">${m.desc}</span>`;
-      btn.addEventListener('click', () => this.pickMutation(m.id));
-      grid.appendChild(btn);
-    });
-    document.getElementById('evolutionOverlay').classList.remove('hidden');
-    this.vibrate(40);
-
+    this.showPowerCards(cards, id => this.pickMutation(id), 'Działa do końca tej rundy. Gra czeka, aż wybierzesz.');
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionAutoPickTimer = setTimeout(() => {
       if (this.evolutionPending && cards[0]) this.pickMutation(cards[0].id);

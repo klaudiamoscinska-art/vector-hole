@@ -62,9 +62,14 @@
     <div id="overdriveBanner" class="overdrive-banner hidden">⚡ OVERDRIVE — CITY SHIFT ⚡</div>
 
     <div id="evolutionOverlay" class="evolution-overlay hidden">
-      <div class="evolution-title">EWOLUCJA — wybierz opcję</div>
-      <div id="evolutionCards" class="evolution-cards"></div>
-      <button id="btnEvolutionSkip" class="btn btn-secondary evolution-skip">POMIŃ</button>
+      <div class="evolution-panel">
+        <div class="evolution-kicker">EWOLUCJA</div>
+        <div class="evolution-title">Wybierz 1 ulepszenie</div>
+        <div id="evolutionSub" class="evolution-sub">Działa do końca tej rundy. Gra czeka, aż wybierzesz.</div>
+        <div id="evolutionCards" class="evolution-cards"></div>
+        <div class="evolution-timer" aria-hidden="true"><div id="evolutionTimerBar" class="evolution-timer-bar"></div></div>
+        <button id="btnEvolutionSkip" class="btn btn-secondary evolution-skip">POMIŃ</button>
+      </div>
     </div>
 
     <div id="thumbpadBase" class="thumbpad-base hidden">
@@ -211,14 +216,7 @@
            chips, level dots, locked tabs) and had to hunt for the one action
            that actually mattered; this card leaves exactly one. -->
       <div id="hubWelcome" class="hub-card hub-welcome hidden">
-        <svg class="hub-welcome-hole" viewBox="0 0 120 120" aria-hidden="true">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/>
-          <circle cx="60" cy="60" r="38" fill="none" stroke="currentColor" stroke-width="3"/>
-          <circle cx="60" cy="60" r="30" fill="#020a12"/>
-          <rect x="12" y="20" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" transform="rotate(18 16 24)"/>
-          <circle cx="104" cy="34" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M96 96l8 4-4 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <canvas id="hubWelcomeHole" class="hub-welcome-hole" aria-hidden="true"></canvas>
         <h2 class="hub-welcome-title">Witaj w Neon City!</h2>
         <p class="hub-welcome-pitch">Jesteś <strong>neonową dziurą</strong>. Pochłaniaj obiekty, rośnij i zjadaj mniejszych rywali — unikaj większych.</p>
         <ol class="hub-welcome-steps">
@@ -235,34 +233,20 @@
       <div class="hub-eyebrow-label hub-full-only">POSTĘP MIASTA · CORE CITY</div>
 
       <div class="hub-card hub-hero hub-full-only">
-        <div class="hub-hero-stage" id="hubHeroStage" role="button" tabindex="0" aria-label="Poziomy i nagrody Core City">
-          <svg class="hub-skyline" viewBox="0 0 200 130" aria-hidden="true">
-            <ellipse cx="100" cy="112" rx="72" ry="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
-            <rect x="34" y="60" width="14" height="48" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="52" y="42" width="16" height="66" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="132" y="50" width="16" height="58" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="152" y="66" width="14" height="42" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="70" y="28" width="18" height="80" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>
-            <rect x="112" y="34" width="18" height="74" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>
-            <line x1="79" y1="10" x2="79" y2="28" stroke="currentColor" stroke-width="1.5"/>
-            <line x1="121" y1="16" x2="121" y2="34" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="79" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="121" cy="13" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="24" cy="30" r="1.6" fill="currentColor" opacity="0.6"/>
-            <circle cx="176" cy="24" r="1.6" fill="currentColor" opacity="0.6"/>
-            <circle cx="160" cy="14" r="1.2" fill="currentColor" opacity="0.5"/>
-          </svg>
-          <svg class="hub-ring-svg" viewBox="0 0 160 160" aria-hidden="true">
-            <circle class="hub-ring-track" cx="80" cy="80" r="70"/>
-            <circle id="hubRingFill" class="hub-ring-fill" cx="80" cy="80" r="70"/>
-          </svg>
-          <div class="hub-hero-ring-text">
-            <span id="hubChargeValue" class="hub-hero-pct">0%</span>
-            <span id="hubLevelLabel" class="hub-hero-level">LVL 1 · do następnej nagrody</span>
+        <!-- Core City as an actual city (player feedback: the old static
+             skyline under the % never changed). drawCityScene() builds it up
+             building by building as Core City charges -- one sixth of the
+             skyline per level, a crane over the one under construction. -->
+        <div class="hub-city" id="hubHeroStage" role="button" tabindex="0" aria-label="Poziomy i nagrody Core City">
+          <canvas id="hubCityCanvas" class="hub-city-canvas"></canvas>
+          <div class="hub-city-badge">
+            <span id="hubLevelLabel" class="hub-city-lvl">LVL 1</span>
+            <span class="hub-city-sub">CORE CITY</span>
           </div>
+          <div class="hub-city-pct"><span id="hubChargeValue">0%</span><span class="hub-city-pct-sub">do następnej nagrody</span></div>
         </div>
-
-        <p class="hub-hero-caption">Ładujesz go, grając GRAJ 2:00 i Wyzwanie dnia.</p>
+        <div class="hub-city-progress"><div id="hubCityBar" class="hub-city-progress-fill"></div></div>
+        <p class="hub-hero-caption">Każda runda <strong>GRAJ 2:00</strong> i <strong>Wyzwanie dnia</strong> dobudowuje miasto.</p>
 
         <div class="hub-reward-chips">
           <div class="hub-reward-chip-label">Po 100% odblokujesz:</div>
@@ -293,16 +277,10 @@
           WYZWANIE DNIA
         </button>
       </div>
-      <div class="hub-info-panel hub-full-only">
-        <div class="hub-info-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 11h1v5h1"/></svg>
-          Jak to działa?
-        </div>
-        <ul class="hub-info-list">
-          <li>2-minutowe rundy napełniają Core City</li>
-          <li>Misje kampanii są w zakładce Dzielnice</li>
-          <li>Nagrody z Core City trafiają do Warsztatu</li>
-        </ul>
+      <div class="hub-how-tiles hub-full-only">
+        <div class="hub-how-tile"><b>⚡</b><span><strong>Rundy 2:00</strong> budują miasto</span></div>
+        <div class="hub-how-tile"><b>🗺️</b><span><strong>Misje</strong> czekają w Dzielnicach</span></div>
+        <div class="hub-how-tile"><b>🎁</b><span><strong>Nagrody</strong> trafiają do Warsztatu</span></div>
       </div>
 
       <button id="hubNextRewardRow" class="hub-next-reward-row hub-full-only">
@@ -567,16 +545,34 @@
            big hero treatment (icon, countdown, reward track); the rotating
            daily mission + streak stay as a secondary card below it. -->
       <div class="daily-hero-card">
-        <div class="daily-hero-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M12 12.5l1.1 2.3 2.5.3-1.8 1.8.4 2.6-2.2-1.2-2.2 1.2.4-2.6-1.8-1.8 2.5-.3z" fill="currentColor" stroke="none"/></svg>
+        <div class="daily-hero-head">
+          <div class="daily-hero-headings">
+            <div class="daily-hero-kicker">WYZWANIE DNIA</div>
+            <div id="dailyDateLabel" class="daily-hero-date">—</div>
+          </div>
+          <div class="daily-countdown-ring" title="Do resetu">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <circle class="daily-ring-track" cx="32" cy="32" r="28"/>
+              <circle id="challengeCountdownRing" class="daily-ring-fill" cx="32" cy="32" r="28"/>
+            </svg>
+            <div class="daily-countdown-text">
+              <span class="daily-countdown-value" id="challengeCountdown">--:--:--</span>
+              <span class="daily-countdown-label">DO RESETU</span>
+            </div>
+          </div>
         </div>
-        <h2 class="daily-hero-title">WYZWANIE DNIA</h2>
-        <p id="dailyGoalText" class="daily-hero-sub">—</p>
 
-        <div class="daily-countdown">
-          <span class="daily-countdown-label">RESETUJE SIĘ ZA</span>
-          <span class="daily-countdown-value" id="challengeCountdown">--:--:--</span>
+        <!-- Today's real layout (Game.computeDailyLayout() replays the
+             seeded spawn), so "the same map for everyone" is something you
+             can see, not just read. -->
+        <div class="daily-map-wrap">
+          <canvas id="dailyMapCanvas" class="daily-map-canvas"></canvas>
+          <span class="daily-map-label">MAPA DNIA · ta sama dla wszystkich</span>
+          <span id="dailyModifierBadge" class="daily-modifier hidden">⚡ RUSH HOUR · rywale szybsi</span>
+          <span class="daily-map-you">◉ start</span>
         </div>
+
+        <p id="dailyGoalText" class="daily-hero-sub">—</p>
 
         <div class="daily-reward-track">
           <div class="daily-reward-box">
@@ -584,7 +580,7 @@
             <span class="daily-reward-value" id="dailyRewardFirst">—</span>
           </div>
           <div class="daily-reward-box daily-reward-box-gold">
-            <span class="daily-reward-label">CEL PREMIUM / ZŁOTY</span>
+            <span class="daily-reward-label">NOWY REKORD DNIA</span>
             <span class="daily-reward-value daily-reward-gold" id="dailyRewardBest">—</span>
           </div>
         </div>
@@ -595,24 +591,22 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
       </button>
 
-      <div class="hub-info-panel">
-        <div class="hub-info-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 11h1v5h1"/></svg>
-          Jak to działa?
+      <div class="streak-card">
+        <div class="streak-head">
+          <span class="streak-flame">🔥</span>
+          <span class="streak-title">SERIA: <strong id="dailyStreakValue">0</strong> dni z rzędu</span>
         </div>
-        <ul class="hub-info-list">
-          <li>Jedno Daily aktywne na dobę</li>
-          <li>Pierwsze ukończenie daje największy bonus</li>
-          <li>Nagrody trafiają do Warsztatu</li>
-        </ul>
+        <div id="streakDays" class="streak-days"></div>
+        <div class="streak-hint">Zagraj Wyzwanie dnia każdego dnia, żeby nie przerwać serii.</div>
       </div>
 
       <div class="hub-card challenge-card">
         <div class="hub-card-header">
           <span class="hub-card-label">🎯 MISJA DNIA</span>
-          <span class="challenge-streak">🔥 <span id="dailyStreakValue">0</span> dni</span>
+          <span id="hubMissionStatus" class="mission-day-status">DO ZROBIENIA</span>
         </div>
         <p id="hubMissionText" class="hub-mission-text">—</p>
+        <p class="mission-day-hint">Liczy się w każdej rundzie GRAJ 2:00 i w Wyzwaniu dnia.</p>
       </div>
 
       <button id="btnChallengesBack" class="btn btn-secondary">DO MIASTA</button>
