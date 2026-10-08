@@ -16,13 +16,30 @@ const CONFIG = {
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
-  hole: { baseRadius: 22, minRadius: 14, baseSpeed: 150 },
+  hole: { baseRadius: 18, minRadius: 14, baseSpeed: 165 },
+  // One shared growth curve for Arena AND Campaign (player feedback: the
+  // first growth stage was the dullest part -- each pickup barely changed
+  // the hole's size, and pink/green objects were still bigger than the
+  // hole once they became eatable). Every eat adds "growth units" (the
+  // GDD 07 per-type `growth` value -- fragment 1, prop 3, vehicle 6, ...)
+  // and the hole's radius is read straight off this piecewise-linear
+  // curve, so (a) each early fragment is a clearly visible +2 px on an
+  // 18 px hole, and (b) the radius at every tier threshold is known
+  // exactly -- every TIERS/entityRadius object size below sits between
+  // the previous anchor (looks too big before unlock) and its own unlock
+  // anchor (visibly smaller than the hole the moment it becomes eatable).
+  // unitAnchors double as CAMPAIGN_TIERS' minUnits and radiusAnchors as
+  // CONFIG.sizeTiers' minRadius (both derived below), so Arena and
+  // Campaign cross every tier after exactly the same pickups.
+  growth: {
+    unitAnchors: [0, 6, 22, 50, 100, 180],
+    radiusAnchors: [18, 30, 46, 66, 90, 118]
+  },
   eating: {
     // World-object eating has no size-ratio requirement, only the
     // TIERS/canEatWorldObjectTier() growth-tier gate (matching Campaign's
     // own tier-only gate) -- holeRatio below is hole-vs-hole only.
     holeRatio: 1.15, // attacker must be bigger than defender.radius * this
-    growObj: 0.4,
     growHole: 0.55,
     eatAnimTime: 0.28,
     invulnTime: 2.0
@@ -87,7 +104,7 @@ const CONFIG = {
   },
   // Phase 4: Evolution moments (run-only mutation picks) + Overdrive/City Shift.
   evolution: {
-    triggerRadii: [33, 43],  // fires once each, aligned with the 'core'/'vortex' size tiers
+    triggerRadii: [46, 66],  // fires once each, aligned with the 'core'/'vortex' size tiers (growth.radiusAnchors[2..3])
     cardCount: 3,
     autoPickMs: 20000,       // safety net only (an explicit "skip" button covers the normal case) --
                              // long because the offer now fully pauses the round instead of just slowing it
@@ -111,29 +128,31 @@ const CONFIG = {
   // Vector Hole v3 (GDD 3.1) campaign mode. Kept separate from `eating`/
   // `juice` above so Arena's already-tuned balance is untouched.
   campaign: {
-    baseRadius: 20,
+    baseRadius: 18, // = growth.radiusAnchors[0]
     comboWindowSeconds: 1.5,   // GDD 07: "kolejne pożarcie w 1,5 s"
     comboMaxMultiplier: 2.0,   // GDD 07: "combo 1,0-2,0 mnoży punkty, nie wzrost"
-    // Only used for the hitPenaltyFraction shrink below now -- per-entity
-    // eat growth moved to Arena's radius-based GROW_K_OBJ formula (see
-    // resolveCampaignEntity()'s doc comment) since growthUnits*scale grew
-    // the hole far too little on a T2+ eat (prop/marker/vehicle/node/
-    // pylon), independent of how big the eaten object actually was.
-    growthAreaScale: 16,
-    hitPenaltyFraction: 0.25,  // GDD 07: contact with a bigger bot costs 25% of current growth
+    hitPenaltyFraction: 0.25,
+    // Campaign rivals don't grow, so their fixed size sets the difficulty
+    // arc on CONFIG.growth's curve: a threat (bigger than player * holeRatio)
+    // for the first ~5 fragments, harmless around T2 (30 px), and prey from
+    // ~37 px (T2 plus a few props) -- well before M00's eatRival step at T3.
+    rivalRadius: 32,  // GDD 07: contact with a bigger bot costs 25% of current growth
     hitInvulnMs: 2000,
     // T2+ entities (prop/marker/vehicle/node/pylon/landmark) are sized
-    // bigger than a hole that hasn't reached their unlock tier yet
-    // (player feedback: "rozmiary ikonek... przed urośnięciem dziury
-    // powinny być od niej większe" -- before growing, they should look too
-    // big to eat, not smaller-and-inviting while still tier-locked). T1
-    // fragment/capsule stay small since they're eatable from the very
-    // first frame, no lock to visually signal.
+    // between two growth.radiusAnchors: bigger than a hole that hasn't
+    // reached their unlock tier yet (player feedback: "przed urośnięciem
+    // dziury powinny być od niej większe"), but clearly smaller than the
+    // hole the moment that tier unlocks (player feedback: "obręcze obiektów
+    // są większe niż ja, kiedy mogę je już pochłaniać") -- e.g. prop 20 sits
+    // between the 18 px start and T2's 30 px. Their highlight rings add only
+    // a few px on top (see WorldObject/CampaignEntity.draw()), so the ring
+    // stays inside the hole too. T1 fragment/capsule stay small since
+    // they're eatable from the very first frame, no lock to visually signal.
     entityRadius: {
       fragment: 7, capsule: 10,
-      prop: 26, marker: 25,
-      vehicle: 38, node: 36, pylon: 36,
-      landmark: 56,
+      prop: 20, marker: 20,
+      vehicle: 34, node: 32, pylon: 32,
+      landmark: 52,
       gate: 18
     },
     gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
@@ -153,28 +172,18 @@ const CONFIG = {
   // Size tiers used for analytics (`size_tier` events), the game-over result
   // badge, and (since Arena's in-round HUD was unified with Campaign's tier
   // strip) the live "T1"/"T2".../missionTierBadge. `shortId`/`color` mirror
-  // CAMPAIGN_TIERS' T1-T5 exactly (same cyan/pink/green/violet/silver) so a
-  // given tier number reads as the same color in both modes.
-  // minRadius per tier is derived purely from CAMPAIGN_TIERS' own minUnits
-  // (10/30/70/140) converted into Arena's area-conserving radius space via
-  // fragment's growth (fragment = 1 Campaign growth-unit = pi*7^2*GROW_K_OBJ
-  // = 19.6 radius^2 in Arena): r = sqrt(BASE_RADIUS^2 + minUnits*19.6) ->
-  // 26/33/43/57. This is the *only* floor now (player feedback: Arena and
-  // Campaign must take the exact same number of T1 pickups to cross a given
-  // tier boundary -- an earlier pass also raised these thresholds to clear
-  // world objects' old 0.9x-of-hole-radius physical size check, which fixed
-  // the "T2 badge shows before pink objects are eatable" symptom but pushed
-  // T1->T2 from Campaign's 10 fragments up to 19, breaking that parity. The
-  // actual fix is that world-object eating no longer has a physical
-  // size-ratio requirement at all -- see canEatWorldObjectTier()'s doc
-  // comment -- so there's no physical floor left to reconcile with the
-  // campaign-pacing one).
+  // CAMPAIGN_TIERS' T1-T5 exactly so a given tier number reads as the same
+  // color in both modes. minRadius is filled in right after CONFIG from
+  // growth.radiusAnchors (30/46/66/90) -- the same curve Campaign's
+  // growthUnits run along, so both modes cross a tier after exactly the
+  // same pickups (player feedback: Arena and Campaign must be the same
+  // gameplay).
   sizeTiers: [
     { id: 'spark', minRadius: 0, label: 'T1 · MAŁY', shortId: 'T1', color: '#50F0FA' },
-    { id: 'pulse', minRadius: 26, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
-    { id: 'core', minRadius: 33, label: 'T3 · DUŻY', shortId: 'T3', color: '#46D99A' },
-    { id: 'vortex', minRadius: 43, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
-    { id: 'singularity', minRadius: 57, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
+    { id: 'pulse', minRadius: 0, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
+    { id: 'core', minRadius: 0, label: 'T3 · DUŻY', shortId: 'T3', color: '#EFCB63' },
+    { id: 'vortex', minRadius: 0, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
+    { id: 'singularity', minRadius: 0, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
   ],
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
@@ -192,6 +201,34 @@ const CONFIG = {
   }
 };
 
+CONFIG.sizeTiers.forEach((t, i) => { t.minRadius = i === 0 ? 0 : CONFIG.growth.radiusAnchors[i]; });
+
+/** Hole radius for a given number of growth units, read off
+ *  CONFIG.growth's piecewise-linear curve (extrapolated past the last
+ *  anchor with the last segment's slope). */
+function radiusForUnits(units) {
+  const U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors;
+  const u = Math.max(0, units);
+  for (let i = 1; i < U.length; i++) {
+    if (u <= U[i]) return R[i - 1] + (R[i] - R[i - 1]) * (u - U[i - 1]) / (U[i] - U[i - 1]);
+  }
+  const n = U.length - 1;
+  return R[n] + (R[n] - R[n - 1]) * (u - U[n]) / (U[n] - U[n - 1]);
+}
+
+/** Inverse of radiusForUnits() -- how many growth units a hole of this
+ *  radius "holds", so Arena holes (whose radius also changes via
+ *  hole-vs-hole eats and respawn shrinks) can keep growing along the curve. */
+function unitsForRadius(radius) {
+  const U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors;
+  if (radius <= R[0]) return 0;
+  for (let i = 1; i < R.length; i++) {
+    if (radius <= R[i]) return U[i - 1] + (U[i] - U[i - 1]) * (radius - R[i - 1]) / (R[i] - R[i - 1]);
+  }
+  const n = R.length - 1;
+  return U[n] + (U[n] - U[n - 1]) * (radius - R[n]) / (R[n] - R[n - 1]);
+}
+
 /* ----------------------- Constants (aliases into CONFIG) ----------------------- */
 
 const WORLD_W = CONFIG.world.width;
@@ -205,7 +242,6 @@ const MIN_RADIUS = CONFIG.hole.minRadius;
 const BASE_SPEED = CONFIG.hole.baseSpeed; // px/s
 
 const EAT_HOLE_RATIO = CONFIG.eating.holeRatio;
-const GROW_K_OBJ = CONFIG.eating.growObj;
 const GROW_K_HOLE = CONFIG.eating.growHole;
 const EAT_ANIM_TIME = CONFIG.eating.eatAnimTime;
 const INVULN_TIME = CONFIG.eating.invulnTime;
@@ -307,18 +343,19 @@ class Analytics {
 // matching Campaign's own `tier < e.stats.minTier` gate in
 // handleCampaignEating() exactly.
 const TIERS = {
-  fragment: { color: '#50F0FA', minR: 7, maxR: 7, value: 5, subtypes: ['fragment'], count: 60, minSizeTier: 0 },
-  capsule: { color: '#50F0FA', minR: 10, maxR: 10, value: 15, subtypes: ['kapsula'], count: 30, minSizeTier: 0 },
-  prop: { color: '#FF54AD', minR: 26, maxR: 26, value: 15, subtypes: ['latarnia', 'drzewo', 'lawka', 'kiosk', 'skrzynia'], count: 35, minSizeTier: 1 },
-  marker: { color: '#FF54AD', minR: 25, maxR: 25, value: 50, subtypes: ['znacznik'], count: 10, minSizeTier: 1 },
-  vehicle: { color: '#46D99A', minR: 38, maxR: 38, value: 30, subtypes: ['samochod'], count: 8, minSizeTier: 2 },
-  node: { color: '#46D99A', minR: 36, maxR: 36, value: 50, subtypes: ['wezel'], count: 4, minSizeTier: 2 },
-  pylon: { color: '#46D99A', minR: 36, maxR: 36, value: 50, subtypes: ['pylon'], count: 4, minSizeTier: 2 },
-  landmark: { color: '#9875FF', minR: 56, maxR: 56, value: 160, subtypes: ['landmark'], count: 2, minSizeTier: 3 },
+  // `growth` = CAMPAIGN_ENTITY_STATS' growth units (see CONFIG.growth).
+  fragment: { color: '#50F0FA', minR: 7, maxR: 7, value: 5, growth: 1, subtypes: ['fragment'], count: 95, minSizeTier: 0 },
+  capsule: { color: '#50F0FA', minR: 10, maxR: 10, value: 15, growth: 3, subtypes: ['kapsula'], count: 35, minSizeTier: 0 },
+  prop: { color: '#FF54AD', minR: 20, maxR: 20, value: 15, growth: 3, subtypes: ['latarnia', 'drzewo', 'lawka', 'kiosk', 'skrzynia'], count: 40, minSizeTier: 1 },
+  marker: { color: '#FF54AD', minR: 20, maxR: 20, value: 50, growth: 10, subtypes: ['znacznik'], count: 10, minSizeTier: 1 },
+  vehicle: { color: '#EFCB63', minR: 34, maxR: 34, value: 30, growth: 6, subtypes: ['samochod'], count: 10, minSizeTier: 2 },
+  node: { color: '#EFCB63', minR: 32, maxR: 32, value: 50, growth: 10, subtypes: ['wezel'], count: 4, minSizeTier: 2 },
+  pylon: { color: '#EFCB63', minR: 32, maxR: 32, value: 50, growth: 10, subtypes: ['pylon'], count: 4, minSizeTier: 2 },
+  landmark: { color: '#9875FF', minR: 52, maxR: 52, value: 160, growth: 32, subtypes: ['landmark'], count: 2, minSizeTier: 3 },
   // Shares landmark's tier (3, T4) rather than its own ratio-derived floor --
   // both are the palette's violet/T4 accent color, so a player who has not
   // yet reached T4 shouldn't be able to eat either one.
-  portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, subtypes: ['portal'], count: 0, minSizeTier: 3 }
+  portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, growth: 6, subtypes: ['portal'], count: 0, minSizeTier: 3 }
 };
 
 const BOT_NAME_POOL = [
@@ -437,10 +474,13 @@ const GOAL_ICONS = {
 // campaignEntityColor() (board/particle/minimap color) and the goal-icon
 // renderer below, so the HUD icon and the board object are always the same
 // hue too. See campaignEntityColor() for the full "why size, not identity" rationale.
-// Mirrors CAMPAIGN_TIERS' T1-T4 exactly (cyan/pink/green/violet) so an
+// Mirrors CAMPAIGN_TIERS' T1-T4 exactly (cyan/pink/gold/violet) so an
 // object's eat-gate color always matches the growth-tier badge that
-// unlocks it (T4 moved to violet when T5/T6 were added -- see CAMPAIGN_TIERS).
-const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#46D99A', 4: '#9875FF' };
+// unlocks it. T3 was green until player feedback that green and cyan
+// fragments blurred together on the minimap -- gold is the palette hue
+// farthest from both cyan and pink, so the four tiers are now spread
+// roughly evenly around the color wheel.
+const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#EFCB63', 4: '#9875FF' };
 
 // Miasto's "Po 100% odblokujesz" reward chip (GDD 4.0 §5.1) needs an icon
 // matching whichever Warsztat category CORE_CITY_LEVEL_REWARDS grants next
@@ -490,8 +530,8 @@ const MUTATIONS = [
 // Tier badge colors: a full unique-per-tier set (player feedback: wanted
 // one universal color per tier, not two tiers sharing a hue). T1-T3 reuse
 // SIZE_TIER_COLORS' exact hexes (same cyan/pink/green used everywhere else
-// for object-size tiers); T4 takes the palette's violet; T6 takes gold
-// (freed up from T4). T5 uses a metallic silver that isn't part of the
+// for object-size tiers); T4 takes the palette's violet; T6 takes green
+// (freed up when T3 moved to gold -- see SIZE_TIER_COLORS). T5 uses a metallic silver that isn't part of the
 // core neon accent palette (asset_bible.svg's five hues are all spoken for
 // by the other five tiers) -- a deliberate one-off addition for this
 // six-way tier ladder, not a general-purpose palette color.
@@ -505,12 +545,17 @@ const CAMPAIGN_TIERS = [
   // renamed to the catalog's own "elementy uliczne" term for the T2 prop
   // tier, and updateCampaignHUD() now prefixes it with the tier id so it
   // reads as a tier badge, not an eaten-object label).
-  { id: 'T2', name: 'Elementy uliczne', minUnits: 10, color: '#FF54AD' },
-  { id: 'T3', name: 'Małe pojazdy', minUnits: 30, color: '#46D99A' },
-  { id: 'T4', name: 'Kioski i cele misji', minUnits: 70, color: '#9875FF' },
-  { id: 'T5', name: 'Duże pojazdy', minUnits: 140, color: '#CBD5E1' },
-  { id: 'T6', name: 'Cele finałowe', minUnits: 250, color: '#EFCB63' }
+  { id: 'T2', name: 'Elementy uliczne', minUnits: 6, color: '#FF54AD' },
+  { id: 'T3', name: 'Małe pojazdy', minUnits: 22, color: '#EFCB63' },
+  { id: 'T4', name: 'Kioski i cele misji', minUnits: 50, color: '#9875FF' },
+  { id: 'T5', name: 'Duże pojazdy', minUnits: 100, color: '#CBD5E1' },
+  { id: 'T6', name: 'Cele finałowe', minUnits: 180, color: '#46D99A' }
 ];
+// minUnits above are CONFIG.growth.unitAnchors (kept as literals for
+// readability) -- fail loudly if the two ever drift apart.
+CAMPAIGN_TIERS.forEach((t, i) => {
+  if (t.minUnits !== CONFIG.growth.unitAnchors[i]) console.warn('CAMPAIGN_TIERS/CONFIG.growth mismatch at', t.id);
+});
 
 // growth/score/minimum-tier per campaign entity type (GDD 07: growth gain
 // 1/3/6/10/18/32, base score 5/15/30/50/90/160 across the six tiers).
@@ -590,13 +635,13 @@ const CAMPAIGN_MISSIONS = [
   {
     id: 'M00', district: 'plac', order: 0, name: 'Zanim zaczniesz', timeLimit: 90,
     // Step counts aren't arbitrary -- they match CAMPAIGN_TIERS' own growth
-    // thresholds (T2 at 10 units, T3 at 30) so the goal the player sees is
+    // thresholds (T2 at 6 units, T3 at 22) so the goal the player sees is
     // never smaller than what canEatWorldObjectTier()-equivalent gating
     // (handleCampaignEating()'s `tier < e.stats.minTier`) actually requires
     // to unlock the next step's object (player feedback: needed "more blue
     // dots" than the old count of 3, which unlocked nothing yet). fragment
-    // growth=1/unit -> 10 fragments reaches T2 (unlocks prop); prop
-    // growth=3/unit -> 7 more (10+7*3=31) reaches T3 (unlocks vehicle).
+    // growth=1/unit -> 6 fragments reaches T2 (unlocks prop); prop
+    // growth=3/unit -> 6 more (6+6*3=24) reaches T3 (unlocks vehicle).
     // Each step carries its own `intro` -- shown full-screen and blocking
     // (see showTutorialStepIntro()/updateTutorialGuidance()), one step at a
     // time, instead of the opening overlay listing all four up front
@@ -607,11 +652,11 @@ const CAMPAIGN_MISSIONS = [
       label: 'Poznaj podstawy pochłaniania',
       steps: [
         {
-          entityType: 'fragment', count: 10, label: 'Pochłoń 10 fragmentów energii',
-          intro: 'Dotykaj fragmentów energii, żeby je pochłaniać. Potrzebujesz sporo, by urosnąć na tyle, żeby zjeść coś większego.'
+          entityType: 'fragment', count: 6, label: 'Pochłoń 6 fragmentów energii',
+          intro: 'Dotykaj fragmentów energii, żeby je pochłaniać. Każdy Cię powiększa — po kilku zjesz coś większego.'
         },
         {
-          entityType: 'prop', count: 7, label: 'Pochłoń 7 elementów ulicznych',
+          entityType: 'prop', count: 6, label: 'Pochłoń 6 elementów ulicznych',
           intro: 'Urosłaś! Teraz pochłoń elementy uliczne — latarnie, ławki, drzewa i inne drobiazgi na ulicach.'
         },
         {
@@ -627,7 +672,7 @@ const CAMPAIGN_MISSIONS = [
     medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 70 s' },
     // A couple more of each spawned than required (buffer, not everything
     // has to be reachable) since Campaign entities don't respawn mid-mission.
-    setup: { fragments: 12, props: 9, vehicles: 3, bots: 1 },
+    setup: { fragments: 10, props: 8, vehicles: 3, bots: 1 },
     nela: {
       start: 'Zanim ruszysz na miasto: pochłoń fragmenty energii, aż urośniesz na tyle, by zjeść coś większego — najpierw element uliczny, potem pojazd. Na koniec dotknij mniejszego rywala, żeby go pochłonąć.',
       success: 'Gotowa. Miasto czeka.'
@@ -1298,7 +1343,9 @@ class WorldObject {
       ctx.shadowColor = this.color;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius * (1.35 + 0.1 * breathe), 0, Math.PI * 2);
+      // A few px outside the object, not 1.4x its radius -- the old ring
+      // read bigger than the hole that could already eat it (player feedback).
+      ctx.arc(this.x, this.y, this.radius + 3 + 2 * breathe, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -1565,10 +1612,13 @@ class CampaignEntity {
     if (isGoal && this.type !== 'gate' && this.type !== 'landmark' && !this.eating) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 220);
       ctx.save();
-      ctx.strokeStyle = `rgba(239, 203, 99,${0.3 + 0.35 * pulse})`;
+      // White (not gold, now T3's object color) and only a few px
+      // outside the object, so a ring never reads bigger than the hole that
+      // can eat it (player feedback).
+      ctx.strokeStyle = `rgba(242, 248, 255,${0.3 + 0.35 * pulse})`;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(0, 0, r * 1.8, 0, Math.PI * 2);
+      ctx.arc(0, 0, r + 5 + 2 * pulse, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -1657,12 +1707,12 @@ class CampaignEntity {
       }
       case 'vehicle': {
         // Simple car silhouette (body + roof bump + two wheels) instead of
-        // a plain rectangle. Green, T3 size tier -- same hue for plain
+        // a plain rectangle. Gold, T3 size tier -- same hue for plain
         // filler and M11's convoy vehicles (glyph: 'konwoj', set in
         // buildCampaignMission()), which are the same size class; konwoj
         // keeps its own tow-hitch accent as a shape distinction instead.
         const isKonwoj = this.glyph === 'konwoj';
-        const color = '#46D99A';
+        const color = SIZE_TIER_COLORS[3];
         ctx.strokeStyle = ctx.fillStyle = color; ctx.lineWidth = 2;
         ctx.shadowBlur = 12; ctx.shadowColor = color;
         ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
@@ -1801,10 +1851,10 @@ class CampaignEntity {
           ctx.stroke();
           break;
         }
-        // Green, T3 size tier for both węzeł and zasilacz. Active/inactive
+        // Gold, T3 size tier for both węzeł and zasilacz. Active/inactive
         // is dimmer opacity on the same hue instead of swapping color, so
         // the object still reads as itself even once it's used up.
-        const color = '#46D99A';
+        const color = SIZE_TIER_COLORS[3];
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
         if (!this.active) ctx.globalAlpha *= 0.35;
@@ -1831,8 +1881,8 @@ class CampaignEntity {
         break;
       }
       case 'pylon': {
-        // Both pylon (M08) and lustro (M16) are green, T3 size tier.
-        const color = '#46D99A';
+        // Both pylon (M08) and lustro (M16) are gold, T3 size tier.
+        const color = SIZE_TIER_COLORS[3];
         ctx.strokeStyle = color; ctx.lineWidth = 3;
         ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
         if (!this.active) ctx.globalAlpha *= 0.35;
@@ -2084,7 +2134,21 @@ class Hole {
   growFromArea(gainArea) {
     const area = Math.PI * this.radius * this.radius;
     const newArea = area + gainArea;
-    this.radius = Math.max(MIN_RADIUS, Math.sqrt(newArea / Math.PI));
+    this.setRadius(Math.max(MIN_RADIUS, Math.sqrt(newArea / Math.PI)));
+  }
+
+  /** Grow along CONFIG.growth's curve by `units` growth units (an eaten
+   *  object's GDD 07 `growth` value) -- see radiusForUnits(). */
+  growUnits(units) {
+    this.setRadius(radiusForUnits(unitsForRadius(this.radius) + units));
+  }
+
+  /** Every radius increase triggers a short "gulp" pop in draw() so even a
+   *  small step reads as growth (player feedback: early growth was barely
+   *  visible). */
+  setRadius(r) {
+    if (r > this.radius + 0.01) this.growPopAt = performance.now();
+    this.radius = r;
   }
 
   shrinkAndRespawn(bonusInvulnMs) {
@@ -2095,6 +2159,18 @@ class Hole {
   }
 
   draw(ctx, time) {
+    const popT = this.growPopAt ? (performance.now() - this.growPopAt) / 260 : 1;
+    const pop = popT < 1 ? Math.sin(popT * Math.PI) : 0;
+    const realRadius = this.radius;
+    this.radius = realRadius * (1 + 0.14 * pop);
+    try {
+      this.drawBody(ctx, time);
+    } finally {
+      this.radius = realRadius;
+    }
+  }
+
+  drawBody(ctx, time) {
     if (this.auraId && this.auraId !== 'none') {
       const aura = AURAS.find(a => a.id === this.auraId);
       if (aura && aura.color) {
@@ -4035,7 +4111,7 @@ class Game {
     for (let i = 0; i < (def.setup.bots || 0); i++) {
       const p = this.randomInCampaignBounds(150);
       const bot = new Bot(BOT_NAME_POOL[i], p.x, p.y);
-      bot.radius = CONFIG.hole.baseRadius * 1.1;
+      bot.radius = CONFIG.campaign.rivalRadius;
       this.bots.push(bot);
     }
 
@@ -4079,6 +4155,13 @@ class Game {
     }
   }
 
+  /** Campaign's hole radius is a pure function of growthUnits (see
+   *  CONFIG.growth), so a hit penalty shrinks it and an eat grows it by
+   *  exactly the curve's amount. */
+  syncCampaignRadius() {
+    this.player.setRadius(radiusForUnits(this.mission.growthUnits));
+  }
+
   tryUnlockCampaignLandmark() {
     const m = this.mission;
     const goal = m.def.goal;
@@ -4094,15 +4177,12 @@ class Game {
     const m = this.mission;
     const stats = e.stats;
     const multiplier = this.registerCombo();
-    // Physical growth now scales off the eaten entity's own radius, the
-    // same GROW_K_OBJ formula Arena uses for WorldObject eats (player
-    // feedback: T2+ eats -- prop/marker/vehicle/node/pylon -- barely moved
-    // the hole's radius here, since the old flat growthUnits*scale formula
-    // ignored how big the thing you just ate actually was). `growthUnits`
-    // stays on its own flat-unit track below -- CAMPAIGN_TIERS thresholds,
-    // mission goals, and the landmark unlock gate are unaffected.
-    this.player.growFromArea(Math.PI * e.radius * e.radius * GROW_K_OBJ);
+    // The hole's radius is read straight off CONFIG.growth's curve from
+    // growthUnits (syncCampaignRadius()), the same curve Arena's eats grow
+    // along -- so the radius at each CAMPAIGN_TIERS threshold is exact and
+    // every newly unlocked object is visibly smaller than the hole.
     m.growthUnits += stats.growth;
+    this.syncCampaignRadius();
     this.player.score += Math.round(stats.score * multiplier);
     this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true);
     this.vibrate(e.type === 'landmark' ? [60, 40, 60] : 30);
@@ -4119,7 +4199,8 @@ class Game {
     const newTier = this.campaignPlayerTier();
     if (newTier.id !== m.tierId) {
       m.tierId = newTier.id;
-      this.ripples.push(new Ripple(this.player.x, this.player.y, '#46D99A', this.player.radius, this.player.radius * 2.5, 0.5));
+      this.ripples.push(new Ripple(this.player.x, this.player.y, newTier.color, this.player.radius, this.player.radius * 2.5, 0.5));
+      this.spawnParticles(this.player.x, this.player.y, newTier.color, 16);
       if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
     }
 
@@ -4171,10 +4252,9 @@ class Game {
       m.eatenByType[e.type] = (m.eatenByType[e.type] || 0) + 1;
       const multiplier = this.registerCombo();
       const stats = e.stats;
-      // Same radius-based growth formula as resolveCampaignEntity() -- see
-      // its doc comment.
-      this.player.growFromArea(Math.PI * e.radius * e.radius * GROW_K_OBJ);
+      // Same growth curve as resolveCampaignEntity() -- see its doc comment.
       m.growthUnits += stats.growth;
+      this.syncCampaignRadius();
       this.player.score += Math.round(stats.score * multiplier);
       this.triggerEatFeedback(e.x, e.y, '#50F0FA', e.radius, true);
       this.vibrate(30);
@@ -4276,7 +4356,7 @@ class Game {
         // not teach through sudden elimination).
         const loss = m.growthUnits * CONFIG.campaign.hitPenaltyFraction;
         m.growthUnits = Math.max(0, m.growthUnits - loss);
-        this.player.growFromArea(-loss * CONFIG.campaign.growthAreaScale * Math.PI);
+        this.syncCampaignRadius();
         this.comboCount = 0; this.comboMultiplier = 1; this.comboTimer = 0;
         this.player.invulnerableUntil = performance.now() + CONFIG.campaign.hitInvulnMs;
         m.botHitCount++;
@@ -4292,8 +4372,8 @@ class Game {
         // for a generic rival, so growth/score are a fixed mid-tier-sized
         // reward instead of a stats table lookup.
         const multiplier = this.registerCombo();
-        this.player.growFromArea(Math.PI * bot.radius * bot.radius * GROW_K_HOLE);
         m.growthUnits += 10;
+        this.syncCampaignRadius();
         this.player.score += Math.round(bot.radius * 2 * multiplier);
         m.rivalsEaten++;
         this.rivalsEatenThisRun++;
@@ -4304,7 +4384,7 @@ class Game {
           this.save.campaign.discoveredHoleEating = true;
           saveGame(this.save);
         }
-        bot.radius = CONFIG.hole.baseRadius * 1.1;
+        bot.radius = CONFIG.campaign.rivalRadius;
         const p = this.randomInCampaignBounds(150);
         bot.x = p.x; bot.y = p.y;
         bot.invulnerableUntil = performance.now() + INVULN_TIME * 1000;
@@ -4787,6 +4867,26 @@ class Game {
     ctx.restore();
   }
 
+  /** Player + rival markers shared by both minimaps (player feedback: the
+   *  player's cyan dot and bots' palette-colored dots blended into the
+   *  object dots). Objects are small squares; holes are rings -- the player
+   *  a bright white dot with a cyan halo, rivals hollow rings: red when
+   *  bigger than the player (danger), white when smaller (prey). */
+  drawMinimapHoles(ctx, toMini) {
+    for (const bot of this.bots) {
+      const p = toMini(bot.x, bot.y);
+      const danger = bot.radius > this.player.radius * EAT_HOLE_RATIO;
+      ctx.strokeStyle = danger ? '#ff3860' : 'rgba(242, 248, 255, 0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, danger ? 3.5 : 2.8, 0, Math.PI * 2); ctx.stroke();
+    }
+    const pp = toMini(this.player.x, this.player.y);
+    ctx.fillStyle = 'rgba(80, 240, 250, 0.35)';
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, 3.2, 0, Math.PI * 2); ctx.fill();
+  }
+
   drawCampaignMinimap(ctx) {
     const size = 130, margin = 16;
     const px = this.width - size - margin, py = this.height - size - margin;
@@ -4808,19 +4908,12 @@ class Game {
     for (const e of this.campaignEntities) {
       if (e.consumed || !e.live) continue;
       const big = e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate';
-      const size = big ? 3 : 1.6;
+      const size = big ? 3.5 : 2.2;
       const p = toMini(e.x, e.y);
       ctx.fillStyle = this.campaignEntityColor(e);
       ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
     }
-    for (const bot of this.bots) {
-      const p = toMini(bot.x, bot.y);
-      ctx.fillStyle = bot.edgeColor;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill();
-    }
-    const pp = toMini(this.player.x, this.player.y);
-    ctx.fillStyle = '#50F0FA';
-    ctx.beginPath(); ctx.arc(pp.x, pp.y, 3.5, 0, Math.PI * 2); ctx.fill();
+    this.drawMinimapHoles(ctx, toMini);
 
     // Viewport-frame hint: a small square centered on the camera, not a
     // rectangle proportional to the actual (non-square) screen aspect --
@@ -5441,12 +5534,12 @@ class Game {
     if (current.id !== this.lastSizeTierId) {
       this.lastSizeTierId = current.id;
       this.analytics.track('size_tier', { tier: current.id, radius: Math.round(this.player.radius) });
-      // Growth-tier transition pulse (green = positive per GDD 5.4's color
-      // hierarchy). Phase 4's evolution offers trigger from the same
+      // Growth-tier transition pulse, in the new tier's own color (matches
+      // the badge and the objects it just unlocked). Phase 4's evolution offers trigger from the same
       // radius crossings via CONFIG.evolution.triggerRadii, checked
       // separately in checkEvolutionTriggers() below.
-      this.ripples.push(new Ripple(this.player.x, this.player.y, '#46D99A', this.player.radius, this.player.radius * 2.5, 0.5));
-      this.spawnParticles(this.player.x, this.player.y, '#46D99A', 20);
+      this.ripples.push(new Ripple(this.player.x, this.player.y, current.color, this.player.radius, this.player.radius * 2.5, 0.5));
+      this.spawnParticles(this.player.x, this.player.y, current.color, 20);
       this.vibrate(60);
 
       if (this.activeMutations.has('shockwave')) {
@@ -5678,7 +5771,7 @@ class Game {
     for (const obj of this.objects) {
       if (obj.consumed) {
         const hole = obj.eater;
-        hole.growFromArea(Math.PI * obj.radius * obj.radius * GROW_K_OBJ);
+        hole.growUnits(TIERS[obj.tier].growth);
         const multiplier = hole.isPlayer ? this.registerCombo() : 1;
         hole.score += Math.round(obj.value * multiplier);
         this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer);
@@ -5763,7 +5856,7 @@ class Game {
     const tierIdx = tiers.findIndex(t => t.id === this.lastSizeTierId);
     const tier = tiers[tierIdx];
     const next = tiers[tierIdx + 1];
-    // T1's minRadius is 0, but a round always starts at BASE_RADIUS (22), so
+    // T1's minRadius is 0, but a round always starts at BASE_RADIUS (18), so
     // using tier.minRadius as the fill floor made the bar open ~73% full
     // with no visible room left to show progress toward T2 (player report:
     // "nie widać ile brakuje do kolejnego poziomu"). Floor at BASE_RADIUS
@@ -5846,20 +5939,11 @@ class Game {
     for (const obj of this.objects) {
       const tierDef = TIERS[obj.tier];
       const big = obj.tier === 'node' || obj.tier === 'pylon' || obj.tier === 'landmark';
-      const dotSize = big ? 3 : 1.6;
+      const dotSize = big ? 3.5 : 2;
       ctx.fillStyle = tierDef.color;
       ctx.fillRect(px + obj.x * scale - dotSize / 2, py + obj.y * scale - dotSize / 2, dotSize, dotSize);
     }
-    for (const bot of this.bots) {
-      ctx.fillStyle = bot.edgeColor;
-      ctx.beginPath();
-      ctx.arc(px + bot.x * scale, py + bot.y * scale, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#50F0FA';
-    ctx.beginPath();
-    ctx.arc(px + this.player.x * scale, py + this.player.y * scale, 3.5, 0, Math.PI * 2);
-    ctx.fill();
+    this.drawMinimapHoles(ctx, (x, y) => ({ x: px + x * scale, y: py + y * scale }));
 
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.strokeRect(
