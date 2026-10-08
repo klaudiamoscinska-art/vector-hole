@@ -12,7 +12,7 @@
    aliases into this object so the rest of the file is untouched. */
 
 const CONFIG = {
-  version: '3.0.0-campaign',
+  version: '8.0.0-golden-shot',
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
@@ -45,9 +45,66 @@ const CONFIG = {
     invulnTime: 2.0
   },
   economy: {
-    coinsPerScorePoint: 5, // score / this + coinsBase
-    coinsBase: 10,
-    adRewardMultiplier: 2
+    coinsPerScorePoint: 4, // score / this + coinsBase
+    coinsBase: 15,
+    adRewardMultiplier: 2,
+    // Golden Shot v8: a new player's first rounds pay double ("efekt
+    // sukcesu") -- the result screen shows a "BONUS NOWICJUSZA x2" tag.
+    newbieRuns: 5,
+    newbieCoinMult: 2,
+    // Every 3rd Arena/Daily run used to drip exactly 1 prism; now 2.
+    prismTrickleEvery: 3,
+    prismTrickleAmount: 2
+  },
+  // Golden Shot v8: career-based difficulty curve ("ściana trudności").
+  // `t` = 0 for a player's first rampStartRuns Arena runs (bots start
+  // smaller than you, never hunt you, wander slowly -- a guaranteed
+  // early-win streak), ramping linearly to 1 at rampFullRuns (bots start
+  // bigger than you, hunt you from far away, decide faster, and keep
+  // growing on their own). Each [easy, hard] pair is lerp'd by `t`. The
+  // Daily Seed Challenge uses a fixed dailyT so its seeded layout plays the
+  // same for everyone. The run-setup screen shows the current threat level
+  // next to the run tools (RUN_TOOLS) that counter it.
+  difficulty: {
+    rampStartRuns: 3,
+    rampFullRuns: 16,
+    dailyT: 0.5,
+    botSpeedMult: [0.78, 1.12],
+    botStartRadius: [15, 27],
+    botAggroRange: [0, 560],      // 0 = bots never hunt the player at all
+    botPreyRange: [300, 460],
+    botObjectRange: [200, 480],   // easy bots are lazy eaters, so they grow slower than you
+    botDecisionSeconds: [0.75, 0.3],
+    botPassiveUnitsPerSec: [0, 0.22],
+    // In-round escalation: bots speed up for the final stretch of every round.
+    lateRoundSeconds: 40,
+    lateRoundBotSpeedBonus: 0.1,
+    labels: ['ŁATWY', 'ŚREDNI', 'TRUDNY', 'EKSTREMALNY']
+  },
+  // Golden Shot v8 retention loop: player XP level (every mode feeds it),
+  // a 7-day login calendar, and a free chest on a 4 h cooldown.
+  progression: {
+    xpPerScorePoint: 0.5,
+    xpRunBase: 25,
+    xpPlaceBonus: [60, 40, 25],    // place 1/2/3
+    xpMissionSuccess: 90,
+    xpMissionFail: 25,
+    xpForLevel: (level) => 120 + (level - 1) * 70,
+    levelCoins: (level) => 40 + level * 15,
+    levelPrismsEvery: 3,           // +prisms on every 3rd level
+    levelPrisms: 5
+  },
+  loginRewards: [
+    { coins: 60 }, { coins: 90 }, { prisms: 3 }, { coins: 150 },
+    { prisms: 6 }, { coins: 250 }, { coins: 500, prisms: 15, big: true }
+  ],
+  freeChest: {
+    cooldownMs: 4 * 60 * 60 * 1000,
+    coins: [40, 140],
+    prismChance: 0.2,
+    prisms: [2, 5],
+    jackpotChance: 0.06,           // rare 3x coin jackpot
+    jackpotMult: 3
   },
   // Phase 9 fix: the Daily Seed Challenge needs an explicit goal (beat
   // today's best) and a reward for playing it, not just a different seed.
@@ -64,7 +121,11 @@ const CONFIG = {
   // 100% carries into the next level rather than being discarded.
   hub: {
     coreCity: {
-      arenaCompleteGain: 8,
+      arenaCompleteGain: 10,
+      // Golden Shot v8: the first two Core City levels fill faster so the
+      // first cosmetic reward lands within the first session.
+      earlyLevelMax: 2,
+      earlyLevelMult: 1.6,
       arenaTop3Gain: 2,     // place 1-3 (additive with completeGain)
       arenaFirstGain: 3,    // place 1 only (additive on top of the Top3 bonus)
       arenaNewPbGain: 2,    // new personal-best score this run, max once per round
@@ -99,7 +160,12 @@ const CONFIG = {
   // Phase 3 game-feel/juice tuning.
   juice: {
     eatTiers: { tinyMaxRadius: 10, mediumMaxRadius: 24 }, // above mediumMaxRadius = "giant" eat
-    combo: { windowSeconds: 1.6, stepBonus: 0.15, maxMultiplier: 2.5, fadeSeconds: 0.6 },
+    combo: { windowSeconds: 1.8, stepBonus: 0.15, maxMultiplier: 3, fadeSeconds: 0.6 },
+    // Golden Shot v8 game feel (see FloatText, Game.flash/hitStop/zoom).
+    praise: [[5, 'SUPER!'], [10, 'MEGA!'], [15, 'NIESAMOWITE!'], [22, 'LEGENDARNE!'], [30, 'NEON GOD!']],
+    zoom: { min: 0.58, max: 1.08, startRadius: 18, endRadius: 150, lerp: 2.2 },
+    hitStopMs: 70,
+    maxParticles: 450,
     dangerHaloRange: 260
   },
   // Phase 4: Evolution moments (run-only mutation picks) + Overdrive/City Shift.
@@ -368,12 +434,12 @@ const BOT_COLORS = ['#FF54AD', '#46D99A', '#EFCB63', '#9875FF', '#50F0FA', '#ff3
 
 const SKINS = [
   { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true },
-  { id: 'cyan', name: 'Cyber Cyan', price: 50, color: '#50F0FA' },
-  { id: 'pink', name: 'Hot Pink', price: 50, color: '#FF54AD' },
-  { id: 'green', name: 'Toxic Green', price: 75, color: '#46D99A' },
-  { id: 'purple', name: 'Ultra Violet', price: 100, color: '#9875FF' },
-  { id: 'gold', name: 'Neon Gold', price: 150, color: '#EFCB63' },
-  { id: 'white', name: 'Plasma White', price: 200, color: '#ffffff' },
+  { id: 'cyan', name: 'Cyber Cyan', price: 30, color: '#50F0FA' },
+  { id: 'pink', name: 'Hot Pink', price: 45, color: '#FF54AD' },
+  { id: 'green', name: 'Toxic Green', price: 90, color: '#46D99A' },
+  { id: 'purple', name: 'Ultra Violet', price: 160, color: '#9875FF' },
+  { id: 'gold', name: 'Neon Gold', price: 280, color: '#EFCB63' },
+  { id: 'white', name: 'Plasma White', price: 450, color: '#ffffff' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
   // in CAMPAIGN_MISSIONS + endCampaignMission()).
@@ -390,7 +456,7 @@ const SKINS = [
 // internally since it's the same following-glow render path (Hole's aura).
 const AURAS = [
   { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins' },
-  { id: 'spark', name: 'Spark Aura', priceCoins: 120, priceType: 'coins', color: '#50F0FA' },
+  { id: 'spark', name: 'Spark Aura', priceCoins: 150, priceType: 'coins', color: '#50F0FA' },
   { id: 'ember', name: 'Ember Aura', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD' },
   { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#9875FF' },
   { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#46D99A', unlockSource: { type: 'coreCity', level: 2 } },
@@ -433,8 +499,11 @@ const CORE_CITY_LEVEL_REWARDS = {
 // mode only (no ranked/daily equivalent exists yet to keep them fair for).
 const RUN_TOOLS = [
   { id: 'none', name: 'Bez dodatku', price: 0, desc: 'Zwykły start, bez żadnego efektu. Zawsze darmowe.' },
-  { id: 'shield', name: 'Tarcza', price: 40, desc: 'Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.' },
-  { id: 'magnet', name: 'Magnes', price: 30, desc: 'Przez pierwsze 8 s rundy obiekty same lecą w Twoją stronę.' }
+  { id: 'shield', name: 'Tarcza', price: 45, desc: 'Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.' },
+  { id: 'magnet', name: 'Magnes', price: 25, desc: 'Przez pierwsze 12 s rundy obiekty same lecą w Twoją stronę.' },
+  // Golden Shot v8: the direct counter to the difficulty ramp -- start
+  // the round already at T2, bigger than a hard-mode rival's spawn size.
+  { id: 'boost', name: 'Turbo start', price: 70, desc: 'Zaczynasz rundę od razu na poziomie T2 — większa niż rywale na starcie.', hot: true }
 ];
 
 // Simple neon-line-art glyphs for the evolution/power cards (SVG, inline —
@@ -507,7 +576,7 @@ const MUTATIONS = [
   { id: 'magnet_pulse', name: 'Magnes', tag: 'CAŁĄ RUNDĘ', desc: 'Obiekty, które możesz zjeść, same lecą do Ciebie z odległości ok. 160 px.', icon: 'magnet', weight: 3, color: '#50F0FA' },
   { id: 'slipstream', name: 'Turbo combo', tag: 'PO COMBO ×3', desc: 'Zjedz 3 rzeczy szybko po sobie, a dostaniesz +60% prędkości na 1,5 s.', icon: 'bolt', weight: 3, color: '#46D99A' },
   { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Po zjedzeniu przez rywala odradzasz się nietykalna przez 4 s zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
-  { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz 2,6 s zamiast 1,6 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
+  { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
   { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie, żebyś wiedziała, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
   { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM POZIOMIE', desc: 'Gdy urośniesz o poziom, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
   { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Najbliższy rywal dostaje koronę. Zjedz go, a zgarniesz +40 punktów ekstra.', icon: 'target', weight: 2, color: '#EFCB63' }
@@ -955,7 +1024,7 @@ function campaignDistrictOf(missionId) {
 }
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 9;
+const SAVE_SCHEMA_VERSION = 10;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -1044,10 +1113,10 @@ function previousDateKey(dateKey) {
 // Progress is tracked live during a round and checked at round end —
 // this replaces the Hub's previous static, never-checked mission line.
 const MISSIONS = [
-  { id: 'eat_5_rivals', name: 'Zjedz 5 rywali w jednej rundzie', target: 5, rewardCoins: 40 },
-  { id: 'reach_size_60', name: 'Osiągnij rozmiar 60', target: 60, rewardCoins: 35 },
-  { id: 'combo_x3', name: 'Zbuduj combo x3', target: 3, rewardCoins: 30 },
-  { id: 'score_150', name: 'Zdobądź 150 punktów w jednej rundzie', target: 150, rewardCoins: 45 }
+  { id: 'eat_5_rivals', name: 'Zjedz 5 rywali w jednej rundzie', target: 5, rewardCoins: 80 },
+  { id: 'reach_size_60', name: 'Osiągnij rozmiar 60', target: 60, rewardCoins: 60 },
+  { id: 'combo_x3', name: 'Zbuduj combo x3', target: 3, rewardCoins: 50 },
+  { id: 'score_150', name: 'Zdobądź 150 punktów w jednej rundzie', target: 150, rewardCoins: 70 }
 ];
 
 function missionForDate(date) {
@@ -1088,7 +1157,12 @@ function defaultSave() {
     // v9: `announced` = FEATURE_UNLOCKS ids already celebrated (so each
     // "ODBLOKOWANO!" overlay plays exactly once); `fresh` = unlocked but not
     // visited yet, driving the "NOWE" badges in the nav/district strip.
-    unlocks: { announced: [], fresh: [] }
+    unlocks: { announced: [], fresh: [] },
+    // v10 (Golden Shot v8): player XP level, 7-day login calendar
+    // (`day` = index of the next reward to claim), free chest cooldown.
+    player: { level: 1, xp: 0 },
+    login: { lastClaimDate: null, day: 0, totalClaims: 0 },
+    freeChest: { nextAt: 0, opened: 0 }
   };
 }
 
@@ -1249,6 +1323,18 @@ function migrateSave(data) {
     data = { ...data, schemaVersion: 9, unlocks: { announced: unlockedFeatureIds(data), fresh: [] } };
   }
 
+  if (data.schemaVersion < 10) {
+    // v9 -> v10 (Golden Shot v8): XP level, login calendar, free chest.
+    // Existing players start at LVL 1 with a chest ready to open.
+    data = {
+      ...data,
+      schemaVersion: 10,
+      player: data.player || { level: 1, xp: 0 },
+      login: data.login || { lastClaimDate: null, day: 0, totalClaims: 0 },
+      freeChest: data.freeChest || { nextAt: 0, opened: 0 }
+    };
+  }
+
   return data;
 }
 
@@ -1271,16 +1357,22 @@ function saveGame(save) {
 /* ----------------------- Particle ----------------------- */
 
 class Particle {
-  constructor(x, y, color) {
+  /** kind: 'dot' (soft glow, the original), 'spark' (a speed streak) or
+   *  'pixel' (a spinning square) -- Golden Shot v8 mixes all three into
+   *  every eat burst. speedMult scales the burst for bigger eats. */
+  constructor(x, y, color, kind = 'dot', speedMult = 1) {
     this.x = x;
     this.y = y;
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(60, 220);
+    const speed = rand(60, 240) * speedMult * (kind === 'spark' ? 1.5 : 1);
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.color = color;
-    this.radius = rand(1.5, 3.5);
-    this.maxLife = rand(0.4, 0.9);
+    this.kind = kind;
+    this.radius = kind === 'pixel' ? rand(2.5, 5) : rand(1.5, 3.5);
+    this.spin = rand(-12, 12);
+    this.rot = rand(0, Math.PI * 2);
+    this.maxLife = rand(0.4, 0.9) * (kind === 'spark' ? 0.7 : 1);
     this.life = this.maxLife;
   }
 
@@ -1290,6 +1382,7 @@ class Particle {
     this.y += this.vy * dt;
     this.vx *= 0.94;
     this.vy *= 0.94;
+    this.rot += this.spin * dt;
   }
 
   get dead() { return this.life <= 0; }
@@ -1298,12 +1391,72 @@ class Particle {
     const t = clamp(this.life / this.maxLife, 0, 1);
     ctx.save();
     ctx.globalAlpha = t;
+    if (this.kind === 'spark') {
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.x - this.vx * 0.05, this.y - this.vy * 0.05);
+      ctx.stroke();
+    } else if (this.kind === 'pixel') {
+      ctx.fillStyle = this.color;
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rot);
+      const r = this.radius * (0.5 + 0.5 * t);
+      ctx.fillRect(-r / 2, -r / 2, r, r);
+    } else {
+      ctx.fillStyle = this.color;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius * t, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+/* ----------------------- FloatText (Golden Shot v8 "+15" score pop-ups) -----------------------
+   World-space text that pops in with an overshoot, rises and fades. Used for
+   every eat's score gain, rival eats, combo praise and tier-ups. */
+
+class FloatText {
+  constructor(x, y, text, color, size = 16, life = 0.9, rise = 60) {
+    this.x = x;
+    this.y = y;
+    this.text = text;
+    this.color = color;
+    this.size = size;
+    this.maxLife = life;
+    this.life = life;
+    this.rise = rise;
+  }
+
+  update(dt) {
+    this.life -= dt;
+    this.y -= this.rise * dt;
+  }
+
+  get dead() { return this.life <= 0; }
+
+  draw(ctx) {
+    const age = 1 - this.life / this.maxLife;
+    const pop = age < 0.18 ? 0.4 + (age / 0.18) * 0.85 : (age < 0.3 ? 1.25 - (age - 0.18) / 0.12 * 0.25 : 1);
+    ctx.save();
+    ctx.globalAlpha = clamp(this.life / (this.maxLife * 0.45), 0, 1);
+    ctx.translate(this.x, this.y);
+    ctx.scale(pop, pop);
+    ctx.font = `900 ${this.size}px 'Segoe UI', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = Math.max(3, this.size / 5);
+    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
+    ctx.strokeText(this.text, 0, 0);
     ctx.fillStyle = this.color;
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 12;
     ctx.shadowColor = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius * t, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillText(this.text, 0, 0);
     ctx.restore();
   }
 }
@@ -3092,12 +3245,17 @@ class Bot extends Hole {
     let threat = null, threatDist = Infinity;
     let prey = null, preyDist = Infinity;
 
+    // Golden Shot v8 difficulty curve (Game.botTuning, see CONFIG.difficulty):
+    // how far a bot will chase the player vs. another bot. aggro 0 = early
+    // runs where bots never hunt the player at all.
+    const tuning = game.botTuning;
     for (const h of holes) {
       const d = dist(this.x, this.y, h.x, h.y);
       if (h.radius > this.radius * EAT_HOLE_RATIO && d < 320 && d < threatDist) {
         threat = h; threatDist = d;
       }
-      if (this.radius > h.radius * EAT_HOLE_RATIO && !h.invulnerable && d < 420 && d < preyDist) {
+      const huntRange = h.isPlayer ? tuning.aggro : tuning.prey;
+      if (this.radius > h.radius * EAT_HOLE_RATIO && !h.invulnerable && d < huntRange && d < preyDist) {
         prey = h; preyDist = d;
       }
     }
@@ -3123,7 +3281,7 @@ class Bot extends Hole {
     for (const o of game.objects) {
       if (o.eating || !canEatWorldObjectTier(this.radius, o)) continue;
       const d = dist(this.x, this.y, o.x, o.y);
-      if (d < 480 && d < objDist) { obj = o; objDist = d; }
+      if (d < tuning.objects && d < objDist) { obj = o; objDist = d; }
     }
 
     if (obj) {
@@ -3143,9 +3301,16 @@ class Bot extends Hole {
     this.decisionTimer -= dt;
     if (this.decisionTimer <= 0) {
       this.decide(game);
-      this.decisionTimer = rand(0.35, 0.65);
+      this.decisionTimer = game.botTuning.decision * rand(0.7, 1.3);
     }
     this.moveToward(this.target.x, this.target.y, dt);
+  }
+
+  /** Arena bots respawn at their difficulty-scaled spawn size (see
+   *  Game.createEntities()), not the player's BASE_RADIUS. */
+  shrinkAndRespawn(bonusInvulnMs) {
+    super.shrinkAndRespawn(bonusInvulnMs);
+    if (this.startRadius) this.radius = this.startRadius;
   }
 }
 
@@ -3171,6 +3336,17 @@ class Game {
     this.objects = [];
     this.bots = [];
     this.camera = { x: WORLD_W / 2, y: WORLD_H / 2 };
+    // Golden Shot v8 game feel: floating score text, full-screen flash,
+    // center banner (tier-ups, combo praise), hit-stop and Arena's
+    // growth-driven camera zoom-out (1 = Campaign's fixed framing).
+    this.floatTexts = [];
+    this.flashAlpha = 0;
+    this.flashColor = '#ffffff';
+    this.banner = null;
+    this.hitStopUntil = 0;
+    this.zoom = 1;
+    this.difficultyT = 0;
+    this.botTuning = { aggro: 320, prey: 420, objects: 480, decision: 0.5, passive: 0 };
     this.running = false;
     this.paused = false;
     this.lastTime = 0;
@@ -3248,7 +3424,7 @@ class Game {
     this.populateShop();
     this.updateCoinDisplays();
     this.updateChallengeCountdown();
-    setInterval(() => this.updateChallengeCountdown(), 1000);
+    setInterval(() => { this.updateChallengeCountdown(); this.updateFreeChestRow(); }, 1000);
 
     this.state = GameState.MENU;
     this.showScreen('mainMenu'); // also renders the bottom nav for the initial screen
@@ -3294,8 +3470,8 @@ class Game {
     this.pointerWorld = { x: WORLD_W / 2, y: WORLD_H / 2 };
     const updateFromScreen = (sx, sy) => {
       this.pointerWorld = {
-        x: this.camera.x + (sx - this.width / 2),
-        y: this.camera.y + (sy - this.height / 2)
+        x: this.camera.x + (sx - this.width / 2) / this.zoom,
+        y: this.camera.y + (sy - this.height / 2) / this.zoom
       };
     };
 
@@ -3428,6 +3604,11 @@ class Game {
       this.showScreen('runSetupScreen');
     });
     document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
+    // Golden Shot v8 retention loop.
+    document.getElementById('btnLoginClaim').addEventListener('click', () => this.claimLoginReward());
+    document.getElementById('hubFreeChest').addEventListener('click', () => this.openFreeChest());
+    document.getElementById('hubPlayerLevel').addEventListener('click', () => this.openPlayerLevelInfo());
+    document.getElementById('btnUpsell').addEventListener('click', () => this.onUpsellClick());
     document.getElementById('btnTutorialIntroStart').addEventListener('click', () => this.dismissTutorialIntro());
     document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
     document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
@@ -4104,6 +4285,12 @@ class Game {
   /** Phase 7 casual run tools — Coins-only, consumed at round start, no
    *  ranked/daily equivalent exists yet to keep those modes fair. */
   populateRunToolGrid() {
+    const t = this.computeDifficultyT();
+    const threat = document.getElementById('runThreat');
+    const level = Math.min(3, Math.floor(t * 4));
+    threat.dataset.level = level;
+    threat.querySelectorAll('.threat-segments i').forEach((seg, i) => seg.classList.toggle('on', i <= level));
+    document.getElementById('runThreatValue').textContent = this.difficultyLabel(t);
     const grid = document.getElementById('runToolGrid');
     grid.innerHTML = '';
     RUN_TOOLS.forEach(tool => {
@@ -4111,7 +4298,8 @@ class Game {
       const btn = document.createElement('button');
       btn.className = 'run-tool-card' + (this.selectedRunTool === tool.id ? ' selected' : '');
       btn.style.opacity = afford ? '1' : '0.5';
-      btn.innerHTML = `<span><span class="run-tool-name">${tool.name}</span><br><span class="run-tool-desc">${tool.desc}</span></span><span>${tool.price > 0 ? '◈ ' + tool.price : ''}</span>`;
+      const hot = tool.hot && t >= 0.25 ? '<span class="run-tool-hot">POLECANE</span>' : '';
+      btn.innerHTML = `<span><span class="run-tool-name">${tool.name}</span>${hot}<br><span class="run-tool-desc">${tool.desc}</span></span><span class="run-tool-price">${tool.price > 0 ? '◇ ' + tool.price : 'GRATIS'}</span>`;
       btn.addEventListener('click', () => {
         if (!afford) return;
         this.selectedRunTool = tool.id;
@@ -4192,6 +4380,18 @@ class Game {
   }
 
   updateCoinDisplays() {
+    // Golden Shot v8: currency pills "pop" whenever the balance grows.
+    const total = this.save.coins + (this.save.prisms || 0) * 1000;
+    if (this._lastWalletShown !== undefined && total > this._lastWalletShown) {
+      document.querySelectorAll('.coin-display').forEach(el => {
+        el.classList.remove('coin-pop');
+        void el.offsetWidth;
+        el.classList.add('coin-pop');
+      });
+    }
+    this._lastWalletShown = total;
+    this.updatePlayerLevelRow();
+    this.updateFreeChestRow();
     document.getElementById('coinCountMenu').textContent = this.save.coins;
     document.getElementById('coinCountShop').textContent = this.save.coins;
     document.getElementById('coinCountDistricts').textContent = this.save.coins;
@@ -4335,13 +4535,14 @@ class Game {
     document.getElementById('unlockEyebrow').textContent = item.eyebrow;
     document.getElementById('unlockTitle').textContent = item.title;
     document.getElementById('unlockDesc').textContent = item.desc;
+    document.querySelector('#unlockOverlay .unlock-kicker').textContent = item.kicker || 'ODBLOKOWANO!';
     const shown = this.unlockQueueTotal - this.unlockQueue.length;
     const counter = document.getElementById('unlockCounter');
     counter.textContent = `${shown} / ${this.unlockQueueTotal}`;
     counter.classList.toggle('hidden', this.unlockQueueTotal < 2);
 
     const goBtn = document.getElementById('btnUnlockGo');
-    const cta = item.kind === 'reward' ? (this.isWarsztatUnlocked() ? 'ZAŁÓŻ W WARSZTACIE' : null) : item.cta;
+    const cta = item.noCta ? null : (item.kind === 'reward' ? (this.isWarsztatUnlocked() ? 'ZAŁÓŻ W WARSZTACIE' : null) : item.cta);
     goBtn.classList.toggle('hidden', !cta);
     if (cta) goBtn.textContent = cta;
     document.getElementById('btnUnlockLater').textContent = this.unlockQueue.length ? 'DALEJ' : 'SUPER!';
@@ -4611,6 +4812,261 @@ class Game {
     if (ring) ring.style.strokeDashoffset = 175.9 * (1 - remainingMs / 86400000); // 2*PI*28
   }
 
+  /* ---------- Golden Shot v8: player level / XP ---------- */
+
+  /** Adds XP and processes any level-ups (coins every level, prisms every
+   *  CONFIG.progression.levelPrismsEvery levels, each with an "AWANS!"
+   *  celebration queued for the next queueUnlockCelebrations()). The caller
+   *  persists the save. Returns before/after for the result-screen XP bar. */
+  grantXp(amount) {
+    const P = CONFIG.progression;
+    const p = this.save.player || (this.save.player = { level: 1, xp: 0 });
+    const before = { level: p.level, xp: p.xp, need: P.xpForLevel(p.level) };
+    const gained = Math.max(0, Math.round(amount));
+    p.xp += gained;
+    const levelsUp = [];
+    while (p.xp >= P.xpForLevel(p.level)) {
+      p.xp -= P.xpForLevel(p.level);
+      p.level++;
+      const coins = P.levelCoins(p.level);
+      const prisms = p.level % P.levelPrismsEvery === 0 ? P.levelPrisms : 0;
+      this.save.coins += coins;
+      this.save.prisms = (this.save.prisms || 0) + prisms;
+      levelsUp.push({ level: p.level, coins, prisms });
+      this.queueRewardCelebration({
+        kicker: 'AWANS!', eyebrow: 'POZIOM GRACZA', title: `POZIOM ${p.level}`, color: '#EFCB63',
+        icon: `<svg viewBox="0 0 24 24">${CARD_ICONS.star}</svg>`, noCta: true,
+        desc: `Nagroda: +${coins} monet${prisms ? ` i +${prisms} pryzmatów` : ''}. Każda runda i misja daje XP — graj dalej po kolejny poziom!`
+      });
+      this.analytics.track('player_level_up', { level: p.level, coins, prisms });
+    }
+    return { gained, before, after: { level: p.level, xp: p.xp, need: P.xpForLevel(p.level) }, levelsUp };
+  }
+
+  /** Fills a result screen's XP card (`prefix` = 'result' | 'mission') and
+   *  animates its bar from the pre-run fill to the new one. */
+  renderXpCard(prefix, res) {
+    const card = document.getElementById(prefix + 'XpCard');
+    if (!res) { card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    const leveled = res.levelsUp.length > 0;
+    card.classList.toggle('leveled', leveled);
+    document.getElementById(prefix + 'XpLevel').textContent = leveled ? `AWANS! POZIOM ${res.after.level}` : `POZIOM ${res.after.level}`;
+    document.getElementById(prefix + 'XpGain').textContent = `+${res.gained} XP`;
+    document.getElementById(prefix + 'XpText').textContent = `${res.after.xp} / ${res.after.need} XP`;
+    const bar = document.getElementById(prefix + 'XpBar');
+    bar.style.transition = 'none';
+    bar.style.width = (leveled ? 0 : (res.before.xp / res.before.need) * 100) + '%';
+    void bar.offsetWidth;
+    bar.style.transition = '';
+    setTimeout(() => { bar.style.width = (res.after.xp / res.after.need) * 100 + '%'; }, 350);
+  }
+
+  updatePlayerLevelRow() {
+    const P = CONFIG.progression;
+    const p = this.save.player || { level: 1, xp: 0 };
+    const need = P.xpForLevel(p.level);
+    document.getElementById('hubPlayerLevelValue').textContent = p.level;
+    document.getElementById('hubPlayerXpBar').style.width = clamp(p.xp / need, 0, 1) * 100 + '%';
+    document.getElementById('hubPlayerXpText').textContent = `${p.xp} / ${need} XP`;
+    const nextPrisms = (p.level + 1) % P.levelPrismsEvery === 0 ? ` + ${P.levelPrisms} ◆` : '';
+    document.getElementById('hubPlayerLevelNext').textContent = `→ LVL ${p.level + 1}: +${P.levelCoins(p.level + 1)} monet${nextPrisms}`;
+  }
+
+  openPlayerLevelInfo() {
+    const P = CONFIG.progression;
+    this.openInfoSheet({
+      icon: `<svg viewBox="0 0 24 24" style="color:#EFCB63">${CARD_ICONS.star}</svg>`,
+      title: 'Poziom gracza',
+      body: [
+        'Każda runda <strong>GRAJ 2:00</strong>, <strong>Wyzwanie dnia</strong> i misja w Dzielnicach daje XP.',
+        `Runda: ${P.xpRunBase} XP + punkty wyniku + premia za podium (do +${P.xpPlaceBonus[0]} XP za 1. miejsce). Misja: +${P.xpMissionSuccess} XP za ukończenie.`,
+        `Każdy nowy poziom = monety, a co ${P.levelPrismsEvery}. poziom także <strong>+${P.levelPrisms} pryzmatów</strong>.`
+      ]
+    });
+  }
+
+  /* ---------- Golden Shot v8: 7-day login calendar ---------- */
+
+  loginState() {
+    const today = dailySeedForDate(new Date()).dateKey;
+    const L = this.save.login || (this.save.login = { lastClaimDate: null, day: 0, totalClaims: 0 });
+    const claimedToday = L.lastClaimDate === today;
+    const streakAlive = claimedToday || L.lastClaimDate === previousDateKey(today);
+    return { today, claimedToday, day: streakAlive ? L.day : 0 };
+  }
+
+  maybeShowLoginReward() {
+    if (this.running || this.isFirstRun()) return;
+    if (document.getElementById('mainMenu').classList.contains('hidden')) return;
+    if (!document.getElementById('unlockOverlay').classList.contains('hidden')) return;
+    const st = this.loginState();
+    if (st.claimedToday) return;
+    this.renderLoginGrid(st.day, false);
+    document.getElementById('loginRewardDay').textContent = st.day + 1;
+    const btn = document.getElementById('btnLoginClaim');
+    btn.disabled = false;
+    btn.textContent = 'ODBIERZ';
+    document.getElementById('loginRewardScreen').classList.remove('hidden');
+    this.analytics.track('login_reward_offer', { day: st.day + 1 });
+  }
+
+  renderLoginGrid(day, justClaimed) {
+    const grid = document.getElementById('loginRewardGrid');
+    grid.innerHTML = '';
+    CONFIG.loginRewards.forEach((r, i) => {
+      const tile = document.createElement('div');
+      const state = i < day || (justClaimed && i === day) ? 'claimed' : (i === day ? 'current' : 'future');
+      tile.className = `login-tile ${state}${r.big ? ' big' : ''}${justClaimed && i === day ? ' just-claimed' : ''}`;
+      const parts = [];
+      if (r.coins) parts.push(`<span class="login-tile-coins">◇ ${r.coins}</span>`);
+      if (r.prisms) parts.push(`<span class="login-tile-prisms">◆ ${r.prisms}</span>`);
+      tile.innerHTML = `<span class="login-tile-day">DZIEŃ ${i + 1}</span>${parts.join('')}${state === 'claimed' ? '<span class="login-tile-check">✓</span>' : ''}`;
+      grid.appendChild(tile);
+    });
+  }
+
+  claimLoginReward() {
+    const st = this.loginState();
+    if (st.claimedToday) return;
+    const reward = CONFIG.loginRewards[st.day];
+    this.save.coins += reward.coins || 0;
+    this.save.prisms = (this.save.prisms || 0) + (reward.prisms || 0);
+    const L = this.save.login;
+    L.lastClaimDate = st.today;
+    L.day = (st.day + 1) % CONFIG.loginRewards.length;
+    L.totalClaims = (L.totalClaims || 0) + 1;
+    saveGame(this.save);
+    this.analytics.track('login_reward_claim', { day: st.day + 1, coins: reward.coins || 0, prisms: reward.prisms || 0 });
+
+    this.renderLoginGrid(st.day, true);
+    const btn = document.getElementById('btnLoginClaim');
+    btn.disabled = true;
+    btn.textContent = `+${reward.coins ? reward.coins + ' MONET' : ''}${reward.coins && reward.prisms ? ' · ' : ''}${reward.prisms ? reward.prisms + ' PRYZMATÓW' : ''}!`;
+    this.burstDom(document.getElementById('loginBurst'), reward.big ? 40 : 22);
+    this.vibrate([30, 40, 80]);
+    setTimeout(() => {
+      document.getElementById('loginRewardScreen').classList.add('hidden');
+      this.updateCoinDisplays();
+    }, reward.big ? 1700 : 1200);
+  }
+
+  /** Radial DOM particle burst (same look as the unlock overlay's). */
+  burstDom(container, count) {
+    container.innerHTML = '';
+    const colors = ['#50F0FA', '#FF54AD', '#EFCB63', '#9875FF', '#46D99A'];
+    for (let i = 0; i < count; i++) {
+      const sp = document.createElement('span');
+      sp.style.setProperty('--a', `${(i / count) * 360 + rand(-10, 10)}deg`);
+      sp.style.setProperty('--d', `${rand(80, 170)}px`);
+      sp.style.setProperty('--s', `${rand(4, 9)}px`);
+      sp.style.setProperty('--c', colors[i % colors.length]);
+      container.appendChild(sp);
+    }
+    container.classList.remove('play');
+    void container.offsetWidth;
+    container.classList.add('play');
+  }
+
+  /** Full-screen confetti rain on a result screen (wins, PBs, missions). */
+  launchConfetti(layerId, count = 70) {
+    const layer = document.getElementById(layerId);
+    if (!layer) return;
+    layer.innerHTML = '';
+    const colors = ['#50F0FA', '#FF54AD', '#EFCB63', '#9875FF', '#46D99A', '#ffffff'];
+    for (let i = 0; i < count; i++) {
+      const c = document.createElement('i');
+      c.style.left = rand(0, 100) + '%';
+      c.style.background = colors[i % colors.length];
+      c.style.setProperty('--dx', `${rand(-80, 80)}px`);
+      c.style.setProperty('--r', `${rand(-720, 720)}deg`);
+      c.style.animationDelay = `${rand(0, 0.9)}s`;
+      c.style.animationDuration = `${rand(1.8, 3.2)}s`;
+      c.style.width = rand(6, 10) + 'px';
+      c.style.height = rand(10, 16) + 'px';
+      layer.appendChild(c);
+    }
+    clearTimeout(this.confettiTimer);
+    this.confettiTimer = setTimeout(() => { layer.innerHTML = ''; }, 4500);
+  }
+
+  /** Counts a number up inside `el` (result screens). */
+  animateNumber(el, to, ms = 900, prefix = '') {
+    const start = performance.now();
+    const step = (now) => {
+      const t = clamp((now - start) / ms, 0, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = prefix + Math.round(to * eased);
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /* ---------- Golden Shot v8: free chest (4 h cooldown) ---------- */
+
+  updateFreeChestRow() {
+    const row = document.getElementById('hubFreeChest');
+    if (!row) return;
+    const fc = this.save.freeChest || (this.save.freeChest = { nextAt: 0, opened: 0 });
+    const remaining = fc.nextAt - Date.now();
+    const ready = remaining <= 0;
+    row.classList.toggle('ready', ready);
+    document.getElementById('hubChestCta').textContent = ready ? 'OTWÓRZ' : 'CZEKA';
+    if (ready) {
+      document.getElementById('hubChestSub').textContent = 'Gotowa do otwarcia!';
+    } else {
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const sec = Math.floor((remaining % 60000) / 1000);
+      document.getElementById('hubChestSub').textContent = `Następna za ${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+  }
+
+  openFreeChest() {
+    const fc = this.save.freeChest;
+    const C = CONFIG.freeChest;
+    if (fc.nextAt > Date.now()) {
+      this.openInfoSheet({
+        icon: REWARD_CATEGORY_ICONS.bundle,
+        title: 'Darmowa skrzynia',
+        body: ['Co 4 godziny czeka na Ciebie darmowa skrzynia z monetami — czasem z pryzmatami, a czasem z <strong>JACKPOTEM ×3</strong>.', 'Wróć, gdy licznik dojdzie do zera!']
+      });
+      return;
+    }
+    let coins = randInt(C.coins[0], C.coins[1]);
+    const jackpot = Math.random() < C.jackpotChance;
+    if (jackpot) coins *= C.jackpotMult;
+    const prisms = Math.random() < C.prismChance ? randInt(C.prisms[0], C.prisms[1]) : 0;
+    this.save.coins += coins;
+    this.save.prisms = (this.save.prisms || 0) + prisms;
+    fc.nextAt = Date.now() + C.cooldownMs;
+    fc.opened = (fc.opened || 0) + 1;
+    saveGame(this.save);
+    this.analytics.track('free_chest_open', { coins, prisms, jackpot });
+    this.queueRewardCelebration({
+      kicker: jackpot ? 'JACKPOT ×3!' : 'SKRZYNIA OTWARTA!', eyebrow: 'DARMOWA SKRZYNIA',
+      title: `+${coins} monet${prisms ? ` · +${prisms} ◆` : ''}`, color: jackpot ? '#FF54AD' : '#EFCB63',
+      icon: REWARD_CATEGORY_ICONS.bundle, noCta: true,
+      desc: 'Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wsparcie przed rundą!'
+    });
+    this.queueUnlockCelebrations();
+    this.updateCoinDisplays();
+  }
+
+  /* ---------- Golden Shot v8: result-screen upgrade funnel ---------- */
+
+  onUpsellClick() {
+    const boost = RUN_TOOLS.find(t => t.id === 'boost');
+    if (this.save.coins >= boost.price) {
+      this.selectedRunTool = 'boost';
+      this.populateRunToolGrid();
+      this.showScreen('runSetupScreen');
+    } else {
+      this.openFreeChest();
+    }
+    this.analytics.track('upsell_click', { affordable: this.save.coins >= boost.price });
+  }
+
   showScreen(id) {
     ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
@@ -4620,8 +5076,13 @@ class Game {
     document.getElementById('leaveConfirm').classList.add('hidden');
     document.getElementById('resetProfileConfirm').classList.add('hidden');
     document.getElementById('tutorialIntroOverlay').classList.add('hidden');
+    document.getElementById('loginRewardScreen').classList.add('hidden');
     this.closeInfoSheet();
     this.introPending = false;
+    if (id === 'mainMenu') {
+      clearTimeout(this.loginPopupTimer);
+      this.loginPopupTimer = setTimeout(() => this.maybeShowLoginReward(), 600);
+    }
     const visitedFeature = { shopScreen: 'warsztat', challengesScreen: 'wyzwania' }[id];
     if (visitedFeature) this.markUnlockVisited(visitedFeature);
     this.renderBottomNav(id);
@@ -4629,7 +5090,7 @@ class Game {
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'unlockOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
@@ -4721,19 +5182,34 @@ class Game {
     this.player.skin = this.save.selected;
     this.player.auraId = this.save.auras.selected;
 
-    this.bots = [];
-    const names = pickUnique(BOT_NAME_POOL, NUM_BOTS, rng);
-    for (let i = 0; i < NUM_BOTS; i++) {
-      const p = this.randomWorldPos(300, rng);
-      this.bots.push(new Bot(names[i], p.x, p.y));
-    }
-
+    // Golden Shot v8 difficulty curve: bot spawn size, speed, aggression
+    // and passive growth all lerp from easy to hard by this.difficultyT.
+    const D = CONFIG.difficulty, t = this.difficultyT;
+    const pick = (pair) => lerp(pair[0], pair[1], t);
+    this.botTuning = {
+      aggro: pick(D.botAggroRange),
+      prey: pick(D.botPreyRange),
+      objects: pick(D.botObjectRange),
+      decision: pick(D.botDecisionSeconds),
+      passive: pick(D.botPassiveUnitsPerSec)
+    };
     // Phase 5 (scoped): a single lightweight run modifier, seed-driven so
     // a Daily Seed Challenge gets the same one for every player that day.
     // Full authored districts/chunks (GDD §14.2) are NOT implemented —
     // see docs/VECTRE_V2_PLAN.md for the explicit scope call.
-    if (this.modifier === 'rush_hour') {
-      for (const bot of this.bots) bot.tempSpeedMult = 1.3;
+    const speedMult = pick(D.botSpeedMult) * (this.modifier === 'rush_hour' ? 1.3 : 1);
+
+    this.bots = [];
+    const names = pickUnique(BOT_NAME_POOL, NUM_BOTS, rng);
+    for (let i = 0; i < NUM_BOTS; i++) {
+      const p = this.randomWorldPos(300, rng);
+      const bot = new Bot(names[i], p.x, p.y);
+      // Small per-bot spread so the pack isn't uniform.
+      bot.startRadius = pick(D.botStartRadius) * (0.9 + 0.2 * (i / Math.max(1, NUM_BOTS - 1)));
+      bot.radius = bot.startRadius;
+      bot.baseSpeedMult = speedMult;
+      bot.tempSpeedMult = speedMult;
+      this.bots.push(bot);
     }
   }
 
@@ -5256,6 +5732,13 @@ class Game {
 
     this.camera.x = this.player.x;
     this.camera.y = this.player.y;
+    // Campaign keeps its fixed 1:1 framing (camera is clamped to the
+    // mission box); only Arena zooms out with growth.
+    this.zoom = 1;
+    this.floatTexts = [];
+    this.banner = null;
+    this.flashAlpha = 0;
+    this.hitStopUntil = 0;
 
     this.running = true;
     this.state = GameState.PLAYING;
@@ -5322,8 +5805,10 @@ class Game {
     // every newly unlocked object is visibly smaller than the hole.
     m.growthUnits += stats.growth;
     this.syncCampaignRadius();
-    this.player.score += Math.round(stats.score * multiplier);
+    const pts = Math.round(stats.score * multiplier);
+    this.player.score += pts;
     this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true);
+    this.addFloatText(e.x, e.y - e.radius, `+${pts}`, multiplier > 1.01 ? '#EFCB63' : this.campaignEntityColor(e), 15 + Math.min(14, e.radius / 3));
     this.vibrate(e.type === 'landmark' ? [60, 40, 60] : 30);
 
     // Arena's world only spawns object types the player has actually
@@ -5339,7 +5824,9 @@ class Game {
     if (newTier.id !== m.tierId) {
       m.tierId = newTier.id;
       this.ripples.push(new Ripple(this.player.x, this.player.y, newTier.color, this.player.radius, this.player.radius * 2.5, 0.5));
-      this.spawnParticles(this.player.x, this.player.y, newTier.color, 16);
+      this.spawnParticles(this.player.x, this.player.y, newTier.color, 36, 1.6);
+      this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY POZIOM WZROSTU!', newTier.color, 1.4);
+      this.flashScreen(newTier.color, 0.25);
       if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
     }
 
@@ -5774,6 +6261,7 @@ class Game {
   updateCampaignHUD() {
     const m = this.mission;
     document.getElementById('missionTimerValue').textContent = Math.ceil(m.timeRemaining);
+    document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', m.timeRemaining <= 10);
 
     // "CEL RUNDY" section: one icon+label+progress row per goal shape (two
     // for activateAndDevour, so activator progress and the landmark bite
@@ -5841,6 +6329,7 @@ class Game {
     this.particles = this.particles.filter(p => !p.dead);
     this.ripples.forEach(r => r.update(dt));
     this.ripples = this.ripples.filter(r => !r.dead);
+    this.updateJuice(dt);
 
     // Camera is framed to CONFIG.campaign.bounds, not the shared WORLD_W/H --
     // the player is already clamped to that smaller box (clampToCampaignBounds),
@@ -5905,6 +6394,7 @@ class Game {
       }
     }
     if (medalEarned) this.save.campaign.medals[m.def.id] = true;
+    this.lastXpResult = this.grantXp(success ? CONFIG.progression.xpMissionSuccess : CONFIG.progression.xpMissionFail);
     saveGame(this.save);
 
     this.analytics.track('mission_end', {
@@ -5922,7 +6412,9 @@ class Game {
     document.getElementById('missionResultNela').textContent = success
       ? `NELA: „${def.nela.success}”`
       : 'Spróbuj jeszcze raz — teraz znasz już trasę.';
-    document.getElementById('missionResultScore').textContent = this.player.score;
+    this.animateNumber(document.getElementById('missionResultScore'), this.player.score, 1000);
+    this.renderXpCard('mission', this.lastXpResult);
+    if (success) setTimeout(() => this.launchConfetti('missionConfetti', medalEarned ? 80 : 50), 250);
     document.getElementById('missionResultMedal').textContent = medalEarned
       ? `🏅 Medal: ${def.medal.label}`
       : `Medal nieukończony: ${def.medal.label}`;
@@ -5988,9 +6480,11 @@ class Game {
     for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
 
     this.drawComboText(ctx);
+    for (const f of this.floatTexts) f.draw(ctx);
     ctx.restore();
 
     if (this.showMinimap) this.drawCampaignMinimap(ctx);
+    this.drawJuiceScreen(ctx, this.mission ? this.mission.timeRemaining : undefined);
   }
 
   /** Arena's own drawGrid() draws the grid lines out to the full
@@ -6132,11 +6626,19 @@ class Game {
     this.rivalsEatenThisRun = 0;
     this.missionJustCompleted = false;
     this.hubMilestoneReward = null;
+    this.difficultyT = this.computeDifficultyT();
 
     this.createObjects(this.rng);
     this.createEntities(this.rng);
     this.particles = [];
     this.ripples = [];
+    this.floatTexts = [];
+    this.banner = null;
+    this.flashAlpha = 0;
+    this.hitStopUntil = 0;
+    this.zoom = CONFIG.juice.zoom.max;
+    this.lateRoundAnnounced = false;
+    this.lastPlace = null;
     this.comboCount = 0;
     this.comboMultiplier = 1;
     this.comboTimer = 0;
@@ -6167,7 +6669,13 @@ class Game {
 
     // Phase 7 run tool, selected in the Run Setup screen (or 'none')
     this.shieldCharges = this.selectedRunTool === 'shield' ? 1 : 0;
-    this.toolMagnetUntil = this.selectedRunTool === 'magnet' ? performance.now() + 8000 : 0;
+    this.toolMagnetUntil = this.selectedRunTool === 'magnet' ? performance.now() + 12000 : 0;
+    if (this.selectedRunTool === 'boost') {
+      // Turbo start: spawn just past the T2 threshold (checkSizeTier()
+      // celebrates the jump on the first frame).
+      this.player.radius = radiusForUnits(CONFIG.growth.unitAnchors[1] + 2);
+    }
+    const runTool = this.selectedRunTool;
     this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
 
     this.running = true;
@@ -6190,14 +6698,18 @@ class Game {
       skin: this.player.skin,
       playCount: this.playCount,
       modifier: this.modifier,
-      runTool: this.selectedRunTool,
-      daily: this.isDailyRun
+      runTool,
+      daily: this.isDailyRun,
+      difficulty: Math.round(this.difficultyT * 100) / 100
     });
+    this.showBanner(this.isDailyRun ? 'WYZWANIE DNIA!' : 'START!', this.modifier === 'rush_hour' ? 'RUSH HOUR — rywale są szybsi!' : 'Pochłaniaj · rośnij · wygraj', '#50F0FA', 1.2);
   }
 
   requestPlayAgain() {
     this.playCount++;
-    if (this.playCount % 2 === 0) {
+    // Golden Shot v8: no forced interstitials during the newbie runs, and
+    // only every 3rd replay after that (they were every 2nd).
+    if (this.playCount % 3 === 0 && (this.save.stats.runsPlayed || 0) >= CONFIG.economy.newbieRuns) {
       this.showInterstitialAd('interstitial', () => this.startRound());
     } else {
       this.startRound();
@@ -6257,14 +6769,23 @@ class Game {
 
     const ranked = rankHoles([this.player, ...this.bots]);
     const place = ranked.indexOf(this.player) + 1;
-    const coinsEarned = Math.floor(this.player.score / CONFIG.economy.coinsPerScorePoint) + CONFIG.economy.coinsBase;
+    let coinsEarned = Math.floor(this.player.score / CONFIG.economy.coinsPerScorePoint) + CONFIG.economy.coinsBase;
+    // Golden Shot v8: a new player's first runs pay double.
+    this.newbieBonusApplied = (this.save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns;
+    if (this.newbieBonusApplied) coinsEarned = Math.round(coinsEarned * CONFIG.economy.newbieCoinMult);
     this.adPendingCoins = coinsEarned;
     this.save.coins += coinsEarned;
     this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
 
     // Phase 7: Prisms have no IAP adapter yet, so the only earn path is a
     // small trickle from progression (GDD 10.1's "slowly earned" clause).
-    if (this.save.stats.runsPlayed % 3 === 0) this.save.prisms = (this.save.prisms || 0) + 1;
+    if (this.save.stats.runsPlayed % CONFIG.economy.prismTrickleEvery === 0) {
+      this.save.prisms = (this.save.prisms || 0) + CONFIG.economy.prismTrickleAmount;
+    }
+
+    // Golden Shot v8: player XP (score + podium bonus).
+    const P = CONFIG.progression;
+    this.lastXpResult = this.grantXp(P.xpRunBase + this.player.score * P.xpPerScorePoint + (P.xpPlaceBonus[place - 1] || 0));
 
     // Daily mission: was a static, never-checked line before this pass.
     // Checked once per day (save.mission.completed guards re-granting the
@@ -6326,6 +6847,7 @@ class Game {
         coreGain += cc.arenaNewPbGain;
       }
     }
+    if ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax) coreGain = Math.round(coreGain * cc.earlyLevelMult);
     this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + coreGain;
     this.hubMilestoneReached = false;
     this.hubMilestoneRewards = [];
@@ -6379,8 +6901,26 @@ class Game {
     const corePctAfter = this.save.hub.coreCharge || 0;
 
     document.getElementById('finalPlace').textContent = '#' + place;
-    document.getElementById('finalScore').textContent = this.player.score;
-    document.getElementById('finalCoins').textContent = coinsEarned;
+    // Golden Shot v8 triumph screen: count-ups, place-based headline, confetti.
+    this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100);
+    this.animateNumber(document.getElementById('finalCoins'), coinsEarned, 1100);
+    const eyebrow = document.getElementById('resultEyebrow');
+    eyebrow.textContent = place === 1 ? '🏆 ZWYCIĘSTWO!' : (place <= 3 ? `PODIUM · MIEJSCE #${place}` : 'KONIEC RUNDY');
+    eyebrow.classList.toggle('result-eyebrow-win', place <= 3);
+    document.getElementById('resultNewbieTag').classList.toggle('hidden', !this.newbieBonusApplied);
+    this.renderXpCard('result', this.lastXpResult);
+    const upsell = document.getElementById('resultUpsell');
+    const showUpsell = !this.isDailyRun && place > 2 && this.difficultyT >= 0.15;
+    upsell.classList.toggle('hidden', !showUpsell);
+    if (showUpsell) {
+      const boost = RUN_TOOLS.find(t => t.id === 'boost');
+      const affordable = this.save.coins >= boost.price;
+      document.getElementById('resultUpsellLabel').textContent = `ZAGROŻENIE: ${this.difficultyLabel(this.difficultyT)}`;
+      document.getElementById('resultUpsellText').textContent = affordable
+        ? `Rywale rosną w siłę. Zacznij od T2 z Turbo startem (◇ ${boost.price}) i wskocz na podium!`
+        : 'Rywale rosną w siłę. Zbierz monety ze skrzyni i nagród dziennych na Turbo start!';
+      document.getElementById('btnUpsell').textContent = affordable ? `TURBO START ◇ ${boost.price}` : 'ZDOBĄDŹ MONETY';
+    }
 
     // v5 result hero (design/screens/wynik_rundy.svg): big glowing score,
     // a size-tier badge reusing CONFIG.sizeTiers (previously tracked only
@@ -6393,6 +6933,7 @@ class Game {
     document.getElementById('resultTierLabel').textContent = sizeTier.label;
     const isNewPb = this.isDailyRun ? !!(this.dailyResult && this.dailyResult.isNewBest) : this.player.score > bestArenaScoreBefore;
     document.getElementById('resultPbBadge').classList.toggle('hidden', !isNewPb);
+    if (place <= 3 || isNewPb) setTimeout(() => this.launchConfetti('resultConfetti', place === 1 ? 90 : 55), 250);
 
     const tag = document.getElementById('resultTag');
     if (this.overdriveActive && this.overdriveTag) {
@@ -6580,9 +7121,116 @@ class Game {
 
   /* ---------- gameplay ---------- */
 
-  spawnParticles(x, y, color, count) {
-    for (let i = 0; i < count; i++) this.particles.push(new Particle(x, y, color));
+  spawnParticles(x, y, color, count, speedMult = 1) {
+    const cap = CONFIG.juice.maxParticles;
+    for (let i = 0; i < count; i++) {
+      if (this.particles.length >= cap) this.particles.shift();
+      const kind = i % 4 === 0 ? 'spark' : (i % 3 === 0 ? 'pixel' : 'dot');
+      this.particles.push(new Particle(x, y, i % 5 === 4 ? '#ffffff' : color, kind, speedMult));
+    }
   }
+
+  /* ---------- Golden Shot v8 juice helpers ---------- */
+
+  addFloatText(x, y, text, color, size = 16, life = 0.9) {
+    if (this.floatTexts.length > 40) this.floatTexts.shift();
+    this.floatTexts.push(new FloatText(x, y, text, color, size, life));
+  }
+
+  flashScreen(color, alpha = 0.35) {
+    this.flashColor = color;
+    this.flashAlpha = Math.max(this.flashAlpha, alpha);
+  }
+
+  showBanner(text, sub, color, duration = 1.3) {
+    this.banner = { text, sub, color, life: duration, maxLife: duration };
+  }
+
+  hitStop(ms) {
+    this.hitStopUntil = Math.max(this.hitStopUntil, performance.now() + ms);
+  }
+
+  /** Per-frame upkeep for the v8 juice layer, shared by Arena and Campaign. */
+  updateJuice(dt) {
+    this.floatTexts.forEach(f => f.update(dt));
+    this.floatTexts = this.floatTexts.filter(f => !f.dead);
+    if (this.flashAlpha > 0) this.flashAlpha = Math.max(0, this.flashAlpha - dt * 2.4);
+    if (this.banner) {
+      this.banner.life -= dt;
+      if (this.banner.life <= 0) this.banner = null;
+    }
+  }
+
+  /** Screen-space juice: color flash, center banner and the final-seconds
+   *  countdown. Drawn after the world transform is restored. */
+  drawJuiceScreen(ctx, timeRemaining) {
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (this.flashAlpha > 0) {
+      ctx.globalAlpha = this.flashAlpha;
+      ctx.fillStyle = this.flashColor;
+      ctx.fillRect(0, 0, this.width, this.height);
+      ctx.globalAlpha = 1;
+    }
+    if (timeRemaining !== undefined && timeRemaining > 0 && timeRemaining <= 10) {
+      const frac = timeRemaining - Math.floor(timeRemaining);
+      ctx.globalAlpha = 0.12 + 0.18 * frac;
+      ctx.font = `900 ${Math.min(220, this.width * 0.42) * (0.85 + 0.15 * frac)}px 'Segoe UI', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = timeRemaining <= 5 ? '#FF54AD' : '#ffffff';
+      ctx.fillText(String(Math.ceil(timeRemaining)), this.width / 2, this.height / 2);
+      ctx.globalAlpha = 1;
+    }
+    const b = this.banner;
+    if (b) {
+      const age = 1 - b.life / b.maxLife;
+      const pop = age < 0.12 ? 0.4 + (age / 0.12) * 0.8 : (age < 0.22 ? 1.2 - ((age - 0.12) / 0.1) * 0.2 : 1);
+      const alpha = clamp(b.life / (b.maxLife * 0.3), 0, 1);
+      const size = Math.min(58, this.width * 0.1);
+      ctx.globalAlpha = alpha;
+      ctx.translate(this.width / 2, this.height * 0.3);
+      ctx.scale(pop, pop);
+      ctx.rotate(-0.04);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `900 ${size}px 'Segoe UI', sans-serif`;
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = 'rgba(4, 16, 29, 0.9)';
+      ctx.strokeText(b.text, 0, 0);
+      ctx.fillStyle = b.color;
+      ctx.shadowBlur = 26;
+      ctx.shadowColor = b.color;
+      ctx.fillText(b.text, 0, 0);
+      if (b.sub) {
+        ctx.shadowBlur = 0;
+        ctx.font = `800 ${Math.max(12, size * 0.26)}px 'Segoe UI', sans-serif`;
+        ctx.lineWidth = 4;
+        ctx.strokeText(b.sub, 0, size * 0.72);
+        ctx.fillStyle = '#f2f8ff';
+        ctx.fillText(b.sub, 0, size * 0.72);
+      }
+    }
+    ctx.restore();
+  }
+
+  /** 0 (first runs: guaranteed easy wins) .. 1 (full difficulty wall), from
+   *  the player's Arena career -- see CONFIG.difficulty. */
+  computeDifficultyT() {
+    const D = CONFIG.difficulty;
+    if (this.isDailyRun) return D.dailyT;
+    const runs = this.save.stats.runsPlayed || 0;
+    return clamp((runs - D.rampStartRuns) / (D.rampFullRuns - D.rampStartRuns), 0, 1);
+  }
+
+  difficultyLabel(t) {
+    const labels = CONFIG.difficulty.labels;
+    return labels[Math.min(labels.length - 1, Math.floor(t * labels.length))];
+  }
+
+  /** Camera half-extent in world units (Arena zooms out as the hole grows). */
+  get viewHalfW() { return this.width / 2 / this.zoom; }
+  get viewHalfH() { return this.height / 2 / this.zoom; }
 
   triggerShake(amount) {
     this.shake = Math.max(this.shake, amount);
@@ -6595,11 +7243,11 @@ class Game {
     const { tinyMaxRadius, mediumMaxRadius } = CONFIG.juice.eatTiers;
     let particles, shakeAmt, giant;
     if (eatenRadius <= tinyMaxRadius) {
-      particles = 8; shakeAmt = 0; giant = false;
+      particles = 12; shakeAmt = 1.5; giant = false;
     } else if (eatenRadius <= mediumMaxRadius) {
-      particles = 16; shakeAmt = 3; giant = false;
+      particles = 24; shakeAmt = 4; giant = false;
     } else {
-      particles = 30; shakeAmt = 10; giant = true;
+      particles = 44; shakeAmt = 11; giant = true;
     }
     // GDD 4.0 §5.3 "Efekt pochłaniania" cosmetic: the player's selected
     // burst color overrides the eaten object's own color, but only for
@@ -6607,9 +7255,15 @@ class Game {
     const effectId = this.save && this.save.effects && this.save.effects.selected;
     const effect = EAT_EFFECTS.find(e => e.id === effectId);
     const burstColor = (isPlayerInvolved && effect && effect.color) || color;
-    this.spawnParticles(x, y, burstColor, particles);
+    this.spawnParticles(x, y, burstColor, isPlayerInvolved ? particles : Math.ceil(particles / 2), giant ? 1.6 : 1);
     if (shakeAmt > 0) this.triggerShake(isPlayerInvolved ? shakeAmt : shakeAmt * 0.4);
-    if (giant) this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 3, 0.5));
+    if (isPlayerInvolved && !giant && eatenRadius > tinyMaxRadius) {
+      this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.5, eatenRadius * 2, 0.3));
+    }
+    if (giant) {
+      this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 3, 0.5));
+      if (isPlayerInvolved) { this.flashScreen(burstColor, 0.18); this.hitStop(CONFIG.juice.hitStopMs * 0.6); }
+    }
   }
 
   /** Bumps the player's combo (consecutive eats within the combo window)
@@ -6624,6 +7278,19 @@ class Game {
     const maxMultiplier = this.mode === 'campaign' ? CONFIG.campaign.comboMaxMultiplier : CONFIG.juice.combo.maxMultiplier;
     this.comboMultiplier = clamp(1 + (this.comboCount - 1) * CONFIG.juice.combo.stepBonus, 1, maxMultiplier);
     this.comboDisplayAlpha = 1;
+    this.comboPopAt = performance.now();
+    const praise = CONFIG.juice.praise.find(([n]) => n === this.comboCount);
+    if (praise) {
+      const PRAISE_COLORS = ['#50F0FA', '#FF54AD', '#EFCB63', '#9875FF', '#46D99A'];
+      const color = PRAISE_COLORS[CONFIG.juice.praise.indexOf(praise) % PRAISE_COLORS.length];
+      this.showBanner(praise[1], `COMBO ×${this.comboCount} · PUNKTY x${this.comboMultiplier.toFixed(1)}`, color, 1.2);
+      this.flashScreen(color, 0.16);
+      if (this.player) {
+        this.ripples.push(new Ripple(this.player.x, this.player.y, color, this.player.radius, this.player.radius * 3.2, 0.5));
+        this.spawnParticles(this.player.x, this.player.y, color, 24, 1.4);
+      }
+      this.vibrate([20, 30, 40]);
+    }
     if (this.activeMutations.has('slipstream') && this.comboCount >= CONFIG.evolution.slipstreamComboThreshold) {
       this.speedBoostUntil = performance.now() + CONFIG.evolution.slipstreamMs;
     }
@@ -6661,9 +7328,21 @@ class Game {
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
           const multiplier = a.isPlayer ? this.registerCombo() : 1;
           const isBounty = a.isPlayer && b === this.bountyTarget;
-          a.score += Math.round(b.radius * 2 * multiplier) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
+          const rivalPts = Math.round(b.radius * 2 * multiplier) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
+          a.score += rivalPts;
           if (isBounty) this.bountyTarget = null;
           this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer);
+          if (a.isPlayer) {
+            this.addFloatText(b.x, b.y - b.radius, `ZJEDZONY! +${rivalPts}`, '#EFCB63', 24, 1.3);
+            this.flashScreen('#EFCB63', 0.22);
+            this.hitStop(CONFIG.juice.hitStopMs);
+            this.triggerShake(12);
+            this.spawnParticles(b.x, b.y, '#EFCB63', 30, 1.8);
+          } else if (b.isPlayer) {
+            this.flashScreen('#FF54AD', 0.45);
+            this.showBanner('ZJEDZONO CIĘ!', 'Masz chwilę ochrony — rośnij dalej', '#FF54AD', 1.6);
+            this.triggerShake(14);
+          }
           if (a.isPlayer) {
             this.rivalsEatenThisRun++;
             this.analytics.track('rival_eaten', { rival: b.name, rivalSize: Math.round(b.radius), bounty: isBounty });
@@ -6712,7 +7391,10 @@ class Game {
       // radius crossings via CONFIG.evolution.triggerRadii, checked
       // separately in checkEvolutionTriggers() below.
       this.ripples.push(new Ripple(this.player.x, this.player.y, current.color, this.player.radius, this.player.radius * 2.5, 0.5));
-      this.spawnParticles(this.player.x, this.player.y, current.color, 20);
+      this.ripples.push(new Ripple(this.player.x, this.player.y, '#ffffff', this.player.radius, this.player.radius * 4, 0.8));
+      this.spawnParticles(this.player.x, this.player.y, current.color, 40, 1.7);
+      this.showBanner(`${current.label}!`, 'NOWE OBIEKTY DO POCHŁONIĘCIA', current.color, 1.4);
+      this.flashScreen(current.color, 0.28);
       this.vibrate(60);
 
       if (this.activeMutations.has('shockwave')) {
@@ -6823,6 +7505,8 @@ class Game {
     this.overdriveTag = this.overdriveVariant === 'blackout' ? 'BLACKOUT FINISH' : 'PORTAL STORM';
     this.analytics.track('overdrive_start', { variant: this.overdriveVariant, runId: this.runId });
     this.vibrate([60, 40, 60]);
+    this.flashScreen('#9875FF', 0.4);
+    this.triggerShake(10);
 
     // GDD 4.0 §5.3 "Overdrive" cosmetic: a tint on the existing seeded
     // finish -- doesn't change which variant is picked, just its color.
@@ -6920,7 +7604,17 @@ class Game {
     }
 
     this.applyPlayerMovement(dt);
-    for (const bot of this.bots) bot.update(dt, this);
+    const D = CONFIG.difficulty;
+    const late = this.timeRemaining <= D.lateRoundSeconds;
+    if (late && !this.lateRoundAnnounced) {
+      this.lateRoundAnnounced = true;
+      this.showBanner('FINAŁOWE ODLICZANIE', 'Rywale przyspieszają — walcz o podium!', '#FF54AD', 1.6);
+    }
+    for (const bot of this.bots) {
+      bot.tempSpeedMult = (bot.baseSpeedMult || 1) * (late ? 1 + D.lateRoundBotSpeedBonus : 1);
+      if (this.botTuning.passive > 0) bot.radius = radiusForUnits(unitsForRadius(bot.radius) + this.botTuning.passive * dt);
+      bot.update(dt, this);
+    }
 
     for (const obj of this.objects) obj.update(dt);
 
@@ -6932,8 +7626,12 @@ class Game {
         const hole = obj.eater;
         hole.growUnits(TIERS[obj.tier].growth);
         const multiplier = hole.isPlayer ? this.registerCombo() : 1;
-        hole.score += Math.round(obj.value * multiplier);
+        const pts = Math.round(obj.value * multiplier);
+        hole.score += pts;
         this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer);
+        if (hole.isPlayer) {
+          this.addFloatText(obj.x, obj.y - obj.radius, `+${pts}`, multiplier > 1.01 ? '#EFCB63' : obj.color, 15 + Math.min(14, obj.radius / 3));
+        }
         if (hole.isPlayer && !this.firstEatTracked) {
           this.firstEatTracked = true;
           this.analytics.track('first_eat', { objectTier: obj.tier });
@@ -6953,14 +7651,22 @@ class Game {
     this.particles = this.particles.filter(p => !p.dead);
     this.ripples.forEach(r => r.update(dt));
     this.ripples = this.ripples.filter(r => !r.dead);
+    this.updateJuice(dt);
 
     this.updateCombo(dt);
     this.updateDangerWarnings();
 
-    this.camera.x = clamp(this.player.x, this.width / 2, WORLD_W - this.width / 2);
-    this.camera.y = clamp(this.player.y, this.height / 2, WORLD_H - this.height / 2);
-    if (WORLD_W < this.width) this.camera.x = WORLD_W / 2;
-    if (WORLD_H < this.height) this.camera.y = WORLD_H / 2;
+    // Golden Shot v8: the camera zooms out as the hole grows (hole.io's
+    // signature "the city keeps getting smaller" feel).
+    const zc = CONFIG.juice.zoom;
+    const growT = clamp((this.player.radius - zc.startRadius) / (zc.endRadius - zc.startRadius), 0, 1);
+    const targetZoom = lerp(zc.max, zc.min, Math.sqrt(growT));
+    this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * zc.lerp);
+    const hw = this.viewHalfW, hh = this.viewHalfH;
+    this.camera.x = clamp(this.player.x, hw, WORLD_W - hw);
+    this.camera.y = clamp(this.player.y, hh, WORLD_H - hh);
+    if (WORLD_W < hw * 2) this.camera.x = WORLD_W / 2;
+    if (WORLD_H < hh * 2) this.camera.y = WORLD_H / 2;
 
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
@@ -7034,6 +7740,13 @@ class Game {
     const ranked = rankHoles([this.player, ...this.bots]);
     const place = ranked.indexOf(this.player) + 1;
     document.getElementById('rankValue').textContent = `#${place}/${ranked.length}`;
+    // Golden Shot v8: celebrate climbing into the podium mid-round.
+    if (this.lastPlace !== null && place < this.lastPlace && place <= 3 && this.timeRemaining < ROUND_TIME - 2) {
+      this.addFloatText(this.player.x, this.player.y - this.player.radius - 50, place === 1 ? 'PROWADZISZ! #1' : `AWANS NA #${place}!`, '#EFCB63', 22, 1.3);
+      this.vibrate(30);
+    }
+    this.lastPlace = place;
+    document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', this.timeRemaining <= 10);
 
     const list = document.getElementById('leaderboardList');
     list.innerHTML = '';
@@ -7048,24 +7761,40 @@ class Game {
   /* ---------- rendering ---------- */
 
   drawGrid(ctx) {
-    const startX = Math.floor((this.camera.x - this.width / 2) / GRID_SIZE) * GRID_SIZE;
-    const endX = this.camera.x + this.width / 2;
-    const startY = Math.floor((this.camera.y - this.height / 2) / GRID_SIZE) * GRID_SIZE;
-    const endY = this.camera.y + this.height / 2;
+    const hw = this.viewHalfW, hh = this.viewHalfH;
+    const startX = Math.floor((this.camera.x - hw) / GRID_SIZE) * GRID_SIZE;
+    const endX = this.camera.x + hw;
+    const startY = Math.floor((this.camera.y - hh) / GRID_SIZE) * GRID_SIZE;
+    const endY = this.camera.y + hh;
 
     ctx.save();
     ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 / this.zoom;
     ctx.beginPath();
     for (let x = startX; x <= endX; x += GRID_SIZE) {
-      ctx.moveTo(x, Math.max(0, this.camera.y - this.height / 2));
-      ctx.lineTo(x, Math.min(WORLD_H, this.camera.y + this.height / 2));
+      ctx.moveTo(x, Math.max(0, this.camera.y - hh));
+      ctx.lineTo(x, Math.min(WORLD_H, this.camera.y + hh));
     }
     for (let y = startY; y <= endY; y += GRID_SIZE) {
-      ctx.moveTo(Math.max(0, this.camera.x - this.width / 2), y);
-      ctx.lineTo(Math.min(WORLD_W, this.camera.x + this.width / 2), y);
+      ctx.moveTo(Math.max(0, this.camera.x - hw), y);
+      ctx.lineTo(Math.min(WORLD_W, this.camera.x + hw), y);
     }
     ctx.stroke();
+    // Neon pulse dots on grid intersections near the player -- a cheap
+    // "living city floor" that reacts to the hole passing over it.
+    const pulse = performance.now() / 600;
+    for (let x = startX; x <= endX; x += GRID_SIZE) {
+      for (let y = startY; y <= endY; y += GRID_SIZE) {
+        const d = dist(x, y, this.player.x, this.player.y);
+        const near = clamp(1 - d / (this.player.radius * 6 + 160), 0, 1);
+        const a = 0.08 + 0.1 * Math.sin(pulse + x * 0.01 + y * 0.013) + near * 0.5;
+        if (a <= 0.05) continue;
+        ctx.globalAlpha = clamp(a, 0, 1);
+        ctx.fillStyle = near > 0.2 ? '#FF54AD' : '#50F0FA';
+        ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+      }
+    }
+    ctx.globalAlpha = 1;
     ctx.restore();
 
     ctx.save();
@@ -7106,10 +7835,10 @@ class Game {
 
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.strokeRect(
-      px + (this.camera.x - this.width / 2) * scale,
-      py + (this.camera.y - this.height / 2) * scale,
-      this.width * scale,
-      this.height * scale
+      px + (this.camera.x - this.viewHalfW) * scale,
+      py + (this.camera.y - this.viewHalfH) * scale,
+      this.viewHalfW * 2 * scale,
+      this.viewHalfH * 2 * scale
     );
     ctx.restore();
   }
@@ -7127,8 +7856,8 @@ class Game {
       const d = dist(this.player.x, this.player.y, bot.x, bot.y);
       if (d > detectionRange || d >= nearestDist) continue;
 
-      const screenX = bot.x - this.camera.x + this.width / 2;
-      const screenY = bot.y - this.camera.y + this.height / 2;
+      const screenX = (bot.x - this.camera.x) * this.zoom + this.width / 2;
+      const screenY = (bot.y - this.camera.y) * this.zoom + this.height / 2;
       const onScreen = screenX >= 0 && screenX <= this.width && screenY >= 0 && screenY <= this.height;
       if (onScreen) continue;
 
@@ -7173,7 +7902,9 @@ class Game {
     }
 
     ctx.save();
-    ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
+    ctx.translate(this.width / 2 + shakeX, this.height / 2 + shakeY);
+    ctx.scale(this.zoom, this.zoom);
+    ctx.translate(-this.camera.x, -this.camera.y);
 
     this.drawGrid(ctx);
     for (const obj of this.objects) {
@@ -7190,11 +7921,13 @@ class Game {
     for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
 
     this.drawComboText(ctx);
+    for (const f of this.floatTexts) f.draw(ctx);
 
     ctx.restore();
 
     if (this.showMinimap) this.drawMinimap(ctx);
     this.drawDangerIndicators(ctx);
+    this.drawJuiceScreen(ctx, this.timeRemaining);
 
     // Overdrive "blackout" City Shift: dims the world layer only (drawn
     // after ctx.restore(), so HUD/minimap on top stay fully readable).
@@ -7250,8 +7983,8 @@ class Game {
    *  The illustrated object sprites and hole vortices are far richer than
    *  the old line art, so off-screen ones are skipped instead of drawn. */
   isInView(x, y, r) {
-    return Math.abs(x - this.camera.x) < this.width / 2 + r + 30
-      && Math.abs(y - this.camera.y) < this.height / 2 + r + 30;
+    return Math.abs(x - this.camera.x) < this.viewHalfW + r + 30
+      && Math.abs(y - this.camera.y) < this.viewHalfH + r + 30;
   }
 
   canEatHighlight(obj) {
@@ -7287,14 +8020,33 @@ class Game {
    *  cutting abruptly when the combo window lapses (GDD 5.4). */
   drawComboText(ctx) {
     if (this.comboCount < 2 || this.comboDisplayAlpha <= 0) return;
+    const popT = this.comboPopAt ? (performance.now() - this.comboPopAt) / 180 : 1;
+    const pop = popT < 1 ? 1 + 0.35 * Math.sin(popT * Math.PI) : 1;
+    const m = this.comboMultiplier;
+    const color = m >= 2.5 ? '#FF54AD' : (m >= 1.9 ? '#9875FF' : (m >= 1.4 ? '#EFCB63' : '#50F0FA'));
+    const size = 18 + Math.min(16, this.comboCount * 0.8);
     ctx.save();
     ctx.globalAlpha = this.comboDisplayAlpha;
+    ctx.translate(this.player.x, this.player.y - this.player.radius - 30);
+    ctx.scale(pop, pop);
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#EFCB63';
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = '#EFCB63';
-    ctx.font = 'bold 18px Segoe UI, sans-serif';
-    ctx.fillText(`x${this.comboMultiplier.toFixed(1)} COMBO (${this.comboCount})`, this.player.x, this.player.y - this.player.radius - 28);
+    ctx.font = `900 ${size}px 'Segoe UI', sans-serif`;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
+    const label = `x${m.toFixed(1)} COMBO ${this.comboCount}`;
+    ctx.strokeText(label, 0, 0);
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = color;
+    ctx.fillText(label, 0, 0);
+    // Combo window bar under the text: how long until the chain breaks.
+    const windowS = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
+    const frac = clamp(this.comboTimer / windowS, 0, 1);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(-40, 8, 80, 4);
+    ctx.fillStyle = color;
+    ctx.fillRect(-40, 8, 80 * frac, 4);
     ctx.restore();
   }
 
@@ -7312,7 +8064,7 @@ class Game {
       // frozen but still overlapping (e.g. a bot already touching the
       // player when the offer opens). introPending (M00's blocking intro,
       // see showTutorialIntro()) freezes the same way.
-      if (this.evolutionPending || this.introPending) {
+      if (this.evolutionPending || this.introPending || now < this.hitStopUntil) {
         if (this.mode === 'campaign') this.renderCampaign(now / 1000); else this.render(now / 1000);
       } else if (this.mode === 'campaign') {
         this.updateCampaign(rawDt);

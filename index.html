@@ -230,6 +230,16 @@
         </button>
       </div>
 
+      <!-- Golden Shot v8: player XP level (every round and mission feeds it). -->
+      <button id="hubPlayerLevel" class="player-level-row hub-full-only" aria-label="Poziom gracza — co to jest?">
+        <span class="player-level-badge"><span class="player-level-lvl">LVL</span><span id="hubPlayerLevelValue">1</span></span>
+        <span class="player-level-body">
+          <span class="player-level-title">POZIOM GRACZA <strong id="hubPlayerLevelNext">→ nagroda +55 monet</strong></span>
+          <span class="player-level-track"><span id="hubPlayerXpBar" class="player-level-fill"></span></span>
+          <span id="hubPlayerXpText" class="player-level-xp">0 / 120 XP</span>
+        </span>
+      </button>
+
       <div class="hub-eyebrow-label hub-full-only">POSTĘP MIASTA · CORE CITY</div>
 
       <div class="hub-card hub-hero hub-full-only">
@@ -277,6 +287,13 @@
           WYZWANIE DNIA
         </button>
       </div>
+      <!-- Golden Shot v8: free chest on a 4 h cooldown (an appointment to come back). -->
+      <button id="hubFreeChest" class="hub-chest-row hub-full-only">
+        <span class="hub-chest-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18v10H3z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 13h4v3h-4z"/></svg></span>
+        <span class="hub-chest-text"><span id="hubChestTitle">DARMOWA SKRZYNIA</span><strong id="hubChestSub">Gotowa do otwarcia!</strong></span>
+        <span id="hubChestCta" class="hub-chest-cta">OTWÓRZ</span>
+      </button>
+
       <div class="hub-how-tiles hub-full-only">
         <div class="hub-how-tile"><b>⚡</b><span><strong>Rundy 2:00</strong> budują miasto</span></div>
         <div class="hub-how-tile"><b>🗺️</b><span><strong>Misje</strong> czekają w Dzielnicach</span></div>
@@ -290,6 +307,20 @@
       </button>
 
       <p class="hint-text hub-full-only">Steruj myszką lub dotykiem. Pożeraj mniejsze obiekty i boty, unikaj większych!</p>
+    </div>
+  </div>
+
+  <!-- ===================== DAILY LOGIN CALENDAR (Golden Shot v8) =====================
+       7-day escalating login rewards; missing a day restarts the week.
+       Shown once per UTC day on Miasto (Game.maybeShowLoginReward()). -->
+  <div id="loginRewardScreen" class="screen overlay-screen hidden">
+    <div class="screen-inner pause-panel login-panel" role="dialog" aria-modal="true" aria-labelledby="loginRewardTitle">
+      <div class="login-kicker">CODZIENNA NAGRODA</div>
+      <h2 id="loginRewardTitle" class="section-title">Dzień <span id="loginRewardDay">1</span> z 7</h2>
+      <p class="hint-text">Wracaj codziennie — nagrody rosną. Dzień 7 to wielka paczka!</p>
+      <div id="loginRewardGrid" class="login-grid"></div>
+      <div id="loginBurst" class="login-burst" aria-hidden="true"></div>
+      <button id="btnLoginClaim" class="btn btn-primary btn-mega">ODBIERZ</button>
     </div>
   </div>
 
@@ -351,6 +382,11 @@
   <div id="runSetupScreen" class="screen hidden">
     <div class="screen-inner">
       <h2 class="section-title">WYBIERZ WSPARCIE</h2>
+      <div class="threat-meter" id="runThreat">
+        <span class="threat-label">ZAGROŻENIE RYWALI</span>
+        <span class="threat-segments"><i></i><i></i><i></i><i></i></span>
+        <strong id="runThreatValue">ŁATWY</strong>
+      </div>
       <p class="hint-text">Opcjonalnie kup jednorazowy dodatek na tę rundę za monety — albo od razu naciśnij START i zagraj bez niczego.</p>
       <div id="runToolGrid" class="run-tool-grid"></div>
       <button id="btnConfirmStart" class="btn btn-primary">START RUNDY (2:00)</button>
@@ -409,7 +445,8 @@
 
   <!-- ===================== MISSION RESULT (Vector Hole v3) ===================== -->
   <div id="missionResultScreen" class="screen hidden">
-    <div class="screen-inner">
+    <div class="confetti-layer" id="missionConfetti" aria-hidden="true"></div>
+    <div class="screen-inner result-anim">
       <h2 class="section-title" id="missionResultTitle">MISJA UKOŃCZONA</h2>
       <p class="hint-text mission-result-nela" id="missionResultNela">—</p>
 
@@ -419,6 +456,14 @@
 
       <p class="mission-result-medal" id="missionResultMedal">—</p>
       <p class="hint-text mission-result-reward" id="missionResultReward">—</p>
+      <div class="result-card result-xp-card" id="missionXpCard">
+        <div class="result-xp-head">
+          <span class="result-xp-level" id="missionXpLevel">POZIOM 1</span>
+          <span class="result-xp-gain" id="missionXpGain">+0 XP</span>
+        </div>
+        <div class="result-xp-track"><div class="result-xp-bar" id="missionXpBar"></div></div>
+        <span class="result-xp-text" id="missionXpText">0 / 120 XP</span>
+      </div>
 
       <button id="btnMissionNext" class="btn btn-primary">DALEJ</button>
       <button id="btnMissionRetry" class="btn btn-secondary">SPRÓBUJ PONOWNIE</button>
@@ -615,8 +660,9 @@
 
   <!-- ===================== GAME OVER SCREEN (v5: design/screens/wynik_rundy.svg) ===================== -->
   <div id="gameOverScreen" class="screen hidden">
-    <div class="screen-inner result-screen">
-      <div class="result-eyebrow">KONIEC RUNDY</div>
+    <div class="confetti-layer" id="resultConfetti" aria-hidden="true"></div>
+    <div class="screen-inner result-screen result-anim">
+      <div class="result-eyebrow" id="resultEyebrow">KONIEC RUNDY</div>
       <div id="resultTag" class="result-tag hidden"></div>
 
       <div class="result-hero">
@@ -644,6 +690,26 @@
           <span class="result-card-label">ZDOBYTE MONETY</span>
           <span class="result-coins-value">+<span id="finalCoins">0</span> monet</span>
         </div>
+        <span id="resultNewbieTag" class="result-newbie-tag hidden">BONUS NOWICJUSZA ×2</span>
+      </div>
+      <div class="result-card result-xp-card" id="resultXpCard">
+        <div class="result-xp-head">
+          <span class="result-xp-level" id="resultXpLevel">POZIOM 1</span>
+          <span class="result-xp-gain" id="resultXpGain">+0 XP</span>
+        </div>
+        <div class="result-xp-track"><div class="result-xp-bar" id="resultXpBar"></div></div>
+        <span class="result-xp-text" id="resultXpText">0 / 120 XP</span>
+      </div>
+
+      <!-- Golden Shot v8 upgrade funnel: shown when the difficulty curve
+           starts to bite (lost the podium) -- points at the run tools. -->
+      <div id="resultUpsell" class="result-card result-upsell hidden">
+        <span class="result-upsell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span>
+        <div class="result-upsell-body">
+          <span class="result-card-label" id="resultUpsellLabel">RYWALE SĄ CORAZ SILNIEJSI</span>
+          <span class="result-upsell-text" id="resultUpsellText">Zacznij następną rundę od T2 z Turbo startem.</span>
+        </div>
+        <button id="btnUpsell" class="btn btn-gold btn-small">WZMOCNIJ SIĘ</button>
       </div>
 
       <div class="result-card result-core-card">
