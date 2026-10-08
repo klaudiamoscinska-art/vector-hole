@@ -468,16 +468,14 @@
         </div>
       </div>
 
-      <!-- "PODGLĄD NA ŻYWO" (GDD 4.0 §5.3) — pure CSS/SVG preview, no assets. -->
+      <!-- "PODGLĄD NA ŻYWO" (GDD 4.0 §5.3) — drawn by the in-round Hole.draw()
+           itself (Game.renderWarsztatCanvases()), so it's identical to the hole
+           on the board: same ring, vortex, trail and eat effect. -->
       <div class="warsztat-preview">
         <div class="warsztat-preview-top">
           <div class="warsztat-preview-stage">
             <div class="warsztat-preview-glow"></div>
-            <div id="warsztatPreviewTrail" class="warsztat-preview-trail"></div>
-            <div class="warsztat-preview-particle p1"></div>
-            <div class="warsztat-preview-particle p2"></div>
-            <div class="warsztat-preview-particle p3"></div>
-            <div id="warsztatPreviewRing" class="warsztat-preview-ring"></div>
+            <canvas id="warsztatPreviewCanvas" class="warsztat-preview-canvas"></canvas>
           </div>
           <div class="warsztat-preview-labels">
             <div class="warsztat-preview-label">PODGLĄD NA ŻYWO</div>
