@@ -54,3 +54,41 @@ ads/IAP (the existing fake rewarded-ad flow is untouched).
 ## Known gaps
 - Balance numbers are first-pass and unverified with real players.
 - Login/chest timers trust the device clock (local-only, no backend).
+
+---
+
+# v9 follow-up — „spójność, game feel, rdzenie z bonusami”
+
+Player feedback on v8: the first-run screen was plain and inconsistent,
+gameplay barely changed, holes/icons had no identity, bought skins only
+changed color, fonts were weak, particles were random and animations piled
+on top of each other.
+
+- **Typography**: Russo One (display: titles, numbers, banners, CTAs) +
+  Exo 2 (UI), both with Polish latin-ext glyphs, loaded from Google Fonts
+  in `index.html` with system-font fallback (`--font-display`/`--font-ui`,
+  `FONT_DISPLAY`/`FONT_UI` for canvas). This is the one external request
+  the page makes; offline it falls back to system fonts.
+- **First-run attract screen** (`#hubWelcome`, `drawWelcomeScene()`): a live
+  miniature of the game (city objects spiraling into a growing hole) under
+  a VECTOR HOLE logo, three feature tiles and a single ZACZNIJ GRĘ CTA.
+- **Hole identity**: `SKIN_STYLES` + `drawHoleRim()` give each Rdzeń its own
+  rim (tech brackets, plasma flame, toxic bubbles, galaxy stars, sun
+  corona, storm lightning, aurora bands, crystal shards, prism); every hole
+  has an accretion disk (`drawAccretionDisk()`) and a gravity-well glow.
+  Bots get varied styles (`BOT_STYLES`).
+- **Rdzeń perks** (`SKINS[].perks`, `Game.perk()`, Arena/Daily only):
+  speed, combo window, mini magnet, XP, coins, start size + score, score,
+  growth. Shown on Warsztat cards, the preview panel and the run setup.
+- **Złoty Rdzeń + SZAŁ** (`CONFIG.golden`): a golden core spawns every
+  ~20 s (gold edge arrow + minimap marker); the player eating it triggers
+  SZAŁ for 7 s — points ×2, longer reach, speed, pull field, and objects
+  one growth tier above become eatable (`Game.holeCanEat()`). Timed on the
+  round clock so pauses don't consume it.
+- **Effects cleanup**: eaten matter spirals into the eater (`Particle`
+  `'suck'` kind, `spawnSuck()`); score pops merge into one counter above
+  the hole (`addScorePop()`); one banner at a time with priorities and a
+  queue (`showBanner(…, priority)`), countdown 5-4-3-2-1 and Overdrive go
+  through it; combo moved to a fixed HUD spot (`drawComboHud()`); fewer
+  flashes/rings.
+- Emoji replaced by inline SVG / canvas glyphs across HUD, hub and results.
