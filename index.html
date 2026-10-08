@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vector Hole: Eat the Neon City</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800;900&family=Russo+One&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,7 +22,7 @@
 
     <div id="hud-topright" class="hud-panel hud-standings">
       <button id="hud-rankBadge" class="standings-header" aria-label="Zwiń/rozwiń pełny ranking">
-        <span class="leaderboard-title">🏆 NA ŻYWO</span>
+        <span class="leaderboard-title"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/></svg> NA ŻYWO</span>
         <span id="rankValue" class="hud-value rank">#1/6</span>
       </button>
       <ol id="leaderboardList"></ol>
@@ -59,7 +62,7 @@
 
     <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
 
-    <div id="overdriveBanner" class="overdrive-banner hidden">⚡ OVERDRIVE — CITY SHIFT ⚡</div>
+    <div id="overdriveBanner" class="overdrive-banner hidden">OVERDRIVE — CITY SHIFT</div>
 
     <div id="evolutionOverlay" class="evolution-overlay hidden">
       <div class="evolution-panel">
@@ -215,19 +218,37 @@
            new player saw ~10 tappable-looking things (currencies, reward
            chips, level dots, locked tabs) and had to hunt for the one action
            that actually mattered; this card leaves exactly one. -->
-      <div id="hubWelcome" class="hub-card hub-welcome hidden">
-        <canvas id="hubWelcomeHole" class="hub-welcome-hole" aria-hidden="true"></canvas>
-        <h2 class="hub-welcome-title">Witaj w Neon City!</h2>
-        <p class="hub-welcome-pitch">Jesteś <strong>neonową dziurą</strong>. Pochłaniaj obiekty, rośnij i zjadaj mniejszych rywali — unikaj większych.</p>
-        <ol class="hub-welcome-steps">
-          <li class="current"><span class="hub-welcome-step-num">1</span>Zagraj krótki tutorial (ok. 1,5 min)</li>
-          <li><span class="hub-welcome-step-num">2</span>Odblokujesz szybkie rundy <strong>GRAJ 2:00</strong></li>
-          <li><span class="hub-welcome-step-num">3</span>Misje w Dzielnicach otworzą Warsztat i Wyzwania</li>
-        </ol>
-        <button id="btnStartTutorial" class="btn btn-primary">
-          ZAGRAJ TUTORIAL
+      <div id="hubWelcome" class="hub-welcome hidden">
+        <!-- Golden Shot v9 attract screen: a live demo of the actual game
+             (Game.drawWelcomeScene()) -- the hole spiraling neon city
+             objects into itself and growing, under the game logo. -->
+        <div class="welcome-stage">
+          <canvas id="hubWelcomeScene" class="welcome-scene" aria-hidden="true"></canvas>
+          <div class="welcome-logo">
+            <span class="welcome-logo-top">VECTOR</span>
+            <span class="welcome-logo-main">HOLE</span>
+            <span class="welcome-logo-sub">POCHŁOŃ NEONOWE MIASTO</span>
+          </div>
+        </div>
+        <div class="welcome-features">
+          <div class="welcome-feature" style="--f-color: var(--nc-cyan)">
+            <span class="welcome-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5a9.5 9.5 0 0 1 9.5 9.5M21.5 12A9.5 9.5 0 0 1 12 21.5M12 21.5A9.5 9.5 0 0 1 2.5 12M2.5 12A9.5 9.5 0 0 1 12 2.5" stroke-dasharray="4 3"/></svg></span>
+            <b>Pochłaniaj</b><span>i rośnij z każdym kęsem</span>
+          </div>
+          <div class="welcome-feature" style="--f-color: var(--nc-pink)">
+            <span class="welcome-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="6"/><circle cx="18" cy="12" r="3"/><path d="M14.5 12h0"/></svg></span>
+            <b>Zjadaj</b><span>mniejszych rywali</span>
+          </div>
+          <div class="welcome-feature" style="--f-color: var(--nc-gold)">
+            <span class="welcome-feature-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z"/></svg></span>
+            <b>Wygrywaj</b><span>rdzenie z bonusami</span>
+          </div>
+        </div>
+        <button id="btnStartTutorial" class="btn btn-primary btn-mega welcome-cta">
+          ZACZNIJ GRĘ
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
         </button>
+        <p class="welcome-note">Krótki samouczek · ok. 1,5 min · potem odblokujesz rundy <b>GRAJ 2:00</b></p>
       </div>
 
       <!-- Golden Shot v8: player XP level (every round and mission feeds it). -->
@@ -289,15 +310,15 @@
       </div>
       <!-- Golden Shot v8: free chest on a 4 h cooldown (an appointment to come back). -->
       <button id="hubFreeChest" class="hub-chest-row hub-full-only">
-        <span class="hub-chest-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18v10H3z"/><path d="M3 10l2-5h14l2 5"/><path d="M10 13h4v3h-4z"/></svg></span>
+        <span class="hub-chest-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="currentColor" fill-opacity="0.18"/><path d="M3 11V8a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v3"/><path d="M8 4v7M16 4v7"/><rect x="10" y="9.5" width="4" height="5" rx="1" fill="currentColor"/></svg></span>
         <span class="hub-chest-text"><span id="hubChestTitle">DARMOWA SKRZYNIA</span><strong id="hubChestSub">Gotowa do otwarcia!</strong></span>
         <span id="hubChestCta" class="hub-chest-cta">OTWÓRZ</span>
       </button>
 
       <div class="hub-how-tiles hub-full-only">
-        <div class="hub-how-tile"><b>⚡</b><span><strong>Rundy 2:00</strong> budują miasto</span></div>
-        <div class="hub-how-tile"><b>🗺️</b><span><strong>Misje</strong> czekają w Dzielnicach</span></div>
-        <div class="hub-how-tile"><b>🎁</b><span><strong>Nagrody</strong> trafiają do Warsztatu</span></div>
+        <div class="hub-how-tile"><b style="color:var(--nc-cyan)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></b><span><strong>Rundy 2:00</strong> budują miasto</span></div>
+        <div class="hub-how-tile"><b style="color:var(--nc-green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></b><span><strong>Misje</strong> czekają w Dzielnicach</span></div>
+        <div class="hub-how-tile"><b style="color:var(--nc-gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9h18M12 9v12M12 9C9 9 7 7.5 7 5.5 7 4 8 3 9.5 3 11.5 3 12 6 12 9zM12 9c3 0 5-1.5 5-3.5C17 4 16 3 14.5 3 12.5 3 12 6 12 9z"/></svg></b><span><strong>Nagrody</strong> trafiają do Warsztatu</span></div>
       </div>
 
       <button id="hubNextRewardRow" class="hub-next-reward-row hub-full-only">
@@ -387,6 +408,11 @@
         <span class="threat-segments"><i></i><i></i><i></i><i></i></span>
         <strong id="runThreatValue">ŁATWY</strong>
       </div>
+      <button class="run-perk" id="runPerk" type="button">
+        <span class="run-perk-label">TWÓJ RDZEŃ: <b id="runPerkName">Tęcza</b></span>
+        <strong id="runPerkValue">—</strong>
+        <span class="run-perk-cta">ZMIEŃ ›</span>
+      </button>
       <p class="hint-text">Opcjonalnie kup jednorazowy dodatek na tę rundę za monety — albo od razu naciśnij START i zagraj bez niczego.</p>
       <div id="runToolGrid" class="run-tool-grid"></div>
       <button id="btnConfirmStart" class="btn btn-primary">START RUNDY (2:00)</button>
@@ -503,6 +529,10 @@
           <div class="warsztat-preview-labels">
             <div class="warsztat-preview-label">PODGLĄD NA ŻYWO</div>
             <div class="warsztat-preview-sublabel">TWÓJ WEKTOROWY OTWÓR</div>
+            <div class="warsztat-perk" id="warsztatPerk">
+              <span class="warsztat-perk-label">BONUS RDZENIA W RUNDZIE</span>
+              <strong id="warsztatPerkValue">—</strong>
+            </div>
           </div>
         </div>
         <div class="warsztat-active-list">
@@ -613,7 +643,7 @@
         <div class="daily-map-wrap">
           <canvas id="dailyMapCanvas" class="daily-map-canvas"></canvas>
           <span class="daily-map-label">MAPA DNIA · ta sama dla wszystkich</span>
-          <span id="dailyModifierBadge" class="daily-modifier hidden">⚡ RUSH HOUR · rywale szybsi</span>
+          <span id="dailyModifierBadge" class="daily-modifier hidden">RUSH HOUR · rywale szybsi</span>
           <span class="daily-map-you">◉ start</span>
         </div>
 
@@ -638,7 +668,7 @@
 
       <div class="streak-card">
         <div class="streak-head">
-          <span class="streak-flame">🔥</span>
+          <span class="streak-flame"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4 5 5.5 5 11a5 5 0 0 1-10 0c0-2.5 1.2-4 2.5-5 .2 2 1 3 2 3.5C11 8.5 11 5 12 2z"/></svg></span>
           <span class="streak-title">SERIA: <strong id="dailyStreakValue">0</strong> dni z rzędu</span>
         </div>
         <div id="streakDays" class="streak-days"></div>
@@ -647,7 +677,7 @@
 
       <div class="hub-card challenge-card">
         <div class="hub-card-header">
-          <span class="hub-card-label">🎯 MISJA DNIA</span>
+          <span class="hub-card-label">MISJA DNIA</span>
           <span id="hubMissionStatus" class="mission-day-status">DO ZROBIENIA</span>
         </div>
         <p id="hubMissionText" class="hub-mission-text">—</p>
@@ -735,7 +765,7 @@
 
       <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ JESZCZE RAZ</button>
       <button id="btnWatchAd" class="btn btn-gold">OGLĄDAJ REKLAMĘ · X2 MONET</button>
-      <button id="btnShare" class="btn btn-secondary">🔗 UDOSTĘPNIJ WYNIK</button>
+      <button id="btnShare" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> UDOSTĘPNIJ WYNIK</button>
       <button id="btnMenu" class="btn btn-link">Wróć do Miasta</button>
     </div>
   </div>

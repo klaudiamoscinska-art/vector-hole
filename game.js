@@ -185,6 +185,22 @@ const CONFIG = {
     shockwavePush: 70,
     bountyBonusScore: 40
   },
+  // Golden Shot v9: the Złoty Rdzeń chase -- a rare golden core appears
+  // somewhere on the Arena map (gold arrow points at it); whoever eats it
+  // first, and if that's the player, SZAŁ (frenzy) kicks in: points x2,
+  // a longer reach, a speed boost, a pull field, and objects ONE growth
+  // tier above your own become eatable for a few seconds.
+  golden: {
+    firstDelay: 10,       // seconds into the round
+    interval: 20,         // seconds between cores (after one is eaten/expires)
+    lifetime: 14,         // seconds before an uneaten core fades out
+    minDistance: 500,     // spawns at least this far from the player
+    frenzySeconds: 7,
+    scoreMult: 2,
+    reachMult: 1.35,
+    speedMult: 1.2,
+    magnetRadius: 220
+  },
   overdrive: {
     triggerSecondsRemaining: 12,
     variants: ['blackout', 'portal_rain'],
@@ -296,6 +312,12 @@ function unitsForRadius(radius) {
 }
 
 /* ----------------------- Constants (aliases into CONFIG) ----------------------- */
+
+// Golden Shot v9 typography (loaded from Google Fonts in index.html, both
+// with Polish latin-ext glyphs; system fonts are the offline fallback).
+// FONT_DISPLAY = Russo One, single weight -- headings, banners, numbers.
+const FONT_DISPLAY = "'Russo One', 'Exo 2', 'Segoe UI', sans-serif";
+const FONT_UI = "'Exo 2', 'Segoe UI', system-ui, sans-serif";
 
 const WORLD_W = CONFIG.world.width;
 const WORLD_H = CONFIG.world.height;
@@ -421,7 +443,10 @@ const TIERS = {
   // Shares landmark's tier (3, T4) rather than its own ratio-derived floor --
   // both are the palette's violet/T4 accent color, so a player who has not
   // yet reached T4 shouldn't be able to eat either one.
-  portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, growth: 6, subtypes: ['portal'], count: 0, minSizeTier: 3 }
+  portal: { color: '#9875FF', minR: 14, maxR: 20, value: 15, growth: 6, subtypes: ['portal'], count: 0, minSizeTier: 3 },
+  // Golden Shot v9 Złoty Rdzeń (see CONFIG.golden) -- never part of the
+  // regular pool (count 0); spawned one at a time by Game.spawnGoldenCore().
+  golden: { color: '#EFCB63', minR: 13, maxR: 13, value: 60, growth: 4, subtypes: ['zloty'], count: 0, minSizeTier: 0 }
 };
 
 const BOT_NAME_POOL = [
@@ -433,21 +458,24 @@ const BOT_NAME_POOL = [
 const BOT_COLORS = ['#FF54AD', '#46D99A', '#EFCB63', '#9875FF', '#50F0FA', '#ff3860'];
 
 const SKINS = [
-  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true },
-  { id: 'cyan', name: 'Cyber Cyan', price: 30, color: '#50F0FA' },
-  { id: 'pink', name: 'Hot Pink', price: 45, color: '#FF54AD' },
-  { id: 'green', name: 'Toxic Green', price: 90, color: '#46D99A' },
-  { id: 'purple', name: 'Ultra Violet', price: 160, color: '#9875FF' },
-  { id: 'gold', name: 'Neon Gold', price: 280, color: '#EFCB63' },
-  { id: 'white', name: 'Plasma White', price: 450, color: '#ffffff' },
+  // Golden Shot v9: every Rdzeń now has a gameplay bonus (`perks`, applied
+  // in Arena/Daily rounds only -- see Game.perk()) on top of its signature
+  // look (SKIN_STYLES), so buying one changes how you play, not just color.
+  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — rdzeń startowy' },
+  { id: 'cyan', name: 'Cyber Cyan', price: 30, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
+  { id: 'pink', name: 'Hot Pink', price: 45, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
+  { id: 'green', name: 'Toxic Green', price: 90, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
+  { id: 'purple', name: 'Ultra Violet', price: 160, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
+  { id: 'gold', name: 'Neon Gold', price: 280, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
+  { id: 'white', name: 'Plasma White', price: 450, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
   // in CAMPAIGN_MISSIONS + endCampaignMission()).
-  { id: 'aurora', name: 'Aurora Finału', price: null, color: '#7cffcb', unlockSource: { type: 'mission', id: 'M24' } },
+  { id: 'aurora', name: 'Aurora Finału', price: null, color: '#7cffcb', unlockSource: { type: 'mission', id: 'M24' }, perks: [{ type: 'score', value: 0.2 }], perkLabel: '+20% punktów' },
   // GDD 4.0 §8.2 Core City reward ladder (never for sale, granted by
   // grantCoreCityLevelReward() — see CORE_CITY_LEVEL_REWARDS below).
-  { id: 'krysztal', name: 'Kryształ', price: null, color: '#8ce8ff', unlockSource: { type: 'coreCity', level: 3 } },
-  { id: 'pryzmat', name: 'Pryzmat', price: null, rainbow: true, unlockSource: { type: 'coreCity', level: 6 } }
+  { id: 'krysztal', name: 'Kryształ', price: null, color: '#8ce8ff', unlockSource: { type: 'coreCity', level: 3 }, perks: [{ type: 'growth', value: 0.15 }], perkLabel: '+15% wzrostu z obiektów' },
+  { id: 'pryzmat', name: 'Pryzmat', price: null, rainbow: true, unlockSource: { type: 'coreCity', level: 6 }, perks: [{ type: 'coins', value: 0.2 }, { type: 'xp', value: 0.2 }], perkLabel: '+20% monet i +20% XP' }
 ];
 
 // Phase 7 shop v2: a second cosmetic category beyond ring skins, purchasable
@@ -1374,10 +1402,24 @@ class Particle {
     this.rot = rand(0, Math.PI * 2);
     this.maxLife = rand(0.4, 0.9) * (kind === 'spark' ? 0.7 : 1);
     this.life = this.maxLife;
+    this.target = null; // set for 'suck' particles (see Game.spawnSuck())
   }
 
   update(dt) {
     this.life -= dt;
+    if (this.target) {
+      // Golden Shot v9: eaten matter spirals INTO the hole that ate it
+      // (radial pull + tangential swirl), vanishing at the event horizon.
+      const dx = this.target.x - this.x, dy = this.target.y - this.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (d < this.target.radius * 0.3) { this.life = 0; return; }
+      const pull = 1500 * dt;
+      this.vx = (this.vx + (dx / d) * pull - (dy / d) * pull * 0.6) * 0.9;
+      this.vy = (this.vy + (dy / d) * pull + (dx / d) * pull * 0.6) * 0.9;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      return;
+    }
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.vx *= 0.94;
@@ -1391,7 +1433,16 @@ class Particle {
     const t = clamp(this.life / this.maxLife, 0, 1);
     ctx.save();
     ctx.globalAlpha = t;
-    if (this.kind === 'spark') {
+    if (this.kind === 'suck') {
+      ctx.globalAlpha = Math.min(1, t * 2);
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = this.radius;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.x - this.vx * 0.035, this.y - this.vy * 0.035);
+      ctx.stroke();
+    } else if (this.kind === 'spark') {
       ctx.strokeStyle = this.color;
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
@@ -1422,7 +1473,7 @@ class Particle {
    every eat's score gain, rival eats, combo praise and tier-ups. */
 
 class FloatText {
-  constructor(x, y, text, color, size = 16, life = 0.9, rise = 60) {
+  constructor(x, y, text, color, size = 16, life = 0.9, rise = 60, follow = null) {
     this.x = x;
     this.y = y;
     this.text = text;
@@ -1431,11 +1482,19 @@ class FloatText {
     this.maxLife = life;
     this.life = life;
     this.rise = rise;
+    this.follow = follow; // a Hole to stay pinned above (the merged score pop)
+    this.offset = 0;
   }
 
   update(dt) {
     this.life -= dt;
-    this.y -= this.rise * dt;
+    if (this.follow) {
+      this.offset += this.rise * 0.35 * dt;
+      this.x = this.follow.x;
+      this.y = this.follow.y - this.follow.radius - 40 - this.offset;
+    } else {
+      this.y -= this.rise * dt;
+    }
   }
 
   get dead() { return this.life <= 0; }
@@ -1447,7 +1506,7 @@ class FloatText {
     ctx.globalAlpha = clamp(this.life / (this.maxLife * 0.45), 0, 1);
     ctx.translate(this.x, this.y);
     ctx.scale(pop, pop);
-    ctx.font = `900 ${this.size}px 'Segoe UI', sans-serif`;
+    ctx.font = `${this.size}px ${FONT_DISPLAY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = Math.max(3, this.size / 5);
@@ -1989,6 +2048,109 @@ function prepCanvas(canvas) {
   return { ctx, w, h };
 }
 
+/** Small padlock drawn on canvas (replaces the old emoji). */
+function drawLockGlyph(ctx, x, y, s) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = 'rgba(242, 248, 255, 0.8)';
+  ctx.fillStyle = 'rgba(242, 248, 255, 0.8)';
+  ctx.lineWidth = s * 0.2;
+  ctx.beginPath(); ctx.arc(0, -s * 0.15, s * 0.4, Math.PI, 0); ctx.stroke();
+  ctx.fillRect(-s * 0.6, -s * 0.15, s * 1.2, s * 0.85);
+  ctx.restore();
+}
+
+/* Golden Shot v9 first-run attract scene: a top-down slice of the neon
+   city spiraling into a growing hole -- the actual game in miniature, so a
+   brand-new player sees what they're about to play before tapping start. */
+const WELCOME_KINDS = [
+  ['fragment', '#50F0FA', 7], ['kapsula', '#50F0FA', 9], ['latarnia', '#FF54AD', 12],
+  ['drzewo', '#FF54AD', 12], ['lawka', '#FF54AD', 12], ['kiosk', '#FF54AD', 13], ['samochod', '#EFCB63', 16]
+];
+
+function drawWelcomeScene(canvas, t) {
+  const c = prepCanvas(canvas);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const st = canvas._scene || (canvas._scene = { items: [], hole: new Hole('', 0, 0, true), grow: 0, last: t, pops: [], parts: [] });
+  const dt = clamp(t - st.last, 0, 0.05);
+  st.last = t;
+  const cx = w / 2, cy = h * 0.58;
+  const baseR = Math.min(w, h) * 0.12;
+
+  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.8);
+  bg.addColorStop(0, '#0b2338'); bg.addColorStop(1, '#04101D');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(80, 240, 250, 0.09)';
+  ctx.lineWidth = 1;
+  const off = (t * 12) % 32;
+  ctx.beginPath();
+  for (let x = -32 + off; x < w + 32; x += 32) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let y = -32 + off; y < h + 32; y += 32) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.stroke();
+
+  while (st.items.length < 12) {
+    const k = WELCOME_KINDS[Math.floor(Math.random() * WELCOME_KINDS.length)];
+    st.items.push({ kind: k[0], color: k[1], r: k[2], ang: Math.random() * Math.PI * 2, d: Math.max(w, h) * (0.45 + Math.random() * 0.4), v: 0, seed: Math.random() * 6 });
+  }
+  const holeR = baseR * (1 + st.grow * 0.6);
+  for (const it of st.items) {
+    it.v = Math.min(it.v + dt * 40, 150);
+    it.d -= it.v * dt * (0.4 + 60 / Math.max(it.d, 30));
+    it.ang += dt * (0.4 + 70 / Math.max(it.d, 40));
+    it.dead = it.d < holeR * 0.45;
+    if (it.dead) {
+      st.grow = Math.min(1, st.grow + 0.03);
+      st.pops.push({ x: cx, y: cy - holeR - 16, life: 0.8, text: `+${it.r > 12 ? 30 : 5}`, color: it.color });
+      for (let i = 0; i < 6; i++) st.parts.push({ a: it.ang + (Math.random() - 0.5), d: holeR * 1.3, life: 0.5, color: it.color });
+    }
+  }
+  st.items = st.items.filter(it => !it.dead);
+  if (st.grow >= 1) st.grow = 0; // loop the demo
+
+  for (const p of st.parts) {
+    p.life -= dt; p.d *= 0.92; p.a += dt * 6;
+    ctx.globalAlpha = Math.max(0, p.life * 2);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(cx + Math.cos(p.a) * p.d - 1.5, cy + Math.sin(p.a) * p.d - 1.5, 3, 3);
+  }
+  st.parts = st.parts.filter(p => p.life > 0);
+  ctx.globalAlpha = 1;
+
+  for (const it of st.items) {
+    const x = cx + Math.cos(it.ang) * it.d, y = cy + Math.sin(it.ang) * it.d * 0.75;
+    const shrink = clamp((it.d - holeR * 0.45) / (holeR * 1.6), 0.15, 1);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(shrink, shrink);
+    drawObjectArt(ctx, it.kind, it.color, it.r, t, it.seed);
+    ctx.restore();
+  }
+
+  const hole = st.hole;
+  hole.skin = 'rainbow';
+  hole.x = cx; hole.y = cy; hole.radius = holeR;
+  hole.draw(ctx, t);
+
+  ctx.textAlign = 'center';
+  ctx.font = `16px ${FONT_DISPLAY}`;
+  for (const p of st.pops) {
+    p.life -= dt; p.y -= 30 * dt;
+    ctx.globalAlpha = clamp(p.life * 2, 0, 1);
+    ctx.fillStyle = p.color;
+    ctx.fillText(p.text, p.x, p.y);
+  }
+  st.pops = st.pops.filter(p => p.life > 0);
+  ctx.globalAlpha = 1;
+  const fade = ctx.createLinearGradient(0, h * 0.75, 0, h);
+  fade.addColorStop(0, 'rgba(4, 16, 29, 0)'); fade.addColorStop(1, 'rgba(4, 16, 29, 1)');
+  ctx.fillStyle = fade; ctx.fillRect(0, h * 0.75, w, h * 0.25);
+  // Keep the logo (HTML on top) readable over the flying objects.
+  const top = ctx.createLinearGradient(0, 0, 0, h * 0.36);
+  top.addColorStop(0, 'rgba(4, 16, 29, 0.92)'); top.addColorStop(1, 'rgba(4, 16, 29, 0)');
+  ctx.fillStyle = top; ctx.fillRect(0, 0, w, h * 0.36);
+}
+
 const CITY_SLOT_COUNT = 18;
 const CITY_STARTER_COUNT = 3;
 
@@ -2271,7 +2433,7 @@ function drawPowerDemo(canvas, powerId, color, t) {
       ctx.beginPath(); ctx.arc(px, cy, R + k * R * 1.5, 0, Math.PI * 2); ctx.stroke();
     }
     demoHole(cache, px, cy, R * (f > boostAt ? 1.1 : 1), color).draw(ctx, t);
-    ctx.fillStyle = color; ctx.font = 'bold 11px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = color; ctx.font = `800 11px ${FONT_UI}`; ctx.textAlign = 'center';
     if (f > boostAt) ctx.fillText(kind === 'tierSpeed' ? '+20%' : '+60%', w * 0.5, h * 0.2);
   } else if (kind === 'shield') {
     const hit = f > 0.3 && f < 0.45;
@@ -2286,7 +2448,7 @@ function drawPowerDemo(canvas, powerId, color, t) {
     if (f > 0.3) {
       ctx.strokeStyle = color; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(w * 0.36, cy, R + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - (f - 0.3) / 0.7)); ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff'; ctx.font = `800 11px ${FONT_UI}`; ctx.textAlign = 'center';
       ctx.fillText('4 s', w * 0.36, cy - R - 18);
     }
     if (hit) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(w * 0.5, cy, 6, 0, Math.PI * 2); ctx.fill(); }
@@ -2302,7 +2464,7 @@ function drawPowerDemo(canvas, powerId, color, t) {
     ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(w * 0.15, h * 0.82, w * 0.7, 5);
     ctx.fillStyle = color; ctx.fillRect(w * 0.15, h * 0.82, w * 0.7 * left, 5);
     if (combo > 0) {
-      ctx.fillStyle = color; ctx.font = 'bold 12px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = color; ctx.font = `800 12px ${FONT_UI}`; ctx.textAlign = 'center';
       ctx.fillText(`COMBO ×${combo}`, w / 2, h * 0.2);
     }
   } else if (kind === 'scanner') {
@@ -2329,7 +2491,7 @@ function drawPowerDemo(canvas, powerId, color, t) {
       ctx.beginPath(); ctx.arc(cx, cy, R + pop * w * 0.4, 0, Math.PI * 2); ctx.stroke();
     }
     demoHole(cache, cx, cy, R * (f > 0.25 ? 1.2 : 1), color).draw(ctx, t);
-    if (f > 0.2 && f < 0.5) { ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('T2!', cx, cy - R - 10); }
+    if (f > 0.2 && f < 0.5) { ctx.fillStyle = '#fff'; ctx.font = `800 11px ${FONT_UI}`; ctx.textAlign = 'center'; ctx.fillText('T2!', cx, cy - R - 10); }
   } else if (kind === 'bounty') {
     const ex = w * 0.66, ey = cy;
     const eaten = f > 0.62;
@@ -2345,7 +2507,7 @@ function drawPowerDemo(canvas, powerId, color, t) {
     demoHole(cache, px, cy, R * 1.25, '#50F0FA').draw(ctx, t);
     if (eaten) {
       const k = (f - 0.62) / 0.38;
-      ctx.globalAlpha = 1 - k; ctx.fillStyle = color; ctx.font = 'bold 14px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+      ctx.globalAlpha = 1 - k; ctx.fillStyle = color; ctx.font = `800 14px ${FONT_UI}`; ctx.textAlign = 'center';
       ctx.fillText('+40', ex, ey - R - 6 - k * 14); ctx.globalAlpha = 1;
     }
   }
@@ -2437,9 +2599,34 @@ class WorldObject {
       ctx.globalAlpha *= 1 - this.spawnFlash;
       ctx.scale(1 - this.spawnFlash * 0.6, 1 - this.spawnFlash * 0.6);
     }
+    if (this.tier === 'golden') drawGoldenRays(ctx, this.radius, performance.now() / 1000);
     drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, artSeed(this.x, this.y));
     ctx.restore();
   }
+}
+
+/** Rotating light rays + pulsing halo behind the Złoty Rdzeń, so it reads
+ *  as "special" from across the screen. Drawn at the object's origin. */
+function drawGoldenRays(ctx, r, t) {
+  ctx.save();
+  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
+  const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 4);
+  halo.addColorStop(0, `rgba(239, 203, 99, ${0.45 + 0.2 * pulse})`);
+  halo.addColorStop(1, 'rgba(239, 203, 99, 0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(0, 0, r * 4, 0, Math.PI * 2); ctx.fill();
+  ctx.rotate(t * 0.8);
+  ctx.fillStyle = 'rgba(255, 242, 194, 0.35)';
+  for (let i = 0; i < 8; i++) {
+    ctx.rotate(Math.PI / 4);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(r * 3.6, -r * 0.35);
+    ctx.lineTo(r * 3.6, r * 0.35);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 /* ----------------------- CampaignEntity (Vector Hole v3 mission objects) -----------------------
@@ -2966,10 +3153,10 @@ class CampaignEntity {
         ctx.setLineDash([]);
         if (!this.unlocked) {
           ctx.fillStyle = 'rgba(255,255,255,0.6)';
-          ctx.font = 'bold 18px Segoe UI, sans-serif';
+          ctx.font = `800 18px ${FONT_UI}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('🔒', 0, 0);
+          drawLockGlyph(ctx, 0, 0, 14);
         }
         break;
       }
@@ -3045,7 +3232,7 @@ class Hole {
     const s = BASE_SPEED * Math.pow(BASE_RADIUS / this.radius, 0.22);
     // tempSpeedMult: set per-frame by Game.updateMutationEffects() for the
     // Slipstream evolution mutation (Phase 4); 1 the rest of the time.
-    return clamp(s, 45, BASE_SPEED) * (this.tempSpeedMult || 1);
+    return clamp(s, 45, BASE_SPEED) * (this.tempSpeedMult || 1) * (this.perkSpeedMult || 1);
   }
 
   moveToward(tx, ty, dt) {
@@ -3154,6 +3341,13 @@ class Hole {
     ctx.restore();
   }
 
+  /** Golden Shot v9: which signature look this hole wears -- every Rdzeń
+   *  skin has its own (SKIN_STYLES), bots get one assigned at spawn. */
+  holeStyle() {
+    if (this.styleOverride) return this.styleOverride;
+    return SKIN_STYLES[this.skin] || 'tech';
+  }
+
   drawBody(ctx, time) {
     if (this.auraId && this.auraId !== 'none') {
       const aura = AURAS.find(a => a.id === this.auraId);
@@ -3172,9 +3366,25 @@ class Hole {
       }
     }
 
+    const r = this.radius;
+    const style = this.holeStyle();
+    const solid = this.skinColor();
+    const rimColor = solid || `hsl(${(time * 60) % 360}, 100%, 62%)`;
     ctx.save();
+    if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
+
+    // Gravity well: a soft glow that darkens toward the rim, so the hole
+    // reads as a dent in the city floor rather than a flat disc.
+    const well = ctx.createRadialGradient(this.x, this.y, r * 0.9, this.x, this.y, r * 1.7);
+    well.addColorStop(0, rgbaColor(solid || '#9875FF', 0.35));
+    well.addColorStop(1, rgbaColor(solid || '#9875FF', 0));
+    ctx.fillStyle = well;
+    ctx.beginPath(); ctx.arc(this.x, this.y, r * 1.7, 0, Math.PI * 2); ctx.fill();
+
+    drawAccretionDisk(ctx, this.x, this.y, r, solid, time, this.isPlayer ? 14 : 7);
+
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.restore();
@@ -3182,46 +3392,222 @@ class Hole {
 
     ctx.save();
     if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
-
-    // Rainbow-type skins (Tęcza, Pryzmat) have no single color -- Pryzmat
-    // used to fall through to a random bot edgeColor here.
-    if (!this.skinColor()) {
-      const segments = 20;
-      const rot = time * 1.2;
-      for (let i = 0; i < segments; i++) {
-        const a0 = (i / segments) * Math.PI * 2 + rot;
-        const a1 = ((i + 1) / segments) * Math.PI * 2 + rot;
-        const hue = (i / segments) * 360 + rot * 40;
-        const c = `hsl(${hue % 360}, 100%, 60%)`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, a0, a1);
-        ctx.strokeStyle = c;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = c;
-        ctx.lineWidth = 4;
-        ctx.stroke();
-      }
-    } else {
-      const c = this.skinColor();
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = c;
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = c;
-      ctx.lineWidth = 4;
-      ctx.stroke();
-    }
+    ctx.translate(this.x, this.y);
+    drawHoleRim(ctx, style, solid, rimColor, r, time, this.isPlayer);
+    // Photon ring: a thin bright line just inside the edge.
+    ctx.globalAlpha *= 0.35;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.93, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
 
     if (!this.name) return; // Warsztat previews draw a nameless hole
     ctx.save();
-    ctx.font = 'bold 13px Segoe UI, sans-serif';
+    ctx.font = `800 13px ${FONT_UI}`;
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    ctx.shadowBlur = 6;
-    ctx.shadowColor = this.isPlayer ? '#50F0FA' : '#FF54AD';
-    ctx.fillText(this.name, this.x, this.y - this.radius - 10);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
+    ctx.strokeText(this.name, this.x, this.y - r - 12);
+    ctx.fillStyle = this.isPlayer ? '#50F0FA' : '#f2f8ff';
+    ctx.fillText(this.name, this.x, this.y - r - 12);
     ctx.restore();
+  }
+}
+
+/* ----------------------- Hole signature looks (Golden Shot v9) -----------------------
+   Player feedback: "dziura bez pomysłu" -- every skin was the same ring in a
+   different color. Each Rdzeń skin now has its own rim design, drawn by
+   drawHoleRim() around the shared vortex, plus an orbiting accretion disk. */
+
+const SKIN_STYLES = {
+  rainbow: 'prism', cyan: 'tech', pink: 'plasma', green: 'toxic', purple: 'galaxy',
+  gold: 'sun', white: 'storm', aurora: 'aurora', krysztal: 'crystal', pryzmat: 'prism'
+};
+const BOT_STYLES = ['tech', 'plasma', 'toxic', 'galaxy', 'crystal', 'sun'];
+
+/** Motes of matter orbiting just outside the rim and spiraling in. */
+function drawAccretionDisk(ctx, x, y, r, color, t, count) {
+  for (let i = 0; i < count; i++) {
+    const phase = (t * 0.45 + i / count) % 1;            // 0 = far out, 1 = swallowed
+    const ang = i * 2.399 + t * (1.6 + (i % 3) * 0.3) + phase * 3;
+    const rad = r * (1.45 - phase * 0.5);
+    const a = Math.sin(phase * Math.PI);
+    ctx.globalAlpha = a * 0.85;
+    ctx.fillStyle = color || `hsl(${(i * 47 + t * 80) % 360}, 100%, 65%)`;
+    const size = Math.max(1.2, r * 0.05) * (1 - phase * 0.5);
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(ang) * rad, y + Math.sin(ang) * rad, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Path of a circle whose radius is wobbled by `fn(theta)` (0 = round). */
+function wobblePath(ctx, r, fn, steps = 48) {
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const th = (i / steps) * Math.PI * 2;
+    const rr = r * (1 + fn(th));
+    if (i === 0) ctx.moveTo(Math.cos(th) * rr, Math.sin(th) * rr);
+    else ctx.lineTo(Math.cos(th) * rr, Math.sin(th) * rr);
+  }
+  ctx.closePath();
+}
+
+/** Signature rim for each hole style, drawn centered at (0,0). `solid` is
+ *  null for rainbow skins; `c` is then a cycling hue. */
+function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
+  const lw = Math.max(2.5, r * 0.09);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const glowStroke = (color, width, blur) => {
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.shadowBlur = blur; ctx.shadowColor = color;
+    ctx.stroke(); ctx.shadowBlur = 0;
+  };
+  switch (style) {
+    case 'tech': {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 16);
+      // Three rotating bracket arcs + counter-rotating tick ring.
+      for (let i = 0; i < 3; i++) {
+        const a = t * 1.4 + (i / 3) * Math.PI * 2;
+        ctx.beginPath(); ctx.arc(0, 0, r + lw * 1.8, a, a + 0.7);
+        glowStroke(shadeColor(c, 0.35), lw * 0.7, 8);
+      }
+      ctx.strokeStyle = rgbaColor(c, 0.7); ctx.lineWidth = Math.max(1, lw * 0.35);
+      for (let i = 0; i < 16; i++) {
+        const a = -t * 0.8 + (i / 16) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r * 0.82, Math.sin(a) * r * 0.82);
+        ctx.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
+        ctx.stroke();
+      }
+      break;
+    }
+    case 'plasma': {
+      wobblePath(ctx, r, th => 0.07 * Math.sin(8 * th + t * 6) + 0.04 * Math.sin(13 * th - t * 9));
+      glowStroke(c, lw, 20);
+      wobblePath(ctx, r * 1.08, th => 0.06 * Math.sin(6 * th - t * 7));
+      ctx.globalAlpha *= 0.5; glowStroke(shadeColor(c, 0.4), lw * 0.5, 10); ctx.globalAlpha *= 2;
+      break;
+    }
+    case 'toxic': {
+      wobblePath(ctx, r, th => 0.05 * Math.sin(5 * th + t * 3) + 0.03 * Math.sin(9 * th - t * 2));
+      glowStroke(c, lw * 1.2, 16);
+      // Bubbles boiling off the rim.
+      for (let i = 0; i < (detailed ? 7 : 4); i++) {
+        const ph = (t * 0.6 + i * 0.37) % 1;
+        const a = i * 2.1 + Math.sin(t + i) * 0.3;
+        const rad = r * (1.02 + ph * 0.35);
+        ctx.globalAlpha = (1 - ph) * 0.9;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * rad, Math.sin(a) * rad, Math.max(1.5, r * 0.08 * (1 - ph * 0.5)), 0, Math.PI * 2);
+        ctx.strokeStyle = shadeColor(c, 0.3); ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'galaxy': {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 18);
+      ctx.save(); ctx.rotate(t * 0.5); ctx.scale(1, 0.38);
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2);
+      ctx.globalAlpha *= 0.55; glowStroke(shadeColor(c, 0.3), Math.max(1.5, lw * 0.6), 10);
+      ctx.restore();
+      for (let i = 0; i < (detailed ? 16 : 8); i++) {
+        const a = i * 2.399 + t * (0.3 + (i % 4) * 0.12);
+        const rad = r * (0.35 + ((i * 0.618) % 1) * 0.55);
+        ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4 + i * 1.7);
+        ctx.fillStyle = i % 3 ? '#ffffff' : shadeColor(c, 0.5);
+        ctx.fillRect(Math.cos(a) * rad - 1, Math.sin(a) * rad - 1, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'sun': {
+      const spikes = 14;
+      ctx.beginPath();
+      for (let i = 0; i < spikes; i++) {
+        const a = t * 0.4 + (i / spikes) * Math.PI * 2;
+        const len = r * (0.22 + 0.1 * Math.sin(t * 5 + i * 1.3));
+        const w = Math.PI / spikes * 0.55;
+        ctx.moveTo(Math.cos(a - w) * r, Math.sin(a - w) * r);
+        ctx.lineTo(Math.cos(a) * (r + len), Math.sin(a) * (r + len));
+        ctx.lineTo(Math.cos(a + w) * r, Math.sin(a + w) * r);
+      }
+      ctx.fillStyle = rgbaColor(c, 0.75); ctx.shadowBlur = 18; ctx.shadowColor = c; ctx.fill(); ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(shadeColor(c, 0.3), lw * 1.1, 14);
+      break;
+    }
+    case 'storm': {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 18);
+      // Crackling arcs: re-rolled ~12x per second from a stable seed.
+      const tick = Math.floor(t * 12);
+      for (let b = 0; b < (detailed ? 3 : 2); b++) {
+        let seed = (tick * 31 + b * 97) % 1000;
+        const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+        const a0 = rnd() * Math.PI * 2;
+        ctx.beginPath();
+        let rad = r;
+        ctx.moveTo(Math.cos(a0) * rad, Math.sin(a0) * rad);
+        for (let k = 1; k <= 4; k++) {
+          rad = r * (1 + k * 0.1);
+          const a = a0 + (rnd() - 0.5) * 0.5;
+          ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+        }
+        glowStroke(b % 2 ? '#50F0FA' : '#9875FF', 1.6, 12);
+      }
+      break;
+    }
+    case 'aurora': {
+      const bands = ['#46D99A', '#50F0FA', '#9875FF'];
+      bands.forEach((col, i) => {
+        wobblePath(ctx, r * (1 + i * 0.07), th => 0.05 * Math.sin(4 * th + t * (2 + i) + i * 2));
+        ctx.globalAlpha = 0.9 - i * 0.25;
+        glowStroke(col, lw * (1 - i * 0.25), 14);
+      });
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case 'crystal': {
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw * 0.8, 14);
+      const shards = 8;
+      for (let i = 0; i < shards; i++) {
+        const a = t * 0.6 + (i / shards) * Math.PI * 2;
+        const d = r * (1.14 + 0.04 * Math.sin(t * 3 + i));
+        const s = r * 0.14;
+        ctx.save();
+        ctx.translate(Math.cos(a) * d, Math.sin(a) * d);
+        ctx.rotate(a);
+        ctx.beginPath();
+        ctx.moveTo(s * 1.4, 0); ctx.lineTo(0, s * 0.6); ctx.lineTo(-s * 0.8, 0); ctx.lineTo(0, -s * 0.6); ctx.closePath();
+        ctx.fillStyle = rgbaColor(c, 0.85);
+        ctx.shadowBlur = 10; ctx.shadowColor = c; ctx.fill();
+        ctx.restore();
+      }
+      break;
+    }
+    case 'prism':
+    default: {
+      const segments = 24;
+      const rot = t * 1.2;
+      for (let i = 0; i < segments; i++) {
+        const a0 = (i / segments) * Math.PI * 2 + rot;
+        const col = `hsl(${((i / segments) * 360 + rot * 40) % 360}, 100%, 62%)`;
+        ctx.beginPath(); ctx.arc(0, 0, r, a0, a0 + (Math.PI * 2) / segments + 0.02);
+        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.globalAlpha *= 0.4; glowStroke('#ffffff', 1, 14); ctx.globalAlpha /= 0.4;
+      for (let i = 0; i < (detailed ? 6 : 3); i++) {
+        const a = -t * 1.8 + (i / 6) * Math.PI * 2;
+        const d = r + lw * 2;
+        ctx.fillStyle = `hsl(${(i * 60 + t * 90) % 360}, 100%, 70%)`;
+        ctx.save(); ctx.translate(Math.cos(a) * d, Math.sin(a) * d); ctx.rotate(t * 3);
+        const s = Math.max(1.5, r * 0.06);
+        ctx.fillRect(-s, -s, s * 2, s * 2);
+        ctx.restore();
+      }
+      break;
+    }
   }
 }
 
@@ -3609,6 +3995,9 @@ class Game {
     document.getElementById('hubFreeChest').addEventListener('click', () => this.openFreeChest());
     document.getElementById('hubPlayerLevel').addEventListener('click', () => this.openPlayerLevelInfo());
     document.getElementById('btnUpsell').addEventListener('click', () => this.onUpsellClick());
+    document.getElementById('runPerk').addEventListener('click', () => {
+      if (this.isWarsztatUnlocked()) this.openWarsztatScreen(); else this.openLockedTabInfo('warsztat');
+    });
     document.getElementById('btnTutorialIntroStart').addEventListener('click', () => this.dismissTutorialIntro());
     document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
     document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
@@ -3833,6 +4222,13 @@ class Game {
       name.textContent = item.name;
       body.appendChild(name);
 
+      if (gridId === 'skinGrid' && item.perkLabel) {
+        const perk = document.createElement('div');
+        perk.className = 'skin-perk' + (item.perks && item.perks.length ? '' : ' none');
+        perk.textContent = item.perkLabel;
+        body.appendChild(perk);
+      }
+
       const meta = document.createElement('div');
       meta.className = owned ? 'skin-owned-badge' : 'skin-price';
       meta.textContent = owned ? (selected ? 'WYBRANY' : 'POSIADANE') : this.cosmeticLockLabel(item);
@@ -3854,8 +4250,8 @@ class Game {
   cosmeticLockLabel(item) {
     if (item.unlockSource) {
       return item.unlockSource.type === 'coreCity'
-        ? `🔒 CORE CITY LVL ${item.unlockSource.level}`
-        : `🔒 MISJA ${item.unlockSource.id}`;
+        ? `CORE CITY LVL ${item.unlockSource.level}`
+        : `MISJA ${item.unlockSource.id}`;
     }
     if (item.priceType === 'prisms') return `◆ ${item.pricePrisms}`;
     return `◇ ${item.priceCoins != null ? item.priceCoins : item.price}`;
@@ -4112,6 +4508,8 @@ class Game {
     // The preview canvas itself is redrawn every frame from pendingLoadout
     // by renderWarsztatCanvases(); this just refreshes the text labels.
     document.getElementById('warsztatActiveCore').textContent = skin.name;
+    document.getElementById('warsztatPerkValue').textContent = skin.perkLabel || '—';
+    document.getElementById('warsztatPerk').classList.toggle('none', !(skin.perks && skin.perks.length));
     document.getElementById('warsztatActiveTrail').textContent = (aura && aura.name) || 'Brak';
     document.getElementById('warsztatActiveEffect').textContent = (effect && effect.name) || 'Klasyczny';
     document.getElementById('warsztatActiveOverdrive').textContent = (overdrive && overdrive.name) || 'Klasyczny';
@@ -4131,7 +4529,7 @@ class Game {
       const t = now / 1000;
       let any = false;
       if (visible('mainMenu')) {
-        if (this.isFirstRun()) this.drawHoleThumb(document.getElementById('hubWelcomeHole'), this.save.selected, 'none', t, null, null, 0.85);
+        if (this.isFirstRun()) drawWelcomeScene(document.getElementById('hubWelcomeScene'), t);
         else this.renderHubCity(t);
         any = true;
       }
@@ -4291,6 +4689,9 @@ class Game {
     threat.dataset.level = level;
     threat.querySelectorAll('.threat-segments i').forEach((seg, i) => seg.classList.toggle('on', i <= level));
     document.getElementById('runThreatValue').textContent = this.difficultyLabel(t);
+    const equippedSkin = SKINS.find(sk => sk.id === this.save.selected) || SKINS[0];
+    document.getElementById('runPerkName').textContent = equippedSkin.name;
+    document.getElementById('runPerkValue').textContent = equippedSkin.perkLabel || '—';
     const grid = document.getElementById('runToolGrid');
     grid.innerHTML = '';
     RUN_TOOLS.forEach(tool => {
@@ -4446,7 +4847,7 @@ class Game {
     for (let i = 0; i < 7; i++) {
       const d = document.createElement('span');
       d.className = 'streak-day' + (i < Math.min(streak, 7) ? ' lit' : '') + (i === Math.min(streak, 7) ? ' next' : '');
-      d.textContent = i < Math.min(streak, 7) ? '🔥' : String(i + 1);
+      d.textContent = i < Math.min(streak, 7) ? '✓' : String(i + 1);
       streakWrap.appendChild(d);
     }
     document.getElementById('dailyDateLabel').textContent =
@@ -5209,6 +5610,7 @@ class Game {
       bot.radius = bot.startRadius;
       bot.baseSpeedMult = speedMult;
       bot.tempSpeedMult = speedMult;
+      bot.styleOverride = BOT_STYLES[i % BOT_STYLES.length];
       this.bots.push(bot);
     }
   }
@@ -5387,7 +5789,7 @@ class Game {
       const pctDone = Math.round(doneCount / d.missions.length * 100);
       node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"></canvas>` +
         `<span class="district-tile-info"><span class="district-node-name">${d.name}</span>` +
-        `<span class="district-node-status">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : '🔒 ZABLOKOWANA')}</span>` +
+        `<span class="district-node-status">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : 'ZABLOKOWANA')}</span>` +
         `<span class="district-tile-bar"><span style="width:${unlocked ? pctDone : 0}%"></span></span></span>`;
       node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
       wrap.appendChild(node);
@@ -5727,16 +6129,22 @@ class Game {
       const p = this.randomInCampaignBounds(150);
       const bot = new Bot(BOT_NAME_POOL[i], p.x, p.y);
       bot.radius = CONFIG.campaign.rivalRadius;
+      bot.styleOverride = BOT_STYLES[i % BOT_STYLES.length];
       this.bots.push(bot);
     }
 
     this.camera.x = this.player.x;
     this.camera.y = this.player.y;
     // Campaign keeps its fixed 1:1 framing (camera is clamped to the
-    // mission box); only Arena zooms out with growth.
+    // mission box); only Arena zooms out with growth. Skin perks are
+    // Arena/Daily-only too -- missions are hand-balanced.
     this.zoom = 1;
+    this.activePerks = [];
     this.floatTexts = [];
     this.banner = null;
+    this.bannerQueue = [];
+    this.lastCountdownSec = null;
+    this.scorePop = null;
     this.flashAlpha = 0;
     this.hitStopUntil = 0;
 
@@ -5807,8 +6215,8 @@ class Game {
     this.syncCampaignRadius();
     const pts = Math.round(stats.score * multiplier);
     this.player.score += pts;
-    this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true);
-    this.addFloatText(e.x, e.y - e.radius, `+${pts}`, multiplier > 1.01 ? '#EFCB63' : this.campaignEntityColor(e), 15 + Math.min(14, e.radius / 3));
+    this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true, this.player);
+    this.addScorePop(this.player, pts, multiplier > 1.01 ? '#EFCB63' : this.campaignEntityColor(e));
     this.vibrate(e.type === 'landmark' ? [60, 40, 60] : 30);
 
     // Arena's world only spawns object types the player has actually
@@ -5824,9 +6232,9 @@ class Game {
     if (newTier.id !== m.tierId) {
       m.tierId = newTier.id;
       this.ripples.push(new Ripple(this.player.x, this.player.y, newTier.color, this.player.radius, this.player.radius * 2.5, 0.5));
-      this.spawnParticles(this.player.x, this.player.y, newTier.color, 36, 1.6);
-      this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY POZIOM WZROSTU!', newTier.color, 1.4);
-      this.flashScreen(newTier.color, 0.25);
+      this.spawnParticles(this.player.x, this.player.y, newTier.color, 22, 1.5);
+      this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY POZIOM WZROSTU!', newTier.color, 1.3, 2);
+      this.flashScreen(newTier.color, 0.18);
       if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
     }
 
@@ -5881,8 +6289,10 @@ class Game {
       // Same growth curve as resolveCampaignEntity() -- see its doc comment.
       m.growthUnits += stats.growth;
       this.syncCampaignRadius();
-      this.player.score += Math.round(stats.score * multiplier);
-      this.triggerEatFeedback(e.x, e.y, '#50F0FA', e.radius, true);
+      const bridgePts = Math.round(stats.score * multiplier);
+      this.player.score += bridgePts;
+      this.triggerEatFeedback(e.x, e.y, '#50F0FA', e.radius, true, this.player);
+      this.addScorePop(this.player, bridgePts, '#50F0FA');
       this.vibrate(30);
       this.tryUnlockCampaignLandmark();
     }
@@ -6003,7 +6413,7 @@ class Game {
         this.player.score += Math.round(bot.radius * 2 * multiplier);
         m.rivalsEaten++;
         this.rivalsEatenThisRun++;
-        this.triggerEatFeedback(bot.x, bot.y, bot.edgeColor, bot.radius, true);
+        this.triggerEatFeedback(bot.x, bot.y, bot.edgeColor, bot.radius, true, this.player);
         this.vibrate(40);
         this.analytics.track('mission_rival_eaten', { missionId: m.def.id, rival: bot.name });
         if (!this.save.campaign.discoveredHoleEating) {
@@ -6416,7 +6826,7 @@ class Game {
     this.renderXpCard('mission', this.lastXpResult);
     if (success) setTimeout(() => this.launchConfetti('missionConfetti', medalEarned ? 80 : 50), 250);
     document.getElementById('missionResultMedal').textContent = medalEarned
-      ? `🏅 Medal: ${def.medal.label}`
+      ? `★ Medal: ${def.medal.label}`
       : `Medal nieukończony: ${def.medal.label}`;
     document.getElementById('missionResultMedal').classList.toggle('earned', medalEarned);
     document.getElementById('missionResultReward').textContent = firstClear
@@ -6479,7 +6889,6 @@ class Game {
     holes.sort((a, b) => a.radius - b.radius);
     for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
 
-    this.drawComboText(ctx);
     for (const f of this.floatTexts) f.draw(ctx);
     ctx.restore();
 
@@ -6627,9 +7036,13 @@ class Game {
     this.missionJustCompleted = false;
     this.hubMilestoneReward = null;
     this.difficultyT = this.computeDifficultyT();
+    const equipped = SKINS.find(sk => sk.id === this.save.selected);
+    this.activePerks = (equipped && equipped.perks) || [];
 
     this.createObjects(this.rng);
     this.createEntities(this.rng);
+    this.player.perkSpeedMult = 1 + this.perk('speed');
+    if (this.perk('startUnits')) this.player.radius = radiusForUnits(this.perk('startUnits'));
     this.particles = [];
     this.ripples = [];
     this.floatTexts = [];
@@ -6639,6 +7052,9 @@ class Game {
     this.zoom = CONFIG.juice.zoom.max;
     this.lateRoundAnnounced = false;
     this.lastPlace = null;
+    this.goldenObj = null;
+    this.goldenTimer = CONFIG.golden.firstDelay;
+    this.frenzyEndsAt = null;
     this.comboCount = 0;
     this.comboMultiplier = 1;
     this.comboTimer = 0;
@@ -6673,7 +7089,7 @@ class Game {
     if (this.selectedRunTool === 'boost') {
       // Turbo start: spawn just past the T2 threshold (checkSizeTier()
       // celebrates the jump on the first frame).
-      this.player.radius = radiusForUnits(CONFIG.growth.unitAnchors[1] + 2);
+      this.player.radius = radiusForUnits(Math.max(unitsForRadius(this.player.radius), CONFIG.growth.unitAnchors[1]) + 2);
     }
     const runTool = this.selectedRunTool;
     this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
@@ -6702,6 +7118,9 @@ class Game {
       daily: this.isDailyRun,
       difficulty: Math.round(this.difficultyT * 100) / 100
     });
+    this.bannerQueue = [];
+    this.lastCountdownSec = null;
+    this.scorePop = null;
     this.showBanner(this.isDailyRun ? 'WYZWANIE DNIA!' : 'START!', this.modifier === 'rush_hour' ? 'RUSH HOUR — rywale są szybsi!' : 'Pochłaniaj · rośnij · wygraj', '#50F0FA', 1.2);
   }
 
@@ -6773,6 +7192,8 @@ class Game {
     // Golden Shot v8: a new player's first runs pay double.
     this.newbieBonusApplied = (this.save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns;
     if (this.newbieBonusApplied) coinsEarned = Math.round(coinsEarned * CONFIG.economy.newbieCoinMult);
+    this.perkCoinsBonus = Math.round(coinsEarned * this.perk('coins'));
+    coinsEarned += this.perkCoinsBonus;
     this.adPendingCoins = coinsEarned;
     this.save.coins += coinsEarned;
     this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
@@ -6785,7 +7206,7 @@ class Game {
 
     // Golden Shot v8: player XP (score + podium bonus).
     const P = CONFIG.progression;
-    this.lastXpResult = this.grantXp(P.xpRunBase + this.player.score * P.xpPerScorePoint + (P.xpPlaceBonus[place - 1] || 0));
+    this.lastXpResult = this.grantXp((P.xpRunBase + this.player.score * P.xpPerScorePoint + (P.xpPlaceBonus[place - 1] || 0)) * (1 + this.perk('xp')));
 
     // Daily mission: was a static, never-checked line before this pass.
     // Checked once per day (save.mission.completed guards re-granting the
@@ -6905,7 +7326,7 @@ class Game {
     this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100);
     this.animateNumber(document.getElementById('finalCoins'), coinsEarned, 1100);
     const eyebrow = document.getElementById('resultEyebrow');
-    eyebrow.textContent = place === 1 ? '🏆 ZWYCIĘSTWO!' : (place <= 3 ? `PODIUM · MIEJSCE #${place}` : 'KONIEC RUNDY');
+    eyebrow.textContent = place === 1 ? 'ZWYCIĘSTWO!' : (place <= 3 ? `PODIUM · MIEJSCE #${place}` : 'KONIEC RUNDY');
     eyebrow.classList.toggle('result-eyebrow-win', place <= 3);
     document.getElementById('resultNewbieTag').classList.toggle('hidden', !this.newbieBonusApplied);
     this.renderXpCard('result', this.lastXpResult);
@@ -6967,8 +7388,8 @@ class Game {
     if (this.dailyResult) {
       const r = this.dailyResult;
       dailyLine.textContent = (r.isNewBest
-        ? `🗓️ WYZWANIE DNIA: NOWY REKORD! +${r.dailyBonusCoins} monet, +${r.dailyBonusPrisms} pryzmatów`
-        : `🗓️ WYZWANIE DNIA ukończone: +${r.dailyBonusCoins} monet (rekord dnia: ${r.previousBest})`) + ` · seria: ${r.streak} dni`;
+        ? `WYZWANIE DNIA: NOWY REKORD! +${r.dailyBonusCoins} monet, +${r.dailyBonusPrisms} pryzmatów`
+        : `WYZWANIE DNIA ukończone: +${r.dailyBonusCoins} monet (rekord dnia: ${r.previousBest})`) + ` · seria: ${r.streak} dni`;
       dailyLine.classList.remove('hidden');
     } else {
       dailyLine.classList.add('hidden');
@@ -6976,7 +7397,7 @@ class Game {
 
     const missionLine = document.getElementById('missionResultLine');
     if (this.missionJustCompleted) {
-      missionLine.textContent = `🎯 MISJA UKOŃCZONA: „${this.activeMission.name}" — +${this.activeMission.rewardCoins} monet`;
+      missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}" — +${this.activeMission.rewardCoins} monet`;
       missionLine.classList.remove('hidden');
     } else {
       missionLine.classList.add('hidden');
@@ -6985,7 +7406,7 @@ class Game {
     const hubLine = document.getElementById('hubMilestoneLine');
     if (this.hubMilestoneReached) {
       const summary = this.hubMilestoneRewards.map(r => `LVL ${r.level}: ${r.label} (+${r.coins} monet)`).join(' · ');
-      hubLine.textContent = `🌀 CORE CITY: ${summary}`;
+      hubLine.textContent = `CORE CITY: ${summary}`;
       hubLine.classList.remove('hidden');
     } else {
       hubLine.classList.add('hidden');
@@ -7126,7 +7547,7 @@ class Game {
     for (let i = 0; i < count; i++) {
       if (this.particles.length >= cap) this.particles.shift();
       const kind = i % 4 === 0 ? 'spark' : (i % 3 === 0 ? 'pixel' : 'dot');
-      this.particles.push(new Particle(x, y, i % 5 === 4 ? '#ffffff' : color, kind, speedMult));
+      this.particles.push(new Particle(x, y, color, kind, speedMult));
     }
   }
 
@@ -7142,8 +7563,52 @@ class Game {
     this.flashAlpha = Math.max(this.flashAlpha, alpha);
   }
 
-  showBanner(text, sub, color, duration = 1.3) {
-    this.banner = { text, sub, color, life: duration, maxLife: duration };
+  /** One center banner at a time (player feedback: animations piled on
+   *  top of each other). A higher-`priority` banner replaces the current
+   *  one; an equal/lower one waits in a short queue (max 2, newest kept). */
+  showBanner(text, sub, color, duration = 1.1, priority = 1) {
+    const b = { text, sub, color, life: duration, maxLife: duration, priority, scale: priority >= 5 ? 2.2 : 1 };
+    if (!this.banner || priority > this.banner.priority) { this.banner = b; return; }
+    this.bannerQueue = (this.bannerQueue || []).filter(q => q.priority >= priority).slice(-1);
+    this.bannerQueue.push(b);
+  }
+
+  /** The player's score gains merge into one "+N" that rides above the
+   *  hole and keeps counting up while eats keep coming, instead of a
+   *  separate pop-up per object. */
+  addScorePop(hole, pts, color) {
+    const sp = this.scorePop;
+    if (sp && !sp.dead && sp.follow === hole) {
+      sp.value += pts;
+      sp.text = `+${sp.value}`;
+      sp.color = color;
+      sp.size = Math.min(34, 17 + Math.sqrt(sp.value) * 0.9);
+      sp.life = sp.maxLife;
+      sp.offset = 0;
+      sp.bumpAt = performance.now();
+      return;
+    }
+    const f = new FloatText(hole.x, hole.y, `+${pts}`, color, 17, 1.1, 60, hole);
+    f.value = pts;
+    f.bumpAt = performance.now();
+    this.scorePop = f;
+    this.floatTexts.push(f);
+  }
+
+  /** Matter from an eaten object streaming into `hole`. */
+  spawnSuck(x, y, color, count, hole, spread) {
+    const cap = CONFIG.juice.maxParticles;
+    for (let i = 0; i < count; i++) {
+      if (this.particles.length >= cap) this.particles.shift();
+      const a = rand(0, Math.PI * 2);
+      const p = new Particle(x + Math.cos(a) * spread * rand(0.2, 1), y + Math.sin(a) * spread * rand(0.2, 1), color, 'suck');
+      p.vx = Math.cos(a) * rand(40, 140);
+      p.vy = Math.sin(a) * rand(40, 140);
+      p.radius = rand(2, 3.5);
+      p.maxLife = p.life = 1.4;
+      p.target = hole;
+      this.particles.push(p);
+    }
   }
 
   hitStop(ms) {
@@ -7157,7 +7622,14 @@ class Game {
     if (this.flashAlpha > 0) this.flashAlpha = Math.max(0, this.flashAlpha - dt * 2.4);
     if (this.banner) {
       this.banner.life -= dt;
-      if (this.banner.life <= 0) this.banner = null;
+      if (this.banner.life <= 0) this.banner = (this.bannerQueue && this.bannerQueue.shift()) || null;
+    }
+    // Final 5 seconds: each second takes the banner slot (highest priority).
+    const tr = this.mode === 'campaign' ? (this.mission && this.mission.timeRemaining) : this.timeRemaining;
+    const sec = Math.ceil(tr || 0);
+    if (tr > 0 && sec <= 5 && sec !== this.lastCountdownSec) {
+      this.lastCountdownSec = sec;
+      this.showBanner(String(sec), sec === 1 ? 'OSTATNIA SEKUNDA!' : null, sec <= 3 ? '#FF54AD' : '#EFCB63', 0.9, 5);
     }
   }
 
@@ -7172,29 +7644,21 @@ class Game {
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.globalAlpha = 1;
     }
-    if (timeRemaining !== undefined && timeRemaining > 0 && timeRemaining <= 10) {
-      const frac = timeRemaining - Math.floor(timeRemaining);
-      ctx.globalAlpha = 0.12 + 0.18 * frac;
-      ctx.font = `900 ${Math.min(220, this.width * 0.42) * (0.85 + 0.15 * frac)}px 'Segoe UI', sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = timeRemaining <= 5 ? '#FF54AD' : '#ffffff';
-      ctx.fillText(String(Math.ceil(timeRemaining)), this.width / 2, this.height / 2);
-      ctx.globalAlpha = 1;
-    }
+    this.drawFrenzyVignette(ctx);
+    this.drawComboHud(ctx);
     const b = this.banner;
     if (b) {
       const age = 1 - b.life / b.maxLife;
       const pop = age < 0.12 ? 0.4 + (age / 0.12) * 0.8 : (age < 0.22 ? 1.2 - ((age - 0.12) / 0.1) * 0.2 : 1);
       const alpha = clamp(b.life / (b.maxLife * 0.3), 0, 1);
-      const size = Math.min(58, this.width * 0.1);
+      const size = Math.min(58, this.width * 0.1) * (b.scale || 1);
       ctx.globalAlpha = alpha;
       ctx.translate(this.width / 2, this.height * 0.3);
       ctx.scale(pop, pop);
       ctx.rotate(-0.04);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = `900 ${size}px 'Segoe UI', sans-serif`;
+      ctx.font = `${size}px ${FONT_DISPLAY}`;
       ctx.lineWidth = 8;
       ctx.strokeStyle = 'rgba(4, 16, 29, 0.9)';
       ctx.strokeText(b.text, 0, 0);
@@ -7204,13 +7668,146 @@ class Game {
       ctx.fillText(b.text, 0, 0);
       if (b.sub) {
         ctx.shadowBlur = 0;
-        ctx.font = `800 ${Math.max(12, size * 0.26)}px 'Segoe UI', sans-serif`;
+        ctx.font = `800 ${Math.max(12, size * 0.26)}px ${FONT_UI}`;
         ctx.lineWidth = 4;
         ctx.strokeText(b.sub, 0, size * 0.72);
         ctx.fillStyle = '#f2f8ff';
         ctx.fillText(b.sub, 0, size * 0.72);
       }
     }
+    ctx.restore();
+  }
+
+  /** Golden Shot v9 SZAŁ (frenzy): active while the round clock is above
+   *  frenzyEndsAt (round time, so pauses/evolution offers don't eat it). */
+  get frenzyActive() {
+    return this.mode === 'arena' && this.frenzyEndsAt != null && this.timeRemaining > this.frenzyEndsAt;
+  }
+
+  /** Object eat gate for a hole -- the player may eat one growth tier
+   *  higher while SZAŁ is active. */
+  holeCanEat(hole, obj) {
+    const bonus = hole.isPlayer && this.frenzyActive ? 1 : 0;
+    return getSizeTierIndex(hole.radius) + bonus >= TIERS[obj.tier].minSizeTier;
+  }
+
+  spawnGoldenCore() {
+    const G = CONFIG.golden;
+    const obj = new WorldObject('golden');
+    let pos;
+    for (let tries = 0; tries < 20; tries++) {
+      pos = this.randomWorldPos(120);
+      if (dist(pos.x, pos.y, this.player.x, this.player.y) >= G.minDistance) break;
+    }
+    obj.x = pos.x;
+    obj.y = pos.y;
+    obj.expiresAt = this.timeRemaining - G.lifetime;
+    this.objects.push(obj);
+    this.goldenObj = obj;
+    this.showBanner('ZŁOTY RDZEŃ!', 'Złap go pierwsza — złota strzałka wskazuje drogę', '#EFCB63', 1.3, 2);
+    this.analytics.track('golden_core_spawn', {});
+  }
+
+  /** Spawns/expires the Złoty Rdzeń on CONFIG.golden's schedule. */
+  updateGoldenCore(dt) {
+    const G = CONFIG.golden;
+    const g = this.goldenObj;
+    if (g && !g.eating && this.timeRemaining < g.expiresAt) {
+      this.objects = this.objects.filter(o => o !== g);
+      this.goldenObj = null;
+      this.goldenTimer = G.interval;
+    }
+    if (!this.goldenObj && this.timeRemaining > 6) {
+      this.goldenTimer -= dt;
+      if (this.goldenTimer <= 0) this.spawnGoldenCore();
+    }
+  }
+
+  startFrenzy() {
+    const G = CONFIG.golden;
+    this.frenzyEndsAt = this.timeRemaining - G.frenzySeconds;
+    this.showBanner('SZAŁ!', 'Punkty ×2 · jesz o poziom większe obiekty', '#EFCB63', 1.4, 4);
+    this.flashScreen('#EFCB63', 0.25);
+    this.triggerShake(8);
+    this.ripples.push(new Ripple(this.player.x, this.player.y, '#EFCB63', this.player.radius, this.player.radius * 4, 0.7));
+    this.vibrate([40, 30, 80]);
+    this.analytics.track('frenzy_start', {});
+  }
+
+  /** Gold edge vignette + "SZAŁ" timer bar while frenzy runs. */
+  drawFrenzyVignette(ctx) {
+    if (!this.frenzyActive) return;
+    const left = this.timeRemaining - this.frenzyEndsAt;
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 120);
+    const g = ctx.createRadialGradient(this.width / 2, this.height / 2, Math.min(this.width, this.height) * 0.35, this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.75);
+    g.addColorStop(0, 'rgba(239, 203, 99, 0)');
+    g.addColorStop(1, `rgba(239, 203, 99, ${0.22 + 0.12 * pulse})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, this.width, this.height);
+    const w = 134, x = 16, y = 186;
+    ctx.fillStyle = 'rgba(4, 16, 29, 0.75)';
+    roundRectPath(ctx, x - 8, y - 26, w + 16, 40, 12);
+    ctx.fill();
+    ctx.font = `16px ${FONT_DISPLAY}`;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#EFCB63';
+    ctx.fillText(`SZAŁ ×2 · ${Math.ceil(left)} s`, x, y - 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(x, y + 2, w, 5);
+    ctx.fillStyle = '#EFCB63';
+    ctx.fillRect(x, y + 2, w * clamp(left / CONFIG.golden.frenzySeconds, 0, 1), 5);
+  }
+
+  /** Golden Shot v9: the equipped Rdzeń's bonus of `type` (0 if none).
+   *  Only active in Arena/Daily rounds (this.activePerks is cleared for
+   *  Campaign, whose missions are hand-balanced). */
+  perk(type) {
+    const p = (this.activePerks || []).find(x => x.type === type);
+    return p ? p.value : 0;
+  }
+
+  /** Combo counter in a fixed screen spot (left, under the top HUD strip)
+   *  instead of floating over the hole, where it collided with banners and
+   *  score pops. Pops on every new link; the bar is the time left to chain. */
+  drawComboHud(ctx) {
+    if (this.comboCount < 2 || this.comboDisplayAlpha <= 0) return;
+    const popT = this.comboPopAt ? (performance.now() - this.comboPopAt) / 200 : 1;
+    const pop = popT < 1 ? 1 + 0.25 * Math.sin(popT * Math.PI) : 1;
+    const m = this.comboMultiplier;
+    const color = m >= 2.5 ? '#FF54AD' : (m >= 1.9 ? '#9875FF' : (m >= 1.4 ? '#EFCB63' : '#50F0FA'));
+    const x = 16, y = 96;
+    ctx.save();
+    ctx.globalAlpha = this.comboDisplayAlpha;
+    ctx.fillStyle = 'rgba(4, 16, 29, 0.62)';
+    roundRectPath(ctx, x - 8, y - 38, 150, 62, 12);
+    ctx.fill();
+    ctx.translate(x, y);
+    ctx.scale(pop, pop);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = `800 11px ${FONT_UI}`;
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.75)';
+    ctx.fillText('COMBO', 0, -22);
+    ctx.font = `30px ${FONT_DISPLAY}`;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
+    const label = `×${this.comboCount}`;
+    ctx.strokeText(label, 0, 6);
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = color;
+    ctx.fillText(label, 0, 6);
+    const w = ctx.measureText(label).width;
+    ctx.shadowBlur = 0;
+    ctx.font = `800 13px ${FONT_UI}`;
+    ctx.fillStyle = '#f2f8ff';
+    ctx.fillText(`PKT x${m.toFixed(1)}`, w + 8, 4);
+    const windowS = (this.comboWindowOverride || CONFIG.juice.combo.windowSeconds) + this.perk('comboWindow');
+    const frac = clamp(this.comboTimer / windowS, 0, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(0, 14, 110, 4);
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 14, 110 * frac, 4);
     ctx.restore();
   }
 
@@ -7239,30 +7836,28 @@ class Game {
   /** Eat feedback scaled by what got eaten: tiny = a subtle tick, medium =
    *  pulse + particles, giant = heavier shake + particles + a ring ripple
    *  (GDD 5.4 — "eat feedback zależny od wielkości"). */
-  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved) {
+  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved, eater) {
     const { tinyMaxRadius, mediumMaxRadius } = CONFIG.juice.eatTiers;
-    let particles, shakeAmt, giant;
-    if (eatenRadius <= tinyMaxRadius) {
-      particles = 12; shakeAmt = 1.5; giant = false;
-    } else if (eatenRadius <= mediumMaxRadius) {
-      particles = 24; shakeAmt = 4; giant = false;
-    } else {
-      particles = 44; shakeAmt = 11; giant = true;
-    }
+    const size = eatenRadius <= tinyMaxRadius ? 0 : (eatenRadius <= mediumMaxRadius ? 1 : 2);
     // GDD 4.0 §5.3 "Efekt pochłaniania" cosmetic: the player's selected
     // burst color overrides the eaten object's own color, but only for
     // eats the player caused ('classic' has color: null, i.e. no override).
     const effectId = this.save && this.save.effects && this.save.effects.selected;
     const effect = EAT_EFFECTS.find(e => e.id === effectId);
     const burstColor = (isPlayerInvolved && effect && effect.color) || color;
-    this.spawnParticles(x, y, burstColor, isPlayerInvolved ? particles : Math.ceil(particles / 2), giant ? 1.6 : 1);
-    if (shakeAmt > 0) this.triggerShake(isPlayerInvolved ? shakeAmt : shakeAmt * 0.4);
-    if (isPlayerInvolved && !giant && eatenRadius > tinyMaxRadius) {
-      this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.5, eatenRadius * 2, 0.3));
-    }
-    if (giant) {
-      this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 3, 0.5));
-      if (isPlayerInvolved) { this.flashScreen(burstColor, 0.18); this.hitStop(CONFIG.juice.hitStopMs * 0.6); }
+    // Golden Shot v9: the eaten matter is sucked into the hole that ate it
+    // (it's a black hole -- nothing flies outward except on big eats).
+    const suck = [6, 11, 18][size];
+    if (eater) this.spawnSuck(x, y, burstColor, isPlayerInvolved ? suck : Math.ceil(suck / 3), eater, Math.max(6, eatenRadius));
+    else this.spawnParticles(x, y, burstColor, suck);
+    if (!isPlayerInvolved) return;
+    if (size === 2) {
+      this.spawnParticles(x, y, burstColor, 12, 1.3);
+      this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 2.6, 0.45));
+      this.triggerShake(8);
+      this.hitStop(CONFIG.juice.hitStopMs * 0.5);
+    } else if (size === 1) {
+      this.triggerShake(2.5);
     }
   }
 
@@ -7272,7 +7867,7 @@ class Game {
   registerCombo() {
     this.comboCount++;
     // Combo Reactor mutation (Phase 4) extends the window for this run only.
-    this.comboTimer = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
+    this.comboTimer = (this.comboWindowOverride || CONFIG.juice.combo.windowSeconds) + this.perk('comboWindow');
     // Campaign uses its own multiplier cap (GDD 07: "combo 1,0-2,0 mnoży
     // punkty, nie wzrost"); Arena/Daily keep their existing tuned cap.
     const maxMultiplier = this.mode === 'campaign' ? CONFIG.campaign.comboMaxMultiplier : CONFIG.juice.combo.maxMultiplier;
@@ -7283,12 +7878,7 @@ class Game {
     if (praise) {
       const PRAISE_COLORS = ['#50F0FA', '#FF54AD', '#EFCB63', '#9875FF', '#46D99A'];
       const color = PRAISE_COLORS[CONFIG.juice.praise.indexOf(praise) % PRAISE_COLORS.length];
-      this.showBanner(praise[1], `COMBO ×${this.comboCount} · PUNKTY x${this.comboMultiplier.toFixed(1)}`, color, 1.2);
-      this.flashScreen(color, 0.16);
-      if (this.player) {
-        this.ripples.push(new Ripple(this.player.x, this.player.y, color, this.player.radius, this.player.radius * 3.2, 0.5));
-        this.spawnParticles(this.player.x, this.player.y, color, 24, 1.4);
-      }
+      this.showBanner(praise[1], `COMBO ×${this.comboCount}`, color, 1.0, 1);
       this.vibrate([20, 30, 40]);
     }
     if (this.activeMutations.has('slipstream') && this.comboCount >= CONFIG.evolution.slipstreamComboThreshold) {
@@ -7298,11 +7888,12 @@ class Game {
   }
 
   handleObjectEating(hole) {
+    const reach = hole.radius * 0.85 * (hole.isPlayer && this.frenzyActive ? CONFIG.golden.reachMult : 1);
     for (const obj of this.objects) {
       if (obj.eating) continue;
-      if (!canEatWorldObjectTier(hole.radius, obj)) continue;
+      if (!this.holeCanEat(hole, obj)) continue;
       const d = dist(hole.x, hole.y, obj.x, obj.y);
-      if (d < hole.radius * 0.85) obj.startEating(hole);
+      if (d < reach) obj.startEating(hole);
     }
   }
 
@@ -7328,20 +7919,18 @@ class Game {
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
           const multiplier = a.isPlayer ? this.registerCombo() : 1;
           const isBounty = a.isPlayer && b === this.bountyTarget;
-          const rivalPts = Math.round(b.radius * 2 * multiplier) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
+          const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer ? (1 + this.perk('score')) * (this.frenzyActive ? CONFIG.golden.scoreMult : 1) : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
           a.score += rivalPts;
           if (isBounty) this.bountyTarget = null;
-          this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer);
+          this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);
           if (a.isPlayer) {
-            this.addFloatText(b.x, b.y - b.radius, `ZJEDZONY! +${rivalPts}`, '#EFCB63', 24, 1.3);
-            this.flashScreen('#EFCB63', 0.22);
+            this.addFloatText(b.x, b.y - b.radius - 10, `ZJEDZONY! +${rivalPts}`, '#EFCB63', 22, 1.2, 40);
             this.hitStop(CONFIG.juice.hitStopMs);
-            this.triggerShake(12);
-            this.spawnParticles(b.x, b.y, '#EFCB63', 30, 1.8);
+            this.triggerShake(10);
           } else if (b.isPlayer) {
-            this.flashScreen('#FF54AD', 0.45);
-            this.showBanner('ZJEDZONO CIĘ!', 'Masz chwilę ochrony — rośnij dalej', '#FF54AD', 1.6);
-            this.triggerShake(14);
+            this.flashScreen('#FF54AD', 0.3);
+            this.showBanner('ZJEDZONO CIĘ!', 'Chwila ochrony — rośnij dalej', '#FF54AD', 1.4, 3);
+            this.triggerShake(12);
           }
           if (a.isPlayer) {
             this.rivalsEatenThisRun++;
@@ -7391,10 +7980,9 @@ class Game {
       // radius crossings via CONFIG.evolution.triggerRadii, checked
       // separately in checkEvolutionTriggers() below.
       this.ripples.push(new Ripple(this.player.x, this.player.y, current.color, this.player.radius, this.player.radius * 2.5, 0.5));
-      this.ripples.push(new Ripple(this.player.x, this.player.y, '#ffffff', this.player.radius, this.player.radius * 4, 0.8));
-      this.spawnParticles(this.player.x, this.player.y, current.color, 40, 1.7);
-      this.showBanner(`${current.label}!`, 'NOWE OBIEKTY DO POCHŁONIĘCIA', current.color, 1.4);
-      this.flashScreen(current.color, 0.28);
+      this.spawnParticles(this.player.x, this.player.y, current.color, 22, 1.5);
+      this.showBanner(`${current.label}!`, 'NOWE OBIEKTY DO POCHŁONIĘCIA', current.color, 1.3, 2);
+      this.flashScreen(current.color, 0.18);
       this.vibrate(60);
 
       if (this.activeMutations.has('shockwave')) {
@@ -7505,18 +8093,16 @@ class Game {
     this.overdriveTag = this.overdriveVariant === 'blackout' ? 'BLACKOUT FINISH' : 'PORTAL STORM';
     this.analytics.track('overdrive_start', { variant: this.overdriveVariant, runId: this.runId });
     this.vibrate([60, 40, 60]);
-    this.flashScreen('#9875FF', 0.4);
-    this.triggerShake(10);
+    this.flashScreen('#9875FF', 0.25);
+    this.triggerShake(8);
 
     // GDD 4.0 §5.3 "Overdrive" cosmetic: a tint on the existing seeded
     // finish -- doesn't change which variant is picked, just its color.
     const skinId = this.save && this.save.overdriveSkins && this.save.overdriveSkins.selected;
     const skin = OVERDRIVE_SKINS.find(s => s.id === skinId);
-    const banner = document.getElementById('overdriveBanner');
-    if (skin && skin.color) banner.style.setProperty('--overdrive-color', skin.color);
-    else banner.style.removeProperty('--overdrive-color');
-    banner.classList.remove('hidden');
-    setTimeout(() => banner.classList.add('hidden'), 3000);
+    // Golden Shot v9: shown through the shared canvas banner slot (was a
+    // separate DOM banner that overlapped the canvas banners).
+    this.showBanner('OVERDRIVE!', this.overdriveTag, (skin && skin.color) || '#9875FF', 1.6, 3);
 
     if (this.overdriveVariant === 'portal_rain') this.spawnPortalRain();
   }
@@ -7543,19 +8129,21 @@ class Game {
   updateMutationEffects(dt) {
     const now = performance.now();
 
-    if (now < this.magnetUntil || now < this.toolMagnetUntil) {
+    const fullMagnet = now < this.magnetUntil || now < this.toolMagnetUntil;
+    const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : this.perk('magnet'), this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
+    if (magnetRadius > 0) {
       for (const obj of this.objects) {
-        if (obj.eating || !canEatWorldObjectTier(this.player.radius, obj)) continue;
+        if (obj.eating || !this.holeCanEat(this.player, obj)) continue;
         const d = dist(this.player.x, this.player.y, obj.x, obj.y);
-        if (d > 0 && d < CONFIG.evolution.magnetRadius) {
-          const pull = CONFIG.evolution.magnetPull * (1 - d / CONFIG.evolution.magnetRadius);
+        if (d > 0 && d < magnetRadius) {
+          const pull = CONFIG.evolution.magnetPull * (1 - d / magnetRadius);
           obj.x -= ((obj.x - this.player.x) / d) * pull * dt;
           obj.y -= ((obj.y - this.player.y) / d) * pull * dt;
         }
       }
     }
 
-    this.player.tempSpeedMult = now < this.speedBoostUntil ? CONFIG.evolution.slipstreamSpeedMult : 1;
+    this.player.tempSpeedMult = (now < this.speedBoostUntil ? CONFIG.evolution.slipstreamSpeedMult : 1) * (this.frenzyActive ? CONFIG.golden.speedMult : 1);
 
     if (this.activeMutations.has('scanner')) {
       this.scannerTimer -= dt;
@@ -7608,7 +8196,7 @@ class Game {
     const late = this.timeRemaining <= D.lateRoundSeconds;
     if (late && !this.lateRoundAnnounced) {
       this.lateRoundAnnounced = true;
-      this.showBanner('FINAŁOWE ODLICZANIE', 'Rywale przyspieszają — walcz o podium!', '#FF54AD', 1.6);
+      this.showBanner('FINAŁOWE 40 S', 'Rywale przyspieszają!', '#FF54AD', 1.3, 2);
     }
     for (const bot of this.bots) {
       bot.tempSpeedMult = (bot.baseSpeedMult || 1) * (late ? 1 + D.lateRoundBotSpeedBonus : 1);
@@ -7624,13 +8212,20 @@ class Game {
     for (const obj of this.objects) {
       if (obj.consumed) {
         const hole = obj.eater;
-        hole.growUnits(TIERS[obj.tier].growth);
+        hole.growUnits(TIERS[obj.tier].growth * (hole.isPlayer ? 1 + this.perk('growth') : 1));
         const multiplier = hole.isPlayer ? this.registerCombo() : 1;
-        const pts = Math.round(obj.value * multiplier);
+        const frenzyMult = hole.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1;
+        const pts = Math.round(obj.value * multiplier * frenzyMult * (hole.isPlayer ? 1 + this.perk('score') : 1));
         hole.score += pts;
-        this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer);
-        if (hole.isPlayer) {
-          this.addFloatText(obj.x, obj.y - obj.radius, `+${pts}`, multiplier > 1.01 ? '#EFCB63' : obj.color, 15 + Math.min(14, obj.radius / 3));
+        this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer, hole);
+        if (hole.isPlayer) this.addScorePop(hole, pts, multiplier > 1.01 || frenzyMult > 1 ? '#EFCB63' : obj.color);
+        if (obj.tier === 'golden') {
+          obj.removed = true;
+          this.goldenObj = null;
+          this.goldenTimer = CONFIG.golden.interval;
+          if (hole.isPlayer) this.startFrenzy();
+          else this.showBanner(`${hole.name} ZGARNIA RDZEŃ`, 'Następny pojawi się niedługo', '#FF54AD', 1.1, 1);
+          continue;
         }
         if (hole.isPlayer && !this.firstEatTracked) {
           this.firstEatTracked = true;
@@ -7639,6 +8234,8 @@ class Game {
         obj.respawn(obj.tier, false);
       }
     }
+    if (this.objects.some(o => o.removed)) this.objects = this.objects.filter(o => !o.removed);
+    this.updateGoldenCore(dt);
 
     this.handleHoleCollisions();
     this.checkSizeTier();
@@ -7742,7 +8339,7 @@ class Game {
     document.getElementById('rankValue').textContent = `#${place}/${ranked.length}`;
     // Golden Shot v8: celebrate climbing into the podium mid-round.
     if (this.lastPlace !== null && place < this.lastPlace && place <= 3 && this.timeRemaining < ROUND_TIME - 2) {
-      this.addFloatText(this.player.x, this.player.y - this.player.radius - 50, place === 1 ? 'PROWADZISZ! #1' : `AWANS NA #${place}!`, '#EFCB63', 22, 1.3);
+      this.showBanner(place === 1 ? 'PROWADZISZ!' : `AWANS NA #${place}`, null, '#EFCB63', 0.9, 1);
       this.vibrate(30);
     }
     this.lastPlace = place;
@@ -7827,7 +8424,7 @@ class Game {
     for (const obj of this.objects) {
       const tierDef = TIERS[obj.tier];
       const big = obj.tier === 'node' || obj.tier === 'pylon' || obj.tier === 'landmark';
-      const dotSize = big ? 3.5 : 2;
+      const dotSize = obj.tier === 'golden' ? 6 : (big ? 3.5 : 2);
       ctx.fillStyle = tierDef.color;
       ctx.fillRect(px + obj.x * scale - dotSize / 2, py + obj.y * scale - dotSize / 2, dotSize, dotSize);
     }
@@ -7846,6 +8443,38 @@ class Game {
   /** Edge arrows pointing at nearby larger rivals that are currently
    *  off-screen — contextual danger readability (GDD 5.3/5.4), kept to
    *  the single nearest threat to avoid visual noise. */
+  /** Gold edge arrow toward an off-screen Złoty Rdzeń. */
+  drawGoldenIndicator(ctx) {
+    const g = this.goldenObj;
+    if (!g) return;
+    const sx = (g.x - this.camera.x) * this.zoom + this.width / 2;
+    const sy = (g.y - this.camera.y) * this.zoom + this.height / 2;
+    if (sx >= 0 && sx <= this.width && sy >= 0 && sy <= this.height) return;
+    const cx = this.width / 2, cy = this.height / 2, margin = 40;
+    const angle = Math.atan2(sy - cy, sx - cx);
+    const ex = clamp(cx + Math.cos(angle) * (cx - margin), margin, this.width - margin);
+    const ey = clamp(cy + Math.sin(angle) * (cy - margin), margin, this.height - margin);
+    const pulse = 1 + 0.15 * Math.sin(performance.now() / 150);
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.translate(ex, ey);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = '#EFCB63';
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = '#EFCB63';
+    ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.rotate(angle);
+    ctx.beginPath(); ctx.moveTo(22, 0); ctx.lineTo(10, -8); ctx.lineTo(10, 8); ctx.closePath(); ctx.fill();
+    ctx.rotate(-angle);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#07131E';
+    ctx.font = `11px ${FONT_DISPLAY}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★', 0, 1);
+    ctx.restore();
+  }
+
   drawDangerIndicators(ctx) {
     const detectionRange = 700;
     const margin = 34;
@@ -7919,14 +8548,28 @@ class Game {
     const holes = [...this.bots, this.player];
     holes.sort((a, b) => a.radius - b.radius);
     for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
+    if (this.frenzyActive) {
+      ctx.save();
+      ctx.translate(this.player.x, this.player.y);
+      ctx.rotate(time * 2.5);
+      ctx.strokeStyle = '#EFCB63';
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = '#EFCB63';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([14, 10]);
+      ctx.beginPath();
+      ctx.arc(0, 0, this.player.radius * 0.85 * CONFIG.golden.reachMult + 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
-    this.drawComboText(ctx);
     for (const f of this.floatTexts) f.draw(ctx);
 
     ctx.restore();
 
     if (this.showMinimap) this.drawMinimap(ctx);
     this.drawDangerIndicators(ctx);
+    this.drawGoldenIndicator(ctx);
     this.drawJuiceScreen(ctx, this.timeRemaining);
 
     // Overdrive "blackout" City Shift: dims the world layer only (drawn
@@ -7945,13 +8588,14 @@ class Game {
     if (!this.bountyTarget) return;
     const b = this.bountyTarget;
     ctx.save();
-    ctx.translate(b.x, b.y - b.radius - 18);
+    ctx.translate(b.x, b.y - b.radius - 30);
     ctx.fillStyle = '#EFCB63';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#EFCB63';
-    ctx.font = 'bold 16px Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('👑', 0, 0);
+    ctx.beginPath();
+    ctx.moveTo(-10, 6); ctx.lineTo(-12, -6); ctx.lineTo(-5, -1); ctx.lineTo(0, -9);
+    ctx.lineTo(5, -1); ctx.lineTo(12, -6); ctx.lineTo(10, 6); ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 
@@ -7988,9 +8632,9 @@ class Game {
   }
 
   canEatHighlight(obj) {
-    if (obj.radius >= this.player.radius) return 0;
     if (obj.radius <= CONFIG.juice.eatTiers.tinyMaxRadius) return 0;
-    if (!canEatWorldObjectTier(this.player.radius, obj)) return 0;
+    if (!this.holeCanEat(this.player, obj)) return 0;
+    if (obj.radius >= this.player.radius && !this.frenzyActive) return 0;
     return 1;
   }
 
@@ -8014,40 +8658,6 @@ class Game {
       ctx.fill();
       ctx.restore();
     }
-  }
-
-  /** Floating "xN COMBO" text above the player, fading smoothly instead of
-   *  cutting abruptly when the combo window lapses (GDD 5.4). */
-  drawComboText(ctx) {
-    if (this.comboCount < 2 || this.comboDisplayAlpha <= 0) return;
-    const popT = this.comboPopAt ? (performance.now() - this.comboPopAt) / 180 : 1;
-    const pop = popT < 1 ? 1 + 0.35 * Math.sin(popT * Math.PI) : 1;
-    const m = this.comboMultiplier;
-    const color = m >= 2.5 ? '#FF54AD' : (m >= 1.9 ? '#9875FF' : (m >= 1.4 ? '#EFCB63' : '#50F0FA'));
-    const size = 18 + Math.min(16, this.comboCount * 0.8);
-    ctx.save();
-    ctx.globalAlpha = this.comboDisplayAlpha;
-    ctx.translate(this.player.x, this.player.y - this.player.radius - 30);
-    ctx.scale(pop, pop);
-    ctx.textAlign = 'center';
-    ctx.font = `900 ${size}px 'Segoe UI', sans-serif`;
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
-    const label = `x${m.toFixed(1)} COMBO ${this.comboCount}`;
-    ctx.strokeText(label, 0, 0);
-    ctx.fillStyle = color;
-    ctx.shadowBlur = 16;
-    ctx.shadowColor = color;
-    ctx.fillText(label, 0, 0);
-    // Combo window bar under the text: how long until the chain breaks.
-    const windowS = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
-    const frac = clamp(this.comboTimer / windowS, 0, 1);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(-40, 8, 80, 4);
-    ctx.fillStyle = color;
-    ctx.fillRect(-40, 8, 80 * frac, 4);
-    ctx.restore();
   }
 
   loop(now) {
