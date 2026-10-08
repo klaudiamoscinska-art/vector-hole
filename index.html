@@ -694,6 +694,34 @@
     </div>
   </div>
 
+  <!-- ===================== UNLOCK CELEBRATION =====================
+       Full-screen "ODBLOKOWANO!" moment for new features (GRAJ 2:00,
+       Warsztat, Wyzwania, districts) and cosmetic rewards -- see
+       Game.queueUnlockCelebrations(). Sequence (style.css): the lock
+       shakes, cracks open, the feature icon pops out with rays + a burst. -->
+  <div id="unlockOverlay" class="unlock-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+    <div class="unlock-panel">
+      <div class="unlock-stage" aria-hidden="true">
+        <div class="unlock-rays"></div>
+        <div class="unlock-ring"></div>
+        <div id="unlockBurst" class="unlock-burst"></div>
+        <span class="unlock-lock">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path class="unlock-shackle" d="M8 11V7a4 4 0 018 0v4"/></svg>
+        </span>
+        <span id="unlockIcon" class="unlock-icon"></span>
+      </div>
+      <div class="unlock-kicker">ODBLOKOWANO!</div>
+      <div id="unlockEyebrow" class="unlock-eyebrow">—</div>
+      <h2 id="unlockTitle" class="unlock-title">—</h2>
+      <p id="unlockDesc" class="unlock-desc">—</p>
+      <div id="unlockCounter" class="unlock-counter hidden"></div>
+      <div class="unlock-actions">
+        <button id="btnUnlockGo" class="btn btn-primary">ZOBACZ</button>
+        <button id="btnUnlockLater" class="btn btn-secondary">DALEJ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== BOTTOM NAV (GDD 4.0 §5.1/§5.2/§5.3/§5.4) =====================
        One persistent nav shown across the 4 hub screens instead of
        duplicating markup per screen. Tabs unlock per §5.5 -- see

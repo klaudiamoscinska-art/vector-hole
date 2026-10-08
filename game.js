@@ -892,13 +892,66 @@ const CAMPAIGN_MISSIONS = [
 ];
 
 function campaignMissionById(id) { return CAMPAIGN_MISSIONS.find(m => m.id === id); }
+
+/* ----------------------- Feature unlocks + celebrations -----------------------
+   Pure save -> bool gates (shared by Game.isArenaUnlocked()/etc. and
+   migrateSave()'s v9 branch, which can't call Game methods), plus the
+   copy/icon/color for each "ODBLOKOWANO!" celebration
+   (Game.queueUnlockCelebrations()). */
+const FEATURE_GATES = {
+  // GDD 4.0 §5.5 -- see Game.isArenaUnlocked()'s doc comment for M00 vs M01.
+  arena: s => !!(s.campaign.completed['M00'] || s.campaign.completed['M01']),
+  // M02, or already owning a cosmetic beyond the free defaults.
+  warsztat: s => !!s.campaign.completed['M02']
+    || (s.owned || []).length > 1 || ((s.auras || {}).owned || []).length > 1
+    || ((s.effects || {}).owned || []).length > 1 || ((s.overdriveSkins || {}).owned || []).length > 1,
+  wyzwania: s => !!s.campaign.completed['M04']
+};
+
+const UNLOCK_ICONS = {
+  arena: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>',
+  warsztat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5a5.5 5.5 0 01-7.44 5.16L6 20l-2-2 7.34-7.66A5.5 5.5 0 1121 7.5z"/></svg>',
+  wyzwania: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M7 5H4a3 3 0 003 3M17 5h3a3 3 0 01-3 3"/></svg>',
+  district: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>'
+};
+
+/** Every announceable feature unlock, in the order they'd naturally be
+ *  reached. District entries are generated from DISTRICTS (Plac Neonów is
+ *  unlocked from the start, so it never gets one). */
+const FEATURE_UNLOCKS = [
+  {
+    id: 'arena', eyebrow: 'NOWY TRYB', title: 'GRAJ 2:00', color: '#50F0FA', icon: UNLOCK_ICONS.arena,
+    desc: 'Szybkie 2-minutowe rundy na Arenie z rywalami. Każda runda daje monety i ładuje Core City.',
+    cta: 'DO MIASTA', isUnlocked: s => FEATURE_GATES.arena(s)
+  },
+  {
+    id: 'warsztat', eyebrow: 'NOWA ZAKŁADKA', title: 'WARSZTAT', color: '#EFCB63', icon: UNLOCK_ICONS.warsztat,
+    desc: 'Zmieniaj wygląd swojej dziury: Rdzeń, Trail, Efekt pochłaniania i Overdrive. Wydaj tu zebrane monety!',
+    cta: 'OTWÓRZ WARSZTAT', isUnlocked: s => FEATURE_GATES.warsztat(s)
+  },
+  {
+    id: 'wyzwania', eyebrow: 'NOWA ZAKŁADKA', title: 'WYZWANIA', color: '#FF54AD', icon: UNLOCK_ICONS.wyzwania,
+    desc: 'Codzienna misja i Wyzwanie dnia: ta sama mapa dla wszystkich, walka o rekord i serię dni z rzędu.',
+    cta: 'OTWÓRZ WYZWANIA', isUnlocked: s => FEATURE_GATES.wyzwania(s)
+  },
+  ...DISTRICTS.filter(d => d.id !== 'plac').map(d => ({
+    id: 'district:' + d.id, districtId: d.id, eyebrow: 'NOWA DZIELNICA', title: d.name.toUpperCase(), color: '#9875FF',
+    icon: UNLOCK_ICONS.district,
+    desc: `${d.missions.length} nowe misje, nowe obiekty do pochłonięcia i kolejny kawałek miasta do odbudowy.`,
+    cta: 'DO DZIELNICY', isUnlocked: s => (s.campaign.unlockedDistricts || []).includes(d.id)
+  }))
+];
+
+function unlockedFeatureIds(save) {
+  return FEATURE_UNLOCKS.filter(f => f.isUnlocked(save)).map(f => f.id);
+}
 function campaignDistrictOf(missionId) {
   const m = campaignMissionById(missionId);
   return m ? DISTRICTS.find(d => d.id === m.district) : null;
 }
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 8;
+const SAVE_SCHEMA_VERSION = 9;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -1027,7 +1080,11 @@ function defaultSave() {
     // owned/selected (ring skins) and auras (trail).
     effects: { owned: ['classic'], selected: 'classic' },
     overdriveSkins: { owned: ['classic'], selected: 'classic' },
-    badges: []
+    badges: [],
+    // v9: `announced` = FEATURE_UNLOCKS ids already celebrated (so each
+    // "ODBLOKOWANO!" overlay plays exactly once); `fresh` = unlocked but not
+    // visited yet, driving the "NOWE" badges in the nav/district strip.
+    unlocks: { announced: [], fresh: [] }
   };
 }
 
@@ -1179,6 +1236,13 @@ function migrateSave(data) {
         discoveredHoleEating: data.campaign.discoveredHoleEating || playedArenaBefore || completedIds.includes('M00')
       }
     };
+  }
+
+  if (data.schemaVersion < 9) {
+    // v8 -> v9: unlock celebrations. Everything an existing save has
+    // already unlocked counts as announced, so updating the game doesn't
+    // replay a burst of old "ODBLOKOWANO!" overlays.
+    data = { ...data, schemaVersion: 9, unlocks: { announced: unlockedFeatureIds(data), fresh: [] } };
   }
 
   return data;
@@ -2617,6 +2681,8 @@ class Game {
     // Player feedback: everything on the hub that looks tappable should
     // explain itself instead of silently ignoring the tap.
     document.getElementById('btnInfoSheetClose').addEventListener('click', () => this.closeInfoSheet());
+    document.getElementById('btnUnlockGo').addEventListener('click', () => this.onUnlockGo());
+    document.getElementById('btnUnlockLater').addEventListener('click', () => this.showNextUnlock());
     document.getElementById('btnInfoSheetAction').addEventListener('click', () => {
       const action = this.infoSheetAction;
       this.closeInfoSheet();
@@ -3048,11 +3114,7 @@ class Game {
   /** GDD 4.0 §5.5: Warsztat unlocks after M02 clears OR the player already
    *  owns a cosmetic beyond the free defaults (whichever comes first — a
    *  player who somehow already has a cosmetic shouldn't be locked out). */
-  isWarsztatUnlocked() {
-    if (this.save.campaign.completed['M02']) return true;
-    return this.save.owned.length > 1 || this.save.auras.owned.length > 1
-      || this.save.effects.owned.length > 1 || this.save.overdriveSkins.owned.length > 1;
-  }
+  isWarsztatUnlocked() { return FEATURE_GATES.warsztat(this.save); }
 
   openWarsztatScreen() {
     this.analytics.track('shop_view', {});
@@ -3229,6 +3291,7 @@ class Game {
     const arenaUnlocked = this.isArenaUnlocked();
     document.getElementById('btnStart').disabled = !arenaUnlocked;
     document.getElementById('btnDaily').disabled = !arenaUnlocked;
+    document.getElementById('btnStart').classList.toggle('is-new', arenaUnlocked && this.isUnlockFresh('arena'));
     // First-run welcome: until M00 clears, Miasto shows only a short pitch
     // and the ZAGRAJ TUTORIAL button (#hubWelcome) -- the Core City card,
     // currencies, CTA row, info panel and bottom nav (renderBottomNav())
@@ -3274,6 +3337,104 @@ class Game {
   /** True until the M00 tutorial clears -- Miasto then collapses to the
    *  single-CTA welcome card and the bottom nav stays hidden. */
   isFirstRun() { return !this.isArenaUnlocked(); }
+
+  /* ---------- Unlock celebrations ---------- */
+
+  /** `prefix` may be a full id ('warsztat') or a prefix ending in ':'
+   *  ('district:' = any newly unlocked district). */
+  isUnlockFresh(prefix) {
+    const fresh = (this.save.unlocks && this.save.unlocks.fresh) || [];
+    return prefix.endsWith(':') ? fresh.some(id => id.startsWith(prefix)) : fresh.includes(prefix);
+  }
+
+  markUnlockVisited(id) {
+    const u = this.save.unlocks;
+    if (!u || !u.fresh.includes(id)) return;
+    u.fresh = u.fresh.filter(f => f !== id);
+    saveGame(this.save);
+  }
+
+  /** Cosmetic rewards (Core City levels, M24's final skin) aren't
+   *  persisted features -- they're queued at grant time and shown with the
+   *  next queueUnlockCelebrations() call (right after the result screen). */
+  queueRewardCelebration(item) {
+    (this.pendingRewardCelebrations = this.pendingRewardCelebrations || []).push({ ...item, kind: 'reward' });
+  }
+
+  /** Diffs FEATURE_UNLOCKS against save.unlocks.announced, marks anything
+   *  new as announced + fresh (nav "NOWE" badge), and plays the queued
+   *  "ODBLOKOWANO!" overlays -- features first, then cosmetic rewards --
+   *  shortly after the result screen appears, so the result reads first. */
+  queueUnlockCelebrations() {
+    const u = this.save.unlocks;
+    const newFeatures = FEATURE_UNLOCKS.filter(f => f.isUnlocked(this.save) && !u.announced.includes(f.id));
+    newFeatures.forEach(f => {
+      u.announced.push(f.id);
+      if (!u.fresh.includes(f.id)) u.fresh.push(f.id);
+    });
+    if (newFeatures.length) saveGame(this.save);
+    const items = [...newFeatures.map(f => ({ ...f, kind: 'feature' })), ...(this.pendingRewardCelebrations || [])];
+    this.pendingRewardCelebrations = [];
+    if (!items.length) return;
+    this.unlockQueue = (this.unlockQueue || []).concat(items);
+    this.unlockQueueTotal = this.unlockQueue.length;
+    clearTimeout(this.unlockShowTimer);
+    this.unlockShowTimer = setTimeout(() => this.showNextUnlock(), 650);
+  }
+
+  showNextUnlock() {
+    const overlay = document.getElementById('unlockOverlay');
+    const item = this.unlockQueue && this.unlockQueue.shift();
+    if (!item) { overlay.classList.add('hidden'); return; }
+    this.currentUnlock = item;
+    overlay.style.setProperty('--unlock-color', item.color);
+    document.getElementById('unlockIcon').innerHTML = item.icon;
+    document.getElementById('unlockEyebrow').textContent = item.eyebrow;
+    document.getElementById('unlockTitle').textContent = item.title;
+    document.getElementById('unlockDesc').textContent = item.desc;
+    const shown = this.unlockQueueTotal - this.unlockQueue.length;
+    const counter = document.getElementById('unlockCounter');
+    counter.textContent = `${shown} / ${this.unlockQueueTotal}`;
+    counter.classList.toggle('hidden', this.unlockQueueTotal < 2);
+
+    const goBtn = document.getElementById('btnUnlockGo');
+    const cta = item.kind === 'reward' ? (this.isWarsztatUnlocked() ? 'ZAŁÓŻ W WARSZTACIE' : null) : item.cta;
+    goBtn.classList.toggle('hidden', !cta);
+    if (cta) goBtn.textContent = cta;
+    document.getElementById('btnUnlockLater').textContent = this.unlockQueue.length ? 'DALEJ' : 'SUPER!';
+
+    // Fresh burst particles each time, at random angles/distances.
+    const burst = document.getElementById('unlockBurst');
+    burst.innerHTML = '';
+    for (let i = 0; i < 18; i++) {
+      const sp = document.createElement('span');
+      sp.style.setProperty('--a', `${(i / 18) * 360 + rand(-8, 8)}deg`);
+      sp.style.setProperty('--d', `${rand(90, 150)}px`);
+      sp.style.setProperty('--s', `${rand(4, 8)}px`);
+      sp.style.setProperty('--delay', `${0.55 + rand(0, 0.12)}s`);
+      burst.appendChild(sp);
+    }
+    // Restart the CSS animation sequence (lock shake -> crack -> icon pop).
+    overlay.classList.remove('hidden', 'play');
+    void overlay.offsetWidth;
+    overlay.classList.add('play');
+    setTimeout(() => this.vibrate([30, 50, 90]), 550);
+    this.analytics.track('unlock_celebration', { id: item.id || item.title, kind: item.kind });
+  }
+
+  onUnlockGo() {
+    const item = this.currentUnlock;
+    document.getElementById('unlockOverlay').classList.add('hidden');
+    if (item) {
+      this.updateCoinDisplays();
+      this.state = GameState.MENU;
+      if (item.kind === 'reward' || item.id === 'warsztat') this.openWarsztatScreen();
+      else if (item.id === 'wyzwania') this.openChallengesScreen();
+      else if (item.id === 'arena') this.showScreen('mainMenu');
+      else if (item.districtId) { this.openCampaignScreen(); this.selectCampaignDistrict(item.districtId); }
+    }
+    if (this.unlockQueue && this.unlockQueue.length) setTimeout(() => this.showNextUnlock(), 350);
+  }
 
   /** Generic "what is this?" popup (#infoSheet). `body` is a list of
    *  paragraphs/HTML snippets (authored strings only, never user input);
@@ -3504,11 +3665,13 @@ class Game {
     document.getElementById('tutorialIntroOverlay').classList.add('hidden');
     this.closeInfoSheet();
     this.introPending = false;
+    const visitedFeature = { shopScreen: 'warsztat', challengesScreen: 'wyzwania' }[id];
+    if (visitedFeature) this.markUnlockVisited(visitedFeature);
     this.renderBottomNav(id);
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'unlockOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
@@ -3529,9 +3692,9 @@ class Game {
 
     const tabs = [
       { btn: 'btnNavMiasto', screen: 'mainMenu', unlocked: true },
-      { btn: 'btnNavDzielnice', screen: 'campaignScreen', unlocked: true },
-      { btn: 'btnNavWarsztat', screen: 'shopScreen', unlocked: this.isWarsztatUnlocked() },
-      { btn: 'btnNavWyzwania', screen: 'challengesScreen', unlocked: this.isWyzwaniaUnlocked() }
+      { btn: 'btnNavDzielnice', screen: 'campaignScreen', unlocked: true, fresh: 'district:' },
+      { btn: 'btnNavWarsztat', screen: 'shopScreen', unlocked: this.isWarsztatUnlocked(), fresh: 'warsztat' },
+      { btn: 'btnNavWyzwania', screen: 'challengesScreen', unlocked: this.isWyzwaniaUnlocked(), fresh: 'wyzwania' }
     ];
     tabs.forEach(t => {
       const btn = document.getElementById(t.btn);
@@ -3542,6 +3705,7 @@ class Game {
       btn.classList.toggle('locked', !t.unlocked);
       const lockBadge = btn.querySelector('.nav-tab-lock');
       if (lockBadge) lockBadge.classList.toggle('hidden', t.unlocked);
+      btn.classList.toggle('is-new', !!(t.unlocked && t.fresh && this.isUnlockFresh(t.fresh)));
     });
   }
 
@@ -3554,11 +3718,11 @@ class Game {
    *  also accepted so a save from before M00 existed (already migrated to
    *  full discovery -- see migrateSave()'s v8 branch) doesn't relock an
    *  Arena it already had. */
-  isArenaUnlocked() { return !!(this.save.campaign.completed['M00'] || this.save.campaign.completed['M01']); }
+  isArenaUnlocked() { return FEATURE_GATES.arena(this.save); }
 
   /** GDD 4.0 §5.5: Wyzwanie dnia tab (and, per the same row, "full meta
    *  navigation") unlocks after clearing M04. */
-  isWyzwaniaUnlocked() { return !!this.save.campaign.completed['M04']; }
+  isWyzwaniaUnlocked() { return FEATURE_GATES.wyzwania(this.save); }
 
   /* ---------- world setup ---------- */
 
@@ -3781,7 +3945,9 @@ class Game {
       node.className = 'district-node' + (unlocked ? '' : ' locked');
       const doneCount = d.missions.filter(id => this.save.campaign.completed[id]).length;
       const status = unlocked ? `${doneCount}/${d.missions.length}` : '🔒';
-      node.innerHTML = `<span class="district-node-name">${d.name}</span><span class="district-node-status">${status}</span>`;
+      const isNew = unlocked && this.isUnlockFresh('district:' + d.id);
+      node.classList.toggle('is-new', isNew);
+      node.innerHTML = `<span class="district-node-name">${d.name}</span><span class="district-node-status">${isNew ? 'NOWA' : status}</span>`;
       node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
       wrap.appendChild(node);
     });
@@ -3807,6 +3973,14 @@ class Game {
 
   selectCampaignDistrict(districtId) {
     this.selectedDistrictId = districtId;
+    if (this.isUnlockFresh('district:' + districtId)) {
+      // Re-render the strip so its "NOWA" tag drops right away; the
+      // recursive selectCampaignDistrict() call lands on the branch below.
+      this.markUnlockVisited('district:' + districtId);
+      this.renderBottomNav('campaignScreen');
+      this.renderCampaignMap();
+      return;
+    }
     const nodes = document.querySelectorAll('#districtMap .district-node');
     const districtIdx = DISTRICTS.findIndex(d => d.id === districtId);
     nodes.forEach((el, i) => el.classList.toggle('active', i === districtIdx));
@@ -4740,6 +4914,12 @@ class Game {
       }
       if (m.def.reward.unlockSkin && !this.save.owned.includes(m.def.reward.unlockSkin)) {
         this.save.owned.push(m.def.reward.unlockSkin);
+        const skin = SKINS.find(sk => sk.id === m.def.reward.unlockSkin);
+        this.queueRewardCelebration({
+          eyebrow: 'NAGRODA ZA KAMPANIĘ', title: `Rdzeń „${skin ? skin.name : m.def.reward.unlockSkin}”`, color: '#EFCB63',
+          icon: REWARD_CATEGORY_ICONS.skin,
+          desc: 'Wyjątkowy wygląd dziury za ukończenie całej kampanii. Załóż go w Warsztacie.'
+        });
       }
     }
     if (medalEarned) this.save.campaign.medals[m.def.id] = true;
@@ -4792,6 +4972,7 @@ class Game {
 
     this.updateCoinDisplays();
     this.showScreen('missionResultScreen');
+    this.queueUnlockCelebrations();
   }
 
   /* ---- Campaign rendering ---- */
@@ -4935,6 +5116,7 @@ class Game {
    *  options.daily marks the run so endRound() records a daily best. */
   startRound(options) {
     options = options || {};
+    this.markUnlockVisited('arena');
     this.mode = 'arena';
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
@@ -5196,6 +5378,12 @@ class Game {
     if (def.overdriveSkinId && !this.save.overdriveSkins.owned.includes(def.overdriveSkinId)) this.save.overdriveSkins.owned.push(def.overdriveSkinId);
     if (def.badge && !this.save.badges.includes(def.badge)) this.save.badges.push(def.badge);
     this.save.coins += def.coins;
+    const category = this.coreCityRewardCategory(def);
+    this.queueRewardCelebration({
+      eyebrow: `NAGRODA CORE CITY · LVL ${level}`, title: def.label, color: '#46D99A',
+      icon: REWARD_CATEGORY_ICONS[category],
+      desc: `${this.rewardCategoryExplanation(category).replace(/<[^>]+>/g, '')} Czeka w Warsztacie. +${def.coins} monet.`
+    });
     return { level, label: def.label, coins: def.coins };
   }
 
@@ -5292,6 +5480,7 @@ class Game {
 
     this.showScreen('gameOverScreen');
     this.updateCoinDisplays();
+    this.queueUnlockCelebrations();
 
     this.analytics.track('run_end', {
       runId: this.runId,
