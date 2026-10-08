@@ -1340,6 +1340,474 @@ class Ripple {
 
 /* ----------------------- WorldObject ----------------------- */
 
+/* ----------------------- Object art (sprite cache) -----------------------
+   Player feedback: the eatable objects were thin one-color line icons. Each
+   object kind is now a small illustrated sprite -- gradient-filled bodies in
+   shades of its size-tier color, a specular highlight, a soft ground glow --
+   painted ONCE per (kind, color, radius) into an offscreen canvas and then
+   blitted with drawImage, so a world full of ~200 objects costs no more per
+   frame than the old line art (shadowBlur only runs at cache time). Cheap
+   per-frame "life" (bob, twinkle, spinning reactor arcs, portal swirl) is
+   drawn live on top by drawObjectLive(). Shared by WorldObject (Arena) and
+   CampaignEntity (Campaign) so an object looks identical in both modes. */
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+/** Mix a #hex color toward white (t > 0) or black (t < 0). */
+function shadeColor(hex, t) {
+  const [r, g, b] = hexToRgb(hex);
+  const target = t > 0 ? 255 : 0, k = Math.abs(t);
+  return `rgb(${Math.round(r + (target - r) * k)}, ${Math.round(g + (target - g) * k)}, ${Math.round(b + (target - b) * k)})`;
+}
+function rgbaColor(hex, a) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+/** Top-to-bottom body gradient in shades of `col`. */
+function bodyGradient(c, col, y0, y1, light = 0.45, dark = -0.45) {
+  const g = c.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, shadeColor(col, light));
+  g.addColorStop(0.5, col);
+  g.addColorStop(1, shadeColor(col, dark));
+  return g;
+}
+
+function roundRectPath(c, x, y, w, h, rad) {
+  const r = Math.min(rad, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+/** Fill the current path with a body gradient + glowing outline. */
+function paintBody(c, col, y0, y1, opts = {}) {
+  c.save();
+  c.shadowBlur = opts.glow != null ? opts.glow : 10;
+  c.shadowColor = col;
+  c.fillStyle = bodyGradient(c, col, y0, y1, opts.light, opts.dark);
+  c.fill();
+  c.restore();
+  c.lineWidth = opts.lineWidth || 1.4;
+  c.strokeStyle = shadeColor(col, 0.6);
+  c.stroke();
+}
+
+const OBJECT_ART = {
+  // T1 -- faceted energy crystal (octahedron seen from above).
+  fragment(c, r, col) {
+    const w = r * 0.82;
+    const facets = [
+      [[0, -r], [-w, 0], [0, 0], 0.55],
+      [[0, -r], [w, 0], [0, 0], 0.15],
+      [[0, r], [-w, 0], [0, 0], -0.15],
+      [[0, r], [w, 0], [0, 0], -0.5]
+    ];
+    c.save();
+    c.shadowBlur = 10; c.shadowColor = col;
+    c.beginPath(); c.moveTo(0, -r); c.lineTo(w, 0); c.lineTo(0, r); c.lineTo(-w, 0); c.closePath();
+    c.fillStyle = col; c.fill();
+    c.restore();
+    facets.forEach(([a, b, m, t]) => {
+      c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(m[0], m[1]); c.closePath();
+      c.fillStyle = shadeColor(col, t); c.fill();
+    });
+    c.beginPath(); c.moveTo(0, -r); c.lineTo(w, 0); c.lineTo(0, r); c.lineTo(-w, 0); c.closePath();
+    c.lineWidth = 1; c.strokeStyle = shadeColor(col, 0.75); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.9)';
+    c.beginPath(); c.arc(-w * 0.32, -r * 0.38, r * 0.13, 0, Math.PI * 2); c.fill();
+  },
+
+  // T1 -- glossy two-tone energy capsule.
+  kapsula(c, r, col) {
+    c.rotate(-Math.PI / 6);
+    const L = r * 0.95, H = r * 0.58;
+    roundRectPath(c, -L, -H, L * 2, H * 2, H);
+    c.save(); c.shadowBlur = 12; c.shadowColor = col; c.fillStyle = rgbaColor(col, 0.25); c.fill(); c.restore();
+    c.save();
+    c.clip();
+    c.fillStyle = bodyGradient(c, col, -H, H, 0.4, -0.35);
+    c.fillRect(-L, -H, L, H * 2);
+    const glass = c.createLinearGradient(0, -H, 0, H);
+    glass.addColorStop(0, 'rgba(255,255,255,0.35)'); glass.addColorStop(1, rgbaColor(col, 0.15));
+    c.fillStyle = glass; c.fillRect(0, -H, L, H * 2);
+    c.fillStyle = shadeColor(col, 0.8);
+    c.beginPath(); c.arc(L * 0.5, 0, H * 0.38, 0, Math.PI * 2); c.fill();
+    c.restore();
+    roundRectPath(c, -L, -H, L * 2, H * 2, H);
+    c.lineWidth = 1.2; c.strokeStyle = shadeColor(col, 0.65); c.stroke();
+    c.fillStyle = shadeColor(col, -0.3); c.fillRect(-r * 0.06, -H, r * 0.12, H * 2);
+    c.strokeStyle = 'rgba(255,255,255,0.75)'; c.lineWidth = 1.2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-L * 0.65, -H * 0.5); c.lineTo(-L * 0.1, -H * 0.5); c.stroke();
+  },
+
+  // T2 -- street lamp with a lit head and a light cone.
+  latarnia(c, r, col) {
+    const cone = c.createLinearGradient(0, -r * 0.55, 0, r);
+    cone.addColorStop(0, rgbaColor(col, 0.45)); cone.addColorStop(1, rgbaColor(col, 0));
+    c.fillStyle = cone;
+    c.beginPath(); c.moveTo(r * 0.12, -r * 0.55); c.lineTo(r * 0.75, r * 0.95); c.lineTo(-r * 0.15, r * 0.95); c.closePath(); c.fill();
+    c.fillStyle = rgbaColor(col, 0.35);
+    c.beginPath(); c.ellipse(r * 0.28, r * 0.95, r * 0.5, r * 0.1, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.42, r * 0.75, r * 0.5, r * 0.22, r * 0.06);
+    paintBody(c, col, r * 0.75, r, { glow: 4 });
+    roundRectPath(c, -r * 0.24, -r * 0.82, r * 0.14, r * 1.6, r * 0.07);
+    paintBody(c, col, -r, r, { glow: 6 });
+    c.lineWidth = r * 0.1; c.lineCap = 'round'; c.strokeStyle = shadeColor(col, 0.2);
+    c.beginPath(); c.moveTo(-r * 0.17, -r * 0.78); c.quadraticCurveTo(-r * 0.1, -r * 0.98, r * 0.18, -r * 0.92); c.stroke();
+    c.beginPath(); c.moveTo(-r * 0.05, -r * 0.92); c.lineTo(r * 0.42, -r * 0.92); c.lineTo(r * 0.3, -r * 0.62); c.lineTo(r * 0.06, -r * 0.62); c.closePath();
+    paintBody(c, col, -r * 0.95, -r * 0.6, { glow: 6 });
+    c.save(); c.shadowBlur = 16; c.shadowColor = '#fff';
+    c.fillStyle = '#fff';
+    c.beginPath(); c.arc(r * 0.18, -r * 0.6, r * 0.11, 0, Math.PI * 2); c.fill();
+    c.restore();
+  },
+
+  // T2 -- round tree: layered canopy blobs over a trunk.
+  drzewo(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.55, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.1, r * 0.05, r * 0.2, r * 0.85, r * 0.06);
+    paintBody(c, col, 0, r, { light: -0.15, dark: -0.6, glow: 3 });
+    const blobs = [[-r * 0.38, -r * 0.05, r * 0.42], [r * 0.38, -r * 0.08, r * 0.42], [0, -r * 0.42, r * 0.5]];
+    c.save(); c.shadowBlur = 12; c.shadowColor = col;
+    blobs.forEach(([x, y, br]) => { c.beginPath(); c.arc(x, y, br, 0, Math.PI * 2); c.fillStyle = col; c.fill(); });
+    c.restore();
+    blobs.forEach(([x, y, br]) => {
+      const g = c.createRadialGradient(x - br * 0.35, y - br * 0.4, br * 0.1, x, y, br);
+      g.addColorStop(0, shadeColor(col, 0.55)); g.addColorStop(0.6, col); g.addColorStop(1, shadeColor(col, -0.4));
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, br, 0, Math.PI * 2); c.fill();
+    });
+    c.fillStyle = 'rgba(255,255,255,0.7)';
+    [[-r * 0.1, -r * 0.62], [r * 0.3, -r * 0.2], [-r * 0.45, -r * 0.12]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, r * 0.06, 0, Math.PI * 2); c.fill(); });
+  },
+
+  // T2 -- park bench: two backrest slats, seat, legs, armrests.
+  lawka(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.72, r * 0.95, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.lineCap = 'round'; c.lineWidth = r * 0.1; c.strokeStyle = shadeColor(col, -0.35);
+    c.beginPath();
+    c.moveTo(-r * 0.75, r * 0.1); c.lineTo(-r * 0.8, r * 0.68);
+    c.moveTo(r * 0.75, r * 0.1); c.lineTo(r * 0.8, r * 0.68);
+    c.moveTo(-r * 0.75, -r * 0.6); c.lineTo(-r * 0.75, r * 0.1);
+    c.moveTo(r * 0.75, -r * 0.6); c.lineTo(r * 0.75, r * 0.1);
+    c.stroke();
+    [-r * 0.58, -r * 0.3].forEach(y => { roundRectPath(c, -r * 0.95, y, r * 1.9, r * 0.2, r * 0.08); paintBody(c, col, y, y + r * 0.2, { glow: 6 }); });
+    roundRectPath(c, -r, -r * 0.02, r * 2, r * 0.26, r * 0.1);
+    paintBody(c, col, -r * 0.02, r * 0.24, { glow: 8 });
+    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(-r * 0.85, r * 0.04); c.lineTo(r * 0.3, r * 0.04); c.stroke();
+  },
+
+  // T2 -- kiosk with a striped awning and a lit window.
+  kiosk(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.92, r * 0.95, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.8, -r * 0.35, r * 1.6, r * 1.25, r * 0.08);
+    paintBody(c, col, -r * 0.35, r * 0.9, { light: 0.15, dark: -0.55 });
+    const win = c.createLinearGradient(0, -r * 0.15, 0, r * 0.35);
+    win.addColorStop(0, '#ffffff'); win.addColorStop(1, shadeColor(col, 0.55));
+    c.save(); c.shadowBlur = 12; c.shadowColor = '#fff';
+    roundRectPath(c, -r * 0.55, -r * 0.15, r * 1.1, r * 0.5, r * 0.05); c.fillStyle = win; c.fill();
+    c.restore();
+    roundRectPath(c, -r * 0.65, r * 0.35, r * 1.3, r * 0.14, r * 0.04);
+    c.fillStyle = shadeColor(col, 0.3); c.fill();
+    // awning
+    c.beginPath(); c.moveTo(-r, -r * 0.35); c.lineTo(-r * 0.75, -r * 0.8); c.lineTo(r * 0.75, -r * 0.8); c.lineTo(r, -r * 0.35); c.closePath();
+    c.save(); c.clip();
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = i % 2 ? '#ffffff' : col;
+      c.globalAlpha = i % 2 ? 0.85 : 1;
+      c.fillRect(-r + i * (r * 2 / 6), -r, r * 2 / 6 + 0.5, r);
+    }
+    c.restore();
+    c.beginPath(); c.moveTo(-r, -r * 0.35); c.lineTo(-r * 0.75, -r * 0.8); c.lineTo(r * 0.75, -r * 0.8); c.lineTo(r, -r * 0.35); c.closePath();
+    c.save(); c.shadowBlur = 8; c.shadowColor = col; c.lineWidth = 1.4; c.strokeStyle = shadeColor(col, 0.6); c.stroke(); c.restore();
+    c.fillStyle = shadeColor(col, 0.7);
+    roundRectPath(c, -r * 0.3, -r * 1.0, r * 0.6, r * 0.18, r * 0.05); c.fill();
+  },
+
+  // T2 -- wooden-style crate with braces and rivets.
+  skrzynia(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.82, r * 0.95, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.85, -r * 0.7, r * 1.7, r * 1.45, r * 0.1);
+    paintBody(c, col, -r * 0.7, r * 0.75, { light: 0.25, dark: -0.5 });
+    c.save();
+    roundRectPath(c, -r * 0.85, -r * 0.7, r * 1.7, r * 1.45, r * 0.1); c.clip();
+    c.strokeStyle = shadeColor(col, -0.45); c.lineWidth = r * 0.16;
+    c.strokeRect(-r * 0.85, -r * 0.7, r * 1.7, r * 1.45);
+    c.lineWidth = r * 0.12;
+    c.beginPath(); c.moveTo(-r * 0.75, r * 0.65); c.lineTo(r * 0.75, -r * 0.6); c.stroke();
+    c.restore();
+    c.fillStyle = shadeColor(col, 0.75);
+    [[-0.7, -0.55], [0.7, -0.55], [-0.7, 0.6], [0.7, 0.6]].forEach(([x, y]) => { c.beginPath(); c.arc(r * x, r * y, r * 0.06, 0, Math.PI * 2); c.fill(); });
+  },
+
+  // T2 -- pennant on a pole with a glowing finial.
+  znacznik(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(-r * 0.5, r * 0.92, r * 0.35, r * 0.09, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.58, -r * 0.8, r * 0.12, r * 1.75, r * 0.06);
+    paintBody(c, col, -r, r, { light: 0.3, dark: -0.4, glow: 4 });
+    c.beginPath();
+    c.moveTo(-r * 0.46, -r * 0.78);
+    c.bezierCurveTo(-r * 0.1, -r * 0.95, r * 0.25, -r * 0.55, r * 0.85, -r * 0.62);
+    c.bezierCurveTo(r * 0.4, -r * 0.35, r * 0.05, -r * 0.05, -r * 0.46, -r * 0.12);
+    c.closePath();
+    paintBody(c, col, -r * 0.9, -r * 0.1, { light: 0.4, dark: -0.3, glow: 10 });
+    c.save(); c.shadowBlur = 12; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.beginPath(); c.arc(-r * 0.52, -r * 0.88, r * 0.11, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  // T3 -- neon coupe (side view) with lit windows and headlight beam.
+  samochod(c, r, col, variant) {
+    const beam = c.createLinearGradient(r * 0.9, 0, r * 1.5, 0);
+    beam.addColorStop(0, 'rgba(255,255,255,0.45)'); beam.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = beam;
+    c.beginPath(); c.moveTo(r * 0.92, -r * 0.05); c.lineTo(r * 1.5, -r * 0.28); c.lineTo(r * 1.5, r * 0.32); c.lineTo(r * 0.92, r * 0.12); c.closePath(); c.fill();
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.55, r * 1.0, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    // cabin
+    c.beginPath();
+    c.moveTo(-r * 0.62, -r * 0.18); c.lineTo(-r * 0.38, -r * 0.6); c.lineTo(r * 0.3, -r * 0.6); c.lineTo(r * 0.6, -r * 0.18); c.closePath();
+    paintBody(c, col, -r * 0.6, -r * 0.18, { light: 0.35, dark: -0.2 });
+    const glass = c.createLinearGradient(0, -r * 0.52, 0, -r * 0.22);
+    glass.addColorStop(0, '#ffffff'); glass.addColorStop(1, shadeColor(col, 0.4));
+    c.fillStyle = glass;
+    c.beginPath(); c.moveTo(-r * 0.5, -r * 0.22); c.lineTo(-r * 0.33, -r * 0.52); c.lineTo(-r * 0.04, -r * 0.52); c.lineTo(-r * 0.04, -r * 0.22); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(r * 0.04, -r * 0.22); c.lineTo(r * 0.04, -r * 0.52); c.lineTo(r * 0.26, -r * 0.52); c.lineTo(r * 0.47, -r * 0.22); c.closePath(); c.fill();
+    // body
+    roundRectPath(c, -r, -r * 0.24, r * 1.95, r * 0.6, r * 0.2);
+    paintBody(c, col, -r * 0.24, r * 0.36, { light: 0.45, dark: -0.45, glow: 12 });
+    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(-r * 0.85, -r * 0.1); c.lineTo(r * 0.75, -r * 0.1); c.stroke();
+    c.save(); c.shadowBlur = 10; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    roundRectPath(c, r * 0.8, -r * 0.12, r * 0.14, r * 0.12, r * 0.04); c.fill(); c.restore();
+    c.fillStyle = '#ff3860';
+    roundRectPath(c, -r * 0.98, -r * 0.12, r * 0.1, r * 0.12, r * 0.03); c.fill();
+    // wheels
+    [-r * 0.55, r * 0.55].forEach(x => {
+      c.beginPath(); c.arc(x, r * 0.38, r * 0.23, 0, Math.PI * 2);
+      c.fillStyle = '#0a0f18'; c.fill();
+      c.lineWidth = r * 0.06; c.strokeStyle = shadeColor(col, 0.3); c.stroke();
+      c.beginPath(); c.arc(x, r * 0.38, r * 0.08, 0, Math.PI * 2); c.fillStyle = shadeColor(col, 0.6); c.fill();
+    });
+    if (variant === 'konwoj') {
+      c.strokeStyle = shadeColor(col, 0.5); c.lineWidth = r * 0.07; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(-r * 1.0, r * 0.15); c.lineTo(-r * 1.3, r * 0.15); c.stroke();
+      c.beginPath(); c.arc(-r * 1.35, r * 0.15, r * 0.07, 0, Math.PI * 2); c.fillStyle = shadeColor(col, 0.6); c.fill();
+    }
+  },
+
+  // T3 -- energy reactor node (hex housing + glowing core). Live: spinning arcs.
+  wezel(c, r, col) {
+    c.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 6 + i * Math.PI / 3;
+      c[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r * 0.92, Math.sin(a) * r * 0.92);
+    }
+    c.closePath();
+    c.save(); c.shadowBlur = 14; c.shadowColor = col;
+    const plate = c.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
+    plate.addColorStop(0, shadeColor(col, -0.55)); plate.addColorStop(1, shadeColor(col, -0.2));
+    c.fillStyle = plate; c.fill(); c.restore();
+    c.lineWidth = 2; c.strokeStyle = shadeColor(col, 0.5); c.stroke();
+    c.lineWidth = r * 0.08; c.strokeStyle = shadeColor(col, 0.1);
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI / 4 + i * Math.PI / 2;
+      c.beginPath(); c.moveTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3); c.lineTo(Math.cos(a) * r * 0.62, Math.sin(a) * r * 0.62); c.stroke();
+    }
+    const core = c.createRadialGradient(0, 0, 0, 0, 0, r * 0.36);
+    core.addColorStop(0, '#ffffff'); core.addColorStop(0.45, shadeColor(col, 0.5)); core.addColorStop(1, col);
+    c.save(); c.shadowBlur = 20; c.shadowColor = col;
+    c.fillStyle = core; c.beginPath(); c.arc(0, 0, r * 0.34, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  // T3 -- lattice energy pylon topped by a charge orb. Live: orb halo pulse.
+  pylon(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.95, r * 0.6, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.lineCap = 'round';
+    c.save(); c.shadowBlur = 8; c.shadowColor = col;
+    c.strokeStyle = shadeColor(col, 0.15); c.lineWidth = r * 0.09;
+    c.beginPath(); c.moveTo(-r * 0.5, r * 0.92); c.lineTo(-r * 0.12, -r * 0.35); c.moveTo(r * 0.5, r * 0.92); c.lineTo(r * 0.12, -r * 0.35); c.stroke();
+    c.restore();
+    c.strokeStyle = shadeColor(col, -0.15); c.lineWidth = r * 0.05;
+    c.beginPath();
+    c.moveTo(-r * 0.46, r * 0.8); c.lineTo(r * 0.36, r * 0.35);
+    c.moveTo(r * 0.46, r * 0.8); c.lineTo(-r * 0.36, r * 0.35);
+    c.moveTo(-r * 0.33, r * 0.35); c.lineTo(r * 0.23, -r * 0.05);
+    c.moveTo(r * 0.33, r * 0.35); c.lineTo(-r * 0.23, -r * 0.05);
+    c.moveTo(-r * 0.36, r * 0.35); c.lineTo(r * 0.36, r * 0.35);
+    c.stroke();
+    const orb = c.createRadialGradient(-r * 0.08, -r * 0.68, r * 0.03, 0, -r * 0.6, r * 0.3);
+    orb.addColorStop(0, '#ffffff'); orb.addColorStop(0.5, shadeColor(col, 0.45)); orb.addColorStop(1, col);
+    c.save(); c.shadowBlur = 22; c.shadowColor = col;
+    c.fillStyle = orb; c.beginPath(); c.arc(0, -r * 0.6, r * 0.3, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  // T4 (Arena) -- glowing city monument: three towers + spire on a dais.
+  landmark(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.78, r * 0.95, r * 0.2, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(0, r * 0.7, r * 0.85, r * 0.16, 0, 0, Math.PI * 2);
+    paintBody(c, col, r * 0.55, r * 0.86, { light: 0.3, dark: -0.5 });
+    const towers = [[-r * 0.55, r * 0.26, r * 0.95], [r * 0.29, r * 0.26, r * 1.05], [-r * 0.16, r * 0.32, r * 1.45]];
+    towers.forEach(([x, w, h]) => {
+      roundRectPath(c, x, r * 0.68 - h, w, h, r * 0.04);
+      paintBody(c, col, r * 0.68 - h, r * 0.68, { light: 0.35, dark: -0.55, glow: 12 });
+      c.fillStyle = 'rgba(255,255,255,0.75)';
+      for (let y = r * 0.68 - h + r * 0.12; y < r * 0.55; y += r * 0.17) {
+        c.fillRect(x + w * 0.22, y, w * 0.18, r * 0.06);
+        c.fillRect(x + w * 0.6, y, w * 0.18, r * 0.06);
+      }
+    });
+    c.strokeStyle = shadeColor(col, 0.5); c.lineWidth = r * 0.04;
+    c.beginPath(); c.moveTo(0, r * 0.68 - r * 1.45); c.lineTo(0, -r * 1.0); c.stroke();
+    c.save(); c.shadowBlur = 16; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.beginPath(); c.arc(0, -r * 1.0, r * 0.06, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  // Overdrive bonus portal: dark well + bright rim; live: swirl arms.
+  portal(c, r, col) {
+    const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+    g.addColorStop(0, '#05010f'); g.addColorStop(0.7, shadeColor(col, -0.6)); g.addColorStop(1, col);
+    c.save(); c.shadowBlur = 16; c.shadowColor = col;
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.fill(); c.restore();
+    c.lineWidth = 1.5; c.strokeStyle = shadeColor(col, 0.6); c.stroke();
+  }
+};
+
+const OBJECT_SPRITE_CACHE = new Map();
+
+/** Cached offscreen sprite for one object kind/color/radius (+ variant). */
+function getObjectSprite(kind, color, r, variant) {
+  const rr = Math.round(r);
+  const key = `${kind}|${color}|${rr}|${variant || ''}`;
+  let s = OBJECT_SPRITE_CACHE.get(key);
+  if (s) return s;
+  const S = 2; // supersample so sprites stay crisp on high-DPR phones
+  const half = Math.ceil(rr * 1.7 + 14); // room for glow, beams, spires
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = half * 2 * S;
+  const c = cv.getContext('2d');
+  c.scale(S, S);
+  c.translate(half, half);
+  // Soft ground glow under every object -- gives each one presence on the
+  // dark grid and ties it to its tier color at a glance.
+  const halo = c.createRadialGradient(0, 0, 0, 0, 0, rr * 1.35);
+  halo.addColorStop(0, rgbaColor(color, 0.22)); halo.addColorStop(1, rgbaColor(color, 0));
+  c.fillStyle = halo; c.beginPath(); c.arc(0, 0, rr * 1.35, 0, Math.PI * 2); c.fill();
+  c.lineJoin = 'round';
+  (OBJECT_ART[kind] || OBJECT_ART.fragment)(c, rr, color, variant);
+  s = { canvas: cv, half };
+  OBJECT_SPRITE_CACHE.set(key, s);
+  return s;
+}
+
+/** Draws one object at the current origin: idle bob/breathe + cached
+ *  sprite + its live overlay. `seed` de-syncs the idle motion between
+ *  objects; `live` false skips the animated extras (used-up nodes etc.). */
+function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
+  const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
+  const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * 0.03;
+  ctx.save();
+  ctx.translate(0, bob);
+  if (kind === 'fragment') ctx.rotate(Math.sin(t * 1.3 + seed) * 0.35);
+  ctx.scale(breathe, breathe);
+  const s = getObjectSprite(kind, color, r, opts.variant);
+  ctx.drawImage(s.canvas, -s.half, -s.half, s.half * 2, s.half * 2);
+  if (opts.live !== false) drawObjectLive(ctx, kind, color, r, t, seed);
+  ctx.restore();
+}
+
+function drawObjectLive(ctx, kind, color, r, t, seed) {
+  switch (kind) {
+    case 'fragment': {
+      // Occasional 4-point twinkle on the gem's corner.
+      const tw = Math.max(0, Math.sin(t * 2.6 + seed * 3));
+      if (tw < 0.75) return;
+      const k = (tw - 0.75) / 0.25, s = r * 0.75 * k;
+      ctx.save();
+      ctx.translate(r * 0.35, -r * 0.55);
+      ctx.fillStyle = `rgba(255,255,255,${0.9 * k})`;
+      ctx.beginPath();
+      ctx.moveTo(0, -s); ctx.lineTo(s * 0.2, -s * 0.2); ctx.lineTo(s, 0); ctx.lineTo(s * 0.2, s * 0.2);
+      ctx.lineTo(0, s); ctx.lineTo(-s * 0.2, s * 0.2); ctx.lineTo(-s, 0); ctx.lineTo(-s * 0.2, -s * 0.2);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'wezel': {
+      ctx.save();
+      ctx.rotate(t * 1.6 + seed);
+      ctx.strokeStyle = shadeColor(color, 0.55); ctx.lineWidth = 2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.75, 0, Math.PI * 0.55); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.75, Math.PI, Math.PI * 1.55); ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'pylon': {
+      const p = 0.5 + 0.5 * Math.sin(t * 4 + seed);
+      ctx.strokeStyle = rgbaColor(color, 0.25 + 0.45 * p); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, -r * 0.6, r * (0.38 + 0.18 * p), 0, Math.PI * 2); ctx.stroke();
+      break;
+    }
+    case 'landmark': {
+      ctx.save();
+      ctx.rotate(t * 0.6 + seed);
+      ctx.strokeStyle = rgbaColor(color, 0.55); ctx.lineWidth = 1.5;
+      ctx.setLineDash([r * 0.25, r * 0.18]);
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.05, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'portal':
+      drawSpiralArms(ctx, r * 0.95, [shadeColor(color, 0.5), color, shadeColor(color, 0.2)], t * 3 + seed, 3);
+      break;
+  }
+}
+
+/** Rotating spiral arms inside a circle of radius r (portal swirl and the
+ *  hole vortex share this). colors cycle per arm. */
+function drawSpiralArms(ctx, r, colors, angle, arms) {
+  const turns = 1.15, steps = 22;
+  ctx.save();
+  const baseAlpha = ctx.globalAlpha;
+  ctx.lineCap = 'round';
+  for (let a = 0; a < arms; a++) {
+    const base = angle + (a / arms) * Math.PI * 2;
+    const col = colors[a % colors.length];
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const f = i / steps;
+        const th = base + f * turns * Math.PI * 2;
+        const rad = r * (0.12 + 0.88 * Math.pow(f, 1.25));
+        const x = Math.cos(th) * rad, y = Math.sin(th) * rad;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = col;
+      ctx.globalAlpha = baseAlpha * (pass === 0 ? 0.28 : 0.85);
+      ctx.lineWidth = pass === 0 ? Math.max(2, r * 0.22) : Math.max(1, r * 0.07);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/** Cheap stable per-object phase so neighbours don't bob in sync. */
+function artSeed(x, y) { return ((x * 0.013 + y * 0.029) % (Math.PI * 2)); }
+
 class WorldObject {
   constructor(tierName, rng) {
     this.respawn(tierName, true, rng);
@@ -1379,6 +1847,8 @@ class WorldObject {
   }
 
   update(dt) {
+    // Respawn pop-in (spawnFlash 1 -> 0 over ~0.5 s, see draw()).
+    if (this.spawnFlash > 0) this.spawnFlash = Math.max(0, this.spawnFlash - dt * 2);
     if (this.eating) {
       this.eatT += dt / EAT_ANIM_TIME;
       if (this.eater) {
@@ -1414,184 +1884,17 @@ class WorldObject {
       ctx.restore();
     }
 
+    // Illustrated sprite shared with Campaign (see OBJECT_ART) -- drawn
+    // upright rather than at this.rotation, since the new icons are little
+    // pictures (a lamp or a car upside down read as a glitch).
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.rotate(this.rotation);
     ctx.scale(scale, scale);
-    ctx.strokeStyle = this.color;
-    ctx.fillStyle = this.color;
-    ctx.lineWidth = 2;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = this.color;
-    const r = this.radius;
-
-    switch (this.subtype) {
-      // ---- T1: "FRAGMENT ENERGII" (diamond -- same as Campaign's fragment) ----
-      case 'fragment':
-        ctx.beginPath();
-        ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0);
-        ctx.closePath();
-        ctx.fill();
-        break;
-
-      // ---- T1: "KAPSUŁA IMPULSU" (pill split down the middle -- same as
-      // Campaign's capsule) ----
-      case 'kapsula':
-        ctx.save();
-        ctx.rotate(Math.PI / 4);
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.5, -r);
-        ctx.lineTo(r * 0.5, -r);
-        ctx.arc(r * 0.5, 0, r, -Math.PI / 2, Math.PI / 2);
-        ctx.lineTo(-r * 0.5, r);
-        ctx.arc(-r * 0.5, 0, r, Math.PI / 2, -Math.PI / 2);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-r * 0.5, 0); ctx.lineTo(r * 0.5, 0); ctx.stroke();
-        ctx.restore();
-        break;
-
-      // ---- T2: design/reference/asset_bible.svg "LATARNIA" ----
-      case 'latarnia':
-        ctx.beginPath();
-        ctx.moveTo(0, r);
-        ctx.lineTo(0, -r * 0.8);
-        ctx.moveTo(-r * 0.5, r);
-        ctx.lineTo(r * 0.5, r);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.35, -r * 0.8);
-        ctx.lineTo(r * 0.35, -r * 0.8);
-        ctx.lineTo(r * 0.22, -r * 0.45);
-        ctx.lineTo(-r * 0.22, -r * 0.45);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, -r * 0.95, r * 0.14, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-
-      // ---- T2: "DRZEWO" (trunk + hollow canopy, no more double-circle) ----
-      case 'drzewo':
-        ctx.beginPath();
-        ctx.moveTo(0, r * 0.15);
-        ctx.lineTo(0, r);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, -r * 0.15, r * 0.75, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
-
-      // ---- T2: "ŁAWKA" (bench — seat rails + 4 legs) ----
-      case 'lawka':
-        ctx.beginPath();
-        ctx.moveTo(-r, -r * 0.2);
-        ctx.lineTo(r, -r * 0.2);
-        ctx.moveTo(-r, r * 0.2);
-        ctx.lineTo(r, r * 0.2);
-        ctx.moveTo(-r * 0.85, r * 0.2);
-        ctx.lineTo(-r * 0.85, r * 0.7);
-        ctx.moveTo(r * 0.85, r * 0.2);
-        ctx.lineTo(r * 0.85, r * 0.7);
-        ctx.moveTo(-r, -r * 0.6);
-        ctx.lineTo(-r, -r * 0.2);
-        ctx.moveTo(r, -r * 0.6);
-        ctx.lineTo(r, -r * 0.2);
-        ctx.stroke();
-        break;
-
-      // ---- T2: "KIOSK" (triangular roof + body + window) ----
-      case 'kiosk':
-        ctx.beginPath();
-        ctx.moveTo(-r, -r * 0.375);
-        ctx.lineTo(0, -r);
-        ctx.lineTo(r, -r * 0.375);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.strokeRect(-r * 0.875, -r * 0.375, r * 1.75, r * 1.25);
-        ctx.strokeRect(-r * 0.375, 0, r * 0.75, r * 0.5);
-        break;
-
-      // ---- T2: "SKRZYNIA" (crate — box + lid seam) ----
-      case 'skrzynia':
-        ctx.strokeRect(-r, -r * 0.75, r * 2, r * 1.5);
-        ctx.beginPath();
-        ctx.moveTo(-r, -r * 0.15);
-        ctx.lineTo(r, -r * 0.15);
-        ctx.moveTo(0, -r * 0.75);
-        ctx.lineTo(0, -r * 0.15);
-        ctx.stroke();
-        break;
-
-      // ---- T2: "ZNACZNIK" (flag on a pole -- same as Campaign's default
-      // marker glyph) ----
-      case 'znacznik':
-        ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.6, -r); ctx.lineTo(r * 0.8, -r * 0.55); ctx.lineTo(-r * 0.6, -r * 0.1);
-        ctx.closePath();
-        ctx.fill();
-        break;
-
-      // ---- T3: "SAMOCHÓD" (body + roof arc + wheels -- same silhouette
-      // as Campaign's 'vehicle' glyph, so a car reads as the same object
-      // in both modes). ----
-      case 'samochod':
-        ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
-        ctx.beginPath();
-        ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
-        ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-
-      // ---- T3: "WĘZEŁ" (ring + X -- same as Campaign's default node
-      // glyph, always drawn "active" since Arena objects have no
-      // activation state). ----
-      case 'wezel':
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, r * 0.4);
-        ctx.moveTo(r * 0.4, -r * 0.4); ctx.lineTo(-r * 0.4, r * 0.4);
-        ctx.stroke();
-        break;
-
-      // ---- T3: "PYLON" (mast + charge ring -- same as Campaign's default
-      // pylon glyph). ----
-      case 'pylon':
-        ctx.beginPath(); ctx.moveTo(0, -r * 0.3); ctx.lineTo(0, r); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.35, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha *= 0.5;
-        ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.6, 0, Math.PI * 2); ctx.stroke();
-        break;
-
-      // ---- T4: "LANDMARK" (generic double-ring -- Arena has no
-      // per-mission silhouette identity, so this reuses Campaign's own
-      // shared fallback shape, always drawn at full brightness since
-      // Arena has no locked/unlocked state). ----
-      case 'landmark':
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.stroke();
-        break;
-
-      // ---- Overdrive "portal_rain" bonus objects only (see
-      // spawnPortalRain()) — the bible's violet functional-accent glyph. ----
-      case 'portal':
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha *= 0.6;
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 0.625, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha *= (0.4 / 0.6);
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
-        ctx.stroke();
-        break;
+    if (this.spawnFlash > 0) {
+      ctx.globalAlpha *= 1 - this.spawnFlash;
+      ctx.scale(1 - this.spawnFlash * 0.6, 1 - this.spawnFlash * 0.6);
     }
+    drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, artSeed(this.x, this.y));
     ctx.restore();
   }
 }
@@ -1628,6 +1931,21 @@ class CampaignEntity {
   }
 
   get live() { return this.spawnAt <= 0 || this._elapsed >= this.spawnAt; }
+
+  /** OBJECT_ART sprite kind for this entity, or null for a mission-specific
+   *  glyph that keeps its own bespoke drawing in draw(). */
+  artKind() {
+    switch (this.type) {
+      case 'fragment': return 'fragment';
+      case 'capsule': return 'kapsula';
+      case 'vehicle': return 'samochod';
+      case 'prop': return ['latarnia', 'lawka', 'drzewo', 'kiosk', 'skrzynia'].includes(this.glyph) ? this.glyph : null;
+      case 'marker': return !this.glyph || this.glyph === 'znacznik' ? 'znacznik' : null;
+      case 'node': return this.glyph === 'mostek' || this.glyph === 'zasilacz' ? null : 'wezel';
+      case 'pylon': return this.glyph === 'lustro' ? null : 'pylon';
+      default: return null;
+    }
+  }
 
   get isGateOpen() {
     const { cycleSeconds, openSeconds } = CONFIG.campaign.gate;
@@ -1685,6 +2003,25 @@ class CampaignEntity {
       ctx.arc(0, 0, r + 5 + 2 * pulse, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
+    }
+
+    // Common pickups use the same illustrated sprites as Arena (OBJECT_ART);
+    // mission-specific glyphs keep their bespoke line art below, on top of
+    // the same soft tier-colored ground glow so both styles sit together.
+    const art = this.artKind();
+    if (art) {
+      const inactive = (this.type === 'node' || this.type === 'pylon') && !this.active;
+      if (inactive) ctx.globalAlpha *= 0.35;
+      drawObjectArt(ctx, art, SIZE_TIER_COLORS[this.stats.minTier], r, performance.now() / 1000, artSeed(this.x, this.y),
+        { live: !inactive, variant: this.glyph === 'konwoj' ? 'konwoj' : undefined });
+      ctx.restore();
+      return;
+    }
+    if (this.stats) {
+      const tierColor = SIZE_TIER_COLORS[this.stats.minTier];
+      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.35);
+      halo.addColorStop(0, rgbaColor(tierColor, 0.22)); halo.addColorStop(1, rgbaColor(tierColor, 0));
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2); ctx.fill();
     }
 
     switch (this.type) {
@@ -2234,6 +2571,46 @@ class Hole {
     }
   }
 
+  /** The ring color for a solid skin (null for the rainbow skin). */
+  skinColor() {
+    if (this.skin === 'rainbow' || this.skin === 'pryzmat') return null;
+    return this.skin === 'custom' ? this.edgeColor : (SKIN_MAP[this.skin] || this.edgeColor);
+  }
+
+  /** Spinning vortex inside the hole (player feedback: the hole should
+   *  have a swirl inside, in shades of its own color). A faint tinted
+   *  depth gradient, four spiral arms in light/base/dark shades of the
+   *  skin color (rainbow hues for the rainbow skins) turning inward, and a
+   *  black event-horizon core. Drawn by every hole -- player, bots and
+   *  the Warsztat previews -- so the shop shows exactly what the round does. */
+  drawVortex(ctx, time) {
+    const r = this.radius;
+    const solid = this.skinColor();
+    const base = solid || '#9875FF';
+    const colors = solid
+      ? [shadeColor(solid, 0.5), solid, shadeColor(solid, -0.2), shadeColor(solid, 0.25)]
+      : [0, 1, 2, 3].map(i => `hsl(${(i * 90 + time * 60) % 360}, 100%, 65%)`);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
+    const depth = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    depth.addColorStop(0, 'rgba(0,0,0,1)');
+    depth.addColorStop(0.6, rgbaColor(base, 0.12));
+    depth.addColorStop(1, rgbaColor(base, 0.38));
+    ctx.fillStyle = depth;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+    // Bots spin a touch slower/offset so a crowd doesn't turn in lockstep.
+    const spin = this.isPlayer ? 2.4 : 1.9;
+    drawSpiralArms(ctx, r * 1.02, colors, -time * spin + (this.isPlayer ? 0 : r), 4);
+    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
+    core.addColorStop(0, 'rgba(0,0,0,1)');
+    core.addColorStop(0.45, 'rgba(0,0,0,0.85)');
+    core.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = core;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   drawBody(ctx, time) {
     if (this.auraId && this.auraId !== 'none') {
       const aura = AURAS.find(a => a.id === this.auraId);
@@ -2258,11 +2635,14 @@ class Hole {
     ctx.fillStyle = '#000';
     ctx.fill();
     ctx.restore();
+    this.drawVortex(ctx, time);
 
     ctx.save();
     if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
 
-    if (this.skin === 'rainbow') {
+    // Rainbow-type skins (Tęcza, Pryzmat) have no single color -- Pryzmat
+    // used to fall through to a random bot edgeColor here.
+    if (!this.skinColor()) {
       const segments = 20;
       const rot = time * 1.2;
       for (let i = 0; i < segments; i++) {
@@ -2279,7 +2659,7 @@ class Hole {
         ctx.stroke();
       }
     } else {
-      const c = this.skin === 'custom' ? this.edgeColor : (SKIN_MAP[this.skin] || this.edgeColor);
+      const c = this.skinColor();
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
       ctx.strokeStyle = c;
@@ -2290,6 +2670,7 @@ class Hole {
     }
     ctx.restore();
 
+    if (!this.name) return; // Warsztat previews draw a nameless hole
     ctx.save();
     ctx.font = 'bold 13px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
@@ -2854,9 +3235,16 @@ class Game {
       const card = document.createElement('div');
       card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
 
-      const swatch = document.createElement('div');
-      swatch.className = 'skin-swatch';
-      if (item.rainbow) {
+      // Rdzeń/Trail cards show the real in-round hole (Hole.draw() via
+      // renderWarsztatCanvases()) instead of a CSS color dot, so what you
+      // pick is exactly what you play with.
+      const holeThumb = gridId === 'skinGrid' || gridId === 'auraGrid';
+      const swatch = document.createElement(holeThumb ? 'canvas' : 'div');
+      swatch.className = holeThumb ? 'hole-swatch' : 'skin-swatch';
+      if (holeThumb) {
+        if (gridId === 'skinGrid') { swatch.dataset.skin = item.id; swatch.dataset.aura = 'none'; }
+        else swatch.dataset.aura = item.id;
+      } else if (item.rainbow) {
         swatch.style.borderColor = '#fff';
         swatch.style.backgroundImage = 'conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red)';
       } else if (item.color) {
@@ -3133,6 +3521,7 @@ class Game {
     this.populateOverdriveSkins();
     this.updateWarsztatPreview();
     this.showScreen('shopScreen');
+    this.startWarsztatAnim();
   }
 
   /** "PODGLĄD NA ŻYWO" panel (GDD 4.0 §5.3 mockup) — a pure CSS/SVG vector
@@ -3149,25 +3538,84 @@ class Game {
     const effect = EAT_EFFECTS.find(e => e.id === pending.effect);
     const overdrive = OVERDRIVE_SKINS.find(o => o.id === pending.overdriveSkin);
 
-    const ring = document.getElementById('warsztatPreviewRing');
-    if (skin.rainbow) {
-      ring.style.borderColor = '#fff';
-      ring.style.background = 'conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red)';
-      ring.style.boxShadow = 'none';
-    } else {
-      ring.style.borderColor = skin.color;
-      ring.style.background = 'transparent';
-      ring.style.boxShadow = `0 0 24px ${skin.color}`;
-    }
-    const trail = document.getElementById('warsztatPreviewTrail');
-    trail.style.borderTopColor = (aura && aura.color) || 'var(--nc-cyan)';
-    trail.style.borderRightColor = (aura && aura.color) || 'var(--nc-cyan)';
-    trail.style.opacity = aura && aura.id !== 'none' ? '0.8' : '0.25';
-
+    // The preview canvas itself is redrawn every frame from pendingLoadout
+    // by renderWarsztatCanvases(); this just refreshes the text labels.
     document.getElementById('warsztatActiveCore').textContent = skin.name;
     document.getElementById('warsztatActiveTrail').textContent = (aura && aura.name) || 'Brak';
     document.getElementById('warsztatActiveEffect').textContent = (effect && effect.name) || 'Klasyczny';
     document.getElementById('warsztatActiveOverdrive').textContent = (overdrive && overdrive.name) || 'Klasyczny';
+  }
+
+  /** Keeps the Warsztat hole canvases animated while the screen is open
+   *  (stops itself once shopScreen is hidden). */
+  startWarsztatAnim() {
+    if (this.warsztatRaf) return;
+    const tick = (now) => {
+      if (document.getElementById('shopScreen').classList.contains('hidden')) { this.warsztatRaf = null; return; }
+      this.renderWarsztatCanvases(now / 1000);
+      this.warsztatRaf = requestAnimationFrame(tick);
+    };
+    this.warsztatRaf = requestAnimationFrame(tick);
+  }
+
+  renderWarsztatCanvases(time) {
+    const p = this.pendingLoadout || { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected };
+    const effect = EAT_EFFECTS.find(e => e.id === p.effect);
+    const effectColor = (effect && effect.color) || TIERS.fragment.color;
+    this.drawHoleThumb(document.getElementById('warsztatPreviewCanvas'), p.skin, p.aura, time,
+      (ctx, R) => this.drawPreviewEat(ctx, R, time, effectColor));
+    document.querySelectorAll('#shopScreen canvas.hole-swatch').forEach(cv => {
+      if (!cv.offsetParent) return; // inactive tab
+      this.drawHoleThumb(cv, cv.dataset.skin || p.skin, cv.dataset.aura || 'none', time);
+    });
+  }
+
+  /** Draws a nameless Hole into a small canvas with the exact in-round
+   *  Hole.draw() at a standard radius, scaled to fit -- so ring thickness,
+   *  vortex and trail proportions match the board 1:1. */
+  drawHoleThumb(canvas, skinId, auraId, time, extras) {
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const px = Math.round((canvas.clientWidth || 44) * dpr);
+    if (canvas.width !== px) { canvas.width = px; canvas.height = px; }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, px, px);
+    const R = 30, extent = R + 15; // aura ring sits at R + 8..11 with a 6 px stroke
+    const k = px / (2 * extent);
+    ctx.setTransform(k, 0, 0, k, px / 2, px / 2);
+    const hole = canvas._hole || (canvas._hole = new Hole('', 0, 0, true));
+    hole.skin = skinId;
+    hole.auraId = auraId;
+    hole.radius = R;
+    hole.draw(ctx, time);
+    if (extras) extras(ctx, R, hole);
+  }
+
+  /** Preview loop: a fragment drifts into the hole every 1.8 s and bursts
+   *  in the selected Efekt pochłaniania color. */
+  drawPreviewEat(ctx, R, time, color) {
+    const t = (time % 1.8) / 1.8;
+    if (t < 0.5) {
+      const f = t / 0.5, ease = f * f;
+      ctx.save();
+      ctx.translate(lerp(R + 12, 0, ease), lerp(-R - 4, 0, ease));
+      ctx.scale(1 - ease * 0.8, 1 - ease * 0.8);
+      drawObjectArt(ctx, 'fragment', TIERS.fragment.color, 7, time, 0, { live: false });
+      ctx.restore();
+    } else if (t < 0.85) {
+      const f = (t - 0.5) / 0.35;
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.shadowBlur = 8; ctx.shadowColor = color;
+      ctx.globalAlpha = 1 - f;
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 + 0.3;
+        const d = R * 0.2 + f * R * 0.85;
+        ctx.fillRect(Math.cos(a) * d - 2, Math.sin(a) * d - 2, 4, 4);
+      }
+      ctx.restore();
+    }
   }
 
   /** Phase 7 casual run tools — Coins-only, consumed at round start, no
@@ -4992,6 +5440,8 @@ class Game {
     const goalTypes = this.campaignGoalEntityTypes();
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
     for (const e of this.campaignEntities) {
+      // Gates (pas przelotu) draw long corridor lines far past their radius.
+      if (e.type !== 'gate' && !this.isInView(e.x, e.y, e.radius * 2)) continue;
       const isGoal = goalTypes.has(e.type) && (!goalGlyph || e.glyph === goalGlyph);
       e.draw(ctx, isGoal);
     }
@@ -5001,7 +5451,7 @@ class Game {
 
     const holes = [...this.bots, this.player];
     holes.sort((a, b) => a.radius - b.radius);
-    for (const h of holes) h.draw(ctx, time);
+    for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
 
     this.drawComboText(ctx);
     ctx.restore();
@@ -6206,7 +6656,9 @@ class Game {
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
 
     this.drawGrid(ctx);
-    for (const obj of this.objects) obj.draw(ctx, this.canEatHighlight(obj));
+    for (const obj of this.objects) {
+      if (this.isInView(obj.x, obj.y, obj.radius * 2)) obj.draw(ctx, this.canEatHighlight(obj));
+    }
     this.drawDangerHalos(ctx);
     this.drawScannerTarget(ctx);
     this.drawBountyMarker(ctx);
@@ -6215,7 +6667,7 @@ class Game {
 
     const holes = [...this.bots, this.player];
     holes.sort((a, b) => a.radius - b.radius);
-    for (const h of holes) h.draw(ctx, time);
+    for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
 
     this.drawComboText(ctx);
 
@@ -6274,6 +6726,14 @@ class Game {
    *  canEatWorldObjectTier()'s doc comment), so unlike the old ratio-band
    *  version this is a flat 1 for anything currently eatable rather than a
    *  fading "getting close" value -- there's no partial state left to show. */
+  /** Whether a world-space circle overlaps the camera view (+margin).
+   *  The illustrated object sprites and hole vortices are far richer than
+   *  the old line art, so off-screen ones are skipped instead of drawn. */
+  isInView(x, y, r) {
+    return Math.abs(x - this.camera.x) < this.width / 2 + r + 30
+      && Math.abs(y - this.camera.y) < this.height / 2 + r + 30;
+  }
+
   canEatHighlight(obj) {
     if (obj.radius >= this.player.radius) return 0;
     if (obj.radius <= CONFIG.juice.eatTiers.tinyMaxRadius) return 0;
