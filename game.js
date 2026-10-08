@@ -2531,8 +2531,39 @@ class Game {
     // GDD 4.0 §5.1-§5.4 bottom nav (Miasto/Dzielnice/Warsztat/Wyzwania).
     document.getElementById('btnNavMiasto').addEventListener('click', () => this.showScreen('mainMenu'));
     document.getElementById('btnNavDzielnice').addEventListener('click', () => this.openCampaignScreen());
-    document.getElementById('btnNavWarsztat').addEventListener('click', () => { if (this.isWarsztatUnlocked()) this.openWarsztatScreen(); });
-    document.getElementById('btnNavWyzwania').addEventListener('click', () => { if (this.isWyzwaniaUnlocked()) this.openChallengesScreen(); });
+    document.getElementById('btnNavWarsztat').addEventListener('click', () => {
+      if (this.isWarsztatUnlocked()) this.openWarsztatScreen(); else this.openLockedTabInfo('warsztat');
+    });
+    document.getElementById('btnNavWyzwania').addEventListener('click', () => {
+      if (this.isWyzwaniaUnlocked()) this.openChallengesScreen(); else this.openLockedTabInfo('wyzwania');
+    });
+
+    // Player feedback: everything on the hub that looks tappable should
+    // explain itself instead of silently ignoring the tap.
+    document.getElementById('btnInfoSheetClose').addEventListener('click', () => this.closeInfoSheet());
+    document.getElementById('btnInfoSheetAction').addEventListener('click', () => {
+      const action = this.infoSheetAction;
+      this.closeInfoSheet();
+      if (action) action();
+    });
+    document.getElementById('infoSheet').addEventListener('click', (e) => {
+      if (e.target.id === 'infoSheet') this.closeInfoSheet();
+    });
+    document.querySelectorAll('.coin-display').forEach(el => {
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      const isPrism = el.classList.contains('prism-display');
+      el.setAttribute('aria-label', isPrism ? 'Pryzmaty — co to jest?' : 'Monety — co to jest?');
+      el.addEventListener('click', () => this.openCurrencyInfo(isPrism));
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openCurrencyInfo(isPrism); } });
+    });
+    document.getElementById('hubRewardChipItem').addEventListener('click', () => this.openNextRewardInfo());
+    document.getElementById('hubRewardChipCoins').addEventListener('click', () => this.openNextRewardCoinsInfo());
+    document.getElementById('hubLevelDots').addEventListener('click', () => this.openCoreCityRoadmap());
+    document.getElementById('hubNextRewardRow').addEventListener('click', () => this.openCoreCityRoadmap());
+    const heroStage = document.getElementById('hubHeroStage');
+    heroStage.addEventListener('click', () => this.openCoreCityRoadmap());
+    heroStage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openCoreCityRoadmap(); } });
 
     document.getElementById('btnCampaignBack').addEventListener('click', () => this.showScreen('mainMenu'));
     document.getElementById('btnPlayMission').addEventListener('click', () => this.startCampaignMission(this.selectedMissionId));
@@ -3116,20 +3147,21 @@ class Game {
     document.getElementById('hubRewardChip1').textContent = nextRewardLabel;
     document.getElementById('hubRewardChip2').textContent = `+${nextRewardCoins} monet`;
     document.getElementById('hubRewardChip1Icon').innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(nextReward)];
-    document.getElementById('hubRewardPreview').textContent = nextRewardLabel;
+    document.getElementById('hubRewardPreview').textContent = `Następna: ${nextRewardLabel}`;
     this.renderHubLevelDots(level);
 
     const arenaUnlocked = this.isArenaUnlocked();
     document.getElementById('btnStart').disabled = !arenaUnlocked;
     document.getElementById('btnDaily').disabled = !arenaUnlocked;
-    // Locked: hide the (disabled) normal CTAs entirely and offer a direct
-    // way into the M00 tutorial instead of just a hint pointing at
-    // Dzielnice (player feedback -- a button beats a disabled button).
-    document.getElementById('hubCtaRow').classList.toggle('hidden', !arenaUnlocked);
-    document.getElementById('btnStartTutorial').classList.toggle('hidden', arenaUnlocked);
-    const hint = document.getElementById('hubUnlockHint');
-    hint.classList.toggle('hidden', arenaUnlocked);
-    if (!arenaUnlocked) hint.textContent = 'Ukończ krótki tutorial powyżej, aby odblokować GRAJ 2:00.';
+    // First-run welcome: until M00 clears, Miasto shows only a short pitch
+    // and the ZAGRAJ TUTORIAL button (#hubWelcome) -- the Core City card,
+    // currencies, CTA row, info panel and bottom nav (renderBottomNav())
+    // are all hidden via .first-run so a brand-new player has exactly one
+    // obvious thing to tap (player feedback).
+    document.getElementById('mainMenu').classList.toggle('first-run', this.isFirstRun());
+    document.getElementById('hubWelcome').classList.toggle('hidden', !this.isFirstRun());
+    const districtIntro = document.getElementById('districtIntro');
+    if (districtIntro) districtIntro.classList.toggle('hidden', this.isWyzwaniaUnlocked());
 
     const { dateKey } = dailySeedForDate(new Date());
     const { mission } = missionForDate(new Date());
@@ -3161,6 +3193,176 @@ class Game {
     if (rewardDef.effectId) return 'effect';
     if (rewardDef.overdriveSkinId) return 'overdrive';
     return 'bonus';
+  }
+
+  /** True until the M00 tutorial clears -- Miasto then collapses to the
+   *  single-CTA welcome card and the bottom nav stays hidden. */
+  isFirstRun() { return !this.isArenaUnlocked(); }
+
+  /** Generic "what is this?" popup (#infoSheet). `body` is a list of
+   *  paragraphs/HTML snippets (authored strings only, never user input);
+   *  `action` optionally adds a primary button ({label, onClick}). */
+  openInfoSheet({ icon = '', title, body = [], action = null }) {
+    document.getElementById('infoSheetIcon').innerHTML = icon;
+    document.getElementById('infoSheetIcon').classList.toggle('hidden', !icon);
+    document.getElementById('infoSheetTitle').textContent = title;
+    document.getElementById('infoSheetBody').innerHTML = body.map(p => /^<(ul|ol)\b/.test(p) ? p : `<p>${p}</p>`).join('');
+    const actionBtn = document.getElementById('btnInfoSheetAction');
+    actionBtn.classList.toggle('hidden', !action);
+    this.infoSheetAction = action ? action.onClick : null;
+    if (action) actionBtn.textContent = action.label;
+    document.getElementById('infoSheet').classList.remove('hidden');
+    this.analytics.track('info_sheet_open', { title });
+  }
+
+  closeInfoSheet() {
+    document.getElementById('infoSheet').classList.add('hidden');
+    this.infoSheetAction = null;
+  }
+
+  openCurrencyInfo(isPrism) {
+    if (isPrism) {
+      this.openInfoSheet({
+        icon: '◆',
+        title: 'Pryzmaty',
+        body: [
+          `Rzadsza waluta premium. Masz teraz: <strong>${this.save.prisms || 0} ◆</strong>.`,
+          '<ul class="info-sheet-list"><li>+1 za co 3. rozegraną rundę GRAJ 2:00</li>' +
+            `<li>+${CONFIG.daily.newRecordBonusPrisms} za nowy rekord w Wyzwaniu dnia</li>` +
+            '<li>Nagrody Core City od poziomu 7</li></ul>',
+          'Wydajesz je w <strong>Warsztacie</strong> na rzadsze Traile.'
+        ]
+      });
+      return;
+    }
+    this.openInfoSheet({
+      icon: '◇',
+      title: 'Monety',
+      body: [
+        `Podstawowa waluta. Masz teraz: <strong>${this.save.coins} ◇</strong>.`,
+        '<ul class="info-sheet-list"><li>Za każdą rundę GRAJ 2:00 i Wyzwanie dnia</li>' +
+          '<li>Za pierwsze ukończenie misji w Dzielnicach</li>' +
+          '<li>Za każdy nowy poziom Core City</li></ul>',
+        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury) i na jednorazowe dodatki przed rundą (Tarcza, Magnes).'
+      ]
+    });
+  }
+
+  /** Plain-language "what does this cosmetic actually do" per
+   *  REWARD_CATEGORY_ICONS key -- the reward chip only shows a name like
+   *  „Impuls”, which means nothing to a new player. */
+  rewardCategoryExplanation(category) {
+    return {
+      skin: '<strong>Rdzeń</strong> to wygląd pierścienia Twojej dziury.',
+      aura: '<strong>Trail</strong> to świetlny ślad, który ciągnie się za Twoją dziurą podczas ruchu.',
+      effect: '<strong>Efekt pochłaniania</strong> to błysk cząsteczek, gdy coś połykasz.',
+      overdrive: '<strong>Overdrive</strong> zmienia kolor banera w ostatnich sekundach rundy.',
+      bundle: 'Komplet: nowy Rdzeń, Trail, Efekt pochłaniania i Overdrive naraz, plus odznaka.',
+      bonus: 'Premia w monetach i pryzmatach za kolejny poziom.'
+    }[category];
+  }
+
+  coreCityHowToFillHtml() {
+    const c = CONFIG.hub.coreCity;
+    return '<ul class="info-sheet-list">' +
+      `<li>Runda GRAJ 2:00: +${c.arenaCompleteGain}% (top 3: +${c.arenaTop3Gain}%, 1. miejsce: +${c.arenaFirstGain}%, rekord: +${c.arenaNewPbGain}%)</li>` +
+      `<li>Wyzwanie dnia: +${c.dailyFirstClearGain}% za pierwsze dziś, +${c.dailyNewBestGain}% za nowy rekord</li>` +
+      '</ul>';
+  }
+
+  openNextRewardInfo() {
+    const level = this.save.hub.coreLevel || 1;
+    const def = CORE_CITY_LEVEL_REWARDS[level + 1];
+    const category = this.coreCityRewardCategory(def);
+    this.openInfoSheet({
+      icon: REWARD_CATEGORY_ICONS[category],
+      title: def ? def.label : 'Premia',
+      body: [
+        this.rewardCategoryExplanation(category),
+        `Dostaniesz go automatycznie, gdy Core City dojdzie do 100% (LVL ${level} → ${level + 1}). Trafi prosto do Warsztatu.`,
+        this.coreCityHowToFillHtml()
+      ],
+      action: { label: 'WSZYSTKIE NAGRODY', onClick: () => this.openCoreCityRoadmap() }
+    });
+  }
+
+  openNextRewardCoinsInfo() {
+    const level = this.save.hub.coreLevel || 1;
+    const def = CORE_CITY_LEVEL_REWARDS[level + 1];
+    const coins = def ? def.coins : CONFIG.hub.milestoneFallbackCoins;
+    this.openInfoSheet({
+      icon: '◇',
+      title: `+${coins} monet`,
+      body: [
+        `Monety dostajesz razem z nagrodą za osiągnięcie LVL ${level + 1} Core City.`,
+        'Wydasz je w Warsztacie lub na dodatki przed rundą.'
+      ],
+      action: { label: 'WSZYSTKIE NAGRODY', onClick: () => this.openCoreCityRoadmap() }
+    });
+  }
+
+  /** Every authored Core City level reward in one list, with the
+   *  current/done state -- what the level dots and the "wszystkie nagrody"
+   *  row open. */
+  openCoreCityRoadmap() {
+    const level = this.save.hub.coreLevel || 1;
+    const pct = this.save.hub.coreCharge || 0;
+    const rows = Object.keys(CORE_CITY_LEVEL_REWARDS).map(Number).sort((a, b) => a - b).map(n => {
+      const def = CORE_CITY_LEVEL_REWARDS[n];
+      const state = n <= level ? 'done' : (n === level + 1 ? 'next' : '');
+      const mark = n <= level ? '✓' : (n === level + 1 ? `${pct}%` : '');
+      return `<li class="info-roadmap-row ${state}">` +
+        `<span class="info-roadmap-icon">${REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(def)]}</span>` +
+        `<span class="info-roadmap-main"><span class="info-roadmap-level">LVL ${n}</span>${def.label} · +${def.coins} ◇</span>` +
+        `<span class="info-roadmap-mark">${mark}</span></li>`;
+    }).join('');
+    this.openInfoSheet({
+      icon: REWARD_CATEGORY_ICONS.bundle,
+      title: 'Nagrody Core City',
+      body: [
+        `Core City to pasek postępu całego miasta. Każde 100% to nowy poziom i nagroda. Teraz: <strong>LVL ${level} · ${pct}%</strong>.`,
+        `<ul class="info-roadmap">${rows}</ul>`,
+        'Jak ładować:',
+        this.coreCityHowToFillHtml(),
+        'Misje kampanii (Dzielnice) nie ładują Core City — dają własne nagrody.'
+      ]
+    });
+  }
+
+  /** "Zablokowane — co to i jak odblokować" for a locked bottom-nav tab,
+   *  instead of a dimmed button that silently ignores taps. */
+  openLockedTabInfo(tab) {
+    const missionLine = (id) => {
+      const def = campaignMissionById(id);
+      const district = DISTRICTS.find(d => d.id === def.district);
+      return `Odblokujesz po ukończeniu misji <strong>M${String(def.order).padStart(2, '0')} „${def.name}”</strong> (${district.name}).`;
+    };
+    const plac = DISTRICTS.find(d => d.id === 'plac');
+    const done = plac.missions.filter(id => this.save.campaign.completed[id]).length;
+    const progress = `Postęp w Placu Neonów: ${done} z ${plac.missions.length} misji.`;
+    const goToDistricts = { label: 'IDŹ DO DZIELNIC', onClick: () => this.openCampaignScreen() };
+    const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
+    if (tab === 'warsztat') {
+      this.openInfoSheet({
+        icon: LOCK,
+        title: 'Warsztat — zablokowany',
+        body: [
+          'Tu zmienisz wygląd swojej dziury: <strong>Rdzeń</strong>, <strong>Trail</strong>, <strong>Efekt pochłaniania</strong> i <strong>Overdrive</strong>. Kupujesz je za monety i pryzmaty, a nagrody z Core City trafiają tu same.',
+          missionLine('M02'), progress
+        ],
+        action: goToDistricts
+      });
+    } else {
+      this.openInfoSheet({
+        icon: LOCK,
+        title: 'Wyzwania — zablokowane',
+        body: [
+          'Codzienne zadania: <strong>Misja dnia</strong> z nagrodą w monetach i <strong>Wyzwanie dnia</strong> — ta sama mapa dla wszystkich, walka o rekord i serię dni z rzędu.',
+          missionLine('M04'), progress
+        ],
+        action: goToDistricts
+      });
+    }
   }
 
   /** Three circles connected by a track (poprzedni / aktualny / następny
@@ -3224,12 +3426,13 @@ class Game {
     document.getElementById('leaveConfirm').classList.add('hidden');
     document.getElementById('resetProfileConfirm').classList.add('hidden');
     document.getElementById('tutorialIntroOverlay').classList.add('hidden');
+    this.closeInfoSheet();
     this.introPending = false;
     this.renderBottomNav(id);
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
@@ -3242,7 +3445,11 @@ class Game {
   renderBottomNav(activeScreenId) {
     const NAV_SCREENS = ['mainMenu', 'campaignScreen', 'shopScreen', 'challengesScreen'];
     const nav = document.getElementById('bottomNav');
-    nav.classList.toggle('hidden', !NAV_SCREENS.includes(activeScreenId));
+    // First run (before the M00 tutorial clears): no nav at all -- Miasto's
+    // welcome card is the only thing to do, and three locked/unknown tabs
+    // were just noise (player feedback). Locked tabs reappear after M00,
+    // dimmed with a lock badge, and tapping one explains how to unlock it.
+    nav.classList.toggle('hidden', !NAV_SCREENS.includes(activeScreenId) || this.isFirstRun());
 
     const tabs = [
       { btn: 'btnNavMiasto', screen: 'mainMenu', unlocked: true },
@@ -3253,8 +3460,9 @@ class Game {
     tabs.forEach(t => {
       const btn = document.getElementById(t.btn);
       btn.classList.toggle('active', t.screen === activeScreenId);
-      // GDD 4.0 mockup: a locked tab stays visible (dimmed, unclickable)
-      // with a small lock badge -- never simply hidden.
+      // GDD 4.0 mockup: a locked tab stays visible (dimmed) with a small
+      // lock badge -- never simply hidden. Tapping it opens
+      // openLockedTabInfo() instead of doing nothing.
       btn.classList.toggle('locked', !t.unlocked);
       const lockBadge = btn.querySelector('.nav-tab-lock');
       if (lockBadge) lockBadge.classList.toggle('hidden', t.unlocked);
@@ -3495,16 +3703,30 @@ class Game {
       const unlocked = this.save.campaign.unlockedDistricts.includes(d.id);
       const node = document.createElement('button');
       node.className = 'district-node' + (unlocked ? '' : ' locked');
-      node.disabled = !unlocked;
       const doneCount = d.missions.filter(id => this.save.campaign.completed[id]).length;
       const status = unlocked ? `${doneCount}/${d.missions.length}` : '🔒';
       node.innerHTML = `<span class="district-node-name">${d.name}</span><span class="district-node-status">${status}</span>`;
-      node.addEventListener('click', () => this.selectCampaignDistrict(d.id));
+      node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
       wrap.appendChild(node);
     });
     const playableUnlocked = DISTRICTS.filter(d => this.save.campaign.unlockedDistricts.includes(d.id));
     const remembered = this.selectedDistrictId && playableUnlocked.find(d => d.id === this.selectedDistrictId);
     this.selectCampaignDistrict(remembered ? this.selectedDistrictId : playableUnlocked[0].id);
+  }
+
+  openLockedDistrictInfo(district) {
+    const unlocker = CAMPAIGN_MISSIONS.find(m => m.reward && m.reward.unlockDistrict === district.id);
+    const unlockerDistrict = unlocker && DISTRICTS.find(d => d.id === unlocker.district);
+    this.openInfoSheet({
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+      title: `${district.name} — zablokowana`,
+      body: [
+        `Każda dzielnica to ${district.missions.length} nowe misje z nowymi obiektami do pochłonięcia.`,
+        unlocker
+          ? `Odblokujesz ją, kończąc ostatnią misję poprzedniej dzielnicy: <strong>M${String(unlocker.order).padStart(2, '0')} „${unlocker.name}”</strong> (${unlockerDistrict.name}).`
+          : 'Odblokujesz ją, kończąc poprzednią dzielnicę.'
+      ]
+    });
   }
 
   selectCampaignDistrict(districtId) {
@@ -3536,11 +3758,11 @@ class Game {
       const def = campaignMissionById(id);
       const done = !!this.save.campaign.completed[id];
       const prevDone = i === 0 || this.save.campaign.completed[district.missions[i - 1]];
-      if (prevDone && !firstPlayableId) firstPlayableId = id;
+      // Preselect the next mission to actually do, not a cleared one.
+      if (prevDone && !done && !firstPlayableId) firstPlayableId = id;
       if (this.save.campaign.medals[id]) medalCount++;
       const row = document.createElement('button');
       row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '');
-      row.disabled = !prevDone;
       const icon = done ? CHECK_ICON : (prevDone ? PLAY_ICON : LOCK_ICON);
       const status = done ? 'UKOŃCZONA · POWTÓRZ' : (prevDone ? 'DOSTĘPNA · GRAJ' : 'ZABLOKOWANA');
       row.innerHTML = `<span class="mission-row-main">` +
@@ -3563,13 +3785,17 @@ class Game {
     document.getElementById('missionDetailGoal').textContent = 'Cel: ' + def.goal.label;
     document.getElementById('missionDetailMedal').textContent = 'Medal: ' + def.medal.label;
     document.getElementById('missionDetailNela').textContent = `NELA: „${def.nela.start}”`;
-    document.getElementById('missionDetailReward').textContent = this.save.campaign.completed[missionId]
-      ? 'Ukończona — możesz zagrać ponownie dla wprawy.'
-      : `Pierwsze ukończenie: +${def.reward.coins} monet${def.reward.unlockDistrict ? ' + nowa dzielnica' : ''}.`;
-
     const district = DISTRICTS.find(d => d.id === def.district);
     const idxInDistrict = district.missions.indexOf(missionId);
     const prevDone = idxInDistrict === 0 || this.save.campaign.completed[district.missions[idxInDistrict - 1]];
+    // Locked rows are selectable (a tap previews the mission) rather than
+    // disabled buttons that ignore taps; the detail line says why GRAJ is off.
+    const prevDef = idxInDistrict > 0 ? campaignMissionById(district.missions[idxInDistrict - 1]) : null;
+    document.getElementById('missionDetailReward').textContent = this.save.campaign.completed[missionId]
+      ? 'Ukończona — możesz zagrać ponownie dla wprawy.'
+      : !prevDone
+        ? `Zablokowana — najpierw ukończ M${String(prevDef.order).padStart(2, '0')} „${prevDef.name}”.`
+        : `Pierwsze ukończenie: +${def.reward.coins} monet${def.reward.unlockDistrict ? ' + nowa dzielnica' : ''}.`;
     document.getElementById('btnPlayMission').disabled = !prevDone;
     document.querySelectorAll('#missionList .mission-row').forEach((el, i) => el.classList.toggle('selected', district.missions[i] === missionId));
   }
