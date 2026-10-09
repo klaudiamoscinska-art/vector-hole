@@ -144,8 +144,8 @@ const CONFIG = {
   unlockGates: {
     arena: 'M01',   // GRAJ 2:00 / Wyzwanie dnia's underlying round unlocks after M01
     warsztat: 'M02', // or first owned cosmetic beyond the free defaults, see isWarsztatUnlocked()
-    wyzwania: 'M04',  // Wyzwanie dnia tab + full bottom nav
-    fullNav: 'M04'
+    wyzwania: 'M03',  // Wyzwanie dnia tab + full bottom nav
+    fullNav: 'M03'
   },
   // Floating Thumb Pad tuning (Phase 2). Legacy direct-drag stays available
   // via settings.inputMode and is unaffected by these values.
@@ -235,7 +235,18 @@ const CONFIG = {
       prop: 20, marker: 20,
       vehicle: 34, node: 32, pylon: 32,
       landmark: 52,
+      // v10: T4/T5/T6 classes, each sized between the previous tier's
+      // radius anchor and its own (46..66 / 66..90 / 90..118 px).
+      structure: 54, heavy: 76, tower: 100,
       gate: 18
+    },
+    // v10: campaign rivals are fixed-size (see rivalRadius); a mission can
+    // field bigger ones with setup.botRadius.
+    // Landmark size/value follows the tier it's gated at (LANDMARK_TIERS):
+    landmarkByTier: {
+      4: { radius: 52, growth: 32, score: 160 },
+      5: { radius: 78, growth: 48, score: 240 },
+      6: { radius: 104, growth: 64, score: 320 }
     },
     gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
     nelaDisplaySeconds: 4.5,
@@ -265,7 +276,8 @@ const CONFIG = {
     { id: 'pulse', minRadius: 0, label: 'T2 · ŚREDNI', shortId: 'T2', color: '#FF54AD' },
     { id: 'core', minRadius: 0, label: 'T3 · DUŻY', shortId: 'T3', color: '#EFCB63' },
     { id: 'vortex', minRadius: 0, label: 'T4 · WIELKI', shortId: 'T4', color: '#9875FF' },
-    { id: 'singularity', minRadius: 0, label: 'T5 · KOLOSALNY', shortId: 'T5', color: '#CBD5E1' }
+    { id: 'titan', minRadius: 0, label: 'T5 · OGROMNY', shortId: 'T5', color: '#CBD5E1' },
+    { id: 'singularity', minRadius: 0, label: 'T6 · KOLOSALNY', shortId: 'T6', color: '#46D99A' }
   ],
   // Feature flags for systems introduced in later Golden Shot V2 phases.
   // Everything defaults to the current (pre-V2) behavior.
@@ -440,6 +452,11 @@ const TIERS = {
   node: { color: '#EFCB63', minR: 32, maxR: 32, value: 50, growth: 10, subtypes: ['wezel'], count: 4, minSizeTier: 2 },
   pylon: { color: '#EFCB63', minR: 32, maxR: 32, value: 50, growth: 10, subtypes: ['pylon'], count: 4, minSizeTier: 2 },
   landmark: { color: '#9875FF', minR: 52, maxR: 52, value: 160, growth: 32, subtypes: ['landmark'], count: 2, minSizeTier: 3 },
+  // v10: the T4/T5/T6 classes (violet / silver / green), each taught by a
+  // Campaign mission before Arena spawns it (see createObjects()).
+  structure: { color: '#9875FF', minR: 54, maxR: 54, value: 80, growth: 16, subtypes: ['pawilon', 'billboard', 'magazyn'], count: 9, minSizeTier: 3 },
+  heavy: { color: '#CBD5E1', minR: 76, maxR: 76, value: 120, growth: 24, subtypes: ['autobus', 'tramwaj', 'ciezarowka'], count: 6, minSizeTier: 4 },
+  tower: { color: '#46D99A', minR: 100, maxR: 100, value: 200, growth: 40, subtypes: ['wiezowiec', 'maszt', 'kopula'], count: 4, minSizeTier: 5 },
   // Shares landmark's tier (3, T4) rather than its own ratio-derived floor --
   // both are the palette's violet/T4 accent color, so a player who has not
   // yet reached T4 shouldn't be able to eat either one.
@@ -564,7 +581,16 @@ const GOAL_ICONS = {
   node: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" stroke-width="2"/>',
   pylon: '<path d="M12 8v13" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="2.2"/>',
   landmark: CARD_ICONS.star,
-  gate: '<path d="M4 3v18M20 3v18M4 12h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'
+  gate: '<path d="M4 3v18M20 3v18M4 12h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  // v10 classes + objective kinds.
+  structure: '<path d="M3 10l9-6 9 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><rect x="5" y="10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="2"/><rect x="10" y="14" width="4" height="6" fill="currentColor"/>',
+  heavy: '<rect x="2" y="6" width="20" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 11h20M7 6v5M12 6v5M17 6v5" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="18.5" r="1.8" fill="currentColor"/><circle cx="17" cy="18.5" r="1.8" fill="currentColor"/>',
+  tower: '<path d="M8 21V6l4-3 4 3v15M8 21h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10.5 9h3M10.5 13h3M10.5 17h3" stroke="currentColor" stroke-width="1.6"/>',
+  tier: '<path d="M12 3l7 8h-4v9H9v-9H5z" fill="currentColor"/>',
+  rival: '<circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="12" r="3" fill="currentColor"/>',
+  portal: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
+  score: CARD_ICONS.star,
+  combo: CARD_ICONS.burst
 };
 
 // Fill color per CampaignEntity `type`, by size tier -- shared by
@@ -577,7 +603,7 @@ const GOAL_ICONS = {
 // fragments blurred together on the minimap -- gold is the palette hue
 // farthest from both cyan and pink, so the four tiers are now spread
 // roughly evenly around the color wheel.
-const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#EFCB63', 4: '#9875FF' };
+const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#EFCB63', 4: '#9875FF', 5: '#CBD5E1', 6: '#46D99A' };
 
 // Miasto's "Po 100% odblokujesz" reward chip (GDD 4.0 §5.1) needs an icon
 // matching whichever Warsztat category CORE_CITY_LEVEL_REWARDS grants next
@@ -647,10 +673,11 @@ const CAMPAIGN_TIERS = [
   // tier, and updateCampaignHUD() now prefixes it with the tier id so it
   // reads as a tier badge, not an eaten-object label).
   { id: 'T2', name: 'Elementy uliczne', minUnits: 6, color: '#FF54AD' },
-  { id: 'T3', name: 'Małe pojazdy', minUnits: 22, color: '#EFCB63' },
-  { id: 'T4', name: 'Kioski i cele misji', minUnits: 50, color: '#9875FF' },
-  { id: 'T5', name: 'Duże pojazdy', minUnits: 100, color: '#CBD5E1' },
-  { id: 'T6', name: 'Cele finałowe', minUnits: 180, color: '#46D99A' }
+  // v10: every tier is named after the object class it unlocks.
+  { id: 'T3', name: 'Pojazdy i węzły', minUnits: 22, color: '#EFCB63' },
+  { id: 'T4', name: 'Pawilony i landmarki', minUnits: 50, color: '#9875FF' },
+  { id: 'T5', name: 'Ciężkie pojazdy', minUnits: 100, color: '#CBD5E1' },
+  { id: 'T6', name: 'Wieżowce', minUnits: 180, color: '#46D99A' }
 ];
 // minUnits above are CONFIG.growth.unitAnchors (kept as literals for
 // readability) -- fail loudly if the two ever drift apart.
@@ -668,7 +695,24 @@ const CAMPAIGN_ENTITY_STATS = {
   marker: { growth: 10, score: 50, minTier: 2, label: 'znacznik' },
   node: { growth: 10, score: 50, minTier: 3, label: 'węzeł' },
   pylon: { growth: 10, score: 50, minTier: 3, label: 'pylon' },
-  landmark: { growth: 32, score: 160, minTier: 4, label: 'landmark' }
+  landmark: { growth: 32, score: 160, minTier: 4, label: 'landmark' },
+  structure: { growth: 16, score: 80, minTier: 4, label: 'pawilon' },
+  heavy: { growth: 24, score: 120, minTier: 5, label: 'ciężki pojazd' },
+  tower: { growth: 40, score: 200, minTier: 6, label: 'wieżowiec' }
+};
+
+// v10: each boss landmark is gated at its own tier (and sized/valued by
+// CONFIG.campaign.landmarkByTier) -- an Iglica smaller than an ordinary
+// T6 tower read as a contradiction.
+const LANDMARK_TIERS = { kino: 4, fontanna: 4, dzwig: 5, galeria_glowna: 5, iglica_wejscie: 5, iglica: 6, rdzen_miasta_glowny: 6 };
+const LANDMARK_ART = {
+  kino: 'lm_kino', fontanna: 'lm_fontanna', dzwig: 'lm_dzwig', galeria_glowna: 'lm_galeria',
+  iglica_wejscie: 'lm_iglica', iglica: 'lm_iglica', rdzen_miasta_glowny: 'lm_rdzen'
+};
+// Accusative ("Pochłoń ...") names of each boss landmark.
+const LANDMARK_NAMES = {
+  kino: 'neonowe kino', fontanna: 'fontannę', dzwig: 'dźwig', galeria_glowna: 'galerię',
+  iglica_wejscie: 'bramę iglicy', iglica: 'iglicę', rdzen_miasta_glowny: 'rdzeń miasta'
 };
 
 // Per-mission visual glyph tables (mission-screen brief, Task 1): several
@@ -678,9 +722,6 @@ const CAMPAIGN_ENTITY_STATS = {
 // but checkCampaignGoal() also reads it now (via computeCampaignGoalGlyph())
 // so a mission naming one specific object only counts progress from that
 // object, not any other same-`type` entity.
-const MARKER_GLYPHS = { M07: 'znacznik_ogrodu', M10: 'paleta', M13: 'krysztal', M14: 'witryna', M15: 'klucz_sektora', M21: 'emiter' };
-const PROP_GLYPHS = { M09: 'skrzynia', M17: 'modul_dachowy' };
-const NODE_GLYPHS = { M04: 'wezel', M23: 'wezel', M12: 'zasilacz', M19: 'mostek' };
 // The catalog's "ogólne" (not tied to one mission) T2/T3 street objects --
 // latarnia/ławka/drzewo/kiosk, exactly the 4 rows OBJECT_CATALOG_SPEC.md's
 // master table lists as "ogólny" (a 5th, "pachołek", was in here before but
@@ -711,19 +752,391 @@ const DISTRICTS = [
   // GDD's 24 authored missions -- Plac Neonów has 5 entries here instead
   // of the usual 4 per district so it can sit first without renumbering
   // M01-M24 or their district arrays.
-  { id: 'plac', name: 'Plac Neonów', order: 1, missions: ['M00', 'M01', 'M02', 'M03', 'M04'] },
-  { id: 'park', name: 'Park Impulsów', order: 2, missions: ['M05', 'M06', 'M07', 'M08'] },
-  { id: 'port', name: 'Port Syntez', order: 3, missions: ['M09', 'M10', 'M11', 'M12'] },
-  { id: 'galeria', name: 'Galeria Glitch', order: 4, missions: ['M13', 'M14', 'M15', 'M16'] },
-  { id: 'dachy', name: 'Dachy Prądu', order: 5, missions: ['M17', 'M18', 'M19', 'M20'] },
-  { id: 'rdzen', name: 'Rdzeń Miasta', order: 6, missions: ['M21', 'M22', 'M23', 'M24'] }
+  // v10: 10 missions per district (Plac Neonów also opens with M00); the
+  // district boss (unlocking the next district) is always the last one.
+  { id: 'plac', name: 'Plac Neonów', order: 1, missions: ['M00', 'M01', 'M02', 'M03', 'M25', 'M26', 'M27', 'M28', 'M29', 'M30', 'M04'] },
+  { id: 'park', name: 'Park Impulsów', order: 2, missions: ['M05', 'M06', 'M07', 'M31', 'M32', 'M33', 'M34', 'M35', 'M36', 'M08'] },
+  { id: 'port', name: 'Port Syntez', order: 3, missions: ['M09', 'M10', 'M11', 'M37', 'M38', 'M39', 'M40', 'M41', 'M42', 'M12'] },
+  { id: 'galeria', name: 'Galeria Glitch', order: 4, missions: ['M13', 'M14', 'M15', 'M43', 'M44', 'M45', 'M46', 'M47', 'M48', 'M16'] },
+  { id: 'dachy', name: 'Dachy Prądu', order: 5, missions: ['M17', 'M18', 'M19', 'M49', 'M50', 'M51', 'M52', 'M53', 'M54', 'M20'] },
+  { id: 'rdzen', name: 'Rdzeń Miasta', order: 6, missions: ['M21', 'M22', 'M23', 'M55', 'M56', 'M57', 'M58', 'M59', 'M60', 'M24'] }
 ];
+
+/* ----------------------- Mission compiler (v10) -----------------------
+   Player feedback: missions didn't match the growth model (e.g. "eat 12
+   fragments" while the hole outgrew fragments after 6), and there were too
+   few of them. Every mission is now authored as a short list of OBJECTIVES
+   (all required, any order) and compileMission() derives everything else
+   from those steps and the shared growth curve:
+   - the board layout: the goal objects (+ a ~30% buffer) PLUS a "growth
+     ladder" of food for every tier the goals require (enough fragments to
+     reach T2, street elements to reach T3, ... with a 60% buffer), so the
+     player can always grow into what the mission asks for;
+   - the time limit and the default time medal, from an estimate of how
+     many eats/actions the steps need (checked by an automated playthrough
+     of every mission -- see docs/VECTRE_V8_PLAN.md, v10 section);
+   - Polish step labels with correct plural forms.
+   Step shapes: {eat, n, glyph?} {tier} {combo} {gates} {rival}
+   {activate: 'node'|'pylon', n} {landmark} {score}. */
+
+/** Polish noun forms [1, 2-4, 5+] (accusative after "Pochłoń"). */
+const NOUNS = {
+  fragment: ['fragment energii', 'fragmenty energii', 'fragmentów energii'],
+  capsule: ['kapsułę', 'kapsuły', 'kapsuł'],
+  prop: ['element uliczny', 'elementy uliczne', 'elementów ulicznych'],
+  vehicle: ['samochód', 'samochody', 'samochodów'],
+  marker: ['znacznik', 'znaczniki', 'znaczników'],
+  node: ['węzeł', 'węzły', 'węzłów'],
+  pylon: ['pylon', 'pylony', 'pylonów'],
+  structure: ['budowlę', 'budowle', 'budowli'],
+  heavy: ['ciężki pojazd', 'ciężkie pojazdy', 'ciężkich pojazdów'],
+  tower: ['wieżę', 'wieże', 'wież'],
+  skrzynia: ['skrzynię', 'skrzynie', 'skrzyń'],
+  modul_dachowy: ['moduł dachowy', 'moduły dachowe', 'modułów dachowych'],
+  znacznik_ogrodu: ['znacznik ogrodu', 'znaczniki ogrodu', 'znaczników ogrodu'],
+  paleta: ['oznaczoną paletę', 'oznaczone palety', 'oznaczonych palet'],
+  krysztal: ['kryształ', 'kryształy', 'kryształów'],
+  witryna: ['witrynę', 'witryny', 'witryn'],
+  klucz_sektora: ['klucz sektora', 'klucze sektorów', 'kluczy sektorów'],
+  emiter: ['emiter', 'emitery', 'emiterów'],
+  konwoj: ['pojazd konwoju', 'pojazdy konwoju', 'pojazdów konwoju'],
+  pawilon: ['pawilon', 'pawilony', 'pawilonów'],
+  billboard: ['billboard', 'billboardy', 'billboardów'],
+  magazyn: ['magazyn', 'magazyny', 'magazynów'],
+  autobus: ['autobus', 'autobusy', 'autobusów'],
+  tramwaj: ['tramwaj', 'tramwaje', 'tramwajów'],
+  ciezarowka: ['ciężarówkę', 'ciężarówki', 'ciężarówek'],
+  wiezowiec: ['wieżowiec', 'wieżowce', 'wieżowców'],
+  maszt: ['maszt', 'maszty', 'masztów'],
+  kopula: ['kopułę', 'kopuły', 'kopuł'],
+  wezel: ['węzeł', 'węzły', 'węzłów'],
+  zasilacz: ['zasilacz', 'zasilacze', 'zasilaczy'],
+  mostek: ['mostek', 'mostki', 'mostków'],
+  lustro: ['lustro', 'lustra', 'luster'],
+  brama: ['bramę', 'bramy', 'bram'],
+  pas_przelotu: ['pas przelotu', 'pasy przelotu', 'pasów przelotu'],
+  rival: ['rywala', 'rywali', 'rywali'],
+  misja: ['nowa misja', 'nowe misje', 'nowych misji']
+};
+function plural(n, forms) {
+  if (n === 1) return forms[0];
+  const d = n % 10, h = n % 100;
+  return d >= 2 && d <= 4 && (h < 12 || h > 14) ? forms[1] : forms[2];
+}
+function nounFor(key, n) { return `${n} ${plural(n, NOUNS[key] || [key, key, key])}`; }
+
+const ACTIVATE_VERBS = { wezel: 'Wyłącz', zasilacz: 'Zbierz', mostek: 'Zasil', pylon: 'Naładuj', lustro: 'Aktywuj' };
+const SETUP_KEY = { fragment: 'fragments', capsule: 'capsules', prop: 'props', vehicle: 'vehicles', marker: 'markers', node: 'nodes', pylon: 'pylons', structure: 'structures', heavy: 'heavies', tower: 'towers' };
+const GLYPH_KEY = { prop: 'propGlyph', marker: 'markerGlyph', vehicle: 'vehicleGlyph', node: 'nodeGlyph', pylon: 'pylonGlyph', structure: 'structureGlyph', heavy: 'heavyGlyph', tower: 'towerGlyph' };
+// The food that carries a hole from tier k to k+1 (the growth ladder).
+const LADDER_FOOD = { 1: 'fragment', 2: 'prop', 3: 'vehicle', 4: 'structure', 5: 'heavy' };
+// Rough seconds per eat at each object tier (travel + bite), calibrated by
+// the automated mission playthrough.
+const SEC_PER_EAT = { 1: 1.3, 2: 1.9, 3: 2.6, 4: 3.4, 5: 4.2, 6: 5 };
+const tierUnits = k => CAMPAIGN_TIERS[k - 1].minUnits;
+const round5 = v => Math.round(v / 5) * 5;
+
+function stepLabel(step, setup) {
+  if (step.label) return step.label;
+  if (step.eat) return `Pochłoń ${nounFor(step.glyph || step.eat, step.n)}`;
+  if (step.tier) return `Urośnij do poziomu T${step.tier}`;
+  if (step.combo) return `Zbuduj combo ×${step.combo}`;
+  if (step.gates) {
+    if (setup.gateKind === 'portal') return 'Przejdź przez portal';
+    return setup.gateKind === 'pas'
+      ? `Przeleć przez ${nounFor('pas_przelotu', step.gates)}, gdy ${step.gates === 1 ? 'świeci' : 'świecą'}`
+      : `Przejdź przez ${nounFor('brama', step.gates)}, gdy są otwarte`;
+  }
+  if (step.rival) return `Pochłoń ${nounFor('rival', step.rival)}`;
+  if (step.activate) {
+    const g = setup[GLYPH_KEY[step.activate]] || (step.activate === 'node' ? 'wezel' : 'pylon');
+    return `${ACTIVATE_VERBS[g]} ${nounFor(g, step.n)}`;
+  }
+  if (step.landmark) return `Pochłoń ${LANDMARK_NAMES[step.landmark]}`;
+  if (step.score) return `Zdobądź ${step.score} punktów`;
+  return '';
+}
+
+/** Lowest growth tier at which a step can be completed. */
+function stepTier(step) {
+  if (step.eat) return CAMPAIGN_ENTITY_STATS[step.eat].minTier;
+  if (step.tier) return step.tier;
+  if (step.activate) return CAMPAIGN_ENTITY_STATS[step.activate].minTier;
+  if (step.landmark) return LANDMARK_TIERS[step.landmark];
+  if (step.rival) return 2;
+  return 1;
+}
+
+// v10 balance: [time limit, time-medal seconds] per mission, calibrated
+// from an automated playthrough of every mission (a greedy bot, 4 runs
+// each): limit = 2.2x the bot's slowest clear + 20 s, medal = 1.5x its
+// median clear + 8 s -- generous for a first try, tight for the medal.
+const MISSION_TIMING = { M01: [60, 20], M02: [75, 40], M03: [80, 35], M04: [90, 55], M05: [60, 15], M06: [70, 40], M07: [75, 40], M08: [95, 55], M09: [75, 40], M10: [75, 45], M11: [130, 70], M12: [120, 65], M13: [75, 45], M14: [70, 40], M15: [70, 40], M16: [105, 65], M17: [80, 40], M18: [90, 45], M19: [110, 65], M20: [130, 70], M21: [80, 50], M22: [110, 65], M23: [145, 60], M24: [130, 80], M25: [95, 55], M26: [110, 60], M27: [105, 65], M28: [60, 30], M29: [100, 60], M30: [110, 65], M31: [105, 65], M32: [105, 65], M33: [60, 35], M34: [85, 50], M35: [135, 70], M36: [60, 30], M37: [130, 65], M38: [125, 65], M39: [70, 40], M40: [120, 65], M41: [125, 75], M42: [125, 80], M43: [125, 75], M44: [105, 50], M45: [135, 75], M46: [85, 55], M47: [140, 80], M48: [130, 75], M49: [135, 85], M50: [110, 50], M51: [60, 30], M52: [130, 70], M53: [140, 80], M54: [150, 80], M55: [140, 80], M56: [130, 80], M57: [130, 75], M58: [180, 115], M59: [130, 75], M60: [125, 70] };
+
+function compileMission(spec, order) {
+  const s = Object.assign({}, spec.setup || {});
+  const steps = spec.steps.map(st => Object.assign({}, st));
+  let need = Math.max(1, ...steps.map(stepTier), s.minTier || 1);
+  const goalCounts = {};
+  let est = 0;
+  steps.forEach(st => {
+    if (st.eat) {
+      goalCounts[st.eat] = (goalCounts[st.eat] || 0) + st.n;
+      if (st.glyph) s[GLYPH_KEY[st.eat]] = st.glyph;
+      est += st.n * SEC_PER_EAT[CAMPAIGN_ENTITY_STATS[st.eat].minTier];
+    }
+    if (st.activate) { s[SETUP_KEY[st.activate]] = Math.max(s[SETUP_KEY[st.activate]] || 0, st.n); est += st.n * 3.5; }
+    if (st.landmark) { s.landmark = st.landmark; est += 6; }
+    if (st.gates) { s.gates = Math.max(s.gates || 0, st.gates); est += st.gates * 7 + (s.gateKind === 'portal' ? 6 : 0); }
+    if (st.rival) { s.bots = Math.max(s.bots || 0, Math.min(3, st.rival + 1)); est += st.rival * 8; }
+    if (st.combo) {
+      est += st.combo * 0.8 + 8;
+      // A long chain needs dense pockets of small food -- and spare pockets,
+      // so a broken chain can always be retried (fragments don't respawn).
+      if (!s.capsuleWaves) s.fragmentClusters = Math.max(s.fragmentClusters || 0, Math.ceil(st.combo / 7) + (s.arcLayout ? 0 : 1));
+      s.clusterSize = Math.max(s.clusterSize || 0, st.combo + 3);
+    }
+    if (st.score) {
+      // Score goals need a points-rich board: top up the climb food.
+      est += st.score / 55;
+      need = Math.max(need, st.score >= 2500 ? 5 : st.score >= 1200 ? 4 : 3);
+    }
+  });
+  // Bigger rivals (setup.botRadius) only become prey once the hole is
+  // radius*1.15 -- push the growth ladder that far.
+  if (steps.some(st => st.rival)) {
+    const preyUnits = unitsForRadius((s.botRadius || CONFIG.campaign.rivalRadius) * EAT_HOLE_RATIO + 2);
+    const tierForPrey = CAMPAIGN_TIERS.filter(t => t.minUnits <= preyUnits).length;
+    need = Math.max(need, Math.min(6, tierForPrey + 1));
+  }
+  Object.keys(goalCounts).forEach(type => {
+    const n = goalCounts[type];
+    const key = SETUP_KEY[type];
+    if (type === 'capsule' && s.capsuleWaves) return;
+    s[key] = Math.max(s[key] || 0, n + Math.max(1, Math.ceil(n * 0.3)));
+  });
+  // Growth ladder up to the highest tier any step needs.
+  for (let k = 1; k < need; k++) {
+    const food = LADDER_FOOD[k];
+    const units = tierUnits(k + 1) - tierUnits(k);
+    const eats = Math.ceil(units / CAMPAIGN_ENTITY_STATS[food].growth);
+    const key = SETUP_KEY[food];
+    s[key] = Math.max(s[key] || 0, Math.ceil(eats * 1.6) + 2);
+    est += eats * SEC_PER_EAT[k];
+  }
+  s.fragments = Math.max(s.fragments || 0, 8);
+  if (s.bots == null) s.bots = need >= 3 ? 1 : 0;
+  // Score goals: make sure the board holds comfortably more points than
+  // asked for (combo multiplies on top), topping up the top-tier food.
+  const scoreStep = steps.find(st => st.score);
+  if (scoreStep) {
+    const top = LADDER_FOOD[Math.min(need, 5)];
+    const avail = () => Object.keys(SETUP_KEY).reduce((sum, t) => sum + (s[SETUP_KEY[t]] || 0) * CAMPAIGN_ENTITY_STATS[t].score, 0);
+    while (avail() < scoreStep.score * 1.5) s[SETUP_KEY[top]] = (s[SETUP_KEY[top]] || 0) + 1;
+  }
+
+  const activateStep = steps.find(st => st.activate);
+  const timing = MISSION_TIMING[spec.id];
+  // Floor by the tier the mission needs: growing to T4+ simply takes time.
+  const floor = { 1: 60, 2: 60, 3: 70, 4: 90, 5: 110, 6: 130 }[need];
+  const timeLimit = spec.time || Math.max(floor, timing ? timing[0] : round5(est * 1.5 + 20));
+  const medal = spec.medal || { type: 'timeUnder', seconds: timing ? timing[1] : round5(est * 1.15 + 10) };
+  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w ${medal.seconds} s`;
+  steps.forEach(st => { st.label = stepLabel(st, s); });
+  const district = DISTRICTS.find(d => d.id === spec.d);
+  return {
+    id: spec.id, district: spec.d, order, name: spec.name, timeLimit,
+    goal: {
+      type: 'objectives', steps,
+      label: steps.map(st => st.label).join(' · '),
+      activator: activateStep ? activateStep.activate : null,
+      count: activateStep ? activateStep.n : 0
+    },
+    medal,
+    setup: s,
+    needTier: need,
+    estSeconds: Math.round(est),
+    evolutionOffer: timeLimit >= 110 && district && district.order >= 2 ? { atSeconds: 25, count: 2 } : (spec.evolution || null),
+    nela: { start: spec.nela[0], success: spec.nela[1] },
+    reward: spec.reward || { coins: 30 + 10 * ((district && district.order) || 1) }
+  };
+}
 
 // Rozdział I (Plac Neonów) + Rozdział II (Park Impulsów) — the two chapters
 // the GDD writes out in full (cel/medal/układ/NELA/nagroda per mission).
 // `setup` drives buildCampaignMission()'s spawn layout; `goal`/`medal` drive
 // checkCampaignGoal(); numeric balance is explicitly a "propozycja do
 // sprawdzenia" per the GDD's own disclaimer, not a measured target.
+// v10 campaign: 60 authored missions + the M00 prologue, 10 per district.
+// Each district introduces its own object class / mechanic and ends with a
+// boss landmark one size class above the previous district's:
+//   Plac Neonów  T1-T4  rivals, węzły, pawilony        -> Kino (T4)
+//   Park Impulsów T1-T4 bramy, fale kapsuł, billboardy -> Fontanna (T4)
+//   Port Syntez  T1-T5  skrzynie, palety, ciężarówki   -> Dźwig (T5)
+//   Galeria Glitch T1-T5 portal, witryny, tramwaje      -> Galeria (T5)
+//   Dachy Prądu  T1-T6  pasy przelotu, autobusy, maszty -> Iglica (T6)
+//   Rdzeń Miasta T1-T6  wieżowce, kopuła, giganci       -> Rdzeń (T6)
+// IDs M01-M24 keep their original slots (save compatibility); the new
+// missions are M25-M60, slotted into their districts' order below.
+const MISSION_SPECS = [
+  // ---- Plac Neonów ----
+  { id: 'M01', d: 'plac', name: 'Pierwszy apetyt', steps: [{ eat: 'capsule', n: 3 }, { tier: 2 }],
+    nela: ['Kapsuły energii ładują rdzeń mocniej niż fragmenty. Trzy wystarczą, żeby urosnąć.', 'Rdzeń pulsuje mocniej!'] },
+  { id: 'M02', d: 'plac', name: 'Dobra trasa', steps: [{ eat: 'prop', n: 6 }, { tier: 3 }], setup: { clusters: 2 },
+    medal: { type: 'visitBothClusters', label: 'Jedz w obu skupiskach' },
+    nela: ['Elementy uliczne stoją w dwóch skupiskach. Wybierz trasę i rośnij.', 'Plac nabiera kształtu.'] },
+  { id: 'M03', d: 'plac', name: 'Łańcuch reakcji', steps: [{ combo: 10 }, { eat: 'prop', n: 4 }], setup: { arcLayout: true, fragments: 20 },
+    nela: ['Fragmenty ułożyły się w łuk: połącz dziesięć kęsów bez przerwy, a potem pochłoń cztery elementy uliczne.', 'Właśnie uruchomiłaś reakcję łańcuchową.'] },
+  { id: 'M25', d: 'plac', name: 'Godzina szczytu', steps: [{ eat: 'vehicle', n: 4 }],
+    nela: ['Samochody zjeżdżają na plac. Urośnij do T3, zanim odjadą.', 'Korek rozładowany — w Twoim wirze.'] },
+  { id: 'M26', d: 'plac', name: 'Obce dziury', steps: [{ rival: 2 }],
+    nela: ['Po placu krążą obce dziury. Urośnij i pochłoń dwie z nich.', 'Rywale zniknęli w Twoim wirze.'] },
+  { id: 'M27', d: 'plac', name: 'Wyłącznik', steps: [{ activate: 'node', n: 3 }],
+    nela: ['Trzy węzły blokują zasilanie placu. Urośnij do T3 i pochłoń je.', 'Prąd znów płynie przez plac.'] },
+  { id: 'M28', d: 'plac', name: 'Neonowa seria', steps: [{ combo: 8 }, { eat: 'vehicle', n: 3 }],
+    nela: ['Seria kęsów podbija mnożnik punktów. Zbuduj combo ×8 i zgarnij trzy auta.', 'Mnożnik pod sufit!'] },
+  { id: 'M29', d: 'plac', name: 'Pawilon na rogu', steps: [{ eat: 'structure', n: 2, glyph: 'pawilon' }],
+    nela: ['Na rogu placu stoją szklane pawilony — obiekty T4. Urośnij, a zmieścisz je w sobie.', 'Pierwsze pawilony pochłonięte. Jesteś już naprawdę duża.'] },
+  { id: 'M30', d: 'plac', name: 'Rekord placu', steps: [{ score: 900 }],
+    nela: ['Pokaż, ile potrafisz: 900 punktów. Combo mnoży każdy kęs.', 'Plac zapamięta ten wynik.'] },
+  { id: 'M04', d: 'plac', name: 'Pierwszy wielki kęs', steps: [{ activate: 'node', n: 2 }, { landmark: 'kino' }],
+    medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
+    nela: ['Kino to obiekt T4 i chronią je dwa węzły. Wyłącz je, urośnij i pochłoń kino.', 'Kino odzyskane. Park Impulsów otwarty!'],
+    reward: { coins: 120, unlockDistrict: 'park' } },
+
+  // ---- Park Impulsów ----
+  { id: 'M05', d: 'park', name: 'Pierwszy impuls', steps: [{ gates: 2 }], setup: { gateKind: 'brama' },
+    nela: ['Bramy otwierają się w rytmie impulsu. Poczekaj, aż zaświecą, i przejdź.', 'Park znów oddycha.'] },
+  { id: 'M06', d: 'park', name: 'Zielona fala', steps: [{ eat: 'capsule', n: 12 }, { combo: 6 }],
+    setup: { capsuleWaves: [0, 16, 32], capsulesPerWave: 8 },
+    medal: { type: 'comboAtLeast', count: 8, label: 'Zbuduj combo ×8' },
+    nela: ['Kapsuły napływają falami. Łap je seriami.', 'Energia płynie dalej.'] },
+  { id: 'M07', d: 'park', name: 'Dwie drogi', steps: [{ eat: 'marker', n: 3, glyph: 'znacznik_ogrodu' }],
+    medal: { type: 'bothRoutesUsed', label: 'Zbierz znaczniki z obu stron parku' },
+    nela: ['Znaczniki ogrodu leżą po obu stronach alei. Skrót kusi, obejście też prowadzi do celu.', 'Masz własny sposób na ten park.'] },
+  { id: 'M31', d: 'park', name: 'Ogrodowe bramy', steps: [{ gates: 3 }, { eat: 'prop', n: 6 }], setup: { gateKind: 'brama' },
+    nela: ['Trzy bramy, jeden rytm. Po drodze posprzątaj alejki.', 'Alejki lśnią czystością.'] },
+  { id: 'M32', d: 'park', name: 'Pawilony w parku', steps: [{ eat: 'structure', n: 3, glyph: 'pawilon' }],
+    nela: ['Szklane pawilony zasłaniają widok na fontannę. Zrób miejsce.', 'Widok na fontannę odsłonięty.'] },
+  { id: 'M33', d: 'park', name: 'Bieg wokół stawu', steps: [{ combo: 12 }, { eat: 'structure', n: 1, glyph: 'pawilon' }], setup: { arcLayout: true, fragments: 24 },
+    nela: ['Fragmenty otaczają staw: dwanaście kęsów bez przerwy. Potem urośnij do T4 i pochłoń pawilon.', 'Taki rytm słychać w całym parku.'] },
+  { id: 'M34', d: 'park', name: 'Strażnicy parku', steps: [{ rival: 3 }],
+    nela: ['Trzech rywali patroluje park. Urośnij szybciej niż oni.', 'Park ma nową strażniczkę — Ciebie.'] },
+  { id: 'M35', d: 'park', name: 'Reklamy w zieleni', steps: [{ eat: 'structure', n: 3, glyph: 'billboard' }],
+    nela: ['Ktoś postawił billboardy między drzewami. Usuń je.', 'Zieleń znów jest zielona.'] },
+  { id: 'M36', d: 'park', name: 'Pylony ogrodu', steps: [{ activate: 'pylon', n: 3 }, { combo: 6 }],
+    medal: { type: 'pylonsUnbroken', label: 'Naładuj pylony bez przerywania combo' },
+    nela: ['Pylony zasilają fontannę. Naładuj wszystkie trzy.', 'Pylony buczą równym rytmem.'] },
+  { id: 'M08', d: 'park', name: 'Serce ogrodu', steps: [{ activate: 'pylon', n: 3 }, { landmark: 'fontanna' }],
+    medal: { type: 'pylonsUnbroken', label: 'Naładuj pylony bez przerywania combo' },
+    nela: ['Jeszcze trzy impulsy. Naładuj pylony i obudź serce ogrodu.', 'Fontanna wróciła. Port Syntez czeka!'],
+    reward: { coins: 150, unlockDistrict: 'port' } },
+
+  // ---- Port Syntez ----
+  { id: 'M09', d: 'port', name: 'Dostawa energii', steps: [{ eat: 'prop', n: 6, glyph: 'skrzynia' }, { tier: 3 }],
+    nela: ['Port stoi bez prądu. Zacznij od skrzyń przy nabrzeżu.', 'Pierwsza dostawa dotarła.'] },
+  { id: 'M10', d: 'port', name: 'Pełny załadunek', steps: [{ eat: 'marker', n: 3, glyph: 'paleta' }],
+    medal: { type: 'bothRoutesUsed', label: 'Zbierz palety z obu stron doku' },
+    nela: ['Oznaczone palety stoją po obu stronach doku. Znajdź je.', 'Załadunek kompletny.'] },
+  { id: 'M11', d: 'port', name: 'Konwój', steps: [{ eat: 'vehicle', n: 6, glyph: 'konwoj' }],
+    nela: ['Konwój wjeżdża do portu. Zatrzymaj sześć jego pojazdów.', 'Konwój zatrzymany.'] },
+  { id: 'M37', d: 'port', name: 'Magazyny', steps: [{ eat: 'structure', n: 3, glyph: 'magazyn' }],
+    nela: ['Magazyny portu pękają w szwach. Opróżnij trzy.', 'Magazyny puste, port lżejszy.'] },
+  { id: 'M38', d: 'port', name: 'Ciężki towar', steps: [{ eat: 'heavy', n: 1, glyph: 'ciezarowka' }],
+    nela: ['Do portu wjechała ciężarówka — obiekt T5. Urośnij przez magazyny i ją pochłoń.', 'Pierwszy ciężki pojazd! Teraz nic Cię nie zatrzyma.'] },
+  { id: 'M39', d: 'port', name: 'Nocna zmiana', steps: [{ eat: 'prop', n: 6, glyph: 'skrzynia' }, { combo: 10 }],
+    nela: ['Nocna zmiana. Skrzynie i jedna długa seria kęsów.', 'Załadunek w rekordowym tempie.'] },
+  { id: 'M40', d: 'port', name: 'Dokerzy', steps: [{ rival: 3 }], setup: { botRadius: 40 },
+    nela: ['Dokerzy to więksi rywale. Zbliż się dopiero, gdy będziesz od nich wyraźnie większa.', 'Port należy do Ciebie.'] },
+  { id: 'M41', d: 'port', name: 'Flota ciężarówek', steps: [{ eat: 'heavy', n: 3, glyph: 'ciezarowka' }],
+    nela: ['Cała flota czeka na rozładunek. Pochłoń trzy ciężarówki.', 'Flota zniknęła z nabrzeża.'] },
+  { id: 'M42', d: 'port', name: 'Zasilacze portu', steps: [{ activate: 'node', n: 4 }, { eat: 'structure', n: 2, glyph: 'magazyn' }],
+    setup: { nodeGlyph: 'zasilacz' },
+    nela: ['Dźwig potrzebuje prądu. Zbierz cztery zasilacze i zrób miejsce przy magazynach.', 'Zasilanie gotowe. Dźwig drgnął.'] },
+  { id: 'M12', d: 'port', name: 'Upadek dźwigu', steps: [{ activate: 'node', n: 3 }, { landmark: 'dzwig' }],
+    setup: { nodeGlyph: 'zasilacz' },
+    medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
+    nela: ['Trzy zasilacze, jeden dźwig T5. Rośnij po drodze.', 'Dźwig opadł. Galeria Glitch się otwiera!'],
+    reward: { coins: 180, unlockDistrict: 'galeria' } },
+
+  // ---- Galeria Glitch ----
+  { id: 'M13', d: 'galeria', name: 'Druga strona', steps: [{ gates: 1 }, { eat: 'marker', n: 6, glyph: 'krysztal' }],
+    setup: { gateKind: 'portal' },
+    nela: ['Portal migocze — wejdź, gdy świeci. Kryształy czekają po drugiej stronie.', 'Druga strona galerii odzyskana.'] },
+  { id: 'M14', d: 'galeria', name: 'Witryny', steps: [{ eat: 'marker', n: 4, glyph: 'witryna' }],
+    medal: { type: 'comboAtLeast', count: 5, label: 'Zbuduj combo ×5' },
+    nela: ['Witryny wciąż świecą starym światłem. Zgaś je.', 'Nowe reklamy migają nad placem.'] },
+  { id: 'M15', d: 'galeria', name: 'Przed zamknięciem', steps: [{ eat: 'marker', n: 4, glyph: 'klucz_sektora' }],
+    nela: ['Sektory zamykają się jeden po drugim. Zbierz klucze, zanim zgasną światła.', 'Wszystkie sektory otwarte na nowo.'] },
+  { id: 'M43', d: 'galeria', name: 'Ekrany', steps: [{ eat: 'structure', n: 4, glyph: 'billboard' }],
+    nela: ['Ekrany galerii nadają szum. Wyłącz je, pochłaniając.', 'Cisza. Wreszcie widać sztukę.'] },
+  { id: 'M44', d: 'galeria', name: 'Rój glitcha', steps: [{ combo: 14 }, { eat: 'heavy', n: 1, glyph: 'tramwaj' }],
+    nela: ['Glitch zbił fragmenty w gęste roje: czternaście kęsów bez przerwy. Potem urośnij do T5 i pochłoń tramwaj.', 'Glitch naprawiony rytmem.'] },
+  { id: 'M45', d: 'galeria', name: 'Tramwaj sztuki', steps: [{ eat: 'heavy', n: 2, glyph: 'tramwaj' }],
+    nela: ['Tramwaje wożą eksponaty między salami. Pochłoń dwa — razem z ładunkiem.', 'Eksponaty bezpieczne w Twoim rdzeniu.'] },
+  { id: 'M46', d: 'galeria', name: 'Lustrzane odbicia', steps: [{ activate: 'pylon', n: 4 }], setup: { pylonGlyph: 'lustro' },
+    medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra bez przerywania combo' },
+    nela: ['Cztery lustra kierują światło do galerii. Aktywuj wszystkie.', 'Światło odbija się po całej galerii.'] },
+  { id: 'M47', d: 'galeria', name: 'Kuratorzy', steps: [{ rival: 3 }], setup: { botRadius: 50 },
+    nela: ['Kuratorzy galerii to duzi rywale. Urośnij, aż będziesz od nich wyraźnie większa, i pochłoń trzech.', 'Galeria ma nową kuratorkę.'] },
+  { id: 'M48', d: 'galeria', name: 'Wielka wystawa', steps: [{ score: 2500 }],
+    nela: ['Zdobądź 2500 punktów — tyle warta jest wielka wystawa.', 'Wystawa otwarta z hukiem.'] },
+  { id: 'M16', d: 'galeria', name: 'Kaskada luster', steps: [{ activate: 'pylon', n: 3 }, { landmark: 'galeria_glowna' }],
+    setup: { pylonGlyph: 'lustro' },
+    medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra bez przerywania combo' },
+    nela: ['Trzy lustra otwierają galerię — obiekt T5. Aktywuj je i urośnij.', 'Galeria lśni jak nowa. Dachy Prądu czekają!'],
+    reward: { coins: 220, unlockDistrict: 'dachy' } },
+
+  // ---- Dachy Prądu ----
+  { id: 'M17', d: 'dachy', name: 'Nad miastem', steps: [{ eat: 'prop', n: 6, glyph: 'modul_dachowy' }, { tier: 3 }],
+    nela: ['Dachy Prądu widać z każdego okna. Zacznij od modułów na dachach.', 'Pierwszy dach znów świeci.'] },
+  { id: 'M18', d: 'dachy', name: 'Tor lotu', steps: [{ gates: 3 }], setup: { gateKind: 'pas' },
+    nela: ['Trzy pasy przelotu. Przeleć przez każdy w całości, póki świeci.', 'Tor lotu czysty od krawędzi do krawędzi.'] },
+  { id: 'M19', d: 'dachy', name: 'Brama iglicy', steps: [{ activate: 'node', n: 2 }, { landmark: 'iglica_wejscie' }],
+    setup: { nodeGlyph: 'mostek' },
+    medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
+    nela: ['Dwa mostki prowadzą do bramy iglicy (T5). Zasil je i urośnij.', 'Brama otwarta. Iglica czeka.'] },
+  { id: 'M49', d: 'dachy', name: 'Parking na dachu', steps: [{ eat: 'heavy', n: 3, glyph: 'autobus' }],
+    nela: ['Ktoś zaparkował autobusy na dachu. Nie pytaj jak — po prostu je pochłoń.', 'Dach odciążony.'] },
+  { id: 'M50', d: 'dachy', name: 'Burza', steps: [{ combo: 15 }, { eat: 'heavy', n: 1, glyph: 'autobus' }],
+    nela: ['Nadciąga burza: piętnaście kęsów bez przerwy, a potem pochłoń autobus, zanim uderzy piorun.', 'Burza przeszła bokiem.'] },
+  { id: 'M51', d: 'dachy', name: 'Wyścig po dachach', steps: [{ gates: 4 }], setup: { gateKind: 'brama' },
+    nela: ['Cztery bramy na krawędziach dachów. Wyczuj rytm każdej.', 'Najszybsza na dachach.'] },
+  { id: 'M52', d: 'dachy', name: 'Pierwszy maszt', steps: [{ eat: 'tower', n: 1, glyph: 'maszt' }],
+    nela: ['Maszt radiowy to obiekt T6 — największa klasa w mieście. Urośnij do granic.', 'Maszt runął. Jesteś kolosem.'] },
+  { id: 'M53', d: 'dachy', name: 'Strażnicy dachów', steps: [{ rival: 4 }], setup: { botRadius: 60 },
+    nela: ['Strażnicy dachów są ogromni. Na początku omijaj ich, rośnij — potem pochłoń czterech.', 'Dachy są Twoje.'] },
+  { id: 'M54', d: 'dachy', name: 'Las anten', steps: [{ eat: 'heavy', n: 2, glyph: 'autobus' }, { eat: 'tower', n: 2, glyph: 'maszt' }],
+    nela: ['Las anten zagłusza sygnał. Urośnij na autobusach i powal dwa maszty.', 'Sygnał czysty jak nigdy.'] },
+  { id: 'M20', d: 'dachy', name: 'Iglica', steps: [{ landmark: 'iglica' }],
+    nela: ['Najwyższy punkt miasta. Iglica to T6 — urośnij do granic i ją pochłoń.', 'Iglica pochłonięta. Rdzeń Miasta się budzi!'],
+    reward: { coins: 260, unlockDistrict: 'rdzen' } },
+
+  // ---- Rdzeń Miasta ----
+  { id: 'M21', d: 'rdzen', name: 'Powrót sygnału', steps: [{ eat: 'marker', n: 4, glyph: 'emiter' }],
+    nela: ['Sygnał milczy od dawna. Znajdź cztery emitery.', 'Sygnał wraca do Rdzenia.'] },
+  { id: 'M22', d: 'rdzen', name: 'Czytelny chaos', steps: [{ combo: 12 }, { score: 2000 }],
+    nela: ['Chaos ma swój rytm: zbuduj combo ×12 i zdobądź 2000 punktów.', 'Chaos opanowany.'] },
+  { id: 'M23', d: 'rdzen', name: 'Ostatni obwód', steps: [{ activate: 'node', n: 4 }, { tier: 5 }],
+    nela: ['Wysokie napięcie. Wyłącz cztery węzły i urośnij do T5, żeby wytrzymać prąd.', 'Obwód zamknięty.'] },
+  { id: 'M55', d: 'rdzen', name: 'Wieżowce', steps: [{ eat: 'tower', n: 2, glyph: 'wiezowiec' }],
+    nela: ['Wieżowce Rdzenia rzucają cień na całe miasto. Pochłoń dwa.', 'Niebo nad Rdzeniem odsłonięte.'] },
+  { id: 'M56', d: 'rdzen', name: 'Kopuła', steps: [{ eat: 'heavy', n: 3 }, { eat: 'tower', n: 1, glyph: 'kopula' }],
+    nela: ['Pod kopułą bije serce miasta. Najpierw ciężkie pojazdy, potem sama kopuła.', 'Kopuła otwarta.'] },
+  { id: 'M57', d: 'rdzen', name: 'Wszystkie poziomy', steps: [{ tier: 6 }],
+    nela: ['Od fragmentu do wieżowca: przejdź wszystkie sześć poziomów w jednej misji.', 'Sześć poziomów. Jedna dziura.'] },
+  { id: 'M58', d: 'rdzen', name: 'Ostatni strażnicy', steps: [{ rival: 5 }], setup: { botRadius: 70 },
+    nela: ['Ostatni strażnicy Rdzenia to giganci. Unikaj ich, dopóki nie urośniesz — potem pochłoń pięciu.', 'Nikt już nie strzeże Rdzenia.'] },
+  { id: 'M59', d: 'rdzen', name: 'Sygnał z wieży', steps: [{ activate: 'pylon', n: 3 }, { eat: 'tower', n: 2, glyph: 'maszt' }],
+    nela: ['Trzy pylony nadają sygnał przez maszty. Naładuj pylony, potem pochłoń maszty.', 'Sygnał niesie się po całym mieście.'] },
+  { id: 'M60', d: 'rdzen', name: 'Rekord Rdzenia', steps: [{ score: 5000 }],
+    nela: ['Ostatni sprawdzian przed finałem: 5000 punktów.', 'Rekord, którego nikt nie pobije.'] },
+  { id: 'M24', d: 'rdzen', name: 'Miasto na nowo', steps: [{ activate: 'node', n: 3 }, { landmark: 'rdzen_miasta_glowny' }],
+    medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
+    nela: ['Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.', 'Miasto odzyskane. Neonowa Warszawa znów żyje.'],
+    reward: { coins: 400, unlockSkin: 'aurora' } }
+];
+
 const CAMPAIGN_MISSIONS = [
   // Prologue tutorial, not part of the GDD's 24-mission list. Player
   // feedback: Arena should only ever show objects/mechanics the player has
@@ -766,7 +1179,7 @@ const CAMPAIGN_MISSIONS = [
         },
         {
           type: 'eatRival', count: 1, label: 'Pochłoń mniejszego rywala',
-          intro: 'Ostatni krok: znajdź rywala mniejszego od siebie i dotknij go, żeby go pochłonąć.'
+          intro: 'Ostatni krok: rywal otoczony zielonym pierścieniem jest mniejszy od Ciebie. Dotknij go, żeby go pochłonąć. Czerwona poświata oznacza rywala, którego trzeba unikać.'
         }
       ]
     },
@@ -780,219 +1193,20 @@ const CAMPAIGN_MISSIONS = [
     },
     reward: { coins: 20 }
   },
-  {
-    id: 'M01', district: 'plac', order: 1, name: 'Pierwszy apetyt', timeLimit: 60,
-    goal: { type: 'eatCount', entityType: 'fragment', count: 12, label: 'Pochłoń 12 fragmentów energii' },
-    medal: { type: 'timeUnder', seconds: 35, label: 'Ukończ w 35 s' },
-    setup: { fragments: 18, bots: 0 },
-    nela: { start: 'Zacznij od drobiazgów. Każdy zasila Twój rdzeń.', success: 'Pierwsze światła wróciły!' },
-    reward: { coins: 40 }
-  },
-  {
-    id: 'M02', district: 'plac', order: 2, name: 'Dobra trasa', timeLimit: 90,
-    goal: { type: 'eatCount', entityType: 'prop', count: 8, label: 'Pochłoń 8 elementów ulicznych' },
-    medal: { type: 'visitBothClusters', label: 'Odwiedź oba skupiska' },
-    setup: { fragments: 14, props: 12, clusters: 2, bots: 0 },
-    nela: { start: 'Nie wszystko naraz. Wybierz swoją trasę.', success: 'Plac nabiera kształtu.' },
-    reward: { coins: 40 }
-  },
-  {
-    id: 'M03', district: 'plac', order: 3, name: 'Łańcuch reakcji', timeLimit: 90,
-    goal: { type: 'comboChain', count: 12, label: 'Zbuduj serię 12 pożarć' },
-    medal: { type: 'timeUnder', seconds: 25, label: 'Ukończ w 25 s' },
-    setup: { fragments: 20, arcLayout: true, bots: 0 },
-    nela: { start: 'Połącz kolejne kęsy. Nie zgub rytmu.', success: 'Właśnie uruchomiłaś reakcję łańcuchową.' },
-    reward: { coins: 40 }
-  },
-  {
-    id: 'M04', district: 'plac', order: 4, name: 'Pierwszy wielki kęs', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'kino', minTier: 4, label: 'Wyłącz 2 węzły i pochłoń neonowe kino', activatorLabel: 'Wyłącz 2 węzły', landmarkLabel: 'Pochłoń neonowe kino' },
-    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
-    setup: { fragments: 12, props: 8, vehicles: 6, nodes: 2, landmark: 'kino', bots: 1 },
-    evolutionOffer: { atSeconds: 30, count: 2 },
-    nela: { start: 'Kino jest za duże? Jeszcze.', success: 'Kino odzyskane. Park otwarty!' },
-    reward: { coins: 60, unlockDistrict: 'park' }
-  },
-  {
-    id: 'M05', district: 'park', order: 1, name: 'Pierwszy impuls', timeLimit: 90,
-    goal: { type: 'gatesPassed', count: 2, label: 'Przekrocz 2 różne bramy w ich bezpiecznym oknie' },
-    medal: { type: 'comboUnbroken', label: 'Przejdź bez przerwania combo' },
-    setup: { fragments: 14, props: 6, gates: 2, bots: 0 },
-    nela: { start: 'Poczekaj na impuls. Wtedy ruszaj.', success: 'Park znów oddycha.' },
-    reward: { coins: 50 }
-  },
-  {
-    id: 'M06', district: 'park', order: 2, name: 'Zielona fala', timeLimit: 120,
-    goal: { type: 'eatCount', entityType: 'capsule', count: 18, label: 'Pochłoń 18 kapsuł impulsu' },
-    medal: { type: 'comboAtLeast', count: 6, label: 'Zbierz 6 w jednym combo' },
-    // Waves 40s/80s apart used to leave the board completely empty for
-    // ~15-20s at a time once a wave was cleared (player feedback: "the
-    // board stays empty until time runs out") -- tightened so the next
-    // wave lands well before the previous one is fully eaten.
-    setup: { capsuleWaves: [0, 18, 34], capsulesPerWave: 8, bots: 0 },
-    nela: { start: 'Podążaj za falą, nie za przypadkiem.', success: 'Energia płynie dalej.' },
-    reward: { coins: 50 }
-  },
-  {
-    id: 'M07', district: 'park', order: 3, name: 'Dwie drogi', timeLimit: 120,
-    goal: { type: 'eatCount', entityType: 'marker', count: 3, label: 'Odzyskaj 3 znaczniki ogrodu' },
-    medal: { type: 'bothRoutesUsed', label: 'Użyj obu tras' },
-    setup: { fragments: 16, props: 6, markers: 4, bots: 0 },
-    nela: { start: 'Skrót kusi. Obejście też prowadzi do celu.', success: 'Masz własny sposób na ten park.' },
-    reward: { coins: 50 }
-  },
-  {
-    id: 'M08', district: 'park', order: 4, name: 'Serce ogrodu', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'fontanna', minTier: 4, label: 'Naładuj 3 pylony i pochłoń fontannę', activatorLabel: 'Naładuj 3 pylony', landmarkLabel: 'Pochłoń fontannę' },
-    medal: { type: 'pylonsUnbroken', label: 'Aktywuj pylony w jednej serii' },
-    setup: { fragments: 12, props: 8, vehicles: 6, pylons: 3, landmark: 'fontanna', bots: 1 },
-    evolutionOffer: { atSeconds: 30, count: 2 },
-    nela: { start: 'Jeszcze trzy impulsy. Obudź serce ogrodu.', success: 'Fontanna wróciła. Port czeka!' },
-    reward: { coins: 70, unlockDistrict: 'port' }
-  },
-
-  // Rozdział III (Port Syntez) — GDD 4.0 §6 table rows M09-M12.
-  {
-    id: 'M09', district: 'port', order: 1, name: 'Dostawa energii', timeLimit: 90,
-    goal: { type: 'eatCount', entityType: 'prop', count: 12, label: 'Pochłoń 12 skrzyń' },
-    medal: { type: 'timeUnder', seconds: 55, label: 'Ukończ w 55 s' },
-    setup: { fragments: 12, props: 18, bots: 0 },
-    nela: { start: 'Port stoi bez prądu. Zacznij od skrzyń przy nabrzeżu.', success: 'Pierwsza dostawa dotarła.' },
-    reward: { coins: 60 }
-  },
-  {
-    id: 'M10', district: 'port', order: 2, name: 'Pełny załadunek', timeLimit: 100,
-    goal: { type: 'eatCount', entityType: 'marker', count: 3, label: 'Wyczyść 3 oznaczone palety' },
-    medal: { type: 'bothRoutesUsed', label: 'Użyj obu tras' },
-    setup: { fragments: 12, props: 10, markers: 4, bots: 0 },
-    nela: { start: 'Palety mają swój porządek. Znajdź oznaczone.', success: 'Załadunek kompletny.' },
-    reward: { coins: 60 }
-  },
-  {
-    id: 'M11', district: 'port', order: 3, name: 'Konwój', timeLimit: 110,
-    goal: { type: 'eatCount', entityType: 'vehicle', count: 6, label: 'Pochłoń 6 pojazdów konwoju' },
-    medal: { type: 'comboUnbroken', label: 'Przejdź bez przerwania combo' },
-    setup: { fragments: 12, props: 8, vehicles: 10, bots: 1 },
-    nela: { start: 'Konwój rusza. Nie zgub żadnego pojazdu.', success: 'Ruchome cele w końcu stanęły.' },
-    reward: { coins: 60 }
-  },
-  {
-    id: 'M12', district: 'port', order: 4, name: 'Upadek dźwigu', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'node', count: 3, landmark: 'dzwig', minTier: 4, label: 'Zbierz 3 zasilacze i pochłoń dźwig', activatorLabel: 'Zbierz 3 zasilacze', landmarkLabel: 'Pochłoń dźwig' },
-    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
-    setup: { fragments: 14, props: 8, vehicles: 6, nodes: 3, landmark: 'dzwig', bots: 1 },
-    evolutionOffer: { atSeconds: 30, count: 2 },
-    nela: { start: 'Trzy zasilacze, jeden wielki dźwig. Ruszaj.', success: 'Dźwig opadł. Galeria się otwiera!' },
-    reward: { coins: 80, unlockDistrict: 'galeria' }
-  },
-
-  // Rozdział IV (Galeria Glitch) — GDD 4.0 §6 table rows M13-M16.
-  {
-    id: 'M13', district: 'galeria', order: 1, name: 'Druga strona', timeLimit: 90,
-    goal: { type: 'eatCount', entityType: 'marker', count: 6, label: 'Użyj portalu i zbierz 6 kryształów' },
-    medal: { type: 'timeUnder', seconds: 65, label: 'Ukończ w 65 s' },
-    setup: { fragments: 12, markers: 8, gates: 1, bots: 0 },
-    nela: { start: 'Portal migocze — przejdź, gdy jest otwarty.', success: 'Druga strona galerii odzyskana.' },
-    reward: { coins: 70 }
-  },
-  {
-    id: 'M14', district: 'galeria', order: 2, name: 'Witryny do odzyskania', timeLimit: 100,
-    goal: { type: 'eatCount', entityType: 'marker', count: 3, label: 'Wyczyść 3 witryny' },
-    medal: { type: 'comboAtLeast', count: 5, label: 'Zbierz 5 w jednym combo' },
-    setup: { fragments: 14, markers: 5, bots: 0 },
-    nela: { start: 'Witryny wciąż świecą starym światłem. Zgaś je.', success: 'Nowe reklamy migają nad placem.' },
-    reward: { coins: 70 }
-  },
-  {
-    id: 'M15', district: 'galeria', order: 3, name: 'Przed zamknięciem', timeLimit: 110,
-    goal: { type: 'eatCount', entityType: 'marker', count: 4, label: 'Zbierz 4 klucze sektorów' },
-    medal: { type: 'timeUnder', seconds: 75, label: 'Ukończ w 75 s' },
-    setup: { fragments: 12, props: 6, markers: 6, bots: 1 },
-    nela: { start: 'Sektory zamykają się jeden po drugim. Pospiesz się.', success: 'Wszystkie sektory otwarte na nowo.' },
-    reward: { coins: 70 }
-  },
-  {
-    id: 'M16', district: 'galeria', order: 4, name: 'Kaskada luster', timeLimit: 120,
-    goal: { type: 'activateAndDevour', activator: 'pylon', count: 3, landmark: 'galeria_glowna', minTier: 4, label: 'Aktywuj 3 lustra i pochłoń galerię', activatorLabel: 'Aktywuj 3 lustra', landmarkLabel: 'Pochłoń galerię' },
-    medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra w jednej serii' },
-    setup: { fragments: 12, props: 8, vehicles: 4, pylons: 3, landmark: 'galeria_glowna', bots: 1 },
-    evolutionOffer: { atSeconds: 30, count: 2 },
-    nela: { start: 'Trzy lustra, jedna kaskada światła. Rozpal ją.', success: 'Galeria lśni jak nowa. Dachy czekają!' },
-    reward: { coins: 90, unlockDistrict: 'dachy' }
-  },
-
-  // Rozdział V (Dachy Prądu) — GDD 4.0 §6 table rows M17-M20.
-  {
-    id: 'M17', district: 'dachy', order: 1, name: 'Nad miastem', timeLimit: 90,
-    goal: { type: 'eatCount', entityType: 'prop', count: 14, label: 'Pochłoń 14 modułów dachowych' },
-    medal: { type: 'timeUnder', seconds: 60, label: 'Ukończ w 60 s' },
-    setup: { fragments: 10, props: 20, bots: 0 },
-    nela: { start: 'Dachy Prądu widać z każdego okna. Zacznij od góry.', success: 'Pierwszy dach znów świeci.' },
-    reward: { coins: 80 }
-  },
-  {
-    id: 'M18', district: 'dachy', order: 2, name: 'Tor lotu', timeLimit: 110,
-    goal: { type: 'gatesPassed', count: 3, label: 'Wyczyść 3 pasy przelotu' },
-    medal: { type: 'comboUnbroken', label: 'Przejdź bez przerwania combo' },
-    setup: { fragments: 12, props: 6, gates: 3, bots: 0 },
-    nela: { start: 'Trzy pasy, trzy rytmy. Ucz się każdego z osobna.', success: 'Tor lotu czysty od krawędzi do krawędzi.' },
-    reward: { coins: 80 }
-  },
-  {
-    id: 'M19', district: 'dachy', order: 3, name: 'Cel w zasięgu', timeLimit: 110,
-    goal: { type: 'activateAndDevour', activator: 'node', count: 2, landmark: 'iglica_wejscie', minTier: 4, label: 'Zasil 2 mostki i otwórz iglicę', activatorLabel: 'Zasil 2 mostki', landmarkLabel: 'Otwórz iglicę' },
-    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
-    setup: { fragments: 12, props: 8, vehicles: 4, nodes: 2, landmark: 'iglica_wejscie', bots: 1 },
-    nela: { start: 'Dwa mostki dzielą Cię od iglicy. Zasil je.', success: 'Wejście otwarte. Iglica czeka.' },
-    reward: { coins: 80 }
-  },
-  {
-    id: 'M20', district: 'dachy', order: 4, name: 'Iglica', timeLimit: 120,
-    goal: { type: 'eatCount', entityType: 'landmark', count: 1, label: 'Pochłoń centralną iglicę' },
-    medal: { type: 'timeUnder', seconds: 90, label: 'Ukończ w 90 s' },
-    setup: { fragments: 14, props: 10, vehicles: 6, landmark: 'iglica', bots: 1 },
-    evolutionOffer: { atSeconds: 30, count: 2 },
-    nela: { start: 'Najbardziej epicki landmark przed finałem. Idź po niego.', success: 'Iglica pochłonięta. Rdzeń Miasta się budzi!' },
-    reward: { coins: 100, unlockDistrict: 'rdzen' }
-  },
-
-  // Rozdział VI (Rdzeń Miasta) — GDD 4.0 §6 table rows M21-M24, kampanii finał.
-  {
-    id: 'M21', district: 'rdzen', order: 1, name: 'Powrót sygnału', timeLimit: 90,
-    goal: { type: 'eatCount', entityType: 'marker', count: 4, label: 'Odzyskaj 4 emitery' },
-    medal: { type: 'timeUnder', seconds: 60, label: 'Ukończ w 60 s' },
-    setup: { fragments: 12, markers: 6, bots: 0 },
-    nela: { start: 'Sygnał milczy od dawna. Znajdź emitery.', success: 'Sygnał wraca do Rdzenia.' },
-    reward: { coins: 90 }
-  },
-  {
-    id: 'M22', district: 'rdzen', order: 2, name: 'Czytelny chaos', timeLimit: 110,
-    goal: { type: 'eatCount', entityType: 'fragment', count: 20, label: 'Pochłoń 20 fragmentów energii w 3 sektorach' },
-    medal: { type: 'comboAtLeast', count: 8, label: 'Zbierz 8 w jednym combo' },
-    setup: { fragments: 30, props: 6, bots: 1 },
-    nela: { start: 'Chaos ma swój rytm, jeśli wiesz gdzie patrzeć.', success: 'Kontrolowany chaos miasta ustał.' },
-    reward: { coins: 90 }
-  },
-  {
-    id: 'M23', district: 'rdzen', order: 3, name: 'Ostatni obwód', timeLimit: 120,
-    goal: { type: 'eatCount', entityType: 'node', count: 4, label: 'Naładuj finalny obwód z 4 węzłów' },
-    medal: { type: 'noBotHit', label: 'Zakończ bez trafienia przez bota' },
-    setup: { fragments: 14, props: 8, nodes: 4, bots: 1 },
-    nela: { start: 'Wysokie napięcie. Cztery węzły, jedna szansa.', success: 'Obwód zamknięty. Ostatni krok.' },
-    reward: { coins: 90 }
-  },
-  {
-    id: 'M24', district: 'rdzen', order: 4, name: 'Miasto na nowo', timeLimit: 120,
-    goal: { type: 'eatCount', entityType: 'landmark', count: 1, label: 'Pochłoń główny rdzeń miasta' },
-    medal: { type: 'timeUnder', seconds: 95, label: 'Ukończ w 95 s' },
-    setup: { fragments: 16, props: 10, vehicles: 8, landmark: 'rdzen_miasta_glowny', bots: 1 },
-    evolutionOffer: { atSeconds: 30, count: 2 },
-    nela: { start: 'Wielki finał całej kampanii. Miasto patrzy.', success: 'Miasto odzyskane. Neonowa Warszawa znów żyje.' },
-    reward: { coins: 120, unlockSkin: 'aurora' }
-  }
+  ...MISSION_SPECS.map(spec => compileMission(spec, DISTRICTS.find(d => d.id === spec.d).missions.indexOf(spec.id)))
 ];
 
 function campaignMissionById(id) { return CAMPAIGN_MISSIONS.find(m => m.id === id); }
+
+/** v10: missions are numbered by their position in the campaign (district
+ *  by district), not by internal id or per-district order -- a district's
+ *  third mission used to show up as "M03" in every district. */
+function missionNumber(id) {
+  let n = 0;
+  for (const d of DISTRICTS) for (const mid of d.missions) { if (mid === id) return n; n++; }
+  return 0;
+}
+function missionCode(def) { return def.id === 'M00' ? 'SAMOUCZEK' : `M${String(missionNumber(def.id)).padStart(2, '0')}`; }
 
 /* ----------------------- Feature unlocks + celebrations -----------------------
    Pure save -> bool gates (shared by Game.isArenaUnlocked()/etc. and
@@ -1006,7 +1220,8 @@ const FEATURE_GATES = {
   warsztat: s => !!s.campaign.completed['M02']
     || (s.owned || []).length > 1 || ((s.auras || {}).owned || []).length > 1
     || ((s.effects || {}).owned || []).length > 1 || ((s.overdriveSkins || {}).owned || []).length > 1,
-  wyzwania: s => !!s.campaign.completed['M04']
+  // v10: M03 (M04 became Plac Neonów's boss, the district's last mission).
+  wyzwania: s => !!(s.campaign.completed['M03'] || s.campaign.completed['M04'])
 };
 
 const UNLOCK_ICONS = {
@@ -1038,7 +1253,7 @@ const FEATURE_UNLOCKS = [
   ...DISTRICTS.filter(d => d.id !== 'plac').map(d => ({
     id: 'district:' + d.id, districtId: d.id, eyebrow: 'NOWA DZIELNICA', title: d.name.toUpperCase(), color: '#9875FF',
     icon: UNLOCK_ICONS.district,
-    desc: `${d.missions.length} nowe misje, nowe obiekty do pochłonięcia i kolejny kawałek miasta do odbudowy.`,
+    desc: `${nounFor('misja', d.missions.length)}, nowe obiekty do pochłonięcia i kolejny kawałek miasta do odbudowy.`,
     cta: 'DO DZIELNICY', isUnlocked: s => (s.campaign.unlockedDistricts || []).includes(d.id)
   }))
 ];
@@ -1207,6 +1422,9 @@ function entityTypesFromMissionSetup(setup) {
   if (setup.nodes) types.push('node');
   if (setup.pylons) types.push('pylon');
   if (setup.landmark) types.push('landmark');
+  if (setup.structures) types.push('structure');
+  if (setup.heavies) types.push('heavy');
+  if (setup.towers) types.push('tower');
   return types;
 }
 
@@ -1893,6 +2111,435 @@ const OBJECT_ART = {
     c.beginPath(); c.arc(0, -r * 1.0, r * 0.06, 0, Math.PI * 2); c.fill(); c.restore();
   },
 
+  /* ---------- v10: T4 (violet) structures ---------- */
+
+  // T4 -- glass pavilion with an arched neon roof.
+  pawilon(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.82, r * 1.0, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.85, -r * 0.2, r * 1.7, r * 1.0, r * 0.06);
+    paintBody(c, col, -r * 0.2, r * 0.8, { light: 0.1, dark: -0.6 });
+    const glass = c.createLinearGradient(0, -r * 0.1, 0, r * 0.7);
+    glass.addColorStop(0, '#ffffff'); glass.addColorStop(1, rgbaColor(col, 0.5));
+    c.save(); c.shadowBlur = 14; c.shadowColor = '#fff'; c.fillStyle = glass;
+    for (let i = 0; i < 4; i++) { roundRectPath(c, -r * 0.72 + i * r * 0.37, -r * 0.08, r * 0.3, r * 0.62, r * 0.04); c.fill(); }
+    c.restore();
+    c.beginPath(); c.moveTo(-r, -r * 0.18); c.quadraticCurveTo(0, -r * 1.05, r, -r * 0.18); c.closePath();
+    paintBody(c, col, -r * 0.75, -r * 0.18, { light: 0.4, dark: -0.3, glow: 16 });
+    c.save(); c.shadowBlur = 10; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    roundRectPath(c, -r * 0.32, -r * 0.5, r * 0.64, r * 0.14, r * 0.05); c.fill(); c.restore();
+  },
+
+  // T4 -- giant neon billboard on two legs.
+  billboard(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.25);
+    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.8, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.lineCap = 'round'; c.lineWidth = r * 0.1; c.strokeStyle = shadeColor(col, -0.35);
+    c.beginPath(); c.moveTo(-r * 0.5, r * 0.88); c.lineTo(-r * 0.5, r * 0.1); c.moveTo(r * 0.5, r * 0.88); c.lineTo(r * 0.5, r * 0.1); c.stroke();
+    roundRectPath(c, -r * 1.0, -r * 0.85, r * 2.0, r * 1.0, r * 0.08);
+    paintBody(c, col, -r * 0.85, r * 0.15, { light: 0.2, dark: -0.6, glow: 18 });
+    const ad = c.createLinearGradient(-r * 0.85, 0, r * 0.85, 0);
+    ad.addColorStop(0, shadeColor(col, 0.2)); ad.addColorStop(0.5, '#ffffff'); ad.addColorStop(1, shadeColor(col, 0.5));
+    c.save(); c.globalAlpha = 0.85; c.fillStyle = ad;
+    roundRectPath(c, -r * 0.86, -r * 0.72, r * 1.72, r * 0.74, r * 0.05); c.fill(); c.restore();
+    c.fillStyle = shadeColor(col, -0.5);
+    c.beginPath(); c.arc(-r * 0.4, -r * 0.35, r * 0.2, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.1, -r * 0.5, r * 0.8, r * 0.12, r * 0.05); c.fill();
+    roundRectPath(c, -r * 0.1, -r * 0.28, r * 0.55, r * 0.1, r * 0.05); c.fill();
+  },
+
+  // T4 -- port warehouse with a saw-tooth roof and striped roller door.
+  magazyn(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.82, r * 1.02, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath();
+    c.moveTo(-r, r * 0.8); c.lineTo(-r, -r * 0.3);
+    for (let i = 0; i < 4; i++) { const x0 = -r + i * r * 0.5; c.lineTo(x0 + r * 0.5, -r * 0.75); c.lineTo(x0 + r * 0.5, -r * 0.3); }
+    c.lineTo(r, r * 0.8); c.closePath();
+    paintBody(c, col, -r * 0.75, r * 0.8, { light: 0.3, dark: -0.6 });
+    roundRectPath(c, -r * 0.5, r * 0.05, r * 1.0, r * 0.75, r * 0.03);
+    c.fillStyle = shadeColor(col, -0.55); c.fill();
+    c.fillStyle = shadeColor(col, 0.35);
+    for (let y = r * 0.12; y < r * 0.78; y += r * 0.13) c.fillRect(-r * 0.46, y, r * 0.92, r * 0.05);
+    c.save(); c.shadowBlur = 10; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    [-0.78, 0.66].forEach(x => c.fillRect(r * x, -r * 0.15, r * 0.12, r * 0.12)); c.restore();
+  },
+
+  /* ---------- v10: T5 (silver) heavy vehicles ---------- */
+
+  // T5 -- city bus: long body, window band, destination sign.
+  autobus(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.25);
+    c.beginPath(); c.ellipse(0, r * 0.5, r * 1.1, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 1.05, -r * 0.55, r * 2.1, r * 0.95, r * 0.18);
+    paintBody(c, col, -r * 0.55, r * 0.4, { light: 0.5, dark: -0.45, glow: 12 });
+    const glass = c.createLinearGradient(0, -r * 0.45, 0, -r * 0.1);
+    glass.addColorStop(0, '#ffffff'); glass.addColorStop(1, shadeColor(col, 0.55));
+    c.fillStyle = glass;
+    for (let i = 0; i < 6; i++) { roundRectPath(c, -r * 0.92 + i * r * 0.3, -r * 0.42, r * 0.24, r * 0.3, r * 0.04); c.fill(); }
+    c.fillStyle = shadeColor(col, -0.45); c.fillRect(-r * 1.0, -r * 0.02, r * 2.0, r * 0.07);
+    c.save(); c.shadowBlur = 10; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    roundRectPath(c, r * 0.55, -r * 0.62, r * 0.4, r * 0.1, r * 0.03); c.fill(); c.restore();
+    [-r * 0.62, r * 0.6].forEach(x => {
+      c.beginPath(); c.arc(x, r * 0.4, r * 0.18, 0, Math.PI * 2); c.fillStyle = '#0a0f18'; c.fill();
+      c.lineWidth = r * 0.05; c.strokeStyle = shadeColor(col, 0.2); c.stroke();
+    });
+  },
+
+  // T5 -- two-car tram with a pantograph.
+  tramwaj(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.25);
+    c.beginPath(); c.ellipse(0, r * 0.52, r * 1.1, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = shadeColor(col, 0.3); c.lineWidth = r * 0.04;
+    c.beginPath(); c.moveTo(-r * 0.2, -r * 0.5); c.lineTo(r * 0.1, -r * 0.85); c.lineTo(r * 0.35, -r * 0.5); c.moveTo(-r * 0.15, -r * 0.85); c.lineTo(r * 0.4, -r * 0.85); c.stroke();
+    [[-r * 1.05, r * 1.0], [r * 0.05, r * 1.0]].forEach(([x, w]) => {
+      roundRectPath(c, x, -r * 0.5, w, r * 0.9, r * 0.14);
+      paintBody(c, col, -r * 0.5, r * 0.4, { light: 0.5, dark: -0.45, glow: 12 });
+      const glass = c.createLinearGradient(0, -r * 0.4, 0, -r * 0.05);
+      glass.addColorStop(0, '#ffffff'); glass.addColorStop(1, shadeColor(col, 0.55));
+      c.fillStyle = glass;
+      for (let i = 0; i < 3; i++) { roundRectPath(c, x + r * 0.1 + i * r * 0.3, -r * 0.38, r * 0.22, r * 0.32, r * 0.04); c.fill(); }
+    });
+    c.fillStyle = shadeColor(col, -0.45); c.fillRect(-r * 1.0, r * 0.08, r * 2.0, r * 0.05);
+    [-r * 0.75, -r * 0.3, r * 0.35, r * 0.8].forEach(x => { c.beginPath(); c.arc(x, r * 0.42, r * 0.12, 0, Math.PI * 2); c.fillStyle = '#0a0f18'; c.fill(); });
+  },
+
+  // T5 -- heavy truck: cab + ribbed cargo box.
+  ciezarowka(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.25);
+    c.beginPath(); c.ellipse(0, r * 0.55, r * 1.1, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 1.05, -r * 0.65, r * 1.45, r * 1.0, r * 0.06);
+    paintBody(c, col, -r * 0.65, r * 0.35, { light: 0.45, dark: -0.5 });
+    c.strokeStyle = shadeColor(col, -0.3); c.lineWidth = r * 0.04;
+    for (let x = -r * 0.85; x < r * 0.35; x += r * 0.2) { c.beginPath(); c.moveTo(x, -r * 0.6); c.lineTo(x, r * 0.3); c.stroke(); }
+    c.beginPath(); c.moveTo(r * 0.45, r * 0.35); c.lineTo(r * 0.45, -r * 0.4); c.lineTo(r * 0.85, -r * 0.4); c.lineTo(r * 1.05, -r * 0.05); c.lineTo(r * 1.05, r * 0.35); c.closePath();
+    paintBody(c, shadeColor(col, -0.25), -r * 0.4, r * 0.35, { light: 0.4, dark: -0.4 });
+    c.fillStyle = '#ffffff';
+    c.beginPath(); c.moveTo(r * 0.55, -r * 0.05); c.lineTo(r * 0.55, -r * 0.3); c.lineTo(r * 0.8, -r * 0.3); c.lineTo(r * 0.95, -r * 0.05); c.closePath(); c.fill();
+    [-r * 0.7, -r * 0.3, r * 0.75].forEach(x => {
+      c.beginPath(); c.arc(x, r * 0.38, r * 0.17, 0, Math.PI * 2); c.fillStyle = '#0a0f18'; c.fill();
+      c.lineWidth = r * 0.05; c.strokeStyle = shadeColor(col, 0.2); c.stroke();
+    });
+  },
+
+  /* ---------- v10: T6 (green) towers ---------- */
+
+  // T6 -- stepped skyscraper with a lit window grid and an antenna.
+  wiezowiec(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.92, r * 0.75, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    const blocks = [[-r * 0.55, r * 1.1, r * 1.65], [-r * 0.4, r * 0.8, r * 0.45], [-r * 0.22, r * 0.44, r * 0.3]];
+    let top = r * 0.9;
+    blocks.forEach(([x, w, h]) => {
+      roundRectPath(c, x, top - h, w, h, r * 0.03);
+      paintBody(c, col, top - h, top, { light: 0.4, dark: -0.6, glow: 14 });
+      c.fillStyle = 'rgba(255,255,255,0.8)';
+      for (let y = top - h + r * 0.08; y < top - r * 0.06; y += r * 0.14) {
+        for (let xx = x + w * 0.12; xx < x + w - w * 0.12; xx += w / 5) c.fillRect(xx, y, w / 10, r * 0.05);
+      }
+      top -= h;
+    });
+    c.strokeStyle = shadeColor(col, 0.5); c.lineWidth = r * 0.04;
+    c.beginPath(); c.moveTo(0, top); c.lineTo(0, top - r * 0.3); c.stroke();
+  },
+
+  // T6 -- lattice radio mast with dishes (live: blinking beacon).
+  maszt(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.95, r * 0.6, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.shadowBlur = 10; c.shadowColor = col;
+    c.strokeStyle = shadeColor(col, 0.15); c.lineWidth = r * 0.07; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-r * 0.45, r * 0.92); c.lineTo(-r * 0.06, -r * 0.95); c.moveTo(r * 0.45, r * 0.92); c.lineTo(r * 0.06, -r * 0.95); c.stroke();
+    c.restore();
+    c.strokeStyle = shadeColor(col, -0.2); c.lineWidth = r * 0.035;
+    c.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const y0 = r * 0.9 - i * r * 0.3, y1 = y0 - r * 0.3;
+      const w0 = r * 0.45 * (1 - i / 6.5), w1 = r * 0.45 * (1 - (i + 1) / 6.5);
+      c.moveTo(-w0, y0); c.lineTo(w1, y1); c.moveTo(w0, y0); c.lineTo(-w1, y1); c.moveTo(-w1, y1); c.lineTo(w1, y1);
+    }
+    c.stroke();
+    [[-1, -r * 0.2], [1, -r * 0.5]].forEach(([dir, y]) => {
+      c.beginPath(); c.ellipse(dir * r * 0.32, y, r * 0.16, r * 0.24, dir * 0.4, 0, Math.PI * 2);
+      paintBody(c, col, y - r * 0.24, y + r * 0.24, { light: 0.5, dark: -0.3, glow: 8 });
+    });
+  },
+
+  // T6 -- glass dome hall with ribs on a ringed base.
+  kopula(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.82, r * 1.05, r * 0.16, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.95, r * 0.35, r * 1.9, r * 0.45, r * 0.06);
+    paintBody(c, col, r * 0.35, r * 0.8, { light: 0.2, dark: -0.6 });
+    c.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let x = -r * 0.82; x < r * 0.82; x += r * 0.22) c.fillRect(x, r * 0.5, r * 0.1, r * 0.14);
+    c.beginPath(); c.arc(0, r * 0.35, r * 0.85, Math.PI, 0); c.closePath();
+    const dome = c.createRadialGradient(-r * 0.3, -r * 0.2, r * 0.05, 0, r * 0.35, r * 0.9);
+    dome.addColorStop(0, '#ffffff'); dome.addColorStop(0.35, shadeColor(col, 0.4)); dome.addColorStop(1, shadeColor(col, -0.4));
+    c.save(); c.shadowBlur = 18; c.shadowColor = col; c.fillStyle = dome; c.fill(); c.restore();
+    c.strokeStyle = rgbaColor('#ffffff', 0.55); c.lineWidth = 1.2;
+    for (let i = 1; i < 6; i++) { const a = Math.PI + (i / 6) * Math.PI; c.beginPath(); c.moveTo(0, -r * 0.5); c.quadraticCurveTo(Math.cos(a) * r * 0.6, r * 0.35 + Math.sin(a) * r * 0.6, Math.cos(a) * r * 0.85, r * 0.35); c.stroke(); }
+    c.save(); c.shadowBlur = 12; c.shadowColor = '#fff'; c.fillStyle = '#fff'; c.beginPath(); c.arc(0, -r * 0.55, r * 0.07, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  /* ---------- v10: illustrated mission objects (were thin line icons) ---------- */
+
+  // T2 -- rooftop AC unit with a fan grille.
+  modul_dachowy(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.75, r * 0.95, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.9, -r * 0.6, r * 1.8, r * 1.3, r * 0.12);
+    paintBody(c, col, -r * 0.6, r * 0.7, { light: 0.35, dark: -0.55 });
+    c.beginPath(); c.arc(-r * 0.25, 0, r * 0.45, 0, Math.PI * 2); c.fillStyle = shadeColor(col, -0.6); c.fill();
+    c.strokeStyle = shadeColor(col, 0.5); c.lineWidth = r * 0.06;
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; c.beginPath(); c.moveTo(-r * 0.25, 0); c.lineTo(-r * 0.25 + Math.cos(a) * r * 0.4, Math.sin(a) * r * 0.4); c.stroke(); }
+    c.fillStyle = shadeColor(col, 0.6);
+    for (let y = -r * 0.4; y < r * 0.45; y += r * 0.18) c.fillRect(r * 0.35, y, r * 0.4, r * 0.07);
+  },
+
+  // T2 -- marked shipping pallet stacked with boxes.
+  paleta(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.85, r * 0.95, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = shadeColor(col, -0.45);
+    c.fillRect(-r * 0.95, r * 0.55, r * 1.9, r * 0.12); c.fillRect(-r * 0.95, r * 0.72, r * 1.9, r * 0.1);
+    [[-0.85, -0.05, 0.85, 0.6], [0.05, -0.05, 0.8, 0.6], [-0.45, -0.7, 0.9, 0.65]].forEach(([x, y, w, h]) => {
+      roundRectPath(c, r * x, r * y, r * w, r * h, r * 0.05);
+      paintBody(c, col, r * y, r * (y + h), { light: 0.35, dark: -0.45, glow: 6 });
+    });
+    c.save(); c.shadowBlur = 10; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.beginPath(); c.moveTo(-r * 0.1, -r * 0.55); c.lineTo(r * 0.15, -r * 0.4); c.lineTo(-r * 0.1, -r * 0.25); c.closePath(); c.fill(); c.restore();
+  },
+
+  // T2 -- glitch crystal cluster.
+  krysztal(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.82, r * 0.8, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    [[-0.45, 0.8, 0.28, 1.2, -0.25], [0.4, 0.8, 0.26, 1.0, 0.3], [0, 0.85, 0.34, 1.75, 0]].forEach(([x, base, w, h, tilt]) => {
+      c.save(); c.translate(r * x, r * base); c.rotate(tilt);
+      c.beginPath(); c.moveTo(-r * w, 0); c.lineTo(-r * w, -r * h * 0.7); c.lineTo(0, -r * h); c.lineTo(r * w, -r * h * 0.7); c.lineTo(r * w, 0); c.closePath();
+      paintBody(c, col, -r * h, 0, { light: 0.6, dark: -0.3, glow: 14 });
+      c.fillStyle = 'rgba(255,255,255,0.55)';
+      c.beginPath(); c.moveTo(-r * w * 0.6, -r * h * 0.1); c.lineTo(-r * w * 0.6, -r * h * 0.65); c.lineTo(0, -r * h * 0.9); c.lineTo(0, -r * h * 0.2); c.closePath(); c.fill();
+      c.restore();
+    });
+  },
+
+  // T2 -- shop display window with an awning and a lit mannequin.
+  witryna(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.85, r * 0.95, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.9, -r * 0.55, r * 1.8, r * 1.35, r * 0.06);
+    paintBody(c, col, -r * 0.55, r * 0.8, { light: 0.1, dark: -0.6 });
+    const glass = c.createLinearGradient(0, -r * 0.4, 0, r * 0.65);
+    glass.addColorStop(0, '#ffffff'); glass.addColorStop(1, rgbaColor(col, 0.6));
+    c.save(); c.shadowBlur = 14; c.shadowColor = '#fff'; c.fillStyle = glass;
+    roundRectPath(c, -r * 0.75, -r * 0.35, r * 1.5, r * 1.0, r * 0.04); c.fill(); c.restore();
+    c.fillStyle = shadeColor(col, -0.4);
+    c.beginPath(); c.arc(0, -r * 0.08, r * 0.12, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(-r * 0.2, r * 0.6); c.lineTo(-r * 0.12, r * 0.05); c.lineTo(r * 0.12, r * 0.05); c.lineTo(r * 0.2, r * 0.6); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(-r, -r * 0.55); c.lineTo(-r * 0.85, -r * 0.85); c.lineTo(r * 0.85, -r * 0.85); c.lineTo(r, -r * 0.55); c.closePath();
+    paintBody(c, col, -r * 0.85, -r * 0.55, { light: 0.5, dark: -0.1, glow: 10 });
+  },
+
+  // T2 -- sector key card on a lanyard ring.
+  klucz_sektora(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.85, r * 0.8, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.rotate(-0.2);
+    roundRectPath(c, -r * 0.65, -r * 0.55, r * 1.3, r * 1.2, r * 0.14);
+    paintBody(c, col, -r * 0.55, r * 0.65, { light: 0.45, dark: -0.45, glow: 12 });
+    c.fillStyle = '#ffffff';
+    roundRectPath(c, -r * 0.45, -r * 0.15, r * 0.35, r * 0.28, r * 0.05); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.8)';
+    c.fillRect(r * 0.0, -r * 0.12, r * 0.45, r * 0.07); c.fillRect(r * 0.0, r * 0.02, r * 0.32, r * 0.07);
+    c.strokeStyle = shadeColor(col, 0.6); c.lineWidth = r * 0.07;
+    c.beginPath(); c.arc(0, -r * 0.75, r * 0.2, 0, Math.PI * 2); c.stroke();
+    c.restore();
+  },
+
+  // T2 -- signal emitter dish on a mast.
+  emiter(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.88, r * 0.7, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.08, -r * 0.1, r * 0.16, r * 0.95, r * 0.05);
+    paintBody(c, col, -r * 0.1, r * 0.85, { glow: 4 });
+    roundRectPath(c, -r * 0.45, r * 0.7, r * 0.9, r * 0.2, r * 0.06);
+    paintBody(c, col, r * 0.7, r * 0.9, { glow: 4 });
+    c.beginPath(); c.ellipse(0, -r * 0.3, r * 0.75, r * 0.4, -0.35, Math.PI * 0.05, Math.PI * 1.05);
+    c.closePath();
+    paintBody(c, col, -r * 0.7, r * 0.1, { light: 0.55, dark: -0.3, glow: 14 });
+    c.save(); c.shadowBlur = 14; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.beginPath(); c.arc(r * 0.12, -r * 0.62, r * 0.09, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  // T2 -- garden marker: post with a leaf-shaped flag.
+  znacznik_ogrodu(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.6, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.4, -r * 0.85, r * 0.12, r * 1.75, r * 0.05);
+    paintBody(c, col, -r * 0.85, r * 0.9, { glow: 4, light: 0.2, dark: -0.5 });
+    c.beginPath(); c.moveTo(-r * 0.28, -r * 0.8); c.quadraticCurveTo(r * 0.75, -r * 0.95, r * 0.7, -r * 0.4); c.quadraticCurveTo(r * 0.2, -r * 0.05, -r * 0.28, -r * 0.15); c.closePath();
+    paintBody(c, shadeColor(col, 0.25), -r * 0.9, -r * 0.05, { light: 0.4, dark: -0.3, glow: 12 });
+    c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(-r * 0.2, -r * 0.5); c.quadraticCurveTo(r * 0.25, -r * 0.55, r * 0.6, -r * 0.45); c.stroke();
+    c.save(); c.shadowBlur = 10; c.shadowColor = col; c.fillStyle = col;
+    c.beginPath(); c.arc(-r * 0.34, -r * 0.92, r * 0.12, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  // T3 -- power supply box with a lightning bolt.
+  zasilacz(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.85, r * 0.85, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.75, -r * 0.7, r * 1.5, r * 1.5, r * 0.14);
+    paintBody(c, col, -r * 0.7, r * 0.8, { light: 0.3, dark: -0.55, glow: 12 });
+    roundRectPath(c, -r * 0.55, -r * 0.5, r * 1.1, r * 1.1, r * 0.1);
+    c.fillStyle = shadeColor(col, -0.6); c.fill();
+    c.save(); c.shadowBlur = 16; c.shadowColor = '#fff'; c.fillStyle = '#ffffff';
+    c.beginPath(); c.moveTo(r * 0.1, -r * 0.42); c.lineTo(-r * 0.25, r * 0.08); c.lineTo(-r * 0.02, r * 0.08); c.lineTo(-r * 0.12, r * 0.45); c.lineTo(r * 0.27, -r * 0.08); c.lineTo(r * 0.04, -r * 0.08); c.closePath(); c.fill();
+    c.restore();
+  },
+
+  // T3 -- angled mirror panel on a stand.
+  lustro(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.92, r * 0.6, r * 0.12, 0, 0, Math.PI * 2); c.fill();
+    c.lineCap = 'round'; c.strokeStyle = shadeColor(col, -0.3); c.lineWidth = r * 0.08;
+    c.beginPath(); c.moveTo(0, r * 0.3); c.lineTo(0, r * 0.88); c.moveTo(-r * 0.35, r * 0.9); c.lineTo(r * 0.35, r * 0.9); c.stroke();
+    c.save(); c.rotate(-0.25);
+    roundRectPath(c, -r * 0.5, -r * 0.95, r * 1.0, r * 1.3, r * 0.12);
+    paintBody(c, col, -r * 0.95, r * 0.35, { light: 0.3, dark: -0.4, glow: 14 });
+    const glass = c.createLinearGradient(-r * 0.4, -r * 0.85, r * 0.4, r * 0.25);
+    glass.addColorStop(0, '#ffffff'); glass.addColorStop(0.5, shadeColor(col, 0.55)); glass.addColorStop(1, '#ffffff');
+    c.fillStyle = glass;
+    roundRectPath(c, -r * 0.38, -r * 0.83, r * 0.76, r * 1.06, r * 0.08); c.fill();
+    c.restore();
+  },
+
+  // Structural bridge (Mostek) -- tinted by its powered state by the caller.
+  mostek(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.28);
+    c.beginPath(); c.ellipse(0, r * 0.7, r * 1.0, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    c.lineCap = 'round';
+    c.save(); c.shadowBlur = 12; c.shadowColor = col;
+    c.strokeStyle = col; c.lineWidth = r * 0.12;
+    c.beginPath(); c.moveTo(-r, r * 0.2); c.quadraticCurveTo(0, -r * 0.9, r, r * 0.2); c.stroke();
+    c.restore();
+    roundRectPath(c, -r, r * 0.15, r * 2, r * 0.2, r * 0.06);
+    paintBody(c, col, r * 0.15, r * 0.35, { glow: 8 });
+    c.strokeStyle = shadeColor(col, 0.4); c.lineWidth = r * 0.04;
+    for (let i = -3; i <= 3; i++) { const x = i * r * 0.26; const y = -r * 0.55 * (1 - (x / r) ** 2) + r * 0.2 * (x / r) ** 2; c.beginPath(); c.moveTo(x, y + r * 0.05); c.lineTo(x, r * 0.15); c.stroke(); }
+    [-r * 0.8, r * 0.8].forEach(x => { roundRectPath(c, x - r * 0.08, r * 0.3, r * 0.16, r * 0.4, r * 0.03); paintBody(c, col, r * 0.3, r * 0.7, { glow: 4 }); });
+  },
+
+  /* ---------- v10: boss landmarks as illustrated sprites ---------- */
+
+  lm_kino(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.85, r * 1.0, r * 0.16, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.85, -r * 0.3, r * 1.7, r * 1.12, r * 0.04);
+    paintBody(c, col, -r * 0.3, r * 0.82, { light: 0.2, dark: -0.6 });
+    c.beginPath(); c.moveTo(-r * 0.98, -r * 0.3); c.lineTo(-r * 0.85, -r * 0.62); c.lineTo(r * 0.85, -r * 0.62); c.lineTo(r * 0.98, -r * 0.3); c.closePath();
+    paintBody(c, col, -r * 0.62, -r * 0.3, { light: 0.5, dark: -0.2, glow: 18 });
+    c.save(); c.shadowBlur = 10; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.font = `${Math.round(r * 0.24)}px 'Russo One', sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('KINO', 0, -r * 0.46);
+    for (let i = -6; i <= 6; i++) { c.beginPath(); c.arc(i * r * 0.13, -r * 0.24, r * 0.025, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+    roundRectPath(c, -r * 0.6, r * 0.05, r * 1.2, r * 0.45, r * 0.04);
+    const scr = c.createLinearGradient(-r * 0.6, 0, r * 0.6, 0);
+    scr.addColorStop(0, '#ffffff'); scr.addColorStop(1, shadeColor(col, 0.45));
+    c.fillStyle = scr; c.fill();
+    roundRectPath(c, -r * 0.2, r * 0.55, r * 0.4, r * 0.27, r * 0.02); c.fillStyle = shadeColor(col, -0.65); c.fill();
+  },
+
+  lm_fontanna(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.75, r * 1.0, r * 0.22, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(0, r * 0.62, r * 0.92, r * 0.24, 0, 0, Math.PI * 2);
+    paintBody(c, col, r * 0.38, r * 0.86, { light: 0.3, dark: -0.5 });
+    c.beginPath(); c.ellipse(0, r * 0.56, r * 0.78, r * 0.16, 0, 0, Math.PI * 2); c.fillStyle = shadeColor(col, 0.6); c.fill();
+    roundRectPath(c, -r * 0.1, -r * 0.25, r * 0.2, r * 0.82, r * 0.05);
+    paintBody(c, col, -r * 0.25, r * 0.57, { glow: 6 });
+    c.beginPath(); c.ellipse(0, -r * 0.2, r * 0.45, r * 0.11, 0, 0, Math.PI * 2);
+    paintBody(c, col, -r * 0.31, -r * 0.09, { light: 0.5, glow: 10 });
+    c.save(); c.shadowBlur = 14; c.shadowColor = col; c.strokeStyle = '#ffffff'; c.lineWidth = r * 0.05; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, -r * 0.3); c.lineTo(0, -r * 0.95); c.stroke();
+    [-1, 1].forEach(d => { c.beginPath(); c.moveTo(0, -r * 0.85); c.quadraticCurveTo(d * r * 0.55, -r * 0.95, d * r * 0.62, r * 0.45); c.stroke(); });
+    c.restore();
+  },
+
+  lm_dzwig(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(-r * 0.3, r * 0.9, r * 0.6, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    c.save(); c.shadowBlur = 12; c.shadowColor = col;
+    c.strokeStyle = col; c.lineWidth = r * 0.07; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-r * 0.5, r * 0.88); c.lineTo(-r * 0.5, -r * 0.7); c.moveTo(-r * 0.25, r * 0.88); c.lineTo(-r * 0.25, -r * 0.7); c.stroke();
+    c.beginPath(); c.moveTo(-r * 0.8, -r * 0.7); c.lineTo(r * 1.0, -r * 0.7); c.moveTo(-r * 0.8, -r * 0.55); c.lineTo(r * 1.0, -r * 0.55); c.stroke();
+    c.restore();
+    c.strokeStyle = shadeColor(col, -0.2); c.lineWidth = r * 0.03;
+    c.beginPath();
+    for (let y = r * 0.8; y > -r * 0.65; y -= r * 0.2) { c.moveTo(-r * 0.5, y); c.lineTo(-r * 0.25, y - r * 0.2); }
+    for (let x = -r * 0.7; x < r * 0.95; x += r * 0.18) { c.moveTo(x, -r * 0.7); c.lineTo(x + r * 0.09, -r * 0.55); }
+    c.stroke();
+    c.beginPath(); c.moveTo(-r * 0.6, -r * 0.7); c.lineTo(-r * 0.375, -r * 1.05); c.lineTo(-r * 0.15, -r * 0.7); c.closePath();
+    paintBody(c, col, -r * 1.05, -r * 0.7, { glow: 8 });
+    roundRectPath(c, -r * 0.95, -r * 0.62, r * 0.3, r * 0.3, r * 0.03); paintBody(c, col, -r * 0.62, -r * 0.32, { light: 0.3, dark: -0.6 });
+    c.strokeStyle = '#ffffff'; c.lineWidth = r * 0.02;
+    c.beginPath(); c.moveTo(r * 0.75, -r * 0.55); c.lineTo(r * 0.75, r * 0.1); c.stroke();
+    roundRectPath(c, r * 0.55, r * 0.1, r * 0.4, r * 0.3, r * 0.03); paintBody(c, shadeColor(col, 0.3), r * 0.1, r * 0.4, { glow: 10 });
+  },
+
+  lm_galeria(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.85, r * 1.0, r * 0.16, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(-r * 0.95, -r * 0.35); c.lineTo(0, -r * 0.85); c.lineTo(r * 0.95, -r * 0.35); c.closePath();
+    paintBody(c, col, -r * 0.85, -r * 0.35, { light: 0.5, dark: -0.2, glow: 16 });
+    roundRectPath(c, -r * 0.85, -r * 0.35, r * 1.7, r * 1.15, r * 0.03);
+    paintBody(c, col, -r * 0.35, r * 0.8, { light: 0.2, dark: -0.6 });
+    for (let i = 0; i < 4; i++) {
+      const x = -r * 0.7 + i * r * 0.42;
+      roundRectPath(c, x, -r * 0.2, r * 0.14, r * 0.95, r * 0.04);
+      paintBody(c, col, -r * 0.2, r * 0.75, { light: 0.5, dark: -0.2, glow: 4 });
+    }
+    const art = ['#ffffff', shadeColor(col, 0.55), shadeColor(col, 0.3)];
+    art.forEach((ac, i) => {
+      c.save(); c.shadowBlur = 10; c.shadowColor = ac; c.fillStyle = ac;
+      roundRectPath(c, -r * 0.5 + i * r * 0.42, r * 0.0, r * 0.2, r * 0.3, r * 0.03); c.fill(); c.restore();
+    });
+    c.save(); c.shadowBlur = 12; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.beginPath(); c.arc(0, -r * 0.55, r * 0.09, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  lm_iglica(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.92, r * 0.7, r * 0.14, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath();
+    c.moveTo(-r * 0.4, r * 0.9); c.lineTo(-r * 0.4, r * 0.25); c.lineTo(-r * 0.18, -r * 0.1); c.lineTo(-r * 0.18, -r * 0.5);
+    c.lineTo(0, -r * 1.05); c.lineTo(r * 0.18, -r * 0.5); c.lineTo(r * 0.18, -r * 0.1); c.lineTo(r * 0.4, r * 0.25); c.lineTo(r * 0.4, r * 0.9); c.closePath();
+    paintBody(c, col, -r * 1.05, r * 0.9, { light: 0.55, dark: -0.55, glow: 20 });
+    c.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let y = r * 0.8; y > -r * 0.45; y -= r * 0.14) {
+      const w = y > r * 0.2 ? r * 0.28 : r * 0.1;
+      c.fillRect(-w, y, w * 2, r * 0.04);
+    }
+    c.save(); c.shadowBlur = 18; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.beginPath(); c.arc(0, -r * 1.05, r * 0.06, 0, Math.PI * 2); c.fill(); c.restore();
+  },
+
+  lm_rdzen(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.88, r * 0.9, r * 0.16, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(0, -r * 0.95); c.lineTo(r * 0.75, -r * 0.05); c.lineTo(0, r * 0.85); c.lineTo(-r * 0.75, -r * 0.05); c.closePath();
+    paintBody(c, col, -r * 0.95, r * 0.85, { light: 0.5, dark: -0.6, glow: 22 });
+    c.beginPath(); c.moveTo(0, -r * 0.55); c.lineTo(r * 0.42, -r * 0.05); c.lineTo(0, r * 0.45); c.lineTo(-r * 0.42, -r * 0.05); c.closePath();
+    const core = c.createRadialGradient(0, -r * 0.05, 0, 0, -r * 0.05, r * 0.5);
+    core.addColorStop(0, '#ffffff'); core.addColorStop(0.5, shadeColor(col, 0.55)); core.addColorStop(1, shadeColor(col, -0.3));
+    c.save(); c.shadowBlur = 20; c.shadowColor = col; c.fillStyle = core; c.fill(); c.restore();
+    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(0, -r * 0.95); c.lineTo(0, r * 0.85); c.moveTo(-r * 0.75, -r * 0.05); c.lineTo(r * 0.75, -r * 0.05); c.stroke();
+  },
+
   // Overdrive bonus portal: dark well + bright rim; live: swirl arms.
   portal(c, r, col) {
     const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
@@ -1990,6 +2637,30 @@ function drawObjectLive(ctx, kind, color, r, t, seed) {
     case 'portal':
       drawSpiralArms(ctx, r * 0.95, [shadeColor(color, 0.5), color, shadeColor(color, 0.2)], t * 3 + seed, 3);
       break;
+    case 'maszt': {
+      // Blinking red aviation beacon on top.
+      const on = Math.sin(t * 4 + seed) > 0.2;
+      if (!on) break;
+      ctx.save(); ctx.shadowBlur = 14; ctx.shadowColor = '#ff3860'; ctx.fillStyle = '#ff3860';
+      ctx.beginPath(); ctx.arc(0, -r * 0.98, r * 0.07, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      break;
+    }
+    case 'billboard': {
+      // Scanline sweeping across the ad panel.
+      const x = ((t * 0.6 + seed) % 1) * r * 1.7 - r * 0.85;
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(x, -r * 0.72, r * 0.08, r * 0.74);
+      break;
+    }
+    case 'lm_kino': case 'lm_fontanna': case 'lm_dzwig': case 'lm_galeria': case 'lm_iglica': case 'lm_rdzen': {
+      ctx.save();
+      ctx.rotate(t * 0.5 + seed);
+      ctx.strokeStyle = rgbaColor(color, 0.5); ctx.lineWidth = 1.5;
+      ctx.setLineDash([r * 0.22, r * 0.16]);
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.12, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      break;
+    }
   }
 }
 
@@ -2323,12 +2994,14 @@ function drawDistrictTile(canvas, district, done, total, unlocked, t) {
   ctx.fillRect(0, ground, w, 1);
   const lm = districtLandmarkId(district);
   if (lm && unlocked) {
+    // The district's boss landmark: dim until the district is rebuilt,
+    // lit once it is (no padlock -- the district itself IS unlocked).
     const complete = done >= total;
     const e = new CampaignEntity('landmark', w * 0.5, h * 0.5, { landmarkId: lm });
-    e.unlocked = complete;
+    e.unlocked = true;
     e.radius = h * 0.36;
     ctx.save();
-    if (!complete) ctx.globalAlpha = 0.6;
+    if (!complete) ctx.globalAlpha = 0.45;
     e.draw(ctx, false);
     ctx.restore();
   }
@@ -2642,6 +3315,12 @@ class CampaignEntity {
     this.y = y;
     this.radius = CONFIG.campaign.entityRadius[type];
     this.stats = CAMPAIGN_ENTITY_STATS[type];
+    if (type === 'landmark' && opts && opts.landmarkId) {
+      const tier = LANDMARK_TIERS[opts.landmarkId] || 4;
+      const L = CONFIG.campaign.landmarkByTier[tier];
+      this.stats = { ...this.stats, minTier: tier, growth: L.growth, score: L.score };
+      this.radius = L.radius;
+    }
     this.eating = false;
     this.eatT = 0;
     this.consumed = false;
@@ -2669,10 +3348,14 @@ class CampaignEntity {
       case 'fragment': return 'fragment';
       case 'capsule': return 'kapsula';
       case 'vehicle': return 'samochod';
-      case 'prop': return ['latarnia', 'lawka', 'drzewo', 'kiosk', 'skrzynia'].includes(this.glyph) ? this.glyph : null;
-      case 'marker': return !this.glyph || this.glyph === 'znacznik' ? 'znacznik' : null;
-      case 'node': return this.glyph === 'mostek' || this.glyph === 'zasilacz' ? null : 'wezel';
-      case 'pylon': return this.glyph === 'lustro' ? null : 'pylon';
+      case 'prop': return OBJECT_ART[this.glyph] ? this.glyph : 'latarnia';
+      case 'marker': return this.glyph && OBJECT_ART[this.glyph] ? this.glyph : 'znacznik';
+      case 'node': return this.glyph === 'mostek' || this.glyph === 'zasilacz' ? this.glyph : 'wezel';
+      case 'pylon': return this.glyph === 'lustro' ? 'lustro' : 'pylon';
+      case 'structure': return OBJECT_ART[this.glyph] ? this.glyph : 'pawilon';
+      case 'heavy': return OBJECT_ART[this.glyph] ? this.glyph : 'autobus';
+      case 'tower': return OBJECT_ART[this.glyph] ? this.glyph : 'wiezowiec';
+      case 'landmark': return LANDMARK_ART[this.landmarkId] || 'landmark';
       default: return null;
     }
   }
@@ -2735,431 +3418,38 @@ class CampaignEntity {
       ctx.restore();
     }
 
-    // Common pickups use the same illustrated sprites as Arena (OBJECT_ART);
-    // mission-specific glyphs keep their bespoke line art below, on top of
-    // the same soft tier-colored ground glow so both styles sit together.
-    const art = this.artKind();
-    if (art) {
-      const inactive = (this.type === 'node' || this.type === 'pylon') && !this.active;
+    // v10: every non-gate object -- generic pickups, mission-specific
+    // glyphs and boss landmarks alike -- is an illustrated OBJECT_ART
+    // sprite in its size-tier color (player feedback: the thin line icons
+    // looked unfinished next to the illustrated ones).
+    if (this.type !== 'gate') {
+      const art = this.artKind();
+      const inactive = (this.type === 'node' || this.type === 'pylon') && !this.active && this.glyph !== 'mostek';
+      const locked = this.type === 'landmark' && !this.unlocked;
+      // Mostek keeps its T3 size color; unpowered it's drawn dim and
+      // without its live glow, powered it lights up fully.
+      const color = SIZE_TIER_COLORS[this.stats.minTier];
       if (inactive) ctx.globalAlpha *= 0.35;
-      drawObjectArt(ctx, art, SIZE_TIER_COLORS[this.stats.minTier], r, performance.now() / 1000, artSeed(this.x, this.y),
-        { live: !inactive, variant: this.glyph === 'konwoj' ? 'konwoj' : undefined });
+      if (this.glyph === 'mostek' && !this.mostekPowered) ctx.globalAlpha *= 0.55;
+      if (locked) ctx.globalAlpha *= 0.45;
+      drawObjectArt(ctx, art, color, r, performance.now() / 1000, artSeed(this.x, this.y),
+        { live: !inactive && !locked, variant: this.glyph === 'konwoj' ? 'konwoj' : undefined });
+      if (locked) {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'rgba(242, 248, 255, 0.55)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 8]);
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.08, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(4, 16, 29, 0.75)';
+        ctx.beginPath(); ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.fill();
+        drawLockGlyph(ctx, 0, 1, 14);
+      }
       ctx.restore();
       return;
     }
-    if (this.stats) {
-      const tierColor = SIZE_TIER_COLORS[this.stats.minTier];
-      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.35);
-      halo.addColorStop(0, rgbaColor(tierColor, 0.22)); halo.addColorStop(1, rgbaColor(tierColor, 0));
-      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2); ctx.fill();
-    }
 
     switch (this.type) {
-      case 'fragment': {
-        ctx.strokeStyle = ctx.fillStyle = '#50F0FA';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#50F0FA';
-        ctx.beginPath();
-        ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0);
-        ctx.closePath(); ctx.fill();
-        break;
-      }
-      case 'prop': {
-        if (this.glyph === 'skrzynia') {
-          // Skrzynia (M09) -- pink, T2 size tier (see campaignEntityColor()).
-          const color = '#FF54AD';
-          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
-          ctx.strokeRect(-r * 0.85, -r * 0.6, r * 1.7, r * 1.2);
-          ctx.beginPath();
-          ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0);
-          ctx.moveTo(0, -r * 0.6); ctx.lineTo(0, 0);
-          ctx.stroke();
-        } else if (this.glyph === 'modul_dachowy') {
-          // Moduł dachowy (M17) -- pink, T2 size tier.
-          const color = '#FF54AD';
-          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = color;
-          ctx.strokeRect(-r * 0.85, -r * 0.55, r * 1.7, r * 1.1);
-          ctx.beginPath(); ctx.moveTo(-r * 0.85, 0); ctx.lineTo(r * 0.85, 0); ctx.stroke();
-        } else {
-          // Generic "ogólne" street props: latarnia/ławka/drzewo/kiosk --
-          // one of PROP_STREET_GLYPHS picked per instance in
-          // buildCampaignMission(), so a mission's
-          // filler props read as a real street scene instead of one shape
-          // repeated everywhere. Pink, T2 size tier -- cluster A/B (M02's
-          // route medal) doesn't recolor the shape; the two clusters are
-          // already spatially distinct (left/right half of the map).
-          const color = '#FF54AD';
-          ctx.strokeStyle = color; ctx.lineWidth = 1.6;
-          ctx.shadowBlur = 10; ctx.shadowColor = color;
-          switch (this.glyph) {
-            case 'latarnia':
-              ctx.beginPath();
-              ctx.moveTo(0, r); ctx.lineTo(0, -r * 0.8);
-              ctx.moveTo(-r * 0.5, r); ctx.lineTo(r * 0.5, r);
-              ctx.stroke();
-              ctx.beginPath();
-              ctx.moveTo(-r * 0.35, -r * 0.8); ctx.lineTo(r * 0.35, -r * 0.8);
-              ctx.lineTo(r * 0.22, -r * 0.45); ctx.lineTo(-r * 0.22, -r * 0.45);
-              ctx.closePath(); ctx.stroke();
-              ctx.beginPath(); ctx.arc(0, -r * 0.95, r * 0.14, 0, Math.PI * 2); ctx.fill();
-              break;
-            case 'lawka':
-              ctx.beginPath();
-              ctx.moveTo(-r, -r * 0.2); ctx.lineTo(r, -r * 0.2);
-              ctx.moveTo(-r, r * 0.2); ctx.lineTo(r, r * 0.2);
-              ctx.moveTo(-r * 0.85, r * 0.2); ctx.lineTo(-r * 0.85, r * 0.7);
-              ctx.moveTo(r * 0.85, r * 0.2); ctx.lineTo(r * 0.85, r * 0.7);
-              ctx.moveTo(-r, -r * 0.6); ctx.lineTo(-r, -r * 0.2);
-              ctx.moveTo(r, -r * 0.6); ctx.lineTo(r, -r * 0.2);
-              ctx.stroke();
-              break;
-            case 'drzewo':
-              ctx.beginPath();
-              ctx.moveTo(0, r * 0.15); ctx.lineTo(0, r);
-              ctx.stroke();
-              ctx.beginPath();
-              ctx.arc(0, -r * 0.15, r * 0.75, 0, Math.PI * 2);
-              ctx.stroke();
-              break;
-            case 'kiosk':
-              ctx.beginPath();
-              ctx.moveTo(-r, -r * 0.375); ctx.lineTo(0, -r); ctx.lineTo(r, -r * 0.375);
-              ctx.closePath(); ctx.stroke();
-              ctx.strokeRect(-r * 0.875, -r * 0.375, r * 1.75, r * 1.25);
-              ctx.strokeRect(-r * 0.375, 0, r * 0.75, r * 0.5);
-              break;
-            default: // safety fallback -- randomStreetGlyph() only ever picks the 4 cases above
-              ctx.beginPath();
-              ctx.moveTo(0, -r); ctx.lineTo(r * 0.75, r * 0.8); ctx.lineTo(-r * 0.75, r * 0.8);
-              ctx.closePath(); ctx.stroke();
-              ctx.beginPath(); ctx.moveTo(-r * 0.4, r * 0.4); ctx.lineTo(r * 0.4, r * 0.4); ctx.stroke();
-          }
-        }
-        break;
-      }
-      case 'vehicle': {
-        // Simple car silhouette (body + roof bump + two wheels) instead of
-        // a plain rectangle. Gold, T3 size tier -- same hue for plain
-        // filler and M11's convoy vehicles (glyph: 'konwoj', set in
-        // buildCampaignMission()), which are the same size class; konwoj
-        // keeps its own tow-hitch accent as a shape distinction instead.
-        const isKonwoj = this.glyph === 'konwoj';
-        const color = SIZE_TIER_COLORS[3];
-        ctx.strokeStyle = ctx.fillStyle = color; ctx.lineWidth = 2;
-        ctx.shadowBlur = 12; ctx.shadowColor = color;
-        ctx.strokeRect(-r, -r * 0.35, r * 2, r * 0.75);
-        ctx.beginPath(); ctx.arc(-r * 0.1, -r * 0.35, r * 0.5, Math.PI, 0); ctx.stroke();
-        ctx.beginPath(); ctx.arc(-r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(r * 0.55, r * 0.45, r * 0.22, 0, Math.PI * 2); ctx.fill();
-        if (isKonwoj) {
-          ctx.beginPath();
-          ctx.moveTo(r * 1.05, -r * 0.1); ctx.lineTo(r * 1.35, -r * 0.1);
-          ctx.moveTo(r * 1.2, -r * 0.25); ctx.lineTo(r * 1.2, r * 0.05);
-          ctx.stroke();
-        }
-        break;
-      }
-      case 'capsule': {
-        // Pill/capsule shape split down the middle, instead of a hexagon.
-        // Cyan, T1 size tier (smallest, alongside fragment).
-        ctx.strokeStyle = '#50F0FA';
-        ctx.shadowBlur = 14; ctx.shadowColor = '#50F0FA';
-        ctx.save();
-        ctx.rotate(Math.PI / 4);
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.5, -r);
-        ctx.lineTo(r * 0.5, -r);
-        ctx.arc(r * 0.5, 0, r, -Math.PI / 2, Math.PI / 2);
-        ctx.lineTo(-r * 0.5, r);
-        ctx.arc(-r * 0.5, 0, r, Math.PI / 2, -Math.PI / 2);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-r * 0.5, 0); ctx.lineTo(r * 0.5, 0); ctx.stroke();
-        ctx.restore();
-        break;
-      }
-      case 'marker': {
-        switch (this.glyph) {
-          case 'znacznik_ogrodu': {
-            // M07 (leaf/drop shape) -- pink, T2 size tier.
-            const color = '#FF54AD';
-            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
-            ctx.beginPath();
-            ctx.moveTo(0, -r);
-            ctx.bezierCurveTo(-r * 0.85, -r * 0.5, -r * 0.85, r * 0.5, 0, r);
-            ctx.bezierCurveTo(r * 0.85, r * 0.5, r * 0.85, -r * 0.5, 0, -r);
-            ctx.closePath();
-            ctx.stroke();
-            break;
-          }
-          case 'paleta': {
-            // M10 (pallet: frame + 3 slats) -- pink, T2 size tier.
-            const color = '#FF54AD';
-            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
-            ctx.strokeRect(-r * 0.9, -r * 0.35, r * 1.8, r * 0.7);
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.55, -r * 0.35); ctx.lineTo(-r * 0.55, r * 0.35);
-            ctx.moveTo(0, -r * 0.35); ctx.lineTo(0, r * 0.35);
-            ctx.moveTo(r * 0.55, -r * 0.35); ctx.lineTo(r * 0.55, r * 0.35);
-            ctx.stroke();
-            break;
-          }
-          case 'krysztal': {
-            // M13 (pentagon gem, the payoff of the Portal twist) -- pink, T2 size tier.
-            const color = '#FF54AD';
-            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 14; ctx.shadowColor = color;
-            ctx.beginPath();
-            ctx.moveTo(0, -r); ctx.lineTo(r * 0.85, -r * 0.15); ctx.lineTo(r * 0.6, r * 0.85);
-            ctx.lineTo(-r * 0.6, r * 0.85); ctx.lineTo(-r * 0.85, -r * 0.15);
-            ctx.closePath(); ctx.stroke();
-            ctx.globalAlpha *= 0.6;
-            ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r * 0.85); ctx.stroke();
-            break;
-          }
-          case 'witryna': {
-            // M14 (storefront pane) -- pink, T2 size tier.
-            const color = '#FF54AD';
-            ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 10; ctx.shadowColor = color;
-            ctx.strokeRect(-r * 0.9, -r * 0.75, r * 1.8, r * 1.5);
-            ctx.beginPath(); ctx.moveTo(-r * 0.9, -r * 0.2); ctx.lineTo(r * 0.9, -r * 0.2); ctx.stroke();
-            break;
-          }
-          case 'klucz_sektora': {
-            // M15 (bow + shaft + teeth) -- pink, T2 size tier.
-            const color = '#FF54AD';
-            ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.shadowBlur = 12; ctx.shadowColor = color;
-            ctx.beginPath(); ctx.arc(-r * 0.35, -r * 0.15, r * 0.4, 0, Math.PI * 2); ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, r * 0.1); ctx.lineTo(r * 0.75, r * 0.85);
-            ctx.moveTo(r * 0.35, r * 0.45); ctx.lineTo(r * 0.6, r * 0.2);
-            ctx.moveTo(r * 0.55, r * 0.65); ctx.lineTo(r * 0.8, r * 0.4);
-            ctx.stroke();
-            break;
-          }
-          case 'emiter': {
-            // M21 (concentric rings + core dot) -- pink, T2 size tier.
-            const color = '#FF54AD';
-            ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 12; ctx.shadowColor = color;
-            ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.stroke();
-            ctx.globalAlpha *= 0.5;
-            ctx.beginPath(); ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2); ctx.stroke();
-            ctx.globalAlpha *= 2;
-            ctx.fillStyle = color;
-            ctx.beginPath(); ctx.arc(0, 0, r * 0.15, 0, Math.PI * 2); ctx.fill();
-            break;
-          }
-          default: {
-            // Flag on a pole -- fallback for any marker without a
-            // mission-specific glyph. Pink, T2 size tier -- route A/B
-            // (M07/M10's medal) is already spatially distinct, so it
-            // doesn't need its own color too.
-            const color = '#FF54AD';
-            ctx.strokeStyle = ctx.fillStyle = color;
-            ctx.shadowBlur = 14; ctx.shadowColor = color;
-            ctx.beginPath(); ctx.moveTo(-r * 0.6, r); ctx.lineTo(-r * 0.6, -r); ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.6, -r); ctx.lineTo(r * 0.8, -r * 0.55); ctx.lineTo(-r * 0.6, -r * 0.1);
-            ctx.closePath(); ctx.fill();
-          }
-        }
-        break;
-      }
-      case 'node': {
-        if (this.glyph === 'mostek') {
-          // Mostek (M19), structural per OBJECT_CATALOG_SPEC.md §2.2: stays
-          // on the board and just switches look when powered, instead of
-          // fading out like every other node.
-          const powered = this.mostekPowered;
-          const color = powered ? '#50F0FA' : '#9875FF';
-          ctx.strokeStyle = color; ctx.lineWidth = 1.8;
-          ctx.shadowBlur = powered ? 16 : 6; ctx.shadowColor = color;
-          if (!powered) ctx.globalAlpha *= 0.75;
-          ctx.beginPath();
-          ctx.moveTo(-r * 1.1, r * 0.5); ctx.quadraticCurveTo(0, -r * 0.9, r * 1.1, r * 0.5);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(-r * 1.1, r * 0.5); ctx.lineTo(-r * 1.1, r * 0.85);
-          ctx.moveTo(r * 1.1, r * 0.5); ctx.lineTo(r * 1.1, r * 0.85);
-          ctx.stroke();
-          break;
-        }
-        // Gold, T3 size tier for both węzeł and zasilacz. Active/inactive
-        // is dimmer opacity on the same hue instead of swapping color, so
-        // the object still reads as itself even once it's used up.
-        const color = SIZE_TIER_COLORS[3];
-        ctx.strokeStyle = color; ctx.lineWidth = 3;
-        ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
-        if (!this.active) ctx.globalAlpha *= 0.35;
-        if (this.glyph === 'zasilacz') {
-          // M12, per obj-zasilacz (charger body + bolt).
-          ctx.strokeRect(-r * 0.55, -r * 0.75, r * 1.1, r * 1.5);
-          if (this.active) {
-            ctx.beginPath();
-            ctx.moveTo(r * 0.2, -r * 0.4); ctx.lineTo(-r * 0.15, r * 0.05);
-            ctx.lineTo(r * 0.05, r * 0.05); ctx.lineTo(-r * 0.2, r * 0.5);
-            ctx.stroke();
-          }
-        } else {
-          // wezel (M04/M23, default): ring + X, unchanged from the
-          // original generic node look.
-          ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-          if (this.active) {
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, r * 0.4);
-            ctx.moveTo(r * 0.4, -r * 0.4); ctx.lineTo(-r * 0.4, r * 0.4);
-            ctx.stroke();
-          }
-        }
-        break;
-      }
-      case 'pylon': {
-        // Both pylon (M08) and lustro (M16) are gold, T3 size tier.
-        const color = SIZE_TIER_COLORS[3];
-        ctx.strokeStyle = color; ctx.lineWidth = 3;
-        ctx.shadowBlur = this.active ? 16 : 3; ctx.shadowColor = color;
-        if (!this.active) ctx.globalAlpha *= 0.35;
-        if (this.glyph === 'lustro') {
-          // M16, per obj-lustro (tilted mirror panel + stand).
-          ctx.save();
-          ctx.rotate(0.2);
-          ctx.strokeRect(-r * 0.42, -r * 0.9, r * 0.84, r * 1.8);
-          ctx.beginPath(); ctx.moveTo(0, r * 0.9); ctx.lineTo(0, r * 1.15); ctx.stroke();
-          ctx.restore();
-        } else {
-          // pylon (M08, default): mast + charge ring -- real graphic per
-          // vector_hole_full_object_catalog.svg's obj-pylon (was a
-          // placeholder line+circle before).
-          ctx.beginPath(); ctx.moveTo(0, -r * 0.3); ctx.lineTo(0, r); ctx.stroke();
-          ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.35, 0, Math.PI * 2); ctx.stroke();
-          if (this.active) {
-            ctx.globalAlpha *= 0.5;
-            ctx.beginPath(); ctx.arc(0, -r * 0.65, r * 0.6, 0, Math.PI * 2); ctx.stroke();
-          }
-        }
-        break;
-      }
-      case 'landmark': {
-        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
-        // Violet, T4 size tier (SIZE_TIER_COLORS) -- the biggest object
-        // class, same hue for every landmark (silhouette below is what
-        // tells them apart).
-        const color = this.unlocked ? '#9875FF' : 'rgba(152, 117, 255, 0.35)';
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.6;
-        ctx.shadowBlur = this.unlocked ? 20 + 8 * pulse : 6;
-        ctx.shadowColor = color;
-        if (!this.unlocked) ctx.setLineDash([10, 8]);
-
-        // Unique per-district silhouette (vector_hole_mission_board_finale.svg
-        // "LANDMARKI DZIELNIC") instead of the old generic double-ring for
-        // every landmark -- the locked padlock overlay below stays shared.
-        switch (this.landmarkId) {
-          case 'kino':
-            ctx.strokeRect(-r * 0.83, -r * 0.3, r * 1.66, r * 1.1);
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.83, -r * 0.3); ctx.lineTo(-r * 0.96, -r * 0.56);
-            ctx.lineTo(r * 0.96, -r * 0.56); ctx.lineTo(r * 0.83, -r * 0.3);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.65, -r * 0.56); ctx.lineTo(-r * 0.65, -r * 0.3);
-            ctx.moveTo(-r * 0.22, -r * 0.56); ctx.lineTo(-r * 0.22, -r * 0.3);
-            ctx.moveTo(r * 0.22, -r * 0.56); ctx.lineTo(r * 0.22, -r * 0.3);
-            ctx.moveTo(r * 0.65, -r * 0.56); ctx.lineTo(r * 0.65, -r * 0.3);
-            ctx.stroke();
-            ctx.strokeRect(-r * 0.52, r * 0.1, r * 1.04, r * 0.43);
-            if (this.unlocked) {
-              ctx.fillStyle = color;
-              [-0.3, 0, 0.3].forEach(dx => { ctx.beginPath(); ctx.arc(r * dx, r * 0.3, r * 0.05, 0, Math.PI * 2); ctx.fill(); });
-            }
-            break;
-          case 'fontanna':
-            ctx.beginPath();
-            ctx.ellipse(0, r * 0.65, r * 0.9, r * 0.2, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.ellipse(0, r * 0.22, r * 0.48, r * 0.13, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, r * 0.22); ctx.lineTo(0, -r * 0.65);
-            ctx.moveTo(0, -r * 0.65); ctx.quadraticCurveTo(-r * 0.4, -r * 0.25, -r * 0.68, r * 0.22);
-            ctx.moveTo(0, -r * 0.65); ctx.quadraticCurveTo(r * 0.4, -r * 0.25, r * 0.68, r * 0.22);
-            ctx.stroke();
-            break;
-          case 'dzwig':
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.43, r * 0.85); ctx.lineTo(-r * 0.43, -r * 0.65);
-            ctx.lineTo(r * 0.65, -r * 0.65);
-            ctx.moveTo(-r * 0.43, -r * 0.35); ctx.lineTo(r * 0.35, -r * 0.65);
-            ctx.moveTo(r * 0.65, -r * 0.65); ctx.lineTo(r * 0.65, r * 0.13);
-            ctx.moveTo(-r * 0.43, r * 0.85); ctx.lineTo(-r * 0.09, r * 0.85);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(r * 0.56, r * 0.13); ctx.lineTo(r * 0.74, r * 0.13); ctx.lineTo(r * 0.65, r * 0.3);
-            ctx.closePath();
-            ctx.fillStyle = color; ctx.fill();
-            break;
-          case 'galeria_glowna':
-            ctx.strokeRect(-r * 0.7, -r * 0.65, r * 1.4, r * 1.3);
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.35, -r * 0.65); ctx.lineTo(-r * 0.35, r * 0.65);
-            ctx.moveTo(0, -r * 0.65); ctx.lineTo(0, r * 0.65);
-            ctx.moveTo(r * 0.35, -r * 0.65); ctx.lineTo(r * 0.35, r * 0.65);
-            ctx.stroke();
-            ctx.globalAlpha *= 0.6;
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.7, -r * 0.22); ctx.lineTo(r * 0.7, -r * 0.3);
-            ctx.moveTo(-r * 0.7, r * 0.17); ctx.lineTo(r * 0.7, r * 0.09);
-            ctx.stroke();
-            break;
-          case 'iglica':
-          case 'iglica_wejscie': {
-            // iglica_wejscie (M19's mid-mission gate landmark) reuses the
-            // same spire silhouette as the M20 boss Iglica, just smaller --
-            // MISSION_BOARD_SPEC.md only specs the 6 boss landmarks and
-            // doesn't cover this entity, so this is the simplest reasonable
-            // reuse rather than inventing a 7th silhouette from nothing.
-            const s = this.landmarkId === 'iglica' ? 1 : 0.62;
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.3 * s, r * 0.87 * s); ctx.lineTo(-r * 0.3 * s, r * 0.22 * s);
-            ctx.lineTo(-r * 0.13 * s, -r * 0.09 * s); ctx.lineTo(-r * 0.13 * s, -r * 0.43 * s);
-            ctx.lineTo(0, -r * 0.87 * s);
-            ctx.lineTo(r * 0.13 * s, -r * 0.43 * s); ctx.lineTo(r * 0.13 * s, -r * 0.09 * s);
-            ctx.lineTo(r * 0.3 * s, r * 0.22 * s); ctx.lineTo(r * 0.3 * s, r * 0.87 * s);
-            ctx.closePath();
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(-r * 0.22 * s, 0); ctx.lineTo(-r * 0.22 * s, r * 0.78 * s);
-            ctx.moveTo(r * 0.22 * s, 0); ctx.lineTo(r * 0.22 * s, r * 0.78 * s);
-            ctx.stroke();
-            break;
-          }
-          case 'rdzen_miasta_glowny':
-            ctx.beginPath();
-            ctx.moveTo(0, -r * 0.82); ctx.lineTo(r * 0.7, 0); ctx.lineTo(0, r * 0.82); ctx.lineTo(-r * 0.7, 0);
-            ctx.closePath();
-            ctx.stroke();
-            ctx.strokeStyle = '#68F5FC';
-            ctx.beginPath();
-            ctx.moveTo(0, -r * 0.48); ctx.lineTo(r * 0.39, 0); ctx.lineTo(0, r * 0.48); ctx.lineTo(-r * 0.39, 0);
-            ctx.closePath();
-            ctx.stroke();
-            if (this.unlocked) { ctx.fillStyle = '#F5FAFF'; ctx.beginPath(); ctx.arc(0, 0, r * 0.09, 0, Math.PI * 2); ctx.fill(); }
-            break;
-          default:
-            // Fallback: original generic double-ring, for any landmarkId
-            // not covered above.
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.stroke();
-        }
-        ctx.setLineDash([]);
-        if (!this.unlocked) {
-          ctx.fillStyle = 'rgba(255,255,255,0.6)';
-          ctx.font = `800 18px ${FONT_UI}`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          drawLockGlyph(ctx, 0, 0, 14);
-        }
-        break;
-      }
       case 'gate': {
         if (this.glyph === 'portal') {
           // Portal (M13), per obj-portal (concentric rings) -- a fixed
@@ -3184,9 +3474,14 @@ class CampaignEntity {
           const hw = this.zoneHalfWidth || r;
           ctx.strokeStyle = color; ctx.lineWidth = 2;
           ctx.shadowBlur = open ? 14 : 4; ctx.shadowColor = color;
+          // The zone spans the whole mission box vertically (the crossing
+          // check only looks at x), so draw it that tall.
+          const b = CONFIG.campaign.bounds;
+          const top = b.minY - this.y, bottom = b.maxY - this.y;
+          if (open) { ctx.fillStyle = rgbaColor(telegraph ? '#EFCB63' : '#50F0FA', 0.08); ctx.fillRect(-hw, top, hw * 2, bottom - top); }
           ctx.setLineDash([10, 8]);
-          ctx.beginPath(); ctx.moveTo(-hw, -r * 8); ctx.lineTo(-hw, r * 8); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(hw, -r * 8); ctx.lineTo(hw, r * 8); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-hw, top); ctx.lineTo(-hw, bottom); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hw, top); ctx.lineTo(hw, bottom); ctx.stroke();
           ctx.setLineDash([]);
           ctx.beginPath();
           ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, 0); ctx.lineTo(-r * 0.4, r * 0.4);
@@ -4005,7 +4300,9 @@ class Game {
     // GDD 4.0 §5.1: Miasto's secondary CTA opens the Wyzwania tab (goal
     // text/countdown/streak live there); the tab's own button actually
     // starts the round.
-    document.getElementById('btnDaily').addEventListener('click', () => this.openChallengesScreen());
+    document.getElementById('btnDaily').addEventListener('click', () => {
+      if (this.isWyzwaniaUnlocked()) this.openChallengesScreen(); else this.openLockedTabInfo('wyzwania');
+    });
     document.getElementById('btnPlayDaily').addEventListener('click', () => this.startDailyChallenge());
     document.getElementById('btnChallengesBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
@@ -5117,7 +5414,7 @@ class Game {
     const missionLine = (id) => {
       const def = campaignMissionById(id);
       const district = DISTRICTS.find(d => d.id === def.district);
-      return `Odblokujesz po ukończeniu misji <strong>M${String(def.order).padStart(2, '0')} „${def.name}”</strong> (${district.name}).`;
+      return `Odblokujesz po ukończeniu misji <strong>${missionCode(def)} „${def.name}”</strong> (${district.name}).`;
     };
     const plac = DISTRICTS.find(d => d.id === 'plac');
     const done = plac.missions.filter(id => this.save.campaign.completed[id]).length;
@@ -5140,7 +5437,7 @@ class Game {
         title: 'Wyzwania — zablokowane',
         body: [
           'Codzienne zadania: <strong>Misja dnia</strong> z nagrodą w monetach i <strong>Wyzwanie dnia</strong> — ta sama mapa dla wszystkich, walka o rekord i serię dni z rzędu.',
-          missionLine('M04'), progress
+          missionLine('M03'), progress
         ],
         action: goToDistricts
       });
@@ -5692,7 +5989,7 @@ class Game {
       if (e.glyph === 'portal') return e.isGateOpen ? '#68F5FC' : '#9875FF';
       return !e.isGateOpen ? 'rgba(255,255,255,0.2)' : (e.isGateTelegraphing ? '#EFCB63' : '#50F0FA');
     }
-    if (e.glyph === 'mostek') return e.mostekPowered ? '#50F0FA' : '#9875FF';
+
     const stats = CAMPAIGN_ENTITY_STATS[e.type];
     return stats ? SIZE_TIER_COLORS[stats.minTier] : '#fff';
   }
@@ -5703,6 +6000,9 @@ class Game {
   campaignGoalIcon(type) {
     if (type === 'combo') return { icon: CARD_ICONS.burst, color: '#EFCB63' };
     if (type === 'gate') return { icon: GOAL_ICONS.gate, color: '#50F0FA' };
+    if (type === 'rival') return { icon: GOAL_ICONS.rival, color: '#ff3860' };
+    if (type === 'portal') return { icon: GOAL_ICONS.portal, color: '#9875FF' };
+    if (type === 'score') return { icon: GOAL_ICONS.score, color: '#EFCB63' };
     // landmark's minTier (4) already resolves to SIZE_TIER_COLORS[4] below --
     // no separate override needed now that it's the same violet as the board object.
     const stats = CAMPAIGN_ENTITY_STATS[type];
@@ -5722,6 +6022,18 @@ class Game {
     // those mirror checkCampaignGoal()'s LAST run, which hasn't happened
     // yet the first time updateCampaignHUD() renders a fresh mission.
     switch (g.type) {
+      case 'objectives':
+        return g.steps.map(st => {
+          const [progress, target] = this.objectiveProgress(st);
+          const kind = st.eat || st.activate || (st.landmark && 'landmark') || (st.tier && 'tier') || (st.combo && 'combo') ||
+            (st.gates && (m.def.setup.gateKind === 'portal' ? 'portal' : 'gate')) || (st.rival && 'rival') || (st.score && 'score');
+          let iconDef = this.campaignGoalIcon(kind);
+          if (st.landmark) iconDef = { icon: GOAL_ICONS.landmark, color: SIZE_TIER_COLORS[LANDMARK_TIERS[st.landmark]] };
+          if (st.tier) iconDef = { icon: GOAL_ICONS.tier, color: CAMPAIGN_TIERS[st.tier - 1].color };
+          const display = st.tier ? `T${Math.min(progress, target)}/T${target}`
+            : st.score ? `${Math.min(progress, target)}/${target}` : null;
+          return { ...iconDef, label: st.label, progress, target, display, done: progress >= target };
+        });
       case 'eatCount': {
         const progress = m.goalGlyph ? (m.eatenByGlyph[m.goalGlyph] || 0) : (m.eatenByType[g.entityType] || 0);
         return [{ ...this.campaignGoalIcon(g.entityType), label: g.label, progress, target: g.count }];
@@ -5762,6 +6074,14 @@ class Game {
     if (g.type === 'gatesPassed') types.add('gate');
     if (g.type === 'activateAndDevour') { types.add(g.activator); types.add('landmark'); }
     if (g.type === 'tutorialChecklist') for (const step of g.steps) if (step.entityType) types.add(step.entityType);
+    if (g.type === 'objectives') {
+      for (const st of g.steps) {
+        if (st.eat) types.add(st.eat);
+        if (st.activate) types.add(st.activate);
+        if (st.landmark) types.add('landmark');
+        if (st.gates) types.add('gate');
+      }
+    }
     return types;
   }
 
@@ -5806,9 +6126,9 @@ class Game {
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
       title: `${district.name} — zablokowana`,
       body: [
-        `Każda dzielnica to ${district.missions.length} nowe misje z nowymi obiektami do pochłonięcia.`,
+        `${district.name} to ${nounFor('misja', district.missions.length)} z nowymi obiektami do pochłonięcia.`,
         unlocker
-          ? `Odblokujesz ją, kończąc ostatnią misję poprzedniej dzielnicy: <strong>M${String(unlocker.order).padStart(2, '0')} „${unlocker.name}”</strong> (${unlockerDistrict.name}).`
+          ? `Odblokujesz ją, kończąc ostatnią misję poprzedniej dzielnicy: <strong>${missionCode(unlocker)} „${unlocker.name}”</strong> (${unlockerDistrict.name}).`
           : 'Odblokujesz ją, kończąc poprzednią dzielnicę.'
       ]
     });
@@ -5859,7 +6179,7 @@ class Game {
       const icon = done ? CHECK_ICON : (prevDone ? PLAY_ICON : LOCK_ICON);
       const status = done ? 'UKOŃCZONA · POWTÓRZ' : (prevDone ? 'DOSTĘPNA · GRAJ' : 'ZABLOKOWANA');
       row.innerHTML = `<span class="mission-row-main">` +
-        `<span class="mission-row-id">M${String(def.order).padStart(2, '0')}</span>` +
+        `<span class="mission-row-id">${def.id === 'M00' ? 'START' : missionCode(def)}</span>` +
         `<span class="mission-row-name">${def.name}</span>` +
         `<span class="mission-row-status">${status}</span>` +
         `</span><span class="mission-row-icon">${icon}</span>`;
@@ -5874,7 +6194,7 @@ class Game {
   selectCampaignMission(missionId) {
     const def = campaignMissionById(missionId);
     this.selectedMissionId = missionId;
-    document.getElementById('missionDetailName').textContent = `${def.order}. ${def.name}`;
+    document.getElementById('missionDetailName').textContent = `${missionCode(def)} · ${def.name}`;
     document.getElementById('missionDetailGoal').textContent = 'Cel: ' + def.goal.label;
     document.getElementById('missionDetailMedal').textContent = 'Medal: ' + def.medal.label;
     document.getElementById('missionDetailNela').textContent = `NELA: „${def.nela.start}”`;
@@ -5887,7 +6207,7 @@ class Game {
     document.getElementById('missionDetailReward').textContent = this.save.campaign.completed[missionId]
       ? 'Ukończona — możesz zagrać ponownie dla wprawy.'
       : !prevDone
-        ? `Zablokowana — najpierw ukończ M${String(prevDef.order).padStart(2, '0')} „${prevDef.name}”.`
+        ? `Zablokowana — najpierw ukończ ${missionCode(prevDef)} „${prevDef.name}”.`
         : `Pierwsze ukończenie: +${def.reward.coins} monet${def.reward.unlockDistrict ? ' + nowa dzielnica' : ''}.`;
     document.getElementById('btnPlayMission').disabled = !prevDone;
     document.querySelectorAll('#missionList .mission-row').forEach((el, i) => el.classList.toggle('selected', district.missions[i] === missionId));
@@ -5902,131 +6222,138 @@ class Game {
     const b = CONFIG.campaign.bounds;
     const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
 
-    const addMany = (type, count, posFn, extra) => {
+    // v10: entities never spawn on top of the start point, the landmark
+    // plinth or each other's centers -- a mission must not open with an
+    // object already inside the hole or a big one hidden under another.
+    const taken = [];
+    const free = (x, y, r) => taken.every(t => dist(x, y, t.x, t.y) > (t.r + r) * 0.9);
+    const place = (r, area) => {
+      for (let tries = 0; tries < 30; tries++) {
+        const p = area ? area() : this.randomInCampaignBounds(Math.max(40, r + 10));
+        if (free(p.x, p.y, r)) { taken.push({ x: p.x, y: p.y, r }); return p; }
+      }
+      const p = area ? area() : this.randomInCampaignBounds(Math.max(40, r + 10));
+      taken.push({ x: p.x, y: p.y, r });
+      return p;
+    };
+    const addMany = (type, count, area, extra) => {
+      const r = CONFIG.campaign.entityRadius[type];
       for (let i = 0; i < count; i++) {
-        const p = posFn ? posFn(i) : this.randomInCampaignBounds(40);
+        const p = place(r, area ? () => area(i) : null);
         const opts = typeof extra === 'function' ? extra(i) : extra;
         this.campaignEntities.push(new CampaignEntity(type, p.x, p.y, opts));
       }
     };
+    const leftHalf = () => ({ x: rand(b.minX + 60, cx - 100), y: rand(b.minY + 60, b.maxY - 60) });
+    const rightHalf = () => ({ x: rand(cx + 100, b.maxX - 60), y: rand(b.minY + 60, b.maxY - 60) });
+
+    // Reserve the landmark plinth and the player's start first.
+    if (s.landmark) taken.push({ x: cx, y: cy, r: CONFIG.campaign.landmarkByTier[LANDMARK_TIERS[s.landmark] || 4].radius + 40 });
+    // (Portal missions start beside -- not on -- the portal, which used to
+    // teleport the player on the very first frame.)
+    if (s.gateKind === 'portal') this.campaignSpawn = { x: b.minX + 140, y: cy + 230 };
+    else if (s.arcLayout) this.campaignSpawn = { x: cx - 290, y: cy };
+    else if (s.landmark) this.campaignSpawn = { x: cx, y: b.maxY - 120 };
+    const start = this.campaignSpawn || { x: cx, y: cy + 260 };
+    this.campaignSpawn = start;
+    taken.push({ x: start.x, y: start.y, r: 70 });
 
     if (s.arcLayout) {
-      // Mission 03: fragments laid along a loop so a fast, close-quarters
-      // combo chain (goal: comboChain 12) is actually reachable in 90 s.
+      // Fragments laid along a loop so a fast, close-quarters combo chain
+      // is reachable.
       const radius = 260;
       const count = s.fragments || 20;
-      this.campaignSpawn = { x: cx - radius - 30, y: cy };
-      addMany('fragment', count, (i) => {
+      for (let i = 0; i < count; i++) {
         const a = (i / count) * Math.PI * 1.7 - Math.PI * 0.85;
-        return { x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius };
-      });
-    } else {
-      if (s.fragments) addMany('fragment', s.fragments);
-      const propGlyph = PROP_GLYPHS[def.id];
-      if (s.props && s.clusters) {
-        const half = Math.ceil(s.props / 2);
-        addMany('prop', half, () => ({ x: rand(b.minX + 40, cx - 60), y: rand(b.minY + 40, b.maxY - 40) }), () => ({ cluster: 'A', glyph: propGlyph || randomStreetGlyph() }));
-        addMany('prop', s.props - half, () => ({ x: rand(cx + 60, b.maxX - 40), y: rand(b.minY + 40, b.maxY - 40) }), () => ({ cluster: 'B', glyph: propGlyph || randomStreetGlyph() }));
-      } else if (s.props) {
-        addMany('prop', s.props, null, () => ({ glyph: propGlyph || randomStreetGlyph() }));
+        this.campaignEntities.push(new CampaignEntity('fragment', cx + Math.cos(a) * radius, cy + Math.sin(a) * radius));
       }
-      // M11's vehicles ARE the goal ("Pojazd konwoju") -- grey per
-      // obj-konwoj; every other mission's vehicles are plain filler
-      // ("Samochód"), cyan per obj-samochod.
-      if (s.vehicles) addMany('vehicle', s.vehicles, null, def.id === 'M11' ? { glyph: 'konwoj' } : null);
+    } else if (s.fragments) {
+      addMany('fragment', s.fragments);
+    }
+    // Tight pockets of fragments for combo goals (see compileMission()).
+    for (let c = 0; c < (s.fragmentClusters || 0); c++) {
+      const center = place(110);
+      for (let i = 0; i < (s.clusterSize || 10); i++) {
+        const a = i * 2.4, rr = 22 + 10 * Math.sqrt(i);
+        this.campaignEntities.push(new CampaignEntity('fragment',
+          clamp(center.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(center.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20)));
+      }
     }
 
+    const glyphOr = (key, fallback) => () => ({ glyph: s[key] || fallback() });
+    if (s.props && s.clusters) {
+      const half = Math.ceil(s.props / 2);
+      addMany('prop', half, leftHalf, () => ({ cluster: 'A', glyph: s.propGlyph || randomStreetGlyph() }));
+      addMany('prop', s.props - half, rightHalf, () => ({ cluster: 'B', glyph: s.propGlyph || randomStreetGlyph() }));
+    } else if (s.props) {
+      addMany('prop', s.props, null, glyphOr('propGlyph', randomStreetGlyph));
+    }
+    if (s.vehicles) addMany('vehicle', s.vehicles, null, s.vehicleGlyph ? { glyph: s.vehicleGlyph } : null);
+    if (s.capsules) addMany('capsule', s.capsules);
+    if (s.capsuleWaves) {
+      // Each wave lands as one tight group -- a "wave" to sweep up in a
+      // single combo, not capsules scattered across the whole map.
+      s.capsuleWaves.forEach(waveStart => {
+        const center = place(120);
+        const n = s.capsulesPerWave || 8;
+        for (let i = 0; i < n; i++) {
+          const a = i * 2.4, rr = 30 + 14 * Math.sqrt(i);
+          this.campaignEntities.push(new CampaignEntity('capsule',
+            clamp(center.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(center.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20), { spawnAt: waveStart }));
+        }
+      });
+    }
+    const pickFrom = list => () => list[randInt(0, list.length - 1)];
+    if (s.structures) addMany('structure', s.structures, null, glyphOr('structureGlyph', pickFrom(TIERS.structure.subtypes)));
+    if (s.heavies) addMany('heavy', s.heavies, null, glyphOr('heavyGlyph', pickFrom(TIERS.heavy.subtypes)));
+    if (s.towers) addMany('tower', s.towers, null, glyphOr('towerGlyph', pickFrom(TIERS.tower.subtypes)));
+
     if (s.markers) {
-      const glyph = MARKER_GLYPHS[def.id];
-      if (def.id === 'M13') {
-        // Portal twist (OBJECT_CATALOG_SPEC.md §2.3): the 6-8 crystals live
-        // only on the far side of the portal (see the `s.gates` branch
-        // below) instead of being split into the generic route A/B halves
-        // -- M13's medal isn't route-based, so that split was flavor-only.
+      const glyph = s.markerGlyph;
+      if (s.gateKind === 'portal') {
+        // Portal twist: the goal objects live only on the far side.
         addMany('marker', s.markers, () => ({ x: rand(cx + 140, b.maxX - 60), y: rand(b.minY + 60, b.maxY - 60) }), { glyph });
       } else {
         const half = Math.ceil(s.markers / 2);
-        addMany('marker', half, () => ({ x: rand(b.minX + 60, cx - 100), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'A', glyph });
-        addMany('marker', s.markers - half, () => ({ x: rand(cx + 100, b.maxX - 60), y: rand(b.minY + 60, b.maxY - 60) }), { route: 'B', glyph });
+        addMany('marker', half, leftHalf, { route: 'A', glyph });
+        addMany('marker', s.markers - half, rightHalf, { route: 'B', glyph });
       }
     }
 
-    if (s.capsuleWaves) {
-      s.capsuleWaves.forEach(waveStart => {
-        addMany('capsule', s.capsulesPerWave || 8, null, { spawnAt: waveStart });
-      });
-    }
-
     if (s.gates) {
-      if (def.id === 'M13') {
-        // Portal (OBJECT_CATALOG_SPEC.md §2.3, §4): a single fixed,
-        // one-way teleporter near the player's start, not a "pass through
-        // when open" brama. Decision (open question in the spec): one-way
-        // and single-use per run -- there's exactly one physical portal
-        // entity on the board, so a "return trip" has no natural anchor to
-        // teleport back from, and the mission goal never requires one.
+      if (s.gateKind === 'portal') {
+        // One fixed, one-way, single-use teleporter near the start.
         const near = { x: b.minX + 140, y: cy };
         const far = { x: b.maxX - 140, y: cy };
-        this.campaignSpawn = near;
         this.campaignEntities.push(new CampaignEntity('gate', near.x, near.y, {
           glyph: 'portal', phase: 0, portalAnchors: [near, far]
         }));
-      } else if (def.id === 'M18') {
-        // Pas przelotu (OBJECT_CATALOG_SPEC.md §2.4): a corridor zone with
-        // entry/exit tracking (handleCorridorZone()) instead of a single
-        // point-touch gate -- "clearing" one means crossing all the way
-        // through while lit, not just touching its center.
-        for (let i = 0; i < s.gates; i++) {
-          const t = (i + 1) / (s.gates + 1);
-          const gx = lerp(b.minX + 80, b.maxX - 80, t);
-          this.campaignEntities.push(new CampaignEntity('gate', gx, cy, {
-            glyph: 'pas_przelotu', zoneHalfWidth: 90, phase: rand(0, CONFIG.campaign.gate.cycleSeconds)
-          }));
-        }
       } else {
         for (let i = 0; i < s.gates; i++) {
           const t = (i + 1) / (s.gates + 1);
           const gx = lerp(b.minX + 80, b.maxX - 80, t);
-          this.campaignEntities.push(new CampaignEntity('gate', gx, cy, { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }));
+          const opts = s.gateKind === 'pas'
+            ? { glyph: 'pas_przelotu', zoneHalfWidth: 90, phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }
+            : { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) };
+          this.campaignEntities.push(new CampaignEntity('gate', gx, cy, opts));
         }
       }
     }
 
-    if (s.nodes) {
-      const glyph = NODE_GLYPHS[def.id] || 'wezel';
-      for (let i = 0; i < s.nodes; i++) {
-        const p = this.randomInCampaignBounds(80);
-        this.campaignEntities.push(new CampaignEntity('node', p.x, p.y, { glyph }));
-      }
-    }
+    if (s.nodes) addMany('node', s.nodes, null, { glyph: s.nodeGlyph || 'wezel' });
     if (s.pylons) {
-      const glyph = def.id === 'M16' ? 'lustro' : 'pylon';
+      const glyph = s.pylonGlyph || 'pylon';
       for (let i = 0; i < s.pylons; i++) {
         const a = (i / s.pylons) * Math.PI * 2;
-        this.campaignEntities.push(new CampaignEntity('pylon', cx + Math.cos(a) * 180, cy + Math.sin(a) * 180, { glyph }));
+        const ring = s.landmark ? 230 : 180;
+        this.campaignEntities.push(new CampaignEntity('pylon', cx + Math.cos(a) * ring, cy + Math.sin(a) * ring, { glyph }));
       }
     }
-    // Fix: read the landmark id from `setup.landmark`, not `goal.landmark`.
-    // M20 ("Iglica") and M24 ("Rdzeń Miasta") only set `setup.landmark` --
-    // their `goal` object has no `landmark` field at all (unlike M04/M08/
-    // M12/M16/M19, which duplicate the same id in both places) -- so the
-    // original `if (def.goal.landmark)` check never fired for them and no
-    // landmark entity was created, making those two missions (including the
-    // campaign finale) impossible to complete. `s.landmark` is present for
-    // every mission that needs one.
     if (s.landmark) {
-      // Second fix, same root cause class: a plain eatCount landmark (M20,
-      // M24) has no activator to ever set `unlocked = true` (that only
-      // happens via tryUnlockCampaignLandmark(), which only runs for
-      // activateAndDevour missions) -- without this, handleCampaignEating()'s
-      // `if (e.type === 'landmark' && !e.unlocked) continue;` guard would
-      // leave those two landmarks permanently uneatable even once they
-      // exist. Both GDD labels ("Pochłoń centralną iglicę" / "Pochłoń
-      // główny rdzeń miasta") describe a direct big-eat with no priming
-      // step, so they simply start unlocked.
+      // A landmark with no activation step starts unlocked (a direct big eat).
       const landmark = new CampaignEntity('landmark', cx, cy, {
         landmarkId: s.landmark,
-        unlocked: def.goal.type !== 'activateAndDevour'
+        unlocked: !def.goal.activator
       });
       this.campaignEntities.push(landmark);
       this.mission.landmark = landmark;
@@ -6128,7 +6455,7 @@ class Game {
     for (let i = 0; i < (def.setup.bots || 0); i++) {
       const p = this.randomInCampaignBounds(150);
       const bot = new Bot(BOT_NAME_POOL[i], p.x, p.y);
-      bot.radius = CONFIG.campaign.rivalRadius;
+      bot.radius = def.setup.botRadius || CONFIG.campaign.rivalRadius;
       bot.styleOverride = BOT_STYLES[i % BOT_STYLES.length];
       this.bots.push(bot);
     }
@@ -6195,7 +6522,7 @@ class Game {
   tryUnlockCampaignLandmark() {
     const m = this.mission;
     const goal = m.def.goal;
-    if (goal.type !== 'activateAndDevour' || !m.landmark || m.landmark.unlocked) return;
+    if (!goal.activator || !m.landmark || m.landmark.unlocked) return;
     const activated = goal.activator === 'node' ? m.nodesDisabled : m.pylonsCharged;
     if (activated >= goal.count) {
       m.landmark.unlocked = true;
@@ -6316,6 +6643,8 @@ class Game {
     this.player.y = dest.y;
     this.player.invulnerableUntil = performance.now() + 800;
     e.passCooldown = 999; // effectively single-use for the rest of the mission
+    // v10: using the portal counts as passing it (gates objective).
+    this.mission.gatesPassed.add(e);
     this.spawnParticles(e.x, e.y, '#9875FF', 18);
     this.spawnParticles(dest.x, dest.y, '#9875FF', 18);
     this.ripples.push(new Ripple(dest.x, dest.y, '#9875FF', 10, e.radius * 3, 0.5));
@@ -6420,7 +6749,7 @@ class Game {
           this.save.campaign.discoveredHoleEating = true;
           saveGame(this.save);
         }
-        bot.radius = CONFIG.campaign.rivalRadius;
+        bot.radius = m.def.setup.botRadius || CONFIG.campaign.rivalRadius;
         const p = this.randomInCampaignBounds(150);
         bot.x = p.x; bot.y = p.y;
         bot.invulnerableUntil = performance.now() + INVULN_TIME * 1000;
@@ -6540,12 +6869,32 @@ class Game {
     if (id === 'reaktor') this.comboWindowOverride = 2.1;
   }
 
+  /** v10 objectives: [progress, target] for one step. */
+  objectiveProgress(step) {
+    const m = this.mission;
+    if (step.eat) return [step.glyph ? (m.eatenByGlyph[step.glyph] || 0) : (m.eatenByType[step.eat] || 0), step.n];
+    if (step.tier) return [this.campaignTierIndex(this.campaignPlayerTier().id), step.tier];
+    if (step.combo) return [m.bestCombo, step.combo];
+    if (step.gates) return [m.gatesPassed.size, step.gates];
+    if (step.rival) return [m.rivalsEaten, step.rival];
+    if (step.activate) return [step.activate === 'node' ? m.nodesDisabled : m.pylonsCharged, step.n];
+    if (step.landmark) return [(m.landmark && m.landmark.consumed) ? 1 : 0, 1];
+    if (step.score) return [this.player.score, step.score];
+    return [0, 1];
+  }
+
   checkCampaignGoal() {
     const m = this.mission;
     if (m.ended || m.finishing) return;
     const g = m.def.goal;
+    m.bestCombo = Math.max(m.bestCombo, this.comboCount);
     let progress = 0, target = 1, done = false;
     switch (g.type) {
+      case 'objectives':
+        target = g.steps.length;
+        progress = g.steps.filter(st => { const [p, t] = this.objectiveProgress(st); return p >= t; }).length;
+        done = progress >= target;
+        break;
       case 'eatCount':
         // Task 3 fix: a mission with one specific target glyph (the normal
         // case) only counts eating THAT object; a genuinely mixed-glyph
@@ -6642,6 +6991,15 @@ class Game {
     this.showTutorialIntro(this.mission.def.goal.steps[stepIndex].intro);
   }
 
+  /** Hides NELA's toast at once -- it must never outlive its mission (QA:
+   *  a campaign line was still showing over the next Arena round). */
+  hideNelaToast() {
+    clearTimeout(this.nelaTimer);
+    const el = document.getElementById('nelaToast');
+    el.classList.remove('visible');
+    el.classList.add('hidden');
+  }
+
   showNelaToast(text) {
     const el = document.getElementById('nelaToast');
     el.textContent = 'NELA: „' + text + '”';
@@ -6677,10 +7035,10 @@ class Game {
     // for activateAndDevour, so activator progress and the landmark bite
     // each get their own line instead of one combined string+number).
     document.getElementById('missionGoalItems').innerHTML = this.campaignGoalItems().map(it => `
-      <div class="mission-goal-item">
+      <div class="mission-goal-item${it.progress >= it.target ? ' done' : ''}">
         <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
         <span class="mission-goal-text">${it.label}</span>
-        <span class="mission-goal-count">${Math.min(it.progress, it.target)}/${it.target}</span>
+        <span class="mission-goal-count">${it.display || `${Math.min(it.progress, it.target)}/${it.target}`}</span>
       </div>`).join('');
 
     // Growth-tier "pasek ładowania": a compact bar + badge (e.g. "T1"),
@@ -6768,6 +7126,7 @@ class Game {
     if (m.ended) return;
     m.ended = true;
     this.running = false;
+    this.hideNelaToast();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
 
@@ -6779,7 +7138,7 @@ class Game {
         case 'visitBothClusters': medalEarned = m.clustersVisited.has('A') && m.clustersVisited.has('B'); break;
         case 'noBotHit': medalEarned = m.botHitCount === 0; break;
         case 'comboUnbroken': medalEarned = !m.comboBroken; break;
-        case 'comboAtLeast': medalEarned = m.maxComboDuringCapsule >= medal.count; break;
+        case 'comboAtLeast': medalEarned = Math.max(m.bestCombo, m.maxComboDuringCapsule) >= medal.count; break;
         case 'bothRoutesUsed': medalEarned = m.markersRoutes.has('A') && m.markersRoutes.has('B'); break;
         case 'pylonsUnbroken': medalEarned = !m.pylonComboBroken; break;
       }
@@ -6819,6 +7178,7 @@ class Game {
     const m = this.mission;
     const def = m.def;
     document.getElementById('missionResultTitle').textContent = success ? 'MISJA UKOŃCZONA' : 'CZAS MINĄŁ';
+    document.getElementById('missionResultEyebrow').textContent = `${missionCode(def)} · ${def.name}`;
     document.getElementById('missionResultNela').textContent = success
       ? `NELA: „${def.nela.success}”`
       : 'Spróbuj jeszcze raz — teraz znasz już trasę.';
@@ -6838,7 +7198,7 @@ class Game {
     const nextId = success ? district.missions[idx + 1] : null;
     const btnNext = document.getElementById('btnMissionNext');
     if (nextId) {
-      btnNext.textContent = `DALEJ: MISJA ${campaignMissionById(nextId).order}`;
+      btnNext.textContent = `DALEJ: ${missionCode(campaignMissionById(nextId))}`;
       btnNext.classList.remove('hidden');
       btnNext.onclick = () => this.startCampaignMission(nextId);
     } else if (success) {
@@ -6874,14 +7234,19 @@ class Game {
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
     this.drawCampaignGrid(ctx);
     const goalTypes = this.campaignGoalEntityTypes();
+    const playerTier = this.campaignTierIndex(this.campaignPlayerTier().id);
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
     for (const e of this.campaignEntities) {
       // Gates (pas przelotu) draw long corridor lines far past their radius.
       if (e.type !== 'gate' && !this.isInView(e.x, e.y, e.radius * 2)) continue;
-      const isGoal = goalTypes.has(e.type) && (!goalGlyph || e.glyph === goalGlyph);
+      // The goal ring only marks goal objects the hole can eat right now --
+      // a ring around a still-too-big object read as "eat this" (QA).
+      const isGoal = goalTypes.has(e.type) && (!goalGlyph || e.glyph === goalGlyph) && playerTier >= e.stats?.minTier;
       e.draw(ctx, isGoal);
     }
     this.drawScannerTarget(ctx);
+    this.drawDangerHalos(ctx);
+    this.drawPreyRings(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const r of this.ripples) r.draw(ctx);
 
@@ -7005,6 +7370,7 @@ class Game {
     options = options || {};
     this.markUnlockVisited('arena');
     this.mode = 'arena';
+    this.hideNelaToast();
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
     document.getElementById('hud-topright').classList.remove('hidden');
@@ -7331,7 +7697,7 @@ class Game {
     document.getElementById('resultNewbieTag').classList.toggle('hidden', !this.newbieBonusApplied);
     this.renderXpCard('result', this.lastXpResult);
     const upsell = document.getElementById('resultUpsell');
-    const showUpsell = !this.isDailyRun && place > 2 && this.difficultyT >= 0.15;
+    const showUpsell = !this.isDailyRun && place > 2 && this.difficultyT >= 0.25; // from ŚREDNI up
     upsell.classList.toggle('hidden', !showUpsell);
     if (showUpsell) {
       const boost = RUN_TOOLS.find(t => t.id === 'boost');
@@ -7417,7 +7783,7 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h === this.player) li.classList.add('is-player');
-      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${h.name}</span><span class="fl-score">${h.score} pkt</span><span class="fl-size">Ø ${Math.round(h.radius)}</span>`;
+      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${h.name}</span><span class="fl-score">${h.score} pkt</span><span class="fl-size">${CONFIG.sizeTiers[getSizeTierIndex(h.radius)].shortId}</span>`;
       list.appendChild(li);
     });
 
@@ -7521,6 +7887,7 @@ class Game {
     document.getElementById('hud').classList.add('hidden');
     if (this.mission) {
       this.mission.ended = true;
+      this.hideNelaToast();
       this.analytics.track('mission_end', {
         missionId: this.mission.def.id, success: false, medalEarned: false, firstClear: false, abandoned: true
       });
@@ -8540,6 +8907,7 @@ class Game {
       if (this.isInView(obj.x, obj.y, obj.radius * 2)) obj.draw(ctx, this.canEatHighlight(obj));
     }
     this.drawDangerHalos(ctx);
+    this.drawPreyRings(ctx);
     this.drawScannerTarget(ctx);
     this.drawBountyMarker(ctx);
     for (const p of this.particles) p.draw(ctx);
@@ -8636,6 +9004,24 @@ class Game {
     if (!this.holeCanEat(this.player, obj)) return 0;
     if (obj.radius >= this.player.radius && !this.frenzyActive) return 0;
     return 1;
+  }
+
+  /** v10: a green dashed "prey" ring around rivals the player can eat now
+   *  (the red danger halo below marks the ones to avoid), in both modes. */
+  drawPreyRings(ctx) {
+    const t = performance.now() / 1000;
+    for (const bot of this.bots) {
+      if (bot.invulnerable || this.player.radius <= bot.radius * EAT_HOLE_RATIO) continue;
+      if (!this.isInView(bot.x, bot.y, bot.radius + 20)) continue;
+      ctx.save();
+      ctx.translate(bot.x, bot.y);
+      ctx.rotate(t * 1.5);
+      ctx.strokeStyle = 'rgba(70, 217, 154, 0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([8, 7]);
+      ctx.beginPath(); ctx.arc(0, 0, bot.radius + 9, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
   }
 
   /** Soft warm halo behind rivals large enough to threaten the player and
