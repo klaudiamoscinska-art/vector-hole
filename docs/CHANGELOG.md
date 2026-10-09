@@ -4,6 +4,16 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v13.2 — dźwięk na iPhonie
+Na iPhonie dźwięk w przeglądarce nie grał albo znikał (np. po samouczku):
+iOS wycisza Web Audio przełącznikiem „cicho”, przełącza kontekst w stan
+`interrupted` (powiadomienie, zmiana aplikacji, blokada), którego stary kod
+nie wznawiał, a odblokowanie startowało na `pointerdown`, który w Safari nie
+jest gestem. Teraz: sesja audio „playback”, wznawianie z każdego stanu przy
+każdym tapnięciu, odbudowa „zablokowanego” kontekstu, ciche „pobudzenie”
+wyjścia w geście, ponowna synchronizacja zegara muzyki. Nowe testy w
+`qa/features.mjs` symulują stany iOS (stary kod oblewa 5 z nich).
+
 ## v13.1 — iPhone (dolna nawigacja i reset profilu)
 Na iPhonie 16 Pro w Safari podpisy dolnych zakładek i przycisk „RESETUJ
 PROFIL” chowały się pod paskiem przeglądarki: `#app` miał `100vh`, które
