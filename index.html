@@ -2,14 +2,35 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Vector Hole: Eat the Neon City</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800;900&family=Russo+One&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Vector Hole — pochłoń neonowe miasto | darmowa gra .io w przeglądarce</title>
+<meta name="description" content="Steruj czarną dziurą i pochłaniaj neonowe miasto! Rośnij z każdym kęsem, zjadaj mniejszych rywali i wygrywaj 2-minutowe rundy. 61 misji kampanii, wyzwanie dnia i pojedynki ze znajomymi. Gra za darmo, bez instalacji — na telefonie i komputerze.">
+<meta name="keywords" content="gra io, hole io, czarna dziura, gra w przeglądarce, darmowa gra, gra mobilna, gra online, neon, cyberpunk, gra bez instalacji, hole.io po polsku">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#04101D">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="Vector Hole">
+<meta name="apple-mobile-web-app-title" content="Vector Hole">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Vector Hole">
+<meta property="og:locale" content="pl_PL">
+<meta property="og:title" content="Vector Hole — pochłoń neonowe miasto">
+<meta property="og:description" content="Czarna dziura kontra neonowe miasto. Rośnij, zjadaj rywali, pobij wynik znajomego na tej samej mapie. Za darmo w przeglądarce.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Vector Hole — pochłoń neonowe miasto">
+<meta name="twitter:description" content="Rośnij, zjadaj rywali i pobij wynik znajomego. Darmowa gra .io w przeglądarce.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2304101D'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%2350F0FA' stroke-width='5'/%3E%3Cpath d='M32 14a18 18 0 0 1 18 18' fill='none' stroke='%23FF54AD' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23000'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"VideoGame","name":"Vector Hole: Eat the Neon City","alternateName":"Vector Hole","description":"Gra .io w przeglądarce: steruj czarną dziurą, pochłaniaj neonowe miasto, zjadaj mniejszych rywali. Rundy 2:00, 61 misji kampanii, wyzwanie dnia, pojedynki ze znajomymi.","genre":["Casual","Arcade","io game"],"gamePlatform":["Web browser","Android","iOS"],"applicationCategory":"Game","operatingSystem":"Any","inLanguage":"pl","playMode":"SinglePlayer","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"PLN"}}
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<noscript><p style="color:#e6faff;font-family:sans-serif;padding:24px">Vector Hole potrzebuje włączonej obsługi JavaScript.</p></noscript>
 
 <div id="app">
 
@@ -124,6 +145,20 @@
           <div class="control-toggle">
             <button id="btnHapticsOn" class="toggle-btn">Wł.</button>
             <button id="btnHapticsOff" class="toggle-btn">Wył.</button>
+          </div>
+        </div>
+        <div class="control-row">
+          <span class="control-label">Dźwięki</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-setting="sfx" data-value="1">Wł.</button>
+            <button class="toggle-btn" data-setting="sfx" data-value="0">Wył.</button>
+          </div>
+        </div>
+        <div class="control-row">
+          <span class="control-label">Muzyka</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-setting="music" data-value="1">Wł.</button>
+            <button class="toggle-btn" data-setting="music" data-value="0">Wył.</button>
           </div>
         </div>
       </div>
@@ -248,9 +283,17 @@
           ZACZNIJ GRĘ
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
         </button>
+        <p id="welcomeChallengeNote" class="welcome-challenge-note hidden"></p>
         <p class="welcome-note">Krótki samouczek · ok. 1,5 min · potem odblokujesz rundy <b>GRAJ 2:00</b></p>
       </div>
 
+      <!-- Golden Shot v11: a friend's challenge link ("Pobij mój wynik!"). -->
+      <div id="hubChallenge" class="hub-challenge hidden">
+        <span class="hub-challenge-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></span>
+        <span class="hub-challenge-text"><span>WYZWANIE OD <strong id="hubChallengeFrom">—</strong></span><strong class="hub-challenge-score">Pobij <span id="hubChallengeScore">0</span> pkt · ta sama mapa</strong></span>
+        <button id="btnAcceptChallenge" class="btn btn-gold btn-small">PRZYJMIJ</button>
+        <button id="btnDismissChallenge" class="hub-challenge-x" aria-label="Odrzuć wyzwanie">×</button>
+      </div>
       <!-- Golden Shot v8: player XP level (every round and mission feeds it). -->
       <button id="hubPlayerLevel" class="player-level-row hub-full-only" aria-label="Poziom gracza — co to jest?">
         <span class="player-level-badge"><span class="player-level-lvl">LVL</span><span id="hubPlayerLevelValue">1</span></span>
@@ -342,6 +385,8 @@
       <div id="loginRewardGrid" class="login-grid"></div>
       <div id="loginBurst" class="login-burst" aria-hidden="true"></div>
       <button id="btnLoginClaim" class="btn btn-primary btn-mega">ODBIERZ</button>
+      <button id="btnLoginDouble" class="btn btn-gold hidden">×2 ZA REKLAMĘ</button>
+      <button id="btnLoginClose" class="btn btn-link hidden">Dziękuję, wystarczy</button>
     </div>
   </div>
 
@@ -367,6 +412,48 @@
       <input id="displayNameInput" class="text-input" type="text" maxlength="16" placeholder="Twoja nazwa (opcjonalnie)">
       <button id="btnSaveProfile" class="btn btn-primary">ZAPISZ</button>
       <div class="hint-text">Gość ID: <span id="guestIdLabel"></span></div>
+      <p id="profileStats" class="hint-text profile-stats"></p>
+
+      <div class="settings-block">
+        <div class="settings-title">USTAWIENIA</div>
+        <div class="control-row">
+          <span class="control-label">Dźwięki</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-setting="sfx" data-value="1">Wł.</button>
+            <button class="toggle-btn" data-setting="sfx" data-value="0">Wył.</button>
+          </div>
+        </div>
+        <div class="control-row">
+          <span class="control-label">Muzyka</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-setting="music" data-value="1">Wł.</button>
+            <button class="toggle-btn" data-setting="music" data-value="0">Wył.</button>
+          </div>
+        </div>
+        <div class="control-row">
+          <span class="control-label">Wibracje</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-setting="haptics" data-value="1">Wł.</button>
+            <button class="toggle-btn" data-setting="haptics" data-value="0">Wył.</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-block">
+        <div class="settings-title">PRYWATNOŚĆ</div>
+        <div class="control-row">
+          <span class="control-label">Anonimowe statystyki</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-consent="1">Zgoda</button>
+            <button class="toggle-btn" data-consent="0">Nie</button>
+          </div>
+        </div>
+        <div class="settings-links">
+          <button id="btnPrivacyPolicy" class="btn btn-link">Polityka prywatności</button>
+          <button id="btnExportData" class="btn btn-link">Pobierz moje dane</button>
+        </div>
+      </div>
+
       <button id="btnProfileBack" class="btn btn-secondary">POWRÓT</button>
       <div class="profile-danger-zone">
         <button id="btnResetProfile" class="btn btn-danger">RESETUJ PROFIL</button>
@@ -396,6 +483,33 @@
       <h2 class="section-title">ZANIM ZACZNIESZ</h2>
       <p class="hint-text" id="tutorialIntroText">—</p>
       <button id="btnTutorialIntroStart" class="btn btn-primary">ZACZYNAM</button>
+    </div>
+  </div>
+
+  <!-- ===================== CONSENT BAR (Golden Shot v11) =====================
+       Non-blocking: the game is fully playable without answering. Local
+       save = strictly necessary (no consent needed); statistics = opt-in. -->
+  <div id="consentBar" class="consent-bar hidden" role="region" aria-label="Prywatność">
+    <p>Postęp zapisujemy tylko na tym urządzeniu. Czy pozwolisz na <strong>anonimowe statystyki</strong>, które pomagają ulepszać grę?</p>
+    <div class="consent-actions">
+      <button id="btnConsentYes" class="btn btn-primary btn-small">ZGODA</button>
+      <button id="btnConsentNo" class="btn btn-secondary btn-small">NIE</button>
+      <button id="btnConsentPolicy" class="btn btn-link btn-small">Szczegóły</button>
+    </div>
+  </div>
+
+  <!-- ===================== MISSION REVIVE (Golden Shot v11) =====================
+       Out of time while close to the goal: one opt-in rewarded ad for extra
+       seconds, auto-declines after CONFIG.ads.reviveOfferSeconds. -->
+  <div id="reviveOverlay" class="screen overlay-screen hidden">
+    <div class="screen-inner pause-panel revive-panel" role="dialog" aria-modal="true" aria-labelledby="reviveTitle">
+      <div class="login-kicker">CZAS MINĄŁ</div>
+      <h2 id="reviveTitle" class="section-title">PRAWIE!</h2>
+      <div class="revive-progress"><div id="reviveProgressBar" class="revive-progress-fill"></div><span id="reviveProgressPct">0%</span></div>
+      <p id="reviveMissing" class="hint-text">—</p>
+      <button id="btnReviveAd" class="btn btn-gold btn-mega">+20 S · OBEJRZYJ REKLAMĘ</button>
+      <div class="revive-timer"><div id="reviveTimerBar" class="revive-timer-bar"></div></div>
+      <button id="btnReviveNo" class="btn btn-link">Nie, zakończ misję</button>
     </div>
   </div>
 
@@ -561,6 +675,20 @@
         </div>
       </div>
 
+      <!-- Golden Shot v11 store: rewarded prisms always; paid packs only
+           when a real payment provider is attached (Monetization). -->
+      <div class="store-card">
+        <div class="store-free">
+          <span class="store-free-icon" aria-hidden="true">◆</span>
+          <span class="store-free-body"><strong>DARMOWE PRYZMATY</strong><span id="freePrismsLeft">Zostało dziś: 3</span></span>
+          <button id="btnFreePrisms" class="btn btn-gold btn-small">+5 ◆ · REKLAMA</button>
+        </div>
+        <div id="storePaid" class="store-paid hidden">
+          <div class="store-paid-title">SKLEP</div>
+          <div id="storeProducts" class="store-products"></div>
+        </div>
+      </div>
+
       <div class="shop-tabs">
         <button id="tabSkins" class="toggle-btn active">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>
@@ -715,13 +843,14 @@
         </div>
       </div>
 
+      <p id="resultHookLine" class="result-hook hidden"></p>
       <div class="result-card result-coins-card">
         <span class="result-coins-icon">◇</span>
         <div class="result-coins-body">
           <span class="result-card-label">ZDOBYTE MONETY</span>
           <span class="result-coins-value">+<span id="finalCoins">0</span> monet</span>
         </div>
-        <span id="resultNewbieTag" class="result-newbie-tag hidden">BONUS NOWICJUSZA ×2</span>
+        <span id="resultNewbieTag" class="result-newbie-tag hidden">BONUS NOWICJUSZA ×1,5</span>
       </div>
       <div class="result-card result-xp-card" id="resultXpCard">
         <div class="result-xp-head">
@@ -766,7 +895,7 @@
 
       <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ JESZCZE RAZ</button>
       <button id="btnWatchAd" class="btn btn-gold">OGLĄDAJ REKLAMĘ · X2 MONET</button>
-      <button id="btnShare" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> UDOSTĘPNIJ WYNIK</button>
+      <button id="btnShare" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> RZUĆ WYZWANIE ZNAJOMEMU</button>
       <button id="btnMenu" class="btn btn-link">Wróć do Miasta</button>
     </div>
   </div>
@@ -774,8 +903,9 @@
   <!-- ===================== FULLSCREEN AD OVERLAY (placeholder) ===================== -->
   <div id="adOverlay" class="screen hidden">
     <div class="screen-inner ad-inner">
-      <p class="ad-label">REKLAMA</p>
-      <h2>Sponsor Vector Hole</h2>
+      <p id="adKind" class="ad-label">REKLAMA</p>
+      <h2>Tu wyświetli się reklama partnera</h2>
+      <p class="hint-text">Wersja demonstracyjna — na portalu lub w aplikacji w tym miejscu gra prawdziwa reklama.</p>
       <div class="ad-progress-track">
         <div id="adProgressBar" class="ad-progress-bar"></div>
       </div>

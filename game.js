@@ -12,7 +12,7 @@
    aliases into this object so the rest of the file is untouched. */
 
 const CONFIG = {
-  version: '8.0.0-golden-shot',
+  version: '11.0.0-golden-shot-ultra',
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
@@ -45,13 +45,20 @@ const CONFIG = {
     invulnTime: 2.0
   },
   economy: {
-    coinsPerScorePoint: 4, // score / this + coinsBase
+    // Golden Shot v11 rebalance (bot-tested, see qa/arena-bots.mjs): coins
+    // were score/4, so one strong round (10-20k pts) paid 3-6k coins and
+    // emptied the whole Warsztat. Now sublinear: coinsBase +
+    // coinsSqrtK * sqrt(score) + a place bonus -- a good round pays
+    // ~150-250, a weak one still ~60, so every cosmetic is a few rounds of
+    // goal instead of a single round's change.
+    coinsSqrtK: 1.6,
+    coinsPlaceBonus: [25, 15, 8],
     coinsBase: 15,
     adRewardMultiplier: 2,
     // Golden Shot v8: a new player's first rounds pay double ("efekt
     // sukcesu") -- the result screen shows a "BONUS NOWICJUSZA x2" tag.
     newbieRuns: 5,
-    newbieCoinMult: 2,
+    newbieCoinMult: 1.5,
     // Every 3rd Arena/Daily run used to drip exactly 1 prism; now 2.
     prismTrickleEvery: 3,
     prismTrickleAmount: 2
@@ -84,7 +91,7 @@ const CONFIG = {
   // Golden Shot v8 retention loop: player XP level (every mode feeds it),
   // a 7-day login calendar, and a free chest on a 4 h cooldown.
   progression: {
-    xpPerScorePoint: 0.5,
+    xpSqrtK: 2.5,                  // XP = base + K * sqrt(score) + place bonus (v11: was 0.5 * score)
     xpRunBase: 25,
     xpPlaceBonus: [60, 40, 25],    // place 1/2/3
     xpMissionSuccess: 90,
@@ -201,6 +208,21 @@ const CONFIG = {
     speedMult: 1.2,
     magnetRadius: 220
   },
+  // Golden Shot v11: shown in the in-game privacy notice. Fill in the
+  // publisher's legal name + contact before a commercial launch.
+  legal: { publisher: 'Wydawca gry Vector Hole', contact: '' },
+  // Golden Shot v11 ad pacing (see Monetization). Rewarded ads are always
+  // opt-in; interstitials only between rounds, never in the newbie runs,
+  // never more often than every interstitialMinGapMs, never with "Bez reklam".
+  ads: {
+    interstitialEveryNthReplay: 3,
+    interstitialMinGapMs: 150000,
+    demoSeconds: 3,
+    reviveSeconds: 20,        // mission revive: extra time granted
+    reviveMinProgress: 0.4,   // only offered when the goal is at least this done
+    reviveOfferSeconds: 7,    // offer auto-declines after this long
+    freePrisms: 5
+  },
   overdrive: {
     triggerSecondsRemaining: 12,
     variants: ['blackout', 'portal_rain'],
@@ -289,7 +311,7 @@ const CONFIG = {
     hub: true,              // Phase 6: Neon Core Hub skeleton
     shopV2: true,           // Phase 7: shop categories/loadout + Prisms
     dailyChallenge: true,   // Phase 9: daily seed challenge (local-only, no backend leaderboard)
-    monetizationAdapters: false, // real ad/IAP SDKs — deliberately not added (no secrets/store creds in-repo)
+    monetizationAdapters: true,  // v11: runtime-detected portal/native ad+IAP adapters (see Monetization) -- still no secrets in-repo
     analyticsConsoleLog: true,   // Phase 1: log analytics events to console
     campaignMode: true           // Vector Hole v3: mission-driven Campaign alongside Arena
   }
@@ -328,6 +350,18 @@ function unitsForRadius(radius) {
 // Golden Shot v9 typography (loaded from Google Fonts in index.html, both
 // with Polish latin-ext glyphs; system fonts are the offline fallback).
 // FONT_DISPLAY = Russo One, single weight -- headings, banners, numbers.
+// Golden Shot v11 adaptive quality: the game starts at level 2 and steps
+// down if the real frame time stays above ~42 fps for a couple of seconds
+// mid-round (Game.monitorFrame()); the detected level is remembered per
+// device in save.settings.gfxLevel. Lower DPR is the big win (fill cost is
+// quadratic in it); level 0 also drops canvas shadow blur, which profiling
+// (qa/) showed dominating late-round frames with huge holes.
+const GFX_LEVELS = [
+  { maxDpr: 1, blur: false, particles: 160 },
+  { maxDpr: 1.5, blur: true, particles: 300 },
+  { maxDpr: 2, blur: true, particles: 450 }
+];
+
 const FONT_DISPLAY = "'Russo One', 'Exo 2', 'Segoe UI', sans-serif";
 const FONT_UI = "'Exo 2', 'Segoe UI', system-ui, sans-serif";
 
@@ -389,11 +423,24 @@ function generateId(prefix) {
 // it exists so the guest-to-named-profile flow isn't shipped with zero
 // safeguard, not as a finished solution.
 const NAME_BLOCKLIST = ['fuck', 'shit', 'kurwa', 'chuj', 'nazi'];
+/** Golden Shot v11: every player-controlled string (display name,
+ *  challenge-link names) goes through this before touching innerHTML. */
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+/** FNV-1a 32-bit -- a cheap tamper seal for saves and challenge links.
+ *  Client-side only, so it stops casual edits, not a determined cheater. */
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36);
+}
+const SEAL_SALT = 'vh-neon-core-v11';
 function moderateName(name) {
   if (!name) return '';
   const lower = name.toLowerCase();
   if (NAME_BLOCKLIST.some(w => lower.includes(w))) return '';
-  return name.slice(0, 16);
+  return Array.from(name).slice(0, 16).join('');
 }
 
 /* ----------------------- Analytics (provider-agnostic stub) -----------------------
@@ -406,6 +453,7 @@ class Analytics {
   constructor() {
     this.queue = [];
     this.maxQueue = 200;
+    this.consent = () => false; // set by Game once the save is loaded
   }
   track(name, props) {
     const event = { name, props: props || {}, ts: Date.now() };
@@ -413,6 +461,553 @@ class Analytics {
     if (this.queue.length > this.maxQueue) this.queue.shift();
     if (CONFIG.flags.analyticsConsoleLog) {
       console.log('[analytics]', name, event.props);
+    }
+    // Golden Shot v11: events leave the device ONLY with the player's
+    // analytics consent (save.privacy.analytics), and only to a sink the
+    // host page/app provides -- the game itself has no backend and sends
+    // nothing. Supported sinks: Google Tag Manager's window.dataLayer and a
+    // native wrapper's window.VectorHoleNative.track(name, props).
+    if (!this.consent()) return;
+    try {
+      if (Array.isArray(window.dataLayer)) window.dataLayer.push({ event: 'vh_' + name, ...event.props });
+      if (window.VectorHoleNative && typeof window.VectorHoleNative.track === 'function') window.VectorHoleNative.track(name, event.props);
+    } catch (e) { /* a broken sink must never break the game */ }
+  }
+}
+
+/* ----------------------- Audio (Golden Shot v11) -----------------------
+   Everything is synthesized with WebAudio at runtime -- no audio files, no
+   dependencies, ~0 KB of assets. Two buses (sfx, music) under one master,
+   both toggleable in Ustawienia (save.settings.sfx / .music). Browsers only
+   allow an AudioContext to start inside a user gesture, so nothing plays
+   until the first tap/key (unlock()); the page never autoplays. */
+
+// A-minor pentatonic ladder: consecutive eats in a combo climb it, so a
+// long chain literally sounds like it's building up (hole.io "pop" feel).
+const EAT_SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5];
+// i–VI–III–VII in A minor (Am–F–C–G), the classic synthwave loop.
+const MUSIC_CHORDS = [
+  { root: 110, notes: [220, 261.63, 329.63] },
+  { root: 87.31, notes: [174.61, 220, 261.63] },
+  { root: 130.81, notes: [261.63, 329.63, 392] },
+  { root: 98, notes: [196, 246.94, 293.66] }
+];
+
+class SoundEngine {
+  constructor(settings) {
+    this.settings = settings;
+    this.ctx = null;
+    this.intensity = 0;       // 0 menu · 1 round · 2 final stretch · 3 SZAŁ/frenzy
+    this.lastEatAt = 0;
+    this.musicTimer = null;
+    this.step = 0;
+    this.nextNoteTime = 0;
+    this.ducked = false;
+    this.noiseBuffer = null;
+  }
+
+  get supported() { return !!(window.AudioContext || window.webkitAudioContext); }
+
+  /** Call from any user gesture; idempotent. */
+  unlock() {
+    if (!this.supported) return;
+    try {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC({ latencyHint: 'interactive' });
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.9;
+        // Gentle limiter so stacked eats never clip on phone speakers.
+        this.comp = this.ctx.createDynamicsCompressor();
+        this.comp.threshold.value = -14; this.comp.ratio.value = 6;
+        this.comp.attack.value = 0.003; this.comp.release.value = 0.2;
+        this.master.connect(this.comp).connect(this.ctx.destination);
+        this.sfxBus = this.ctx.createGain();
+        this.musicBus = this.ctx.createGain();
+        this.sfxBus.connect(this.master);
+        this.musicBus.connect(this.master);
+        this.applySettings();
+        const len = this.ctx.sampleRate;
+        this.noiseBuffer = this.ctx.createBuffer(1, len, len);
+        const data = this.noiseBuffer.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      }
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.settings.music !== false) this.startMusic();
+    } catch (e) { this.ctx = null; }
+  }
+
+  applySettings() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.sfxBus.gain.setTargetAtTime(this.settings.sfx === false ? 0 : 0.8, t, 0.02);
+    this.musicBus.gain.setTargetAtTime(this.settings.music === false ? 0 : (this.ducked ? 0.12 : 0.34), t, 0.15);
+    if (this.settings.music === false) this.stopMusic(); else if (this.ctx.state === 'running') this.startMusic();
+  }
+
+  /** Background tab / pause sheet: duck the music, suspend fully when hidden. */
+  setDucked(on) { this.ducked = on; this.applySettings(); }
+  suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); }
+  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+
+  get live() { return this.ctx && this.ctx.state === 'running'; }
+  sfxOn() { return this.live && this.settings.sfx !== false; }
+
+  /* ---- primitives ---- */
+  tone({ type = 'sine', freq = 440, freqEnd = null, dur = 0.15, vol = 0.3, attack = 0.005, when = 0, bus = null, filter = null, detune = 0 }) {
+    const c = this.ctx, t = c.currentTime + when;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t); o.detune.value = detune;
+    if (freqEnd) o.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let node = o;
+    if (filter) {
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(filter, t); f.Q.value = 4;
+      o.connect(f); node = f;
+    }
+    node.connect(g).connect(bus || this.sfxBus);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+
+  noise({ dur = 0.2, vol = 0.2, freq = 2000, freqEnd = null, q = 1, type = 'bandpass', when = 0, bus = null }) {
+    const c = this.ctx, t = c.currentTime + when;
+    const s = c.createBufferSource(); s.buffer = this.noiseBuffer;
+    const f = c.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(freq, t);
+    if (freqEnd) f.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f).connect(g).connect(bus || this.sfxBus);
+    s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+  }
+
+  /* ---- game events ---- */
+  /** size: eaten radius in px; combo: current chain length. Rate-limited so a
+   *  magnet vacuuming 10 fragments reads as one rising flurry, not mush. */
+  eat(size, combo) {
+    if (!this.sfxOn()) return;
+    const now = this.ctx.currentTime;
+    if (now - this.lastEatAt < 0.045) return;
+    this.lastEatAt = now;
+    const idx = Math.min(EAT_SCALE.length - 1, Math.max(0, (combo || 1) - 1));
+    const f = EAT_SCALE[idx] * (size > 40 ? 0.5 : 1);
+    this.tone({ type: 'triangle', freq: f * 1.5, freqEnd: f * 2, dur: 0.09, vol: 0.22 });
+    this.tone({ type: 'sine', freq: f, dur: 0.12, vol: 0.18, when: 0.01 });
+    if (size > 30) {
+      // Big objects: a sub "gulp" under the blip.
+      this.tone({ type: 'sine', freq: 140, freqEnd: 45, dur: 0.28, vol: 0.45 });
+      this.noise({ dur: 0.22, vol: 0.12, freq: 900, freqEnd: 120, type: 'lowpass' });
+    }
+  }
+
+  rivalEaten() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sine', freq: 180, freqEnd: 40, dur: 0.45, vol: 0.55 });
+    [329.63, 440, 659.25].forEach((f, i) => this.tone({ type: 'sawtooth', freq: f, dur: 0.35, vol: 0.09, when: 0.02 * i, filter: 2400 }));
+    this.noise({ dur: 0.35, vol: 0.18, freq: 3000, freqEnd: 200, type: 'lowpass' });
+  }
+
+  hurt() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sawtooth', freq: 300, freqEnd: 60, dur: 0.5, vol: 0.22, filter: 1400 });
+    this.noise({ dur: 0.3, vol: 0.15, freq: 600, freqEnd: 100, type: 'lowpass' });
+  }
+
+  tierUp() {
+    if (!this.sfxOn()) return;
+    [440, 554.37, 659.25, 880].forEach((f, i) => this.tone({ type: 'square', freq: f, dur: 0.16, vol: 0.08, when: i * 0.06, filter: 3500 }));
+    this.noise({ dur: 0.5, vol: 0.08, freq: 400, freqEnd: 6000, type: 'bandpass', q: 2 });
+  }
+
+  golden() {
+    if (!this.sfxOn()) return;
+    [1046.5, 1318.5, 1567.98, 2093].forEach((f, i) => this.tone({ type: 'sine', freq: f, dur: 0.4, vol: 0.09, when: i * 0.05 }));
+  }
+
+  frenzy() {
+    if (!this.sfxOn()) return;
+    this.noise({ dur: 0.7, vol: 0.16, freq: 300, freqEnd: 8000, type: 'bandpass', q: 3 });
+    [220, 330, 440, 660, 880].forEach((f, i) => this.tone({ type: 'sawtooth', freq: f, dur: 0.25, vol: 0.07, when: i * 0.05, filter: 3000 }));
+  }
+
+  tick(urgent) {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'square', freq: urgent ? 1320 : 880, dur: 0.06, vol: 0.09, filter: 4000 });
+  }
+
+  whoosh() {
+    if (!this.sfxOn()) return;
+    this.noise({ dur: 0.35, vol: 0.12, freq: 500, freqEnd: 3500, type: 'bandpass', q: 1.5 });
+  }
+
+  ui() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'triangle', freq: 1250, freqEnd: 900, dur: 0.05, vol: 0.07 });
+  }
+
+  coin() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'square', freq: 987.77, dur: 0.07, vol: 0.07, filter: 5000 });
+    this.tone({ type: 'square', freq: 1318.5, dur: 0.2, vol: 0.07, when: 0.07, filter: 5000 });
+  }
+
+  fanfare(big) {
+    if (!this.sfxOn()) return;
+    const seq = big ? [523.25, 659.25, 783.99, 1046.5, 1318.5] : [523.25, 659.25, 783.99, 1046.5];
+    seq.forEach((f, i) => {
+      this.tone({ type: 'square', freq: f, dur: 0.22, vol: 0.07, when: i * 0.09, filter: 4200 });
+      this.tone({ type: 'triangle', freq: f / 2, dur: 0.25, vol: 0.08, when: i * 0.09 });
+    });
+    this.noise({ dur: 0.9, vol: 0.05, freq: 7000, type: 'highpass', when: seq.length * 0.09 });
+  }
+
+  fail() {
+    if (!this.sfxOn()) return;
+    [392, 349.23, 311.13, 261.63].forEach((f, i) => this.tone({ type: 'triangle', freq: f, dur: 0.3, vol: 0.12, when: i * 0.14 }));
+  }
+
+  /* ---- adaptive music: a 16-step synthwave loop whose layers follow
+     this.intensity (menu pad → round groove → final-stretch hats → SZAŁ lead) ---- */
+  setIntensity(level) { this.intensity = level; }
+
+  startMusic() {
+    if (!this.ctx || this.musicTimer || this.settings.music === false) return;
+    this.nextNoteTime = this.ctx.currentTime + 0.08;
+    this.musicTimer = setInterval(() => this.scheduleMusic(), 30);
+  }
+
+  stopMusic() {
+    clearInterval(this.musicTimer);
+    this.musicTimer = null;
+  }
+
+  scheduleMusic() {
+    if (!this.live) return;
+    const bpm = [92, 112, 120, 128][this.intensity] || 112;
+    const stepDur = 60 / bpm / 4;
+    while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
+      this.playStep(this.step, this.nextNoteTime - this.ctx.currentTime);
+      this.nextNoteTime += stepDur;
+      this.step = (this.step + 1) % 64;
+    }
+  }
+
+  playStep(step, when) {
+    const L = this.intensity, bus = this.musicBus;
+    const chord = MUSIC_CHORDS[Math.floor(step / 16) % 4];
+    const s = step % 16;
+    if (s === 0) chord.notes.forEach(f => this.tone({ type: 'sawtooth', freq: f, dur: 1.9, vol: 0.035, attack: 0.4, when, bus, filter: L === 0 ? 900 : 1500, detune: 7 }));
+    if (L >= 1) {
+      if (s % 4 === 0) this.tone({ type: 'sine', freq: 120, freqEnd: 42, dur: 0.18, vol: 0.5, when, bus });
+      if (s % 2 === 0) this.tone({ type: 'sawtooth', freq: chord.root * (s % 8 === 6 ? 2 : 1), dur: 0.14, vol: 0.13, when, bus, filter: 300 + L * 250 });
+      if (s === 4 || s === 12) this.noise({ dur: 0.12, vol: 0.12, freq: 1800, when, bus });
+    }
+    const arpEvery = L >= 2 ? 1 : 2;
+    if (s % arpEvery === 0) {
+      const n = chord.notes[(s / arpEvery) % chord.notes.length] * (L >= 2 && s % 4 === 3 ? 4 : 2);
+      this.tone({ type: L === 0 ? 'sine' : 'square', freq: n, dur: 0.12, vol: L === 0 ? 0.035 : 0.03, when, bus, filter: 2200 + L * 600 });
+    }
+    if (L >= 2) this.noise({ dur: 0.04, vol: s % 2 ? 0.035 : 0.06, freq: 9000, type: 'highpass', when, bus });
+    if (L >= 3 && s % 4 === 2) this.tone({ type: 'sawtooth', freq: chord.notes[2] * 4, dur: 0.2, vol: 0.03, when, bus, filter: 4000 });
+  }
+}
+
+/* ----------------------- Monetization (Golden Shot v11) -----------------------
+   One provider-agnostic adapter; the game only ever calls
+   `monetization.rewarded(placement)` / `.interstitial(placement)` /
+   `.purchase(sku)` / `.gameplayStart()` / `.gameplayStop()`. The provider
+   is detected at runtime -- nothing here holds keys or secrets:
+
+   - 'crazygames' — CrazyGames HTML5 SDK v3 (window.CrazyGames.SDK)
+   - 'poki'       — Poki SDK v2 (window.PokiSDK)
+   - 'h5'         — Google H5 Games Ads / Ad Placement API (window.adBreak,
+                    set up by the publisher's own AdSense tag)
+   - 'native'     — a mobile wrapper (Capacitor/TWA/WebView) that injects
+                    window.VectorHoleNative = { rewarded(placement) →
+                    Promise<bool>, interstitial(placement) → Promise,
+                    purchase(sku) → Promise<{ok}>, products() →
+                    Promise<[{sku, price}]> } backed by AdMob / Play Billing /
+                    StoreKit. This is the only provider with real IAP.
+   - 'demo'       — no SDK present (GitHub Pages build): a clearly-labelled
+                    3-second "DEMO REKLAMY" placeholder so every placement
+                    can be tested end-to-end. IAP is unavailable in demo, so
+                    the paid store stays hidden -- the game never fakes a
+                    purchase.
+
+   Portal SDK scripts are only fetched when the page is actually running on
+   that portal (hostname/referrer match, or ?portal=… for local testing),
+   so the default build makes no third-party requests. */
+const PORTAL_SDKS = {
+  crazygames: { match: /(^|\.)crazygames\.[a-z.]+$/, src: 'https://sdk.crazygames.com/crazygames-sdk-v3.js' },
+  poki: { match: /(^|\.)poki(-gdn)?\.(com|net|io)$/, src: 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js' }
+};
+
+// Rewarded placements -- each sits at an emotional peak and is always
+// opt-in (the player taps a button; nothing auto-plays). `dailyCap` limits
+// how often a placement can pay out per UTC day.
+const AD_PLACEMENTS = {
+  result_double_coins: { label: '×2 monet' },
+  mission_revive: { label: '+20 s na misję' },
+  chest_skip: { label: 'Skrzynia teraz', dailyCap: 3 },
+  login_double: { label: '×2 nagroda dnia' },
+  free_prisms: { label: '+5 pryzmatów', dailyCap: 3 },
+  turbo_free: { label: 'Turbo start gratis', dailyCap: 2 }
+};
+
+// Store catalog for providers with IAP (see 'native' above). Prices are
+// display fallbacks; a provider's products() overrides them with the
+// store's localized price. No loot boxes: every pack lists exactly what it
+// contains (EU/UK/BE/NL paid-random-reward rules).
+const IAP_PRODUCTS = [
+  { sku: 'starter_pack', name: 'Pakiet Startowy', price: '9,99 zł', oneTime: true, best: true, grant: { coins: 1500, prisms: 60, auraId: 'starter_glow', noAds: false }, desc: '1500 monet · 60 pryzmatów · ekskluzywny Trail „Zorza Startu”' },
+  { sku: 'prisms_s', name: 'Garść pryzmatów', price: '4,99 zł', grant: { prisms: 40 }, desc: '40 pryzmatów' },
+  { sku: 'prisms_m', name: 'Skrzynia pryzmatów', price: '19,99 zł', grant: { prisms: 200 }, desc: '200 pryzmatów (+25% gratis)' },
+  { sku: 'prisms_l', name: 'Skarbiec pryzmatów', price: '44,99 zł', grant: { prisms: 520 }, desc: '520 pryzmatów (+45% gratis)' },
+  { sku: 'no_ads', name: 'Bez reklam', price: '14,99 zł', oneTime: true, grant: { noAds: true }, desc: 'Wyłącza reklamy między rundami na zawsze (nagrody za reklamę zostają do wyboru)' }
+];
+
+class Monetization {
+  constructor(game) {
+    this.game = game;
+    this.provider = 'demo';
+    this.sdk = null;
+    this.ready = Promise.resolve();
+    this.inGameplay = false;
+    this.lastInterstitialAt = 0;
+    this.prices = {};
+    this.busy = false;
+    const portal = this.detectPortal();
+    if (portal) this.ready = this.loadPortal(portal);
+    else this.attachProvider();
+  }
+
+  detectPortal() {
+    const forced = new URLSearchParams(location.search).get('portal');
+    if (forced && PORTAL_SDKS[forced]) return forced;
+    let ref = '';
+    try { ref = document.referrer ? new URL(document.referrer).hostname : ''; } catch (e) { /* no referrer */ }
+    for (const [id, p] of Object.entries(PORTAL_SDKS)) {
+      if (p.match.test(location.hostname) || (ref && p.match.test(ref))) return id;
+    }
+    return null;
+  }
+
+  loadPortal(id) {
+    return new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = PORTAL_SDKS[id].src;
+      s.async = true;
+      s.onload = () => { this.attachProvider(true).then(resolve, resolve); };
+      s.onerror = () => { this.attachProvider(true).then(resolve, resolve); };
+      document.head.appendChild(s);
+    });
+  }
+
+  /** A provider whose setup partly fails keeps its identity (its markers
+   *  still matter) -- and if a portal was detected but its SDK can't be
+   *  used at all, the provider is 'none' (rewarded ads resolve false), never
+   *  'demo': the demo placeholder pays real rewards for a fake ad and must
+   *  only ever run on the plain web build. */
+  async attachProvider(portalExpected) {
+    const soft = async (fn) => { try { await fn(); } catch (e) { /* partial SDK failure: keep the provider */ } };
+    if (window.VectorHoleNative) {
+      this.provider = 'native';
+      this.sdk = window.VectorHoleNative;
+      await soft(async () => {
+        const list = this.sdk.products ? await this.sdk.products() : [];
+        (list || []).forEach(p => { this.prices[p.sku] = p.price; });
+      });
+    } else if (window.CrazyGames && window.CrazyGames.SDK) {
+      this.provider = 'crazygames';
+      this.sdk = window.CrazyGames.SDK;
+      await soft(async () => { if (this.sdk.init) await this.sdk.init(); });
+      await soft(async () => { if (this.sdk.game && this.sdk.game.loadingStop) this.sdk.game.loadingStop(); });
+    } else if (window.PokiSDK) {
+      // PokiSDK.init() rejects by design under an adblocker; the game must
+      // still report loading/gameplay and simply get no ads.
+      this.provider = 'poki';
+      this.sdk = window.PokiSDK;
+      await soft(() => this.sdk.init());
+      await soft(() => this.sdk.gameLoadingFinished());
+    } else if (typeof window.adBreak === 'function') {
+      this.provider = 'h5';
+      this.sdk = window.adBreak;
+      await soft(() => { if (typeof window.adConfig === 'function') window.adConfig({ preloadAdBreaks: 'on', sound: 'on' }); });
+    } else if (portalExpected) {
+      this.provider = 'none';
+      this.sdk = null;
+    }
+    this.game.analytics.track('monetization_provider', { provider: this.provider });
+  }
+
+  get canPurchase() { return this.provider === 'native' && !!(this.sdk && this.sdk.purchase); }
+  get isDemo() { return this.provider === 'demo'; }
+  price(sku) { return this.prices[sku] || (IAP_PRODUCTS.find(p => p.sku === sku) || {}).price || ''; }
+
+  /** Portals pause their own ads during gameplay and use these markers for
+   *  their engagement metrics (CrazyGames/Poki both require them). */
+  gameplayStart() {
+    if (this.inGameplay) return;
+    this.inGameplay = true;
+    try {
+      if (this.provider === 'crazygames') this.sdk.game.gameplayStart();
+      else if (this.provider === 'poki') this.sdk.gameplayStart();
+    } catch (e) { /* SDK hiccup -- never block the game */ }
+  }
+
+  gameplayStop() {
+    if (!this.inGameplay) return;
+    this.inGameplay = false;
+    try {
+      if (this.provider === 'crazygames') this.sdk.game.gameplayStop();
+      else if (this.provider === 'poki') this.sdk.gameplayStop();
+    } catch (e) { /* ignore */ }
+  }
+
+  /** Challenge link for sharing. On a portal the game runs inside the
+   *  portal's iframe, so the link must point at the portal page (Poki
+   *  shareableURL / CrazyGames inviteLink), not the raw game CDN URL. */
+  async shareUrl(seed, score, name) {
+    const p = challengeParams(seed, score, name);
+    try {
+      if (this.provider === 'poki' && this.sdk.shareableURL) return await this.sdk.shareableURL(p);
+      if (this.provider === 'crazygames' && this.sdk.game && this.sdk.game.inviteLink) return await this.sdk.game.inviteLink(p);
+    } catch (e) { /* fall through to our own URL */ }
+    return encodeChallenge(seed, score, name);
+  }
+
+  /** Incoming challenge params: on a portal they live on the parent page
+   *  and are read through the SDK; otherwise from our own query string. */
+  incomingChallengeSearch() {
+    try {
+      if (this.provider === 'poki' && this.sdk.getURLParam) {
+        const c = this.sdk.getURLParam('c');
+        if (c) return `?c=${encodeURIComponent(c)}&n=${encodeURIComponent(this.sdk.getURLParam('n') || '')}`;
+      }
+      if (this.provider === 'crazygames' && this.sdk.game && this.sdk.game.getInviteParam) {
+        const c = this.sdk.game.getInviteParam('c');
+        if (c) return `?c=${encodeURIComponent(c)}&n=${encodeURIComponent(this.sdk.game.getInviteParam('n') || '')}`;
+      }
+    } catch (e) { /* no portal params */ }
+    return null;
+  }
+
+  /** A celebratory moment (new PB, first win) -- CrazyGames' happytime. */
+  happyTime() {
+    try { if (this.provider === 'crazygames' && this.sdk.game.happytime) this.sdk.game.happytime(); } catch (e) { /* ignore */ }
+  }
+
+  placementLeft(placement) {
+    const def = AD_PLACEMENTS[placement];
+    if (!def || !def.dailyCap) return Infinity;
+    const st = this.game.save.ads || {};
+    const today = dailySeedForDate(new Date()).dateKey;
+    const used = st.dateKey === today ? (st.used && st.used[placement]) || 0 : 0;
+    return Math.max(0, def.dailyCap - used);
+  }
+
+  notePlacementUsed(placement) {
+    const save = this.game.save;
+    const today = dailySeedForDate(new Date()).dateKey;
+    if (!save.ads || save.ads.dateKey !== today) save.ads = { dateKey: today, used: {}, watched: (save.ads && save.ads.watched) || 0 };
+    save.ads.used[placement] = (save.ads.used[placement] || 0) + 1;
+    save.ads.watched = (save.ads.watched || 0) + 1;
+  }
+
+  /** Resolves true only if the player watched to the end (reward granted). */
+  async rewarded(placement) {
+    if (this.busy || this.placementLeft(placement) <= 0) return false;
+    this.busy = true;
+    const wasPlaying = this.inGameplay;
+    this.gameplayStop();
+    this.game.sound.suspend();
+    this.game.analytics.track('ad_started', { context: placement, type: 'rewarded', provider: this.provider });
+    let ok = false;
+    try {
+      await this.ready;
+      if (this.provider === 'native') ok = !!(await this.sdk.rewarded(placement));
+      else if (this.provider === 'poki') ok = !!(await this.sdk.rewardedBreak());
+      else if (this.provider === 'crazygames') ok = await new Promise((res) => this.sdk.ad.requestAd('rewarded', { adFinished: () => res(true), adError: () => res(false) }));
+      else if (this.provider === 'none') ok = false;
+      else if (this.provider === 'h5') ok = await new Promise((res) => {
+        let viewed = false;
+        this.sdk({ type: 'reward', name: placement, beforeReward: (show) => show(), adViewed: () => { viewed = true; }, adDismissed: () => {}, adBreakDone: () => res(viewed) });
+      });
+      else ok = await this.demoAd(true);
+    } catch (e) { ok = false; }
+    this.game.sound.resume();
+    if (wasPlaying) this.gameplayStart();
+    this.busy = false;
+    if (ok) {
+      this.notePlacementUsed(placement);
+      saveGame(this.game.save);
+      this.game.analytics.track('ad_reward_granted', { context: placement, provider: this.provider });
+    } else {
+      this.game.analytics.track('ad_reward_failed', { context: placement, provider: this.provider });
+    }
+    return ok;
+  }
+
+  /** Between-round break. Capped (CONFIG.ads) and skipped entirely with
+   *  the "Bez reklam" entitlement or during the newbie runs. */
+  async interstitial(placement) {
+    const A = CONFIG.ads;
+    const save = this.game.save;
+    if (save.entitlements && save.entitlements.noAds) return;
+    if ((save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns) return;
+    if (Date.now() - this.lastInterstitialAt < A.interstitialMinGapMs) return;
+    if (this.busy) return;
+    this.busy = true;
+    this.lastInterstitialAt = Date.now();
+    this.game.sound.suspend();
+    this.game.analytics.track('ad_started', { context: placement, type: 'interstitial', provider: this.provider });
+    try {
+      await this.ready;
+      if (this.provider === 'native') await this.sdk.interstitial(placement);
+      else if (this.provider === 'poki') await this.sdk.commercialBreak();
+      else if (this.provider === 'crazygames') await new Promise((res) => this.sdk.ad.requestAd('midgame', { adFinished: res, adError: res }));
+      else if (this.provider === 'h5') await new Promise((res) => this.sdk({ type: 'next', name: placement, adBreakDone: res }));
+      else if (this.provider === 'demo') await this.demoAd(false);
+    } catch (e) { /* an ad failing must never block the next round */ }
+    this.game.sound.resume();
+    this.busy = false;
+  }
+
+  /** The "demo" provider's stand-in ad: a labelled 3 s overlay drawn on
+   *  top of whatever screen is open (so mid-mission/hub placements work). */
+  demoAd(rewarded) {
+    return new Promise((resolve) => {
+      const overlay = document.getElementById('adOverlay');
+      const bar = document.getElementById('adProgressBar');
+      const countdown = document.getElementById('adCountdown');
+      document.getElementById('adKind').textContent = rewarded ? 'REKLAMA Z NAGRODĄ · DEMO' : 'PRZERWA REKLAMOWA · DEMO';
+      overlay.classList.remove('hidden');
+      bar.style.width = '0%';
+      const duration = CONFIG.ads.demoSeconds;
+      const start = Date.now();
+      const tick = () => {
+        const t = (Date.now() - start) / 1000;
+        bar.style.width = clamp((t / duration) * 100, 0, 100) + '%';
+        countdown.textContent = Math.max(0, Math.ceil(duration - t));
+        if (t >= duration) { overlay.classList.add('hidden'); resolve(true); } else setTimeout(tick, 100);
+      };
+      tick();
+    });
+  }
+
+  async purchase(sku) {
+    const product = IAP_PRODUCTS.find(p => p.sku === sku);
+    if (!product || !this.canPurchase) return false;
+    this.game.analytics.track('iap_intent', { sku });
+    try {
+      const res = await this.sdk.purchase(sku);
+      if (!res || !res.ok) { this.game.analytics.track('iap_cancel', { sku }); return false; }
+      this.game.analytics.track('iap_success', { sku, price: this.price(sku) });
+      return true;
+    } catch (e) {
+      this.game.analytics.track('iap_fail', { sku, error: String(e) });
+      return false;
     }
   }
 }
@@ -480,11 +1075,11 @@ const SKINS = [
   // look (SKIN_STYLES), so buying one changes how you play, not just color.
   { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — rdzeń startowy' },
   { id: 'cyan', name: 'Cyber Cyan', price: 30, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
-  { id: 'pink', name: 'Hot Pink', price: 45, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
-  { id: 'green', name: 'Toxic Green', price: 90, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
-  { id: 'purple', name: 'Ultra Violet', price: 160, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
-  { id: 'gold', name: 'Neon Gold', price: 280, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
-  { id: 'white', name: 'Plasma White', price: 450, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
+  { id: 'pink', name: 'Hot Pink', price: 60, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
+  { id: 'green', name: 'Toxic Green', price: 120, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
+  { id: 'purple', name: 'Ultra Violet', price: 220, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
+  { id: 'gold', name: 'Neon Gold', price: 380, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
+  { id: 'white', name: 'Plasma White', price: 600, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
   // in CAMPAIGN_MISSIONS + endCampaignMission()).
@@ -505,7 +1100,10 @@ const AURAS = [
   { id: 'ember', name: 'Ember Aura', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD' },
   { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#9875FF' },
   { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#46D99A', unlockSource: { type: 'coreCity', level: 2 } },
-  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } }
+  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } },
+  // v11: Pakiet Startowy exclusive (IAP_PRODUCTS.starter_pack) -- hidden
+  // from the grid unless owned or purchasable (renderCosmeticGrid()).
+  { id: 'starter_glow', name: 'Zorza Startu', priceCoins: null, color: '#7cffcb', unlockSource: { type: 'iap', sku: 'starter_pack' } }
 ];
 
 // GDD 4.0 §5.3 Warsztat category 3: "Efekt pochłaniania" -- the eat/absorb
@@ -1267,7 +1865,7 @@ function campaignDistrictOf(missionId) {
 }
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 10;
+const SAVE_SCHEMA_VERSION = 11;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -1345,6 +1943,42 @@ function dailySeedForDate(date) {
 
 /** The UTC calendar day before `dateKey` (YYYY-MM-DD), for the Daily
  *  streak counter (GDD 4.0 §5.4's "Wyzwania" tab wants to show a streak). */
+/* ---- Golden Shot v11: friend challenge links ("Pobij mój wynik!") ----
+   ?c=<seed36>.<score36>.<seal>&n=<name>. The seed replays the exact same
+   Arena map; the seal stops casual URL edits of the score (client-side,
+   so it's a deterrent, not real verification -- see VECTRE_V11_PLAN.md). */
+const CHALLENGE_MAX_SCORE = 500000;
+function challengeSeal(seed, score, name) { return fnv1a(`${SEAL_SALT}|${seed}|${score}|${name}`); }
+/** Cut by whole characters (code points), so an emoji is never split into
+ *  a lone surrogate that URL encoding would turn into U+FFFD. */
+function cutName(name) { return Array.from(String(name || '')).slice(0, 16).join(''); }
+function challengeParams(seed, score, name) {
+  const n = cutName(name);
+  const out = { c: `${(seed >>> 0).toString(36)}.${Math.max(0, Math.round(score)).toString(36)}.${challengeSeal(seed >>> 0, Math.round(score), n)}` };
+  if (n) out.n = n;
+  return out;
+}
+const CANONICAL_URL = 'https://klaudiamoscinska-art.github.io/vector-hole/';
+function encodeChallenge(seed, score, name) {
+  const base = /^https?:$/.test(location.protocol) ? `${location.origin}${location.pathname}` : CANONICAL_URL;
+  return `${base}?${new URLSearchParams(challengeParams(seed, score, name)).toString()}`;
+}
+function decodeChallenge(search) {
+  try {
+    const params = new URLSearchParams(search);
+    const raw = params.get('c');
+    if (!raw || raw.length > 40) return null;
+    const [s36, sc36, seal] = raw.split('.');
+    const seed = parseInt(s36, 36), score = parseInt(sc36, 36);
+    const name = cutName(params.get('n') || '');
+    if (!/^[0-9a-z]{1,7}$/.test(s36) || !/^[0-9a-z]{1,4}$/.test(sc36)) return null;
+    if (!Number.isFinite(seed) || seed < 0 || seed > 0xffffffff) return null;
+    if (!Number.isFinite(score) || score < 1 || score > CHALLENGE_MAX_SCORE) return null;
+    if (seal !== challengeSeal(seed, score, name)) return null; // edited link: ignore it
+    return { seed, score, from: name || 'Znajomy' };
+  } catch (e) { return null; }
+}
+
 function previousDateKey(dateKey) {
   const d = new Date(dateKey + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() - 1);
@@ -1380,7 +2014,7 @@ function defaultSave() {
     // Player feedback: default to legacy direct-drag (chase the pointer/
     // touch point) rather than the Floating Thumb Pad -- still switchable
     // in Ustawienia (syncControlsPanel()'s "Tryb sterowania" toggle).
-    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto' },
+    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', sfx: true, music: true, gfxLevel: 2 },
     stats: { runsPlayed: 0, bestArenaScore: 0 },
     // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
     // coreCharge is the 0-100 progress toward the *next* level.
@@ -1405,8 +2039,52 @@ function defaultSave() {
     // (`day` = index of the next reward to claim), free chest cooldown.
     player: { level: 1, xp: 0 },
     login: { lastClaimDate: null, day: 0, totalClaims: 0 },
-    freeChest: { nextAt: 0, opened: 0 }
+    freeChest: { nextAt: 0, opened: 0 },
+    // v11 (Golden Shot v11): purchases/entitlements, per-day ad placement
+    // caps, GDPR consent, local retention metrics, pending friend challenge.
+    entitlements: { noAds: false, purchased: [] },
+    ads: { dateKey: null, used: {}, watched: 0 },
+    privacy: { decided: false, analytics: false, ads: false, ts: 0 },
+    retention: { installDate: null, activeDays: [], sessions: 0 },
+    challenge: null,
+    integrity: { tampered: false }
   };
+}
+
+/** Golden Shot v11: after migration, force every field back to the shape
+ *  and type defaultSave() has -- a hand-edited or half-written save (a
+ *  string where a number belongs, a missing sub-object, NaN coins) can
+ *  no longer crash the game or turn `coins += 30` into string concat.
+ *  Numbers are clamped to finite, non-negative, sane caps. */
+const SAVE_CURRENCY_CAP = 1e7;
+function sanitizeSave(save) {
+  const def = defaultSave();
+  const fix = (val, ref) => {
+    if (Array.isArray(ref)) return Array.isArray(val) ? val.filter(v => v !== null && typeof v !== 'object') : ref;
+    if (ref === null) return val === undefined ? null : val;
+    if (typeof ref === 'object') {
+      const out = (val && typeof val === 'object' && !Array.isArray(val)) ? { ...val } : {};
+      for (const k of Object.keys(ref)) out[k] = fix(out[k], ref[k]);
+      return out;
+    }
+    // Upper bound fits epoch-ms timestamps (freeChest.nextAt etc.).
+    if (typeof ref === 'number') { const n = Number(val); return Number.isFinite(n) ? clamp(n, 0, 1e14) : ref; }
+    if (typeof ref === 'boolean') return typeof val === 'boolean' ? val : ref;
+    if (typeof ref === 'string') return typeof val === 'string' ? val : ref;
+    return val === undefined ? ref : val;
+  };
+  const out = fix(save, def);
+  // Free-form maps keep their own keys (fix() only knows defaultSave's keys).
+  for (const k of ['completed', 'medals']) out.campaign[k] = (save.campaign && typeof save.campaign[k] === 'object' && save.campaign[k]) || {};
+  out.ads.used = (save.ads && typeof save.ads.used === 'object' && save.ads.used) || {};
+  out.coins = Math.min(out.coins, SAVE_CURRENCY_CAP);
+  out.prisms = Math.min(out.prisms, SAVE_CURRENCY_CAP);
+  if (!out.owned.includes('rainbow')) out.owned.unshift('rainbow');
+  if (!out.campaign.unlockedDistricts.includes('plac')) out.campaign.unlockedDistricts.unshift('plac');
+  out.settings.sensitivity = out.settings.sensitivity || 1;
+  out.player.level = Math.max(1, Math.floor(out.player.level));
+  out.hub.coreLevel = Math.max(1, Math.floor(out.hub.coreLevel));
+  return out;
 }
 
 /** Maps a CAMPAIGN_MISSIONS `setup` block to the TIERS/CAMPAIGN_ENTITY_STATS
@@ -1581,6 +2259,22 @@ function migrateSave(data) {
     };
   }
 
+  if (data.schemaVersion < 11) {
+    // v10 -> v11 (Golden Shot v11): audio settings, entitlements, ad caps,
+    // consent (existing players are asked once, like new ones), retention.
+    data = {
+      ...data,
+      schemaVersion: 11,
+      settings: { ...data.settings, sfx: true, music: true },
+      entitlements: { noAds: false, purchased: [] },
+      ads: { dateKey: null, used: {}, watched: 0 },
+      privacy: { decided: false, analytics: false, ads: false, ts: 0 },
+      retention: { installDate: null, activeDays: [], sessions: 0 },
+      challenge: null,
+      integrity: { tampered: false }
+    };
+  }
+
   return data;
 }
 
@@ -1588,7 +2282,18 @@ function loadSave() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
-      const migrated = migrateSave(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      // v11 tamper seal: a save edited by hand (devtools) no longer matches
+      // its _sig. It still loads -- the player keeps their progress -- but
+      // is flagged (integrity.tampered, reported once as save_tampered).
+      let tampered = false;
+      if (parsed && typeof parsed === 'object' && parsed._sig !== undefined) {
+        const sig = parsed._sig;
+        delete parsed._sig;
+        tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
+      }
+      const migrated = sanitizeSave(migrateSave(parsed));
+      if (tampered) migrated.integrity.tampered = true;
       saveGame(migrated);
       return migrated;
     }
@@ -1597,7 +2302,10 @@ function loadSave() {
 }
 
 function saveGame(save) {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage unavailable */ }
+  try {
+    const body = JSON.stringify(save);
+    localStorage.setItem(SAVE_KEY, body.slice(0, -1) + `,"_sig":"${fnv1a(SEAL_SALT + body)}"}`);
+  } catch (e) { /* storage unavailable */ }
 }
 
 /* ----------------------- Particle ----------------------- */
@@ -4089,6 +4797,14 @@ class Game {
 
     this.sessionId = generateId('session');
     this.analytics = new Analytics();
+    this.analytics.consent = () => !!(this.save.privacy && this.save.privacy.analytics);
+    this.sessionStartedAt = Date.now();
+    // Golden Shot v11: synthesized SFX + adaptive music (see SoundEngine).
+    this.sound = new SoundEngine(this.save.settings);
+    this.monetization = new Monetization(this);
+    const unlockAudio = () => this.sound.unlock();
+    ['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, unlockAudio, { passive: true }));
+    document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('button')) this.sound.ui(); });
     this.state = GameState.BOOT;
 
     // Movement intent shared by the Floating Thumb Pad and keyboard input;
@@ -4098,7 +4814,9 @@ class Game {
     this.thumbpadTouchId = null;
     this.thumbpadFadeTimer = null;
 
-    this.resize();
+    // Re-probe one level above the remembered one each session, so a
+    // one-off slow session can't pin a device to low quality forever.
+    this.applyGfx(clamp(Math.round(this.save.settings.gfxLevel != null ? this.save.settings.gfxLevel : 2) + 1, 0, 2));
     window.addEventListener('resize', () => this.resize());
     this.bindInput();
     this.bindUI();
@@ -4107,12 +4825,30 @@ class Game {
     this.updateChallengeCountdown();
     setInterval(() => { this.updateChallengeCountdown(); this.updateFreeChestRow(); }, 1000);
 
+    this.captureChallengeLink();
+    this.monetization.ready.then(() => {
+      const portalSearch = this.monetization.incomingChallengeSearch();
+      if (portalSearch) this.captureChallengeLink(portalSearch);
+    });
     this.state = GameState.MENU;
     this.showScreen('mainMenu'); // also renders the bottom nav for the initial screen
     this.analytics.track('session_start', { sessionId: this.sessionId, configVersion: CONFIG.version });
+    this.trackRetention();
+    this.renderConsentBar();
+    if (this.save.integrity.tampered && !this.save.integrity.reported) {
+      this.analytics.track('save_tampered', {});
+      this.save.integrity.reported = true;
+      saveGame(this.save);
+    }
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        this.analytics.track('session_end', { sessionId: this.sessionId });
+        this.analytics.track('session_end', { sessionId: this.sessionId, durationMs: Date.now() - this.sessionStartedAt });
+        this.sound.suspend();
+        // Backgrounding mid-round (phone call, app switch) pauses instead of
+        // letting the clock run out unseen.
+        if (this.running && !this.paused) this.pauseGame();
+      } else {
+        this.sound.resume();
       }
     });
   }
@@ -4120,7 +4856,7 @@ class Game {
   /* ---------- setup ---------- */
 
   resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, GFX_LEVELS[this.gfxLevel != null ? this.gfxLevel : 2].maxDpr);
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.canvas.width = this.width * dpr;
@@ -4134,6 +4870,37 @@ class Game {
     // explicit "off" now hides it; "auto"/"on" both show it.
     const pref = this.save ? this.save.settings.minimap : 'auto';
     this.showMinimap = pref !== 'off';
+  }
+
+  applyGfx(level) {
+    this.gfxLevel = level;
+    const L = GFX_LEVELS[level];
+    CONFIG.juice.maxParticles = L.particles;
+    // Shadow blur off for the whole game canvas in one place (an own
+    // property shadows the prototype accessor; delete restores it).
+    if (!L.blur) Object.defineProperty(this.ctx, 'shadowBlur', { configurable: true, get: () => 0, set: () => {} });
+    else delete this.ctx.shadowBlur;
+    this.resize();
+  }
+
+  /** Frame-time watchdog (see GFX_LEVELS). Only judges frames of a live,
+   *  visible round, so menus and pauses never trigger a downgrade. */
+  monitorFrame(workMs) {
+    // Judges the game's own work per frame (update + render), not the gap
+    // between RAF callbacks -- a 30 Hz-capped phone (low-power mode) is not
+    // overloaded and must not be downgraded.
+    if (!(workMs >= 0 && workMs < 250) || this.gfxLevel === 0) return;
+    if (this.frameWarmup > 0) { this.frameWarmup--; return; } // sprite cache warm-up
+    this.frameEma = this.frameEma ? this.frameEma * 0.95 + workMs * 0.05 : workMs;
+    if (this.frameEma <= 20) { this.slowFrames = 0; return; }
+    this.slowFrames = (this.slowFrames || 0) + 1;
+    if (this.slowFrames < 120) return;
+    this.slowFrames = 0;
+    this.frameEma = 0;
+    this.applyGfx(this.gfxLevel - 1);
+    this.save.settings.gfxLevel = this.gfxLevel;
+    saveGame(this.save);
+    this.analytics.track('gfx_downgrade', { level: this.gfxLevel });
   }
 
   /** True while the Floating Thumb Pad should handle touch (feature flag is
@@ -4287,6 +5054,19 @@ class Game {
     document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
     // Golden Shot v8 retention loop.
     document.getElementById('btnLoginClaim').addEventListener('click', () => this.claimLoginReward());
+    document.getElementById('btnLoginDouble').addEventListener('click', () => this.doubleLoginReward());
+    document.getElementById('btnLoginClose').addEventListener('click', () => this.closeLoginReward());
+    document.getElementById('btnReviveAd').addEventListener('click', () => this.acceptRevive());
+    document.getElementById('btnReviveNo').addEventListener('click', () => this.declineRevive());
+    document.getElementById('btnFreePrisms').addEventListener('click', () => this.watchFreePrismsAd());
+    document.getElementById('btnAcceptChallenge').addEventListener('click', () => this.acceptChallenge());
+    document.getElementById('btnDismissChallenge').addEventListener('click', () => this.dismissChallenge());
+    document.getElementById('btnConsentYes').addEventListener('click', () => this.setConsent(true));
+    document.getElementById('btnConsentNo').addEventListener('click', () => this.setConsent(false));
+    document.getElementById('btnConsentPolicy').addEventListener('click', () => this.openPrivacyPolicy());
+    document.getElementById('btnPrivacyPolicy').addEventListener('click', () => this.openPrivacyPolicy());
+    document.getElementById('btnExportData').addEventListener('click', () => this.exportMyData());
+    document.querySelectorAll('[data-consent]').forEach(btn => btn.addEventListener('click', () => this.setConsent(btn.dataset.consent === '1')));
     document.getElementById('hubFreeChest').addEventListener('click', () => this.openFreeChest());
     document.getElementById('hubPlayerLevel').addEventListener('click', () => this.openPlayerLevelInfo());
     document.getElementById('btnUpsell').addEventListener('click', () => this.onUpsellClick());
@@ -4454,6 +5234,17 @@ class Game {
       saveGame(this.save);
       this.syncControlsPanel();
     });
+    // Golden Shot v11: on/off toggles shared by the pause sheet and the
+    // profile/settings screen (`data-setting` = save.settings key).
+    document.querySelectorAll('[data-setting]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.save.settings[btn.dataset.setting] = btn.dataset.value === '1';
+        saveGame(this.save);
+        this.sound.unlock();
+        this.sound.applySettings();
+        this.syncControlsPanel();
+      });
+    });
 
     // ---- Standings header: tap to collapse to just the rank line.
     // Visible/expanded by default -- this is the "who's ahead of you"
@@ -4488,6 +5279,7 @@ class Game {
     grid.innerHTML = '';
     items.forEach(item => {
       const owned = ownedList.includes(item.id);
+      if (item.unlockSource && item.unlockSource.type === 'iap' && !owned && !this.monetization.canPurchase) return;
       const selected = pendingId === item.id;
       const card = document.createElement('div');
       card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
@@ -4545,6 +5337,7 @@ class Game {
   }
 
   cosmeticLockLabel(item) {
+    if (item.unlockSource && item.unlockSource.type === 'iap') return 'PAKIET STARTOWY';
     if (item.unlockSource) {
       return item.unlockSource.type === 'coreCity'
         ? `CORE CITY LVL ${item.unlockSource.level}`
@@ -4784,8 +5577,76 @@ class Game {
     this.populateEffects();
     this.populateOverdriveSkins();
     this.updateWarsztatPreview();
+    this.renderStore();
     this.showScreen('shopScreen');
     this.startWarsztatAnim();
+  }
+
+  /* ---- Golden Shot v11: Warsztat store (rewarded prisms + IAP) ---- */
+
+  /** Free prisms for an ad are always offered (capped per day); the paid
+   *  packs only render when the provider can actually take a payment
+   *  (Monetization.canPurchase) -- never a fake checkout. */
+  renderStore() {
+    const left = this.monetization.placementLeft('free_prisms');
+    const btn = document.getElementById('btnFreePrisms');
+    btn.disabled = left <= 0;
+    document.getElementById('freePrismsLeft').textContent = left > 0 ? `Zostało dziś: ${left}` : 'Wróć jutro po więcej';
+    btn.textContent = left > 0 ? `+${CONFIG.ads.freePrisms} ◆ · REKLAMA` : 'JUTRO';
+    const list = document.getElementById('storeProducts');
+    list.innerHTML = '';
+    const canBuy = this.monetization.canPurchase;
+    document.getElementById('storePaid').classList.toggle('hidden', !canBuy);
+    if (!canBuy) return;
+    const ent = this.save.entitlements;
+    IAP_PRODUCTS.forEach(prod => {
+      const owned = prod.oneTime && ent.purchased.includes(prod.sku);
+      const row = document.createElement('button');
+      row.className = 'store-row' + (prod.best ? ' best' : '') + (owned ? ' owned' : '');
+      row.disabled = owned;
+      row.innerHTML = `<span class="store-row-body"><span class="store-row-name">${escapeHtml(prod.name)}${prod.best ? ' <em>NAJLEPSZA OFERTA</em>' : ''}</span>` +
+        `<span class="store-row-desc">${escapeHtml(prod.desc)}</span></span>` +
+        `<span class="store-row-price">${owned ? 'KUPIONO ✓' : escapeHtml(this.monetization.price(prod.sku))}</span>`;
+      row.addEventListener('click', () => this.buyProduct(prod.sku));
+      list.appendChild(row);
+    });
+  }
+
+  async watchFreePrismsAd() {
+    if (!(await this.monetization.rewarded('free_prisms'))) return;
+    this.save.prisms = (this.save.prisms || 0) + CONFIG.ads.freePrisms;
+    saveGame(this.save);
+    this.sound.coin();
+    this.updateCoinDisplays();
+    this.renderStore();
+  }
+
+  async buyProduct(sku) {
+    const prod = IAP_PRODUCTS.find(p => p.sku === sku);
+    if (!prod) return;
+    if (!(await this.monetization.purchase(sku))) return;
+    this.grantProduct(prod);
+  }
+
+  /** Applies a confirmed purchase. Kept separate from buyProduct() so a
+   *  native wrapper can also restore purchases (window.game.grantProduct). */
+  grantProduct(prod) {
+    const g = prod.grant, ent = this.save.entitlements;
+    if (prod.oneTime && ent.purchased.includes(prod.sku)) return;
+    if (g.coins) this.save.coins += g.coins;
+    if (g.prisms) this.save.prisms = (this.save.prisms || 0) + g.prisms;
+    if (g.auraId && !this.save.auras.owned.includes(g.auraId)) this.save.auras.owned.push(g.auraId);
+    if (g.noAds) ent.noAds = true;
+    ent.purchased.push(prod.sku);
+    saveGame(this.save);
+    this.queueRewardCelebration({
+      kicker: 'DZIĘKUJEMY!', eyebrow: 'ZAKUP UDANY', title: prod.name, color: '#EFCB63',
+      icon: REWARD_CATEGORY_ICONS.bundle, noCta: true, desc: prod.desc
+    });
+    this.queueUnlockCelebrations();
+    this.updateCoinDisplays();
+    this.renderStore();
+    this.populateAuras();
   }
 
   /** "PODGLĄD NA ŻYWO" panel (GDD 4.0 §5.3 mockup) — a pure CSS/SVG vector
@@ -5020,6 +5881,8 @@ class Game {
   openProfileScreen() {
     document.getElementById('displayNameInput').value = this.save.displayName || '';
     document.getElementById('guestIdLabel').textContent = this.save.guestId;
+    this.syncControlsPanel();
+    this.syncPrivacyPanel();
     this.showScreen('profileScreen');
   }
 
@@ -5049,31 +5912,249 @@ class Game {
     this.startRound({ seed, daily: true });
   }
 
-  /** navigator.share with a clipboard fallback — never assumes Web Share
-   *  exists (GDD P6: feature-detect with canShare, always have a fallback). */
-  async shareResult() {
-    const place = document.getElementById('finalPlace').textContent;
-    const score = document.getElementById('finalScore').textContent;
-    const tagEl = document.getElementById('resultTag');
-    const tag = !tagEl.classList.contains('hidden') ? ` [${tagEl.textContent}]` : '';
-    const text = `Vector Hole — miejsce ${place}, wynik ${score}${tag}. Seed: ${this.runSeed}.`;
-    const url = window.location.href;
-    this.analytics.track('share_click', {});
+  /* ---- Golden Shot v11: retention metrics, consent, privacy ---- */
 
+  /** Local D1/D7 bookkeeping: install day, distinct active days, session
+   *  count. Fires `retention_day` once per active day with the day index
+   *  since install (0 = install day, 1 = D1 return, 7 = D7 ...), which is
+   *  exactly what a D1/D7 retention dashboard needs from the event stream. */
+  trackRetention() {
+    const R = this.save.retention;
+    const today = dailySeedForDate(new Date()).dateKey;
+    if (!R.installDate) R.installDate = today;
+    R.sessions = (R.sessions || 0) + 1;
+    const dayIndex = Math.max(0, Math.round((Date.parse(today) - Date.parse(R.installDate)) / 86400000));
+    if (!R.activeDays.includes(today)) {
+      R.activeDays.push(today);
+      if (R.activeDays.length > 60) R.activeDays.splice(0, R.activeDays.length - 60);
+      this.analytics.track('retention_day', { dayIndex, activeDays: R.activeDays.length, d1: dayIndex === 1, d7: dayIndex === 7 });
+    }
+    saveGame(this.save);
+    this.retention = { dayIndex, activeDays: R.activeDays.length, sessions: R.sessions };
+  }
+
+  /** Non-blocking consent bar (never a wall in front of the first round):
+   *  saving progress locally is strictly necessary and needs no consent;
+   *  anonymous statistics are opt-in and stay off until accepted. */
+  renderConsentBar() {
+    const bar = document.getElementById('consentBar');
+    if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running);
+  }
+
+  setConsent(analytics) {
+    this.save.privacy = { decided: true, analytics: !!analytics, ads: !!analytics, ts: Date.now() };
+    saveGame(this.save);
+    this.renderConsentBar();
+    this.syncPrivacyPanel();
+    this.analytics.track('consent_set', { analytics: !!analytics });
+  }
+
+  syncPrivacyPanel() {
+    const on = !!this.save.privacy.analytics;
+    document.querySelectorAll('[data-consent]').forEach(btn => btn.classList.toggle('active', (btn.dataset.consent === '1') === on));
+    const st = document.getElementById('profileStats');
+    if (st && this.retention) {
+      st.textContent = `Dni w grze: ${this.retention.activeDays} · sesje: ${this.retention.sessions} · rundy: ${this.save.stats.runsPlayed || 0} · misje: ${Object.keys(this.save.campaign.completed).length}`;
+    }
+  }
+
+  openPrivacyPolicy() {
+    const L = CONFIG.legal;
+    this.openInfoSheet({
+      title: 'Prywatność',
+      body: [
+        `<strong>Administrator:</strong> ${escapeHtml(L.publisher)}${L.contact ? ` · kontakt: ${escapeHtml(L.contact)}` : ''}.`,
+        '<strong>Co zapisujemy:</strong> postęp gry, ustawienia i losowy identyfikator gościa — wyłącznie w pamięci Twojej przeglądarki (localStorage) na tym urządzeniu. Nie zakładasz konta, nie podajesz e-maila. Nazwa gracza jest opcjonalna.',
+        '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
+        '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
+        '<strong>Czcionki:</strong> wbudowane w grę — bez pobierania z Google.',
+        '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
+      ]
+    });
+  }
+
+  /** GDPR art. 15/20: everything the game stores, as a JSON download. */
+  exportMyData() {
+    const blob = new Blob([JSON.stringify(this.save, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'vector-hole-moje-dane.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    this.analytics.track('data_export', {});
+  }
+
+  /* ---- Golden Shot v11: viral loop (share card + friend challenges) ---- */
+
+  /** Reads ?c=… on boot, stores a valid sealed challenge in the save and
+   *  strips it from the address bar (so a reload doesn't re-import it). */
+  captureChallengeLink(portalSearch) {
+    const params = new URLSearchParams(location.search);
+    if (!portalSearch && !params.has('c')) return;
+    const ch = decodeChallenge(portalSearch || location.search);
+    if (!portalSearch) {
+      params.delete('c'); params.delete('n');
+      try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash); } catch (e) { /* sandboxed iframe */ }
+    }
+    if (!ch) { this.analytics.track('challenge_invalid', {}); return; }
+    this.save.challenge = { seed: ch.seed, score: ch.score, from: ch.from, receivedAt: Date.now() };
+    saveGame(this.save);
+    this.analytics.track('challenge_open', { score: ch.score });
+    if (!this.running) this.renderHubChallenge();
+  }
+
+  /** Hub card for a pending friend challenge (or a note on the first-run
+   *  welcome card: the tutorial comes first, then the challenge). */
+  renderHubChallenge() {
+    const ch = this.save.challenge;
+    const card = document.getElementById('hubChallenge');
+    const note = document.getElementById('welcomeChallengeNote');
+    if (!card) return;
+    const valid = ch && typeof ch.seed === 'number' && typeof ch.score === 'number';
+    card.classList.toggle('hidden', !valid || this.isFirstRun());
+    note.classList.toggle('hidden', !valid || !this.isFirstRun());
+    if (!valid) return;
+    document.getElementById('hubChallengeFrom').textContent = ch.from || 'Znajomy';
+    document.getElementById('hubChallengeScore').textContent = ch.score;
+    note.textContent = `${ch.from || 'Znajomy'} rzuca Ci wyzwanie: ${ch.score} pkt! Ukończ krótki samouczek, a potem je przyjmij.`;
+  }
+
+  acceptChallenge() {
+    const ch = this.save.challenge;
+    if (!ch || !this.isArenaUnlocked()) return;
+    this.analytics.track('challenge_accept', { score: ch.score });
+    this.startRound({ seed: ch.seed, challenge: { score: ch.score, from: ch.from || 'Znajomy' } });
+  }
+
+  dismissChallenge() {
+    this.save.challenge = null;
+    saveGame(this.save);
+    this.renderHubChallenge();
+  }
+
+  /** In-round: the friend's score as a live target under the combo box. */
+  updateChallenge() {
+    const ch = this.challenge;
+    if (!ch || this.challengeBeaten || this.player.score <= ch.score) return;
+    this.challengeBeaten = true;
+    this.showBanner('WYZWANIE POBITE!', `Wynik ${ch.from} (${ch.score}) jest Twój`, '#46D99A', 1.5, 4);
+    this.flashScreen('#46D99A', 0.22);
+    this.sound.fanfare(true);
+    this.vibrate([40, 30, 80]);
+  }
+
+  drawChallengeTarget(ctx) {
+    const ch = this.challenge;
+    if (!ch) return;
+    const x = 8, y = 128, w = 158, h = 40;
+    const frac = clamp(this.player.score / ch.score, 0, 1);
+    const color = this.challengeBeaten ? '#46D99A' : '#EFCB63';
+    ctx.save();
+    ctx.fillStyle = 'rgba(4, 16, 29, 0.62)';
+    roundRectPath(ctx, x, y, w, h, 10);
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = `800 10px ${FONT_UI}`;
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.7)';
+    ctx.fillText(`WYZWANIE · ${String(ch.from).toUpperCase().slice(0, 12)}`, x + 8, y + 14);
+    ctx.font = `15px ${FONT_DISPLAY}`;
+    ctx.fillStyle = color;
+    ctx.fillText(this.challengeBeaten ? 'POBITE ✓' : `${this.player.score} / ${ch.score}`, x + 8, y + 30);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(x + 8, y + 34, w - 16, 3);
+    ctx.fillStyle = color;
+    ctx.fillRect(x + 8, y + 34, (w - 16) * frac, 3);
+    ctx.restore();
+  }
+
+  /** 1080x1350 PNG "score card" for social sharing, drawn with the same
+   *  vector art as the game (the player's real hole via Hole.draw()). */
+  buildShareCanvas(info) {
+    const W = 1080, H = 1350;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    const bg = c.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#081C2B'); bg.addColorStop(1, '#04101D');
+    c.fillStyle = bg; c.fillRect(0, 0, W, H);
+    c.fillStyle = 'rgba(80, 240, 250, 0.08)';
+    for (let gx = 30; gx < W; gx += 60) for (let gy = 30; gy < H; gy += 60) c.fillRect(gx, gy, 3, 3);
+    const glow = c.createRadialGradient(W / 2, 560, 40, W / 2, 560, 520);
+    glow.addColorStop(0, 'rgba(152, 117, 255, 0.35)'); glow.addColorStop(1, 'rgba(152, 117, 255, 0)');
+    c.fillStyle = glow; c.fillRect(0, 0, W, H);
+    // Orbiting city objects being pulled into the hole.
+    const kinds = ['fragment', 'kapsula', 'latarnia', 'samochod', 'pawilon', 'autobus'];
+    const colors = ['#50F0FA', '#50F0FA', '#FF54AD', '#EFCB63', '#9875FF', '#CBD5E1'];
+    kinds.forEach((k, i) => {
+      const a = i / kinds.length * Math.PI * 2 + 0.4, rr = 330 + (i % 2) * 60;
+      c.save(); c.translate(W / 2 + Math.cos(a) * rr, 560 + Math.sin(a) * rr * 0.75); c.rotate(a);
+      try { drawObjectArt(c, k, colors[i], 26 + i * 6, 0, i); } catch (e) { /* art kind missing */ }
+      c.restore();
+    });
+    const hole = new Hole('', 0, 0, true);
+    hole.skin = this.save.selected; hole.auraId = this.save.auras.selected; hole.radius = 190;
+    c.save(); c.translate(W / 2, 560); hole.draw(c, 1.3); c.restore();
+    c.textAlign = 'center';
+    c.fillStyle = '#50F0FA'; c.font = `44px ${FONT_DISPLAY}`;
+    c.fillText('VECTOR HOLE', W / 2, 120);
+    c.fillStyle = 'rgba(230, 250, 255, 0.6)'; c.font = `600 28px ${FONT_UI}`;
+    c.fillText(info.headline, W / 2, 170);
+    c.shadowColor = '#EFCB63'; c.shadowBlur = 40;
+    c.fillStyle = '#EFCB63'; c.font = `150px ${FONT_DISPLAY}`;
+    c.fillText(String(info.score), W / 2, 1000);
+    c.shadowBlur = 0;
+    c.fillStyle = '#e6faff'; c.font = `600 34px ${FONT_UI}`;
+    c.fillText(info.sub, W / 2, 1060);
+    c.fillStyle = '#FF54AD'; c.font = `52px ${FONT_DISPLAY}`;
+    c.fillText('POBIJ MÓJ WYNIK!', W / 2, 1180);
+    c.fillStyle = 'rgba(230, 250, 255, 0.55)'; c.font = `600 26px ${FONT_UI}`;
+    c.fillText('Ta sama mapa · link w wiadomości', W / 2, 1230);
+    return cv;
+  }
+
+  /** Share = a friend challenge: the link replays this exact map (seed)
+   *  with this score as the target. Web Share with the PNG card where the
+   *  platform supports files, then text+link, then clipboard, then a plain
+   *  download of the card -- never assumes any one of them exists. */
+  async shareResult() {
+    const place = this.lastResultPlace || 1;
+    const score = this.player ? this.player.score : 0;
+    const tier = this.player ? CONFIG.sizeTiers[getSizeTierIndex(this.player.radius)].shortId : 'T1';
+    const url = await this.monetization.shareUrl(this.runSeed, score, this.save.displayName || '');
+    const text = `Mój wynik w Vector Hole: ${score} pkt (miejsce #${place}, ${tier}). Pobij go na tej samej mapie!`;
+    this.analytics.track('share_click', { score, place });
     const btn = document.getElementById('btnShare');
-    const originalText = btn.textContent;
+    const label = btn.innerHTML;
+    const done = (msg) => { btn.textContent = msg; setTimeout(() => { btn.innerHTML = label; }, 2200); };
+    let file = null;
     try {
-      if (navigator.share && (!navigator.canShare || navigator.canShare({ text, url }))) {
+      const cv = this.buildShareCanvas({ score, headline: place === 1 ? 'ZWYCIĘSTWO W NEONOWYM MIEŚCIE' : 'MÓJ WYNIK W NEONOWYM MIEŚCIE', sub: `Miejsce #${place} · ${tier} · ${this.isDailyRun ? 'Wyzwanie dnia' : 'Runda 2:00'}` });
+      const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.9));
+      if (blob) file = new File([blob], 'vector-hole-wynik.jpg', { type: 'image/jpeg' });
+    } catch (e) { file = null; }
+    try {
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Vector Hole', text: `${text} ${url}` });
+        this.analytics.track('share_success', { via: 'files' });
+      } else if (navigator.share) {
         await navigator.share({ title: 'Vector Hole', text, url });
-        this.analytics.track('share_success', {});
-      } else {
+        this.analytics.track('share_success', { via: 'link' });
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(`${text} ${url}`);
-        this.analytics.track('share_success', { fallback: 'clipboard' });
-        btn.textContent = 'SKOPIOWANO ✓';
-        setTimeout(() => { btn.textContent = originalText; }, 2000);
+        this.analytics.track('share_success', { via: 'clipboard' });
+        done('LINK SKOPIOWANY ✓');
+      } else if (file) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        this.analytics.track('share_success', { via: 'download' });
+        done('KARTA ZAPISANA ✓');
       }
     } catch (e) {
-      this.analytics.track('share_fail', { error: String(e) });
+      if (e && e.name !== 'AbortError') this.analytics.track('share_fail', { error: String(e) });
     }
   }
 
@@ -5228,6 +6309,7 @@ class Game {
     const item = this.unlockQueue && this.unlockQueue.shift();
     if (!item) { overlay.classList.add('hidden'); return; }
     this.currentUnlock = item;
+    this.sound.fanfare(true);
     overlay.style.setProperty('--unlock-color', item.color);
     document.getElementById('unlockIcon').innerHTML = item.icon;
     document.getElementById('unlockEyebrow').textContent = item.eyebrow;
@@ -5589,9 +6671,17 @@ class Game {
   loginState() {
     const today = dailySeedForDate(new Date()).dateKey;
     const L = this.save.login || (this.save.login = { lastClaimDate: null, day: 0, totalClaims: 0 });
-    const claimedToday = L.lastClaimDate === today;
+    // v11 clock guard: a last claim dated *after* today means the device
+    // clock was rolled back after claiming -- no reward until it catches up
+    // (stops forward/back clock cycling from farming the calendar).
+    // A claim dated more than 2 days ahead is a once-wrong clock that has
+    // since been corrected (not cycling), so it's reset instead of
+    // locking the calendar until that date.
+    if (L.lastClaimDate && Date.parse(L.lastClaimDate) - Date.parse(today) > 2 * 86400000) { L.lastClaimDate = null; L.day = 0; }
+    const clockRolledBack = !!L.lastClaimDate && L.lastClaimDate > today;
+    const claimedToday = L.lastClaimDate === today || clockRolledBack;
     const streakAlive = claimedToday || L.lastClaimDate === previousDateKey(today);
-    return { today, claimedToday, day: streakAlive ? L.day : 0 };
+    return { today, claimedToday, clockRolledBack, day: streakAlive ? L.day : 0 };
   }
 
   maybeShowLoginReward() {
@@ -5605,6 +6695,9 @@ class Game {
     const btn = document.getElementById('btnLoginClaim');
     btn.disabled = false;
     btn.textContent = 'ODBIERZ';
+    document.getElementById('btnLoginDouble').classList.add('hidden');
+    document.getElementById('btnLoginDouble').textContent = '×2 ZA REKLAMĘ';
+    document.getElementById('btnLoginClose').classList.add('hidden');
     document.getElementById('loginRewardScreen').classList.remove('hidden');
     this.analytics.track('login_reward_offer', { day: st.day + 1 });
   }
@@ -5642,11 +6735,37 @@ class Game {
     btn.disabled = true;
     btn.textContent = `+${reward.coins ? reward.coins + ' MONET' : ''}${reward.coins && reward.prisms ? ' · ' : ''}${reward.prisms ? reward.prisms + ' PRYZMATÓW' : ''}!`;
     this.burstDom(document.getElementById('loginBurst'), reward.big ? 40 : 22);
+    this.sound.fanfare(!!reward.big);
     this.vibrate([30, 40, 80]);
-    setTimeout(() => {
-      document.getElementById('loginRewardScreen').classList.add('hidden');
-      this.updateCoinDisplays();
-    }, reward.big ? 1700 : 1200);
+    this.updateCoinDisplays();
+    // Golden Shot v11: opt-in "double it" right at the moment of reward.
+    this.lastLoginReward = reward;
+    document.getElementById('btnLoginDouble').classList.remove('hidden');
+    document.getElementById('btnLoginClose').classList.remove('hidden');
+    document.getElementById('btnLoginDouble').disabled = false;
+    this.analytics.track('ad_offer', { context: 'login_double' });
+  }
+
+  async doubleLoginReward() {
+    const reward = this.lastLoginReward;
+    const btn = document.getElementById('btnLoginDouble');
+    if (!reward || btn.disabled) return;
+    btn.disabled = true;
+    if (!(await this.monetization.rewarded('login_double'))) { btn.disabled = false; return; }
+    this.lastLoginReward = null;
+    this.save.coins += reward.coins || 0;
+    this.save.prisms = (this.save.prisms || 0) + (reward.prisms || 0);
+    saveGame(this.save);
+    btn.textContent = 'PODWOJONO ✓';
+    this.burstDom(document.getElementById('loginBurst'), 30);
+    this.sound.coin();
+    this.updateCoinDisplays();
+    setTimeout(() => this.closeLoginReward(), 900);
+  }
+
+  closeLoginReward() {
+    document.getElementById('loginRewardScreen').classList.add('hidden');
+    this.updateCoinDisplays();
   }
 
   /** Radial DOM particle burst (same look as the unlock overlay's). */
@@ -5720,14 +6839,20 @@ class Game {
     }
   }
 
-  openFreeChest() {
+  openFreeChest(opts = {}) {
     const fc = this.save.freeChest;
     const C = CONFIG.freeChest;
-    if (fc.nextAt > Date.now()) {
+    if (fc.nextAt > Date.now() && !opts.skip) {
+      const left = this.monetization.placementLeft('chest_skip');
       this.openInfoSheet({
         icon: REWARD_CATEGORY_ICONS.bundle,
         title: 'Darmowa skrzynia',
-        body: ['Co 4 godziny czeka na Ciebie darmowa skrzynia z monetami — czasem z pryzmatami, a czasem z <strong>JACKPOTEM ×3</strong>.', 'Wróć, gdy licznik dojdzie do zera!']
+        body: ['Co 4 godziny czeka na Ciebie darmowa skrzynia z monetami — czasem z pryzmatami, a czasem z <strong>JACKPOTEM ×3</strong>.',
+          left > 0 ? `Nie chcesz czekać? Otwórz ją od razu za krótką reklamę (zostało dziś: ${left}).` : 'Wróć, gdy licznik dojdzie do zera!'],
+        action: left > 0 ? { label: 'OTWÓRZ TERAZ · REKLAMA', onClick: async () => {
+          this.closeInfoSheet();
+          if (await this.monetization.rewarded('chest_skip')) this.openFreeChest({ skip: true });
+        } } : null
       });
       return;
     }
@@ -5741,6 +6866,7 @@ class Game {
     fc.opened = (fc.opened || 0) + 1;
     saveGame(this.save);
     this.analytics.track('free_chest_open', { coins, prisms, jackpot });
+    this.sound.coin();
     this.queueRewardCelebration({
       kicker: jackpot ? 'JACKPOT ×3!' : 'SKRZYNIA OTWARTA!', eyebrow: 'DARMOWA SKRZYNIA',
       title: `+${coins} monet${prisms ? ` · +${prisms} ◆` : ''}`, color: jackpot ? '#FF54AD' : '#EFCB63',
@@ -5753,12 +6879,20 @@ class Game {
 
   /* ---------- Golden Shot v8: result-screen upgrade funnel ---------- */
 
-  onUpsellClick() {
+  async onUpsellClick() {
     const boost = RUN_TOOLS.find(t => t.id === 'boost');
     if (this.save.coins >= boost.price) {
       this.selectedRunTool = 'boost';
       this.populateRunToolGrid();
       this.showScreen('runSetupScreen');
+    } else if (this.monetization.placementLeft('turbo_free') > 0) {
+      // Golden Shot v11: can't afford it -> a free Turbo start for an ad,
+      // straight into the rematch (startRound() never charges for tools).
+      if (await this.monetization.rewarded('turbo_free')) {
+        this.selectedRunTool = 'boost';
+        if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
+        else this.startRound();
+      }
     } else {
       this.openFreeChest();
     }
@@ -5766,7 +6900,7 @@ class Game {
   }
 
   showScreen(id) {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
     document.getElementById('hud').classList.toggle('hidden', true);
@@ -5778,6 +6912,7 @@ class Game {
     this.closeInfoSheet();
     this.introPending = false;
     if (id === 'mainMenu') {
+      this.renderHubChallenge();
       clearTimeout(this.loginPopupTimer);
       this.loginPopupTimer = setTimeout(() => this.maybeShowLoginReward(), 600);
     }
@@ -5785,10 +6920,12 @@ class Game {
     if (visitedFeature) this.markUnlockVisited(visitedFeature);
     this.renderBottomNav(id);
     this.startScreenAnim();
+    if (!this.running) { this.sound.setIntensity(0); this.sound.setDucked(false); }
+    this.renderConsentBar();
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
@@ -5866,10 +7003,15 @@ class Game {
     this.objects = [];
     const discovered = new Set(this.save.campaign.discoveredTypes || []);
     if (discovered.size === 0) Object.keys(CAMPAIGN_ENTITY_STATS).forEach(t => discovered.add(t));
+    // v11: every group is built (so the seeded RNG is consumed the same
+    // way for every player) and undiscovered ones are dropped afterwards --
+    // a friend-challenge seed must lay out the same map whatever the
+    // recipient has discovered so far.
     Object.keys(TIERS).forEach(tierName => {
-      if (tierName !== 'portal' && !discovered.has(tierName)) return;
+      const keep = tierName === 'portal' || discovered.has(tierName);
       for (let i = 0; i < TIERS[tierName].count; i++) {
-        this.objects.push(new WorldObject(tierName, rng));
+        const obj = new WorldObject(tierName, rng);
+        if (keep) this.objects.push(obj);
       }
     });
   }
@@ -6363,6 +7505,7 @@ class Game {
   startCampaignMission(missionId) {
     const def = campaignMissionById(missionId || this.selectedMissionId);
     if (!def) return;
+    this.hideReviveOffer();
     this.mode = 'campaign';
     this.hideAllOverlays();
     document.getElementById('hud').classList.remove('hidden');
@@ -6476,6 +7619,7 @@ class Game {
     this.hitStopUntil = 0;
 
     this.running = true;
+    this.monetization.gameplayStart();
     this.state = GameState.PLAYING;
     if (def.goal.type === 'tutorialChecklist') this.showTutorialStepIntro(0);
     else this.showNelaToast(def.nela.start);
@@ -6561,6 +7705,7 @@ class Game {
       this.ripples.push(new Ripple(this.player.x, this.player.y, newTier.color, this.player.radius, this.player.radius * 2.5, 0.5));
       this.spawnParticles(this.player.x, this.player.y, newTier.color, 22, 1.5);
       this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY POZIOM WZROSTU!', newTier.color, 1.3, 2);
+      this.sound.tierUp();
       this.flashScreen(newTier.color, 0.18);
       if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
     }
@@ -6725,6 +7870,7 @@ class Game {
         this.comboCount = 0; this.comboMultiplier = 1; this.comboTimer = 0;
         this.player.invulnerableUntil = performance.now() + CONFIG.campaign.hitInvulnMs;
         m.botHitCount++;
+        this.sound.hurt();
         this.triggerShake(8);
         this.spawnParticles(this.player.x, this.player.y, '#ff3860', 20);
         this.vibrate([30, 40, 30]);
@@ -6743,6 +7889,7 @@ class Game {
         m.rivalsEaten++;
         this.rivalsEatenThisRun++;
         this.triggerEatFeedback(bot.x, bot.y, bot.edgeColor, bot.radius, true, this.player);
+        this.sound.rivalEaten();
         this.vibrate(40);
         this.analytics.track('mission_rival_eaten', { missionId: m.def.id, rival: bot.name });
         if (!this.save.campaign.discoveredHoleEating) {
@@ -6853,6 +8000,7 @@ class Game {
     void bar.offsetWidth;
     bar.style.animation = `evolution-timer ${CONFIG.evolution.autoPickMs}ms linear forwards`;
     document.getElementById('evolutionOverlay').classList.remove('hidden');
+    this.sound.whoosh();
     this.vibrate(40);
     this.startScreenAnim();
   }
@@ -7063,7 +8211,7 @@ class Game {
     const m = this.mission;
     if (m.ended) return;
     m.elapsed += dt;
-    m.timeRemaining = Math.max(0, m.def.timeLimit - m.elapsed);
+    m.timeRemaining = Math.max(0, m.def.timeLimit + (m.bonusTime || 0) - m.elapsed);
 
     this.applyPlayerMovement(dt);
     this.clampToCampaignBounds(this.player);
@@ -7088,6 +8236,7 @@ class Game {
     }
     m._wasComboActive = this.comboCount > 0;
 
+    this.sound.setIntensity(m.timeRemaining <= 15 ? 2 : 1);
     this.checkCampaignEvolutionOffer();
     this.checkCampaignGoal();
     if (m.ended) return;
@@ -7116,7 +8265,87 @@ class Game {
 
     this.updateCampaignHUD();
 
-    if (m.timeRemaining <= 0 && !m.finishing) this.endCampaignMission(false);
+    if (m.timeRemaining <= 0 && !m.finishing) this.onCampaignTimeout();
+  }
+
+  /* ---- Golden Shot v11: "PRAWIE!" mission revive (rewarded ad) ---- */
+
+  /** 0..1, how much of the mission goal is done (mean over goal rows). */
+  campaignGoalFraction() {
+    const items = this.campaignGoalItems();
+    if (!items.length) return 0;
+    return items.reduce((a, it) => a + clamp(it.target ? it.progress / it.target : 0, 0, 1), 0) / items.length;
+  }
+
+  /** Out of time: if the player was close, freeze the round and offer +N s
+   *  for a rewarded ad (once per attempt) -- the near-miss is the moment a
+   *  player most wants "one more go". Otherwise fail as before. */
+  onCampaignTimeout() {
+    const m = this.mission;
+    const A = CONFIG.ads;
+    const frac = this.campaignGoalFraction();
+    if (m.revived || m.reviveDeclined || frac < A.reviveMinProgress || this.monetization.placementLeft('mission_revive') <= 0) {
+      this.endCampaignMission(false);
+      return;
+    }
+    this.revivePending = true;
+    m.reviveDeclined = true; // one offer per attempt, whatever the answer
+    const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
+      .map(it => `${it.label} (${Math.min(it.progress, it.target)}/${it.target})`);
+    document.getElementById('reviveMissing').textContent = missing.length ? `Zostało: ${missing.join(' · ')}` : '';
+    document.getElementById('reviveProgressBar').style.width = Math.round(frac * 100) + '%';
+    document.getElementById('reviveProgressPct').textContent = Math.round(frac * 100) + '%';
+    document.getElementById('btnReviveAd').textContent = `+${A.reviveSeconds} S · OBEJRZYJ REKLAMĘ`;
+    document.getElementById('reviveOverlay').classList.remove('hidden');
+    this.sound.whoosh();
+    this.vibrate([30, 30, 30]);
+    this.analytics.track('ad_offer', { context: 'mission_revive', missionId: m.def.id, progress: Math.round(frac * 100) });
+    this.armReviveTimer();
+  }
+
+  /** (Re)starts the offer's auto-decline countdown; paused with the game. */
+  armReviveTimer() {
+    const ms = CONFIG.ads.reviveOfferSeconds * 1000;
+    const ring = document.getElementById('reviveTimerBar');
+    ring.style.animation = 'none';
+    void ring.offsetWidth;
+    ring.style.animation = `evolution-timer ${ms}ms linear forwards`;
+    clearTimeout(this.reviveTimer);
+    this.reviveTimer = setTimeout(() => this.declineRevive(), ms);
+  }
+
+  hideReviveOffer() {
+    clearTimeout(this.reviveTimer);
+    this.revivePending = false;
+    const el = document.getElementById('reviveOverlay');
+    if (el) el.classList.add('hidden');
+  }
+
+  async acceptRevive() {
+    if (!this.revivePending || this.reviveAdInFlight) return; // double tap while the ad loads
+    clearTimeout(this.reviveTimer);
+    this.reviveAdInFlight = true;
+    let ok = false;
+    try { ok = await this.monetization.rewarded('mission_revive'); } finally { this.reviveAdInFlight = false; }
+    const m = this.mission;
+    if (!this.revivePending || !m || m.ended) return;
+    if (!ok) { this.declineRevive(); return; }
+    m.revived = true;
+    m.bonusTime = (m.bonusTime || 0) + CONFIG.ads.reviveSeconds;
+    m.timeRemaining = CONFIG.ads.reviveSeconds;
+    this.hideReviveOffer();
+    this.lastCountdownSec = null;
+    this.player.invulnerableUntil = performance.now() + 2000;
+    this.showBanner(`+${CONFIG.ads.reviveSeconds} S!`, 'Dokończ misję!', '#46D99A', 1.3, 4);
+    this.sound.fanfare(false);
+    this.lastTime = performance.now();
+  }
+
+  declineRevive() {
+    if (!this.revivePending || this.reviveAdInFlight) return;
+    this.hideReviveOffer();
+    this.analytics.track('ad_declined', { context: 'mission_revive' });
+    if (this.mission && !this.mission.ended) this.endCampaignMission(false);
   }
 
   /* ---- Mission end / result screen ---- */
@@ -7126,6 +8355,9 @@ class Game {
     if (m.ended) return;
     m.ended = true;
     this.running = false;
+    this.paused = false;
+    this.monetization.gameplayStop();
+    this.hideReviveOffer();
     this.hideNelaToast();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
@@ -7178,6 +8410,8 @@ class Game {
     const m = this.mission;
     const def = m.def;
     document.getElementById('missionResultTitle').textContent = success ? 'MISJA UKOŃCZONA' : 'CZAS MINĄŁ';
+    this.sound.setIntensity(0);
+    if (success) this.sound.fanfare(firstClear); else this.sound.fail();
     document.getElementById('missionResultEyebrow').textContent = `${missionCode(def)} · ${def.name}`;
     document.getElementById('missionResultNela').textContent = success
       ? `NELA: „${def.nela.success}”`
@@ -7386,6 +8620,10 @@ class Game {
     this.paused = false;
 
     this.isDailyRun = !!options.daily;
+    this.frameEma = 0; this.slowFrames = 0; this.frameWarmup = 30;
+    this.challenge = options.challenge || null;
+    this.challengeBeaten = false;
+    this.hideReviveOffer();
     this.runId = generateId('run');
     this.runSeed = options.seed !== undefined ? options.seed : generateSeed();
     this.rng = new SeededRNG(this.runSeed);
@@ -7461,6 +8699,7 @@ class Game {
     this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
 
     this.running = true;
+    this.monetization.gameplayStart();
     this.state = GameState.PLAYING;
 
     const hint = document.getElementById('mobile-hint');
@@ -7490,57 +8729,39 @@ class Game {
     this.showBanner(this.isDailyRun ? 'WYZWANIE DNIA!' : 'START!', this.modifier === 'rush_hour' ? 'RUSH HOUR — rywale są szybsi!' : 'Pochłaniaj · rośnij · wygraj', '#50F0FA', 1.2);
   }
 
-  requestPlayAgain() {
+  async requestPlayAgain() {
+    if (this.replayPending) return; // double tap during the break
+    this.replayPending = true;
+    try { await this.playAgainFlow(); } finally { this.replayPending = false; }
+  }
+
+  async playAgainFlow() {
     this.playCount++;
-    // Golden Shot v8: no forced interstitials during the newbie runs, and
-    // only every 3rd replay after that (they were every 2nd).
-    if (this.playCount % 3 === 0 && (this.save.stats.runsPlayed || 0) >= CONFIG.economy.newbieRuns) {
-      this.showInterstitialAd('interstitial', () => this.startRound());
-    } else {
-      this.startRound();
-    }
+    // Golden Shot v8/v11: no interstitials during the newbie runs, only every
+    // Nth replay after that, time-capped and skipped with "Bez reklam"
+    // (all enforced inside Monetization.interstitial()).
+    if (this.playCount % CONFIG.ads.interstitialEveryNthReplay === 0) await this.monetization.interstitial('replay');
+    // A lost friend challenge replays the same map ("rewanż").
+    if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
+    else this.startRound();
   }
 
-  showInterstitialAd(context, onDone) {
-    this.analytics.track('ad_started', { context });
-    this.showScreen('adOverlay');
-    const bar = document.getElementById('adProgressBar');
-    const countdown = document.getElementById('adCountdown');
-    bar.style.width = '0%';
-    let t = 0;
-    const duration = 3;
-    const tick = () => {
-      t += 0.1;
-      const pct = clamp((t / duration) * 100, 0, 100);
-      bar.style.width = pct + '%';
-      countdown.textContent = Math.max(0, Math.ceil(duration - t));
-      if (t >= duration) {
-        onDone();
-      } else {
-        setTimeout(tick, 100);
-      }
-    };
-    tick();
-  }
-
-  watchRewardedAd() {
+  async watchRewardedAd() {
     if (this.adUsedThisRound) return;
-    this.adUsedThisRound = true;
     this.analytics.track('ad_offer', { context: 'result_double_coins' });
     const btn = document.getElementById('btnWatchAd');
     btn.disabled = true;
-    this.showInterstitialAd('rewarded_double_coins', () => {
-      const total = Math.round(this.adPendingCoins * CONFIG.economy.adRewardMultiplier);
-      const bonus = total - this.adPendingCoins;
-      this.save.coins += bonus;
-      saveGame(this.save);
-      document.getElementById('finalCoins').textContent = total;
-      btn.textContent = 'ODEBRANO x2 ✓';
-      this.hideAllOverlays();
-      document.getElementById('gameOverScreen').classList.remove('hidden');
-      this.updateCoinDisplays();
-      this.analytics.track('ad_reward_granted', { context: 'result_double_coins', bonus });
-    });
+    const ok = await this.monetization.rewarded('result_double_coins');
+    if (!ok) { btn.disabled = false; return; }
+    this.adUsedThisRound = true;
+    const total = Math.round(this.adPendingCoins * CONFIG.economy.adRewardMultiplier);
+    const bonus = total - this.adPendingCoins;
+    this.save.coins += bonus;
+    saveGame(this.save);
+    document.getElementById('finalCoins').textContent = total;
+    btn.textContent = 'ODEBRANO ×2 ✓';
+    this.sound.coin();
+    this.updateCoinDisplays();
   }
 
   /** Stops the round, grants coins for the score reached so far, and
@@ -7549,12 +8770,14 @@ class Game {
   finalizeRun() {
     this.running = false;
     this.paused = false;
+    this.monetization.gameplayStop();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
 
     const ranked = rankHoles([this.player, ...this.bots]);
     const place = ranked.indexOf(this.player) + 1;
-    let coinsEarned = Math.floor(this.player.score / CONFIG.economy.coinsPerScorePoint) + CONFIG.economy.coinsBase;
+    const E = CONFIG.economy;
+    let coinsEarned = E.coinsBase + Math.round(E.coinsSqrtK * Math.sqrt(Math.max(0, this.player.score))) + (E.coinsPlaceBonus[place - 1] || 0);
     // Golden Shot v8: a new player's first runs pay double.
     this.newbieBonusApplied = (this.save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns;
     if (this.newbieBonusApplied) coinsEarned = Math.round(coinsEarned * CONFIG.economy.newbieCoinMult);
@@ -7572,7 +8795,7 @@ class Game {
 
     // Golden Shot v8: player XP (score + podium bonus).
     const P = CONFIG.progression;
-    this.lastXpResult = this.grantXp((P.xpRunBase + this.player.score * P.xpPerScorePoint + (P.xpPlaceBonus[place - 1] || 0)) * (1 + this.perk('xp')));
+    this.lastXpResult = this.grantXp((P.xpRunBase + P.xpSqrtK * Math.sqrt(Math.max(0, this.player.score)) + (P.xpPlaceBonus[place - 1] || 0)) * (1 + this.perk('xp')));
 
     // Daily mission: was a static, never-checked line before this pass.
     // Checked once per day (save.mission.completed guards re-granting the
@@ -7706,7 +8929,9 @@ class Game {
       document.getElementById('resultUpsellText').textContent = affordable
         ? `Rywale rosną w siłę. Zacznij od T2 z Turbo startem (◇ ${boost.price}) i wskocz na podium!`
         : 'Rywale rosną w siłę. Zbierz monety ze skrzyni i nagród dziennych na Turbo start!';
-      document.getElementById('btnUpsell').textContent = affordable ? `TURBO START ◇ ${boost.price}` : 'ZDOBĄDŹ MONETY';
+      const adTurbo = !affordable && this.monetization.placementLeft('turbo_free') > 0;
+      document.getElementById('btnUpsell').textContent = affordable ? `TURBO START ◇ ${boost.price}` : (adTurbo ? 'TURBO GRATIS · REKLAMA' : 'ZDOBĄDŹ MONETY');
+      if (adTurbo) document.getElementById('resultUpsellText').textContent = 'Rywale rosną w siłę. Obejrzyj krótką reklamę i zacznij rewanż od T2 z Turbo startem!';
     }
 
     // v5 result hero (design/screens/wynik_rundy.svg): big glowing score,
@@ -7761,6 +8986,30 @@ class Game {
       dailyLine.classList.add('hidden');
     }
 
+    // Golden Shot v11: friend challenge outcome + near-miss replay hook.
+    this.lastResultPlace = place;
+    const hookLine = document.getElementById('resultHookLine');
+    let hook = '';
+    if (this.challenge) {
+      if (this.challengeBeaten) {
+        hook = `WYZWANIE POBITE! ${this.player.score} vs ${this.challenge.score} (${this.challenge.from}). Odeślij swój wynik!`;
+        this.save.challenge = null;
+        saveGame(this.save);
+        this.analytics.track('challenge_won', { score: this.player.score, target: this.challenge.score });
+      } else {
+        hook = `Zabrakło ${this.challenge.score - this.player.score + 1} pkt do wyniku ${this.challenge.from}. Rewanż na tej samej mapie?`;
+        this.analytics.track('challenge_lost', { score: this.player.score, target: this.challenge.score });
+      }
+    } else if (place > 1) {
+      const above = ranked[place - 2];
+      const gap = above.score - this.player.score + 1;
+      if (gap > 0 && gap <= Math.max(60, this.player.score * 0.35)) hook = `Zabrakło tylko ${gap} pkt do miejsca #${place - 1}${place - 1 <= 3 ? ' i podium' : ''}!`;
+    }
+    hookLine.textContent = hook;
+    hookLine.classList.toggle('hidden', !hook);
+    document.getElementById('btnPlayAgain').textContent = this.challenge && !this.challengeBeaten ? 'REWANŻ — TA SAMA MAPA' : 'ZAGRAJ JESZCZE RAZ';
+    if (place === 1 || isNewPb) this.monetization.happyTime();
+
     const missionLine = document.getElementById('missionResultLine');
     if (this.missionJustCompleted) {
       missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}" — +${this.activeMission.rewardCoins} monet`;
@@ -7783,7 +9032,7 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h === this.player) li.classList.add('is-player');
-      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${h.name}</span><span class="fl-score">${h.score} pkt</span><span class="fl-size">${CONFIG.sizeTiers[getSizeTierIndex(h.radius)].shortId}</span>`;
+      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${escapeHtml(h.name)}</span><span class="fl-score">${h.score} pkt</span><span class="fl-size">${CONFIG.sizeTiers[getSizeTierIndex(h.radius)].shortId}</span>`;
       list.appendChild(li);
     });
 
@@ -7791,6 +9040,8 @@ class Game {
     document.getElementById('btnWatchAd').textContent = 'OGLĄDAJ REKLAMĘ · X2 MONET';
 
     this.showScreen('gameOverScreen');
+    this.sound.setIntensity(0);
+    if (place <= 3 || isNewPb) this.sound.fanfare(place === 1); else this.sound.coin();
     this.updateCoinDisplays();
     this.queueUnlockCelebrations();
 
@@ -7819,6 +9070,9 @@ class Game {
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('controlsPanel').classList.add('hidden');
     document.getElementById('pauseSheet').classList.remove('hidden');
+    if (this.revivePending) clearTimeout(this.reviveTimer);
+    this.sound.setDucked(true);
+    this.monetization.gameplayStop();
     this.syncControlsPanel();
   }
 
@@ -7828,6 +9082,9 @@ class Game {
     this.state = GameState.PLAYING;
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
+    this.sound.setDucked(false);
+    if (this.revivePending && !this.reviveAdInFlight) this.armReviveTimer();
+    this.monetization.gameplayStart();
     this.lastTime = performance.now();
     this.rafId = requestAnimationFrame((t) => this.loop(t));
   }
@@ -7883,6 +9140,8 @@ class Game {
   leaveCampaignMission() {
     this.running = false;
     this.paused = false;
+    this.monetization.gameplayStop();
+    this.hideReviveOffer();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
     if (this.mission) {
@@ -7905,6 +9164,10 @@ class Game {
     });
     document.getElementById('btnHapticsOn').classList.toggle('active', this.save.settings.haptics);
     document.getElementById('btnHapticsOff').classList.toggle('active', !this.save.settings.haptics);
+    document.querySelectorAll('[data-setting]').forEach(btn => {
+      const on = this.save.settings[btn.dataset.setting] !== false;
+      btn.classList.toggle('active', on === (btn.dataset.value === '1'));
+    });
   }
 
   /* ---------- gameplay ---------- */
@@ -7997,6 +9260,7 @@ class Game {
     if (tr > 0 && sec <= 5 && sec !== this.lastCountdownSec) {
       this.lastCountdownSec = sec;
       this.showBanner(String(sec), sec === 1 ? 'OSTATNIA SEKUNDA!' : null, sec <= 3 ? '#FF54AD' : '#EFCB63', 0.9, 5);
+      this.sound.tick(sec <= 3);
     }
   }
 
@@ -8013,6 +9277,7 @@ class Game {
     }
     this.drawFrenzyVignette(ctx);
     this.drawComboHud(ctx);
+    if (this.mode === 'arena') this.drawChallengeTarget(ctx);
     const b = this.banner;
     if (b) {
       const age = 1 - b.life / b.maxLife;
@@ -8094,6 +9359,7 @@ class Game {
     const G = CONFIG.golden;
     this.frenzyEndsAt = this.timeRemaining - G.frenzySeconds;
     this.showBanner('SZAŁ!', 'Punkty ×2 · jesz o poziom większe obiekty', '#EFCB63', 1.4, 4);
+    this.sound.frenzy();
     this.flashScreen('#EFCB63', 0.25);
     this.triggerShake(8);
     this.ripples.push(new Ripple(this.player.x, this.player.y, '#EFCB63', this.player.radius, this.player.radius * 4, 0.7));
@@ -8182,7 +9448,7 @@ class Game {
    *  the player's Arena career -- see CONFIG.difficulty. */
   computeDifficultyT() {
     const D = CONFIG.difficulty;
-    if (this.isDailyRun) return D.dailyT;
+    if (this.isDailyRun || this.challenge) return D.dailyT; // same rivals for everyone on a shared seed
     const runs = this.save.stats.runsPlayed || 0;
     return clamp((runs - D.rampStartRuns) / (D.rampFullRuns - D.rampStartRuns), 0, 1);
   }
@@ -8218,6 +9484,7 @@ class Game {
     if (eater) this.spawnSuck(x, y, burstColor, isPlayerInvolved ? suck : Math.ceil(suck / 3), eater, Math.max(6, eatenRadius));
     else this.spawnParticles(x, y, burstColor, suck);
     if (!isPlayerInvolved) return;
+    if (eater && eater.isPlayer && this.sound) this.sound.eat(eatenRadius, this.comboCount);
     if (size === 2) {
       this.spawnParticles(x, y, burstColor, 12, 1.3);
       this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 2.6, 0.45));
@@ -8246,6 +9513,7 @@ class Game {
       const PRAISE_COLORS = ['#50F0FA', '#FF54AD', '#EFCB63', '#9875FF', '#46D99A'];
       const color = PRAISE_COLORS[CONFIG.juice.praise.indexOf(praise) % PRAISE_COLORS.length];
       this.showBanner(praise[1], `COMBO ×${this.comboCount}`, color, 1.0, 1);
+      this.sound.whoosh();
       this.vibrate([20, 30, 40]);
     }
     if (this.activeMutations.has('slipstream') && this.comboCount >= CONFIG.evolution.slipstreamComboThreshold) {
@@ -8292,11 +9560,13 @@ class Game {
           this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);
           if (a.isPlayer) {
             this.addFloatText(b.x, b.y - b.radius - 10, `ZJEDZONY! +${rivalPts}`, '#EFCB63', 22, 1.2, 40);
+            this.sound.rivalEaten();
             this.hitStop(CONFIG.juice.hitStopMs);
             this.triggerShake(10);
           } else if (b.isPlayer) {
             this.flashScreen('#FF54AD', 0.3);
             this.showBanner('ZJEDZONO CIĘ!', 'Chwila ochrony — rośnij dalej', '#FF54AD', 1.4, 3);
+            this.sound.hurt();
             this.triggerShake(12);
           }
           if (a.isPlayer) {
@@ -8349,6 +9619,7 @@ class Game {
       this.ripples.push(new Ripple(this.player.x, this.player.y, current.color, this.player.radius, this.player.radius * 2.5, 0.5));
       this.spawnParticles(this.player.x, this.player.y, current.color, 22, 1.5);
       this.showBanner(`${current.label}!`, 'NOWE OBIEKTY DO POCHŁONIĘCIA', current.color, 1.3, 2);
+      this.sound.tierUp();
       this.flashScreen(current.color, 0.18);
       this.vibrate(60);
 
@@ -8619,6 +9890,8 @@ class Game {
 
     this.updateCombo(dt);
     this.updateDangerWarnings();
+    this.updateChallenge();
+    this.sound.setIntensity(this.frenzyActive ? 3 : (late || this.overdriveActive ? 2 : 1));
 
     // Golden Shot v8: the camera zooms out as the hole grows (hole.io's
     // signature "the city keeps getting smaller" feel).
@@ -8717,7 +9990,7 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h.isPlayer) li.classList.add('is-player');
-      li.innerHTML = `<span class="lb-rank">#${i + 1}</span><span class="lb-name">${h.name}</span><span class="lb-size">${h.score} pkt</span>`;
+      li.innerHTML = `<span class="lb-rank">#${i + 1}</span><span class="lb-name">${escapeHtml(h.name)}</span><span class="lb-size">${h.score} pkt</span>`;
       list.appendChild(li);
     });
   }
@@ -9060,7 +10333,8 @@ class Game {
       // frozen but still overlapping (e.g. a bot already touching the
       // player when the offer opens). introPending (M00's blocking intro,
       // see showTutorialIntro()) freezes the same way.
-      if (this.evolutionPending || this.introPending || now < this.hitStopUntil) {
+      const work0 = performance.now();
+      if (this.evolutionPending || this.introPending || this.revivePending || now < this.hitStopUntil) {
         if (this.mode === 'campaign') this.renderCampaign(now / 1000); else this.render(now / 1000);
       } else if (this.mode === 'campaign') {
         this.updateCampaign(rawDt);
@@ -9069,6 +10343,7 @@ class Game {
         this.update(rawDt);
         this.render(now / 1000);
       }
+      if (this.running && !this.paused && document.visibilityState === 'visible') this.monitorFrame(performance.now() - work0);
       this.rafId = requestAnimationFrame((t) => this.loop(t));
     }
   }
