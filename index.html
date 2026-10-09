@@ -59,7 +59,7 @@
     <div id="hud-tier-strip" class="hud-panel hud-tier-strip hidden">
       <div class="hud-pill hud-pill-time">
         <span class="hud-label">Czas</span>
-        <span class="hud-value timer"><svg class="hud-goal-footer-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.2" fill="none"/></svg><span id="missionTimerValue">0</span> s</span>
+        <span class="hud-value timer"><svg class="hud-goal-footer-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.2" fill="none"/></svg><span id="missionTimerValue">0:00</span></span>
       </div>
 
       <div class="hud-tier-bar">
@@ -587,6 +587,7 @@
   <div id="missionResultScreen" class="screen hidden">
     <div class="confetti-layer" id="missionConfetti" aria-hidden="true"></div>
     <div class="screen-inner result-anim">
+      <div id="missionHero" class="mission-hero" aria-hidden="true"><svg viewBox="0 0 64 64"><circle class="mh-ring" cx="32" cy="32" r="27"/><path class="mh-check" d="M19 33l9 9 17-19"/><path class="mh-clock" d="M32 18v15l9 6"/></svg></div>
       <div class="result-eyebrow" id="missionResultEyebrow">—</div>
       <h2 class="section-title" id="missionResultTitle">MISJA UKOŃCZONA</h2>
       <p class="hint-text mission-result-nela" id="missionResultNela">—</p>
@@ -893,9 +894,16 @@
       <p id="missionResultLine" class="hint-text mission-result hidden"></p>
       <p id="hubMilestoneLine" class="hint-text hub-milestone-result hidden"></p>
 
-      <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ JESZCZE RAZ</button>
-      <button id="btnWatchAd" class="btn btn-gold">OGLĄDAJ REKLAMĘ · X2 MONET</button>
-      <button id="btnShare" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> RZUĆ WYZWANIE ZNAJOMEMU</button>
+      <!-- v12: the next-action bar sticks to the bottom of the results
+           column, so "play again" / x2 coins / challenge are always on
+           screen instead of below a long scroll. -->
+      <div class="result-actions">
+        <button id="btnPlayAgain" class="btn btn-primary">ZAGRAJ JESZCZE RAZ</button>
+        <div class="result-actions-row">
+          <button id="btnWatchAd" class="btn btn-gold">OGLĄDAJ REKLAMĘ · X2 MONET</button>
+          <button id="btnShare" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> RZUĆ WYZWANIE ZNAJOMEMU</button>
+        </div>
+      </div>
       <button id="btnMenu" class="btn btn-link">Wróć do Miasta</button>
     </div>
   </div>

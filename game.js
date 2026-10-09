@@ -16,7 +16,11 @@ const CONFIG = {
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
-  hole: { baseRadius: 18, minRadius: 14, baseSpeed: 165 },
+  // maxRadius (v12): bot careers showed late-round holes snowballing past
+  // r 1000 (once r 5800 -- bigger than the 3000x3000 world, sweeping every
+  // respawn the frame it appeared and scoring 450k). Past this the hole would
+  // swallow the whole phone screen even at the farthest camera zoom.
+  hole: { baseRadius: 18, minRadius: 14, baseSpeed: 165, maxRadius: 480 },
   // One shared growth curve for Arena AND Campaign (player feedback: the
   // first growth stage was the dullest part -- each pickup barely changed
   // the hole's size, and pink/green objects were still bigger than the
@@ -170,7 +174,13 @@ const CONFIG = {
     combo: { windowSeconds: 1.8, stepBonus: 0.15, maxMultiplier: 3, fadeSeconds: 0.6 },
     // Golden Shot v8 game feel (see FloatText, Game.flash/hitStop/zoom).
     praise: [[5, 'SUPER!'], [10, 'MEGA!'], [15, 'NIESAMOWITE!'], [22, 'LEGENDARNE!'], [30, 'NEON GOD!']],
-    zoom: { min: 0.58, max: 1.08, startRadius: 18, endRadius: 150, lerp: 2.2 },
+    zoom: { min: 0.58, max: 1.08, startRadius: 18, endRadius: 150, lerp: 2.2,
+      // v12: bots end strong rounds at r 400-800, which at a fixed 0.58 zoom
+      // filled the whole phone screen with the hole. Past endRadius the
+      // camera keeps pulling back so the hole spans at most this fraction of
+      // the short screen side, down to `floor` -- and never so far out that
+      // the view would show past the edge of the 3000x3000 world.
+      holeScreenFrac: 0.24, floor: 0.25 },
     hitStopMs: 70,
     maxParticles: 450,
     dangerHaloRange: 260
@@ -1884,6 +1894,11 @@ function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
+/** Round/mission clock as m:ss (v12 HUD; was a bare "120 s"). */
+function formatClock(sec) {
+  const t = Math.max(0, Math.ceil(sec || 0));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+}
 
 /** Index into CONFIG.sizeTiers for a given hole radius -- Arena's own
  *  growth-tier ladder (T1-T5), used to gate which TIERS object group a
@@ -2425,13 +2440,14 @@ class FloatText {
 
   get dead() { return this.life <= 0; }
 
-  draw(ctx) {
+  /** k: extra scale (Arena's far zoom-out keeps pops readable, v12). */
+  draw(ctx, k = 1) {
     const age = 1 - this.life / this.maxLife;
     const pop = age < 0.18 ? 0.4 + (age / 0.18) * 0.85 : (age < 0.3 ? 1.25 - (age - 0.18) / 0.12 * 0.25 : 1);
     ctx.save();
     ctx.globalAlpha = clamp(this.life / (this.maxLife * 0.45), 0, 1);
     ctx.translate(this.x, this.y);
-    ctx.scale(pop, pop);
+    ctx.scale(pop * k, pop * k);
     ctx.font = `${this.size}px ${FONT_DISPLAY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -2470,11 +2486,21 @@ class Ripple {
     ctx.save();
     ctx.globalAlpha = 1 - t;
     ctx.strokeStyle = this.color;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = this.color;
-    ctx.lineWidth = 3;
+    const rad = lerp(this.startRadius, this.endRadius, t);
+    if (this.lineWidth) {
+      // Screen-wide sweep (v12 tier-up): a soft halo stroke instead of a
+      // shadow blur, which would cost a blur pass over the whole screen.
+      ctx.lineWidth = this.lineWidth * 3 * (1 - t * 0.6);
+      ctx.globalAlpha = (1 - t) * 0.22;
+      ctx.beginPath(); ctx.arc(this.x, this.y, rad, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1 - t;
+    } else {
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = this.color;
+    }
+    ctx.lineWidth = (this.lineWidth || 3) * (1 - t * 0.6);
     ctx.beginPath();
-    ctx.arc(this.x, this.y, lerp(this.startRadius, this.endRadius, t), 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, rad, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -3457,16 +3483,20 @@ function drawWelcomeScene(canvas, t) {
   const cx = w / 2, cy = h * 0.58;
   const baseR = Math.min(w, h) * 0.12;
 
+  // v12: the first thing a new player sees is the actual Neon City floor
+  // the rounds are played on, drifting slowly under the hole (was a grid).
+  const zoom = 0.62;
+  const dpr = canvas.width / w;
+  const camX = 1500 + Math.sin(t * 0.05) * 700, camY = 1500 + Math.cos(t * 0.04) * 700;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camX, -camY);
+  SCREEN_FLOOR.draw(ctx, { cx: camX, cy: camY - (cy - h / 2) / zoom, hw: w / 2 / zoom + 40, hh: h / 2 / zoom + Math.abs(cy - h / 2) / zoom + 40, zoom, dpr, gfx: 1 }, null);
+  ctx.restore();
   const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.8);
-  bg.addColorStop(0, '#0b2338'); bg.addColorStop(1, '#04101D');
+  bg.addColorStop(0, 'rgba(11, 35, 56, 0.25)'); bg.addColorStop(1, 'rgba(4, 16, 29, 0.85)');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(80, 240, 250, 0.09)';
-  ctx.lineWidth = 1;
-  const off = (t * 12) % 32;
-  ctx.beginPath();
-  for (let x = -32 + off; x < w + 32; x += 32) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
-  for (let y = -32 + off; y < h + 32; y += 32) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
-  ctx.stroke();
 
   while (st.items.length < 12) {
     const k = WELCOME_KINDS[Math.floor(Math.random() * WELCOME_KINDS.length)];
@@ -3525,9 +3555,9 @@ function drawWelcomeScene(canvas, t) {
   fade.addColorStop(0, 'rgba(4, 16, 29, 0)'); fade.addColorStop(1, 'rgba(4, 16, 29, 1)');
   ctx.fillStyle = fade; ctx.fillRect(0, h * 0.75, w, h * 0.25);
   // Keep the logo (HTML on top) readable over the flying objects.
-  const top = ctx.createLinearGradient(0, 0, 0, h * 0.36);
-  top.addColorStop(0, 'rgba(4, 16, 29, 0.92)'); top.addColorStop(1, 'rgba(4, 16, 29, 0)');
-  ctx.fillStyle = top; ctx.fillRect(0, 0, w, h * 0.36);
+  const top = ctx.createLinearGradient(0, 0, 0, h * 0.42);
+  top.addColorStop(0, 'rgba(4, 16, 29, 0.97)'); top.addColorStop(0.55, 'rgba(4, 16, 29, 0.8)'); top.addColorStop(1, 'rgba(4, 16, 29, 0)');
+  ctx.fillStyle = top; ctx.fillRect(0, 0, w, h * 0.42);
 }
 
 const CITY_SLOT_COUNT = 18;
@@ -3577,6 +3607,30 @@ function drawCityScene(canvas, progress, t) {
   const glow = ctx.createRadialGradient(w / 2, ground, 0, w / 2, ground, w * 0.7);
   glow.addColorStop(0, `rgba(80, 240, 250, ${0.12 + 0.25 * progress})`); glow.addColorStop(1, 'rgba(80, 240, 250, 0)');
   ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+
+  // v12: a dark far skyline on the horizon -- the city waiting to be
+  // rebuilt, so a LVL 1 Core City reads as a city at night, not an empty sky.
+  const far = cityLayout.far || (cityLayout.far = (() => {
+    const rng = new SeededRNG(0xFA2);
+    const out = [];
+    let x = -0.02;
+    while (x < 1.02) { const bw = 0.025 + rng.next() * 0.045; out.push({ x, bw, bh: 0.12 + rng.next() * 0.3, seed: rng.next() * 100 }); x += bw * (0.75 + rng.next() * 0.4); }
+    return out;
+  })());
+  far.forEach(b => {
+    const bx = b.x * w, bw = b.bw * w, bh = b.bh * (ground - 14);
+    ctx.fillStyle = '#0a1a2c';
+    ctx.fillRect(bx, ground - bh, bw, bh);
+    ctx.fillStyle = 'rgba(120, 190, 230, 0.16)';
+    for (let wy = ground - bh + 5; wy < ground - 4; wy += 7) {
+      for (let wx = bx + 2; wx < bx + bw - 2; wx += 5) {
+        if (Math.sin(wx * 12.9 + wy * 7.3 + b.seed) > 0.55) ctx.fillRect(wx, wy, 2, 2);
+      }
+    }
+  });
+  const haze = ctx.createLinearGradient(0, ground - (ground - 14) * 0.45, 0, ground);
+  haze.addColorStop(0, 'rgba(10, 29, 51, 0)'); haze.addColorStop(1, 'rgba(10, 29, 51, 0.55)');
+  ctx.fillStyle = haze; ctx.fillRect(0, ground - (ground - 14) * 0.45, w, (ground - 14) * 0.45);
 
   // Three starter buildings always stand, so a brand-new city isn't empty;
   // Core City progress builds the remaining 15.
@@ -3725,11 +3779,9 @@ function drawDailyMapPreview(canvas, layout, t) {
   if (!c) return;
   const { ctx, w, h } = c;
   ctx.fillStyle = '#030b16'; ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)'; ctx.lineWidth = 1;
-  for (let i = 1; i < 10; i++) {
-    ctx.beginPath(); ctx.moveTo(i * w / 10, 0); ctx.lineTo(i * w / 10, h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, i * h / 10); ctx.lineTo(w, i * h / 10); ctx.stroke();
-  }
+  // v12: the real city -- the same district map as the in-round minimap.
+  const dpr = canvas.width / w;
+  ctx.drawImage(SCREEN_FLOOR.minimap(Math.round(Math.max(w, h) * dpr), null, { minX: 0, minY: 0, maxX: WORLD_W, maxY: WORLD_H }), 0, 0, w, h);
   const sx = w / WORLD_W, sy = h / WORLD_H;
   layout.objects.forEach(o => {
     const big = o.tier === 'node' || o.tier === 'pylon' || o.tier === 'landmark';
@@ -3894,6 +3946,680 @@ function drawPowerDemo(canvas, powerId, color, t) {
   }
 }
 
+/* ----------------------- Neon City floor (Golden Shot v12 "VISUAL") -----------------------
+   Every round used to be played on a black void with a faint grid -- nothing
+   on screen said "you are eating a CITY". The floor is now a top-down night
+   city: an 8x8 grid of blocks split by roads (lane dashes, crosswalks, neon
+   curbs, street-lamp light pools) whose lots are painted per district --
+   Plac Neonów plazas, Park Impulsów lawns and ponds, Port Syntez container
+   yards and basins, Galeria Glitch murals, Dachy Prądu rooftops, Rdzeń
+   Miasta circuit boards around a glowing core at the world center.
+   Arena uses a fixed district map (the same city every run, so players learn
+   it); Campaign paints the whole board in its mission's district.
+
+   It is pure decoration: flat, dim and glow-free next to the objects, so it
+   never competes with what can be eaten. Each block is painted ONCE into an
+   offscreen chunk canvas (CityFloor.render) and blitted per frame, so the
+   whole floor costs ~15 drawImage calls -- the same fill cost as the old
+   full-screen clear. Chunks are re-painted lazily (2 per frame) when the
+   zoom moves them to another resolution step, prefetched one block ahead
+   of the camera, and evicted LRU under a pixel budget. */
+
+const CITY_PITCH = 375;   // block grid: 8x8 blocks over the 3000x3000 world
+const CITY_ROAD = 64;     // road width, centered on every grid line
+const CITY_WALK = 12;     // sidewalk band along each block's edge
+const CITY_BLEED = 2;     // chunk overlap (world units), so neighbours never show a seam
+const CITY_CELLS = Math.round(WORLD_W / CITY_PITCH);
+
+// Arena's district map, one letter per block (row = y). Rdzeń Miasta sits on
+// the world center; the other five districts wrap around it.
+const CITY_DISTRICT_MAP = [
+  'pppkkkkk',
+  'ppppkkkk',
+  'ppppkkkd',
+  'oopRRkdd',
+  'oooRRddd',
+  'ooogggdd',
+  'oogggggd',
+  'oogggggg'
+];
+const CITY_DISTRICT_KEYS = { p: 'plac', k: 'park', o: 'port', g: 'galeria', d: 'dachy', R: 'rdzen' };
+const CITY_LOT_BASE = { plac: '#081620', park: '#061b19', port: '#0a131b', galeria: '#120c1d', dachy: '#0c0f22', rdzen: '#0a121b' };
+
+function cityHash(i, j, k = 0) {
+  let h = Math.imul(i + 101, 73856093) ^ Math.imul(j + 211, 19349663) ^ Math.imul(k + 7, 83492791);
+  h = Math.imul(h ^ (h >>> 15), 2246822519);
+  return (h ^ (h >>> 13)) >>> 0;
+}
+
+/** District id of block (i, j) -- `theme` (Campaign) overrides the map. */
+function cityDistrict(i, j, theme) {
+  if (theme) return theme;
+  const row = CITY_DISTRICT_MAP[clamp(j, 0, CITY_CELLS - 1)];
+  return CITY_DISTRICT_KEYS[row[clamp(i, 0, CITY_CELLS - 1)]] || 'plac';
+}
+
+/** District id under a world position (Arena's minimap label). */
+function cityDistrictAt(x, y) {
+  return cityDistrict(Math.floor(x / CITY_PITCH), Math.floor(y / CITY_PITCH));
+}
+
+/** The one block per Arena district (nearest its centroid) whose lot
+ *  carries the district's name painted on the ground. */
+function citySignCells() {
+  if (citySignCells.cache) return citySignCells.cache;
+  const acc = {};
+  for (let j = 0; j < CITY_CELLS; j++) {
+    for (let i = 0; i < CITY_CELLS; i++) {
+      const d = cityDistrict(i, j);
+      const a = acc[d] || (acc[d] = { sx: 0, sy: 0, n: 0, cells: [] });
+      a.sx += i; a.sy += j; a.n++; a.cells.push([i, j]);
+    }
+  }
+  const out = {};
+  for (const d in acc) {
+    const a = acc[d], cx = a.sx / a.n, cy = a.sy / a.n;
+    let best = null, bd = Infinity;
+    for (const [i, j] of a.cells) { const dd = (i - cx) ** 2 + (j - cy) ** 2; if (dd < bd) { bd = dd; best = `${i},${j}`; } }
+    out[best] = d;
+  }
+  citySignCells.cache = out;
+  return out;
+}
+
+/** A street-lamp light pool in one color, painted once (chunk paints blit it). */
+function cityLampSprite(col) {
+  const cache = cityLampSprite.cache || (cityLampSprite.cache = new Map());
+  let cv = cache.get(col);
+  if (cv) return cv;
+  cv = document.createElement('canvas');
+  cv.width = cv.height = 64;
+  const c = cv.getContext('2d');
+  const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, rgbaColor(col, 0.16)); g.addColorStop(1, rgbaColor(col, 0));
+  c.fillStyle = g;
+  c.fillRect(0, 0, 64, 64);
+  cache.set(col, cv);
+  return cv;
+}
+
+/* Lot painters: (c, x, y, s, col, rng, variant) paint inside the lot square
+   (x, y, s) -- already clipped and filled with CITY_LOT_BASE. Everything is
+   low-alpha line work in the district color: readable as "floor", never as
+   a pickup. */
+const CITY_LOT_PAINTERS = {
+  plac(c, x, y, s, col, rng, v) {
+    const cx = x + s / 2, cy = y + s / 2;
+    if (v === 2) {
+      c.strokeStyle = rgbaColor(col, 0.07); c.lineWidth = 1;
+      for (let r = 18; r < s * 0.72; r += 18) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+      c.fillStyle = '#04202e';
+      c.beginPath(); c.arc(cx, cy, s * 0.17, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = rgbaColor(col, 0.38); c.lineWidth = 3; c.stroke();
+      c.strokeStyle = rgbaColor(col, 0.14); c.lineWidth = 1.2;
+      for (let r = s * 0.05; r < s * 0.15; r += s * 0.035) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+      return;
+    }
+    c.strokeStyle = rgbaColor(col, 0.07); c.lineWidth = 1;
+    c.beginPath();
+    for (let k = 24; k < s; k += 24) { c.moveTo(x + k, y); c.lineTo(x + k, y + s); c.moveTo(x, y + k); c.lineTo(x + s, y + k); }
+    c.stroke();
+    if (v === 1) {
+      // Two long light strips set into the paving.
+      const horiz = rng.next() < 0.5;
+      c.save(); c.shadowBlur = 12; c.shadowColor = col; c.fillStyle = rgbaColor(col, 0.22);
+      for (const f of [0.32, 0.68]) {
+        if (horiz) c.fillRect(x + s * 0.1, y + s * f - 3, s * 0.8, 6); else c.fillRect(x + s * f - 3, y + s * 0.1, 6, s * 0.8);
+      }
+      c.restore();
+      return;
+    }
+    // Neon compass emblem in the middle of the square.
+    const r = s * 0.26;
+    c.strokeStyle = rgbaColor(col, 0.24); c.lineWidth = 3;
+    c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = rgbaColor(col, 0.12); c.lineWidth = 1.5;
+    c.beginPath(); c.arc(cx, cy, r * 0.7, 0, Math.PI * 2); c.stroke();
+    c.beginPath();
+    for (let k = 0; k < 12; k++) {
+      const a = k * Math.PI / 6;
+      c.moveTo(cx + Math.cos(a) * r * 0.78, cy + Math.sin(a) * r * 0.78);
+      c.lineTo(cx + Math.cos(a) * r * (k % 3 ? 0.88 : 0.97), cy + Math.sin(a) * r * (k % 3 ? 0.88 : 0.97));
+    }
+    c.stroke();
+  },
+  park(c, x, y, s, col, rng, v) {
+    for (let k = 0; k < 240; k++) {
+      c.fillStyle = rgbaColor(col, 0.05 + rng.next() * 0.08);
+      const d = 1.2 + rng.next() * 1.6;
+      c.fillRect(x + rng.next() * s, y + rng.next() * s, d, d);
+    }
+    const cx = x + s / 2, cy = y + s / 2;
+    if (v === 1) {
+      c.strokeStyle = '#0d2b2a'; c.lineWidth = 12;
+      c.beginPath(); c.ellipse(cx, cy, s * 0.36, s * 0.29, 0, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = '#041b2b';
+      c.beginPath(); c.ellipse(cx, cy, s * 0.29, s * 0.22, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(80, 240, 250, 0.26)'; c.lineWidth = 2; c.stroke();
+      c.strokeStyle = 'rgba(80, 240, 250, 0.1)'; c.lineWidth = 1.2;
+      for (let k = 0; k < 4; k++) {
+        const ox = (rng.next() - 0.5) * s * 0.3, oy = (rng.next() - 0.5) * s * 0.2;
+        c.beginPath(); c.arc(cx + ox, cy + oy, 10 + rng.next() * 14, Math.PI * 1.1, Math.PI * 1.9); c.stroke();
+      }
+      return;
+    }
+    if (v === 2) {
+      c.fillStyle = 'rgba(70, 217, 154, 0.035)';
+      for (let k = 0; k < s; k += 36) c.fillRect(x + k, y + 22, 18, s - 44);
+      c.strokeStyle = 'rgba(242, 248, 255, 0.13)'; c.lineWidth = 2;
+      c.strokeRect(x + 22, y + 22, s - 44, s - 44);
+      c.beginPath(); c.moveTo(x + 22, cy); c.lineTo(x + s - 22, cy); c.stroke();
+      c.beginPath(); c.arc(cx, cy, 30, 0, Math.PI * 2); c.stroke();
+      c.strokeRect(cx - 40, y + 22, 80, 34); c.strokeRect(cx - 40, y + s - 56, 80, 34);
+      return;
+    }
+    // A winding footpath with flowerbeds beside it.
+    const sx = x + rng.next() * s * 0.3, ex = x + s * 0.7 + rng.next() * s * 0.3;
+    c.lineCap = 'round';
+    for (const [w, st] of [[18, rgbaColor(col, 0.16)], [15, '#0d2b2a']]) {
+      c.strokeStyle = st; c.lineWidth = w;
+      c.beginPath(); c.moveTo(sx, y - 10); c.bezierCurveTo(x + s * 1.05, y + s * 0.3, x - s * 0.05, y + s * 0.7, ex, y + s + 10); c.stroke();
+    }
+    for (let k = 0; k < 3; k++) {
+      const fx = x + 40 + rng.next() * (s - 80), fy = y + 40 + rng.next() * (s - 80);
+      c.fillStyle = '#0a2422';
+      c.beginPath(); c.ellipse(fx, fy, 22, 13, rng.next() * 3, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(255, 84, 173, 0.22)'; c.lineWidth = 1.5; c.stroke();
+      c.fillStyle = 'rgba(255, 84, 173, 0.2)';
+      for (let n = 0; n < 6; n++) c.fillRect(fx + (rng.next() - 0.5) * 30, fy + (rng.next() - 0.5) * 14, 2, 2);
+    }
+  },
+  port(c, x, y, s, col, rng, v) {
+    if (v === 1) {
+      c.fillStyle = '#03152a'; c.fillRect(x, y, s, s);
+      c.strokeStyle = 'rgba(80, 240, 250, 0.11)'; c.lineWidth = 1.5;
+      c.beginPath();
+      for (let k = 0; k < 34; k++) {
+        const wx = x + rng.next() * s, wy = y + 30 + rng.next() * (s - 30);
+        c.moveTo(wx, wy); c.quadraticCurveTo(wx + 7, wy - 4, wx + 14, wy);
+      }
+      c.stroke();
+      c.fillStyle = '#16140b'; c.fillRect(x, y, s, 22);
+      c.strokeStyle = rgbaColor(col, 0.32); c.lineWidth = 2;
+      c.beginPath(); c.moveTo(x, y + 22); c.lineTo(x + s, y + 22); c.stroke();
+      c.strokeStyle = rgbaColor(col, 0.1); c.lineWidth = 1;
+      c.beginPath();
+      for (let k = 12; k < s; k += 12) { c.moveTo(x + k, y); c.lineTo(x + k, y + 22); }
+      c.stroke();
+      c.fillStyle = rgbaColor(col, 0.4);
+      for (let k = 30; k < s; k += 60) { c.beginPath(); c.arc(x + k, y + 17, 3, 0, Math.PI * 2); c.fill(); }
+      return;
+    }
+    if (v === 2) {
+      c.strokeStyle = 'rgba(242, 248, 255, 0.12)'; c.lineWidth = 2;
+      c.beginPath();
+      for (const row of [0.08, 0.58]) {
+        const ry = y + s * row;
+        c.moveTo(x + 14, ry + s * 0.34); c.lineTo(x + s - 14, ry + s * 0.34);
+        for (let k = 14; k <= s - 14; k += 30) { c.moveTo(x + k, ry); c.lineTo(x + k, ry + s * 0.34); }
+      }
+      c.stroke();
+      c.font = `120px ${FONT_DISPLAY}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = rgbaColor(col, 0.07); c.fillText('P', x + s / 2, y + s / 2 + 6);
+      return;
+    }
+    const colors = [col, '#FF54AD', '#50F0FA', '#9875FF', '#46D99A'];
+    for (let row = 0; row < 6; row++) {
+      for (let k = 0; k < 4; k++) {
+        if (rng.next() < 0.18) continue;
+        const cc = colors[Math.floor(rng.next() * colors.length)];
+        const bx = x + 14 + k * 67, by = y + 16 + row * 45;
+        c.fillStyle = rgbaColor(cc, 0.06); c.fillRect(bx, by, 58, 30);
+        c.strokeStyle = rgbaColor(cc, 0.16); c.lineWidth = 1.2; c.strokeRect(bx + 0.5, by + 0.5, 57, 29);
+        c.strokeStyle = rgbaColor(cc, 0.07);
+        c.beginPath();
+        for (let n = 1; n < 6; n++) { c.moveTo(bx + n * 9.6, by + 3); c.lineTo(bx + n * 9.6, by + 27); }
+        c.stroke();
+      }
+    }
+  },
+  galeria(c, x, y, s, col, rng, v) {
+    const cx = x + s / 2, cy = y + s / 2;
+    if (v === 1) {
+      const cols = [col, '#50F0FA', '#9875FF'];
+      for (let k = 0; k < 9; k++) {
+        c.fillStyle = rgbaColor(cols[k % 3], 0.06 + rng.next() * 0.07);
+        const px = x + rng.next() * s, py = y + rng.next() * s, r = 30 + rng.next() * 60;
+        c.beginPath(); c.moveTo(px, py - r); c.lineTo(px + r * 0.9, py + r * 0.6); c.lineTo(px - r * 0.9, py + r * 0.6); c.closePath(); c.fill();
+      }
+      for (let k = 0; k < 7; k++) {
+        c.fillStyle = rgbaColor(cols[k % 3], 0.12 + rng.next() * 0.1);
+        c.fillRect(x + rng.next() * s * 0.5, y + rng.next() * s, s * (0.2 + rng.next() * 0.4), 2 + rng.next() * 7);
+      }
+      return;
+    }
+    if (v === 2) {
+      const r = s * 0.38;
+      c.fillStyle = 'rgba(152, 117, 255, 0.06)';
+      c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = rgbaColor(col, 0.2); c.lineWidth = 2; c.stroke();
+      c.strokeStyle = rgbaColor(col, 0.1); c.lineWidth = 1.2;
+      c.beginPath();
+      for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+      c.stroke();
+      for (const f of [0.35, 0.7]) { c.beginPath(); c.arc(cx, cy, r * f, 0, Math.PI * 2); c.stroke(); }
+      return;
+    }
+    const t = 36;
+    for (let a = 0; a * t < s; a++) {
+      for (let b = 0; b * t < s; b++) {
+        c.fillStyle = (a + b) % 2 ? rgbaColor(col, 0.055) : 'rgba(152, 117, 255, 0.04)';
+        c.fillRect(x + a * t, y + b * t, t, t);
+      }
+    }
+  },
+  dachy(c, x, y, s, col, rng, v) {
+    c.strokeStyle = rgbaColor(col, 0.22); c.lineWidth = 2;
+    c.strokeRect(x + 7, y + 7, s - 14, s - 14);
+    const cx = x + s / 2, cy = y + s / 2;
+    if (v === 0) {
+      c.strokeStyle = rgbaColor(col, 0.34); c.lineWidth = 4;
+      c.beginPath(); c.arc(cx, cy, s * 0.27, 0, Math.PI * 2); c.stroke();
+      c.lineWidth = 7; c.lineCap = 'butt';
+      c.beginPath();
+      c.moveTo(cx - 22, cy - 28); c.lineTo(cx - 22, cy + 28);
+      c.moveTo(cx + 22, cy - 28); c.lineTo(cx + 22, cy + 28);
+      c.moveTo(cx - 22, cy); c.lineTo(cx + 22, cy);
+      c.stroke();
+      c.fillStyle = 'rgba(239, 203, 99, 0.45)';
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.beginPath(); c.arc(cx + Math.cos(a) * s * 0.33, cy + Math.sin(a) * s * 0.33, 2.2, 0, Math.PI * 2); c.fill(); }
+      return;
+    }
+    if (v === 1) {
+      for (let row = 0; row < 7; row++) {
+        for (let k = 0; k < 5; k++) {
+          const bx = x + 20 + k * 50, by = y + 20 + row * 36;
+          c.fillStyle = '#0d1838'; c.fillRect(bx, by, 44, 28);
+          c.strokeStyle = 'rgba(152, 117, 255, 0.26)'; c.lineWidth = 1; c.strokeRect(bx + 0.5, by + 0.5, 43, 27);
+          c.beginPath(); c.moveTo(bx + 22, by + 2); c.lineTo(bx + 22, by + 26); c.moveTo(bx + 2, by + 14); c.lineTo(bx + 42, by + 14); c.stroke();
+        }
+      }
+      return;
+    }
+    c.strokeStyle = rgbaColor(col, 0.14); c.lineWidth = 3;
+    c.beginPath();
+    let px = x + 20, py = y + 20 + rng.next() * (s - 40);
+    c.moveTo(px, py);
+    for (let k = 0; k < 4; k++) { px += 40 + rng.next() * 40; c.lineTo(px, py); py = y + 20 + rng.next() * (s - 40); c.lineTo(px, py); }
+    c.stroke();
+    for (let k = 0; k < 5; k++) {
+      const w = 24 + rng.next() * 22, bx = x + 16 + rng.next() * (s - w - 32), by = y + 16 + rng.next() * (s - w - 32);
+      c.fillStyle = '#11152c'; c.fillRect(bx, by, w, w);
+      c.strokeStyle = rgbaColor(col, 0.22); c.lineWidth = 1.2; c.strokeRect(bx + 0.5, by + 0.5, w - 1, w - 1);
+      c.strokeStyle = rgbaColor(col, 0.12);
+      c.beginPath(); c.moveTo(bx + 4, by + 4); c.lineTo(bx + w - 4, by + w - 4); c.moveTo(bx + w - 4, by + 4); c.lineTo(bx + 4, by + w - 4); c.stroke();
+    }
+  },
+  rdzen(c, x, y, s, col, rng, v) {
+    const snap = (n) => Math.round(n / 12) * 12;
+    c.lineWidth = 1.5;
+    for (let k = 0; k < 16; k++) {
+      c.strokeStyle = k % 4 ? rgbaColor(col, 0.16) : 'rgba(80, 240, 250, 0.2)';
+      let px = x + snap(rng.next() * s), py = y + snap(rng.next() * s);
+      c.beginPath(); c.moveTo(px, py);
+      for (let n = 0; n < 3 + Math.floor(rng.next() * 3); n++) {
+        const dirs = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [1, -1]];
+        const [dx, dy] = dirs[Math.floor(rng.next() * dirs.length)];
+        const len = 24 + snap(rng.next() * 48);
+        px = clamp(px + dx * len, x + 8, x + s - 8); py = clamp(py + dy * len, y + 8, y + s - 8);
+        c.lineTo(px, py);
+      }
+      c.stroke();
+      c.fillStyle = CITY_LOT_BASE.rdzen;
+      c.beginPath(); c.arc(px, py, 3.2, 0, Math.PI * 2); c.fill(); c.stroke();
+    }
+    const chips = v + 1;
+    for (let k = 0; k < chips; k++) {
+      const w = 44 + rng.next() * 20, bx = x + 20 + rng.next() * (s - w - 40), by = y + 20 + rng.next() * (s - w - 40);
+      c.fillStyle = '#0e1824'; c.fillRect(bx, by, w, w);
+      c.strokeStyle = 'rgba(80, 240, 250, 0.26)'; c.lineWidth = 1.2; c.strokeRect(bx + 0.5, by + 0.5, w - 1, w - 1);
+      c.strokeStyle = rgbaColor(col, 0.18);
+      c.beginPath();
+      for (let p = 8; p < w - 4; p += 8) { c.moveTo(bx + p, by); c.lineTo(bx + p, by - 6); c.moveTo(bx + p, by + w); c.lineTo(bx + p, by + w + 6); }
+      c.stroke();
+    }
+  }
+};
+
+/** Paints the world rect of chunk (i, j) into `c` (already transformed to
+ *  world coordinates). Every feature that can cross a chunk edge (roads,
+ *  crosswalks, lamp pools, the core rings) is a deterministic world-space
+ *  feature drawn by every chunk it touches, so neighbours line up exactly. */
+function paintCityChunk(c, i, j, theme) {
+  const P = CITY_PITCH, R = CITY_ROAD, W = CITY_WALK, B = CITY_BLEED;
+  const x0 = i * P - B, y0 = j * P - B, size = P + 2 * B;
+  c.fillStyle = '#050b14';
+  c.fillRect(x0, y0, size, size);
+  const rng = new SeededRNG(cityHash(i, j, 1));
+  c.fillStyle = 'rgba(150, 190, 225, 0.05)';
+  for (let k = 0; k < 160; k++) c.fillRect(i * P + rng.next() * P, j * P + rng.next() * P, 1.3, 1.3);
+
+  // Block: sidewalk band, district lot, neon curb.
+  const d = cityDistrict(i, j, theme);
+  const col = DISTRICT_COLORS[d] || '#50F0FA';
+  const bx = i * P + R / 2, by = j * P + R / 2, bs = P - R;
+  c.fillStyle = '#0c1826';
+  roundRectPath(c, bx, by, bs, bs, 10); c.fill();
+  c.strokeStyle = 'rgba(160, 200, 230, 0.06)'; c.lineWidth = 1;
+  c.beginPath();
+  for (let k = 18; k < bs - 4; k += 18) {
+    c.moveTo(bx + k, by); c.lineTo(bx + k, by + W); c.moveTo(bx + k, by + bs - W); c.lineTo(bx + k, by + bs);
+    c.moveTo(bx, by + k); c.lineTo(bx + W, by + k); c.moveTo(bx + bs - W, by + k); c.lineTo(bx + bs, by + k);
+  }
+  c.stroke();
+  const lx = bx + W, ly = by + W, ls = bs - 2 * W;
+  c.save();
+  c.beginPath(); c.rect(lx, ly, ls, ls); c.clip();
+  c.fillStyle = CITY_LOT_BASE[d] || '#081620';
+  c.fillRect(lx, ly, ls, ls);
+  const lotRng = new SeededRNG(cityHash(i, j, 2));
+  const variant = Math.floor(lotRng.next() * 3);
+  (CITY_LOT_PAINTERS[d] || CITY_LOT_PAINTERS.plac)(c, lx, ly, ls, col, lotRng, variant);
+  const sign = !theme && citySignCells()[`${i},${j}`];
+  if (sign) {
+    // The district's name painted across its central lot (rdzen's lot sits
+    // under the core rings, so it keeps just the circuitry).
+    const dist = DISTRICTS.find(x => x.id === sign);
+    if (dist && sign !== 'rdzen') {
+      const words = dist.name.toUpperCase().split(' ');
+      c.font = `40px ${FONT_DISPLAY}`;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = rgbaColor(col, 0.12);
+      c.strokeStyle = rgbaColor(col, 0.34); c.lineWidth = 1.5;
+      words.forEach((w, k) => {
+        const ty = ly + ls / 2 + (k - (words.length - 1) / 2) * 48;
+        c.fillText(w, lx + ls / 2, ty); c.strokeText(w, lx + ls / 2, ty);
+      });
+    }
+  }
+  c.restore();
+  c.strokeStyle = rgbaColor(col, 0.12); c.lineWidth = 1;
+  c.strokeRect(lx + 0.5, ly + 0.5, ls - 1, ls - 1);
+  c.save();
+  c.shadowBlur = 10; c.shadowColor = col;
+  c.strokeStyle = rgbaColor(col, 0.5); c.lineWidth = 1.6;
+  roundRectPath(c, bx + 0.8, by + 0.8, bs - 1.6, bs - 1.6, 10); c.stroke();
+  c.restore();
+
+  // Road markings on the 4 grid lines around this block (both halves --
+  // the neighbour chunk paints the same strokes, clipped to its side).
+  const edge = (L) => !theme && (L <= 0 || L >= CITY_CELLS);
+  for (const vertical of [true, false]) {
+    for (const L of [vertical ? i : j, (vertical ? i : j) + 1]) {
+      for (let seg = (vertical ? j : i) - 1; seg <= (vertical ? j : i) + 1; seg++) {
+        if (seg < 0 || seg >= CITY_CELLS) continue;
+        const pos = L * P, a = seg * P + R / 2, b = (seg + 1) * P - R / 2;
+        const line = (off, from, to) => {
+          if (vertical) { c.moveTo(pos + off, from); c.lineTo(pos + off, to); } else { c.moveTo(from, pos + off); c.lineTo(to, pos + off); }
+        };
+        if (edge(L)) {
+          // The world's edge: a hazard-striped barrier instead of a road.
+          c.save();
+          c.beginPath();
+          if (vertical) c.rect(pos - R / 2, a - R / 2, R, b - a + R); else c.rect(a - R / 2, pos - R / 2, b - a + R, R);
+          c.clip();
+          c.strokeStyle = 'rgba(255, 84, 173, 0.16)'; c.lineWidth = 9;
+          c.beginPath();
+          for (let k = a - R; k < b + R; k += 26) {
+            if (vertical) { c.moveTo(pos - R, k); c.lineTo(pos + R, k + 2 * R); } else { c.moveTo(k, pos - R); c.lineTo(k + 2 * R, pos + R); }
+          }
+          c.stroke();
+          c.restore();
+          continue;
+        }
+        const roadCol = DISTRICT_COLORS[vertical ? cityDistrict(Math.max(0, L - 1), seg, theme) : cityDistrict(seg, Math.max(0, L - 1), theme)] || '#50F0FA';
+        c.strokeStyle = 'rgba(242, 248, 255, 0.09)'; c.lineWidth = 1.5; c.setLineDash([]);
+        c.beginPath(); line(-R / 2 + 5, a, b); line(R / 2 - 5, a, b); c.stroke();
+        c.strokeStyle = rgbaColor(roadCol, 0.34); c.lineWidth = 2.5; c.setLineDash([20, 16]);
+        c.beginPath(); line(0, a + 30, b - 30); c.stroke();
+        c.setLineDash([]);
+      }
+    }
+  }
+  // Crosswalks on every arm of the 4 corner intersections.
+  c.fillStyle = 'rgba(242, 248, 255, 0.13)';
+  for (const gi of [i, i + 1]) {
+    for (const gj of [j, j + 1]) {
+      const ix = gi * P, iy = gj * P;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const armL = dx ? gi + Math.min(dx, 0) : gj + Math.min(dy, 0);
+        if (armL < 0 || armL >= CITY_CELLS) continue;
+        if (!theme && (dx ? (gj <= 0 || gj >= CITY_CELLS) : (gi <= 0 || gi >= CITY_CELLS))) continue;
+        const start = R / 2 + 5;
+        for (let s = -R / 2 + 7; s < R / 2 - 7; s += 9) {
+          if (dx) c.fillRect(ix + dx * start + (dx < 0 ? -18 : 0), iy + s, 18, 5);
+          else c.fillRect(ix + s, iy + dy * start + (dy < 0 ? -18 : 0), 5, 18);
+        }
+      }
+    }
+  }
+  // Rdzeń Miasta: the city core's energy rings around the world center.
+  if (!theme || theme === 'rdzen') {
+    const cx = WORLD_W / 2, cy = WORLD_H / 2;
+    if (Math.abs(cx - (i + 0.5) * P) < P && Math.abs(cy - (j + 0.5) * P) < P) {
+      c.save();
+      c.shadowBlur = 12; c.shadowColor = '#50F0FA';
+      c.strokeStyle = 'rgba(80, 240, 250, 0.2)'; c.lineWidth = 2;
+      for (const r of [120, 180, 250]) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+      c.shadowBlur = 0;
+      c.fillStyle = '#040a12';
+      c.beginPath(); c.arc(cx, cy, 26, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(203, 213, 225, 0.45)'; c.lineWidth = 3; c.stroke();
+      c.restore();
+    }
+  }
+  // Street-lamp light pools (from this block and its neighbours, since a
+  // pool reaches a few units across the chunk edge).
+  c.save();
+  c.globalCompositeOperation = 'lighter';
+  const LAMP_R = 46;
+  for (let ni = i - 1; ni <= i + 1; ni++) {
+    for (let nj = j - 1; nj <= j + 1; nj++) {
+      if (ni < 0 || nj < 0 || ni >= CITY_CELLS || nj >= CITY_CELLS) continue;
+      const lc = DISTRICT_COLORS[cityDistrict(ni, nj, theme)] || '#50F0FA';
+      const o = R / 2 + W / 2, far = P - o;
+      const pts = [[o, o], [far, o], [o, far], [far, far], [P / 2, o], [P / 2, far], [o, P / 2], [far, P / 2]];
+      for (const [px0, py0] of pts) {
+        const px = ni * P + px0, py = nj * P + py0;
+        if (px < x0 - LAMP_R || px > x0 + size + LAMP_R || py < y0 - LAMP_R || py > y0 + size + LAMP_R) continue;
+        c.drawImage(cityLampSprite(lc), px - LAMP_R, py - LAMP_R, LAMP_R * 2, LAMP_R * 2);
+        c.fillStyle = 'rgba(230, 250, 255, 0.55)';
+        c.beginPath(); c.arc(px, py, 2.2, 0, Math.PI * 2); c.fill();
+      }
+    }
+  }
+  c.restore();
+}
+
+class CityFloor {
+  constructor() {
+    this.cache = new Map(); // key -> { canvas, scale, px, frame }
+    this.pixels = 0;
+    this.frame = 0;
+    this.renders = 0;       // chunk paints so far (QA reads this)
+    this.minimaps = new Map();
+  }
+
+  /** Resolution steps for chunk canvases (device px per world unit). */
+  static quantize(s) {
+    const steps = [0.75, 1, 1.5, 2];
+    for (const st of steps) if (s <= st + 0.08) return st;
+    return 2;
+  }
+
+  render(i, j, scale, theme, old) {
+    const P = CITY_PITCH, B = CITY_BLEED;
+    const px = Math.ceil((P + 2 * B) * scale);
+    const cv = old && old.canvas.width === px ? old.canvas : document.createElement('canvas');
+    cv.width = cv.height = px;
+    const c = cv.getContext('2d');
+    c.setTransform(px / (P + 2 * B), 0, 0, px / (P + 2 * B), 0, 0);
+    c.translate(B - i * P, B - j * P);
+    paintCityChunk(c, i, j, theme);
+    this.renders++;
+    const key = `${theme || '*'}|${i}|${j}`;
+    if (old) this.pixels -= old.px;
+    const entry = { canvas: cv, scale, px: px * px, frame: this.frame };
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    this.pixels += entry.px;
+    return entry;
+  }
+
+  /** Draws every block under the camera (world-space ctx). `view` =
+   *  { cx, cy, hw, hh, zoom, dpr, gfx }. */
+  draw(ctx, view, theme) {
+    this.frame++;
+    const P = CITY_PITCH, B = CITY_BLEED;
+    const maxS = [1, 1.5, 2][view.gfx != null ? view.gfx : 2];
+    const want = Math.min(maxS, CityFloor.quantize(view.zoom * view.dpr));
+    const m = 24 / view.zoom;
+    const i0 = Math.max(0, Math.floor((view.cx - view.hw - m) / P)), i1 = Math.min(CITY_CELLS - 1, Math.floor((view.cx + view.hw + m) / P));
+    const j0 = Math.max(0, Math.floor((view.cy - view.hh - m) / P)), j1 = Math.min(CITY_CELLS - 1, Math.floor((view.cy + view.hh + m) / P));
+    let budget = 2;
+    let used = 0;
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const key = `${theme || '*'}|${i}|${j}`;
+        let e = this.cache.get(key);
+        if (!e) e = this.render(i, j, want, theme, null);
+        else if (e.scale !== want && budget > 0) { budget--; e = this.render(i, j, want, theme, e); }
+        else { this.cache.delete(key); this.cache.set(key, e); }
+        e.frame = this.frame;
+        used += e.px;
+        ctx.drawImage(e.canvas, i * P - B, j * P - B, P + 2 * B, P + 2 * B);
+      }
+    }
+    // Prefetch the ring of blocks just outside the view, one or two a frame.
+    for (let j = j0 - 1; j <= j1 + 1 && budget > 0; j++) {
+      for (let i = i0 - 1; i <= i1 + 1 && budget > 0; i++) {
+        if (i < 0 || j < 0 || i >= CITY_CELLS || j >= CITY_CELLS) continue;
+        if (i >= i0 && i <= i1 && j >= j0 && j <= j1) continue;
+        const e = this.cache.get(`${theme || '*'}|${i}|${j}`);
+        if (e && e.scale === want) continue;
+        budget--;
+        this.render(i, j, want, theme, e).frame = this.frame;
+      }
+    }
+    // LRU eviction under a pixel budget (never below what this frame needs).
+    const cap = Math.max([4e6, 7e6, 10e6][view.gfx != null ? view.gfx : 2], used * 1.8);
+    for (const [key, e] of this.cache) {
+      if (this.pixels <= cap) break;
+      if (e.frame === this.frame) continue;
+      this.cache.delete(key);
+      this.pixels -= e.px;
+    }
+  }
+
+  /** Paints every visible block now (round start), so the first frames of a
+   *  round never stall on a burst of chunk paints. */
+  prewarm(view, theme) {
+    const P = CITY_PITCH;
+    const maxS = [1, 1.5, 2][view.gfx != null ? view.gfx : 2];
+    const want = Math.min(maxS, CityFloor.quantize(view.zoom * view.dpr));
+    for (let j = Math.floor((view.cy - view.hh) / P) - 1; j <= Math.floor((view.cy + view.hh) / P) + 1; j++) {
+      for (let i = Math.floor((view.cx - view.hw) / P) - 1; i <= Math.floor((view.cx + view.hw) / P) + 1; i++) {
+        if (i < 0 || j < 0 || i >= CITY_CELLS || j >= CITY_CELLS) continue;
+        const e = this.cache.get(`${theme || '*'}|${i}|${j}`);
+        if (!e || e.scale !== want) this.render(i, j, want, theme, e);
+      }
+    }
+  }
+
+  /** Night traffic: faint head/tail-light streaks gliding along the roads
+   *  in view -- the city is alive, but nothing that reads as a pickup. */
+  drawTraffic(ctx, view, t, theme, bounds) {
+    const P = CITY_PITCH, R = CITY_ROAD;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 2.6;
+    for (let L = 1; L < CITY_CELLS; L++) {
+      const pos = L * P;
+      for (const vertical of [true, false]) {
+        if (Math.abs(pos - (vertical ? view.cx : view.cy)) > (vertical ? view.hw : view.hh) + R) continue;
+        for (let k = 0; k < 6; k++) {
+          const dir = k % 2 ? 1 : -1;
+          const speed = 70 + ((L * 37 + k * 53 + (vertical ? 11 : 0)) % 70);
+          let s = (cityHash(L, k, vertical ? 3 : 4) % WORLD_W) + t * speed * dir;
+          s = ((s % WORLD_W) + WORLD_W) % WORLD_W;
+          const x = vertical ? pos + dir * R * 0.22 : s, y = vertical ? s : pos + dir * R * 0.22;
+          if (Math.abs(x - view.cx) > view.hw + 30 || Math.abs(y - view.cy) > view.hh + 30) continue;
+          if (bounds && (x < bounds.minX || x > bounds.maxX || y < bounds.minY || y > bounds.maxY)) continue;
+          const tail = 24 * dir;
+          ctx.strokeStyle = dir > 0 ? 'rgba(255, 238, 205, 0.24)' : 'rgba(255, 56, 96, 0.24)';
+          ctx.beginPath();
+          if (vertical) { ctx.moveTo(x, y); ctx.lineTo(x, y - tail); } else { ctx.moveTo(x, y); ctx.lineTo(x - tail, y); }
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  /** Cached minimap backdrop: the district blocks as tinted squares.
+   *  `bounds` is the world rect the minimap frames. */
+  minimap(sizePx, theme, bounds) {
+    const key = `${theme || '*'}|${sizePx}|${bounds.minX},${bounds.minY},${bounds.maxX},${bounds.maxY}`;
+    let cv = this.minimaps.get(key);
+    if (cv) return cv;
+    cv = document.createElement('canvas');
+    cv.width = cv.height = sizePx;
+    const c = cv.getContext('2d');
+    const sx = sizePx / (bounds.maxX - bounds.minX), sy = sizePx / (bounds.maxY - bounds.minY);
+    c.fillStyle = 'rgba(2, 8, 16, 0.82)';
+    c.fillRect(0, 0, sizePx, sizePx);
+    const P = CITY_PITCH, R = CITY_ROAD;
+    for (let j = 0; j < CITY_CELLS; j++) {
+      for (let i = 0; i < CITY_CELLS; i++) {
+        const col = DISTRICT_COLORS[cityDistrict(i, j, theme)] || '#50F0FA';
+        c.fillStyle = rgbaColor(col, 0.15);
+        c.fillRect((i * P + R / 2 - bounds.minX) * sx, (j * P + R / 2 - bounds.minY) * sy, (P - R) * sx, (P - R) * sy);
+      }
+    }
+    this.minimaps.set(key, cv);
+    return cv;
+  }
+}
+
+/** Floor instance for menu-screen art (the first-run welcome scene). */
+const SCREEN_FLOOR = new CityFloor();
+
+/* ----------------------- Swallow animation (Golden Shot v12) -----------------------
+   An eaten object used to shrink in place for 0.28 s while being snapped
+   under the hole's black disk -- the actual eat was invisible. Now it tips
+   over the rim and spirals down into the vortex: drawn by the eater INSIDE
+   its clipped vortex (Hole.drawBody()'s `inner` pass), shrinking, turning
+   and sinking into the event-horizon darkness. Shared by Arena WorldObjects,
+   Campaign entities and swallowed rival holes (Game.swallowGhosts). */
+
+/** Records where `obj` touched `hole` (relative offset + spin direction). */
+function beginSwallow(obj, hole) {
+  obj.swFromX = obj.x - hole.x;
+  obj.swFromY = obj.y - hole.y;
+  obj.swSpin = (Math.random() < 0.5 ? -1 : 1) * (2.2 + Math.random() * 1.2);
+}
+
+/** World position + look of a swallowed thing at progress k (0..1). */
+function swallowPose(obj, hole, k) {
+  k = clamp(k, 0, 1);
+  const fall = k * k;                       // slips over the edge, then plunges
+  const ang = (obj.swSpin || 2.6) * k;
+  const c = Math.cos(ang), s = Math.sin(ang);
+  const fx = (obj.swFromX || 0) * (1 - fall), fy = (obj.swFromY || 0) * (1 - fall);
+  return { x: hole.x + fx * c - fy * s, y: hole.y + fx * s + fy * c, rot: ang * 0.7, scale: Math.max(0.06, 1 - 0.88 * k), alpha: 1 - 0.55 * k };
+}
+
 class WorldObject {
   constructor(tierName, rng) {
     this.respawn(tierName, true, rng);
@@ -3930,6 +4656,7 @@ class WorldObject {
     this.eating = true;
     this.eatT = 0;
     this.eater = hole;
+    beginSwallow(this, hole);
   }
 
   update(dt) {
@@ -3937,10 +4664,13 @@ class WorldObject {
     if (this.spawnFlash > 0) this.spawnFlash = Math.max(0, this.spawnFlash - dt * 2);
     if (this.eating) {
       this.eatT += dt / EAT_ANIM_TIME;
+      // v12 fall-in: spiral from the touch point into the vortex center,
+      // following the eater (the old 50%-per-frame lerp snapped it under
+      // the hole within a couple of frames, so the eat was never seen).
       if (this.eater) {
-        const pull = clamp(this.eatT, 0, 1);
-        this.x = lerp(this.x, this.eater.x, pull * 0.5);
-        this.y = lerp(this.y, this.eater.y, pull * 0.5);
+        const p = swallowPose(this, this.eater, this.eatT);
+        this.x = p.x;
+        this.y = p.y;
       }
     }
   }
@@ -3951,8 +4681,20 @@ class WorldObject {
    *  rim, drawn only for objects near the player's eat threshold so tiny
    *  trivially-eatable objects stay visually quiet (GDD 5.4). */
   draw(ctx, highlight) {
-    const scale = this.eating ? Math.max(0, 1 - this.eatT) : 1;
-    if (scale <= 0) return;
+    // While swallowed, the eater draws this object inside its vortex
+    // (drawSwallowed()); out here only the part over the rim fades away.
+    const scale = this.eating ? 1 - this.eatT * 0.35 : 1;
+    if (this.eating) {
+      const a = 1 - this.eatT * 4;
+      if (a <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(this.x, this.y);
+      ctx.scale(scale, scale);
+      drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, artSeed(this.x, this.y), { live: false });
+      ctx.restore();
+      return;
+    }
 
     if (highlight > 0 && !this.eating) {
       const breathe = 0.5 + 0.5 * Math.sin(performance.now() / 260);
@@ -4092,14 +4834,28 @@ class CampaignEntity {
     }
   }
 
-  startEating() {
+  startEating(hole) {
     if (this.eating) return;
     this.eating = true;
     this.eatT = 0;
+    // v12: the eater draws it falling into its vortex (Game.drawSwallowed());
+    // the entity's own x/y stay put -- mission logic reads them.
+    if (hole) { this.eater = hole; beginSwallow(this, hole); }
   }
 
   draw(ctx, isGoal) {
     if (!this.live || this.consumed) return;
+    if (this.eating && this.eater) {
+      const a = 1 - this.eatT * 4;
+      if (a <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(this.x, this.y);
+      const art = this.artKind();
+      if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[this.stats.minTier], this.radius, performance.now() / 1000, artSeed(this.x, this.y), { live: false });
+      ctx.restore();
+      return;
+    }
     const scale = this.eating ? Math.max(0, 1 - this.eatT) : 1;
     if (scale <= 0) return;
     const r = this.radius;
@@ -4281,6 +5037,7 @@ class Hole {
    *  small step reads as growth (player feedback: early growth was barely
    *  visible). */
   setRadius(r) {
+    r = Math.min(r, CONFIG.hole.maxRadius);
     if (r > this.radius + 0.01) this.growPopAt = performance.now();
     this.radius = r;
   }
@@ -4292,13 +5049,15 @@ class Hole {
     this.invulnerableUntil = performance.now() + INVULN_TIME * 1000 + (bonusInvulnMs || 0);
   }
 
-  draw(ctx, time) {
+  /** `inner` (optional): v12 callback drawing whatever this hole is
+   *  swallowing, called inside its clipped vortex before the rim. */
+  draw(ctx, time, inner) {
     const popT = this.growPopAt ? (performance.now() - this.growPopAt) / 260 : 1;
     const pop = popT < 1 ? Math.sin(popT * Math.PI) : 0;
     const realRadius = this.radius;
     this.radius = realRadius * (1 + 0.14 * pop);
     try {
-      this.drawBody(ctx, time);
+      this.drawBody(ctx, time, inner);
     } finally {
       this.radius = realRadius;
     }
@@ -4351,7 +5110,7 @@ class Hole {
     return SKIN_STYLES[this.skin] || 'tech';
   }
 
-  drawBody(ctx, time) {
+  drawBody(ctx, time, inner) {
     if (this.auraId && this.auraId !== 'none') {
       const aura = AURAS.find(a => a.id === this.auraId);
       if (aura && aura.color) {
@@ -4376,10 +5135,12 @@ class Hole {
     ctx.save();
     if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
 
-    // Gravity well: a soft glow that darkens toward the rim, so the hole
-    // reads as a dent in the city floor rather than a flat disc.
+    // Gravity well, one gradient: the city floor sags dark right at the rim
+    // (v12, now that there is a lit floor to darken), then a soft glow in
+    // the skin color fades out -- the hole reads as a dent, not a disc.
     const well = ctx.createRadialGradient(this.x, this.y, r * 0.9, this.x, this.y, r * 1.7);
-    well.addColorStop(0, rgbaColor(solid || '#9875FF', 0.35));
+    well.addColorStop(0, 'rgba(0, 0, 0, 0.66)');
+    well.addColorStop(0.42, rgbaColor(solid || '#9875FF', 0.2));
     well.addColorStop(1, rgbaColor(solid || '#9875FF', 0));
     ctx.fillStyle = well;
     ctx.beginPath(); ctx.arc(this.x, this.y, r * 1.7, 0, Math.PI * 2); ctx.fill();
@@ -4392,6 +5153,19 @@ class Hole {
     ctx.fill();
     ctx.restore();
     this.drawVortex(ctx, time);
+    if (inner) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(this.x, this.y, r * 0.97, 0, Math.PI * 2); ctx.clip();
+      inner(ctx);
+      // Whatever sinks past mid-depth disappears into the event horizon.
+      const core = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r * 0.7);
+      core.addColorStop(0, 'rgba(0,0,0,0.95)');
+      core.addColorStop(0.55, 'rgba(0,0,0,0.6)');
+      core.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = core;
+      ctx.fillRect(this.x - r, this.y - r, r * 2, r * 2);
+      ctx.restore();
+    }
 
     ctx.save();
     if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
@@ -4405,14 +5179,35 @@ class Hole {
     ctx.restore();
 
     if (!this.name) return; // Warsztat previews draw a nameless hole
+    // labelScale (v12): Arena's camera zooms far out late in a round, so
+    // names/crowns are counter-scaled to stay readable (set by Game.render()).
+    const ls = this.labelScale || 1;
     ctx.save();
-    ctx.font = `800 13px ${FONT_UI}`;
+    ctx.font = `800 ${13 * ls}px ${FONT_UI}`;
     ctx.textAlign = 'center';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 * ls;
     ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
-    ctx.strokeText(this.name, this.x, this.y - r - 12);
+    ctx.strokeText(this.name, this.x, this.y - r - 12 * ls);
     ctx.fillStyle = this.isPlayer ? '#50F0FA' : '#f2f8ff';
-    ctx.fillText(this.name, this.x, this.y - r - 12);
+    ctx.fillText(this.name, this.x, this.y - r - 12 * ls);
+    if (this.isLeader) {
+      // v12: a gold crown over the current #1 (set by Game.updateHUD()) --
+      // everyone on screen can see who to hunt.
+      const cy = this.y - r - (34 + Math.sin(time * 3) * 2) * ls;
+      ctx.translate(this.x, cy);
+      ctx.scale(ls, ls);
+      ctx.fillStyle = '#EFCB63';
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#EFCB63';
+      ctx.beginPath();
+      ctx.moveTo(-11, 7); ctx.lineTo(-13, -5); ctx.lineTo(-5.5, 0); ctx.lineTo(0, -9);
+      ctx.lineTo(5.5, 0); ctx.lineTo(13, -5); ctx.lineTo(11, 7); ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(4, 16, 29, 0.9)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
     ctx.restore();
   }
 }
@@ -4725,10 +5520,12 @@ class Game {
     this.objects = [];
     this.bots = [];
     this.camera = { x: WORLD_W / 2, y: WORLD_H / 2 };
+    this.cityFloor = new CityFloor(); // v12 Neon City floor (chunk cache)
     // Golden Shot v8 game feel: floating score text, full-screen flash,
     // center banner (tier-ups, combo praise), hit-stop and Arena's
     // growth-driven camera zoom-out (1 = Campaign's fixed framing).
     this.floatTexts = [];
+    this.swallowGhosts = [];
     this.flashAlpha = 0;
     this.flashColor = '#ffffff';
     this.banner = null;
@@ -4874,6 +5671,7 @@ class Game {
 
   applyGfx(level) {
     this.gfxLevel = level;
+    document.body.dataset.gfx = level; // CSS-only effects (the in-round vignette) key off it
     const L = GFX_LEVELS[level];
     CONFIG.juice.maxParticles = L.particles;
     // Shadow blur off for the whole game canvas in one place (an own
@@ -6809,8 +7607,11 @@ class Game {
 
   /** Counts a number up inside `el` (result screens). */
   animateNumber(el, to, ms = 900, prefix = '') {
-    const start = performance.now();
+    // Timed from the first animation frame (not performance.now() at call
+    // time), so a stalled/hidden tab or a skewed clock can't leave it at 0.
+    let start = null;
     const step = (now) => {
+      if (start === null) start = now;
       const t = clamp((now - start) / ms, 0, 1);
       const eased = 1 - Math.pow(1 - t, 3);
       el.textContent = prefix + Math.round(to * eased);
@@ -7531,6 +8332,7 @@ class Game {
     this.objects = [];
     this.particles = [];
     this.ripples = [];
+    this.swallowGhosts = [];
     this.comboCount = 0;
     this.comboMultiplier = 1;
     this.comboTimer = 0;
@@ -7652,7 +8454,7 @@ class Game {
       if (e.type === 'landmark' && !e.unlocked) continue;
       if (tier < e.stats.minTier) continue;
       const d = dist(this.player.x, this.player.y, e.x, e.y);
-      if (d < this.player.radius * 0.85 + e.radius * 0.3) e.startEating();
+      if (d < this.player.radius * 0.85 + e.radius * 0.3) e.startEating(this.player);
     }
   }
 
@@ -7703,6 +8505,9 @@ class Game {
     if (newTier.id !== m.tierId) {
       m.tierId = newTier.id;
       this.ripples.push(new Ripple(this.player.x, this.player.y, newTier.color, this.player.radius, this.player.radius * 2.5, 0.5));
+      const sweep = new Ripple(this.player.x, this.player.y, newTier.color, this.player.radius * 1.2, Math.hypot(this.width, this.height) * 0.6, 0.75);
+      sweep.lineWidth = 6;
+      this.ripples.push(sweep);
       this.spawnParticles(this.player.x, this.player.y, newTier.color, 22, 1.5);
       this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY POZIOM WZROSTU!', newTier.color, 1.3, 2);
       this.sound.tierUp();
@@ -7896,6 +8701,7 @@ class Game {
           this.save.campaign.discoveredHoleEating = true;
           saveGame(this.save);
         }
+        this.addSwallowGhost(this.player, bot, bot.edgeColor);
         bot.radius = m.def.setup.botRadius || CONFIG.campaign.rivalRadius;
         const p = this.randomInCampaignBounds(150);
         bot.x = p.x; bot.y = p.y;
@@ -8176,18 +8982,19 @@ class Game {
 
   updateCampaignHUD() {
     const m = this.mission;
-    document.getElementById('missionTimerValue').textContent = Math.ceil(m.timeRemaining);
+    this.hudSet('missionTimerValue', 'text', formatClock(m.timeRemaining));
     document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', m.timeRemaining <= 10);
 
     // "CEL RUNDY" section: one icon+label+progress row per goal shape (two
     // for activateAndDevour, so activator progress and the landmark bite
     // each get their own line instead of one combined string+number).
-    document.getElementById('missionGoalItems').innerHTML = this.campaignGoalItems().map(it => `
+    // v12: only re-parsed when a row actually changed (was every frame).
+    this.hudSet('missionGoalItems', 'html', this.campaignGoalItems().map(it => `
       <div class="mission-goal-item${it.progress >= it.target ? ' done' : ''}">
         <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
         <span class="mission-goal-text">${it.label}</span>
         <span class="mission-goal-count">${it.display || `${Math.min(it.progress, it.target)}/${it.target}`}</span>
-      </div>`).join('');
+      </div>`).join(''));
 
     // Growth-tier "pasek ładowania": a compact bar + badge (e.g. "T1"),
     // not a label for whatever was just eaten -- title attr carries the
@@ -8197,14 +9004,47 @@ class Game {
     const idx = CAMPAIGN_TIERS.indexOf(tier);
     const next = CAMPAIGN_TIERS[idx + 1];
     const pct = next ? clamp((m.growthUnits - tier.minUnits) / (next.minUnits - tier.minUnits), 0, 1) * 100 : 100;
-    document.getElementById('missionTierBar').style.width = pct + '%';
-    const badge = document.getElementById('missionTierBadge');
-    badge.textContent = tier.id;
-    badge.style.color = tier.color;
-    badge.style.textShadow = `0 0 6px ${tier.color}`;
-    badge.title = `${tier.name}${next ? ` · Postęp do ${next.id}` : ' · Poziom maksymalny'}`;
+    this.setTierBadge(tier.id, tier.color, `${tier.name}${next ? ` · Postęp do ${next.id}` : ' · Poziom maksymalny'}`, pct);
+    this.setHudScore(this.player.score);
+  }
 
-    document.getElementById('missionScoreValue').textContent = this.player.score;
+  /** v12 HUD writes go through a small cache: a DOM write only when the
+   *  value really changed (the old HUD re-set every field, rebuilt the
+   *  standings list and re-parsed the goal rows 60 times a second). */
+  hudSet(id, prop, value) {
+    const cache = this.hudCache || (this.hudCache = {});
+    const k = id + '|' + prop;
+    if (cache[k] === value) return false;
+    cache[k] = value;
+    const el = document.getElementById(id);
+    if (!el) return false;
+    if (prop === 'text') el.textContent = value;
+    else if (prop === 'html') el.innerHTML = value;
+    else if (prop === 'title') el.title = value;
+    else el.style[prop] = value;
+    return true;
+  }
+
+  setTierBadge(label, color, title, pct) {
+    this.hudSet('missionTierBar', 'width', pct.toFixed(1) + '%');
+    this.hudSet('missionTierBadge', 'text', label);
+    this.hudSet('missionTierBadge', 'color', color);
+    this.hudSet('missionTierBadge', 'textShadow', `0 0 6px ${color}`);
+    this.hudSet('missionTierBadge', 'title', title);
+    this.hudSet('missionTierBar', 'background', color);
+    this.hudSet('missionTierBar', 'boxShadow', `0 0 8px ${color}`);
+  }
+
+  /** Score pill: write + a quick pop whenever the score goes up. */
+  setHudScore(score) {
+    const prev = this.hudCache && this.hudCache['missionScoreValue|text'];
+    if (!this.hudSet('missionScoreValue', 'text', String(score))) return;
+    if (prev == null || score <= Number(prev)) return;
+    const now = performance.now();
+    if (now - (this.lastScoreBump || 0) < 160) return;
+    this.lastScoreBump = now;
+    const pill = document.querySelector('.hud-pill-score');
+    if (pill && pill.animate) pill.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
   }
 
   updateCampaign(dt) {
@@ -8410,6 +9250,11 @@ class Game {
     const m = this.mission;
     const def = m.def;
     document.getElementById('missionResultTitle').textContent = success ? 'MISJA UKOŃCZONA' : 'CZAS MINĄŁ';
+    // v12 hero emblem: a ring + check drawn in the district's color (gold
+    // with a medal), or a pink clock when time ran out.
+    const hero = document.getElementById('missionHero');
+    hero.classList.toggle('fail', !success);
+    hero.style.setProperty('--mh-color', !success ? '#FF54AD' : (medalEarned ? '#EFCB63' : (DISTRICT_COLORS[def.district] || '#50F0FA')));
     this.sound.setIntensity(0);
     if (success) this.sound.fanfare(firstClear); else this.sound.fail();
     document.getElementById('missionResultEyebrow').textContent = `${missionCode(def)} · ${def.name}`;
@@ -8458,15 +9303,17 @@ class Game {
   renderCampaign(time) {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, this.width, this.height);
+    if (!this.floorCoversView()) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, this.width, this.height);
+    }
 
     let shakeX = 0, shakeY = 0;
     if (this.shake > 0) { shakeX = rand(-this.shake, this.shake); shakeY = rand(-this.shake, this.shake); }
 
     ctx.save();
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
-    this.drawCampaignGrid(ctx);
+    this.drawCampaignGrid(ctx, time);
     const goalTypes = this.campaignGoalEntityTypes();
     const playerTier = this.campaignTierIndex(this.campaignPlayerTier().id);
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
@@ -8486,7 +9333,8 @@ class Game {
 
     const holes = [...this.bots, this.player];
     holes.sort((a, b) => a.radius - b.radius);
-    for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
+    const swallowed = this.collectSwallowed();
+    for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
 
     for (const f of this.floatTexts) f.draw(ctx);
     ctx.restore();
@@ -8495,41 +9343,28 @@ class Game {
     this.drawJuiceScreen(ctx, this.mission ? this.mission.timeRemaining : undefined);
   }
 
-  /** Arena's own drawGrid() draws the grid lines out to the full
-   *  WORLD_W/WORLD_H and marks that true edge with a plain solid rect --
-   *  reaching it just means you've reached where the rendered map ends,
-   *  with nothing drawn beyond it. Reusing that directly for Campaign
-   *  would draw a full-world grid the player could then wander into past
-   *  CONFIG.campaign.bounds (see clampToCampaignBounds()'s doc comment for
-   *  why that clamp is back) with nothing there -- so grid lines and the
-   *  edge marker are instead clipped to CONFIG.campaign.bounds, same
-   *  style as Arena's drawGrid(), so nothing renders past the actual
-   *  clamp and the bounds box reads as the map, not a fence inside one. */
-  drawCampaignGrid(ctx) {
+  /** Campaign's floor: the same Neon City (CityFloor) painted in the
+   *  mission's district. Movement is clamped to CONFIG.campaign.bounds (see
+   *  clampToCampaignBounds()), so outside that box the city fades into the
+   *  dark and the pink neon edge marks where the board ends. */
+  drawCampaignGrid(ctx, time) {
     const b = CONFIG.campaign.bounds;
-    const startX = Math.max(b.minX, Math.floor((this.camera.x - this.width / 2) / GRID_SIZE) * GRID_SIZE);
-    const endX = Math.min(b.maxX, this.camera.x + this.width / 2);
-    const startY = Math.max(b.minY, Math.floor((this.camera.y - this.height / 2) / GRID_SIZE) * GRID_SIZE);
-    const endY = Math.min(b.maxY, this.camera.y + this.height / 2);
-
+    const theme = this.campaignTheme();
+    const view = this.floorView();
+    this.cityFloor.draw(ctx, view, theme);
+    if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, theme, b);
+    const L = view.cx - view.hw - 40, T = view.cy - view.hh - 40, Rt = view.cx + view.hw + 40, Bt = view.cy + view.hh + 40;
+    const midL = Math.max(L, b.minX), midR = Math.min(Rt, b.maxX);
     ctx.save();
-    ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = startX; x <= endX; x += GRID_SIZE) {
-      ctx.moveTo(x, Math.max(b.minY, this.camera.y - this.height / 2));
-      ctx.lineTo(x, Math.min(b.maxY, this.camera.y + this.height / 2));
-    }
-    for (let y = startY; y <= endY; y += GRID_SIZE) {
-      ctx.moveTo(Math.max(b.minX, this.camera.x - this.width / 2), y);
-      ctx.lineTo(Math.min(b.maxX, this.camera.x + this.width / 2), y);
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 84, 173, 0.5)';
-    ctx.lineWidth = 3;
+    ctx.fillStyle = 'rgba(2, 6, 12, 0.8)';
+    if (L < b.minX) ctx.fillRect(L, T, b.minX - L, Bt - T);
+    if (Rt > b.maxX) ctx.fillRect(b.maxX, T, Rt - b.maxX, Bt - T);
+    if (T < b.minY && midR > midL) ctx.fillRect(midL, T, midR - midL, b.minY - T);
+    if (Bt > b.maxY && midR > midL) ctx.fillRect(midL, b.maxY, midR - midL, Bt - b.maxY);
+    ctx.strokeStyle = 'rgba(255, 84, 173, 0.65)';
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = '#FF54AD';
+    ctx.lineWidth = 4;
     ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
     ctx.restore();
   }
@@ -8562,11 +9397,11 @@ class Game {
 
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.drawImage(this.cityFloor.minimap(Math.round(size * this.dpr), this.campaignTheme(), b), px, py, size, size);
     ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
     ctx.lineWidth = 1;
-    ctx.fillRect(px, py, size, size);
     ctx.strokeRect(px, py, size, size);
+    this.drawMinimapLabel(ctx, px, py, size, this.campaignTheme());
 
     // Every live entity gets a dot, not just landmark/node/pylon -- the
     // minimap used to hide fragments/props/vehicles/capsules/markers/gates
@@ -8650,6 +9485,7 @@ class Game {
     this.particles = [];
     this.ripples = [];
     this.floatTexts = [];
+    this.swallowGhosts = [];
     this.banner = null;
     this.flashAlpha = 0;
     this.hitStopUntil = 0;
@@ -9247,6 +10083,8 @@ class Game {
 
   /** Per-frame upkeep for the v8 juice layer, shared by Arena and Campaign. */
   updateJuice(dt) {
+    for (const g of this.swallowGhosts) g.t += dt / 0.45;
+    if (this.swallowGhosts.length) this.swallowGhosts = this.swallowGhosts.filter(g => g.t < 1);
     this.floatTexts.forEach(f => f.update(dt));
     this.floatTexts = this.floatTexts.filter(f => !f.dead);
     if (this.flashAlpha > 0) this.flashAlpha = Math.max(0, this.flashAlpha - dt * 2.4);
@@ -9578,6 +10416,7 @@ class Game {
             this.vibrate([30, 40, 30]);
           }
           const phaseEdgeBonus = (b.isPlayer && this.activeMutations.has('phase_edge')) ? CONFIG.evolution.phaseEdgeInvulnBonusMs : 0;
+          this.addSwallowGhost(a, b, b.isPlayer ? '#50F0FA' : b.edgeColor);
           b.shrinkAndRespawn(phaseEdgeBonus);
         }
       }
@@ -9617,6 +10456,10 @@ class Game {
       // radius crossings via CONFIG.evolution.triggerRadii, checked
       // separately in checkEvolutionTriggers() below.
       this.ripples.push(new Ripple(this.player.x, this.player.y, current.color, this.player.radius, this.player.radius * 2.5, 0.5));
+      // v12: a shockwave that sweeps across the whole city floor on screen.
+      const sweep = new Ripple(this.player.x, this.player.y, current.color, this.player.radius * 1.2, Math.hypot(this.viewHalfW, this.viewHalfH) * 1.1, 0.75);
+      sweep.lineWidth = 6 / this.zoom;
+      this.ripples.push(sweep);
       this.spawnParticles(this.player.x, this.player.y, current.color, 22, 1.5);
       this.showBanner(`${current.label}!`, 'NOWE OBIEKTY DO POCHŁONIĘCIA', current.color, 1.3, 2);
       this.sound.tierUp();
@@ -9838,7 +10681,7 @@ class Game {
     }
     for (const bot of this.bots) {
       bot.tempSpeedMult = (bot.baseSpeedMult || 1) * (late ? 1 + D.lateRoundBotSpeedBonus : 1);
-      if (this.botTuning.passive > 0) bot.radius = radiusForUnits(unitsForRadius(bot.radius) + this.botTuning.passive * dt);
+      if (this.botTuning.passive > 0) bot.radius = Math.min(CONFIG.hole.maxRadius, radiusForUnits(unitsForRadius(bot.radius) + this.botTuning.passive * dt));
       bot.update(dt, this);
     }
 
@@ -9897,7 +10740,9 @@ class Game {
     // signature "the city keeps getting smaller" feel).
     const zc = CONFIG.juice.zoom;
     const growT = clamp((this.player.radius - zc.startRadius) / (zc.endRadius - zc.startRadius), 0, 1);
-    const targetZoom = lerp(zc.max, zc.min, Math.sqrt(growT));
+    let targetZoom = lerp(zc.max, zc.min, Math.sqrt(growT));
+    targetZoom = Math.min(targetZoom, zc.holeScreenFrac * Math.min(this.width, this.height) / this.player.radius);
+    targetZoom = Math.max(targetZoom, zc.floor, this.width / WORLD_W, this.height / WORLD_H);
     this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * zc.lerp);
     const hw = this.viewHalfW, hh = this.viewHalfH;
     this.camera.x = clamp(this.player.x, hw, WORLD_W - hw);
@@ -9951,8 +10796,8 @@ class Game {
    *  panel on the right is Arena-specific, in place of Campaign's CEL RUNDY
    *  box, since Arena rounds have no mission goal to show there. */
   updateHUD() {
-    document.getElementById('missionTimerValue').textContent = Math.ceil(this.timeRemaining);
-    document.getElementById('missionScoreValue').textContent = this.player.score;
+    this.hudSet('missionTimerValue', 'text', formatClock(this.timeRemaining));
+    this.setHudScore(this.player.score);
 
     const tiers = CONFIG.sizeTiers;
     const tierIdx = tiers.findIndex(t => t.id === this.lastSizeTierId);
@@ -9967,16 +10812,12 @@ class Game {
     const tierPct = next
       ? clamp((this.player.radius - floor) / (next.minRadius - floor), 0, 1) * 100
       : 100;
-    document.getElementById('missionTierBar').style.width = tierPct + '%';
-    const badge = document.getElementById('missionTierBadge');
-    badge.textContent = tier.shortId;
-    badge.style.color = tier.color;
-    badge.style.textShadow = `0 0 6px ${tier.color}`;
-    badge.title = `${tier.label}${next ? ` · Postęp do ${next.shortId}` : ' · Poziom maksymalny'}`;
+    this.setTierBadge(tier.shortId, tier.color, `${tier.label}${next ? ` · Postęp do ${next.shortId}` : ' · Poziom maksymalny'}`, tierPct);
 
     const ranked = rankHoles([this.player, ...this.bots]);
+    ranked.forEach((h, i) => { h.isLeader = i === 0 && h.score > 0; });
     const place = ranked.indexOf(this.player) + 1;
-    document.getElementById('rankValue').textContent = `#${place}/${ranked.length}`;
+    this.hudSet('rankValue', 'text', `#${place}/${ranked.length}`);
     // Golden Shot v8: celebrate climbing into the podium mid-round.
     if (this.lastPlace !== null && place < this.lastPlace && place <= 3 && this.timeRemaining < ROUND_TIME - 2) {
       this.showBanner(place === 1 ? 'PROWADZISZ!' : `AWANS NA #${place}`, null, '#EFCB63', 0.9, 1);
@@ -9985,60 +10826,54 @@ class Game {
     this.lastPlace = place;
     document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', this.timeRemaining <= 10);
 
-    const list = document.getElementById('leaderboardList');
-    list.innerHTML = '';
-    ranked.forEach((h, i) => {
-      const li = document.createElement('li');
-      if (h.isPlayer) li.classList.add('is-player');
-      li.innerHTML = `<span class="lb-rank">#${i + 1}</span><span class="lb-name">${escapeHtml(h.name)}</span><span class="lb-size">${h.score} pkt</span>`;
-      list.appendChild(li);
-    });
+    // v12 compact standings: the podium plus your own row (with a gap
+    // marker when you're below it) -- less of the play field covered.
+    const row = (h, i) => `<li class="${h.isPlayer ? 'is-player' : ''}${i === 0 ? ' lb-first' : ''}"><span class="lb-rank">${i === 0 ? '<svg class="lb-crown" viewBox="0 0 24 24" aria-label="#1"><path d="M3 19h18l-1.6-11-5.2 4.2L12 4.5l-2.2 7.7L4.6 8z" fill="currentColor"/></svg>' : '#' + (i + 1)}</span><span class="lb-name">${escapeHtml(h.name)}</span><span class="lb-size">${h.score}</span></li>`;
+    let html = ranked.slice(0, 3).map(row).join('');
+    if (place > 3) html += (place > 4 ? '<li class="lb-gap" aria-hidden="true">···</li>' : '') + row(this.player, place - 1);
+    this.hudSet('leaderboardList', 'html', html);
   }
 
   /* ---------- rendering ---------- */
 
-  drawGrid(ctx) {
-    const hw = this.viewHalfW, hh = this.viewHalfH;
-    const startX = Math.floor((this.camera.x - hw) / GRID_SIZE) * GRID_SIZE;
-    const endX = this.camera.x + hw;
-    const startY = Math.floor((this.camera.y - hh) / GRID_SIZE) * GRID_SIZE;
-    const endY = this.camera.y + hh;
-
+  /** v12: the Neon City floor (see CityFloor) under every Arena round,
+   *  the night traffic on its roads and the pink neon edge of the world. */
+  drawCityFloor(ctx, time) {
+    const view = this.floorView();
+    this.cityFloor.draw(ctx, view, null);
+    if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, null, null);
     ctx.save();
-    ctx.strokeStyle = 'rgba(80, 240, 250, 0.08)';
-    ctx.lineWidth = 1 / this.zoom;
-    ctx.beginPath();
-    for (let x = startX; x <= endX; x += GRID_SIZE) {
-      ctx.moveTo(x, Math.max(0, this.camera.y - hh));
-      ctx.lineTo(x, Math.min(WORLD_H, this.camera.y + hh));
-    }
-    for (let y = startY; y <= endY; y += GRID_SIZE) {
-      ctx.moveTo(Math.max(0, this.camera.x - hw), y);
-      ctx.lineTo(Math.min(WORLD_W, this.camera.x + hw), y);
-    }
-    ctx.stroke();
-    // Neon pulse dots on grid intersections near the player -- a cheap
-    // "living city floor" that reacts to the hole passing over it.
-    const pulse = performance.now() / 600;
-    for (let x = startX; x <= endX; x += GRID_SIZE) {
-      for (let y = startY; y <= endY; y += GRID_SIZE) {
-        const d = dist(x, y, this.player.x, this.player.y);
-        const near = clamp(1 - d / (this.player.radius * 6 + 160), 0, 1);
-        const a = 0.08 + 0.1 * Math.sin(pulse + x * 0.01 + y * 0.013) + near * 0.5;
-        if (a <= 0.05) continue;
-        ctx.globalAlpha = clamp(a, 0, 1);
-        ctx.fillStyle = near > 0.2 ? '#FF54AD' : '#50F0FA';
-        ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
-      }
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 84, 173, 0.5)';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255, 84, 173, 0.65)';
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = '#FF54AD';
+    ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, WORLD_W, WORLD_H);
     ctx.restore();
+  }
+
+  /** The camera's world-space view for CityFloor (both modes). */
+  floorView() {
+    return { cx: this.camera.x, cy: this.camera.y, hw: this.viewHalfW, hh: this.viewHalfH, zoom: this.zoom, dpr: this.dpr, gfx: this.gfxLevel };
+  }
+
+  /** Campaign paints the whole board in its mission's district. */
+  campaignTheme() {
+    const d = this.mission && campaignDistrictOf(this.mission.def.id);
+    return (d && d.id) || 'plac';
+  }
+
+  /** District name over the minimap, in the district's color. */
+  drawMinimapLabel(ctx, px, py, size, districtId) {
+    const d = DISTRICTS.find(x => x.id === districtId);
+    if (!d) return;
+    ctx.font = `800 10px ${FONT_UI}`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(2, 8, 16, 0.85)';
+    ctx.strokeText(d.name.toUpperCase(), px + size, py - 5);
+    ctx.fillStyle = DISTRICT_COLORS[districtId] || '#50F0FA';
+    ctx.fillText(d.name.toUpperCase(), px + size, py - 5);
   }
 
   drawMinimap(ctx) {
@@ -10050,11 +10885,11 @@ class Game {
 
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.drawImage(this.cityFloor.minimap(Math.round(size * this.dpr), null, { minX: 0, minY: 0, maxX: WORLD_W, maxY: WORLD_H }), px, py, size, size);
     ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
     ctx.lineWidth = 1;
-    ctx.fillRect(px, py, size, size);
     ctx.strokeRect(px, py, size, size);
+    this.drawMinimapLabel(ctx, px, py, size, cityDistrictAt(this.player.x, this.player.y));
 
     // Every object type gets a dot, not just the biggest ones -- previously
     // the minimap only showed large (green) objects, which read as "the map
@@ -10158,11 +10993,22 @@ class Game {
     ctx.restore();
   }
 
+  /** True when the opaque city floor fills the whole screen this frame
+   *  (view + max shake inside the world), so the full-screen clear can be
+   *  skipped -- one less full-screen fill per frame (v12). */
+  floorCoversView() {
+    const m = 14 / this.zoom;
+    return this.camera.x - this.viewHalfW - m >= 0 && this.camera.x + this.viewHalfW + m <= WORLD_W
+      && this.camera.y - this.viewHalfH - m >= 0 && this.camera.y + this.viewHalfH + m <= WORLD_H;
+  }
+
   render(time) {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, this.width, this.height);
+    if (!this.floorCoversView()) {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, this.width, this.height);
+    }
 
     let shakeX = 0, shakeY = 0;
     if (this.shake > 0) {
@@ -10175,7 +11021,7 @@ class Game {
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camera.x, -this.camera.y);
 
-    this.drawGrid(ctx);
+    this.drawCityFloor(ctx, time);
     for (const obj of this.objects) {
       if (this.isInView(obj.x, obj.y, obj.radius * 2)) obj.draw(ctx, this.canEatHighlight(obj));
     }
@@ -10188,7 +11034,12 @@ class Game {
 
     const holes = [...this.bots, this.player];
     holes.sort((a, b) => a.radius - b.radius);
-    for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time);
+    const swallowed = this.collectSwallowed();
+    const labelScale = clamp(1 / this.zoom, 1, 2.6);
+    for (const h of holes) {
+      h.labelScale = labelScale;
+      if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
+    }
     if (this.frenzyActive) {
       ctx.save();
       ctx.translate(this.player.x, this.player.y);
@@ -10204,7 +11055,7 @@ class Game {
       ctx.restore();
     }
 
-    for (const f of this.floatTexts) f.draw(ctx);
+    for (const f of this.floatTexts) f.draw(ctx, labelScale);
 
     ctx.restore();
 
@@ -10222,6 +11073,64 @@ class Game {
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.restore();
     }
+  }
+
+  /** v12: eater -> [things it is swallowing this frame] (objects or
+   *  campaign entities mid-eat, plus swallowed rival "ghosts"). */
+  collectSwallowed() {
+    const map = new Map();
+    const add = (h, it) => { const l = map.get(h); if (l) l.push(it); else map.set(h, [it]); };
+    const list = this.mode === 'campaign' ? this.campaignEntities : this.objects;
+    for (const o of list) if (o.eating && o.eater && o.consumed !== true) add(o.eater, o);
+    for (const g of this.swallowGhosts) add(g.eater, g);
+    return map;
+  }
+
+  swallowPass(h, swallowed) {
+    const items = swallowed.get(h);
+    return items ? (ctx) => this.drawSwallowed(ctx, h, items) : null;
+  }
+
+  /** Draws what `h` is swallowing, inside its clipped vortex (see
+   *  swallowPose()): objects spin down and shrink; a swallowed rival hole
+   *  is a collapsing ring in its color. */
+  drawSwallowed(ctx, h, items) {
+    const t = performance.now() / 1000;
+    for (const o of items) {
+      const k = o.ghost ? o.t : o.eatT;
+      const p = swallowPose(o, h, k);
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.scale(p.scale, p.scale);
+      if (o.ghost) {
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(0, 0, o.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = o.color;
+        ctx.lineWidth = Math.max(2, o.radius * 0.16);
+        ctx.shadowBlur = 14;
+        ctx.shadowColor = o.color;
+        ctx.stroke();
+      } else if (o instanceof WorldObject) {
+        drawObjectArt(ctx, o.subtype, o.color, o.radius, t, artSeed(o.swFromX || 0, o.swFromY || 0), { live: false });
+      } else {
+        const art = o.artKind();
+        if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[o.stats.minTier], o.radius, t, 0, { live: false });
+      }
+      ctx.restore();
+    }
+  }
+
+  /** A rival hole `b` was just eaten by `a`: its ring collapses into a's
+   *  vortex over ~0.45 s (b itself respawns immediately). */
+  addSwallowGhost(a, b, color) {
+    if (this.swallowGhosts.length >= 8) this.swallowGhosts.shift();
+    const g = { ghost: true, eater: a, radius: b.radius, color, t: 0 };
+    beginSwallow(g, a);
+    g.swFromX = b.x - a.x;
+    g.swFromY = b.y - a.y;
+    this.swallowGhosts.push(g);
   }
 
   /** Crown marker over the Bounty Core mutation's marked rival (GDD 4.1). */
