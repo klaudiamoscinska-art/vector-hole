@@ -4,6 +4,14 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v13.3 — dźwięk na iPhonie, cd.
+v13.2 nie wystarczyło w aplikacji z ekranu głównego ani w Chrome na iOS
+(WKWebView bez `navigator.audioSession`): przełącznik „cicho” dalej wyciszał
+Web Audio, choć silnik raportował „działa”. Teraz na iOS w geście startuje
+ciche, zapętlone `<audio>` (WAV zbudowany w pamięci), które przełącza
+stronę w tryb odtwarzania mediów. W Profilu doszedł „Test dźwięku” z
+linijką diagnostyczną (stan silnika, tryb iOS).
+
 ## v13.2 — dźwięk na iPhonie
 Na iPhonie dźwięk w przeglądarce nie grał albo znikał (np. po samouczku):
 iOS wycisza Web Audio przełącznikiem „cicho”, przełącza kontekst w stan

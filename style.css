@@ -2211,6 +2211,8 @@ body.touch-input #gameCanvas {
 
 /* Destructive account action, visually separated from the normal profile
    actions above it so it isn't mistaken for one of them. */
+.sound-status { margin: -4px 0 6px; font-size: 11px; text-align: left; opacity: 0.8; }
+
 /* v13.1: the last button must clear the iPhone home indicator when the
    profile is scrolled to the end. */
 #profileScreen > .screen-inner {

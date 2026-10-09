@@ -93,6 +93,35 @@ export async function runFeatureChecks(url) {
     await g.browser.close();
   }
 
+  // --- Audio on iOS WebKit without navigator.audioSession (v13.3) ----------
+  // Chrome/home-screen apps on iOS are WKWebView: no audioSession, so a
+  // silent looping <audio> started in the tap must take the page out of
+  // the ringer-switch-muted "ambient" category. Profile shows a status line.
+  {
+    const ios = () => { Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0 Mobile/15E148 Safari/604.1' }); };
+    const g = await veteranPage(url, { viewport: { width: 390, height: 844 }, initScript: ios });
+    await g.page.mouse.click(200, 400);
+    await g.page.waitForTimeout(400);
+    const u = await g.page.evaluate(async () => {
+      const s = window.game.sound;
+      const el = s.unmuteEl;
+      const r = { ios: SoundEngine.isIOS(), hasSession: !!navigator.audioSession, el: !!el, loop: el && el.loop, playing: el && !el.paused, ctx: s.ctx && s.ctx.state };
+      s.suspend(); r.pausedOnHold = el && el.paused; s.resume();
+      await new Promise(res => setTimeout(res, 200));
+      r.playingAgain = el && !el.paused;
+      window.game.openProfileScreen();
+      document.getElementById('btnSoundTest').click();
+      await new Promise(res => setTimeout(res, 300));
+      r.status = document.getElementById('soundStatus').textContent;
+      return r;
+    });
+    results.push(report('audio (iOS WebKit, no audioSession): silent media loop unmutes Web Audio after a tap', u.ios && !u.hasSession && u.el && u.loop && u.playing && u.ctx === 'running', JSON.stringify(u)));
+    results.push(report('audio: the silent loop pauses with the audio hold and comes back', u.pausedOnHold && u.playingAgain));
+    results.push(report('audio: profile sound test plays and shows a status line', /Silnik: działa/.test(u.status), u.status));
+    results.push(report('audio (iOS): no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+    await g.browser.close();
+  }
+
   // --- Monetization: demo provider -------------------------------------------
   {
     const g = await veteranPage(url, { initScript: fastAds }, { runsPlayed: 10 });
