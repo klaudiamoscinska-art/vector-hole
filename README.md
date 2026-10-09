@@ -13,6 +13,8 @@ instalacji — na telefonie i komputerze.
 > wielkości i zjadaj rywali, zanim oni zjedzą Ciebie. Złap Złoty Rdzeń, by
 > wpaść w SZAŁ — podwójne punkty i obiekty o poziom większe!
 >
+> - **Żywe neonowe miasto** — 6 dzielnic z ulicami, placami, portem i dachami;
+>   wszystko, co zjesz, z wirem wpada w głąb dziury
 > - **Rundy 2:00** — szybka akcja, combo, finałowy Overdrive
 > - **61 misji kampanii** w 6 dzielnicach z bossami-landmarkami
 > - **Wyzwanie dnia** — ta sama mapa dla wszystkich, codziennie nowa
@@ -39,7 +41,8 @@ Push na `main` publikuje grę na GitHub Pages (`.github/workflows/deploy-pages.y
 node qa/run-all.mjs
 ```
 
-Szczegóły: `qa/README.md`. Wymaga zainstalowanego Playwrighta.
+Szczegóły: `qa/README.md`. Wymaga zainstalowanego Playwrighta. `node qa/screens.mjs`
+zapisuje 16 zrzutów ekranu telefonu do `qa/out/screens/` (przegląd wizualny).
 
 ## Lista kontrolna przed premierą
 
@@ -61,4 +64,4 @@ Szczegóły: `qa/README.md`. Wymaga zainstalowanego Playwrighta.
 4. Dodaj grafikę `og:image` (1200×630) do udostępnień — wymaga czwartego
    pliku, patrz `docs/VECTRE_V11_PLAN.md`.
 
-Pełny changelog i znane luki: `docs/VECTRE_V11_PLAN.md`.
+Pełny changelog i znane luki: `docs/VECTRE_V11_PLAN.md` (rynek) i `docs/VECTRE_V12_PLAN.md` (grafika/UX).

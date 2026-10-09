@@ -39,9 +39,9 @@ export function serve() {
 /** Launch Chromium + a page that records console errors and page errors.
  *  External requests (Google Fonts etc.) are blocked so runs are offline
  *  and deterministic; `allowExternal` lets the network test opt back in. */
-export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null } = {}) {
+export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null, deviceScaleFactor = 2 } = {}) {
   const browser = await chromium.launch();
-  const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile, deviceScaleFactor: 2 });
+  const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile, deviceScaleFactor });
   const errors = [];
   const external = [];
   if (!allowExternal) {
@@ -121,12 +121,18 @@ window.__qaPlayArena = function (opts) {
     }
     if (fx || fy) { const m = Math.hypot(fx, fy); g.keyDir = { x: fx / m, y: fy / m }; return; }
     let best = null, bestScore = -1;
+    // Like a human, skip targets the hole can't physically reach: its center
+    // is clamped radius-from-the-wall, so a small rival (or a shockwave-
+    // pushed object) tucked into a wall/corner may sit outside its eat reach.
+    const reachable = (x, y, reach) => Math.hypot(x - clamp(x, p.radius, WORLD_W - p.radius), y - clamp(y, p.radius, WORLD_H - p.radius)) < reach;
     for (const b of g.bots) {
       const d = Math.hypot(b.x - p.x, b.y - p.y);
+      if (!reachable(b.x, b.y, p.radius * 0.7)) continue;
       if (p.radius > b.radius * 1.2 && !b.invulnerable && d < 500) { const s = 40 / (d + 30); if (s > bestScore) { bestScore = s; best = b; } }
     }
     for (const o of g.objects) {
-      if (o.consumed || o.removed || !g.holeCanEat(p, o)) continue;
+      if (o.consumed || o.removed || o.eating || !g.holeCanEat(p, o)) continue;
+      if (!reachable(o.x, o.y, p.radius * 0.8)) continue;
       const d = Math.hypot(o.x - p.x, o.y - p.y);
       const s = (o.value + 2) / (d + 40);
       if (s > bestScore) { bestScore = s; best = o; }
@@ -166,5 +172,54 @@ window.__qaPlayArena = function (opts) {
     difficulty: +g.difficultyT.toFixed(2), runs: g.save.stats.runsPlayed, state: g.state,
     level: g.save.player.level, coreLevel: g.save.hub.coreLevel
   };
+};
+`;
+
+/** Partial-round driver for screenshots/visual checks (v12): advances the
+ *  current Arena round `frames` frames in virtual time with a simple greedy
+ *  steer, then renders one frame. __qaSwallowScene() stages a mid-swallow
+ *  moment (objects + a smaller rival tipping into the player's vortex). */
+export const QA_TICK = `
+window.__qaTick = function (frames, renderEvery) {
+  const g = window.game, p = g.player, dt = 1 / 30;
+  const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
+  window.__vnow = Math.max(window.__vnow || 0, realNow());
+  performance.now = () => window.__vnow;
+  for (let f = 0; f < frames && g.state === GameState.PLAYING; f++) {
+    if (g.evolutionPending) { g.skipEvolutionOffer(); continue; }
+    let best = null, bs = -1;
+    for (const o of g.objects) { if (o.eating || !g.holeCanEat(p, o)) continue; const d = Math.hypot(o.x - p.x, o.y - p.y); const s = (o.value + 2) / (d + 40); if (s > bs) { bs = s; best = o; } }
+    if (best) { const m = Math.hypot(best.x - p.x, best.y - p.y) || 1; g.keyDir = { x: (best.x - p.x) / m, y: (best.y - p.y) / m }; }
+    window.__vnow += dt * 1000;
+    g.update(dt);
+    // renderEvery: also draw every Nth frame, so render caches (city-floor
+    // chunks, sprites) stay as warm as in real play.
+    if (renderEvery && f % renderEvery === 0 && g.state === GameState.PLAYING) g.render(window.__vnow / 1000);
+  }
+  g.keyDir = { x: 0, y: 0 };
+  g.render(window.__vnow / 1000);
+  performance.now = realNow;
+  return { radius: Math.round(p.radius), zoom: +g.zoom.toFixed(2), state: g.state };
+};
+window.__qaSwallowScene = function () {
+  const g = window.game, dt = 1 / 60;
+  const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
+  window.__vnow = Math.max(window.__vnow || 0, realNow());
+  performance.now = () => window.__vnow;
+  g.checkEvolutionTriggers = () => {};
+  g.startRound({ seed: 99 }); cancelAnimationFrame(g.rafId); g.running = false;
+  const p = g.player;
+  g.banner = null; g.bannerQueue = [];
+  p.radius = 70; g.zoom = 1;
+  for (let k = 0; k < 4; k++) { window.__vnow += dt * 1000; g.update(dt); }
+  g.banner = null; g.bannerQueue = [];
+  g.objects.filter(o => !o.eating && g.holeCanEat(p, o)).slice(0, 5).forEach((o, i) => { const a = i * 1.25; o.x = p.x + Math.cos(a) * p.radius * 0.8; o.y = p.y + Math.sin(a) * p.radius * 0.8; });
+  const b = g.bots[0]; b.radius = 30; b.invulnerableUntil = 0; b.x = p.x + 40; b.y = p.y - 10;
+  for (let f = 0; f < 8; f++) { window.__vnow += dt * 1000; g.update(dt); }
+  g.banner = null;
+  g.render(window.__vnow / 1000);
+  performance.now = realNow;
+  delete g.checkEvolutionTriggers;
+  return { eating: g.objects.filter(o => o.eating && o.eater === p).length, ghosts: g.swallowGhosts.length };
 };
 `;

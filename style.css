@@ -4460,3 +4460,164 @@ body.touch-input #gameCanvas {
 body:has(.overlay-screen:not(.hidden)) .consent-bar,
 body:has(.unlock-overlay:not(.hidden)) .consent-bar,
 body:has(#adOverlay:not(.hidden)) .consent-bar { display: none; }
+
+/* ===================== Golden Shot v12 „VISUAL” ===================== */
+
+/* In-round HUD: glassier panels over the new Neon City floor. */
+#hud .hud-panel {
+  background: linear-gradient(180deg, rgba(10, 32, 50, 0.86), rgba(5, 16, 28, 0.8));
+  border-color: rgba(80, 240, 250, 0.26);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+.hud-icon-btn { background: linear-gradient(180deg, rgba(10, 32, 50, 0.9), rgba(5, 16, 28, 0.85)); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
+.hud-pill-score { transform-origin: 70% 50%; }
+.hud-tier-bar .tier-progress-track { height: 5px; background: rgba(255, 255, 255, 0.08); }
+
+/* Compact standings: podium + your row. */
+#hud-topright { padding: 8px 10px; }
+#leaderboardList { gap: 3px; }
+#leaderboardList li { font-size: 12px; padding: 3px 7px; gap: 6px; }
+#leaderboardList li .lb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+#leaderboardList li .lb-rank { flex: none; min-width: 18px; margin-right: 0; }
+#leaderboardList li.lb-first .lb-rank { color: var(--nc-gold); opacity: 1; text-shadow: 0 0 8px rgba(239, 203, 99, 0.7); }
+#leaderboardList li.lb-gap { justify-content: center; background: none; padding: 0; font-size: 10px; line-height: 8px; opacity: 0.45; letter-spacing: 3px; }
+@media (max-width: 600px) {
+  #leaderboardList li { font-size: 11px; padding: 2px 6px; }
+}
+
+/* Start hint: left of the minimap, never on top of it. */
+#mobile-hint {
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  right: calc(162px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: none;
+  width: auto;
+  max-width: none;
+  margin: 0 auto;
+  line-height: 1.3;
+}
+#leaderboardList .lb-crown { width: 13px; height: 13px; vertical-align: -2px; }
+
+/* Screen entrance: the content column rises in (backwards fill only, so no
+   transform lingers on .screen-inner after the animation). */
+.screen:not(.overlay-screen) > .screen-inner { animation: v12-rise 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+@keyframes v12-rise { from { opacity: 0; transform: translateY(14px); } }
+
+/* Settings: full-width rows, label left, pill switch right. */
+.settings-block { width: 100%; box-sizing: border-box; text-align: left; padding: 12px 14px; background: linear-gradient(180deg, rgba(10, 32, 50, 0.7), rgba(5, 16, 28, 0.6)); border-color: rgba(80, 240, 250, 0.16); }
+.settings-block .settings-title { margin-bottom: 6px; }
+.settings-block .control-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--nc-border); }
+.settings-block .settings-title + .control-row { border-top: 0; }
+.settings-block .control-label { font-size: 14px; letter-spacing: 0; color: var(--nc-text); }
+.settings-block .control-toggle { flex: none; gap: 0; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+.settings-block .toggle-btn { flex: none; min-width: 58px; padding: 7px 12px; font-size: 12px; font-weight: 700; border: 0; border-radius: 999px; background: none; color: var(--nc-text-dim); box-shadow: none; transition: background 0.15s, color 0.15s; }
+.settings-block .toggle-btn.active { background: var(--nc-cta-gradient); color: #04101D; box-shadow: 0 0 12px rgba(80, 240, 250, 0.35); }
+.settings-block .settings-links { padding-top: 8px; border-top: 1px solid var(--nc-border); }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen:not(.overlay-screen) > .screen-inner { animation: none; }
+}
+
+/* Results: sticky next-action bar (play again + x2 coins + challenge),
+   full-bleed and opaque so nothing scrolls visibly behind or below it. */
+.screen > .screen-inner.result-anim { animation: none; }
+.result-actions {
+  --bleed: 28px;
+  position: sticky;
+  /* sticky offsets count from the content edge, so reach through the
+     column's bottom padding (else rows scroll visibly below the bar) */
+  bottom: calc(-1 * var(--inner-pad-bottom, 32px));
+  order: 99;
+  z-index: 3;
+  align-self: stretch;
+  width: auto;
+  margin: 0 calc(-1 * var(--bleed)) calc(-1 * var(--inner-pad-bottom, 32px));
+  padding: 16px var(--bleed) calc(12px + var(--inner-pad-bottom, 32px) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(7, 25, 40, 0) 0, #071928 16px);
+}
+.result-actions > * { width: 100%; max-width: 440px; }
+.result-actions .btn { margin: 0; }
+.result-actions-row { display: flex; gap: 8px; }
+.result-actions-row .btn { flex: 1 1 0; min-width: 0; margin: 0; padding: 11px 8px; font-size: 12px; line-height: 1.15; white-space: normal; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.result-actions-row .btn svg { width: 16px; height: 16px; flex: none; }
+/* The bar is the column's last row ("Wróć do Miasta" sits just above it). */
+@media (max-width: 600px) { .result-actions { --bleed: 16px; --inner-pad-bottom: 22px; } }
+/* Short screens: one compact row (primary + two small buttons). */
+@media (max-height: 700px) {
+  .result-actions { flex-direction: row; align-items: stretch; padding-top: 12px; }
+  .result-actions > .btn { flex: 1.25 1 0; font-size: 14px; padding: 10px 8px; }
+  .result-actions-row { flex: 2 1 0; }
+  .result-actions-row .btn { font-size: 10.5px; padding: 8px 5px; }
+}
+/* Confetti stays above the action bar instead of raining over its labels. */
+#resultConfetti { bottom: 160px; }
+@media (max-height: 700px) { #resultConfetti { bottom: 90px; } }
+.result-actions .btn { max-width: none; }
+
+/* In-round vignette (v12): a static CSS layer under the HUD panels instead
+   of a full-screen canvas blit every frame; off on the lowest quality level. */
+#hud::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 78% 72% at 50% 50%, rgba(1, 4, 10, 0) 58%, rgba(1, 4, 10, 0.4) 100%); }
+body[data-gfx="0"] #hud::before { display: none; }
+
+/* Mission result hero emblem: ring + check (or clock) drawn on. */
+.mission-hero { --mh-color: var(--nc-cyan); width: 88px; height: 88px; margin: 6px auto -2px; filter: drop-shadow(0 0 14px var(--mh-color)); animation: v12-hero-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+.mission-hero svg { width: 100%; height: 100%; fill: none; stroke: var(--mh-color); stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.mission-hero .mh-ring { stroke-dasharray: 170; stroke-dashoffset: 170; animation: v12-draw 0.6s 0.12s ease-out forwards; }
+.mission-hero .mh-check, .mission-hero .mh-clock { stroke-dasharray: 40; stroke-dashoffset: 40; animation: v12-draw 0.35s 0.6s ease-out forwards; }
+.mission-hero.fail .mh-check, .mission-hero:not(.fail) .mh-clock { display: none; }
+#missionResultScreen .result-score { font-size: 15px; letter-spacing: 1px; color: var(--nc-text-dim); }
+#missionResultScreen .result-score span { display: block; font-family: var(--font-display); font-size: 40px; color: var(--nc-text); text-shadow: 0 0 18px rgba(80, 240, 250, 0.45); letter-spacing: 0; }
+@keyframes v12-draw { to { stroke-dashoffset: 0; } }
+@keyframes v12-hero-pop { from { transform: scale(0.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .mission-hero, .mission-hero .mh-ring, .mission-hero .mh-check, .mission-hero .mh-clock { animation: none; stroke-dashoffset: 0; }
+}
+/* Desktop: the tier strip no longer stretches across the whole top edge. */
+@media (min-width: 900px) {
+  #hud-tier-strip, #hud-tier-strip.clears-standings { right: auto; width: 460px; }
+}
+
+/* ---- v12 review fixes ---- */
+
+/* Miasto: on short screens (SE-class phones, portal iframes) the GRAJ 2:00 /
+   WYZWANIE DNIA row pins above the bottom nav instead of scrolling under it. */
+#hubCtaRow { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 5; }
+@media (max-height: 760px) {
+  #hubCtaRow { padding: 8px; margin: 0 -8px; width: calc(100% + 16px); max-width: 356px; border-radius: 20px; background: rgba(7, 23, 37, 0.94); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+  .hub-city { height: clamp(120px, 24vh, 172px); }
+}
+
+/* In-round strip on narrow phones: captions go, the growth bar becomes a
+   3 px line along the panel's bottom edge, so time and score never clip. */
+@media (max-width: 400px) {
+  #hud-tier-strip { padding: 5px 9px 11px; gap: 6px; justify-content: space-between; }
+  #hud-tier-strip .hud-pill .hud-label { display: none; }
+  #hud-tier-strip .hud-tier-bar { position: absolute; left: 9px; right: 9px; bottom: 3px; min-width: 0; gap: 4px; }
+  #hud-tier-strip .hud-tier-bolt { display: none; }
+  #hud-tier-strip .tier-progress-track { height: 3px; }
+  #hud-tier-strip .hud-tier-badge { font-size: 8px; line-height: 1; }
+  #hud-tier-strip .hud-pill .hud-value { font-size: 14px; }
+  #mobile-hint { right: calc(136px + env(safe-area-inset-right, 0px)); }
+}
+
+/* Evolution: POMIŃ as wide as the cards. */
+.evolution-panel .evolution-skip { max-width: none; width: 100%; }
+
+/* Profile: privacy links aligned with the rows and clearly tappable. */
+.settings-block .settings-links { flex-direction: column; gap: 2px; }
+.settings-block .settings-links .btn { width: 100%; max-width: none; justify-content: space-between; padding: 9px 0; font-size: 14px; color: var(--nc-cyan); }
+.settings-block .settings-links .btn::after { content: '›'; font-size: 18px; color: var(--nc-text-dim); }
+
+/* Desktop / landscape: the bottom nav groups its tabs instead of spreading
+   them across the whole width. */
+@media (min-width: 700px) {
+  .bottom-nav { justify-content: center; gap: 24px; }
+}
+.final-leaderboard .fl-score { white-space: nowrap; }
+#hubCtaRow #btnStart { white-space: nowrap; }
+@media (max-width: 400px) { #hubCtaRow #btnStart { letter-spacing: 0.02em; padding-left: 10px; padding-right: 10px; } }
+.hub-challenge-score { white-space: nowrap; }
