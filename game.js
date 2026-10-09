@@ -12,7 +12,7 @@
    aliases into this object so the rest of the file is untouched. */
 
 const CONFIG = {
-  version: '11.0.0-golden-shot-ultra',
+  version: '12.0.0-golden-shot-visual',
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
