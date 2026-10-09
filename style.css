@@ -4556,3 +4556,7 @@ body[data-gfx="0"] #hud::before { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .mission-hero, .mission-hero .mh-ring, .mission-hero .mh-check, .mission-hero .mh-clock { animation: none; stroke-dashoffset: 0; }
 }
+/* Desktop: the tier strip no longer stretches across the whole top edge. */
+@media (min-width: 900px) {
+  #hud-tier-strip, #hud-tier-strip.clears-standings { right: auto; width: 460px; }
+}
