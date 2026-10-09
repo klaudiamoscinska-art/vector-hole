@@ -16,6 +16,15 @@ const CONFIG = {
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
+  // v13 "first 3 seconds": Arena food layout. Fragments are laid in short
+  // trails along the road lanes (a line of pickups is the most satisfying
+  // eat in a hole game -- a guaranteed combo) and every hole spawns in the
+  // middle of a small feast, so the first bite lands in well under a second.
+  arena: {
+    trails: 10, trailLength: 8,
+    feastFragments: 10, feastCapsules: 2,
+    roadRespawnChance: 0.5   // share of eaten fragments that respawn on a road lane
+  },
   // maxRadius (v12): bot careers showed late-round holes snowballing past
   // r 1000 (once r 5800 -- bigger than the 3000x3000 world, sweeping every
   // respawn the frame it appeared and scoring 450k). Past this the hole would
@@ -78,10 +87,10 @@ const CONFIG = {
   // next to the run tools (RUN_TOOLS) that counter it.
   difficulty: {
     rampStartRuns: 3,
-    rampFullRuns: 16,
+    rampFullRuns: 24,   // v13: 16 -> 24, the wall arrived as a cliff (runs 15-17: 6th, 3rd, 6th)
     dailyT: 0.5,
     botSpeedMult: [0.78, 1.12],
-    botStartRadius: [15, 27],
+    botStartRadius: [15, 24],     // v13: 27 could eat an 18 px player on contact at spawn
     botAggroRange: [0, 560],      // 0 = bots never hunt the player at all
     botPreyRange: [300, 460],
     botObjectRange: [200, 480],   // easy bots are lazy eaters, so they grow slower than you
@@ -90,7 +99,28 @@ const CONFIG = {
     // In-round escalation: bots speed up for the final stretch of every round.
     lateRoundSeconds: 40,
     lateRoundBotSpeedBonus: 0.1,
-    labels: ['ŁATWY', 'ŚREDNI', 'TRUDNY', 'EKSTREMALNY']
+    labels: ['NISKIE', 'ŚREDNIE', 'WYSOKIE', 'EKSTREMALNE']
+  },
+  // v13 "the race": one rival per round (the pacer, Game.pacer) runs on a
+  // par-score curve taken from the player's own recent form -- the median
+  // of the last finished Arena rounds -- times a difficulty factor, so the
+  // standings are a close race instead of a 10x blowout either way (QA
+  // career: a greedy player won by 20 000 points; a casual one either won
+  // by 4 000 or finished 5th). When it falls behind par it eats from
+  // farther away and its bites count more (up to maxBoost); ahead of par
+  // its bites count less. Beat your own usual score and you beat it.
+  rival: {
+    defaultPar: 2600,          // before the player has any finished round
+    minPar: 1200, maxPar: 40000,
+    parFactor: [0.72, 1.05],   // lerp'd by difficultyT
+    history: 5,                // rounds in save.stats.recentArenaScores
+    maxBoost: 5, minMult: 0.35, maxGrowthBoost: 2,
+    hungryObjectRange: 650,
+    finalChaseSeconds: 15,
+    // ...and it tails a runaway leader at this share of the player's score
+    // (lerp'd by difficultyT), so a snowballing round still feels like a
+    // chase instead of a lap of honour. Below 1: you keep the win.
+    chaseRatio: [0.7, 0.9]
   },
   // Golden Shot v8 retention loop: player XP level (every mode feeds it),
   // a 7-day login calendar, and a free chest on a 4 h cooldown.
@@ -173,7 +203,7 @@ const CONFIG = {
     eatTiers: { tinyMaxRadius: 10, mediumMaxRadius: 24 }, // above mediumMaxRadius = "giant" eat
     combo: { windowSeconds: 1.8, stepBonus: 0.15, maxMultiplier: 3, fadeSeconds: 0.6 },
     // Golden Shot v8 game feel (see FloatText, Game.flash/hitStop/zoom).
-    praise: [[5, 'SUPER!'], [10, 'MEGA!'], [15, 'NIESAMOWITE!'], [22, 'LEGENDARNE!'], [30, 'NEON GOD!']],
+    praise: [[5, 'SUPER!'], [10, 'MEGA!'], [15, 'NIESAMOWITE!'], [22, 'LEGENDARNE!'], [30, 'BOSKIE!']],
     zoom: { min: 0.58, max: 1.08, startRadius: 18, endRadius: 150, lerp: 2.2,
       // v12: bots end strong rounds at r 400-800, which at a fixed 0.58 zoom
       // filled the whole phone screen with the hole. Past endRadius the
@@ -770,7 +800,7 @@ const AD_PLACEMENTS = {
 // store's localized price. No loot boxes: every pack lists exactly what it
 // contains (EU/UK/BE/NL paid-random-reward rules).
 const IAP_PRODUCTS = [
-  { sku: 'starter_pack', name: 'Pakiet Startowy', price: '9,99 zł', oneTime: true, best: true, grant: { coins: 1500, prisms: 60, auraId: 'starter_glow', noAds: false }, desc: '1500 monet · 60 pryzmatów · ekskluzywny Trail „Zorza Startu”' },
+  { sku: 'starter_pack', name: 'Pakiet Startowy', price: '9,99 zł', oneTime: true, best: true, grant: { coins: 1500, prisms: 60, auraId: 'starter_glow', noAds: false }, desc: '1500 monet · 60 pryzmatów · ekskluzywna Smuga „Zorza Startu”' },
   { sku: 'prisms_s', name: 'Garść pryzmatów', price: '4,99 zł', grant: { prisms: 40 }, desc: '40 pryzmatów' },
   { sku: 'prisms_m', name: 'Skrzynia pryzmatów', price: '19,99 zł', grant: { prisms: 200 }, desc: '200 pryzmatów (+25% gratis)' },
   { sku: 'prisms_l', name: 'Skarbiec pryzmatów', price: '44,99 zł', grant: { prisms: 520 }, desc: '520 pryzmatów (+45% gratis)' },
@@ -1049,8 +1079,12 @@ class Monetization {
 // handleCampaignEating() exactly.
 const TIERS = {
   // `growth` = CAMPAIGN_ENTITY_STATS' growth units (see CONFIG.growth).
-  fragment: { color: '#50F0FA', minR: 7, maxR: 7, value: 5, growth: 1, subtypes: ['fragment'], count: 95, minSizeTier: 0 },
-  capsule: { color: '#50F0FA', minR: 10, maxR: 10, value: 15, growth: 3, subtypes: ['kapsula'], count: 35, minSizeTier: 0 },
+  // v13: 95 -> 170 fragments / 35 -> 40 capsules. A casual player found ~4
+  // objects on screen at the start and ate ~0.7 things per second; most of
+  // the extra fragments are laid out as street trails and spawn feasts
+  // (see Game.layStreetTrails()/layStarterFeasts(), CONFIG.arena).
+  fragment: { color: '#50F0FA', minR: 7, maxR: 7, value: 5, growth: 1, subtypes: ['fragment'], count: 170, minSizeTier: 0 },
+  capsule: { color: '#50F0FA', minR: 10, maxR: 10, value: 15, growth: 3, subtypes: ['kapsula'], count: 40, minSizeTier: 0 },
   prop: { color: '#FF54AD', minR: 20, maxR: 20, value: 15, growth: 3, subtypes: ['latarnia', 'drzewo', 'lawka', 'kiosk', 'skrzynia'], count: 40, minSizeTier: 1 },
   marker: { color: '#FF54AD', minR: 20, maxR: 20, value: 50, growth: 10, subtypes: ['znacznik'], count: 10, minSizeTier: 1 },
   vehicle: { color: '#EFCB63', minR: 34, maxR: 34, value: 30, growth: 6, subtypes: ['samochod'], count: 10, minSizeTier: 2 },
@@ -1083,7 +1117,7 @@ const SKINS = [
   // Golden Shot v9: every Rdzeń now has a gameplay bonus (`perks`, applied
   // in Arena/Daily rounds only -- see Game.perk()) on top of its signature
   // look (SKIN_STYLES), so buying one changes how you play, not just color.
-  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — rdzeń startowy' },
+  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — wir startowy' },
   { id: 'cyan', name: 'Cyber Cyan', price: 30, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
   { id: 'pink', name: 'Hot Pink', price: 60, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
   { id: 'green', name: 'Toxic Green', price: 120, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
@@ -1121,7 +1155,7 @@ const AURAS = [
 // per-object-type colors (color: null means "don't override").
 const EAT_EFFECTS = [
   { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
-  { id: 'pixel_burst', name: 'Pixel Burst', priceCoins: null, color: '#EFCB63', unlockSource: { type: 'coreCity', level: 4 } },
+  { id: 'pixel_burst', name: 'Pikselowy Wybuch', priceCoins: null, color: '#EFCB63', unlockSource: { type: 'coreCity', level: 4 } },
   { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } }
 ];
 
@@ -1141,10 +1175,10 @@ const OVERDRIVE_SKINS = [
 // "beyond LVL6 is a seasonal/prestige loop, out of scope" disclaimer) so
 // grantCoreCityLevelReward() falls back to hub.milestoneFallbackCoins/Prisms.
 const CORE_CITY_LEVEL_REWARDS = {
-  2: { auraId: 'impuls', coins: 150, label: 'Trail „Impuls”' },
-  3: { skinId: 'krysztal', coins: 200, label: 'Rdzeń „Kryształ”' },
-  4: { effectId: 'pixel_burst', coins: 250, label: 'Efekt „Pixel Burst”' },
-  5: { overdriveSkinId: 'fala', coins: 300, label: 'Overdrive „Fala”' },
+  2: { auraId: 'impuls', coins: 150, label: 'Smuga „Impuls”' },
+  3: { skinId: 'krysztal', coins: 200, label: 'Wir „Kryształ”' },
+  4: { effectId: 'pixel_burst', coins: 250, label: 'Efekt „Pikselowy Wybuch”' },
+  5: { overdriveSkinId: 'fala', coins: 300, label: 'Finisz „Fala”' },
   6: { skinId: 'pryzmat', auraId: 'pryzmat', effectId: 'pryzmat', overdriveSkinId: 'pryzmat', badge: 'pryzmat', coins: 400, label: 'Zestaw „Pryzmat” + odznaka' }
 };
 
@@ -1156,7 +1190,7 @@ const RUN_TOOLS = [
   { id: 'magnet', name: 'Magnes', price: 25, desc: 'Przez pierwsze 12 s rundy obiekty same lecą w Twoją stronę.' },
   // Golden Shot v8: the direct counter to the difficulty ramp -- start
   // the round already at T2, bigger than a hard-mode rival's spawn size.
-  { id: 'boost', name: 'Turbo start', price: 70, desc: 'Zaczynasz rundę od razu na poziomie T2 — większa niż rywale na starcie.', hot: true }
+  { id: 'boost', name: 'Turbo start', price: 70, desc: 'Startujesz od razu z rozmiarem T2 — Twój wir od pierwszej sekundy przerasta rywali.', hot: true }
 ];
 
 // Simple neon-line-art glyphs for the evolution/power cards (SVG, inline —
@@ -1237,7 +1271,7 @@ const REWARD_CATEGORY_ICONS = {
 const MUTATIONS = [
   { id: 'magnet_pulse', name: 'Magnes', tag: 'CAŁĄ RUNDĘ', desc: 'Obiekty, które możesz zjeść, same lecą do Ciebie z bliskiej okolicy.', icon: 'magnet', weight: 3, color: '#50F0FA' },
   { id: 'slipstream', name: 'Turbo combo', tag: 'PO COMBO ×3', desc: 'Zjedz 3 rzeczy szybko po sobie, a dostaniesz +60% prędkości na 1,5 s.', icon: 'bolt', weight: 3, color: '#46D99A' },
-  { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Po zjedzeniu przez rywala odradzasz się nietykalna przez 4 s zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
+  { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Gdy rywal Cię pochłonie, po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
   { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
   { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
   { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM POZIOMIE', desc: 'Gdy urośniesz o poziom, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
@@ -1453,7 +1487,7 @@ function stepLabel(step, setup) {
     if (setup.gateKind === 'portal') return 'Przejdź przez portal';
     return setup.gateKind === 'pas'
       ? `Przeleć przez ${nounFor('pas_przelotu', step.gates)}, gdy ${step.gates === 1 ? 'świeci' : 'świecą'}`
-      : `Przejdź przez ${nounFor('brama', step.gates)}, gdy są otwarte`;
+      : `Przejdź przez ${nounFor('brama', step.gates)}, gdy ${step.gates === 1 ? 'jest otwarta' : 'są otwarte'}`;
   }
   if (step.rival) return `Pochłoń ${nounFor('rival', step.rival)}`;
   if (step.activate) {
@@ -1549,7 +1583,7 @@ function compileMission(spec, order) {
   const floor = { 1: 60, 2: 60, 3: 70, 4: 90, 5: 110, 6: 130 }[need];
   const timeLimit = spec.time || Math.max(floor, timing ? timing[0] : round5(est * 1.5 + 20));
   const medal = spec.medal || { type: 'timeUnder', seconds: timing ? timing[1] : round5(est * 1.15 + 10) };
-  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w ${medal.seconds} s`;
+  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w max ${medal.seconds} s`;
   steps.forEach(st => { st.label = stepLabel(st, s); });
   const district = DISTRICTS.find(d => d.id === spec.d);
   return {
@@ -1589,12 +1623,12 @@ function compileMission(spec, order) {
 const MISSION_SPECS = [
   // ---- Plac Neonów ----
   { id: 'M01', d: 'plac', name: 'Pierwszy apetyt', steps: [{ eat: 'capsule', n: 3 }, { tier: 2 }],
-    nela: ['Kapsuły energii ładują rdzeń mocniej niż fragmenty. Trzy wystarczą, żeby urosnąć.', 'Rdzeń pulsuje mocniej!'] },
+    nela: ['Tu NELA. Kapsuły energii ładują Twój wir mocniej niż fragmenty — trzy wystarczą, żeby urosnąć.', 'Wir pulsuje mocniej!'] },
   { id: 'M02', d: 'plac', name: 'Dobra trasa', steps: [{ eat: 'prop', n: 6 }, { tier: 3 }], setup: { clusters: 2 },
     medal: { type: 'visitBothClusters', label: 'Jedz w obu skupiskach' },
     nela: ['Elementy uliczne stoją w dwóch skupiskach. Wybierz trasę i rośnij.', 'Plac nabiera kształtu.'] },
   { id: 'M03', d: 'plac', name: 'Łańcuch reakcji', steps: [{ combo: 10 }, { eat: 'prop', n: 4 }], setup: { arcLayout: true, fragments: 20 },
-    nela: ['Fragmenty ułożyły się w łuk: połącz dziesięć kęsów bez przerwy, a potem pochłoń cztery elementy uliczne.', 'Właśnie uruchomiłaś reakcję łańcuchową.'] },
+    nela: ['Fragmenty ułożyły się w łuk: połącz dziesięć kęsów bez przerwy, a potem pochłoń cztery elementy uliczne.', 'Reakcja łańcuchowa ruszyła!'] },
   { id: 'M25', d: 'plac', name: 'Godzina szczytu', steps: [{ eat: 'vehicle', n: 4 }],
     nela: ['Samochody zjeżdżają na plac. Urośnij do T3, zanim odjadą.', 'Korek rozładowany — w Twoim wirze.'] },
   { id: 'M26', d: 'plac', name: 'Obce dziury', steps: [{ rival: 2 }],
@@ -1604,7 +1638,7 @@ const MISSION_SPECS = [
   { id: 'M28', d: 'plac', name: 'Neonowa seria', steps: [{ combo: 8 }, { eat: 'vehicle', n: 3 }],
     nela: ['Seria kęsów podbija mnożnik punktów. Zbuduj combo ×8 i zgarnij trzy auta.', 'Mnożnik pod sufit!'] },
   { id: 'M29', d: 'plac', name: 'Pawilon na rogu', steps: [{ eat: 'structure', n: 2, glyph: 'pawilon' }],
-    nela: ['Na rogu placu stoją szklane pawilony — obiekty T4. Urośnij, a zmieścisz je w sobie.', 'Pierwsze pawilony pochłonięte. Jesteś już naprawdę duża.'] },
+    nela: ['Na rogu placu stoją szklane pawilony — obiekty T4. Urośnij, a zmieścisz je w sobie.', 'Pierwsze pawilony pochłonięte. Twój wir robi się naprawdę wielki.'] },
   { id: 'M30', d: 'plac', name: 'Rekord placu', steps: [{ score: 900 }],
     nela: ['Pokaż, ile potrafisz: 900 punktów. Combo mnoży każdy kęs.', 'Plac zapamięta ten wynik.'] },
   { id: 'M04', d: 'plac', name: 'Pierwszy wielki kęs', steps: [{ activate: 'node', n: 2 }, { landmark: 'kino' }],
@@ -1629,7 +1663,7 @@ const MISSION_SPECS = [
   { id: 'M33', d: 'park', name: 'Bieg wokół stawu', steps: [{ combo: 12 }, { eat: 'structure', n: 1, glyph: 'pawilon' }], setup: { arcLayout: true, fragments: 24 },
     nela: ['Fragmenty otaczają staw: dwanaście kęsów bez przerwy. Potem urośnij do T4 i pochłoń pawilon.', 'Taki rytm słychać w całym parku.'] },
   { id: 'M34', d: 'park', name: 'Strażnicy parku', steps: [{ rival: 3 }],
-    nela: ['Trzech rywali patroluje park. Urośnij szybciej niż oni.', 'Park ma nową strażniczkę — Ciebie.'] },
+    nela: ['Trzech rywali patroluje park. Urośnij szybciej niż oni.', 'Teraz to Ty pilnujesz parku.'] },
   { id: 'M35', d: 'park', name: 'Reklamy w zieleni', steps: [{ eat: 'structure', n: 3, glyph: 'billboard' }],
     nela: ['Ktoś postawił billboardy między drzewami. Usuń je.', 'Zieleń znów jest zielona.'] },
   { id: 'M36', d: 'park', name: 'Pylony ogrodu', steps: [{ activate: 'pylon', n: 3 }, { combo: 6 }],
@@ -1655,7 +1689,7 @@ const MISSION_SPECS = [
   { id: 'M39', d: 'port', name: 'Nocna zmiana', steps: [{ eat: 'prop', n: 6, glyph: 'skrzynia' }, { combo: 10 }],
     nela: ['Nocna zmiana. Skrzynie i jedna długa seria kęsów.', 'Załadunek w rekordowym tempie.'] },
   { id: 'M40', d: 'port', name: 'Dokerzy', steps: [{ rival: 3 }], setup: { botRadius: 40 },
-    nela: ['Dokerzy to więksi rywale. Zbliż się dopiero, gdy będziesz od nich wyraźnie większa.', 'Port należy do Ciebie.'] },
+    nela: ['Dokerzy to więksi rywale. Zbliż się dopiero, gdy wyraźnie ich przerośniesz.', 'Port należy do Ciebie.'] },
   { id: 'M41', d: 'port', name: 'Flota ciężarówek', steps: [{ eat: 'heavy', n: 3, glyph: 'ciezarowka' }],
     nela: ['Cała flota czeka na rozładunek. Pochłoń trzy ciężarówki.', 'Flota zniknęła z nabrzeża.'] },
   { id: 'M42', d: 'port', name: 'Zasilacze portu', steps: [{ activate: 'node', n: 4 }, { eat: 'structure', n: 2, glyph: 'magazyn' }],
@@ -1673,7 +1707,7 @@ const MISSION_SPECS = [
     nela: ['Portal migocze — wejdź, gdy świeci. Kryształy czekają po drugiej stronie.', 'Druga strona galerii odzyskana.'] },
   { id: 'M14', d: 'galeria', name: 'Witryny', steps: [{ eat: 'marker', n: 4, glyph: 'witryna' }],
     medal: { type: 'comboAtLeast', count: 5, label: 'Zbuduj combo ×5' },
-    nela: ['Witryny wciąż świecą starym światłem. Zgaś je.', 'Nowe reklamy migają nad placem.'] },
+    nela: ['Witryny wciąż świecą starym światłem. Zgaś je.', 'Witryny zgasły. Galeria czeka na nową wystawę.'] },
   { id: 'M15', d: 'galeria', name: 'Przed zamknięciem', steps: [{ eat: 'marker', n: 4, glyph: 'klucz_sektora' }],
     nela: ['Sektory zamykają się jeden po drugim. Zbierz klucze, zanim zgasną światła.', 'Wszystkie sektory otwarte na nowo.'] },
   { id: 'M43', d: 'galeria', name: 'Ekrany', steps: [{ eat: 'structure', n: 4, glyph: 'billboard' }],
@@ -1686,7 +1720,7 @@ const MISSION_SPECS = [
     medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra bez przerywania combo' },
     nela: ['Cztery lustra kierują światło do galerii. Aktywuj wszystkie.', 'Światło odbija się po całej galerii.'] },
   { id: 'M47', d: 'galeria', name: 'Kuratorzy', steps: [{ rival: 3 }], setup: { botRadius: 50 },
-    nela: ['Kuratorzy galerii to duzi rywale. Urośnij, aż będziesz od nich wyraźnie większa, i pochłoń trzech.', 'Galeria ma nową kuratorkę.'] },
+    nela: ['Kuratorzy galerii to duzi rywale. Rośnij, aż wyraźnie ich przerośniesz, i pochłoń trzech.', 'Teraz to Ty decydujesz, co wisi w galerii.'] },
   { id: 'M48', d: 'galeria', name: 'Wielka wystawa', steps: [{ score: 2500 }],
     nela: ['Zdobądź 2500 punktów — tyle warta jest wielka wystawa.', 'Wystawa otwarta z hukiem.'] },
   { id: 'M16', d: 'galeria', name: 'Kaskada luster', steps: [{ activate: 'pylon', n: 3 }, { landmark: 'galeria_glowna' }],
@@ -1705,11 +1739,11 @@ const MISSION_SPECS = [
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
     nela: ['Dwa mostki prowadzą do bramy iglicy (T5). Zasil je i urośnij.', 'Brama otwarta. Iglica czeka.'] },
   { id: 'M49', d: 'dachy', name: 'Parking na dachu', steps: [{ eat: 'heavy', n: 3, glyph: 'autobus' }],
-    nela: ['Ktoś zaparkował autobusy na dachu. Nie pytaj jak — po prostu je pochłoń.', 'Dach odciążony.'] },
+    nela: ['Ktoś zaparkował autobusy na dachu. Nie pytaj, jak — po prostu je pochłoń.', 'Dach odciążony.'] },
   { id: 'M50', d: 'dachy', name: 'Burza', steps: [{ combo: 15 }, { eat: 'heavy', n: 1, glyph: 'autobus' }],
     nela: ['Nadciąga burza: piętnaście kęsów bez przerwy, a potem pochłoń autobus, zanim uderzy piorun.', 'Burza przeszła bokiem.'] },
   { id: 'M51', d: 'dachy', name: 'Wyścig po dachach', steps: [{ gates: 4 }], setup: { gateKind: 'brama' },
-    nela: ['Cztery bramy na krawędziach dachów. Wyczuj rytm każdej.', 'Najszybsza na dachach.'] },
+    nela: ['Cztery bramy na krawędziach dachów. Wyczuj rytm każdej.', 'Nikt nie śmiga po dachach szybciej.'] },
   { id: 'M52', d: 'dachy', name: 'Pierwszy maszt', steps: [{ eat: 'tower', n: 1, glyph: 'maszt' }],
     nela: ['Maszt radiowy to obiekt T6 — największa klasa w mieście. Urośnij do granic.', 'Maszt runął. Jesteś kolosem.'] },
   { id: 'M53', d: 'dachy', name: 'Strażnicy dachów', steps: [{ rival: 4 }], setup: { botRadius: 60 },
@@ -1741,7 +1775,7 @@ const MISSION_SPECS = [
     nela: ['Ostatni sprawdzian przed finałem: 5000 punktów.', 'Rekord, którego nikt nie pobije.'] },
   { id: 'M24', d: 'rdzen', name: 'Miasto na nowo', steps: [{ activate: 'node', n: 3 }, { landmark: 'rdzen_miasta_glowny' }],
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
-    nela: ['Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.', 'Miasto odzyskane. Neonowa Warszawa znów żyje.'],
+    nela: ['Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.', 'Miasto czyste. Neonowe Miasto znów świeci.'],
     reward: { coins: 400, unlockSkin: 'aurora' } }
 ];
 
@@ -1755,7 +1789,7 @@ const CAMPAIGN_MISSIONS = [
   // smaller rival" mechanic (new to Campaign -- see handleCampaignCollisions())
   // before Arena unlocks on it (see isArenaUnlocked()).
   {
-    id: 'M00', district: 'plac', order: 0, name: 'Zanim zaczniesz', timeLimit: 90,
+    id: 'M00', district: 'plac', order: 0, name: 'Zanim zaczniesz', timeLimit: 90, untimed: true,
     // Step counts aren't arbitrary -- they match CAMPAIGN_TIERS' own growth
     // thresholds (T2 at 6 units, T3 at 22) so the goal the player sees is
     // never smaller than what canEatWorldObjectTier()-equivalent gating
@@ -1774,30 +1808,32 @@ const CAMPAIGN_MISSIONS = [
       label: 'Poznaj podstawy pochłaniania',
       steps: [
         {
-          entityType: 'fragment', count: 6, label: 'Pochłoń 6 fragmentów energii',
-          intro: 'Dotykaj fragmentów energii, żeby je pochłaniać. Każdy Cię powiększa — po kilku zjesz coś większego.'
+          entityType: 'fragment', count: 6, label: 'Pochłoń 6 fragmentów energii', title: 'POCHŁANIAJ',
+          intro: 'Przeciągnij palcem po ekranie — dziura jedzie za nim. Najedź na niebieskie fragmenty energii: każdy Cię powiększa.'
         },
         {
-          entityType: 'prop', count: 6, label: 'Pochłoń 6 elementów ulicznych',
-          intro: 'Urosłaś! Teraz pochłoń elementy uliczne — latarnie, ławki, drzewa i inne drobiazgi na ulicach.'
+          entityType: 'prop', count: 6, label: 'Pochłoń 6 elementów ulicznych', title: 'ROŚNIJ',
+          intro: 'Twój wir urósł! Różowe elementy uliczne — latarnie, ławki, drzewa — już się w nim mieszczą. Pochłoń sześć.'
         },
         {
-          entityType: 'vehicle', count: 1, label: 'Pochłoń 1 pojazd',
-          intro: 'Jeszcze większa! Znajdź i pochłoń pojazd.'
+          entityType: 'vehicle', count: 1, label: 'Pochłoń 1 pojazd', title: 'WIĘKSZY KĄSEK',
+          intro: 'Jeszcze więcej mocy! Złote auta też już wchodzą. Strzałka na krawędzi ekranu pokaże, gdzie jechać.'
         },
         {
-          type: 'eatRival', count: 1, label: 'Pochłoń mniejszego rywala',
-          intro: 'Ostatni krok: rywal otoczony zielonym pierścieniem jest mniejszy od Ciebie. Dotknij go, żeby go pochłonąć. Czerwona poświata oznacza rywala, którego trzeba unikać.'
+          type: 'eatRival', count: 1, label: 'Pochłoń mniejszego rywala', title: 'ZJEDZ RYWALA',
+          intro: 'Rywal w zielonym pierścieniu jest mniejszy — najedź na niego i pochłoń! Czerwona poświata oznacza: uciekaj.'
         }
       ]
     },
     medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 70 s' },
     // A couple more of each spawned than required (buffer, not everything
     // has to be reachable) since Campaign entities don't respawn mid-mission.
-    setup: { fragments: 10, props: 8, vehicles: 3, bots: 1 },
+    // v13: starterRing puts the first fragments right around the start --
+    // the old layout opened on an empty screen (nearest fragment ~330 px).
+    setup: { fragments: 14, starterRing: 7, props: 10, vehicles: 3, bots: 1 },
     nela: {
       start: 'Zanim ruszysz na miasto: pochłoń fragmenty energii, aż urośniesz na tyle, by zjeść coś większego — najpierw element uliczny, potem pojazd. Na koniec dotknij mniejszego rywala, żeby go pochłonąć.',
-      success: 'Gotowa. Miasto czeka.'
+      success: 'Tu NELA, SI tego miasta. Glitch skaził ulice — Ty je pochłaniasz, ja z tej energii odbudowuję miasto. Ruszamy!'
     },
     reward: { coins: 20 }
   },
@@ -1850,7 +1886,7 @@ const FEATURE_UNLOCKS = [
   },
   {
     id: 'warsztat', eyebrow: 'NOWA ZAKŁADKA', title: 'WARSZTAT', color: '#EFCB63', icon: UNLOCK_ICONS.warsztat,
-    desc: 'Zmieniaj wygląd swojej dziury: Rdzeń, Trail, Efekt pochłaniania i Overdrive. Wydaj tu zebrane monety!',
+    desc: 'Zmieniaj wygląd swojej dziury: Wir, Smuga, Efekt pochłaniania i Finisz. Wydaj tu zebrane monety!',
     cta: 'OTWÓRZ WARSZTAT', isUnlocked: s => FEATURE_GATES.warsztat(s)
   },
   {
@@ -2011,8 +2047,8 @@ function previousDateKey(dateKey) {
 // this replaces the Hub's previous static, never-checked mission line.
 const MISSIONS = [
   { id: 'eat_5_rivals', name: 'Zjedz 5 rywali w jednej rundzie', target: 5, rewardCoins: 80 },
-  { id: 'reach_size_60', name: 'Osiągnij rozmiar 60', target: 60, rewardCoins: 60 },
-  { id: 'combo_x3', name: 'Zbuduj combo x3', target: 3, rewardCoins: 50 },
+  { id: 'reach_size_60', name: 'Urośnij do rozmiaru T4', target: 66, rewardCoins: 60 },
+  { id: 'combo_x3', name: 'Zbuduj combo ×3', target: 3, rewardCoins: 50 },
   { id: 'score_150', name: 'Zdobądź 150 punktów w jednej rundzie', target: 150, rewardCoins: 70 }
 ];
 
@@ -2035,7 +2071,7 @@ function defaultSave() {
     // touch point) rather than the Floating Thumb Pad -- still switchable
     // in Ustawienia (syncControlsPanel()'s "Tryb sterowania" toggle).
     settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', sfx: true, music: true, gfxLevel: 2 },
-    stats: { runsPlayed: 0, bestArenaScore: 0 },
+    stats: { runsPlayed: 0, bestArenaScore: 0, recentArenaScores: [] },
     // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
     // coreCharge is the 0-100 progress toward the *next* level.
     hub: { coreCharge: 0, coreLevel: 1 },
@@ -4676,6 +4712,16 @@ function swallowPose(obj, hole, k) {
   return { x: hole.x + fx * c - fy * s, y: hole.y + fx * s + fy * c, rot: ang * 0.7, scale: Math.max(0.06, 1 - 0.88 * k), alpha: 1 - 0.55 * k };
 }
 
+/** v13: a random point on one of the city's road lanes (the grid lines
+ *  between blocks, see CITY_PITCH/CITY_ROAD). `next` returns 0..1. */
+function roadLanePoint(next) {
+  const vertical = next() < 0.5;
+  const line = (1 + Math.floor(next() * (CITY_CELLS - 1))) * CITY_PITCH;
+  const lane = (next() < 0.5 ? -1 : 1) * CITY_ROAD * 0.22;
+  const along = 40 + next() * (WORLD_W - 80);
+  return vertical ? { x: line + lane, y: along } : { x: along, y: line + lane };
+}
+
 class WorldObject {
   constructor(tierName, rng) {
     this.respawn(tierName, true, rng);
@@ -4700,6 +4746,9 @@ class WorldObject {
       this.rotation = rand(0, Math.PI * 2);
       this.x = rand(this.radius + 20, WORLD_W - this.radius - 20);
       this.y = rand(this.radius + 20, WORLD_H - this.radius - 20);
+      // v13: part of the eaten fragments come back on a road lane, so the
+      // streets stay the city's "food lanes" all round long.
+      if (tierName === 'fragment' && Math.random() < CONFIG.arena.roadRespawnChance) Object.assign(this, roadLanePoint(Math.random));
     }
     this.eating = false;
     this.eatT = 0;
@@ -5521,7 +5570,7 @@ class Bot extends Hole {
     for (const o of game.objects) {
       if (o.eating || !canEatWorldObjectTier(this.radius, o)) continue;
       const d = dist(this.x, this.y, o.x, o.y);
-      if (d < tuning.objects && d < objDist) { obj = o; objDist = d; }
+      if (d < (this.paceHungry ? CONFIG.rival.hungryObjectRange : tuning.objects) && d < objDist) { obj = o; objDist = d; }
     }
 
     if (obj) {
@@ -5770,7 +5819,14 @@ class Game {
     // it's the only feedback for where the direct-drag pointer target is.
     document.body.classList.toggle('touch-input', this.isTouchDevice);
     this.pointerWorld = { x: WORLD_W / 2, y: WORLD_H / 2 };
+    // v13: the finger/cursor's SCREEN position drives direct-drag steering
+    // and is re-projected every frame (applyPlayerMovement()). Steering off
+    // the world point captured at the last move event made the hole drive
+    // itself to the world centre at round start and stop dead under a
+    // finger that was still held down once the camera had followed it.
+    this.pointerScreen = null;
     const updateFromScreen = (sx, sy) => {
+      this.pointerScreen = { x: sx, y: sy };
       this.pointerWorld = {
         x: this.camera.x + (sx - this.width / 2) / this.zoom,
         y: this.camera.y + (sy - this.height / 2) / this.zoom
@@ -5880,6 +5936,7 @@ class Game {
     }, { passive: false });
 
     const endThumbTouch = (e) => {
+      if (e.touches.length === 0) this.pointerScreen = null; // finger up = stop
       const stillDown = Array.from(e.touches).some(t => t.identifier === this.thumbpadTouchId);
       if (this.thumbpadTouchId !== null && !stillDown) {
         this.thumbpadTouchId = null;
@@ -6195,7 +6252,7 @@ class Game {
     if (item.unlockSource) {
       return item.unlockSource.type === 'coreCity'
         ? `CORE CITY LVL ${item.unlockSource.level}`
-        : `MISJA ${item.unlockSource.id}`;
+        : `MISJA ${campaignMissionById(item.unlockSource.id) ? missionCode(campaignMissionById(item.unlockSource.id)) : item.unlockSource.id}`;
     }
     if (item.priceType === 'prisms') return `◆ ${item.pricePrisms}`;
     return `◇ ${item.priceCoins != null ? item.priceCoins : item.price}`;
@@ -6599,7 +6656,9 @@ class Game {
     this.rng = new SeededRNG(seed);
     const modifier = this.pickModifier();
     this.createObjects(this.rng);
-    const spawn = this.randomWorldPos(300, this.rng);
+    const spawns = this.rollSpawns(this.rng);
+    this.layStarterFeasts(this.rng, [spawns.player, ...spawns.bots]);
+    const spawn = spawns.player;
     const layout = { dateKey, modifier, spawn, objects: this.objects.map(o => ({ tier: o.tier, x: o.x, y: o.y })) };
     Object.assign(this, saved);
     return layout;
@@ -6893,7 +6952,7 @@ class Game {
     const ch = this.challenge;
     if (!ch || this.challengeBeaten || this.player.score <= ch.score) return;
     this.challengeBeaten = true;
-    this.showBanner('WYZWANIE POBITE!', `Wynik ${ch.from} (${ch.score}) jest Twój`, '#46D99A', 1.5, 4);
+    this.showBanner('WYZWANIE WYGRANE!', `Cel ${formatNum(ch.score)} pkt (${ch.from}) przebity!`, '#46D99A', 1.5, 4);
     this.flashScreen('#46D99A', 0.22);
     this.sound.fanfare(true);
     this.vibrate([40, 30, 80]);
@@ -6978,14 +7037,14 @@ class Game {
     const score = this.player ? this.player.score : 0;
     const tier = this.player ? CONFIG.sizeTiers[getSizeTierIndex(this.player.radius)].shortId : 'T1';
     const url = await this.monetization.shareUrl(this.runSeed, score, this.save.displayName || '');
-    const text = `Mój wynik w Vector Hole: ${score} pkt (miejsce #${place}, ${tier}). Pobij go na tej samej mapie!`;
+    const text = `Vector Hole: ${formatNum(score)} pkt, ${place}. miejsce. Ta sama mapa czeka — dasz radę więcej?`;
     this.analytics.track('share_click', { score, place });
     const btn = document.getElementById('btnShare');
     const label = btn.innerHTML;
     const done = (msg) => { btn.textContent = msg; setTimeout(() => { btn.innerHTML = label; }, 2200); };
     let file = null;
     try {
-      const cv = this.buildShareCanvas({ score, headline: place === 1 ? 'ZWYCIĘSTWO W NEONOWYM MIEŚCIE' : 'MÓJ WYNIK W NEONOWYM MIEŚCIE', sub: `Miejsce #${place} · ${tier} · ${this.isDailyRun ? 'Wyzwanie dnia' : 'Runda 2:00'}` });
+      const cv = this.buildShareCanvas({ score, headline: place === 1 ? 'ZWYCIĘSTWO W NEONOWYM MIEŚCIE' : 'MÓJ WYNIK W NEONOWYM MIEŚCIE', sub: `${place}. miejsce · ${tier} · ${this.isDailyRun ? 'Wyzwanie dnia' : 'Runda 2:00'}` });
       const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.9));
       if (blob) file = new File([blob], 'vector-hole-wynik.jpg', { type: 'image/jpeg' });
     } catch (e) { file = null; }
@@ -7245,7 +7304,7 @@ class Game {
           '<ul class="info-sheet-list"><li>+1 za co 3. rozegraną rundę GRAJ 2:00</li>' +
             `<li>+${CONFIG.daily.newRecordBonusPrisms} za nowy rekord w Wyzwaniu dnia</li>` +
             '<li>Nagrody Core City od poziomu 7</li></ul>',
-          'Wydajesz je w <strong>Warsztacie</strong> na rzadsze Traile.'
+          'Wydajesz je w <strong>Warsztacie</strong> na rzadsze Smugi.'
         ]
       });
       return;
@@ -7268,11 +7327,11 @@ class Game {
    *  „Impuls”, which means nothing to a new player. */
   rewardCategoryExplanation(category) {
     return {
-      skin: '<strong>Rdzeń</strong> to wygląd pierścienia Twojej dziury.',
-      aura: '<strong>Trail</strong> to świetlny ślad, który ciągnie się za Twoją dziurą podczas ruchu.',
+      skin: '<strong>Wir</strong> to wygląd Twojej dziury — jej pierścień i spirala.',
+      aura: '<strong>Smuga</strong> to świetlny ślad, który ciągnie się za Twoją dziurą podczas ruchu.',
       effect: '<strong>Efekt pochłaniania</strong> to błysk cząsteczek, gdy coś połykasz.',
-      overdrive: '<strong>Overdrive</strong> zmienia kolor banera w ostatnich sekundach rundy.',
-      bundle: 'Komplet: nowy Rdzeń, Trail, Efekt pochłaniania i Overdrive naraz, plus odznaka.',
+      overdrive: '<strong>Finisz</strong> zmienia kolor banera w ostatnich sekundach rundy.',
+      bundle: 'Komplet: nowy Wir, Smuga, Efekt pochłaniania i Finisz naraz, plus odznaka.',
       bonus: 'Premia w monetach i pryzmatach za kolejny poziom.'
     }[category];
   }
@@ -7354,7 +7413,7 @@ class Game {
     };
     const plac = DISTRICTS.find(d => d.id === 'plac');
     const done = plac.missions.filter(id => this.save.campaign.completed[id]).length;
-    const progress = `Postęp w Placu Neonów: ${done} z ${plac.missions.length} misji.`;
+    const progress = `Postęp na Placu Neonów: ${done} z ${plac.missions.length} misji.`;
     const goToDistricts = { label: 'IDŹ DO DZIELNIC', onClick: () => this.openCampaignScreen() };
     const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
     if (tab === 'warsztat') {
@@ -7362,7 +7421,7 @@ class Game {
         icon: LOCK,
         title: 'Warsztat — zablokowany',
         body: [
-          'Tu zmienisz wygląd swojej dziury: <strong>Rdzeń</strong>, <strong>Trail</strong>, <strong>Efekt pochłaniania</strong> i <strong>Overdrive</strong>. Kupujesz je za monety i pryzmaty, a nagrody z Core City trafiają tu same.',
+          'Tu zmienisz wygląd swojej dziury: <strong>Wir</strong>, <strong>Smugę</strong>, <strong>Efekt pochłaniania</strong> i <strong>Finisz</strong>. Kupujesz je za monety i pryzmaty, a nagrody z Core City trafiają tu same.',
           missionLine('M02'), progress
         ],
         action: goToDistricts
@@ -7871,10 +7930,74 @@ class Game {
         if (keep) this.objects.push(obj);
       }
     });
+    this.layStreetTrails(rng);
+  }
+
+  /** v13: lays CONFIG.arena.trails rows of fragments along road lanes, one
+   *  block-length each (8 pickups ~ 30 px apart = an easy combo ×8). Seeded,
+   *  after every group is built, so Daily/challenge maps stay identical. */
+  layStreetTrails(rng) {
+    const A = CONFIG.arena;
+    const frags = this.objects.filter(o => o.tier === 'fragment');
+    let k = 0;
+    // Always the same number of draws, whatever was discovered/dropped.
+    for (let t = 0; t < A.trails; t++) {
+      const vertical = rng.next() < 0.5;
+      const line = seededInt(rng, 1, CITY_CELLS - 1) * CITY_PITCH;
+      const seg = seededInt(rng, 0, CITY_CELLS - 1);
+      const lane = (rng.next() < 0.5 ? -1 : 1) * CITY_ROAD * 0.22;
+      const start = seg * CITY_PITCH + CITY_ROAD / 2 + 26;
+      const span = CITY_PITCH - CITY_ROAD - 52;
+      for (let i = 0; i < A.trailLength; i++) {
+        const o = frags[k++];
+        if (!o) continue;
+        const along = start + span * i / (A.trailLength - 1);
+        o.x = vertical ? line + lane : along;
+        o.y = vertical ? along : line + lane;
+        o.trail = true;
+      }
+    }
+  }
+
+  /** v13: every hole starts inside a small feast -- fragments on a loose
+   *  spiral plus a couple of capsules, taken from the scattered pool (so
+   *  the totals don't change). The first bite is a few frames away. */
+  layStarterFeasts(rng, spawns) {
+    const A = CONFIG.arena;
+    const pool = { fragment: this.objects.filter(o => o.tier === 'fragment' && !o.trail), capsule: this.objects.filter(o => o.tier === 'capsule') };
+    const take = (tier) => pool[tier].pop();
+    for (const sp of spawns) {
+      const a0 = rng.next() * Math.PI * 2;
+      for (let i = 0; i < A.feastFragments; i++) {
+        const o = take('fragment');
+        if (!o) break;
+        const a = a0 + i * 2.4, r = 46 + i * 10;
+        o.x = clamp(sp.x + Math.cos(a) * r, 30, WORLD_W - 30);
+        o.y = clamp(sp.y + Math.sin(a) * r, 30, WORLD_H - 30);
+      }
+      for (let i = 0; i < A.feastCapsules; i++) {
+        const o = take('capsule');
+        if (!o) break;
+        const a = a0 + Math.PI * (0.5 + i);
+        o.x = clamp(sp.x + Math.cos(a) * 150, 30, WORLD_W - 30);
+        o.y = clamp(sp.y + Math.sin(a) * 150, 30, WORLD_H - 30);
+      }
+    }
+  }
+
+  /** Spawn points for the player and every bot plus the bot names -- the
+   *  exact seeded draws createEntities() makes (shared with
+   *  computeDailyLayout(), so its preview is the real layout). */
+  rollSpawns(rng) {
+    const player = this.randomWorldPos(300, rng);
+    const names = pickUnique(BOT_NAME_POOL, NUM_BOTS, rng);
+    const bots = names.map(() => this.randomWorldPos(300, rng));
+    return { player, names, bots };
   }
 
   createEntities(rng) {
-    const spawn = this.randomWorldPos(300, rng);
+    const spawns = this.rollSpawns(rng);
+    const spawn = spawns.player;
     this.player = new Hole(this.playerDisplayName(), spawn.x, spawn.y, true);
     this.player.skin = this.save.selected;
     this.player.auraId = this.save.auras.selected;
@@ -7897,9 +8020,9 @@ class Game {
     const speedMult = pick(D.botSpeedMult) * (this.modifier === 'rush_hour' ? 1.3 : 1);
 
     this.bots = [];
-    const names = pickUnique(BOT_NAME_POOL, NUM_BOTS, rng);
+    const names = spawns.names;
     for (let i = 0; i < NUM_BOTS; i++) {
-      const p = this.randomWorldPos(300, rng);
+      const p = spawns.bots[i];
       const bot = new Bot(names[i], p.x, p.y);
       // Small per-bot spread so the pack isn't uniform.
       bot.startRadius = pick(D.botStartRadius) * (0.9 + 0.2 * (i / Math.max(1, NUM_BOTS - 1)));
@@ -7909,6 +8032,7 @@ class Game {
       bot.styleOverride = BOT_STYLES[i % BOT_STYLES.length];
       this.bots.push(bot);
     }
+    this.layStarterFeasts(rng, [spawns.player, ...spawns.bots]);
   }
 
   pickModifier() {
@@ -8052,8 +8176,11 @@ class Game {
       // "eat a smaller rival" step, which has no CampaignEntity type so it
       // gets its own fixed icon/color instead of routing through
       // campaignGoalIcon()).
+      // v13: only the steps already done plus the current one -- one step
+      // at a time, like the step windows (the full list of four up front
+      // read as homework).
       case 'tutorialChecklist':
-        return g.steps.map(step => {
+        return g.steps.slice(0, this.tutorialCurrentStep() + 1).map(step => {
           const progress = step.type === 'eatRival' ? m.rivalsEaten : (m.eatenByType[step.entityType] || 0);
           const iconDef = step.type === 'eatRival' ? { icon: CARD_ICONS.target, color: '#ff3860' } : this.campaignGoalIcon(step.entityType);
           return { ...iconDef, label: step.label, progress: Math.min(progress, step.count), target: step.count };
@@ -8072,7 +8199,7 @@ class Game {
     if (g.type === 'eatCount') types.add(g.entityType);
     if (g.type === 'gatesPassed') types.add('gate');
     if (g.type === 'activateAndDevour') { types.add(g.activator); types.add('landmark'); }
-    if (g.type === 'tutorialChecklist') for (const step of g.steps) if (step.entityType) types.add(step.entityType);
+    if (g.type === 'tutorialChecklist') { const st = g.steps[this.tutorialCurrentStep()]; if (st && st.entityType) types.add(st.entityType); }
     if (g.type === 'objectives') {
       for (const st of g.steps) {
         if (st.eat) types.add(st.eat);
@@ -8267,7 +8394,12 @@ class Game {
         this.campaignEntities.push(new CampaignEntity('fragment', cx + Math.cos(a) * radius, cy + Math.sin(a) * radius));
       }
     } else if (s.fragments) {
-      addMany('fragment', s.fragments);
+      const ring = Math.min(s.starterRing || 0, s.fragments);
+      for (let i = 0; i < ring; i++) {
+        const a = i * 2.4 - 1.2, rr = 60 + i * 12;
+        this.campaignEntities.push(new CampaignEntity('fragment', clamp(start.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(start.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20)));
+      }
+      addMany('fragment', s.fragments - ring);
     }
     // Tight pockets of fragments for combo goals (see compileMission()).
     for (let c = 0; c < (s.fragmentClusters || 0); c++) {
@@ -8479,6 +8611,7 @@ class Game {
     this.hitStopUntil = 0;
     this.prewarmFloor();
 
+    this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
     this.monetization.gameplayStart();
     this.state = GameState.PLAYING;
@@ -8531,7 +8664,7 @@ class Game {
     const activated = goal.activator === 'node' ? m.nodesDisabled : m.pylonsCharged;
     if (activated >= goal.count) {
       m.landmark.unlocked = true;
-      this.showNelaToast('Droga otwarta. Dosięgnij celu, gdy będziesz gotowa.');
+      this.showNelaToast('Droga otwarta — urośnij i pochłoń cel.');
     }
   }
 
@@ -8985,9 +9118,16 @@ class Game {
       if (m.tutorialStepDone[i]) return;
       const stepProgress = step.type === 'eatRival' ? m.rivalsEaten : (m.eatenByType[step.entityType] || 0);
       if (stepProgress < step.count) return;
+      const wasCurrent = i === this.tutorialCurrentStep();
       m.tutorialStepDone[i] = true;
-      const nextIdx = g.steps.findIndex((s, j) => !m.tutorialStepDone[j]);
-      if (nextIdx !== -1) this.showTutorialStepIntro(nextIdx);
+      const nextIdx = this.tutorialCurrentStep();
+      if (nextIdx >= g.steps.length) return;
+      // v13 (QA): finishing a LATER step early (a car eaten before the 6th
+      // street prop) used to re-open the current step's blocking window --
+      // three freezes in 2 s. Only the current step's completion opens the
+      // next window; an early one is a quick, non-blocking nod.
+      if (wasCurrent) this.showTutorialStepIntro(nextIdx);
+      else this.showNelaToast(`${step.label} — zaliczone! Teraz: ${g.steps[nextIdx].label.toLowerCase()}.`);
     });
 
     if (!m.tutorialRivalHintShown) {
@@ -8995,13 +9135,25 @@ class Game {
       const bot = this.bots[0];
       if (rivalIdx !== -1 && !m.tutorialStepDone[rivalIdx] && bot && this.player.radius > bot.radius * EAT_HOLE_RATIO) {
         m.tutorialRivalHintShown = true;
-        this.showNelaToast('Jesteś już większa od rywala — dotknij go, żeby go pochłonąć!');
+        this.showNelaToast('Rywal jest już mniejszy od Ciebie — najedź na niego i go pochłoń!');
       }
     }
   }
 
+  /** M00: index of the first unfinished step (steps.length when done). */
+  tutorialCurrentStep() {
+    const m = this.mission;
+    if (!m || m.def.goal.type !== 'tutorialChecklist') return 0;
+    const i = m.tutorialStepDone.findIndex(d => !d);
+    return i === -1 ? m.def.goal.steps.length : i;
+  }
+
   showTutorialStepIntro(stepIndex) {
-    this.showTutorialIntro(this.mission.def.goal.steps[stepIndex].intro);
+    const steps = this.mission.def.goal.steps;
+    const st = steps[stepIndex];
+    const icon = st.type === 'eatRival' ? { icon: CARD_ICONS.target, color: '#46D99A' } : this.campaignGoalIcon(st.entityType);
+    this.showTutorialIntro(st.intro, { step: `KROK ${stepIndex + 1} Z ${steps.length}`, title: st.title, icon,
+      button: stepIndex === 0 ? 'ZACZYNAM' : 'DALEJ' });
   }
 
   /** Hides NELA's toast at once -- it must never outlive its mission (QA:
@@ -9028,9 +9180,16 @@ class Game {
    *  mechanism as the evolution offer) so the player reads at their own
    *  pace and the clock/entities don't start until they're ready
    *  (player feedback: "gracz decyduje kiedy zaczyna"). */
-  showTutorialIntro(text) {
+  showTutorialIntro(text, opts = {}) {
     this.introPending = true;
     document.getElementById('tutorialIntroText').textContent = text;
+    document.getElementById('tutorialIntroStep').textContent = opts.step || '';
+    document.getElementById('tutorialIntroTitle').textContent = opts.title || 'ZANIM ZACZNIESZ';
+    const ic = document.getElementById('tutorialIntroIcon');
+    ic.innerHTML = opts.icon ? `<svg viewBox="0 0 24 24">${opts.icon.icon}</svg>` : '';
+    ic.style.color = opts.icon ? opts.icon.color : '';
+    ic.classList.toggle('hidden', !opts.icon);
+    document.getElementById('btnTutorialIntroStart').textContent = opts.button || 'ZACZYNAM';
     document.getElementById('tutorialIntroOverlay').classList.remove('hidden');
   }
 
@@ -9041,7 +9200,7 @@ class Game {
 
   updateCampaignHUD() {
     const m = this.mission;
-    this.hudSet('missionTimerValue', 'text', formatClock(m.timeRemaining));
+    this.hudSet('missionTimerValue', 'text', m.def.untimed ? '∞' : formatClock(m.timeRemaining));
     document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', m.timeRemaining <= 10);
 
     // "CEL RUNDY" section: one icon+label+progress row per goal shape (two
@@ -9111,7 +9270,9 @@ class Game {
     const m = this.mission;
     if (m.ended) return;
     m.elapsed += dt;
-    m.timeRemaining = Math.max(0, m.def.timeLimit + (m.bonusTime || 0) - m.elapsed);
+    // v13: the tutorial is untimed -- a new player could fail it (and was
+    // then offered a revive ad) before knowing what the game is.
+    m.timeRemaining = m.def.untimed ? m.def.timeLimit : Math.max(0, m.def.timeLimit + (m.bonusTime || 0) - m.elapsed);
 
     this.applyPlayerMovement(dt);
     this.clampToCampaignBounds(this.player);
@@ -9165,7 +9326,7 @@ class Game {
 
     this.updateCampaignHUD();
 
-    if (m.timeRemaining <= 0 && !m.finishing) this.onCampaignTimeout();
+    if (m.timeRemaining <= 0 && !m.finishing && !m.def.untimed) this.onCampaignTimeout();
   }
 
   /* ---- Golden Shot v11: "PRAWIE!" mission revive (rewarded ad) ---- */
@@ -9288,7 +9449,7 @@ class Game {
         this.save.owned.push(m.def.reward.unlockSkin);
         const skin = SKINS.find(sk => sk.id === m.def.reward.unlockSkin);
         this.queueRewardCelebration({
-          eyebrow: 'NAGRODA ZA KAMPANIĘ', title: `Rdzeń „${skin ? skin.name : m.def.reward.unlockSkin}”`, color: '#EFCB63',
+          eyebrow: 'NAGRODA ZA KAMPANIĘ', title: `Wir „${skin ? skin.name : m.def.reward.unlockSkin}”`, color: '#EFCB63',
           icon: REWARD_CATEGORY_ICONS.skin,
           desc: 'Wyjątkowy wygląd dziury za ukończenie całej kampanii. Załóż go w Warsztacie.'
         });
@@ -9401,7 +9562,61 @@ class Game {
     ctx.restore();
 
     if (this.showMinimap) this.drawCampaignMinimap(ctx);
+    this.drawCampaignGoalArrow(ctx, time);
     this.drawJuiceScreen(ctx, this.mission ? this.mission.timeRemaining : undefined);
+  }
+
+  /** v13: what the player can act on for the goal right now -- the nearest
+   *  of these gets an edge arrow when none is on screen (QA: missions
+   *  opened with no goal object in view and nothing pointing to one). */
+  campaignGuideTargets() {
+    const m = this.mission;
+    if (!m) return [];
+    const g = m.def.goal;
+    const tier = this.campaignTierIndex(this.campaignPlayerTier().id);
+    if (g.type === 'tutorialChecklist') {
+      const st = g.steps[this.tutorialCurrentStep()];
+      if (!st) return [];
+      if (st.type === 'eatRival') return this.bots.filter(b => this.player.radius > b.radius * EAT_HOLE_RATIO);
+    }
+    const types = this.campaignGoalEntityTypes();
+    const glyph = m.goalGlyph;
+    return this.campaignEntities.filter(e => {
+      if (e.consumed || e.eating || e.live === false || !types.has(e.type)) return false;
+      if (e.type === 'gate') return !m.gatesPassed.has(e);
+      if (glyph && e.glyph !== glyph && e.type !== 'landmark') return false;
+      if (e.type === 'node' && e.glyph === 'mostek') return !e.mostekPowered;
+      if ((e.type === 'node' || e.type === 'pylon') && e.active === false) return false;
+      if (e.type === 'landmark' && !e.unlocked) return false;
+      return !(e.stats && tier < e.stats.minTier);
+    });
+  }
+
+  drawCampaignGoalArrow(ctx, time) {
+    const p = this.player;
+    if (!p || this.introPending) return;
+    const targets = this.campaignGuideTargets();
+    if (!targets.length || targets.some(e => this.isInView(e.x, e.y, 0))) return;
+    let best = null, bd = Infinity;
+    for (const e of targets) { const d = dist(p.x, p.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
+    const sx = best.x - this.camera.x + this.width / 2, sy = best.y - this.camera.y + this.height / 2;
+    const cx = this.width / 2, cy = this.height / 2, margin = 46;
+    const angle = Math.atan2(sy - cy, sx - cx);
+    const k = Math.min(Math.abs((cx - margin) / (Math.cos(angle) || 1e-6)), Math.abs((cy - margin) / (Math.sin(angle) || 1e-6)));
+    const ex = cx + Math.cos(angle) * k, ey = cy + Math.sin(angle) * k;
+    const color = !(best instanceof CampaignEntity) ? '#46D99A' : best.type === 'gate' ? '#50F0FA' : this.campaignEntityColor(best);
+    const bob = 4 * Math.sin(time * 6);
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.translate(ex - Math.cos(angle) * bob, ey - Math.sin(angle) * bob);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = color;
+    ctx.strokeStyle = 'rgba(4,16,29,0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -12); ctx.lineTo(-4, 0); ctx.lineTo(-10, 12); ctx.closePath();
+    ctx.stroke(); ctx.fill();
+    ctx.restore();
   }
 
   /** Campaign's floor: the same Neon City (CityFloor) painted in the
@@ -9536,11 +9751,22 @@ class Game {
     this.missionJustCompleted = false;
     this.hubMilestoneReward = null;
     this.difficultyT = this.computeDifficultyT();
+    // v13: no Rush Hour while the career is still in its easy ramp (it rolled
+    // on a brand-new player's very first round). The seeded draw above is
+    // kept, so Daily/challenge maps -- never at t = 0 -- are unchanged.
+    if (this.difficultyT === 0) this.modifier = 'none';
     const equipped = SKINS.find(sk => sk.id === this.save.selected);
     this.activePerks = (equipped && equipped.perks) || [];
 
     this.createObjects(this.rng);
     this.createEntities(this.rng);
+    this.pacer = this.bots[0];
+    this.parScore = this.computeParScore();
+    this.leadLostAt = 0;
+    this.finalChaseShown = false;
+    // v13: a short spawn shield -- on hard careers bots start bigger than
+    // the player and could eat it in the first second.
+    this.player.invulnerableUntil = performance.now() + 2500;
     this.player.perkSpeedMult = 1 + this.perk('speed');
     if (this.perk('startUnits')) this.player.radius = radiusForUnits(this.perk('startUnits'));
     this.particles = [];
@@ -9595,15 +9821,16 @@ class Game {
     const runTool = this.selectedRunTool;
     this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
 
+    this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
     this.monetization.gameplayStart();
     this.state = GameState.PLAYING;
 
     const hint = document.getElementById('mobile-hint');
     hint.textContent = (this.useThumbpad
-      ? 'Dotknij dolną część ekranu, aby sterować kciukiem'
+      ? 'Dotknij dolnej części ekranu, aby sterować kciukiem'
       : 'Dotknij i przeciągaj, aby sterować dziurą')
-      + (this.modifier === 'rush_hour' ? ' • RUSH HOUR: rywale są szybsi w tej rundzie!' : '');
+      + (this.modifier === 'rush_hour' ? ' • GODZINA SZCZYTU: rywale są szybsi w tej rundzie!' : '');
     hint.classList.remove('hidden');
     clearTimeout(this.hintTimer);
     this.hintTimer = setTimeout(() => hint.classList.add('hidden'), 4000);
@@ -9624,7 +9851,7 @@ class Game {
     this.lastCountdownSec = null;
     this.scorePop = null;
     this.prewarmFloor();
-    this.showBanner(this.isDailyRun ? 'WYZWANIE DNIA!' : 'START!', this.modifier === 'rush_hour' ? 'RUSH HOUR — rywale są szybsi!' : 'Pochłaniaj · rośnij · wygraj', '#50F0FA', 1.2);
+    this.showBanner(this.isDailyRun ? 'WYZWANIE DNIA!' : 'START!', this.modifier === 'rush_hour' ? 'GODZINA SZCZYTU — rywale są szybsi!' : 'Pochłaniaj · rośnij · wygraj', '#50F0FA', 1.2);
   }
 
   async requestPlayAgain() {
@@ -9754,6 +9981,12 @@ class Game {
         this.save.stats.bestArenaScore = this.player.score;
         coreGain += cc.arenaNewPbGain;
       }
+      // v13: the pacer's par comes from finished rounds only (an early
+      // "leave run" would drag it down).
+      if (this.timeRemaining <= 0.5) {
+        const recent = (this.save.stats.recentArenaScores || []).concat(this.player.score);
+        this.save.stats.recentArenaScores = recent.slice(-CONFIG.rival.history);
+      }
     }
     if ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax) coreGain = Math.round(coreGain * cc.earlyLevelMult);
     this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + coreGain;
@@ -9813,7 +10046,7 @@ class Game {
     this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100, '', formatNum);
     this.animateNumber(document.getElementById('finalCoins'), coinsEarned, 1100);
     const eyebrow = document.getElementById('resultEyebrow');
-    eyebrow.textContent = place === 1 ? 'ZWYCIĘSTWO!' : (place <= 3 ? `PODIUM · MIEJSCE #${place}` : 'KONIEC RUNDY');
+    eyebrow.textContent = place === 1 ? 'ZWYCIĘSTWO!' : (place <= 3 ? `PODIUM · ${place}. MIEJSCE` : 'KONIEC RUNDY');
     eyebrow.classList.toggle('result-eyebrow-win', place <= 3);
     document.getElementById('resultNewbieTag').classList.toggle('hidden', !this.newbieBonusApplied);
     this.renderXpCard('result', this.lastXpResult);
@@ -9890,7 +10123,7 @@ class Game {
     let hook = '';
     if (this.challenge) {
       if (this.challengeBeaten) {
-        hook = `WYZWANIE POBITE! ${this.player.score} vs ${this.challenge.score} (${this.challenge.from}). Odeślij swój wynik!`;
+        hook = `WYZWANIE WYGRANE! ${formatNum(this.player.score)} vs ${formatNum(this.challenge.score)} (${this.challenge.from}). Odeślij swój wynik!`;
         this.save.challenge = null;
         saveGame(this.save);
         this.analytics.track('challenge_won', { score: this.player.score, target: this.challenge.score });
@@ -9901,7 +10134,7 @@ class Game {
     } else if (place > 1) {
       const above = ranked[place - 2];
       const gap = above.score - this.player.score + 1;
-      if (gap > 0 && gap <= Math.max(60, this.player.score * 0.35)) hook = `Zabrakło tylko ${formatNum(gap)} pkt do miejsca #${place - 1}${place - 1 <= 3 ? ' i podium' : ''}!`;
+      if (gap > 0 && gap <= Math.max(60, this.player.score * 0.35)) hook = `Zabrakło tylko ${formatNum(gap)} pkt do ${place - 1}. miejsca${place - 1 <= 3 ? ' i podium' : ''}!`;
     }
     hookLine.textContent = hook;
     hookLine.classList.toggle('hidden', !hook);
@@ -10236,7 +10469,7 @@ class Game {
     obj.expiresAt = this.timeRemaining - G.lifetime;
     this.objects.push(obj);
     this.goldenObj = obj;
-    this.showBanner('ZŁOTY RDZEŃ!', 'Złap go pierwsza — złota strzałka wskazuje drogę', '#EFCB63', 1.3, 2);
+    this.showBanner('ZŁOTY RDZEŃ!', 'Złap go przed rywalami — złota strzałka wskazuje drogę', '#EFCB63', 1.3, 2);
     this.analytics.track('golden_core_spawn', {});
   }
 
@@ -10452,7 +10685,7 @@ class Game {
           }
 
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
-          const multiplier = a.isPlayer ? this.registerCombo() : 1;
+          const multiplier = a.isPlayer ? this.registerCombo() : (a.paceMult || 1);
           const isBounty = a.isPlayer && b === this.bountyTarget;
           const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer ? (1 + this.perk('score')) * (this.frenzyActive ? CONFIG.golden.scoreMult : 1) : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
           a.score += rivalPts;
@@ -10633,7 +10866,7 @@ class Game {
     this.overdriveActive = true;
     const variants = CONFIG.overdrive.variants;
     this.overdriveVariant = variants[Math.floor(this.rng.next() * variants.length)];
-    this.overdriveTag = this.overdriveVariant === 'blackout' ? 'BLACKOUT FINISH' : 'PORTAL STORM';
+    this.overdriveTag = this.overdriveVariant === 'blackout' ? 'ZACIEMNIENIE' : 'BURZA PORTALI';
     this.analytics.track('overdrive_start', { variant: this.overdriveVariant, runId: this.runId });
     this.vibrate([60, 40, 60]);
     this.flashScreen('#9875FF', 0.25);
@@ -10645,7 +10878,7 @@ class Game {
     const skin = OVERDRIVE_SKINS.find(s => s.id === skinId);
     // Golden Shot v9: shown through the shared canvas banner slot (was a
     // separate DOM banner that overlapped the canvas banners).
-    this.showBanner('OVERDRIVE!', this.overdriveTag, (skin && skin.color) || '#9875FF', 1.6, 3);
+    this.showBanner('WIELKI FINISZ!', this.overdriveTag, (skin && skin.color) || '#9875FF', 1.6, 3);
 
     if (this.overdriveVariant === 'portal_rain') this.spawnPortalRain();
   }
@@ -10721,8 +10954,14 @@ class Game {
       this.player.moveDirection(this.moveVector.x, this.moveVector.y, this.moveVector.magnitude, sensitivity, dt);
       return;
     }
-    if (!this.useThumbpad || !this.isTouchDevice) {
-      this.player.moveToward(this.pointerWorld.x, this.pointerWorld.y, dt);
+    if ((!this.useThumbpad || !this.isTouchDevice) && this.pointerScreen) {
+      const p = this.pointerScreen;
+      // Screen -> world through the current camera, so a held finger keeps
+      // steering; a finger right over the hole parks it (no jitter).
+      const tx = this.camera.x + (p.x - this.width / 2) / this.zoom;
+      const ty = this.camera.y + (p.y - this.height / 2) / this.zoom;
+      this.pointerWorld = { x: tx, y: ty };
+      if (Math.hypot(tx - this.player.x, ty - this.player.y) > 4) this.player.moveToward(tx, ty, dt);
     }
   }
 
@@ -10755,8 +10994,8 @@ class Game {
     for (const obj of this.objects) {
       if (obj.consumed) {
         const hole = obj.eater;
-        hole.growUnits(TIERS[obj.tier].growth * (hole.isPlayer ? 1 + this.perk('growth') : 1));
-        const multiplier = hole.isPlayer ? this.registerCombo() : 1;
+        hole.growUnits(TIERS[obj.tier].growth * (hole.isPlayer ? 1 + this.perk('growth') : Math.min(hole.paceMult || 1, CONFIG.rival.maxGrowthBoost)));
+        const multiplier = hole.isPlayer ? this.registerCombo() : (hole.paceMult || 1);
         const frenzyMult = hole.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1;
         const pts = Math.round(obj.value * multiplier * frenzyMult * (hole.isPlayer ? 1 + this.perk('score') : 1));
         hole.score += pts;
@@ -10781,6 +11020,7 @@ class Game {
     this.updateGoldenCore(dt);
 
     this.handleHoleCollisions();
+    this.updatePacer();
     this.checkSizeTier();
     this.checkEvolutionTriggers();
     this.checkOverdriveTrigger();
@@ -10815,6 +11055,30 @@ class Game {
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
     this.updateHUD();
+  }
+
+  /** v13: steers the pacer rival along its par-score curve (CONFIG.rival).
+   *  Score grows superlinearly with size, hence par * f^1.5. */
+  updatePacer() {
+    const b = this.pacer;
+    if (!b || !this.parScore) return;
+    const R = CONFIG.rival;
+    const f = clamp(1 - this.timeRemaining / ROUND_TIME, 0, 1);
+    const R2 = R.chaseRatio;
+    const par = Math.max(this.parScore * Math.pow(f, 1.5), this.player.score * lerp(R2[0], R2[1], this.difficultyT));
+    const diff = (par - b.score) / Math.max(150, this.parScore * 0.12);
+    b.paceMult = diff > 0 ? 1 + Math.min(diff, R.maxBoost - 1) : Math.max(R.minMult, 1 + diff * 0.5);
+    b.paceHungry = diff > 0.3;
+  }
+
+  /** Par for this round's pacer: the median of the player's last finished
+   *  Arena rounds (CONFIG.rival.defaultPar before there are any) times a
+   *  difficulty factor. Daily/challenge rounds use the fixed dailyT factor. */
+  computeParScore() {
+    const R = CONFIG.rival;
+    const hist = (this.save.stats.recentArenaScores || []).slice().sort((a, b) => a - b);
+    const base = hist.length ? hist[Math.floor(hist.length / 2)] : R.defaultPar;
+    return Math.round(clamp(base, R.minPar, R.maxPar) * lerp(R.parFactor[0], R.parFactor[1], this.difficultyT));
   }
 
   /** Combo window countdown; fades the on-screen combo text smoothly over
@@ -10882,8 +11146,18 @@ class Game {
     this.hudSet('rankValue', 'text', `#${place}/${ranked.length}`);
     // Golden Shot v8: celebrate climbing into the podium mid-round.
     if (this.lastPlace !== null && place < this.lastPlace && place <= 3 && this.timeRemaining < ROUND_TIME - 2) {
-      this.showBanner(place === 1 ? 'PROWADZISZ!' : `AWANS NA #${place}`, null, '#EFCB63', 0.9, 1);
+      this.showBanner(place === 1 ? 'PROWADZISZ!' : `AWANS NA ${place}. MIEJSCE`, null, '#EFCB63', 0.9, 1);
       this.vibrate(30);
+    }
+    // v13: losing the lead is the other half of the race -- name who did it.
+    const nowMs = performance.now();
+    if (this.lastPlace === 1 && place > 1 && this.timeRemaining < ROUND_TIME - 5 && nowMs - (this.leadLostAt || 0) > 8000) {
+      this.leadLostAt = nowMs;
+      this.showBanner(`${ranked[0].name} PROWADZI`, 'Odbij pierwsze miejsce!', '#FF54AD', 1.0, 1);
+    }
+    if (!this.finalChaseShown && place > 1 && this.timeRemaining <= CONFIG.rival.finalChaseSeconds) {
+      this.finalChaseShown = true;
+      this.showBanner(`BRAKUJE ${formatNum(ranked[0].score - this.player.score + 1)} PKT`, `do 1. miejsca · zostało ${Math.ceil(this.timeRemaining)} s`, '#EFCB63', 1.4, 2);
     }
     this.lastPlace = place;
     document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', this.timeRemaining <= 10);

@@ -361,6 +361,23 @@ body.touch-input #gameCanvas {
   background: rgba(4, 16, 29, 0.78) !important;
 }
 
+/* v13 tutorial coach card: bottom-anchored over a light scrim -- the hole
+   and the food it should go for stay in view while the step is read. */
+.coach-overlay {
+  background: linear-gradient(to bottom, rgba(4, 16, 29, 0.05) 0%, rgba(4, 16, 29, 0.25) 45%, rgba(4, 16, 29, 0.85) 100%) !important;
+  align-items: flex-end !important;
+}
+.coach-overlay > .screen-inner { margin: 0 auto calc(24px + env(safe-area-inset-bottom, 0px)); }
+.coach-card { text-align: left; max-width: 360px; padding: 18px 18px 16px; }
+.coach-card .hint-text { text-align: left; margin: 10px 0 14px; font-size: 15px; line-height: 1.45; }
+.coach-card .btn { width: 100%; }
+.coach-head { display: flex; align-items: center; gap: 12px; }
+.coach-head .section-title { margin: 0; font-size: 20px; text-align: left; }
+.coach-step { font-size: 11px; letter-spacing: 0.18em; color: var(--nc-cyan, #50F0FA); font-weight: 700; }
+.coach-icon { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid currentColor; }
+.coach-icon svg { width: 26px; height: 26px; }
+
 .pause-panel, .tool-popup-panel {
   width: 100%;
   max-width: 320px;

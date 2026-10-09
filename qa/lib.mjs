@@ -110,10 +110,35 @@ window.__qaPlayArena = function (opts) {
   g.running = false; // detach the RAF loop; we tick manually
   const p = g.player;
   let frames = 0, maxUpdateMs = 0, totalUpdateMs = 0, renderMs = 0, renders = 0, deaths = 0, lastR = p.radius;
+  // v13 first-seconds metrics: when the first pickup lands and how many
+  // land in the first 10 s (score increments ~ eats).
+  let firstEatSec = null, eats10 = 0, lastScore = 0;
   let wanderA = Math.random() * 6.28;
   const steer = () => {
     if (style === 'afk') { g.keyDir = { x: 0, y: 0 }; g.pointerWorld = { x: p.x, y: p.y }; return; }
     if (style === 'random') { wanderA += (Math.random() - 0.5) * 0.6; g.keyDir = { x: Math.cos(wanderA), y: Math.sin(wanderA) }; return; }
+    if (style === 'casual') {
+      // v13 "casual human": only sees what is on screen, re-aims every
+      // ~0.4 s (reaction time), goes for the NEAREST thing it can eat (not
+      // the best value), notices a bigger rival only when it's close.
+      if (frames % 12 !== 0) return;
+      const vw = g.width / g.zoom / 2, vh = g.height / g.zoom / 2;
+      const onScreen = (x, y) => Math.abs(x - p.x) < vw && Math.abs(y - p.y) < vh
+        && Math.hypot(x - clamp(x, p.radius, WORLD_W - p.radius), y - clamp(y, p.radius, WORLD_H - p.radius)) < p.radius * 0.8;
+      for (const b of g.bots) {
+        const d = Math.hypot(b.x - p.x, b.y - p.y);
+        if (b.radius > p.radius * 1.15 && d < 150 + b.radius && Math.random() < 0.7) { g.keyDir = { x: (p.x - b.x) / (d + 1), y: (p.y - b.y) / (d + 1) }; return; }
+      }
+      let best = null, bd = Infinity;
+      for (const b of g.bots) { const d = Math.hypot(b.x - p.x, b.y - p.y); if (onScreen(b.x, b.y) && p.radius > b.radius * 1.3 && !b.invulnerable && d < bd) { bd = d; best = b; } }
+      if (!best) for (const o of g.objects) {
+        if (o.eating || !g.holeCanEat(p, o) || !onScreen(o.x, o.y)) continue;
+        const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < bd) { bd = d; best = o; }
+      }
+      if (best) { const m = Math.hypot(best.x - p.x, best.y - p.y) || 1; g.keyDir = { x: (best.x - p.x) / m, y: (best.y - p.y) / m }; }
+      else { wanderA += (Math.random() - 0.5) * 1.2; g.keyDir = { x: Math.cos(wanderA), y: Math.sin(wanderA) }; }
+      return;
+    }
     let fx = 0, fy = 0;
     for (const b of g.bots) {
       const d = Math.hypot(b.x - p.x, b.y - p.y);
@@ -153,6 +178,7 @@ window.__qaPlayArena = function (opts) {
     const t1 = realNow();
     totalUpdateMs += t1 - t0; maxUpdateMs = Math.max(maxUpdateMs, t1 - t0);
     if (p.radius < lastR - 4) deaths++;
+    if (p.score > lastScore) { if (firstEatSec === null) firstEatSec = +(frames * dt).toFixed(2); if (frames * dt <= 10) eats10++; lastScore = p.score; }
     lastR = p.radius;
     if (frames % 15 === 0 && g.state === GameState.PLAYING) {
       const r0 = realNow(); g.render(frames * dt); renderMs += realNow() - r0; renders++;
@@ -164,7 +190,8 @@ window.__qaPlayArena = function (opts) {
   if (opts.gfx != null) g.applyGfx(2);
   const ranked = rankHoles([g.player, ...g.bots]);
   return {
-    place: ranked.indexOf(g.player) + 1, score: g.player.score, radius: Math.round(g.player.radius),
+    place: ranked.indexOf(g.player) + 1, score: g.player.score, firstEatSec, eats10,
+    gapToSecond: ranked[0] === g.player ? g.player.score - ranked[1].score : ranked[0].score - g.player.score, radius: Math.round(g.player.radius),
     tier: CONFIG.sizeTiers[getSizeTierIndex(g.player.radius)].shortId,
     coins: g.save.coins, prisms: g.save.prisms, coinsEarned: g.adPendingCoins, frames, deaths,
     avgUpdateMs: +(totalUpdateMs / frames).toFixed(3), maxUpdateMs: +maxUpdateMs.toFixed(2),
