@@ -225,6 +225,57 @@ export async function runFeatureChecks(url) {
     await g.browser.close();
   }
 
+  // --- Regressions from the v11 code review --------------------------------
+  {
+    const slowNative = () => { window.VectorHoleNative = { rewarded: () => new Promise(r => setTimeout(() => r(true), 600)), interstitial: async () => {} }; };
+    const g = await veteranPage(url, { initScript: slowNative });
+    await g.page.waitForTimeout(200);
+    const r = await g.page.evaluate(async () => {
+      const gm = window.game;
+      gm.startCampaignMission('M01'); if (gm.introPending) gm.dismissTutorialIntro();
+      const m = gm.mission;
+      const it = gm.campaignGoalItems()[0];
+      const st = m.def.goal.steps && m.def.goal.steps[0];
+      m.eatenByType[(st && st.eat) || 'fragment'] = Math.ceil(it.target * 0.7);
+      m.elapsed = m.def.timeLimit; gm.updateCampaign(0.016);
+      const p1 = gm.acceptRevive();
+      await new Promise(r => setTimeout(r, 80));
+      const p2 = gm.acceptRevive();
+      gm.pauseGame(); gm.resumeGame();
+      await Promise.all([p1, p2]);
+      return { ended: m.ended, revived: !!m.revived };
+    });
+    results.push(report('review: double-tapping revive does not waste the ad', !r.ended && r.revived, JSON.stringify(r)));
+    const e = await g.page.evaluate(() => {
+      const u = encodeChallenge(42, 777, 'abcdefghijklmno😀x');
+      return decodeChallenge(u.slice(u.indexOf('?')));
+    });
+    results.push(report('review: emoji names survive the challenge seal', !!e && e.score === 777, JSON.stringify(e)));
+    const same = await g.page.evaluate(() => {
+      const gm = window.game;
+      const layout = () => { gm.createObjects(new SeededRNG(123456789)); const o = gm.objects.find(x => x.tier === 'fragment'); return [Math.round(o.x), Math.round(o.y)].join(','); };
+      const full = layout();
+      const saved = gm.save.campaign.discoveredTypes;
+      gm.save.campaign.discoveredTypes = ['fragment', 'capsule', 'prop'];
+      const partial = layout();
+      gm.save.campaign.discoveredTypes = saved;
+      return { full, partial };
+    });
+    results.push(report('review: a challenge seed lays out the same map for every player', same.full === same.partial, JSON.stringify(same)));
+    await g.browser.close();
+  }
+  {
+    const pokiBlocked = () => {
+      window.__pokiCalls = [];
+      window.PokiSDK = { init: () => Promise.reject(new Error('adblock')), gameLoadingFinished: () => window.__pokiCalls.push('loaded'), gameplayStart: () => window.__pokiCalls.push('start'), gameplayStop: () => window.__pokiCalls.push('stop'), rewardedBreak: async () => false, commercialBreak: async () => {} };
+    };
+    const g = await veteranPage(url, { initScript: pokiBlocked });
+    await g.page.waitForTimeout(300);
+    const p = await g.page.evaluate(() => ({ provider: window.game.monetization.provider, calls: window.__pokiCalls }));
+    results.push(report('review: Poki under an adblocker stays "poki" (never the paying demo ad)', p.provider === 'poki' && p.calls.includes('loaded'), JSON.stringify(p)));
+    await g.browser.close();
+  }
+
   fs.writeFileSync(path.join(OUT, 'features.json'), JSON.stringify(results, null, 2));
   return results;
 }

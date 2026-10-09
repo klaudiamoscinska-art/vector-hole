@@ -440,7 +440,7 @@ function moderateName(name) {
   if (!name) return '';
   const lower = name.toLowerCase();
   if (NAME_BLOCKLIST.some(w => lower.includes(w))) return '';
-  return name.slice(0, 16);
+  return Array.from(name).slice(0, 16).join('');
 }
 
 /* ----------------------- Analytics (provider-agnostic stub) -----------------------
@@ -798,38 +798,44 @@ class Monetization {
       const s = document.createElement('script');
       s.src = PORTAL_SDKS[id].src;
       s.async = true;
-      s.onload = () => { this.attachProvider().then(resolve, resolve); };
-      s.onerror = () => { this.attachProvider().then(resolve, resolve); };
+      s.onload = () => { this.attachProvider(true).then(resolve, resolve); };
+      s.onerror = () => { this.attachProvider(true).then(resolve, resolve); };
       document.head.appendChild(s);
     });
   }
 
-  async attachProvider() {
-    try {
-      if (window.VectorHoleNative) {
-        this.provider = 'native';
-        this.sdk = window.VectorHoleNative;
-        if (this.sdk.products) {
-          const list = await this.sdk.products();
-          (list || []).forEach(p => { this.prices[p.sku] = p.price; });
-        }
-      } else if (window.CrazyGames && window.CrazyGames.SDK) {
-        this.provider = 'crazygames';
-        this.sdk = window.CrazyGames.SDK;
-        if (this.sdk.init) await this.sdk.init();
-        if (this.sdk.game && this.sdk.game.loadingStop) this.sdk.game.loadingStop();
-      } else if (window.PokiSDK) {
-        this.provider = 'poki';
-        this.sdk = window.PokiSDK;
-        await this.sdk.init();
-        this.sdk.gameLoadingFinished();
-      } else if (typeof window.adBreak === 'function') {
-        this.provider = 'h5';
-        this.sdk = window.adBreak;
-        if (typeof window.adConfig === 'function') window.adConfig({ preloadAdBreaks: 'on', sound: 'on' });
-      }
-    } catch (e) {
-      this.provider = 'demo';
+  /** A provider whose setup partly fails keeps its identity (its markers
+   *  still matter) -- and if a portal was detected but its SDK can't be
+   *  used at all, the provider is 'none' (rewarded ads resolve false), never
+   *  'demo': the demo placeholder pays real rewards for a fake ad and must
+   *  only ever run on the plain web build. */
+  async attachProvider(portalExpected) {
+    const soft = async (fn) => { try { await fn(); } catch (e) { /* partial SDK failure: keep the provider */ } };
+    if (window.VectorHoleNative) {
+      this.provider = 'native';
+      this.sdk = window.VectorHoleNative;
+      await soft(async () => {
+        const list = this.sdk.products ? await this.sdk.products() : [];
+        (list || []).forEach(p => { this.prices[p.sku] = p.price; });
+      });
+    } else if (window.CrazyGames && window.CrazyGames.SDK) {
+      this.provider = 'crazygames';
+      this.sdk = window.CrazyGames.SDK;
+      await soft(async () => { if (this.sdk.init) await this.sdk.init(); });
+      await soft(async () => { if (this.sdk.game && this.sdk.game.loadingStop) this.sdk.game.loadingStop(); });
+    } else if (window.PokiSDK) {
+      // PokiSDK.init() rejects by design under an adblocker; the game must
+      // still report loading/gameplay and simply get no ads.
+      this.provider = 'poki';
+      this.sdk = window.PokiSDK;
+      await soft(() => this.sdk.init());
+      await soft(() => this.sdk.gameLoadingFinished());
+    } else if (typeof window.adBreak === 'function') {
+      this.provider = 'h5';
+      this.sdk = window.adBreak;
+      await soft(() => { if (typeof window.adConfig === 'function') window.adConfig({ preloadAdBreaks: 'on', sound: 'on' }); });
+    } else if (portalExpected) {
+      this.provider = 'none';
       this.sdk = null;
     }
     this.game.analytics.track('monetization_provider', { provider: this.provider });
@@ -857,6 +863,34 @@ class Monetization {
       if (this.provider === 'crazygames') this.sdk.game.gameplayStop();
       else if (this.provider === 'poki') this.sdk.gameplayStop();
     } catch (e) { /* ignore */ }
+  }
+
+  /** Challenge link for sharing. On a portal the game runs inside the
+   *  portal's iframe, so the link must point at the portal page (Poki
+   *  shareableURL / CrazyGames inviteLink), not the raw game CDN URL. */
+  async shareUrl(seed, score, name) {
+    const p = challengeParams(seed, score, name);
+    try {
+      if (this.provider === 'poki' && this.sdk.shareableURL) return await this.sdk.shareableURL(p);
+      if (this.provider === 'crazygames' && this.sdk.game && this.sdk.game.inviteLink) return await this.sdk.game.inviteLink(p);
+    } catch (e) { /* fall through to our own URL */ }
+    return encodeChallenge(seed, score, name);
+  }
+
+  /** Incoming challenge params: on a portal they live on the parent page
+   *  and are read through the SDK; otherwise from our own query string. */
+  incomingChallengeSearch() {
+    try {
+      if (this.provider === 'poki' && this.sdk.getURLParam) {
+        const c = this.sdk.getURLParam('c');
+        if (c) return `?c=${encodeURIComponent(c)}&n=${encodeURIComponent(this.sdk.getURLParam('n') || '')}`;
+      }
+      if (this.provider === 'crazygames' && this.sdk.game && this.sdk.game.getInviteParam) {
+        const c = this.sdk.game.getInviteParam('c');
+        if (c) return `?c=${encodeURIComponent(c)}&n=${encodeURIComponent(this.sdk.game.getInviteParam('n') || '')}`;
+      }
+    } catch (e) { /* no portal params */ }
+    return null;
   }
 
   /** A celebratory moment (new PB, first win) -- CrazyGames' happytime. */
@@ -895,6 +929,7 @@ class Monetization {
       if (this.provider === 'native') ok = !!(await this.sdk.rewarded(placement));
       else if (this.provider === 'poki') ok = !!(await this.sdk.rewardedBreak());
       else if (this.provider === 'crazygames') ok = await new Promise((res) => this.sdk.ad.requestAd('rewarded', { adFinished: () => res(true), adError: () => res(false) }));
+      else if (this.provider === 'none') ok = false;
       else if (this.provider === 'h5') ok = await new Promise((res) => {
         let viewed = false;
         this.sdk({ type: 'reward', name: placement, beforeReward: (show) => show(), adViewed: () => { viewed = true; }, adDismissed: () => {}, adBreakDone: () => res(viewed) });
@@ -933,7 +968,7 @@ class Monetization {
       else if (this.provider === 'poki') await this.sdk.commercialBreak();
       else if (this.provider === 'crazygames') await new Promise((res) => this.sdk.ad.requestAd('midgame', { adFinished: res, adError: res }));
       else if (this.provider === 'h5') await new Promise((res) => this.sdk({ type: 'next', name: placement, adBreakDone: res }));
-      else await this.demoAd(false);
+      else if (this.provider === 'demo') await this.demoAd(false);
     } catch (e) { /* an ad failing must never block the next round */ }
     this.game.sound.resume();
     this.busy = false;
@@ -1914,11 +1949,19 @@ function dailySeedForDate(date) {
    so it's a deterrent, not real verification -- see VECTRE_V11_PLAN.md). */
 const CHALLENGE_MAX_SCORE = 500000;
 function challengeSeal(seed, score, name) { return fnv1a(`${SEAL_SALT}|${seed}|${score}|${name}`); }
+/** Cut by whole characters (code points), so an emoji is never split into
+ *  a lone surrogate that URL encoding would turn into U+FFFD. */
+function cutName(name) { return Array.from(String(name || '')).slice(0, 16).join(''); }
+function challengeParams(seed, score, name) {
+  const n = cutName(name);
+  const out = { c: `${(seed >>> 0).toString(36)}.${Math.max(0, Math.round(score)).toString(36)}.${challengeSeal(seed >>> 0, Math.round(score), n)}` };
+  if (n) out.n = n;
+  return out;
+}
+const CANONICAL_URL = 'https://klaudiamoscinska-art.github.io/vector-hole/';
 function encodeChallenge(seed, score, name) {
-  const n = (name || '').slice(0, 16);
-  const params = new URLSearchParams({ c: `${(seed >>> 0).toString(36)}.${Math.max(0, Math.round(score)).toString(36)}.${challengeSeal(seed >>> 0, Math.round(score), n)}` });
-  if (n) params.set('n', n);
-  return `${location.origin}${location.pathname}?${params.toString()}`;
+  const base = /^https?:$/.test(location.protocol) ? `${location.origin}${location.pathname}` : CANONICAL_URL;
+  return `${base}?${new URLSearchParams(challengeParams(seed, score, name)).toString()}`;
 }
 function decodeChallenge(search) {
   try {
@@ -1927,7 +1970,7 @@ function decodeChallenge(search) {
     if (!raw || raw.length > 40) return null;
     const [s36, sc36, seal] = raw.split('.');
     const seed = parseInt(s36, 36), score = parseInt(sc36, 36);
-    const name = (params.get('n') || '').slice(0, 16);
+    const name = cutName(params.get('n') || '');
     if (!/^[0-9a-z]{1,7}$/.test(s36) || !/^[0-9a-z]{1,4}$/.test(sc36)) return null;
     if (!Number.isFinite(seed) || seed < 0 || seed > 0xffffffff) return null;
     if (!Number.isFinite(score) || score < 1 || score > CHALLENGE_MAX_SCORE) return null;
@@ -2242,7 +2285,7 @@ function loadSave() {
       const parsed = JSON.parse(raw);
       // v11 tamper seal: a save edited by hand (devtools) no longer matches
       // its _sig. It still loads -- the player keeps their progress -- but
-      // is flagged, and challenge links it produces are marked unverified.
+      // is flagged (integrity.tampered, reported once as save_tampered).
       let tampered = false;
       if (parsed && typeof parsed === 'object' && parsed._sig !== undefined) {
         const sig = parsed._sig;
@@ -4771,7 +4814,9 @@ class Game {
     this.thumbpadTouchId = null;
     this.thumbpadFadeTimer = null;
 
-    this.applyGfx(clamp(Math.round(this.save.settings.gfxLevel != null ? this.save.settings.gfxLevel : 2), 0, 2));
+    // Re-probe one level above the remembered one each session, so a
+    // one-off slow session can't pin a device to low quality forever.
+    this.applyGfx(clamp(Math.round(this.save.settings.gfxLevel != null ? this.save.settings.gfxLevel : 2) + 1, 0, 2));
     window.addEventListener('resize', () => this.resize());
     this.bindInput();
     this.bindUI();
@@ -4781,11 +4826,20 @@ class Game {
     setInterval(() => { this.updateChallengeCountdown(); this.updateFreeChestRow(); }, 1000);
 
     this.captureChallengeLink();
+    this.monetization.ready.then(() => {
+      const portalSearch = this.monetization.incomingChallengeSearch();
+      if (portalSearch) this.captureChallengeLink(portalSearch);
+    });
     this.state = GameState.MENU;
     this.showScreen('mainMenu'); // also renders the bottom nav for the initial screen
     this.analytics.track('session_start', { sessionId: this.sessionId, configVersion: CONFIG.version });
     this.trackRetention();
     this.renderConsentBar();
+    if (this.save.integrity.tampered && !this.save.integrity.reported) {
+      this.analytics.track('save_tampered', {});
+      this.save.integrity.reported = true;
+      saveGame(this.save);
+    }
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         this.analytics.track('session_end', { sessionId: this.sessionId, durationMs: Date.now() - this.sessionStartedAt });
@@ -4831,13 +4885,16 @@ class Game {
 
   /** Frame-time watchdog (see GFX_LEVELS). Only judges frames of a live,
    *  visible round, so menus and pauses never trigger a downgrade. */
-  monitorFrame(now) {
-    const ft = now - (this.lastFrameNow || now);
-    this.lastFrameNow = now;
-    if (!(ft > 0 && ft < 250) || this.gfxLevel === 0) return;
-    this.frameEma = this.frameEma ? this.frameEma * 0.95 + ft * 0.05 : ft;
-    if (this.frameEma <= 24) { this.slowFrames = 0; return; }
-    if (++this.slowFrames < 120) return;
+  monitorFrame(workMs) {
+    // Judges the game's own work per frame (update + render), not the gap
+    // between RAF callbacks -- a 30 Hz-capped phone (low-power mode) is not
+    // overloaded and must not be downgraded.
+    if (!(workMs >= 0 && workMs < 250) || this.gfxLevel === 0) return;
+    if (this.frameWarmup > 0) { this.frameWarmup--; return; } // sprite cache warm-up
+    this.frameEma = this.frameEma ? this.frameEma * 0.95 + workMs * 0.05 : workMs;
+    if (this.frameEma <= 20) { this.slowFrames = 0; return; }
+    this.slowFrames = (this.slowFrames || 0) + 1;
+    if (this.slowFrames < 120) return;
     this.slowFrames = 0;
     this.frameEma = 0;
     this.applyGfx(this.gfxLevel - 1);
@@ -5933,16 +5990,19 @@ class Game {
 
   /** Reads ?c=… on boot, stores a valid sealed challenge in the save and
    *  strips it from the address bar (so a reload doesn't re-import it). */
-  captureChallengeLink() {
+  captureChallengeLink(portalSearch) {
     const params = new URLSearchParams(location.search);
-    if (!params.has('c')) return;
-    const ch = decodeChallenge(location.search);
-    params.delete('c'); params.delete('n');
-    try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash); } catch (e) { /* sandboxed iframe */ }
+    if (!portalSearch && !params.has('c')) return;
+    const ch = decodeChallenge(portalSearch || location.search);
+    if (!portalSearch) {
+      params.delete('c'); params.delete('n');
+      try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash); } catch (e) { /* sandboxed iframe */ }
+    }
     if (!ch) { this.analytics.track('challenge_invalid', {}); return; }
     this.save.challenge = { seed: ch.seed, score: ch.score, from: ch.from, receivedAt: Date.now() };
     saveGame(this.save);
     this.analytics.track('challenge_open', { score: ch.score });
+    if (!this.running) this.renderHubChallenge();
   }
 
   /** Hub card for a pending friend challenge (or a note on the first-run
@@ -6063,7 +6123,7 @@ class Game {
     const place = this.lastResultPlace || 1;
     const score = this.player ? this.player.score : 0;
     const tier = this.player ? CONFIG.sizeTiers[getSizeTierIndex(this.player.radius)].shortId : 'T1';
-    const url = encodeChallenge(this.runSeed, score, this.save.displayName || '');
+    const url = await this.monetization.shareUrl(this.runSeed, score, this.save.displayName || '');
     const text = `Mój wynik w Vector Hole: ${score} pkt (miejsce #${place}, ${tier}). Pobij go na tej samej mapie!`;
     this.analytics.track('share_click', { score, place });
     const btn = document.getElementById('btnShare');
@@ -6614,6 +6674,10 @@ class Game {
     // v11 clock guard: a last claim dated *after* today means the device
     // clock was rolled back after claiming -- no reward until it catches up
     // (stops forward/back clock cycling from farming the calendar).
+    // A claim dated more than 2 days ahead is a once-wrong clock that has
+    // since been corrected (not cycling), so it's reset instead of
+    // locking the calendar until that date.
+    if (L.lastClaimDate && Date.parse(L.lastClaimDate) - Date.parse(today) > 2 * 86400000) { L.lastClaimDate = null; L.day = 0; }
     const clockRolledBack = !!L.lastClaimDate && L.lastClaimDate > today;
     const claimedToday = L.lastClaimDate === today || clockRolledBack;
     const streakAlive = claimedToday || L.lastClaimDate === previousDateKey(today);
@@ -6826,7 +6890,8 @@ class Game {
       // straight into the rematch (startRound() never charges for tools).
       if (await this.monetization.rewarded('turbo_free')) {
         this.selectedRunTool = 'boost';
-        this.startRound();
+        if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
+        else this.startRound();
       }
     } else {
       this.openFreeChest();
@@ -6938,10 +7003,15 @@ class Game {
     this.objects = [];
     const discovered = new Set(this.save.campaign.discoveredTypes || []);
     if (discovered.size === 0) Object.keys(CAMPAIGN_ENTITY_STATS).forEach(t => discovered.add(t));
+    // v11: every group is built (so the seeded RNG is consumed the same
+    // way for every player) and undiscovered ones are dropped afterwards --
+    // a friend-challenge seed must lay out the same map whatever the
+    // recipient has discovered so far.
     Object.keys(TIERS).forEach(tierName => {
-      if (tierName !== 'portal' && !discovered.has(tierName)) return;
+      const keep = tierName === 'portal' || discovered.has(tierName);
       for (let i = 0; i < TIERS[tierName].count; i++) {
-        this.objects.push(new WorldObject(tierName, rng));
+        const obj = new WorldObject(tierName, rng);
+        if (keep) this.objects.push(obj);
       }
     });
   }
@@ -8226,16 +8296,22 @@ class Game {
     document.getElementById('reviveProgressBar').style.width = Math.round(frac * 100) + '%';
     document.getElementById('reviveProgressPct').textContent = Math.round(frac * 100) + '%';
     document.getElementById('btnReviveAd').textContent = `+${A.reviveSeconds} S · OBEJRZYJ REKLAMĘ`;
-    const ring = document.getElementById('reviveTimerBar');
-    ring.style.animation = 'none';
-    void ring.offsetWidth;
-    ring.style.animation = `evolution-timer ${A.reviveOfferSeconds * 1000}ms linear forwards`;
     document.getElementById('reviveOverlay').classList.remove('hidden');
     this.sound.whoosh();
     this.vibrate([30, 30, 30]);
     this.analytics.track('ad_offer', { context: 'mission_revive', missionId: m.def.id, progress: Math.round(frac * 100) });
+    this.armReviveTimer();
+  }
+
+  /** (Re)starts the offer's auto-decline countdown; paused with the game. */
+  armReviveTimer() {
+    const ms = CONFIG.ads.reviveOfferSeconds * 1000;
+    const ring = document.getElementById('reviveTimerBar');
+    ring.style.animation = 'none';
+    void ring.offsetWidth;
+    ring.style.animation = `evolution-timer ${ms}ms linear forwards`;
     clearTimeout(this.reviveTimer);
-    this.reviveTimer = setTimeout(() => this.declineRevive(), A.reviveOfferSeconds * 1000);
+    this.reviveTimer = setTimeout(() => this.declineRevive(), ms);
   }
 
   hideReviveOffer() {
@@ -8246,9 +8322,11 @@ class Game {
   }
 
   async acceptRevive() {
-    if (!this.revivePending) return;
+    if (!this.revivePending || this.reviveAdInFlight) return; // double tap while the ad loads
     clearTimeout(this.reviveTimer);
-    const ok = await this.monetization.rewarded('mission_revive');
+    this.reviveAdInFlight = true;
+    let ok = false;
+    try { ok = await this.monetization.rewarded('mission_revive'); } finally { this.reviveAdInFlight = false; }
     const m = this.mission;
     if (!this.revivePending || !m || m.ended) return;
     if (!ok) { this.declineRevive(); return; }
@@ -8264,7 +8342,7 @@ class Game {
   }
 
   declineRevive() {
-    if (!this.revivePending) return;
+    if (!this.revivePending || this.reviveAdInFlight) return;
     this.hideReviveOffer();
     this.analytics.track('ad_declined', { context: 'mission_revive' });
     if (this.mission && !this.mission.ended) this.endCampaignMission(false);
@@ -8277,6 +8355,7 @@ class Game {
     if (m.ended) return;
     m.ended = true;
     this.running = false;
+    this.paused = false;
     this.monetization.gameplayStop();
     this.hideReviveOffer();
     this.hideNelaToast();
@@ -8541,6 +8620,7 @@ class Game {
     this.paused = false;
 
     this.isDailyRun = !!options.daily;
+    this.frameEma = 0; this.slowFrames = 0; this.frameWarmup = 30;
     this.challenge = options.challenge || null;
     this.challengeBeaten = false;
     this.hideReviveOffer();
@@ -8990,6 +9070,7 @@ class Game {
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('controlsPanel').classList.add('hidden');
     document.getElementById('pauseSheet').classList.remove('hidden');
+    if (this.revivePending) clearTimeout(this.reviveTimer);
     this.sound.setDucked(true);
     this.monetization.gameplayStop();
     this.syncControlsPanel();
@@ -9002,6 +9083,7 @@ class Game {
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
     this.sound.setDucked(false);
+    if (this.revivePending && !this.reviveAdInFlight) this.armReviveTimer();
     this.monetization.gameplayStart();
     this.lastTime = performance.now();
     this.rafId = requestAnimationFrame((t) => this.loop(t));
@@ -9366,7 +9448,7 @@ class Game {
    *  the player's Arena career -- see CONFIG.difficulty. */
   computeDifficultyT() {
     const D = CONFIG.difficulty;
-    if (this.isDailyRun) return D.dailyT;
+    if (this.isDailyRun || this.challenge) return D.dailyT; // same rivals for everyone on a shared seed
     const runs = this.save.stats.runsPlayed || 0;
     return clamp((runs - D.rampStartRuns) / (D.rampFullRuns - D.rampStartRuns), 0, 1);
   }
@@ -10251,7 +10333,7 @@ class Game {
       // frozen but still overlapping (e.g. a bot already touching the
       // player when the offer opens). introPending (M00's blocking intro,
       // see showTutorialIntro()) freezes the same way.
-      if (!this.paused && document.visibilityState === 'visible') this.monitorFrame(now);
+      const work0 = performance.now();
       if (this.evolutionPending || this.introPending || this.revivePending || now < this.hitStopUntil) {
         if (this.mode === 'campaign') this.renderCampaign(now / 1000); else this.render(now / 1000);
       } else if (this.mode === 'campaign') {
@@ -10261,6 +10343,7 @@ class Game {
         this.update(rawDt);
         this.render(now / 1000);
       }
+      if (this.running && !this.paused && document.visibilityState === 'visible') this.monitorFrame(performance.now() - work0);
       this.rafId = requestAnimationFrame((t) => this.loop(t));
     }
   }

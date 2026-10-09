@@ -7,7 +7,7 @@ adaptive performance, and a committed QA bot suite. Still exactly three
 runtime files, zero dependencies, no build step, no backend, no secrets.
 
 Every claim below is backed by a check in `qa/` (`node qa/run-all.mjs`:
-50/50 passing at the end of this pass).
+all checks passing at the end of this pass).
 
 ## 0. What the bot-testers found first (baseline on v10)
 
@@ -122,7 +122,28 @@ Every claim below is backed by a check in `qa/` (`node qa/run-all.mjs`:
 See `qa/README.md`. Edge cases, features, a 20-round Arena career, 22
 campaign missions and phone screenshots, all in virtual time.
 
+## 8. Internal code review (second pass, all fixed + regression-tested)
+An independent reviewer pass over the v11 diff found, and this pass fixed:
+double-tapping the revive button wasted the ad and failed the mission
+(in-flight guard); the graphics watchdog could downgrade on the first slow
+frame and pin 30 Hz-capped phones to low quality forever (now judges real
+work time per frame, warms up, re-probes one level up each session); a
+failing portal SDK (e.g. Poki under an adblocker) fell back to the *paying*
+demo ad (now keeps the portal provider, or `none` when the SDK is missing);
+a challenge seed laid out a different map depending on what the recipient
+had discovered (RNG now consumed for every group) and used the recipient's
+own bot difficulty (challenges use the fixed Daily difficulty); challenge
+links pointed at the raw CDN inside portal iframes / `null` on file:// (Poki
+`shareableURL`/`getURLParam`, CrazyGames `inviteLink`/`getInviteParam`,
+canonical URL fallback); the revive countdown kept running while paused;
+emoji at the 16-char name cut broke the link seal (cut by code points); a
+once-wrong future clock locked the login calendar indefinitely (>2 days
+ahead now resets); the free-Turbo rematch dropped the challenge.
+
 ## Known gaps / decisions for the owner
+- Google H5 rewarded ads call `showAdFn()` inside `beforeReward` right after
+  the player's tap; Google's guidance prefers pre-requesting the break and
+  calling `showAdFn` from the click. Revisit if AdSense H5 is the channel.
 - **Revenue needs a host:** real ads require publishing on CrazyGames/Poki
   (or adding an AdSense H5 tag + a Google-certified CMP for the EEA); real
   IAP requires the native wrapper. The GitHub Pages build runs the demo
