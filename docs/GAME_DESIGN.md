@@ -137,7 +137,10 @@ rosnące z combo i muzyka zmieniająca tempo z napięciem rundy. Na iPhonie gra
 prosi o sesję audio „playback”, więc gra także przy włączonym przełączniku
 „cicho” (i przy okazji wycisza muzykę z innych aplikacji); każde tapnięcie
 wznawia dźwięk, jeśli iOS go przerwał. Muzykę i efekty wyłącza się osobno
-w Profilu.
+w Profilu. Tam też jest „Test dźwięku” (krótka melodia + stan silnika i tryb
+iOS). Gdy nie ma `navigator.audioSession` (Chrome na iOS, starsze iOS),
+gra odtwarza w tle ciche, zapętlone `<audio>`, które przełącza stronę w tryb
+odtwarzania mediów — inaczej przełącznik „cicho” wycisza Web Audio.
 
 ## 6. QA (boty)
 

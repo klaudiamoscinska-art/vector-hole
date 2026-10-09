@@ -561,6 +561,7 @@ class SoundEngine {
     if (!this.supported || this.hold) return;
     try {
       try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { /* older iOS */ }
+      this.unmuteIOS();
       if (this.ctx && this.ctx.state !== 'running' && this.resumeFailedAt && performance.now() - this.resumeFailedAt > 1200) this.rebuild();
       if (!this.ctx) this.build();
       if (this.ctx.state !== 'running') {
@@ -573,6 +574,57 @@ class SoundEngine {
       }
       if (this.settings.music !== false) this.startMusic();
     } catch (e) { this.ctx = null; }
+  }
+
+  /** v13.3: WebKit (Safari, home-screen apps AND Chrome/Firefox on iOS,
+   *  which are WKWebView) plays Web Audio in the "ambient" category, which
+   *  the ring/silent switch mutes -- the context reports "running" while
+   *  nothing comes out. navigator.audioSession is missing in WKWebView and
+   *  older iOS, so the proven fallback: a silent, looping <audio> element
+   *  started inside a gesture moves the whole page to media playback, and
+   *  Web Audio becomes audible. iOS only; paused while the page is hidden. */
+  unmuteIOS() {
+    if (!SoundEngine.isIOS()) return;
+    if (!this.unmuteEl) {
+      // 0.5 s of 8-bit 8 kHz silence as a WAV built in memory (no extra file).
+      const n = 4000, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+      const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+      str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true);
+      v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);
+      for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+      const el = document.createElement('audio');
+      el.setAttribute('x-webkit-airplay', 'deny');
+      el.setAttribute('playsinline', '');
+      el.preload = 'auto';
+      el.loop = true;
+      el.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      this.unmuteEl = el;
+    }
+    if (this.unmuteEl.paused) { const pr = this.unmuteEl.play(); if (pr && pr.catch) pr.catch(() => {}); }
+  }
+
+  static isIOS() {
+    const ua = navigator.userAgent || '';
+    return /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  /** Profile diagnostics: one line a player can read back to us. */
+  statusText() {
+    if (!this.supported) return 'Ta przeglądarka nie obsługuje dźwięku.';
+    if (!this.ctx) return 'Dźwięk czeka na pierwsze dotknięcie ekranu.';
+    const st = { running: 'działa', suspended: 'wstrzymany', interrupted: 'przerwany przez system', closed: 'zamknięty' }[this.ctx.state] || this.ctx.state;
+    const parts = [`Silnik: ${st}`, `${Math.round(this.ctx.sampleRate / 100) / 10} kHz`];
+    if (SoundEngine.isIOS()) parts.push(`tryb iOS: ${navigator.audioSession ? navigator.audioSession.type : (this.unmuteEl && !this.unmuteEl.paused ? 'odtwarzanie' : 'otoczenie')}`);
+    if (this.settings.sfx === false) parts.push('efekty wyłączone');
+    if (this.settings.music === false) parts.push('muzyka wyłączona');
+    return parts.join(' · ');
+  }
+
+  /** A short, clearly audible chime for the profile's sound test. */
+  testChime() {
+    if (!this.ctx) return;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.tone({ type: 'triangle', freq: f, dur: 0.35, vol: 0.35, when: i * 0.11, bus: this.master }));
   }
 
   build() {
@@ -633,9 +685,14 @@ class SoundEngine {
   setDucked(on) { this.ducked = on; this.applySettings(); }
   /** `hold` = suspended on purpose (ad playing, page hidden) -- gestures
    *  must not wake the audio until resume() releases it. */
-  suspend() { this.hold = true; if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); }
+  suspend() {
+    this.hold = true;
+    if (this.unmuteEl && !this.unmuteEl.paused) this.unmuteEl.pause();
+    if (this.ctx && this.ctx.state === 'running') this.ctx.suspend();
+  }
   resume() {
     this.hold = false;
+    if (this.unmuteEl && this.unmuteEl.paused) { const pe = this.unmuteEl.play(); if (pe && pe.catch) pe.catch(() => {}); }
     // Any non-running state ("suspended" or iOS "interrupted"). Outside a
     // gesture iOS may refuse -- the next tap retries via unlock().
     if (this.ctx && this.ctx.state !== 'running') { const pr = this.ctx.resume(); if (pr && pr.catch) pr.catch(() => {}); }
@@ -6165,6 +6222,7 @@ class Game {
 
     // ---- Pause / Controls / Leave Run ----
     document.getElementById('btnPause').addEventListener('click', () => this.pauseGame());
+    document.getElementById('btnSoundTest').addEventListener('click', () => this.playSoundTest());
     document.getElementById('btnResume').addEventListener('click', () => this.resumeGame());
     document.getElementById('btnRestart').addEventListener('click', () => this.restartFromPause());
     document.getElementById('btnControls').addEventListener('click', () => {
@@ -6865,7 +6923,23 @@ class Game {
     document.getElementById('guestIdLabel').textContent = this.save.guestId;
     this.syncControlsPanel();
     this.syncPrivacyPanel();
+    this.updateSoundStatus();
     this.showScreen('profileScreen');
+  }
+
+  /** v13.3: sound diagnostics in the profile (status line + test chime). */
+  updateSoundStatus(extra) {
+    const el = document.getElementById('soundStatus');
+    if (!el) return;
+    el.textContent = this.sound.statusText() + (extra ? ' — ' + extra : '');
+  }
+
+  playSoundTest() {
+    this.sound.unlock();
+    setTimeout(() => {
+      this.sound.testChime();
+      this.updateSoundStatus(SoundEngine.isIOS() ? 'nic nie słychać? Podgłośnij telefon przyciskami z boku.' : '');
+    }, 80);
   }
 
   saveProfile() {
