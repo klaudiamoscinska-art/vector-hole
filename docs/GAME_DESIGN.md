@@ -135,9 +135,14 @@ kalendarza logowania przed pierwszą ukończoną rundą.
 `node qa/run-all.mjs` — przypadki brzegowe, funkcje v11, grafika v12,
 **design v13** (`qa/design.mjs`: pierwsze sekundy, wyścig, sterowanie,
 samouczek, ścieżka nowicjusza, mapa dnia, podpowiedź za dużego obiektu,
-teksty), kariera 20 rund Areny i 22 misje. Bot „casual” (`ARENA_BOT`,
+teksty, układ na telefonach 402×874 / 402×740 / 375×667), kariera 20 rund Areny i 22 misje. Bot „casual” (`ARENA_BOT`,
 styl `casual`) widzi tylko ekran, reaguje co ~0,4 s i celuje w najbliższy
 kąsek — to nim mierzymy decyzje projektowe.
+
+Układ: aplikacja ma wysokość `100dvh` — na iPhonie w Safari `100vh` nie
+uwzględnia paska narzędzi i chowało pod nim dolną nawigację oraz przycisk
+resetu profilu. Chromium w testach nie odtwarza paska Safari, więc test
+sprawdza też, że reguła `100dvh` jest w arkuszu.
 
 Progi wydajności w `qa/` mierzą renderowanie programowe (SwiftShader);
 czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.

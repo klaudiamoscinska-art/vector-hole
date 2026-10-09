@@ -28,7 +28,7 @@ QA bots (dev-only, plain Node ES modules using the machine's global Playwright, 
 
 ```bash
 node qa/run-all.mjs     # edge cases, features, visual, design, 20-round Arena career, 22 campaign missions
-node qa/design.mjs      # v13 design checks (first seconds, race, input, tutorial, newbie path, copy)
+node qa/design.mjs      # v13 design checks (first seconds, race, input, tutorial, newbie path, copy, phone layouts)
 node qa/screens.mjs     # phone screenshots -> qa/out/screens/
 ```
 
@@ -57,6 +57,7 @@ Pushing to `main` runs `.github/workflows/deploy-pages.yml`, which uploads the r
 - **`CityFloor`**: 8×8 grid of blocks (`CITY_PITCH` 375, `CITY_ROAD` 64) painted per district into cached chunk canvases (`paintCityChunk()`, `CITY_LOT_PAINTERS`), blitted per frame with lazy repaints, a prefetch ring and an LRU pixel budget. Floor art stays flat, low-alpha, in the district's toned color (`cityTone()`), no shadow blur, no dark disc with a bright rim (that reads as a hole). `qa/visual.mjs` asserts 0 chunk repaints over 60 still frames — keep it that way.
 - **Objects** share illustrated sprites (`OBJECT_ART`, cached in `OBJECT_SPRITE_CACHE`, `drawObjectArt()`), identical in Arena and Campaign; `OBJECT_ART_LITE` (gfx level 0) skips per-object sway and live extras. Only draw what `isInView()`.
 - **Holes**: `Hole.drawVortex()` spiral arms over a black core, per-skin rims (`SKIN_STYLES`), eaten things drawn inside the vortex while swallowed (`drawSwallowed()`, `swallowGhosts`), leader crown (`isLeader`), labels counter-scaled at far zoom.
+- `#app` is `height: 100dvh` (fallback `100vh`): iOS Safari's `100vh` ignores its toolbars and hid the bottom nav labels and the profile reset button. Never size the app with plain `vh`; pad bottom-anchored UI with `env(safe-area-inset-bottom)` (`viewport-fit=cover` is on).
 - Adaptive quality: `GFX_LEVELS`, `Game.applyGfx()`, `monitorFrame()` steps down on slow devices.
 - In-round HUD writes go through `Game.hudSet()` (DOM write only on change). Juice helpers: `FloatText`, `flashScreen()`, `showBanner(text, sub, color, duration, priority)` (one banner at a time), `addScorePop()`, `hitStop()`, `spawnSuck()`. Use SVG/canvas glyphs, not emoji.
 

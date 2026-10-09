@@ -189,6 +189,34 @@ export async function runDesignChecks(url) {
     await g.browser.close();
   }
 
+  // --- iPhone 16 Pro (402 px wide): full screen and Safari with toolbars ---
+  // (v13.1: on iOS 100vh ignores the toolbars, which pushed the nav labels
+  // and the profile reset button off screen; #app now uses 100dvh.)
+  for (const vp of [{ width: 402, height: 874 }, { width: 402, height: 740 }, { width: 375, height: 667 }]) {
+    const g = await seeded(url, { missions: 6 }, null, { viewport: vp, deviceScaleFactor: 3 });
+    await g.page.waitForTimeout(400);
+    const r = await g.page.evaluate(async () => {
+      const H = window.innerHeight;
+      const appH = document.getElementById('app').getBoundingClientRect().height;
+      const labels = [...document.querySelectorAll('#bottomNav .nav-tab-label')].map(el => el.getBoundingClientRect().bottom);
+      window.game.openProfileScreen();
+      await new Promise(res => setTimeout(res, 300));
+      const inner = document.querySelector('#profileScreen > .screen-inner');
+      inner.scrollTop = inner.scrollHeight;
+      await new Promise(res => setTimeout(res, 100));
+      const btn = document.getElementById('btnResetProfile').getBoundingClientRect();
+      const hit = document.elementFromPoint(btn.left + btn.width / 2, btn.top + btn.height / 2);
+      return { H, appH, navMax: Math.max(...labels), btnBottom: btn.bottom, tappable: hit && hit.closest('#btnResetProfile') !== null };
+    });
+    results.push(report(`layout ${vp.width}x${vp.height}: app fits the visible viewport, nav labels on screen`, Math.abs(r.appH - r.H) < 1 && r.navMax <= r.H, JSON.stringify(r)));
+    results.push(report(`layout ${vp.width}x${vp.height}: profile reset button reachable and tappable`, r.btnBottom <= r.H && r.tappable));
+    await g.browser.close();
+  }
+  {
+    const css = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+    results.push(report('layout: #app height uses the dynamic viewport (100dvh)', /#app\s*\{[^}]*height:\s*100dvh/.test(css)));
+  }
+
   // --- Copy: the player is never addressed as female/male -----------------
   {
     const src = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8') + fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

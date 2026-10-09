@@ -4,7 +4,14 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
-## v13 — pas designu i rozgrywki (ten PR)
+## v13.1 — iPhone (dolna nawigacja i reset profilu)
+Na iPhonie 16 Pro w Safari podpisy dolnych zakładek i przycisk „RESETUJ
+PROFIL” chowały się pod paskiem przeglądarki: `#app` miał `100vh`, które
+w iOS ignoruje paski Safari. Teraz `100dvh` (widoczna wysokość) oraz
+margines na pasek domowy i wyspę na ekranie profilu. Testy układu na
+402×874, 402×740 i 375×667 w `qa/design.mjs`.
+
+## v13 — pas designu i rozgrywki
 Diagnoza z audytu (2 niezależnych recenzentów + boty) i co zmieniono:
 
 | Problem | Zmiana |
