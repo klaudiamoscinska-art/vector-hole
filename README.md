@@ -9,20 +9,22 @@ instalacji — na telefonie i komputerze.
 
 > Jedna dziura. Całe miasto. Zero litości.
 >
-> Pochłaniaj latarnie, auta, tramwaje i wieżowce, rośnij przez 6 poziomów
-> wielkości i zjadaj rywali, zanim oni zjedzą Ciebie. Złap Złoty Rdzeń, by
-> wpaść w SZAŁ — podwójne punkty i obiekty o poziom większe!
+> Glitch skaził Neonowe Miasto. Pochłaniaj latarnie, auta, tramwaje i
+> wieżowce, rośnij przez 6 rozmiarów i zjadaj rywali, zanim oni zjedzą
+> Ciebie. Złap Złoty Rdzeń, by wpaść w SZAŁ — podwójne punkty i obiekty
+> o rozmiar większe!
 >
 > - **Żywe neonowe miasto** — 6 dzielnic z ulicami, placami, portem i dachami;
 >   wszystko, co zjesz, z wirem wpada w głąb dziury
-> - **Rundy 2:00** — szybka akcja, combo, finałowy Overdrive
-> - **61 misji kampanii** w 6 dzielnicach z bossami-landmarkami
+> - **Rundy 2:00** — pierwszy kęs w pół sekundy, ścieżki energii wzdłuż
+>   ulic, combo, wyścig z rywalem do ostatnich sekund i wielki finisz
+> - **60 misji kampanii** w 6 dzielnicach z wielkimi budowlami do pochłonięcia
 > - **Wyzwanie dnia** — ta sama mapa dla wszystkich, codziennie nowa
 > - **Pojedynki ze znajomymi** — wyślij link, pobij wynik na tej samej mapie
-> - **Rdzenie z bonusami**, trail’e, efekty i odbudowa Core City
+> - **Wiry z bonusami**, smugi, efekty i odbudowa Core City
 > - Dynamiczna muzyka synthwave i dźwięki, które rosną razem z combo
 
-**Słowa kluczowe:** gra io, hole io, czarna dziura, gra w przeglądarce,
+**Słowa kluczowe:** gra io, czarna dziura, gra w przeglądarce,
 darmowa gra, gra mobilna, neon, cyberpunk, gra bez instalacji.
 
 ## Uruchomienie
@@ -44,6 +46,13 @@ node qa/run-all.mjs
 Szczegóły: `qa/README.md`. Wymaga zainstalowanego Playwrighta. `node qa/screens.mjs`
 zapisuje 16 zrzutów ekranu telefonu do `qa/out/screens/` (przegląd wizualny).
 
+## Dokumentacja
+
+- `docs/GAME_DESIGN.md` — jak działa gra dziś (zasady, liczby, ton tekstów)
+- `docs/CHANGELOG.md` — historia wersji
+- `CLAUDE.md` — architektura kodu
+- `design/` — oryginalne makiety i paleta
+
 ## Lista kontrolna przed premierą
 
 1. Uzupełnij `CONFIG.legal` (wydawca + kontakt) w `game.js` i zleć przegląd
@@ -62,6 +71,4 @@ zapisuje 16 zrzutów ekranu telefonu do `qa/out/screens/` (przegląd wizualny).
    `run_end`, `ad_reward_granted`, `iap_success`, `share_success`,
    `challenge_open`.
 4. Dodaj grafikę `og:image` (1200×630) do udostępnień — wymaga czwartego
-   pliku, patrz `docs/VECTRE_V11_PLAN.md`.
-
-Pełny changelog i znane luki: `docs/VECTRE_V11_PLAN.md` (rynek) i `docs/VECTRE_V12_PLAN.md` (grafika/UX).
+   pliku (decyzja wobec zasady trzech plików, patrz `docs/GAME_DESIGN.md` §7).

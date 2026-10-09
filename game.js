@@ -12,7 +12,7 @@
    aliases into this object so the rest of the file is untouched. */
 
 const CONFIG = {
-  version: '12.0.0-golden-shot-visual',
+  version: '13.0.0-design-pass',
   world: { width: 3000, height: 3000, gridSize: 100 },
   round: { duration: 120 },
   bots: { count: 5 },
@@ -1287,7 +1287,7 @@ const MUTATIONS = [
    dokumencie to plan rozszerzenia") the two districts actually authored
    with full mission text (Plac Neonów 01-04, Park Impulsów 05-08) are
    built; districts III-VI have no authored content in the GDD and stay a
-   documented roadmap entry (see docs/VECTRE_V3_PLAN.md), matching how
+   documented roadmap entry (see docs/GAME_DESIGN.md), matching how
    proceduralDistricts already stays a flag with no generator behind it.
    Campaign is intentionally a separate simulation from Arena (own entity
    list, own growth/tier model) so the already-tuned Arena/Daily/Ranked-
@@ -1418,7 +1418,7 @@ const DISTRICTS = [
      player can always grow into what the mission asks for;
    - the time limit and the default time medal, from an estimate of how
      many eats/actions the steps need (checked by an automated playthrough
-     of every mission -- see docs/VECTRE_V8_PLAN.md, v10 section);
+     of every mission -- see docs/GAME_DESIGN.md);
    - Polish step labels with correct plural forms.
    Step shapes: {eat, n, glyph?} {tier} {combo} {gates} {rival}
    {activate: 'node'|'pylon', n} {landmark} {score}. */
@@ -2004,7 +2004,7 @@ function dailySeedForDate(date) {
 /* ---- Golden Shot v11: friend challenge links ("Pobij mój wynik!") ----
    ?c=<seed36>.<score36>.<seal>&n=<name>. The seed replays the exact same
    Arena map; the seal stops casual URL edits of the score (client-side,
-   so it's a deterrent, not real verification -- see VECTRE_V11_PLAN.md). */
+   so it's a deterrent, not real verification -- see docs/GAME_DESIGN.md). */
 const CHALLENGE_MAX_SCORE = 500000;
 function challengeSeal(seed, score, name) { return fnv1a(`${SEAL_SALT}|${seed}|${score}|${name}`); }
 /** Cut by whole characters (code points), so an emoji is never split into
@@ -8031,7 +8031,7 @@ class Game {
     // Phase 5 (scoped): a single lightweight run modifier, seed-driven so
     // a Daily Seed Challenge gets the same one for every player that day.
     // Full authored districts/chunks (GDD §14.2) are NOT implemented —
-    // see docs/VECTRE_V2_PLAN.md for the explicit scope call.
+    // see docs/GAME_DESIGN.md for the explicit scope call.
     const speedMult = pick(D.botSpeedMult) * (this.modifier === 'rush_hour' ? 1.3 : 1);
 
     this.bots = [];
