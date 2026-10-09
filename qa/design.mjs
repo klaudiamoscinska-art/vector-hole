@@ -212,8 +212,24 @@ export async function runDesignChecks(url) {
     results.push(report(`layout ${vp.width}x${vp.height}: profile reset button reachable and tappable`, r.btnBottom <= r.H && r.tappable));
     await g.browser.close();
   }
+  // --- iPhone 13 Pro home-screen app (v13.4): WebKit reports the viewport
+  // without the 47 px status bar -> the app must still fill the screen. ---
+  {
+    const fake = () => {
+      Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148' });
+      Object.defineProperty(navigator, 'standalone', { get: () => true });
+      Object.defineProperty(screen, 'height', { get: () => 844 });
+      Object.defineProperty(screen, 'width', { get: () => 390 });
+    };
+    const g = await openGame(url, { viewport: { width: 390, height: 797 }, initScript: fake, deviceScaleFactor: 3 });
+    await g.page.waitForTimeout(300);
+    const r = await g.page.evaluate(() => ({ app: document.getElementById('app').getBoundingClientRect().height, gameH: window.game.height, canvas: document.getElementById('gameCanvas').getBoundingClientRect().height }));
+    results.push(report('layout: iPhone 13 Pro home-screen app fills the whole screen (no black strip)', r.app === 844 && r.gameH === 844 && r.canvas === 844, JSON.stringify(r)));
+    await g.browser.close();
+  }
   {
     const css = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+    results.push(report('layout: menu screens keep content below the status bar / notch', /\.screen\s*\{[^}]*padding-top:\s*env\(safe-area-inset-top/.test(css)));
     results.push(report('layout: #app height uses the dynamic viewport (100dvh)', /#app\s*\{[^}]*height:\s*100dvh/.test(css)));
   }
 

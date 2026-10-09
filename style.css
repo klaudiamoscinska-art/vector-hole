@@ -96,6 +96,17 @@ html, body {
   overflow: hidden;
 }
 
+/* v13.4: home-screen web app (standalone) on notched iPhones. With the
+   black-translucent status bar WebKit reports 100dvh / innerHeight WITHOUT
+   the status bar (844 -> 797 on a 13 Pro), so the app stopped ~47 px above
+   the bottom edge: a black strip. There is no browser toolbar in this
+   mode, so the full-screen 100vh is right; Game.fitStandalone() covers the
+   versions where even that is short. */
+@media (display-mode: standalone) {
+  #app { height: max(100vh, 100dvh); }
+}
+html { background: #04101D; }
+
 #gameCanvas {
   position: absolute;
   top: 0;
@@ -2044,6 +2055,9 @@ body.touch-input #gameCanvas {
      in design/screens/, not a flat fill. */
   background: linear-gradient(180deg, var(--nc-bg) 0%, var(--nc-bg-2) 100%);
   animation: fade-in 0.25s ease-out;
+  /* v13.4: keep every screen's content below the status bar / notch when
+     the page runs edge to edge (home-screen app, viewport-fit=cover). */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 @keyframes fade-in {
@@ -2216,7 +2230,6 @@ body.touch-input #gameCanvas {
 /* v13.1: the last button must clear the iPhone home indicator when the
    profile is scrolled to the end. */
 #profileScreen > .screen-inner {
-  padding-top: calc(32px + env(safe-area-inset-top, 0px));
   padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
 }
 

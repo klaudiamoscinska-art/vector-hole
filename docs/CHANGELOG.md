@@ -4,6 +4,13 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v13.4 — iPhone 13 Pro: aplikacja z ekranu głównego
+Na iPhonie z notchem w trybie z ekranu głównego był czarny pas na dole
+(WebKit liczy `100dvh`/`innerHeight` bez paska statusu, ~47 px), a tytuł
+wchodził pod pasek statusu. Teraz w tym trybie aplikacja ma pełną wysokość
+ekranu (`max(100vh, 100dvh)` + `fitStandalone()`), płótno mierzy się z
+rozmiaru aplikacji, a każdy ekran ma odstęp `safe-area-inset-top`.
+
 ## v13.3 — dźwięk na iPhonie, cd.
 v13.2 nie wystarczyło w aplikacji z ekranu głównego ani w Chrome na iOS
 (WKWebView bez `navigator.audioSession`): przełącznik „cicho” dalej wyciszał
