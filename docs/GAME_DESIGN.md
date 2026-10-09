@@ -130,6 +130,15 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   Pasek zgody pojawia się po samouczku (na ekranie powitalnym zasłaniał
   przycisk startu); do decyzji nic nie jest wysyłane.
 
+## 5a. Dźwięk
+
+Cały dźwięk jest syntezowany (WebAudio, `SoundEngine`): efekty zjadania
+rosnące z combo i muzyka zmieniająca tempo z napięciem rundy. Na iPhonie gra
+prosi o sesję audio „playback”, więc gra także przy włączonym przełączniku
+„cicho” (i przy okazji wycisza muzykę z innych aplikacji); każde tapnięcie
+wznawia dźwięk, jeśli iOS go przerwał. Muzykę i efekty wyłącza się osobno
+w Profilu.
+
 ## 6. QA (boty)
 
 `node qa/run-all.mjs` — przypadki brzegowe, funkcje v11, grafika v12,

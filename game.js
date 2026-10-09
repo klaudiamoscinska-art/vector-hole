@@ -548,33 +548,77 @@ class SoundEngine {
 
   get supported() { return !!(window.AudioContext || window.webkitAudioContext); }
 
-  /** Call from any user gesture; idempotent. */
+  /** Call from any user gesture; idempotent. v13.2 (iPhone): also
+   *  (1) asks iOS for the "playback" audio session, so the ring/silent
+   *  switch no longer mutes the game (Web Audio defaults to "ambient");
+   *  (2) resumes from ANY non-running state -- WebKit parks the context in
+   *  "interrupted" after a notification, app switch or screen lock, and the
+   *  old code only resumed "suspended", so sound died until a reload;
+   *  (3) rebuilds the context when a resume inside a gesture didn't take;
+   *  (4) plays a one-sample silent buffer inside the gesture, which is what
+   *  actually starts output on WebKit. */
   unlock() {
-    if (!this.supported) return;
+    if (!this.supported || this.hold) return;
     try {
-      if (!this.ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        this.ctx = new AC({ latencyHint: 'interactive' });
-        this.master = this.ctx.createGain();
-        this.master.gain.value = 0.9;
-        // Gentle limiter so stacked eats never clip on phone speakers.
-        this.comp = this.ctx.createDynamicsCompressor();
-        this.comp.threshold.value = -14; this.comp.ratio.value = 6;
-        this.comp.attack.value = 0.003; this.comp.release.value = 0.2;
-        this.master.connect(this.comp).connect(this.ctx.destination);
-        this.sfxBus = this.ctx.createGain();
-        this.musicBus = this.ctx.createGain();
-        this.sfxBus.connect(this.master);
-        this.musicBus.connect(this.master);
-        this.applySettings();
-        const len = this.ctx.sampleRate;
-        this.noiseBuffer = this.ctx.createBuffer(1, len, len);
-        const data = this.noiseBuffer.getChannelData(0);
-        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { /* older iOS */ }
+      if (this.ctx && this.ctx.state !== 'running' && this.resumeFailedAt && performance.now() - this.resumeFailedAt > 1200) this.rebuild();
+      if (!this.ctx) this.build();
+      if (this.ctx.state !== 'running') {
+        const ctx = this.ctx;
+        const pr = ctx.resume();
+        this.prime();
+        const failed = () => { if (this.ctx === ctx && ctx.state !== 'running' && !this.resumeFailedAt) this.resumeFailedAt = performance.now(); };
+        if (pr && pr.then) pr.then(() => { if (ctx.state === 'running') this.resumeFailedAt = 0; else failed(); }, failed);
+        setTimeout(failed, 500);
       }
-      if (this.ctx.state === 'suspended') this.ctx.resume();
       if (this.settings.music !== false) this.startMusic();
     } catch (e) { this.ctx = null; }
+  }
+
+  build() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC({ latencyHint: 'interactive' });
+    this.resumeFailedAt = 0;
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.9;
+    // Gentle limiter so stacked eats never clip on phone speakers.
+    this.comp = this.ctx.createDynamicsCompressor();
+    this.comp.threshold.value = -14; this.comp.ratio.value = 6;
+    this.comp.attack.value = 0.003; this.comp.release.value = 0.2;
+    this.master.connect(this.comp).connect(this.ctx.destination);
+    this.sfxBus = this.ctx.createGain();
+    this.musicBus = this.ctx.createGain();
+    this.sfxBus.connect(this.master);
+    this.musicBus.connect(this.master);
+    this.applySettings();
+    const len = this.ctx.sampleRate;
+    this.noiseBuffer = this.ctx.createBuffer(1, len, len);
+    const data = this.noiseBuffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    // Back to running (e.g. after an iOS interruption): restart the music clock.
+    this.ctx.onstatechange = () => {
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      this.resumeFailedAt = 0;
+      this.nextNoteTime = this.ctx.currentTime + 0.08;
+      if (this.settings.music !== false) this.startMusic();
+    };
+  }
+
+  /** Drops a context WebKit won't resume and starts a fresh one. */
+  rebuild() {
+    this.stopMusic();
+    const old = this.ctx;
+    this.ctx = null;
+    try { old.onstatechange = null; old.close(); } catch (e) { /* already closed */ }
+  }
+
+  prime() {
+    try {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.ctx.createBuffer(1, 1, 22050);
+      src.connect(this.ctx.destination);
+      src.start(0);
+    } catch (e) { /* not critical */ }
   }
 
   applySettings() {
@@ -587,8 +631,15 @@ class SoundEngine {
 
   /** Background tab / pause sheet: duck the music, suspend fully when hidden. */
   setDucked(on) { this.ducked = on; this.applySettings(); }
-  suspend() { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); }
-  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+  /** `hold` = suspended on purpose (ad playing, page hidden) -- gestures
+   *  must not wake the audio until resume() releases it. */
+  suspend() { this.hold = true; if (this.ctx && this.ctx.state === 'running') this.ctx.suspend(); }
+  resume() {
+    this.hold = false;
+    // Any non-running state ("suspended" or iOS "interrupted"). Outside a
+    // gesture iOS may refuse -- the next tap retries via unlock().
+    if (this.ctx && this.ctx.state !== 'running') { const pr = this.ctx.resume(); if (pr && pr.catch) pr.catch(() => {}); }
+  }
 
   get live() { return this.ctx && this.ctx.state === 'running'; }
   sfxOn() { return this.live && this.settings.sfx !== false; }
@@ -726,6 +777,10 @@ class SoundEngine {
     if (!this.live) return;
     const bpm = [92, 112, 120, 128][this.intensity] || 112;
     const stepDur = 60 / bpm / 4;
+    // Clock jumped (context rebuilt or resumed after a long stop): resync
+    // instead of going silent or firing a burst of stale notes.
+    const now = this.ctx.currentTime;
+    if (this.nextNoteTime < now - 0.25 || this.nextNoteTime > now + 1) this.nextNoteTime = now + 0.05;
     while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
       this.playStep(this.step, this.nextNoteTime - this.ctx.currentTime);
       this.nextNoteTime += stepDur;
@@ -5717,7 +5772,10 @@ class Game {
     this.sound = new SoundEngine(this.save.settings);
     this.monetization = new Monetization(this);
     const unlockAudio = () => this.sound.unlock();
-    ['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, unlockAudio, { passive: true }));
+    // pointerdown alone is not a user activation in Safari -- pointerup /
+    // touchend / click are, so audio is (re)started on those too, on every
+    // tap (cheap no-op while running): iOS can stop the context any time.
+    ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(ev => window.addEventListener(ev, unlockAudio, { passive: true, capture: true }));
     document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('button')) this.sound.ui(); });
     this.state = GameState.BOOT;
 

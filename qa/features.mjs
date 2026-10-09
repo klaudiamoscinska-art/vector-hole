@@ -43,6 +43,56 @@ export async function runFeatureChecks(url) {
     await g.browser.close();
   }
 
+  // --- Audio on iPhone (v13.2): silent switch, "interrupted", stuck context --
+  {
+    const g = await openGame(url, { viewport: { width: 390, height: 844 }, initScript: () => { navigator.audioSession = { type: 'auto' }; } });
+    const tap = async () => { await g.page.tap('#hud, body', { force: true, position: { x: 200, y: 400 } }).catch(() => g.page.mouse.click(200, 400)); await g.page.waitForTimeout(150); };
+    await tap();
+    const session = await g.page.evaluate(() => navigator.audioSession.type);
+    // WebKit's "interrupted" state (call, notification, app switch): the old
+    // code resumed only "suspended", so sound stayed dead until a reload.
+    const interrupted = await g.page.evaluate(() => {
+      const s = window.game.sound, ctx = s.ctx;
+      let fake = 'interrupted';
+      Object.defineProperty(ctx, 'state', { configurable: true, get: () => fake });
+      const realResume = ctx.resume.bind(ctx);
+      ctx.resume = () => { fake = 'running'; return realResume(); };
+      return true;
+    });
+    await tap();
+    const afterInterrupt = await g.page.evaluate(() => window.game.sound.ctx.state);
+    // A context that never resumes inside a gesture gets rebuilt.
+    const oldId = await g.page.evaluate(() => {
+      const s = window.game.sound, ctx = s.ctx;
+      window.__oldCtx = ctx;
+      Object.defineProperty(ctx, 'state', { configurable: true, get: () => 'interrupted' });
+      ctx.resume = () => Promise.resolve();
+      return true;
+    });
+    await tap();
+    await g.page.waitForTimeout(1400);
+    await tap();
+    await g.page.waitForTimeout(300);
+    const rebuilt = await g.page.evaluate(() => ({ fresh: window.game.sound.ctx !== window.__oldCtx, state: window.game.sound.ctx.state, music: !!window.game.sound.musicTimer }));
+    // Deliberate hold (ad / hidden page): a tap must not wake the audio.
+    const hold = await g.page.evaluate(async () => { const s = window.game.sound; s.suspend(); await new Promise(r => setTimeout(r, 100)); return true; });
+    await tap();
+    const held = await g.page.evaluate(async () => { const s = window.game.sound; const st = s.ctx.state; s.resume(); await new Promise(r => setTimeout(r, 200)); return { held: st, after: s.ctx.state }; });
+    // Whole first session: music still playing in the first Arena round.
+    await g.page.evaluate(() => { const gm = window.game; gm.startCampaignMission('M00'); gm.dismissTutorialIntro(); const m = gm.mission; m.eatenByType.fragment = 6; m.eatenByType.prop = 6; m.eatenByType.vehicle = 1; m.rivalsEaten = 1; });
+    await g.page.waitForTimeout(3500);
+    await g.page.tap('#btnUnlockGo', { force: true }).catch(() => {});
+    await g.page.waitForTimeout(1500);
+    const arena = await g.page.evaluate(() => ({ mode: window.game.mode, state: window.game.sound.ctx.state, music: !!window.game.sound.musicTimer, gain: +window.game.sound.musicBus.gain.value.toFixed(2) }));
+    results.push(report('audio (iOS): asks for the "playback" session so the silent switch does not mute the game', session === 'playback', session));
+    results.push(report('audio (iOS): a tap recovers from the "interrupted" state', interrupted && afterInterrupt === 'running', afterInterrupt));
+    results.push(report('audio (iOS): a context that will not resume is rebuilt on the next tap', rebuilt.fresh && rebuilt.state === 'running' && rebuilt.music, JSON.stringify(rebuilt)));
+    results.push(report('audio: taps do not wake audio held for an ad / hidden page', hold && held.held === 'suspended' && held.after === 'running', JSON.stringify(held)));
+    results.push(report('audio: music still plays in the first round after the tutorial', arena.mode === 'arena' && arena.state === 'running' && arena.music && arena.gain > 0, JSON.stringify(arena)));
+    results.push(report('audio: no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+    await g.browser.close();
+  }
+
   // --- Monetization: demo provider -------------------------------------------
   {
     const g = await veteranPage(url, { initScript: fastAds }, { runsPlayed: 10 });
