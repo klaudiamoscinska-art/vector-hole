@@ -114,7 +114,7 @@ const CONFIG = {
     minPar: 1200, maxPar: 40000,
     parFactor: [0.72, 1.05],   // lerp'd by difficultyT
     history: 5,                // rounds in save.stats.recentArenaScores
-    maxBoost: 5, minMult: 0.35, maxGrowthBoost: 2,
+    maxBoost: 8, minMult: 0.35, maxGrowthBoost: 2,
     hungryObjectRange: 650,
     finalChaseSeconds: 15,
     // ...and it tails a runaway leader at this share of the player's score
@@ -1114,16 +1114,18 @@ const BOT_NAME_POOL = [
 const BOT_COLORS = ['#FF54AD', '#46D99A', '#EFCB63', '#9875FF', '#50F0FA', '#ff3860'];
 
 const SKINS = [
+  // v13 prices ~3.3x: a 20-round QA career ended with 8 139 coins unspent
+  // and every coin item (then ~1 560 in total) bought after 5-10 rounds.
   // Golden Shot v9: every Rdzeń now has a gameplay bonus (`perks`, applied
   // in Arena/Daily rounds only -- see Game.perk()) on top of its signature
   // look (SKIN_STYLES), so buying one changes how you play, not just color.
   { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — wir startowy' },
-  { id: 'cyan', name: 'Cyber Cyan', price: 30, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
-  { id: 'pink', name: 'Hot Pink', price: 60, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
-  { id: 'green', name: 'Toxic Green', price: 120, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
-  { id: 'purple', name: 'Ultra Violet', price: 220, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
-  { id: 'gold', name: 'Neon Gold', price: 380, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
-  { id: 'white', name: 'Plasma White', price: 600, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
+  { id: 'cyan', name: 'Cyber Cyan', price: 100, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
+  { id: 'pink', name: 'Hot Pink', price: 220, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
+  { id: 'green', name: 'Toxic Green', price: 450, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
+  { id: 'purple', name: 'Ultra Violet', price: 800, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
+  { id: 'gold', name: 'Neon Gold', price: 1300, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
+  { id: 'white', name: 'Plasma White', price: 2000, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
   // in CAMPAIGN_MISSIONS + endCampaignMission()).
@@ -1140,9 +1142,9 @@ const SKINS = [
 // internally since it's the same following-glow render path (Hole's aura).
 const AURAS = [
   { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins' },
-  { id: 'spark', name: 'Spark Aura', priceCoins: 150, priceType: 'coins', color: '#50F0FA' },
-  { id: 'ember', name: 'Ember Aura', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD' },
-  { id: 'vortex', name: 'Vortex Aura', pricePrisms: 30, priceType: 'prisms', color: '#9875FF' },
+  { id: 'spark', name: 'Iskra', priceCoins: 500, priceType: 'coins', color: '#50F0FA' },
+  { id: 'ember', name: 'Żar', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD' },
+  { id: 'vortex', name: 'Zawirowanie', pricePrisms: 30, priceType: 'prisms', color: '#9875FF' },
   { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#46D99A', unlockSource: { type: 'coreCity', level: 2 } },
   { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } },
   // v11: Pakiet Startowy exclusive (IAP_PRODUCTS.starter_pack) -- hidden
@@ -1882,7 +1884,7 @@ const FEATURE_UNLOCKS = [
   {
     id: 'arena', eyebrow: 'NOWY TRYB', title: 'GRAJ 2:00', color: '#50F0FA', icon: UNLOCK_ICONS.arena,
     desc: 'Szybkie 2-minutowe rundy na Arenie z rywalami. Każda runda daje monety i ładuje Core City.',
-    cta: 'DO MIASTA', isUnlocked: s => FEATURE_GATES.arena(s)
+    cta: 'ZAGRAJ TERAZ', isUnlocked: s => FEATURE_GATES.arena(s)
   },
   {
     id: 'warsztat', eyebrow: 'NOWA ZAKŁADKA', title: 'WARSZTAT', color: '#EFCB63', icon: UNLOCK_ICONS.warsztat,
@@ -3357,7 +3359,17 @@ function getObjectSprite(kind, color, r, variant) {
 /** Draws one object at the current origin: idle bob/breathe + cached
  *  sprite + its live overlay. `seed` de-syncs the idle motion between
  *  objects; `live` false skips the animated extras (used-up nodes etc.). */
+/** v13: true on the lowest quality level -- objects skip the per-object
+ *  sway/breathe transform and live extras (the v13 street trails roughly
+ *  doubled how many pickups are on screen). Set by Game.applyGfx(). */
+let OBJECT_ART_LITE = false;
+
 function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
+  if (OBJECT_ART_LITE && opts.live !== false) {
+    const s = getObjectSprite(kind, color, r, opts.variant);
+    ctx.drawImage(s.canvas, -s.half, -s.half, s.half * 2, s.half * 2);
+    return;
+  }
   const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
   const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * 0.03;
   ctx.save();
@@ -5779,6 +5791,7 @@ class Game {
     document.body.dataset.gfx = level; // CSS-only effects (the in-round vignette) key off it
     const L = GFX_LEVELS[level];
     CONFIG.juice.maxParticles = L.particles;
+    OBJECT_ART_LITE = level === 0;
     // Shadow blur off for the whole game canvas in one place (an own
     // property shadows the prototype accessor; delete restores it).
     if (!L.blur) Object.defineProperty(this.ctx, 'shadowBlur', { configurable: true, get: () => 0, set: () => {} });
@@ -5956,12 +5969,7 @@ class Game {
   }
 
   bindUI() {
-    document.getElementById('btnStart').addEventListener('click', () => {
-      if (!this.isArenaUnlocked()) return;
-      this.selectedRunTool = 'none';
-      this.populateRunToolGrid();
-      this.showScreen('runSetupScreen');
-    });
+    document.getElementById('btnStart').addEventListener('click', () => this.startArenaRound());
     document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
     // Golden Shot v8 retention loop.
     document.getElementById('btnLoginClaim').addEventListener('click', () => this.claimLoginReward());
@@ -7267,7 +7275,12 @@ class Game {
       this.state = GameState.MENU;
       if (item.kind === 'reward' || item.id === 'warsztat') this.openWarsztatScreen();
       else if (item.id === 'wyzwania') this.openChallengesScreen();
-      else if (item.id === 'arena') this.showScreen('mainMenu');
+      // v13: the first round is one tap away -- the button starts it (QA:
+      // five screens/pop-ups stood between the tutorial and the first round).
+      else if (item.id === 'arena') {
+        if (this.unlockQueue && this.unlockQueue.length) this.showScreen('mainMenu');
+        else { this.startArenaRound(); return; }
+      }
       else if (item.districtId) { this.openCampaignScreen(); this.selectCampaignDistrict(item.districtId); }
     }
     if (this.unlockQueue && this.unlockQueue.length) setTimeout(() => this.showNextUnlock(), 350);
@@ -7563,7 +7576,7 @@ class Game {
     document.getElementById('hubPlayerXpBar').style.width = clamp(p.xp / need, 0, 1) * 100 + '%';
     document.getElementById('hubPlayerXpText').textContent = `${p.xp} / ${need} XP`;
     const nextPrisms = (p.level + 1) % P.levelPrismsEvery === 0 ? ` + ${P.levelPrisms} ◆` : '';
-    document.getElementById('hubPlayerLevelNext').textContent = `→ LVL ${p.level + 1}: +${P.levelCoins(p.level + 1)} monet${nextPrisms}`;
+    document.getElementById('hubPlayerLevelNext').textContent = `→ poziom ${p.level + 1}: +${P.levelCoins(p.level + 1)} monet${nextPrisms}`;
   }
 
   openPlayerLevelInfo() {
@@ -7598,7 +7611,9 @@ class Game {
   }
 
   maybeShowLoginReward() {
-    if (this.running || this.isFirstRun()) return;
+    // v13: not before the first finished Arena round -- the calendar used to
+    // pop up between the tutorial and the first round.
+    if (this.running || this.isFirstRun() || !(this.save.stats.runsPlayed > 0)) return;
     if (document.getElementById('mainMenu').classList.contains('hidden')) return;
     if (!document.getElementById('unlockOverlay').classList.contains('hidden')) return;
     const st = this.loginState();
@@ -8033,6 +8048,16 @@ class Game {
       this.bots.push(bot);
     }
     this.layStarterFeasts(rng, [spawns.player, ...spawns.bots]);
+  }
+
+  /** GRAJ 2:00: the run-tool screen only once tools make sense -- a new
+   *  player's first rounds start straight away (v13). */
+  startArenaRound() {
+    if (!this.isArenaUnlocked()) return;
+    this.selectedRunTool = 'none';
+    if ((this.save.stats.runsPlayed || 0) < CONFIG.difficulty.rampStartRuns) { this.startRound(); return; }
+    this.populateRunToolGrid();
+    this.showScreen('runSetupScreen');
   }
 
   pickModifier() {
@@ -8644,7 +8669,7 @@ class Game {
       if (e.type === 'node' && e.glyph === 'mostek') continue;
       if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
       if (e.type === 'landmark' && !e.unlocked) continue;
-      if (tier < e.stats.minTier) continue;
+      if (tier < e.stats.minTier) { this.lockedBump(e, `T${e.stats.minTier}`, SIZE_TIER_COLORS[e.stats.minTier] || '#fff', this.player); continue; }
       const d = dist(this.player.x, this.player.y, e.x, e.y);
       if (d < this.player.radius * 0.85 + e.radius * 0.3) e.startEating(this.player);
     }
@@ -10659,10 +10684,27 @@ class Game {
     const reach = hole.radius * 0.85 * (hole.isPlayer && this.frenzyActive ? CONFIG.golden.reachMult : 1);
     for (const obj of this.objects) {
       if (obj.eating) continue;
-      if (!this.holeCanEat(hole, obj)) continue;
+      if (!this.holeCanEat(hole, obj)) {
+        if (hole.isPlayer && Math.abs(obj.x - hole.x) < hole.radius + obj.radius && Math.abs(obj.y - hole.y) < hole.radius + obj.radius) {
+          const m = TIERS[obj.tier].minSizeTier;
+          this.lockedBump(obj, CONFIG.sizeTiers[m].shortId, CONFIG.sizeTiers[m].color, hole);
+        }
+        continue;
+      }
       const d = dist(hole.x, hole.y, obj.x, obj.y);
       if (d < reach) obj.startEating(hole);
     }
+  }
+
+  /** v13: rolling over something still too big used to do nothing at all
+   *  (QA: "the hole slides over cars silently"). A small tag names the size
+   *  it needs -- throttled per object and globally so it never spams. */
+  lockedBump(obj, tierLabel, color, hole) {
+    const now = performance.now();
+    if (dist(hole.x, hole.y, obj.x, obj.y) > hole.radius * 0.85 + obj.radius * 0.3) return;
+    if ((this.lockHintAt != null && now - this.lockHintAt < 2500) || (obj.lockHintAt != null && now - obj.lockHintAt < 7000)) return;
+    this.lockHintAt = obj.lockHintAt = now;
+    this.addFloatText(obj.x, obj.y - obj.radius - 8, `ZA DUŻE · URÓŚNIJ DO ${tierLabel}`, color, 13, 1.1);
   }
 
   handleHoleCollisions() {

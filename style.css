@@ -4602,9 +4602,13 @@ body[data-gfx="0"] #hud::before { display: none; }
 
 /* Miasto: on short screens (SE-class phones, portal iframes) the GRAJ 2:00 /
    WYZWANIE DNIA row pins above the bottom nav instead of scrolling under it. */
-#hubCtaRow { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 5; }
+/* v13: the docked plate on every height -- without it the pinned row cut
+   the Core City milestone road in half on 844 px phones. */
+#hubCtaRow { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 5;
+  padding: 8px; margin-left: -8px; margin-right: -8px; width: calc(100% + 16px); border-radius: 20px;
+  background: rgba(7, 23, 37, 0.94); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
 @media (max-height: 760px) {
-  #hubCtaRow { padding: 8px; margin: 0 -8px; width: calc(100% + 16px); max-width: 356px; border-radius: 20px; background: rgba(7, 23, 37, 0.94); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+  #hubCtaRow { max-width: 356px; }
   .hub-city { height: clamp(120px, 24vh, 172px); }
 }
 
