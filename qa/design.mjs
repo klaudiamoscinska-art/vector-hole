@@ -212,8 +212,9 @@ export async function runDesignChecks(url) {
     results.push(report(`layout ${vp.width}x${vp.height}: profile reset button reachable and tappable`, r.btnBottom <= r.H && r.tappable));
     await g.browser.close();
   }
-  // --- iPhone 13 Pro home-screen app (v13.4): WebKit reports the viewport
-  // without the 47 px status bar -> the app must still fill the screen. ---
+  // --- iPhone 13 Pro home-screen app (v13.5): the whole game -- canvas,
+  // minimap, bottom nav -- must sit inside the viewport WebKit gives us
+  // (v13.4 stretched #app past it and html/body clipped the bottom). ---
   {
     const fake = () => {
       Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148' });
@@ -223,8 +224,11 @@ export async function runDesignChecks(url) {
     };
     const g = await openGame(url, { viewport: { width: 390, height: 797 }, initScript: fake, deviceScaleFactor: 3 });
     await g.page.waitForTimeout(300);
-    const r = await g.page.evaluate(() => ({ app: document.getElementById('app').getBoundingClientRect().height, gameH: window.game.height, canvas: document.getElementById('gameCanvas').getBoundingClientRect().height }));
-    results.push(report('layout: iPhone 13 Pro home-screen app fills the whole screen (no black strip)', r.app === 844 && r.gameH === 844 && r.canvas === 844, JSON.stringify(r)));
+    const r = await g.page.evaluate(() => ({ H: window.innerHeight, app: document.getElementById('app').getBoundingClientRect().bottom, gameH: window.game.height, canvas: document.getElementById('gameCanvas').getBoundingClientRect().bottom }));
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const bar = (html.match(/apple-mobile-web-app-status-bar-style" content="([^"]+)"/) || [])[1];
+    results.push(report('layout: home-screen app on a notched iPhone — game, canvas and minimap inside the visible viewport', r.app === r.H && r.gameH === r.H && r.canvas === r.H, JSON.stringify(r)));
+    results.push(report('layout: status bar style is "black" (black-translucent triggers the WebKit short-viewport bug)', bar === 'black', bar));
     await g.browser.close();
   }
   {
