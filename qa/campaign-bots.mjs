@@ -32,6 +32,10 @@ window.__qaPlayMission = function (id) {
       if (b.radius > p.radius * 1.1 && d < 160 + b.radius) { fx -= (b.x - p.x) / (d + 1); fy -= (b.y - p.y) / (d + 1); }
     }
     let target = null, best = -1;
+    // Skip what the clamped hole can't physically reach (a rival tucked into
+    // a corner of the mission box) -- a human would move on, not stall.
+    const B = CONFIG.campaign.bounds;
+    const reachable = (x, y, reach) => Math.hypot(x - clamp(x, B.minX + p.radius, B.maxX - p.radius), y - clamp(y, B.minY + p.radius, B.maxY - p.radius)) < reach;
     if (!(fx || fy)) {
       for (const e of g.campaignEntities) {
         if (e.consumed || e.eating || !e.live) continue;
@@ -48,6 +52,7 @@ window.__qaPlayMission = function (id) {
       }
       for (const b of g.bots) {
         const d = Math.hypot(b.x - p.x, b.y - p.y);
+        if (!reachable(b.x, b.y, Math.max(p.radius, b.radius) * 0.7)) continue;
         if (p.radius > b.radius * 1.2 && d < 700) { const s = 6 / (d + 60); if (s > best) { best = s; target = b; } }
       }
     }

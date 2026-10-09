@@ -4,7 +4,7 @@ Single autonomous pass on top of v11 focused only on how the game looks,
 reads and feels: the in-round world, the eat moment, the HUD and the menu
 screens. Still exactly three runtime files, zero dependencies, no build
 step, zero third-party requests. Every claim below is backed by a check in
-`qa/` (`node qa/run-all.mjs`, 70/70 passing at the end of this pass) or a
+`qa/` (`node qa/run-all.mjs`, 72/72 passing at the end of this pass) or a
 screenshot from `node qa/screens.mjs`.
 
 ## 0. What the review found first (baseline on v11)
@@ -127,6 +127,69 @@ third-party requests.
 - `QA_TICK` (`lib.mjs`) advances a round part-way and stages a mid-swallow
   moment; the greedy Arena bot now skips targets its clamped hole can't
   physically reach (like a human would).
+
+## 8. Independent review (two reviewers, all P1s fixed + regression-tested)
+A code reviewer and an art-direction/UX reviewer went over the first v12
+commit; this pass fixed:
+
+**Code review**
+- **Chunk-cache thrash** (the one real bug): the prefetch ring wasn't
+  touched once cached, so on DPR 2–3 phones eviction threw it out and the
+  prefetch repainted it — a steady 2 chunk paints per frame (~15 ms of a
+  26 ms frame on a 390×844 @3 phone) even with the camera still. Ring
+  blocks are now touched every frame and new ones are prefetched only under
+  the pixel budget; `qa/visual.mjs` asserts **0 repaints over 60 still
+  frames** at gfx 2 on DPR 2 and 3 (Arena at four zooms, Campaign, welcome
+  scene).
+- `prewarm()` was never called → `Game.prewarmFloor()` at round/mission
+  start (and it frees the welcome scene's chunk cache, ~27 MB on a phone).
+- The Bounty Core marker was the same gold crown as the new #1 crown →
+  now a rotating pink target reticle (card text + card demo updated).
+- Score-pill pop now respects `prefers-reduced-motion`; convoy trucks keep
+  their sprite while being swallowed; swallowed objects keep their
+  idle-motion phase; the swallow spin no longer draws from `Math.random()`
+  (a visual effect must not shift the random stream gameplay uses).
+- Verified sound: skipping the full-screen clear leaves 0 stale pixels at
+  every edge/corner/zoom/shake tested; `hudSet` can't go stale; every growth
+  path honors the radius cap; zoom math in input/minimap/indicators.
+
+**Art direction / UX review**
+- **GRAJ 2:00 hidden behind the bottom nav** on SE-class phones and 960×540
+  portal iframes → the CTA row pins above the nav on short screens, the
+  Core City card shrinks with the viewport, the challenge card is 2 lines.
+- **HUD strip broke at ≤390 px** (growth track 1 px wide, score clipping)
+  → captions drop and the growth bar becomes a 3 px line along the panel's
+  bottom edge.
+- **Floor shapes that looked like holes** (a dark disc with a bright rim at
+  the core and in the Plac fountain) → an open silver hexagon emblem and a
+  light basin with broken rings.
+- **Floor glow and tier-color reuse** → no shadow blur anywhere on the
+  floor, curbs a soft band + thin line, light strips at 0.1 alpha, and all
+  floor accents mixed 40 % toward the panel slate (`cityTone()`), so
+  full-saturation tier colors are reserved for pickups; containers and
+  roof vents are neutral steel (no pink/gold boxes, no "X" like crates).
+- **Results bar** → full-bleed, opaque, reaches the screen bottom, one
+  compact row below 700 px of height, confetti stays above it.
+- Score pops stack above the name/crown and scale with the camera; your own
+  hole gets a cyan outline + "Ty" when a bigger rival is drawn over it;
+  traffic is pairs of small lights (palette colors) that skip the player;
+  painted district names are a faint outline; the minimap label has a
+  backing plate and the minimap is 104 px below 400 px width; scores use
+  thousands separators; shorter result buttons ("×2 MONET · REKLAMA",
+  "WYZWIJ ZNAJOMEGO"); challenge hook grammar; POMIŃ as wide as the cards;
+  neutral wording on two power cards; profile links styled as rows; the
+  desktop bottom nav groups its tabs; the Arena start hint no longer leaks
+  into Campaign.
+- Not done (P2, noted for later): currency icons are Unicode glyphs in two
+  colors (should be one SVG coin/prism set), the Wyzwania countdown ring's
+  glow is clipped to a box, the HUD goal icon follows the object type
+  rather than the mission glyph, and a priority-5 banner can cover the
+  player on desktop when the camera is clamped at the world edge.
+
+**QA harness:** the Campaign bot (like the Arena bot) now skips rivals its
+clamped hole can't reach. A seeded A/B (same `Math.random` stream in v11
+and v12) showed v11 also fails a mission under some seeds, i.e. the earlier
+1–2/22 misses were bot flakiness, not a v12 regression.
 
 ## Known gaps / decisions for the owner
 - **Corner refuge:** a hole's centre is clamped radius-from-the-wall, so a

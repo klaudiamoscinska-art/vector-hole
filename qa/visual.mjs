@@ -106,7 +106,7 @@ export async function runVisualChecks(url) {
       return { again: vis('btnPlayAgain'), ad: vis('btnWatchAd'), share: vis('btnShare'), score: document.getElementById('finalScore').textContent };
     });
     results.push(report('results: play again / x2 coins / challenge visible without scrolling', res2.again && res2.ad && res2.share, JSON.stringify({ ...res, ...res2 })));
-    results.push(report('results: score count-up finishes (not stuck at 0)', Number(res2.score) > 0, `score shown ${res2.score}`));
+    results.push(report('results: score count-up finishes (not stuck at 0)', Number(String(res2.score).replace(/\D/g, '')) > 0, `score shown ${res2.score}`));
     results.push(report('visual: no runtime errors in Arena', g.errors.length === 0, g.errors.slice(0, 3).join(' | ')));
     await g.browser.close();
   }
@@ -153,6 +153,36 @@ export async function runVisualChecks(url) {
       return { dir, minimaps: SCREEN_FLOOR.minimaps.size };
     });
     results.push(report('menu: settings are label/switch rows; daily map draws the city districts', m.dir === 'row' && m.minimaps > 0, JSON.stringify(m)));
+    await g.browser.close();
+  }
+
+  // --- Chunk cache must be idle when the camera is still (review finding:
+  // ring prefetch + eviction used to thrash 2 paints/frame on DPR 2-3) -----
+  for (const dpr of [2, 3]) {
+    const g = await openGame(url, { viewport: { width: 390, height: 844 }, deviceScaleFactor: dpr });
+    await g.page.waitForTimeout(300);
+    const welcome = await g.page.evaluate(() => new Promise((res) => {
+      // first-run welcome scene: let its RAF loop run, then count paints
+      setTimeout(() => { const a = SCREEN_FLOOR.renders; setTimeout(() => res({ paints: SCREEN_FLOOR.renders - a }), 1000); }, 1500);
+    }));
+    const save = await veteranSave(g.page, { coins: 0, runsPlayed: 6, missions: 40 });
+    await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
+    await g.page.reload();
+    await g.page.waitForFunction(() => window.game && window.game.state);
+    const idle = await g.page.evaluate(() => {
+      const gm = window.game, out = {};
+      gm.applyGfx(2);
+      const still = (renderFn) => { for (let k = 0; k < 40; k++) renderFn(k); const a = gm.cityFloor.renders; for (let k = 0; k < 60; k++) renderFn(k); return gm.cityFloor.renders - a; };
+      gm.startRound({ seed: 77 }); cancelAnimationFrame(gm.rafId); gm.running = false;
+      gm.update(1 / 60);
+      for (const z of [1.08, 0.8, 0.58, 0.3]) { gm.zoom = z; out['arena@' + z] = still((k) => gm.render(k / 60)); }
+      gm.startCampaignMission('M05'); if (gm.introPending) gm.dismissTutorialIntro(); cancelAnimationFrame(gm.rafId); gm.running = false;
+      gm.updateCampaign(1 / 60);
+      out.campaign = still((k) => gm.renderCampaign(k / 60));
+      return out;
+    });
+    const total = Object.values(idle).reduce((a, b) => a + b, 0) + welcome.paints;
+    results.push(report(`floor: no chunk repaints while the camera is still (gfx 2, DPR ${dpr})`, total === 0, JSON.stringify({ ...idle, welcome: welcome.paints })));
     await g.browser.close();
   }
 

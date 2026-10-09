@@ -4518,24 +4518,44 @@ body:has(#adOverlay:not(.hidden)) .consent-bar { display: none; }
   .screen:not(.overlay-screen) > .screen-inner { animation: none; }
 }
 
-/* Results: sticky next-action bar (play again + x2 coins + challenge). */
+/* Results: sticky next-action bar (play again + x2 coins + challenge),
+   full-bleed and opaque so nothing scrolls visibly behind or below it. */
 .screen > .screen-inner.result-anim { animation: none; }
 .result-actions {
+  --bleed: 28px;
   position: sticky;
-  bottom: 0;
+  /* sticky offsets count from the content edge, so reach through the
+     column's bottom padding (else rows scroll visibly below the bar) */
+  bottom: calc(-1 * var(--inner-pad-bottom, 32px));
+  order: 99;
   z-index: 3;
-  width: 100%;
+  align-self: stretch;
+  width: auto;
+  margin: 0 calc(-1 * var(--bleed)) calc(-1 * var(--inner-pad-bottom, 32px));
+  padding: 16px var(--bleed) calc(12px + var(--inner-pad-bottom, 32px) + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
-  padding: 18px 0 calc(6px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, rgba(6, 22, 36, 0) 0%, rgba(6, 22, 36, 0.94) 26%, rgba(7, 25, 40, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(7, 25, 40, 0) 0, #071928 16px);
 }
+.result-actions > * { width: 100%; max-width: 440px; }
 .result-actions .btn { margin: 0; }
 .result-actions-row { display: flex; gap: 8px; }
 .result-actions-row .btn { flex: 1 1 0; min-width: 0; margin: 0; padding: 11px 8px; font-size: 12px; line-height: 1.15; white-space: normal; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .result-actions-row .btn svg { width: 16px; height: 16px; flex: none; }
-.result-actions { max-width: 440px; align-self: center; }
+/* The bar is the column's last row ("Wróć do Miasta" sits just above it). */
+@media (max-width: 600px) { .result-actions { --bleed: 16px; --inner-pad-bottom: 22px; } }
+/* Short screens: one compact row (primary + two small buttons). */
+@media (max-height: 700px) {
+  .result-actions { flex-direction: row; align-items: stretch; padding-top: 12px; }
+  .result-actions > .btn { flex: 1.25 1 0; font-size: 14px; padding: 10px 8px; }
+  .result-actions-row { flex: 2 1 0; }
+  .result-actions-row .btn { font-size: 10.5px; padding: 8px 5px; }
+}
+/* Confetti stays above the action bar instead of raining over its labels. */
+#resultConfetti { bottom: 160px; }
+@media (max-height: 700px) { #resultConfetti { bottom: 90px; } }
 .result-actions .btn { max-width: none; }
 
 /* In-round vignette (v12): a static CSS layer under the HUD panels instead
@@ -4560,3 +4580,44 @@ body[data-gfx="0"] #hud::before { display: none; }
 @media (min-width: 900px) {
   #hud-tier-strip, #hud-tier-strip.clears-standings { right: auto; width: 460px; }
 }
+
+/* ---- v12 review fixes ---- */
+
+/* Miasto: on short screens (SE-class phones, portal iframes) the GRAJ 2:00 /
+   WYZWANIE DNIA row pins above the bottom nav instead of scrolling under it. */
+#hubCtaRow { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 5; }
+@media (max-height: 760px) {
+  #hubCtaRow { padding: 8px; margin: 0 -8px; width: calc(100% + 16px); max-width: 356px; border-radius: 20px; background: rgba(7, 23, 37, 0.94); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+  .hub-city { height: clamp(120px, 24vh, 172px); }
+}
+
+/* In-round strip on narrow phones: captions go, the growth bar becomes a
+   3 px line along the panel's bottom edge, so time and score never clip. */
+@media (max-width: 400px) {
+  #hud-tier-strip { padding: 5px 9px 11px; gap: 6px; justify-content: space-between; }
+  #hud-tier-strip .hud-pill .hud-label { display: none; }
+  #hud-tier-strip .hud-tier-bar { position: absolute; left: 9px; right: 9px; bottom: 3px; min-width: 0; gap: 4px; }
+  #hud-tier-strip .hud-tier-bolt { display: none; }
+  #hud-tier-strip .tier-progress-track { height: 3px; }
+  #hud-tier-strip .hud-tier-badge { font-size: 8px; line-height: 1; }
+  #hud-tier-strip .hud-pill .hud-value { font-size: 14px; }
+  #mobile-hint { right: calc(136px + env(safe-area-inset-right, 0px)); }
+}
+
+/* Evolution: POMIŃ as wide as the cards. */
+.evolution-panel .evolution-skip { max-width: none; width: 100%; }
+
+/* Profile: privacy links aligned with the rows and clearly tappable. */
+.settings-block .settings-links { flex-direction: column; gap: 2px; }
+.settings-block .settings-links .btn { width: 100%; max-width: none; justify-content: space-between; padding: 9px 0; font-size: 14px; color: var(--nc-cyan); }
+.settings-block .settings-links .btn::after { content: '›'; font-size: 18px; color: var(--nc-text-dim); }
+
+/* Desktop / landscape: the bottom nav groups its tabs instead of spreading
+   them across the whole width. */
+@media (min-width: 700px) {
+  .bottom-nav { justify-content: center; gap: 24px; }
+}
+.final-leaderboard .fl-score { white-space: nowrap; }
+#hubCtaRow #btnStart { white-space: nowrap; }
+@media (max-width: 400px) { #hubCtaRow #btnStart { letter-spacing: 0.02em; padding-left: 10px; padding-right: 10px; } }
+.hub-challenge-score { white-space: nowrap; }

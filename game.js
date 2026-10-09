@@ -1235,13 +1235,13 @@ const REWARD_CATEGORY_ICONS = {
 // works, and a one-sentence `desc` with the real numbers from CONFIG --
 // plus a looping demo (drawPowerDemo()) instead of a bare icon.
 const MUTATIONS = [
-  { id: 'magnet_pulse', name: 'Magnes', tag: 'CAŁĄ RUNDĘ', desc: 'Obiekty, które możesz zjeść, same lecą do Ciebie z odległości ok. 160 px.', icon: 'magnet', weight: 3, color: '#50F0FA' },
+  { id: 'magnet_pulse', name: 'Magnes', tag: 'CAŁĄ RUNDĘ', desc: 'Obiekty, które możesz zjeść, same lecą do Ciebie z bliskiej okolicy.', icon: 'magnet', weight: 3, color: '#50F0FA' },
   { id: 'slipstream', name: 'Turbo combo', tag: 'PO COMBO ×3', desc: 'Zjedz 3 rzeczy szybko po sobie, a dostaniesz +60% prędkości na 1,5 s.', icon: 'bolt', weight: 3, color: '#46D99A' },
   { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Po zjedzeniu przez rywala odradzasz się nietykalna przez 4 s zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
   { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
-  { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie, żebyś wiedziała, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
+  { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
   { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM POZIOMIE', desc: 'Gdy urośniesz o poziom, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
-  { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Najbliższy rywal dostaje koronę. Zjedz go, a zgarniesz +40 punktów ekstra.', icon: 'target', weight: 2, color: '#EFCB63' }
+  { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Najbliższy rywal dostaje różowy celownik. Zjedz go, a zgarniesz +40 punktów ekstra.', icon: 'target', weight: 2, color: '#EFCB63' }
 ];
 
 /* ----------------------- Campaign mode (GDD 3.1 / "Vector Hole v3") -----------------------
@@ -1348,7 +1348,7 @@ const CAMPAIGN_POWERS = [
   { id: 'magnes', name: 'Magnes', tag: 'CAŁĄ MISJĘ', desc: 'Obiekty, które możesz zjeść, same płyną do Ciebie, gdy są blisko.', icon: 'magnet', color: '#50F0FA' },
   { id: 'reaktor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kęsami masz 2,1 s zamiast 1,5 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', color: '#EFCB63' },
   { id: 'impuls', name: 'Impuls', tag: 'NA NOWYM POZIOMIE', desc: 'Za każdym razem, gdy urośniesz o poziom, dostajesz +20% prędkości na 2 s.', icon: 'bolt', color: '#46D99A' },
-  { id: 'skaner', name: 'Skaner', tag: 'CO 8 S', desc: 'Co 8 s podświetla najbliższy obiekt, żebyś wiedziała, dokąd jechać.', icon: 'radar', color: '#9875FF' }
+  { id: 'skaner', name: 'Skaner', tag: 'CO 8 S', desc: 'Co 8 s podświetla najbliższy obiekt — od razu widać, dokąd jechać.', icon: 'radar', color: '#9875FF' }
 ];
 
 // Hub district map. GDD 4.0 §6 authors the full 24-mission campaign (all
@@ -1895,6 +1895,11 @@ function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 /** Round/mission clock as m:ss (v12 HUD; was a bare "120 s"). */
+/** 27355 -> "27 355" (thin no-break space), for scores on the results UI. */
+function formatNum(n) {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
+}
+
 function formatClock(sec) {
   const t = Math.max(0, Math.ceil(sec || 0));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
@@ -2432,7 +2437,9 @@ class FloatText {
     if (this.follow) {
       this.offset += this.rise * 0.35 * dt;
       this.x = this.follow.x;
-      this.y = this.follow.y - this.follow.radius - 40 - this.offset;
+      // Stacked above the name (and the #1 crown), scaled like the labels.
+      const ls = this.follow.labelScale || 1;
+      this.y = this.follow.y - this.follow.radius - ((this.follow.isLeader ? 64 : 40) + this.offset) * ls;
     } else {
       this.y -= this.rise * dt;
     }
@@ -3933,9 +3940,13 @@ function drawPowerDemo(canvas, powerId, color, t) {
       const enemy = cache.enemy || (cache.enemy = new Hole('', 0, 0, false));
       enemy.skin = 'custom'; enemy.edgeColor = '#FF54AD'; enemy.x = ex; enemy.y = ey; enemy.radius = R * 0.8;
       enemy.draw(ctx, t);
-      ctx.fillStyle = color;
-      const cy2 = ey - R * 0.8 - 10;
-      ctx.beginPath(); ctx.moveTo(ex - 8, cy2 + 6); ctx.lineTo(ex - 8, cy2 - 2); ctx.lineTo(ex - 4, cy2 + 2); ctx.lineTo(ex, cy2 - 5); ctx.lineTo(ex + 4, cy2 + 2); ctx.lineTo(ex + 8, cy2 - 2); ctx.lineTo(ex + 8, cy2 + 6); ctx.closePath(); ctx.fill();
+      // Target reticle (same mark as in the round, see drawBountyMarker()).
+      ctx.strokeStyle = '#FF54AD'; ctx.lineWidth = 2;
+      const rr = R * 0.8 + 6;
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2 + t;
+        ctx.beginPath(); ctx.arc(ex, ey, rr, a + 0.3, a + Math.PI / 2 - 0.3); ctx.stroke();
+      }
     }
     demoHole(cache, px, cy, R * 1.25, '#50F0FA').draw(ctx, t);
     if (eaten) {
@@ -3985,6 +3996,17 @@ const CITY_DISTRICT_MAP = [
 ];
 const CITY_DISTRICT_KEYS = { p: 'plac', k: 'park', o: 'port', g: 'galeria', d: 'dachy', R: 'rdzen' };
 const CITY_LOT_BASE = { plac: '#081620', park: '#061b19', port: '#0a131b', galeria: '#120c1d', dachy: '#0c0f22', rdzen: '#0a121b' };
+
+/** Floor accent for a district: its color mixed toward the panel slate, so
+ *  full-saturation tier colors stay reserved for the objects (a cyan curb
+ *  around cyan T1 fragments made the smallest pickups the hardest to see). */
+function cityTone(col) {
+  const cache = cityTone.cache || (cityTone.cache = {});
+  if (cache[col]) return cache[col];
+  const a = hexToRgb(col), b = hexToRgb('#315A72');
+  const m = a.map((v, k) => Math.round(v + (b[k] - v) * 0.4));
+  return (cache[col] = '#' + m.map(v => v.toString(16).padStart(2, '0')).join(''));
+}
 
 function cityHash(i, j, k = 0) {
   let h = Math.imul(i + 101, 73856093) ^ Math.imul(j + 211, 19349663) ^ Math.imul(k + 7, 83492791);
@@ -4053,11 +4075,16 @@ const CITY_LOT_PAINTERS = {
     if (v === 2) {
       c.strokeStyle = rgbaColor(col, 0.07); c.lineWidth = 1;
       for (let r = 18; r < s * 0.72; r += 18) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
-      c.fillStyle = '#04202e';
+      // Fountain basin: a light water tint with broken rings -- never a dark
+      // disc with a bright rim, which is what a hole looks like.
+      c.fillStyle = rgbaColor(col, 0.1);
       c.beginPath(); c.arc(cx, cy, s * 0.17, 0, Math.PI * 2); c.fill();
-      c.strokeStyle = rgbaColor(col, 0.38); c.lineWidth = 3; c.stroke();
+      c.setLineDash([10, 7]);
+      c.strokeStyle = rgbaColor(col, 0.26); c.lineWidth = 2.5; c.stroke();
+      c.setLineDash([4, 6]);
       c.strokeStyle = rgbaColor(col, 0.14); c.lineWidth = 1.2;
       for (let r = s * 0.05; r < s * 0.15; r += s * 0.035) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+      c.setLineDash([]);
       return;
     }
     c.strokeStyle = rgbaColor(col, 0.07); c.lineWidth = 1;
@@ -4067,11 +4094,10 @@ const CITY_LOT_PAINTERS = {
     if (v === 1) {
       // Two long light strips set into the paving.
       const horiz = rng.next() < 0.5;
-      c.save(); c.shadowBlur = 12; c.shadowColor = col; c.fillStyle = rgbaColor(col, 0.22);
+      c.fillStyle = rgbaColor(col, 0.1);
       for (const f of [0.32, 0.68]) {
-        if (horiz) c.fillRect(x + s * 0.1, y + s * f - 3, s * 0.8, 6); else c.fillRect(x + s * f - 3, y + s * 0.1, 6, s * 0.8);
+        if (horiz) c.fillRect(x + s * 0.1, y + s * f - 2, s * 0.8, 4); else c.fillRect(x + s * f - 2, y + s * 0.1, 4, s * 0.8);
       }
-      c.restore();
       return;
     }
     // Neon compass emblem in the middle of the square.
@@ -4168,7 +4194,9 @@ const CITY_LOT_PAINTERS = {
       c.fillStyle = rgbaColor(col, 0.07); c.fillText('P', x + s / 2, y + s / 2 + 6);
       return;
     }
-    const colors = [col, '#FF54AD', '#50F0FA', '#9875FF', '#46D99A'];
+    // Neutral steel (not the tier colors), so a container never reads as a
+    // pink crate or a gold car pickup.
+    const colors = ['#8FA6B8', '#6E8798', '#A4B6C4'];
     for (let row = 0; row < 6; row++) {
       for (let k = 0; k < 4; k++) {
         if (rng.next() < 0.18) continue;
@@ -4254,10 +4282,12 @@ const CITY_LOT_PAINTERS = {
     c.stroke();
     for (let k = 0; k < 5; k++) {
       const w = 24 + rng.next() * 22, bx = x + 16 + rng.next() * (s - w - 32), by = y + 16 + rng.next() * (s - w - 32);
+      // Roof vents in neutral steel with grille slats (no diagonal "X" -- the
+      // crate and roof-module pickups use diagonals).
       c.fillStyle = '#11152c'; c.fillRect(bx, by, w, w);
-      c.strokeStyle = rgbaColor(col, 0.22); c.lineWidth = 1.2; c.strokeRect(bx + 0.5, by + 0.5, w - 1, w - 1);
-      c.strokeStyle = rgbaColor(col, 0.12);
-      c.beginPath(); c.moveTo(bx + 4, by + 4); c.lineTo(bx + w - 4, by + w - 4); c.moveTo(bx + w - 4, by + 4); c.lineTo(bx + 4, by + w - 4); c.stroke();
+      c.strokeStyle = 'rgba(164, 182, 196, 0.2)'; c.lineWidth = 1.2; c.strokeRect(bx + 0.5, by + 0.5, w - 1, w - 1);
+      c.strokeStyle = 'rgba(164, 182, 196, 0.1)';
+      c.beginPath(); for (let g = 5; g < w - 3; g += 5) { c.moveTo(bx + 4, by + g); c.lineTo(bx + w - 4, by + g); } c.stroke();
     }
   },
   rdzen(c, x, y, s, col, rng, v) {
@@ -4306,7 +4336,7 @@ function paintCityChunk(c, i, j, theme) {
 
   // Block: sidewalk band, district lot, neon curb.
   const d = cityDistrict(i, j, theme);
-  const col = DISTRICT_COLORS[d] || '#50F0FA';
+  const col = cityTone(DISTRICT_COLORS[d] || '#50F0FA');
   const bx = i * P + R / 2, by = j * P + R / 2, bs = P - R;
   c.fillStyle = '#0c1826';
   roundRectPath(c, bx, by, bs, bs, 10); c.fill();
@@ -4334,22 +4364,22 @@ function paintCityChunk(c, i, j, theme) {
       const words = dist.name.toUpperCase().split(' ');
       c.font = `40px ${FONT_DISPLAY}`;
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = rgbaColor(col, 0.12);
-      c.strokeStyle = rgbaColor(col, 0.34); c.lineWidth = 1.5;
+      c.strokeStyle = rgbaColor(col, 0.2); c.lineWidth = 1.5;
       words.forEach((w, k) => {
         const ty = ly + ls / 2 + (k - (words.length - 1) / 2) * 48;
-        c.fillText(w, lx + ls / 2, ty); c.strokeText(w, lx + ls / 2, ty);
+        c.strokeText(w, lx + ls / 2, ty);
       });
     }
   }
   c.restore();
   c.strokeStyle = rgbaColor(col, 0.12); c.lineWidth = 1;
   c.strokeRect(lx + 0.5, ly + 0.5, ls - 1, ls - 1);
-  c.save();
-  c.shadowBlur = 10; c.shadowColor = col;
-  c.strokeStyle = rgbaColor(col, 0.5); c.lineWidth = 1.6;
+  // Neon curb: a soft wide band + a crisp line (no shadow blur -- the floor
+  // must never glow like a pickup).
+  c.strokeStyle = rgbaColor(col, 0.12); c.lineWidth = 6;
   roundRectPath(c, bx + 0.8, by + 0.8, bs - 1.6, bs - 1.6, 10); c.stroke();
-  c.restore();
+  c.strokeStyle = rgbaColor(col, 0.42); c.lineWidth = 1.5;
+  roundRectPath(c, bx + 0.8, by + 0.8, bs - 1.6, bs - 1.6, 10); c.stroke();
 
   // Road markings on the 4 grid lines around this block (both halves --
   // the neighbour chunk paints the same strokes, clipped to its side).
@@ -4377,7 +4407,7 @@ function paintCityChunk(c, i, j, theme) {
           c.restore();
           continue;
         }
-        const roadCol = DISTRICT_COLORS[vertical ? cityDistrict(Math.max(0, L - 1), seg, theme) : cityDistrict(seg, Math.max(0, L - 1), theme)] || '#50F0FA';
+        const roadCol = cityTone(DISTRICT_COLORS[vertical ? cityDistrict(Math.max(0, L - 1), seg, theme) : cityDistrict(seg, Math.max(0, L - 1), theme)] || '#50F0FA');
         c.strokeStyle = 'rgba(242, 248, 255, 0.09)'; c.lineWidth = 1.5; c.setLineDash([]);
         c.beginPath(); line(-R / 2 + 5, a, b); line(R / 2 - 5, a, b); c.stroke();
         c.strokeStyle = rgbaColor(roadCol, 0.34); c.lineWidth = 2.5; c.setLineDash([20, 16]);
@@ -4408,13 +4438,19 @@ function paintCityChunk(c, i, j, theme) {
     const cx = WORLD_W / 2, cy = WORLD_H / 2;
     if (Math.abs(cx - (i + 0.5) * P) < P && Math.abs(cy - (j + 0.5) * P) < P) {
       c.save();
-      c.shadowBlur = 12; c.shadowColor = '#50F0FA';
-      c.strokeStyle = 'rgba(80, 240, 250, 0.2)'; c.lineWidth = 2;
+      c.strokeStyle = 'rgba(80, 240, 250, 0.16)'; c.lineWidth = 2;
+      c.setLineDash([26, 14]);
       for (const r of [120, 180, 250]) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
-      c.shadowBlur = 0;
-      c.fillStyle = '#040a12';
-      c.beginPath(); c.arc(cx, cy, 26, 0, Math.PI * 2); c.fill();
-      c.strokeStyle = 'rgba(203, 213, 225, 0.45)'; c.lineWidth = 3; c.stroke();
+      c.setLineDash([]);
+      // The core itself: a silver hexagon emblem painted on the junction
+      // (light, open line art -- not a dark disc, which reads as a hole).
+      c.strokeStyle = 'rgba(203, 213, 225, 0.4)'; c.lineWidth = 2.5;
+      c.beginPath();
+      for (let k = 0; k <= 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; const px = cx + Math.cos(a) * 24, py = cy + Math.sin(a) * 24; if (k) c.lineTo(px, py); else c.moveTo(px, py); }
+      c.stroke();
+      c.beginPath();
+      for (let k = 0; k < 3; k++) { const a = Math.PI / 6 + k * Math.PI / 3; c.moveTo(cx + Math.cos(a) * 12, cy + Math.sin(a) * 12); c.lineTo(cx - Math.cos(a) * 12, cy - Math.sin(a) * 12); }
+      c.stroke();
       c.restore();
     }
   }
@@ -4426,7 +4462,7 @@ function paintCityChunk(c, i, j, theme) {
   for (let ni = i - 1; ni <= i + 1; ni++) {
     for (let nj = j - 1; nj <= j + 1; nj++) {
       if (ni < 0 || nj < 0 || ni >= CITY_CELLS || nj >= CITY_CELLS) continue;
-      const lc = DISTRICT_COLORS[cityDistrict(ni, nj, theme)] || '#50F0FA';
+      const lc = cityTone(DISTRICT_COLORS[cityDistrict(ni, nj, theme)] || '#50F0FA');
       const o = R / 2 + W / 2, far = P - o;
       const pts = [[o, o], [far, o], [o, far], [far, far], [P / 2, o], [P / 2, far], [o, P / 2], [far, P / 2]];
       for (const [px0, py0] of pts) {
@@ -4500,19 +4536,25 @@ class CityFloor {
         ctx.drawImage(e.canvas, i * P - B, j * P - B, P + 2 * B, P + 2 * B);
       }
     }
+    // Pixel budget for this frame: never below what the view itself needs.
+    const cap = Math.max(CityFloor.budget(view.gfx), used * 1.8);
+    const chunkPx = Math.ceil((P + 2 * B) * want) ** 2;
     // Prefetch the ring of blocks just outside the view, one or two a frame.
-    for (let j = j0 - 1; j <= j1 + 1 && budget > 0; j++) {
-      for (let i = i0 - 1; i <= i1 + 1 && budget > 0; i++) {
+    // Cached ring blocks are touched too, so eviction never throws out what
+    // the prefetch would just paint again (a steady 2 paints/frame thrash
+    // on DPR 2-3 phones, found in review); new ones only while under budget.
+    for (let j = j0 - 1; j <= j1 + 1; j++) {
+      for (let i = i0 - 1; i <= i1 + 1; i++) {
         if (i < 0 || j < 0 || i >= CITY_CELLS || j >= CITY_CELLS) continue;
         if (i >= i0 && i <= i1 && j >= j0 && j <= j1) continue;
         const e = this.cache.get(`${theme || '*'}|${i}|${j}`);
-        if (e && e.scale === want) continue;
+        if (e && e.scale === want) { e.frame = this.frame; continue; }
+        if (budget <= 0 || this.pixels - (e ? e.px : 0) + chunkPx > cap) continue;
         budget--;
         this.render(i, j, want, theme, e).frame = this.frame;
       }
     }
-    // LRU eviction under a pixel budget (never below what this frame needs).
-    const cap = Math.max([4e6, 7e6, 10e6][view.gfx != null ? view.gfx : 2], used * 1.8);
+    // LRU eviction of blocks that are neither in view nor in the ring.
     for (const [key, e] of this.cache) {
       if (this.pixels <= cap) break;
       if (e.frame === this.frame) continue;
@@ -4521,14 +4563,17 @@ class CityFloor {
     }
   }
 
-  /** Paints every visible block now (round start), so the first frames of a
-   *  round never stall on a burst of chunk paints. */
+  /** Base pixel budget per quality level (gfx 0/1/2). */
+  static budget(gfx) { return [4e6, 7e6, 10e6][gfx != null ? gfx : 2]; }
+
+  /** Paints the blocks in view now (Game.prewarmFloor() at round/mission
+   *  start), so the first frame doesn't stall on a burst of chunk paints. */
   prewarm(view, theme) {
     const P = CITY_PITCH;
     const maxS = [1, 1.5, 2][view.gfx != null ? view.gfx : 2];
     const want = Math.min(maxS, CityFloor.quantize(view.zoom * view.dpr));
-    for (let j = Math.floor((view.cy - view.hh) / P) - 1; j <= Math.floor((view.cy + view.hh) / P) + 1; j++) {
-      for (let i = Math.floor((view.cx - view.hw) / P) - 1; i <= Math.floor((view.cx + view.hw) / P) + 1; i++) {
+    for (let j = Math.floor((view.cy - view.hh) / P); j <= Math.floor((view.cy + view.hh) / P); j++) {
+      for (let i = Math.floor((view.cx - view.hw) / P); i <= Math.floor((view.cx + view.hw) / P); i++) {
         if (i < 0 || j < 0 || i >= CITY_CELLS || j >= CITY_CELLS) continue;
         const e = this.cache.get(`${theme || '*'}|${i}|${j}`);
         if (!e || e.scale !== want) this.render(i, j, want, theme, e);
@@ -4536,14 +4581,18 @@ class CityFloor {
     }
   }
 
+  /** Drops every cached block (menu art leaving the screen). */
+  clearChunks() {
+    this.cache.clear();
+    this.pixels = 0;
+  }
+
   /** Night traffic: faint head/tail-light streaks gliding along the roads
    *  in view -- the city is alive, but nothing that reads as a pickup. */
-  drawTraffic(ctx, view, t, theme, bounds) {
+  drawTraffic(ctx, view, t, theme, bounds, avoid) {
     const P = CITY_PITCH, R = CITY_ROAD;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 2.6;
     for (let L = 1; L < CITY_CELLS; L++) {
       const pos = L * P;
       for (const vertical of [true, false]) {
@@ -4556,11 +4605,13 @@ class CityFloor {
           const x = vertical ? pos + dir * R * 0.22 : s, y = vertical ? s : pos + dir * R * 0.22;
           if (Math.abs(x - view.cx) > view.hw + 30 || Math.abs(y - view.cy) > view.hh + 30) continue;
           if (bounds && (x < bounds.minX || x > bounds.maxX || y < bounds.minY || y > bounds.maxY)) continue;
-          const tail = 24 * dir;
-          ctx.strokeStyle = dir > 0 ? 'rgba(255, 238, 205, 0.24)' : 'rgba(255, 56, 96, 0.24)';
-          ctx.beginPath();
-          if (vertical) { ctx.moveTo(x, y); ctx.lineTo(x, y - tail); } else { ctx.moveTo(x, y); ctx.lineTo(x - tail, y); }
-          ctx.stroke();
+          if (avoid && Math.hypot(x - avoid.x, y - avoid.y) < avoid.radius + 60) continue;
+          // A car at night: a pair of lights (warm headlights one way, pink
+          // tail-lights the other), side by side across the lane.
+          ctx.fillStyle = dir > 0 ? 'rgba(242, 248, 255, 0.34)' : 'rgba(255, 84, 173, 0.3)';
+          const ox = vertical ? 4 : 0, oy = vertical ? 0 : 4;
+          ctx.fillRect(x - ox - 1.6, y - oy - 1.6, 3.2, 3.2);
+          ctx.fillRect(x + ox - 1.6, y + oy - 1.6, 3.2, 3.2);
         }
       }
     }
@@ -4607,7 +4658,12 @@ const SCREEN_FLOOR = new CityFloor();
 function beginSwallow(obj, hole) {
   obj.swFromX = obj.x - hole.x;
   obj.swFromY = obj.y - hole.y;
-  obj.swSpin = (Math.random() < 0.5 ? -1 : 1) * (2.2 + Math.random() * 1.2);
+  obj.swSeed = artSeed(obj.x, obj.y); // the idle-motion phase it had on the floor
+  // Spin derived from the position (no Math.random()), so the purely visual
+  // swallow never shifts the random stream gameplay draws from.
+  const h = Math.sin(obj.x * 12.9898 + obj.y * 78.233) * 43758.5453;
+  const f = h - Math.floor(h);
+  obj.swSpin = (f < 0.5 ? -1 : 1) * (2.2 + f * 1.2);
 }
 
 /** World position + look of a swallowed thing at progress k (0..1). */
@@ -4691,7 +4747,7 @@ class WorldObject {
       ctx.globalAlpha = a;
       ctx.translate(this.x, this.y);
       ctx.scale(scale, scale);
-      drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, artSeed(this.x, this.y), { live: false });
+      drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, this.swSeed || 0, { live: false });
       ctx.restore();
       return;
     }
@@ -4852,7 +4908,7 @@ class CampaignEntity {
       ctx.globalAlpha = a;
       ctx.translate(this.x, this.y);
       const art = this.artKind();
-      if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[this.stats.minTier], this.radius, performance.now() / 1000, artSeed(this.x, this.y), { live: false });
+      if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[this.stats.minTier], this.radius, performance.now() / 1000, artSeed(this.x, this.y), { live: false, variant: this.glyph === 'konwoj' ? 'konwoj' : undefined });
       ctx.restore();
       return;
     }
@@ -6815,7 +6871,7 @@ class Game {
     note.classList.toggle('hidden', !valid || !this.isFirstRun());
     if (!valid) return;
     document.getElementById('hubChallengeFrom').textContent = ch.from || 'Znajomy';
-    document.getElementById('hubChallengeScore').textContent = ch.score;
+    document.getElementById('hubChallengeScore').textContent = formatNum(ch.score);
     note.textContent = `${ch.from || 'Znajomy'} rzuca Ci wyzwanie: ${ch.score} pkt! Ukończ krótki samouczek, a potem je przyjmij.`;
   }
 
@@ -7606,7 +7662,7 @@ class Game {
   }
 
   /** Counts a number up inside `el` (result screens). */
-  animateNumber(el, to, ms = 900, prefix = '') {
+  animateNumber(el, to, ms = 900, prefix = '', fmt = String) {
     // Timed from the first animation frame (not performance.now() at call
     // time), so a stalled/hidden tab or a skewed clock can't leave it at 0.
     let start = null;
@@ -7614,7 +7670,7 @@ class Game {
       if (start === null) start = now;
       const t = clamp((now - start) / ms, 0, 1);
       const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = prefix + Math.round(to * eased);
+      el.textContent = prefix + fmt(Math.round(to * eased));
       if (t < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -8309,6 +8365,8 @@ class Game {
     this.hideReviveOffer();
     this.mode = 'campaign';
     this.hideAllOverlays();
+    clearTimeout(this.hintTimer);
+    document.getElementById('mobile-hint').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
     document.getElementById('hud-topright').classList.add('hidden');
     document.getElementById('hud-goal').classList.remove('hidden');
@@ -8419,6 +8477,7 @@ class Game {
     this.scorePop = null;
     this.flashAlpha = 0;
     this.hitStopUntil = 0;
+    this.prewarmFloor();
 
     this.running = true;
     this.monetization.gameplayStart();
@@ -9044,6 +9103,7 @@ class Game {
     if (now - (this.lastScoreBump || 0) < 160) return;
     this.lastScoreBump = now;
     const pill = document.querySelector('.hud-pill-score');
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (pill && pill.animate) pill.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
   }
 
@@ -9335,6 +9395,7 @@ class Game {
     holes.sort((a, b) => a.radius - b.radius);
     const swallowed = this.collectSwallowed();
     for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
+    this.drawPlayerOverlapMarker(ctx, holes, 1);
 
     for (const f of this.floatTexts) f.draw(ctx);
     ctx.restore();
@@ -9352,7 +9413,7 @@ class Game {
     const theme = this.campaignTheme();
     const view = this.floorView();
     this.cityFloor.draw(ctx, view, theme);
-    if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, theme, b);
+    if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, theme, b, this.player);
     const L = view.cx - view.hw - 40, T = view.cy - view.hh - 40, Rt = view.cx + view.hw + 40, Bt = view.cy + view.hh + 40;
     const midL = Math.max(L, b.minX), midR = Math.min(Rt, b.maxX);
     ctx.save();
@@ -9390,7 +9451,7 @@ class Game {
   }
 
   drawCampaignMinimap(ctx) {
-    const size = 130, margin = 16;
+    const size = this.minimapSize(), margin = 16;
     const px = this.width - size - margin, py = this.height - size - margin;
     const b = CONFIG.campaign.bounds;
     const scaleX = size / (b.maxX - b.minX), scaleY = size / (b.maxY - b.minY);
@@ -9562,6 +9623,7 @@ class Game {
     this.bannerQueue = [];
     this.lastCountdownSec = null;
     this.scorePop = null;
+    this.prewarmFloor();
     this.showBanner(this.isDailyRun ? 'WYZWANIE DNIA!' : 'START!', this.modifier === 'rush_hour' ? 'RUSH HOUR — rywale są szybsi!' : 'Pochłaniaj · rośnij · wygraj', '#50F0FA', 1.2);
   }
 
@@ -9748,7 +9810,7 @@ class Game {
 
     document.getElementById('finalPlace').textContent = '#' + place;
     // Golden Shot v8 triumph screen: count-ups, place-based headline, confetti.
-    this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100);
+    this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100, '', formatNum);
     this.animateNumber(document.getElementById('finalCoins'), coinsEarned, 1100);
     const eyebrow = document.getElementById('resultEyebrow');
     eyebrow.textContent = place === 1 ? 'ZWYCIĘSTWO!' : (place <= 3 ? `PODIUM · MIEJSCE #${place}` : 'KONIEC RUNDY');
@@ -9833,13 +9895,13 @@ class Game {
         saveGame(this.save);
         this.analytics.track('challenge_won', { score: this.player.score, target: this.challenge.score });
       } else {
-        hook = `Zabrakło ${this.challenge.score - this.player.score + 1} pkt do wyniku ${this.challenge.from}. Rewanż na tej samej mapie?`;
+        hook = `Wynik do pobicia: ${formatNum(this.challenge.score)} (${this.challenge.from}) — brakuje ${formatNum(this.challenge.score - this.player.score + 1)} pkt. Rewanż na tej samej mapie?`;
         this.analytics.track('challenge_lost', { score: this.player.score, target: this.challenge.score });
       }
     } else if (place > 1) {
       const above = ranked[place - 2];
       const gap = above.score - this.player.score + 1;
-      if (gap > 0 && gap <= Math.max(60, this.player.score * 0.35)) hook = `Zabrakło tylko ${gap} pkt do miejsca #${place - 1}${place - 1 <= 3 ? ' i podium' : ''}!`;
+      if (gap > 0 && gap <= Math.max(60, this.player.score * 0.35)) hook = `Zabrakło tylko ${formatNum(gap)} pkt do miejsca #${place - 1}${place - 1 <= 3 ? ' i podium' : ''}!`;
     }
     hookLine.textContent = hook;
     hookLine.classList.toggle('hidden', !hook);
@@ -9868,12 +9930,12 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h === this.player) li.classList.add('is-player');
-      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${escapeHtml(h.name)}</span><span class="fl-score">${h.score} pkt</span><span class="fl-size">${CONFIG.sizeTiers[getSizeTierIndex(h.radius)].shortId}</span>`;
+      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${escapeHtml(h.name)}</span><span class="fl-score">${formatNum(h.score)} pkt</span><span class="fl-size">${CONFIG.sizeTiers[getSizeTierIndex(h.radius)].shortId}</span>`;
       list.appendChild(li);
     });
 
     document.getElementById('btnWatchAd').disabled = false;
-    document.getElementById('btnWatchAd').textContent = 'OGLĄDAJ REKLAMĘ · X2 MONET';
+    document.getElementById('btnWatchAd').textContent = '×2 MONET · REKLAMA';
 
     this.showScreen('gameOverScreen');
     this.sound.setIntensity(0);
@@ -10841,7 +10903,7 @@ class Game {
   drawCityFloor(ctx, time) {
     const view = this.floorView();
     this.cityFloor.draw(ctx, view, null);
-    if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, null, null);
+    if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, null, null, this.player);
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 84, 173, 0.65)';
     ctx.shadowBlur = 14;
@@ -10849,6 +10911,25 @@ class Game {
     ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, WORLD_W, WORLD_H);
     ctx.restore();
+  }
+
+  /** v12: paint the blocks around the player's start position before the
+   *  first frame, and free the menu art's chunks (welcome scene). */
+  prewarmFloor() {
+    SCREEN_FLOOR.clearChunks();
+    const p = this.player;
+    if (!p) return;
+    const hw = this.viewHalfW, hh = this.viewHalfH;
+    let cx, cy;
+    if (this.mode === 'campaign') {
+      const b = CONFIG.campaign.bounds;
+      cx = b.maxX - b.minX < this.width ? (b.minX + b.maxX) / 2 : clamp(p.x, b.minX + this.width / 2, b.maxX - this.width / 2);
+      cy = b.maxY - b.minY < this.height ? (b.minY + b.maxY) / 2 : clamp(p.y, b.minY + this.height / 2, b.maxY - this.height / 2);
+    } else {
+      cx = WORLD_W < hw * 2 ? WORLD_W / 2 : clamp(p.x, hw, WORLD_W - hw);
+      cy = WORLD_H < hh * 2 ? WORLD_H / 2 : clamp(p.y, hh, WORLD_H - hh);
+    }
+    this.cityFloor.prewarm({ cx, cy, hw, hh, zoom: this.zoom, dpr: this.dpr, gfx: this.gfxLevel }, this.mode === 'campaign' ? this.campaignTheme() : null);
   }
 
   /** The camera's world-space view for CityFloor (both modes). */
@@ -10866,18 +10947,23 @@ class Game {
   drawMinimapLabel(ctx, px, py, size, districtId) {
     const d = DISTRICTS.find(x => x.id === districtId);
     if (!d) return;
+    const label = d.name.toUpperCase();
     ctx.font = `800 10px ${FONT_UI}`;
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(2, 8, 16, 0.78)';
+    roundRectPath(ctx, px + size - tw - 10, py - 19, tw + 10, 16, 5);
+    ctx.fill();
     ctx.textAlign = 'right';
-    ctx.textBaseline = 'bottom';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(2, 8, 16, 0.85)';
-    ctx.strokeText(d.name.toUpperCase(), px + size, py - 5);
+    ctx.textBaseline = 'middle';
     ctx.fillStyle = DISTRICT_COLORS[districtId] || '#50F0FA';
-    ctx.fillText(d.name.toUpperCase(), px + size, py - 5);
+    ctx.fillText(label, px + size - 5, py - 11);
   }
 
+  /** v12: a smaller minimap on narrow phones (130 px was 36 % of a 360 px screen). */
+  minimapSize() { return this.width < 400 ? 104 : 130; }
+
   drawMinimap(ctx) {
-    const size = 130;
+    const size = this.minimapSize();
     const margin = 16;
     const px = this.width - size - margin;
     const py = this.height - size - margin;
@@ -11040,6 +11126,7 @@ class Game {
       h.labelScale = labelScale;
       if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
     }
+    this.drawPlayerOverlapMarker(ctx, holes, labelScale);
     if (this.frenzyActive) {
       ctx.save();
       ctx.translate(this.player.x, this.player.y);
@@ -11073,6 +11160,29 @@ class Game {
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.restore();
     }
+  }
+
+  /** v12: when a bigger hole is drawn over the player (holes draw small to
+   *  big), re-draw a thin cyan outline + "Ty" on top so you never lose
+   *  yourself under a rival. */
+  drawPlayerOverlapMarker(ctx, holes, ls) {
+    const p = this.player;
+    const covered = holes.some(h => h !== p && h.radius > p.radius && Math.hypot(h.x - p.x, h.y - p.y) < h.radius + p.radius * 0.5);
+    if (!covered) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(80, 240, 250, 0.9)';
+    ctx.lineWidth = 2 * ls;
+    ctx.setLineDash([6 * ls, 5 * ls]);
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + 3 * ls, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `800 ${13 * ls}px ${FONT_UI}`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3 * ls;
+    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
+    ctx.strokeText(p.name, p.x, p.y - p.radius - 12 * ls);
+    ctx.fillStyle = '#50F0FA';
+    ctx.fillText(p.name, p.x, p.y - p.radius - 12 * ls);
+    ctx.restore();
   }
 
   /** v12: eater -> [things it is swallowing this frame] (objects or
@@ -11113,10 +11223,10 @@ class Game {
         ctx.shadowColor = o.color;
         ctx.stroke();
       } else if (o instanceof WorldObject) {
-        drawObjectArt(ctx, o.subtype, o.color, o.radius, t, artSeed(o.swFromX || 0, o.swFromY || 0), { live: false });
+        drawObjectArt(ctx, o.subtype, o.color, o.radius, t, o.swSeed || 0, { live: false });
       } else {
         const art = o.artKind();
-        if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[o.stats.minTier], o.radius, t, 0, { live: false });
+        if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[o.stats.minTier], o.radius, t, artSeed(o.x, o.y), { live: false, variant: o.glyph === 'konwoj' ? 'konwoj' : undefined });
       }
       ctx.restore();
     }
@@ -11133,19 +11243,25 @@ class Game {
     this.swallowGhosts.push(g);
   }
 
-  /** Crown marker over the Bounty Core mutation's marked rival (GDD 4.1). */
+  /** Bounty Core mutation's marked rival (GDD 4.1): a rotating pink
+   *  target reticle around it (v12 -- it used to be a gold crown, which now
+   *  means "#1 by score" and often sat on the same hole). */
   drawBountyMarker(ctx) {
     if (!this.bountyTarget) return;
     const b = this.bountyTarget;
+    const r = b.radius + 14;
     ctx.save();
-    ctx.translate(b.x, b.y - b.radius - 30);
-    ctx.fillStyle = '#EFCB63';
+    ctx.translate(b.x, b.y);
+    ctx.rotate(performance.now() / 900);
+    ctx.strokeStyle = '#FF54AD';
+    ctx.lineWidth = 3;
     ctx.shadowBlur = 10;
-    ctx.shadowColor = '#EFCB63';
-    ctx.beginPath();
-    ctx.moveTo(-10, 6); ctx.lineTo(-12, -6); ctx.lineTo(-5, -1); ctx.lineTo(0, -9);
-    ctx.lineTo(5, -1); ctx.lineTo(12, -6); ctx.lineTo(10, 6); ctx.closePath();
-    ctx.fill();
+    ctx.shadowColor = '#FF54AD';
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 2;
+      ctx.beginPath(); ctx.arc(0, 0, r, a + 0.25, a + Math.PI / 2 - 0.25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * (r - 8), Math.sin(a) * (r - 8)); ctx.lineTo(Math.cos(a) * (r + 8), Math.sin(a) * (r + 8)); ctx.stroke();
+    }
     ctx.restore();
   }
 
