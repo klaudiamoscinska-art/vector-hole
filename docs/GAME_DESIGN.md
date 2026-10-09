@@ -154,9 +154,9 @@ kąsek — to nim mierzymy decyzje projektowe.
 
 Układ: aplikacja ma wysokość `100dvh` — na iPhonie w Safari `100vh` nie
 uwzględnia paska narzędzi i chowało pod nim dolną nawigację oraz przycisk
-resetu profilu. W aplikacji z ekranu głównego (iPhone z notchem) WebKit
-odejmuje od wysokości pasek statusu — tam gra rozciąga się do wysokości
-ekranu, a ekrany mają odstęp na notch. Chromium w testach nie odtwarza paska Safari, więc test
+resetu profilu. W aplikacji z ekranu głównego pasek statusu jest czarny
+(`black`), bo przy przezroczystym WebKit na iPhone'ach z notchem zaniżał
+wysokość widoku (czarny pas, ucięta minimapa). Chromium w testach nie odtwarza paska Safari, więc test
 sprawdza też, że reguła `100dvh` jest w arkuszu.
 
 Progi wydajności w `qa/` mierzą renderowanie programowe (SwiftShader);

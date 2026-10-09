@@ -4,6 +4,12 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v13.5 — iPhone 13 Pro: plansza ucięta na dole
+v13.4 rozciągało aplikację, ale `html`/`body` zostawały krótsze i obcinały
+dół planszy z minimapą. Przyczyna u źródła: pasek statusu
+`black-translucent`. Teraz pasek jest `black` — widok zaczyna się pod nim
+i ma dokładną wysokość; rozciąganie (`fitStandalone()`) usunięte.
+
 ## v13.4 — iPhone 13 Pro: aplikacja z ekranu głównego
 Na iPhonie z notchem w trybie z ekranu głównego był czarny pas na dole
 (WebKit liczy `100dvh`/`innerHeight` bez paska statusu, ~47 px), a tytuł

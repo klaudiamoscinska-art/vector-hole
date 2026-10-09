@@ -96,15 +96,13 @@ html, body {
   overflow: hidden;
 }
 
-/* v13.4: home-screen web app (standalone) on notched iPhones. With the
-   black-translucent status bar WebKit reports 100dvh / innerHeight WITHOUT
-   the status bar (844 -> 797 on a 13 Pro), so the app stopped ~47 px above
-   the bottom edge: a black strip. There is no browser toolbar in this
-   mode, so the full-screen 100vh is right; Game.fitStandalone() covers the
-   versions where even that is short. */
-@media (display-mode: standalone) {
-  #app { height: max(100vh, 100dvh); }
-}
+/* v13.5: home-screen web app on notched iPhones. With the
+   "black-translucent" status bar WebKit reported the viewport WITHOUT the
+   status bar while drawing from the top of the screen, so the app lost
+   ~47 px at the bottom (black strip, clipped minimap); stretching #app
+   didn't help because html/body stayed short and clipped it. The status
+   bar is now "black" (index.html): the web view starts below it and its
+   height is exact, so 100dvh is right in every mode. */
 html { background: #04101D; }
 
 #gameCanvas {
