@@ -4368,3 +4368,11 @@ body.touch-input #gameCanvas {
 #mainMenu.first-run { align-items: flex-start; }
 #mainMenu.first-run .welcome-stage { height: min(58vh, 480px); }
 #mobile-hint { white-space: normal; max-width: calc(100% - 32px); text-align: center; width: max-content; }
+
+/* v10: CEL RUNDY box a bit wider (objective lists), completed rows ticked. */
+#hud-goal { max-width: 168px; }
+#hud-tier-strip { right: calc(188px + env(safe-area-inset-right, 0px)); }
+.mission-goal-item.done .mission-goal-text { color: var(--nc-green); text-decoration: line-through; text-decoration-color: rgba(70, 217, 154, 0.6); }
+.mission-goal-item.done .mission-goal-count { color: var(--nc-green); }
+/* Skin names wrap instead of truncating ("Toxic Gre…"). */
+.skin-name { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; }

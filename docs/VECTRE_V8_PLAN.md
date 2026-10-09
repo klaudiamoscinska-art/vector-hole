@@ -92,3 +92,52 @@ on top of each other.
   through it; combo moved to a fixed HUD spot (`drawComboHud()`); fewer
   flashes/rings.
 - Emoji replaced by inline SVG / canvas glyphs across HUD, hub and results.
+
+---
+
+# v10 — klasy T4–T6, przebudowana kampania (61 misji), zautomatyzowane QA
+
+Player feedback on v9: Arena/Campaign had no objects past T3 (gold cars
+were the last), mission goals contradicted the growth model (M01 asked for
+12 fragments although the hole outgrew fragments after 6), too few
+missions, plus a request for a meticulous QA pass.
+
+- **T4/T5/T6 object classes** (`structure` violet, `heavy` silver, `tower`
+  green) in `CAMPAIGN_ENTITY_STATS`, `TIERS` and `CONFIG.campaign.entityRadius`
+  (54/76/100 px, each between its tier's radius anchors), 9 new illustrated
+  sprites (pawilon/billboard/magazyn, autobus/tramwaj/ciężarówka,
+  wieżowiec/maszt/kopuła). Arena gets a T6 size tier and spawns the new
+  classes once Campaign has taught them (`discoveredTypes`).
+- **Every mission object is now an illustrated sprite** in its tier color
+  (the remaining line-art glyphs — moduł dachowy, paleta, kryształ,
+  witryna, klucz, emiter, znacznik ogrodu, zasilacz, lustro, mostek — and
+  all six boss landmarks). Accents stay inside the object's own tier color
+  family so "color = size tier" is never contradicted.
+- **Landmarks are tiered** (`LANDMARK_TIERS` + `CONFIG.campaign.landmarkByTier`):
+  Kino/Fontanna T4, Dźwig/Galeria/Brama iglicy T5, Iglica/Rdzeń T6.
+- **Mission engine**: goal type `'objectives'` (steps `eat/tier/combo/gates/
+  rival/activate/landmark/score`, all required) + `compileMission()`, which
+  derives the board from the steps: goal objects with a buffer and a growth
+  ladder up to the highest tier a step needs (so a goal is never
+  unreachable or pointless), retry pockets for combo goals, score top-ups,
+  Polish labels with correct plurals (`NOUNS`/`plural()`). Mission-id
+  special cases became setup flags (`gateKind: 'brama'|'pas'|'portal'`,
+  `*Glyph`, `arcLayout`, `botRadius`). Missions are numbered by campaign
+  position (`missionCode()`), not internal id.
+- **61 missions** (`MISSION_SPECS`): M00 + 10 per district, each district
+  introducing its own objects/mechanics and ending with its boss.
+  M01–M24 keep their ids/slots (save compatible); M25–M60 are new.
+  Wyzwania now unlock after M03 (M04 is Plac Neonów's boss).
+- **Balance by automated playthrough**: a greedy bot plays every mission in
+  virtual time (Playwright, not committed); `MISSION_TIMING` stores the
+  calibrated limit (2.2× the bot's slowest clear + 20 s, floored by the
+  needed tier) and medal time (1.5× median + 8 s). All 61 missions clear.
+- **QA fixes**: portal use now counts toward its objective (it never did),
+  portal missions no longer teleport on frame 1, capsule waves land as
+  groups, pas przelotu drawn as tall as its real zone, goal rings only on
+  goals eatable now, green prey rings / red danger halos on rivals in both
+  modes, NELA toast no longer leaks into Arena, district tiles don't show a
+  padlock on unlocked districts, mission result shows code + name, upsell
+  never says "rivals are stronger" at ŁATWY, leaderboard size column shows
+  the tier (Ø rendered as 0), WYZWANIE DNIA explains itself when locked,
+  Dzielnice header renamed, text/story consistency fixes across missions.
