@@ -192,7 +192,12 @@ export async function runFeatureChecks(url) {
     const g = await openGame(url, { initScript: () => { window.dataLayer = []; } });
     const a = await g.page.evaluate(() => {
       const gm = window.game;
-      const barShown = !document.getElementById('consentBar').classList.contains('hidden');
+      // v13: the bar waits until the tutorial is done (it covered the
+      // welcome CTA on small phones); nothing is sent before a decision.
+      const barOnWelcome = !document.getElementById('consentBar').classList.contains('hidden');
+      gm.save.campaign.completed.M00 = true;
+      gm.showScreen('mainMenu');
+      const barShown = !barOnWelcome && !document.getElementById('consentBar').classList.contains('hidden');
       const before = window.dataLayer.length;
       gm.analytics.track('probe', {});
       const leakedBefore = window.dataLayer.length - before;
@@ -205,7 +210,7 @@ export async function runFeatureChecks(url) {
       const policy = document.getElementById('infoSheetBody').textContent.includes('RODO');
       return { barShown, leakedBefore, sentAfter, retention, barHidden, policy, install: gm.save.retention.installDate };
     });
-    results.push(report('gdpr: consent bar on first launch, nothing leaves the device before consent', a.barShown && a.leakedBefore === 0, JSON.stringify(a)));
+    results.push(report('gdpr: consent bar after the tutorial (not over the welcome CTA), nothing leaves the device before consent', a.barShown && a.leakedBefore === 0, JSON.stringify(a)));
     results.push(report('gdpr: after consent events reach the host sink (dataLayer)', a.sentAfter === 1 && a.barHidden));
     results.push(report('gdpr: privacy policy + data export available', a.policy));
     results.push(report('analytics: retention_day (D1/D7) tracked with install date', a.retention && !!a.install));

@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Vector Hole — pochłoń neonowe miasto | darmowa gra .io w przeglądarce</title>
-<meta name="description" content="Steruj czarną dziurą i pochłaniaj neonowe miasto! Rośnij z każdym kęsem, zjadaj mniejszych rywali i wygrywaj 2-minutowe rundy. 61 misji kampanii, wyzwanie dnia i pojedynki ze znajomymi. Gra za darmo, bez instalacji — na telefonie i komputerze.">
-<meta name="keywords" content="gra io, hole io, czarna dziura, gra w przeglądarce, darmowa gra, gra mobilna, gra online, neon, cyberpunk, gra bez instalacji, hole.io po polsku">
+<title>Vector Hole – pochłoń neonowe miasto | darmowa gra .io online</title>
+<meta name="description" content="Steruj czarną dziurą i pochłaniaj neonowe miasto: ulice, auta, wieżowce i rywali. Rundy 2:00, 60 misji kampanii, wyzwanie dnia i pojedynki ze znajomymi na tej samej mapie. Za darmo, bez instalacji — na telefonie i komputerze.">
+<meta name="keywords" content="gra io, hole io, czarna dziura, gra w przeglądarce, darmowa gra, gra mobilna, gra online, neon, cyberpunk, gra bez instalacji">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#04101D">
 <meta name="color-scheme" content="dark">
@@ -25,7 +25,7 @@
 <meta name="twitter:description" content="Rośnij, zjadaj rywali i pobij wynik znajomego. Darmowa gra .io w przeglądarce.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2304101D'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%2350F0FA' stroke-width='5'/%3E%3Cpath d='M32 14a18 18 0 0 1 18 18' fill='none' stroke='%23FF54AD' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='32' r='12' fill='%23000'/%3E%3C/svg%3E">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"Vector Hole: Eat the Neon City","alternateName":"Vector Hole","description":"Gra .io w przeglądarce: steruj czarną dziurą, pochłaniaj neonowe miasto, zjadaj mniejszych rywali. Rundy 2:00, 61 misji kampanii, wyzwanie dnia, pojedynki ze znajomymi.","genre":["Casual","Arcade","io game"],"gamePlatform":["Web browser","Android","iOS"],"applicationCategory":"Game","operatingSystem":"Any","inLanguage":"pl","playMode":"SinglePlayer","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"PLN"}}
+{"@context":"https://schema.org","@type":"VideoGame","name":"Vector Hole: Eat the Neon City","alternateName":"Vector Hole","description":"Gra .io w przeglądarce: steruj czarną dziurą, pochłaniaj neonowe miasto, zjadaj mniejszych rywali. Rundy 2:00, 60 misji kampanii, wyzwanie dnia, pojedynki ze znajomymi.","genre":["Casual","Arcade","io game"],"gamePlatform":["Web browser","Android","iOS"],"applicationCategory":"Game","operatingSystem":"Any","inLanguage":"pl","playMode":"SinglePlayer","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"PLN"}}
 </script>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -83,7 +83,7 @@
 
     <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
 
-    <div id="overdriveBanner" class="overdrive-banner hidden">OVERDRIVE — CITY SHIFT</div>
+    <div id="overdriveBanner" class="overdrive-banner hidden">WIELKI FINISZ</div>
 
     <div id="evolutionOverlay" class="evolution-overlay hidden">
       <div class="evolution-panel">
@@ -175,14 +175,14 @@
        per category without leaving the run for the full Warsztat screen. -->
   <div id="quickEquipScreen" class="screen overlay-screen hidden">
     <div class="screen-inner tool-popup-panel">
-      <h2 class="section-title">WYBIERZ NARZĘDZIE</h2>
+      <h2 class="section-title">ZMIEŃ WYGLĄD</h2>
       <p class="hint-text tool-popup-sub">Rozgrywka zatrzymana</p>
 
       <button id="quickEquipAura" class="tool-card" data-category="aura">
         <span class="tool-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg></span>
         <span class="tool-card-body">
           <span class="tool-card-name">—</span>
-          <span class="tool-card-desc">Trail — ślad za rdzeniem</span>
+          <span class="tool-card-desc">Smuga — ślad za wirem</span>
         </span>
         <span class="tool-card-radio"></span>
       </button>
@@ -200,7 +200,7 @@
         <span class="tool-card-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg></span>
         <span class="tool-card-body">
           <span class="tool-card-name">—</span>
-          <span class="tool-card-desc">Overdrive — finał rundy</span>
+          <span class="tool-card-desc">Finisz — kolor wielkiego finału</span>
         </span>
         <span class="tool-card-radio"></span>
       </button>
@@ -276,7 +276,7 @@
           </div>
           <div class="welcome-feature" style="--f-color: var(--nc-gold)">
             <span class="welcome-feature-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z"/></svg></span>
-            <b>Wygrywaj</b><span>rdzenie z bonusami</span>
+            <b>Łap złoto</b><span>złoty rdzeń = SZAŁ ×2</span>
           </div>
         </div>
         <button id="btnStartTutorial" class="btn btn-primary btn-mega welcome-cta">
@@ -284,7 +284,7 @@
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
         </button>
         <p id="welcomeChallengeNote" class="welcome-challenge-note hidden"></p>
-        <p class="welcome-note">Krótki samouczek · ok. 1,5 min · potem odblokujesz rundy <b>GRAJ 2:00</b></p>
+        <p class="welcome-note">Glitch skaził miasto. Pochłoń skażone ulice, a ich energia odbuduje centrum.<br>Samouczek ok. 1 min · potem odblokujesz rundy <b>GRAJ 2:00</b></p>
       </div>
 
       <!-- Golden Shot v11: a friend's challenge link ("Pobij mój wynik!"). -->
@@ -296,7 +296,7 @@
       </div>
       <!-- Golden Shot v8: player XP level (every round and mission feeds it). -->
       <button id="hubPlayerLevel" class="player-level-row hub-full-only" aria-label="Poziom gracza — co to jest?">
-        <span class="player-level-badge"><span class="player-level-lvl">LVL</span><span id="hubPlayerLevelValue">1</span></span>
+        <span class="player-level-badge"><span class="player-level-lvl">POZ.</span><span id="hubPlayerLevelValue">1</span></span>
         <span class="player-level-body">
           <span class="player-level-title">POZIOM GRACZA <strong id="hubPlayerLevelNext">→ nagroda +55 monet</strong></span>
           <span class="player-level-track"><span id="hubPlayerXpBar" class="player-level-fill"></span></span>
@@ -370,7 +370,7 @@
         <span class="hub-next-reward-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
       </button>
 
-      <p class="hint-text hub-full-only">Steruj myszką lub dotykiem. Pożeraj mniejsze obiekty i boty, unikaj większych!</p>
+      <p class="hint-text hub-full-only">Steruj myszką lub dotykiem. Pochłaniaj mniejsze obiekty i rywali, uciekaj przed większymi!</p>
     </div>
   </div>
 
@@ -386,7 +386,7 @@
       <div id="loginBurst" class="login-burst" aria-hidden="true"></div>
       <button id="btnLoginClaim" class="btn btn-primary btn-mega">ODBIERZ</button>
       <button id="btnLoginDouble" class="btn btn-gold hidden">×2 ZA REKLAMĘ</button>
-      <button id="btnLoginClose" class="btn btn-link hidden">Dziękuję, wystarczy</button>
+      <button id="btnLoginClose" class="btn btn-link hidden">Nie, dziękuję</button>
     </div>
   </div>
 
@@ -411,7 +411,7 @@
       <p class="hint-text">Nazwa jest opcjonalna — możesz grać jako Gość.</p>
       <input id="displayNameInput" class="text-input" type="text" maxlength="16" placeholder="Twoja nazwa (opcjonalnie)">
       <button id="btnSaveProfile" class="btn btn-primary">ZAPISZ</button>
-      <div class="hint-text">Gość ID: <span id="guestIdLabel"></span></div>
+      <div class="hint-text">ID gościa: <span id="guestIdLabel"></span></div>
       <p id="profileStats" class="hint-text profile-stats"></p>
 
       <div class="settings-block">
@@ -465,7 +465,7 @@
   <div id="resetProfileConfirm" class="screen overlay-screen hidden">
     <div class="screen-inner pause-panel">
       <h2 class="section-title">ZRESETOWAĆ PROFIL?</h2>
-      <p class="hint-text">Tej operacji nie można cofnąć. Stracisz bezpowrotnie: całą postać kampanii i odblokowane dzielnice, poziom Neon Core, monety i pryzmaty, kupione kosmetyki, statystyki i rekordy Areny.</p>
+      <p class="hint-text">Tej operacji nie można cofnąć. Stracisz bezpowrotnie: cały postęp kampanii i odblokowane dzielnice, poziom Core City, monety i pryzmaty, kupione kosmetyki, statystyki i rekordy Areny.</p>
       <button id="btnResetProfileYes" class="btn btn-danger">TAK, RESETUJ</button>
       <button id="btnResetProfileNo" class="btn btn-secondary">ANULUJ</button>
     </div>
@@ -478,9 +478,17 @@
        same freeze mechanism as the evolution offer) until then, so the
        player reads it at their own pace and decides when the clock
        starts (player feedback). -->
-  <div id="tutorialIntroOverlay" class="screen overlay-screen hidden">
-    <div class="screen-inner pause-panel">
-      <h2 class="section-title">ZANIM ZACZNIESZ</h2>
+  <!-- v13: a coach card at the bottom over a light scrim, so the hole and
+       the food around it stay visible while the step is explained. -->
+  <div id="tutorialIntroOverlay" class="screen overlay-screen coach-overlay hidden">
+    <div class="screen-inner pause-panel coach-card">
+      <div class="coach-head">
+        <span class="coach-icon" id="tutorialIntroIcon" aria-hidden="true"></span>
+        <div>
+          <div class="coach-step" id="tutorialIntroStep">KROK 1 Z 4</div>
+          <h2 class="section-title" id="tutorialIntroTitle">ZANIM ZACZNIESZ</h2>
+        </div>
+      </div>
       <p class="hint-text" id="tutorialIntroText">—</p>
       <button id="btnTutorialIntroStart" class="btn btn-primary">ZACZYNAM</button>
     </div>
@@ -523,7 +531,7 @@
         <strong id="runThreatValue">ŁATWY</strong>
       </div>
       <button class="run-perk" id="runPerk" type="button">
-        <span class="run-perk-label">TWÓJ RDZEŃ: <b id="runPerkName">Tęcza</b></span>
+        <span class="run-perk-label">TWÓJ WIR: <b id="runPerkName">Tęcza</b></span>
         <strong id="runPerkValue">—</strong>
         <span class="run-perk-cta">ZMIEŃ ›</span>
       </button>
@@ -562,13 +570,13 @@
            the mockup's proportions. -->
       <div id="districtMap" class="district-strip"></div>
 
-      <p id="districtIntro" class="hint-text district-intro">Kampania: krótkie misje z celami do wykonania. Każda dzielnica wprowadza nowe obiekty i kończy się wielkim landmarkiem. Ukończone misje odblokowują <strong>Warsztat</strong> oraz <strong>Wyzwania</strong>.</p>
+      <p id="districtIntro" class="hint-text district-intro">Kampania: krótkie misje z celami do wykonania. Każda dzielnica wprowadza nowe obiekty i kończy się wielką budowlą do pochłonięcia. Ukończone misje odblokowują <strong>Warsztat</strong> oraz <strong>Wyzwania</strong>.</p>
 
       <h2 class="district-name" id="districtTitle">—</h2>
       <p class="district-rebuild-line" id="districtRebuildLine">—</p>
 
       <div id="missionList" class="mission-list"></div>
-      <p class="hint-text mission-medals-footnote" id="missionMedalsFootnote">Medale: 0/4 · opcjonalne.<br>Nie blokują kolejnych misji.</p>
+      <p class="hint-text mission-medals-footnote" id="missionMedalsFootnote">Medale są dodatkowe — nie blokują kolejnych misji.</p>
 
       <div class="mission-detail">
         <div class="mission-detail-name" id="missionDetailName">—</div>
@@ -578,7 +586,7 @@
         <div class="mission-detail-line mission-detail-reward" id="missionDetailReward">—</div>
       </div>
 
-      <button id="btnPlayMission" class="btn btn-primary">GRAJ: MISJA</button>
+      <button id="btnPlayMission" class="btn btn-primary">ZAGRAJ MISJĘ</button>
       <button id="btnCampaignBack" class="btn btn-secondary">DO MIASTA</button>
     </div>
   </div>
@@ -644,9 +652,9 @@
           </div>
           <div class="warsztat-preview-labels">
             <div class="warsztat-preview-label">PODGLĄD NA ŻYWO</div>
-            <div class="warsztat-preview-sublabel">TWÓJ WEKTOROWY OTWÓR</div>
+            <div class="warsztat-preview-sublabel">TWÓJ WIR</div>
             <div class="warsztat-perk" id="warsztatPerk">
-              <span class="warsztat-perk-label">BONUS RDZENIA W RUNDZIE</span>
+              <span class="warsztat-perk-label">BONUS WIRU W RUNDZIE</span>
               <strong id="warsztatPerkValue">—</strong>
             </div>
           </div>
@@ -655,12 +663,12 @@
           <div class="warsztat-active-list-title">AKTYWNE ELEMENTY</div>
           <div class="warsztat-active-row">
             <span class="warsztat-active-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg></span>
-            <span class="warsztat-active-name">Rdzeń</span>
+            <span class="warsztat-active-name">Wir</span>
             <span class="warsztat-active-value" id="warsztatActiveCore">—</span>
           </div>
           <div class="warsztat-active-row">
             <span class="warsztat-active-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg></span>
-            <span class="warsztat-active-name">Trail</span>
+            <span class="warsztat-active-name">Smuga</span>
             <span class="warsztat-active-value" id="warsztatActiveTrail">—</span>
           </div>
           <div class="warsztat-active-row">
@@ -670,7 +678,7 @@
           </div>
           <div class="warsztat-active-row">
             <span class="warsztat-active-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg></span>
-            <span class="warsztat-active-name">Overdrive</span>
+            <span class="warsztat-active-name">Finisz</span>
             <span class="warsztat-active-value" id="warsztatActiveOverdrive">—</span>
           </div>
         </div>
@@ -693,11 +701,11 @@
       <div class="shop-tabs">
         <button id="tabSkins" class="toggle-btn active">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>
-          RDZEŃ
+          WIR
         </button>
         <button id="tabAuras" class="toggle-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg>
-          TRAIL
+          SMUGA
         </button>
         <button id="tabEffects" class="toggle-btn">
           <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -705,7 +713,7 @@
         </button>
         <button id="tabOverdrive" class="toggle-btn">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
-          OVERDRIVE
+          FINISZ
         </button>
       </div>
 
@@ -773,7 +781,7 @@
         <div class="daily-map-wrap">
           <canvas id="dailyMapCanvas" class="daily-map-canvas"></canvas>
           <span class="daily-map-label">MAPA DNIA · ta sama dla wszystkich</span>
-          <span id="dailyModifierBadge" class="daily-modifier hidden">RUSH HOUR · rywale szybsi</span>
+          <span id="dailyModifierBadge" class="daily-modifier hidden">GODZINA SZCZYTU · rywale szybsi</span>
           <span class="daily-map-you">◉ start</span>
         </div>
 
@@ -829,13 +837,13 @@
         <div class="result-hero-label">WYNIK</div>
         <div class="result-hero-row">
           <div class="result-hero-score" id="finalScore">0</div>
-          <div id="resultPbBadge" class="result-pb-badge hidden">NOWY PB</div>
+          <div id="resultPbBadge" class="result-pb-badge hidden">NOWY REKORD</div>
         </div>
       </div>
 
       <div class="result-badges">
         <div class="result-badge">
-          <span class="result-badge-label">ROZMIAR / TIER</span>
+          <span class="result-badge-label">ROZMIAR</span>
           <span class="result-badge-value" id="resultTierLabel">T1 · MAŁY</span>
         </div>
         <div class="result-badge">
@@ -887,7 +895,7 @@
         </div>
       </div>
 
-      <p class="hint-text win-rule-caption">Wygrywa najwyższy wynik. Rozmiar to tylko rozstrzygnięcie remisu.</p>
+      <p class="hint-text win-rule-caption">Liczą się punkty: combo i rywale mnożą wynik.</p>
       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
 
       <p id="dailyResultLine" class="hint-text daily-result hidden"></p>
@@ -913,7 +921,7 @@
     <div class="screen-inner ad-inner">
       <p id="adKind" class="ad-label">REKLAMA</p>
       <h2>Tu wyświetli się reklama partnera</h2>
-      <p class="hint-text">Wersja demonstracyjna — na portalu lub w aplikacji w tym miejscu gra prawdziwa reklama.</p>
+      <p class="hint-text">Wersja demonstracyjna — na portalu lub w aplikacji w tym miejscu wyświetla się prawdziwa reklama.</p>
       <div class="ad-progress-track">
         <div id="adProgressBar" class="ad-progress-bar"></div>
       </div>

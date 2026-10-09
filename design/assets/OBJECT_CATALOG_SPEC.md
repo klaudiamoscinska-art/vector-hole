@@ -1,9 +1,9 @@
 # Vector Hole — Pełny Katalog Obiektów Planszy Misji
 
-> **STATUS: zaimplementowane (Vector Hole v6),** wraz z otwartymi pytaniami
-> z sekcji 4 poniżej (Portal jednokierunkowy/jednorazowy, Mostek bez
-> osobnego "zasilacza" itd.) — decyzje i pełny opis: `docs/VECTRE_V6_PLAN.md`
-> §3.3. Ten dokument zostaje bez zmian jako zapis pierwotnej specyfikacji.
+> **STATUS: oryginalna specyfikacja z v6 (zaimplementowana).** Zostaje jako
+> zapis znaczenia obiektów (Portal, Mostek, Pas przelotu — kod się do niej
+> odwołuje). Kampania ma dziś 60 misji, a numery misji poniżej to stare id
+> wewnętrzne. Aktualny stan gry: `docs/GAME_DESIGN.md` §4.
 
 Dokument towarzyszący plikowi `vector_hole_full_object_catalog.svg`.
 Uzupełnia (nie zastępuje) `MISSION_BOARD_SPEC.md` (landmarki i sekwencja finału)

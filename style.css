@@ -361,6 +361,23 @@ body.touch-input #gameCanvas {
   background: rgba(4, 16, 29, 0.78) !important;
 }
 
+/* v13 tutorial coach card: bottom-anchored over a light scrim -- the hole
+   and the food it should go for stay in view while the step is read. */
+.coach-overlay {
+  background: linear-gradient(to bottom, rgba(4, 16, 29, 0.05) 0%, rgba(4, 16, 29, 0.25) 45%, rgba(4, 16, 29, 0.85) 100%) !important;
+  align-items: flex-end !important;
+}
+.coach-overlay > .screen-inner { margin: 0 auto calc(24px + env(safe-area-inset-bottom, 0px)); }
+.coach-card { text-align: left; max-width: 360px; padding: 18px 18px 16px; }
+.coach-card .hint-text { text-align: left; margin: 10px 0 14px; font-size: 15px; line-height: 1.45; }
+.coach-card .btn { width: 100%; }
+.coach-head { display: flex; align-items: center; gap: 12px; }
+.coach-head .section-title { margin: 0; font-size: 20px; text-align: left; }
+.coach-step { font-size: 11px; letter-spacing: 0.18em; color: var(--nc-cyan, #50F0FA); font-weight: 700; }
+.coach-icon { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid currentColor; }
+.coach-icon svg { width: 26px; height: 26px; }
+
 .pause-panel, .tool-popup-panel {
   width: 100%;
   max-width: 320px;
@@ -4585,9 +4602,13 @@ body[data-gfx="0"] #hud::before { display: none; }
 
 /* Miasto: on short screens (SE-class phones, portal iframes) the GRAJ 2:00 /
    WYZWANIE DNIA row pins above the bottom nav instead of scrolling under it. */
-#hubCtaRow { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 5; }
+/* v13: the docked plate on every height -- without it the pinned row cut
+   the Core City milestone road in half on 844 px phones. */
+#hubCtaRow { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 5;
+  padding: 8px; margin-left: -8px; margin-right: -8px; width: calc(100% + 16px); border-radius: 20px;
+  background: rgba(7, 23, 37, 0.94); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
 @media (max-height: 760px) {
-  #hubCtaRow { padding: 8px; margin: 0 -8px; width: calc(100% + 16px); max-width: 356px; border-radius: 20px; background: rgba(7, 23, 37, 0.94); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+  #hubCtaRow { max-width: 356px; }
   .hub-city { height: clamp(120px, 24vh, 172px); }
 }
 

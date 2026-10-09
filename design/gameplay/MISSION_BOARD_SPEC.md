@@ -1,12 +1,9 @@
 # Vector Hole — Specyfikacja: Obiekty Planszy Misji i Finał Landmarku
 
-> **STATUS: częściowo zaimplementowane (Vector Hole v6).** 6 unikalnych
-> landmarków (sekcja 2) gotowe. Sekwencja finału (sekcja 4) w wersji
-> uproszczonej — zamiast 4 osobnych stanów jest dodatkowy wybuch cząstek
-> przy pożarciu, zgodnie z tym, na co brief wprost pozwalał. Otwarte
-> pytania z sekcji 7 (dokładny czas trwania, unikalna animacja per
-> dzielnica, dźwięk) pozostają nierozstrzygnięte — nie były potrzebne przy
-> uproszczonej wersji. Pełny opis: `docs/VECTRE_V6_PLAN.md` §3.2.
+> **STATUS: oryginalna specyfikacja z v6.** 6 unikalnych landmarków
+> zrealizowanych; sekwencja finału w wersji uproszczonej (wybuch cząstek
+> przy pożarciu). Numery misji poniżej to stare id wewnętrzne. Aktualny
+> stan gry: `docs/GAME_DESIGN.md` §4.
 
 Dokument towarzyszący plikowi `vector_hole_mission_board_finale.svg`.
 Źródło zasad: GDD 4.0, sekcje 6 (System Misji), 10 (Asset Bible), 11 (Gameplay UX).
