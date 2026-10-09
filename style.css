@@ -89,6 +89,10 @@ html, body {
   position: relative;
   width: 100vw;
   height: 100vh;
+  /* v13.1: iOS Safari's 100vh is the height WITHOUT its toolbars, so the
+     bottom of the app (nav labels, the profile reset button) sat under the
+     toolbar on iPhones. dvh = the height actually visible right now. */
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -2207,6 +2211,13 @@ body.touch-input #gameCanvas {
 
 /* Destructive account action, visually separated from the normal profile
    actions above it so it isn't mistaken for one of them. */
+/* v13.1: the last button must clear the iPhone home indicator when the
+   profile is scrolled to the end. */
+#profileScreen > .screen-inner {
+  padding-top: calc(32px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+}
+
 .profile-danger-zone {
   width: 100%;
   max-width: 320px;
