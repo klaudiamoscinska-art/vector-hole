@@ -46,7 +46,8 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   × SZAŁ ×2. Zjedzenie rywala: 2× jego promień × combo. Bycie zjedzonym:
   powrót do rozmiaru startowego, wynik zostaje, 2 s ochrony.
 - **Rywal-pacer (v13, `CONFIG.rival`):** pierwszy bot jedzie po krzywej
-  „par” = mediana 5 ostatnich ukończonych rund gracza (2600 na start) ×
+  „par” = mediana 5 ostatnich ukończonych rund gracza (2600, dopóki nie ma
+  3 rund; w Wyzwaniu dnia i wyzwaniach znajomych zawsze 2600) ×
   0,72–1,05 wg trudności × (czas)^1,5, ale nigdy niżej niż 70–90% bieżącego
   wyniku gracza. Pod krzywą je z dalszego zasięgu, a jego kęsy liczą się
   do ×8 (wzrost do ×2); nad krzywą — od ×0,35. Efekt: zamiast wygranej
@@ -56,7 +57,7 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
 - **Trudność kariery (`CONFIG.difficulty`):** t = 0 przez 3 pierwsze rundy,
   liniowo do 1 przy 24. rundzie (boty: start r 15→24, prędkość 0,78→1,12,
   polowanie na gracza z 0→560 px, pasywny wzrost). 2,5 s ochrony na starcie
-  rundy. „Godzina szczytu” (szybsi rywale, 35% rund) nigdy przy t = 0.
+  rundy, rywale startują ≥ 500 px od gracza. „Godzina szczytu” (szybsi rywale, 35% rund) nigdy przy t = 0.
   Ostatnie 40 s: rywale +10% prędkości.
 - **Ewolucja:** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
   (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala,
@@ -109,9 +110,11 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   „Pikselowy Wybuch”, Finisz „Fala”, zestaw „Pryzmat”; potem 100 monet + 10
   pryzmatów.
 - **Poziom gracza (XP):** każda runda/misja; nagroda w monetach,
-  co 3. poziom pryzmaty.
+  co 3. poziom pryzmaty — pokazywana na karcie XP wyniku (bez osobnej
+  planszy pełnoekranowej; te zostają dla nowych funkcji i kosmetyków).
 - **Warsztat (ceny v13 ×~3,3, bo 20-rundowa kariera kończyła się z 8 000
-  niewydanych monet):** Wiry 100/220/450/800/1300/2000 monet (każdy z bonusem
+  niewydanych monet):** Wiry Cyjan 100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800,
+  Neonowe Złoto 1300, Biała Plazma 2000 monet (każdy z bonusem
   rozgrywki, tylko Arena/Dzienne), Smuga „Iskra” 500 monet, „Żar” 15 i
   „Zawirowanie” 30 pryzmatów. Dodatki na rundę: Tarcza 45, Magnes 25,
   Turbo start 70 monet.
@@ -124,6 +127,8 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   2,5 min odstępu). Sklep IAP pojawia się tylko z natywnym opakowaniem;
   w przeglądarce działa oznaczony dostawca demo.
 - **Prywatność:** zapis tylko lokalny; statystyki wyłącznie po zgodzie.
+  Pasek zgody pojawia się po samouczku (na ekranie powitalnym zasłaniał
+  przycisk startu); do decyzji nic nie jest wysyłane.
 
 ## 6. QA (boty)
 
@@ -144,6 +149,8 @@ czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.
   decyzja właściciela wobec zasady trzech plików).
 - Pacer to ukryte dopasowanie trudności (standard w grach casual); ekspert
   grający jak bot „greedy” nadal wygrywa wysoko — to celowe.
+- Kamera zatrzymuje się na krawędzi świata, więc przy brzegu dziura może
+  wjechać pod panel wyników lub minimapę (znane, do rozważenia).
 - „Narożny azyl”: środek dziury jest trzymany o promień od krawędzi, więc
   mały rywal w rogu bywa poza zasięgiem dużej dziury.
 - Linki wyzwań wysłane z v12 otwierają w v13 inną mapę (ścieżki energii i

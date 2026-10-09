@@ -1120,12 +1120,12 @@ const SKINS = [
   // in Arena/Daily rounds only -- see Game.perk()) on top of its signature
   // look (SKIN_STYLES), so buying one changes how you play, not just color.
   { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — wir startowy' },
-  { id: 'cyan', name: 'Cyber Cyan', price: 100, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
-  { id: 'pink', name: 'Hot Pink', price: 220, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
-  { id: 'green', name: 'Toxic Green', price: 450, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
-  { id: 'purple', name: 'Ultra Violet', price: 800, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
-  { id: 'gold', name: 'Neon Gold', price: 1300, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
-  { id: 'white', name: 'Plasma White', price: 2000, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
+  { id: 'cyan', name: 'Cyjan', price: 100, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
+  { id: 'pink', name: 'Gorący Róż', price: 220, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
+  { id: 'green', name: 'Toksyczna Zieleń', price: 450, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
+  { id: 'purple', name: 'Ultrafiolet', price: 800, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
+  { id: 'gold', name: 'Neonowe Złoto', price: 1300, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
+  { id: 'white', name: 'Biała Plazma', price: 2000, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
   // in CAMPAIGN_MISSIONS + endCampaignMission()).
@@ -6862,7 +6862,10 @@ class Game {
    *  anonymous statistics are opt-in and stay off until accepted. */
   renderConsentBar() {
     const bar = document.getElementById('consentBar');
-    if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running);
+    // v13: not on the first-run welcome card (it covered ZACZNIJ GRĘ on 360 px
+    // phones). Nothing is sent before a decision, so asking after the
+    // tutorial changes nothing legally.
+    if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running || this.isFirstRun());
   }
 
   setConsent(analytics) {
@@ -7249,7 +7252,7 @@ class Game {
     const cta = item.noCta ? null : (item.kind === 'reward' ? (this.isWarsztatUnlocked() ? 'ZAŁÓŻ W WARSZTACIE' : null) : item.cta);
     goBtn.classList.toggle('hidden', !cta);
     if (cta) goBtn.textContent = cta;
-    document.getElementById('btnUnlockLater').textContent = this.unlockQueue.length ? 'DALEJ' : 'SUPER!';
+    document.getElementById('btnUnlockLater').textContent = this.unlockQueue.length ? 'DALEJ' : 'PÓŹNIEJ';
 
     // Fresh burst particles each time, at random angles/distances.
     const burst = document.getElementById('unlockBurst');
@@ -7542,11 +7545,8 @@ class Game {
       this.save.coins += coins;
       this.save.prisms = (this.save.prisms || 0) + prisms;
       levelsUp.push({ level: p.level, coins, prisms });
-      this.queueRewardCelebration({
-        kicker: 'AWANS!', eyebrow: 'POZIOM GRACZA', title: `POZIOM ${p.level}`, color: '#EFCB63',
-        icon: `<svg viewBox="0 0 24 24">${CARD_ICONS.star}</svg>`, noCta: true,
-        desc: `Nagroda: +${coins} monet${prisms ? ` i +${prisms} pryzmatów` : ''}. Każda runda i misja daje XP — graj dalej po kolejny poziom!`
-      });
+      // v13: shown inline on the result's XP card -- the full-screen overlay
+      // covered the score and place 650 ms after almost every early round.
       this.analytics.track('player_level_up', { level: p.level, coins, prisms });
     }
     return { gained, before, after: { level: p.level, xp: p.xp, need: P.xpForLevel(p.level) }, levelsUp };
@@ -7562,7 +7562,9 @@ class Game {
     card.classList.toggle('leveled', leveled);
     document.getElementById(prefix + 'XpLevel').textContent = leveled ? `AWANS! POZIOM ${res.after.level}` : `POZIOM ${res.after.level}`;
     document.getElementById(prefix + 'XpGain').textContent = `+${res.gained} XP`;
-    document.getElementById(prefix + 'XpText').textContent = `${res.after.xp} / ${res.after.need} XP`;
+    const lvlCoins = res.levelsUp.reduce((a, l) => a + l.coins, 0), lvlPrisms = res.levelsUp.reduce((a, l) => a + l.prisms, 0);
+    document.getElementById(prefix + 'XpText').textContent = `${res.after.xp} / ${res.after.need} XP`
+      + (leveled ? ` · nagroda +${lvlCoins} monet${lvlPrisms ? ` +${lvlPrisms} ◆` : ''}` : '');
     const bar = document.getElementById(prefix + 'XpBar');
     bar.style.transition = 'none';
     bar.style.width = (leveled ? 0 : (res.before.xp / res.before.need) * 100) + '%';
@@ -8009,7 +8011,17 @@ class Game {
   rollSpawns(rng) {
     const player = this.randomWorldPos(300, rng);
     const names = pickUnique(BOT_NAME_POOL, NUM_BOTS, rng);
-    const bots = names.map(() => this.randomWorldPos(300, rng));
+    // v13: rivals start at least 500 px away (a bot spawned on top of the
+    // player ate its starting feast). Fixed 6 tries -> same draws for all.
+    const bots = names.map(() => {
+      let best = null, bestD = -1;
+      for (let k = 0; k < 6; k++) {
+        const p = this.randomWorldPos(300, rng);
+        const d = dist(p.x, p.y, player.x, player.y);
+        if (bestD < 500 && d > bestD) { best = p; bestD = d; }
+      }
+      return best;
+    });
     return { player, names, bots };
   }
 
@@ -9166,7 +9178,7 @@ class Game {
     if (!m.tutorialRivalHintShown) {
       const rivalIdx = g.steps.findIndex(s => s.type === 'eatRival');
       const bot = this.bots[0];
-      if (rivalIdx !== -1 && !m.tutorialStepDone[rivalIdx] && bot && this.player.radius > bot.radius * EAT_HOLE_RATIO) {
+      if (rivalIdx !== -1 && this.tutorialCurrentStep() === rivalIdx && bot && this.player.radius > bot.radius * EAT_HOLE_RATIO) {
         m.tutorialRivalHintShown = true;
         this.showNelaToast('Rywal jest już mniejszy od Ciebie — najedź na niego i go pochłoń!');
       }
@@ -9630,7 +9642,11 @@ class Game {
     const p = this.player;
     if (!p || this.introPending) return;
     const targets = this.campaignGuideTargets();
-    if (!targets.length || targets.some(e => this.isInView(e.x, e.y, 0))) return;
+    // "Seen" = well inside the screen; one half-cut by an edge or hidden
+    // under the minimap still gets the arrow (QA, M07).
+    const seen = e => { const sx = e.x - this.camera.x + this.width / 2, sy = e.y - this.camera.y + this.height / 2;
+      return sx > 40 && sx < this.width - 40 && sy > 40 && sy < this.height - 40; };
+    if (!targets.length || targets.some(seen)) return;
     let best = null, bd = Infinity;
     for (const e of targets) { const d = dist(p.x, p.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
     const sx = best.x - this.camera.x + this.width / 2, sy = best.y - this.camera.y + this.height / 2;
@@ -11136,7 +11152,8 @@ class Game {
     // Shared seeds (Daily, friend challenges) get the same pacer for everyone.
     const shared = this.isDailyRun || this.challenge;
     const hist = shared ? [] : (this.save.stats.recentArenaScores || []).slice().sort((a, b) => a - b);
-    const base = hist.length ? hist[Math.floor(hist.length / 2)] : R.defaultPar;
+    // Until 3 finished rounds exist one lucky round would set the bar.
+    const base = hist.length >= 3 ? hist[Math.floor(hist.length / 2)] : R.defaultPar;
     return Math.round(clamp(base, R.minPar, R.maxPar) * lerp(R.parFactor[0], R.parFactor[1], this.difficultyT));
   }
 
@@ -11203,13 +11220,16 @@ class Game {
     ranked.forEach((h, i) => { h.isLeader = i === 0 && h.score > 0; });
     const place = ranked.indexOf(this.player) + 1;
     this.hudSet('rankValue', 'text', `#${place}/${ranked.length}`);
-    // Golden Shot v8: celebrate climbing into the podium mid-round.
-    if (this.lastPlace !== null && place < this.lastPlace && place <= 3 && this.timeRemaining < ROUND_TIME - 2) {
+    const nowMs = performance.now();
+    // Golden Shot v8: celebrate climbing into the podium mid-round (v13:
+    // at most every 8 s -- a see-saw lead fired it 3x in 2 s).
+    if (this.lastPlace !== null && place < this.lastPlace && place <= 3 && this.timeRemaining < ROUND_TIME - 2
+      && nowMs - (this.climbBannerAt || 0) > 8000) {
+      this.climbBannerAt = nowMs;
       this.showBanner(place === 1 ? 'PROWADZISZ!' : `AWANS NA ${place}. MIEJSCE`, null, '#EFCB63', 0.9, 1);
       this.vibrate(30);
     }
     // v13: losing the lead is the other half of the race -- name who did it.
-    const nowMs = performance.now();
     if (this.lastPlace === 1 && place > 1 && this.timeRemaining < ROUND_TIME - 5 && nowMs - (this.leadLostAt || 0) > 8000) {
       this.leadLostAt = nowMs;
       this.showBanner(`${ranked[0].name} PROWADZI`, 'Odbij pierwsze miejsce!', '#FF54AD', 1.0, 1);
