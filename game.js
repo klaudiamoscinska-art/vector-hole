@@ -5884,10 +5884,28 @@ class Game {
 
   /* ---------- setup ---------- */
 
+  /** v13.4: iOS home-screen app with a black-translucent status bar --
+   *  if the app box is still shorter than the physical screen (WebKit
+   *  subtracts the status bar from the viewport), stretch it to the screen. */
+  fitStandalone() {
+    const app = document.getElementById('app');
+    const standalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (!standalone || !SoundEngine.isIOS() || !window.screen) { app.style.height = ''; return; }
+    const portrait = window.innerHeight >= window.innerWidth;
+    const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+    app.style.height = '';
+    const h = app.getBoundingClientRect().height;
+    if (full > h + 1 && full - h < 120) app.style.height = full + 'px';
+  }
+
   resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, GFX_LEVELS[this.gfxLevel != null ? this.gfxLevel : 2].maxDpr);
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    this.fitStandalone();
+    // v13.4: measure the app box, not innerHeight -- on iOS home-screen apps
+    // innerHeight can be the screen minus the status bar.
+    const box = document.getElementById('app').getBoundingClientRect();
+    this.width = Math.round(box.width) || window.innerWidth;
+    this.height = Math.round(box.height) || window.innerHeight;
     this.canvas.width = this.width * dpr;
     this.canvas.height = this.height * dpr;
     this.canvas.style.width = this.width + 'px';
