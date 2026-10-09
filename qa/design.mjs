@@ -77,6 +77,32 @@ export async function runDesignChecks(url) {
     await g.browser.close();
   }
 
+  // --- Tapping a DOM button must not leave a phantom steering point (touch) --
+  {
+    const g = await openGame(url, { viewport: { width: 390, height: 844 } });
+    await g.page.evaluate(() => window.game.startCampaignMission('M00'));
+    await g.page.waitForTimeout(300);
+    await g.page.tap('#btnTutorialIntroStart');
+    const p0 = await g.page.evaluate(() => ({ x: window.game.player.x, y: window.game.player.y }));
+    await g.page.waitForTimeout(1500);
+    const moved = await g.page.evaluate((p) => Math.hypot(window.game.player.x - p.x, window.game.player.y - p.y), p0);
+    results.push(report('input: tapping the coach card button does not steer the hole', moved < 1, `moved ${moved.toFixed(1)} px`));
+    await g.browser.close();
+  }
+  // --- Desktop: a cursor resting on the hole parks it -----------------------
+  {
+    const g = await seeded(url, {}, null, { viewport: { width: 1280, height: 800 }, mobile: false });
+    await g.page.evaluate(() => { const gm = window.game; gm.startRound({ seed: 99 }); });
+    const c = await g.page.evaluate(() => { const gm = window.game; return { x: (gm.player.x - gm.camera.x) * gm.zoom + gm.width / 2, y: (gm.player.y - gm.camera.y) * gm.zoom + gm.height / 2 }; });
+    await g.page.mouse.move(c.x + 8, c.y);
+    await g.page.waitForTimeout(300);
+    const p0 = await g.page.evaluate(() => ({ x: window.game.player.x, y: window.game.player.y }));
+    await g.page.waitForTimeout(1200);
+    const moved = await g.page.evaluate((p) => Math.hypot(window.game.player.x - p.x, window.game.player.y - p.y), p0);
+    results.push(report('input: a mouse cursor resting on the hole parks it (desktop)', moved < 5, `moved ${moved.toFixed(1)} px`));
+    await g.browser.close();
+  }
+
   // --- Tutorial: untimed, one step at a time, early later-step = no freeze --
   {
     const g = await openGame(url);

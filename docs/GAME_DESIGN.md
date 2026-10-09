@@ -146,6 +146,9 @@ czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.
   grający jak bot „greedy” nadal wygrywa wysoko — to celowe.
 - „Narożny azyl”: środek dziury jest trzymany o promień od krawędzi, więc
   mały rywal w rogu bywa poza zasięgiem dużej dziury.
+- Linki wyzwań wysłane z v12 otwierają w v13 inną mapę (ścieżki energii i
+  uczty zużywają dodatkowe losowania z ziarna). Wyzwania i Wyzwanie dnia
+  używają stałego „par” pacera (bez historii gracza), więc są porównywalne.
 - `CONFIG.legal` (wydawca, kontakt) do uzupełnienia przed komercyjną
   premierą.
 - Pliki w `design/` to oryginalne makiety (paleta, układ ekranów, katalog

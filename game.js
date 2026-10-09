@@ -5847,7 +5847,10 @@ class Game {
     };
 
     // ---- Mouse (desktop): unchanged direct-drag chase behavior. ----
-    window.addEventListener('mousemove', (e) => updateFromScreen(e.clientX, e.clientY));
+    // v13: real mouse only -- a finger tap on a DOM button (coach card,
+    // evolution card, resume) also fires an emulated mousemove, which would
+    // otherwise leave a phantom steering point behind.
+    window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') updateFromScreen(e.clientX, e.clientY); });
 
     // ---- Keyboard (desktop accessibility): WASD / arrow keys. ----
     const keyMap = {
@@ -9029,6 +9032,7 @@ class Game {
   }
 
   pickCampaignPower(id) {
+    this.pointerScreen = null;
     if (!this.evolutionPending) return;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionPending = false;
@@ -9139,6 +9143,7 @@ class Game {
     const g = m.def.goal;
     if (g.type !== 'tutorialChecklist' || m.ended || m.finishing) return;
 
+    let cardShown = false;
     g.steps.forEach((step, i) => {
       if (m.tutorialStepDone[i]) return;
       const stepProgress = step.type === 'eatRival' ? m.rivalsEaten : (m.eatenByType[step.entityType] || 0);
@@ -9151,9 +9156,12 @@ class Game {
       // street prop) used to re-open the current step's blocking window --
       // three freezes in 2 s. Only the current step's completion opens the
       // next window; an early one is a quick, non-blocking nod.
-      if (wasCurrent) this.showTutorialStepIntro(nextIdx);
+      if (wasCurrent) cardShown = true;
       else this.showNelaToast(`${step.label} — zaliczone! Teraz: ${g.steps[nextIdx].label.toLowerCase()}.`);
     });
+    // One card per frame, for the step that is current now (two steps
+    // finishing together used to stack two cards, hiding the first).
+    if (cardShown && this.tutorialCurrentStep() < g.steps.length) this.showTutorialStepIntro(this.tutorialCurrentStep());
 
     if (!m.tutorialRivalHintShown) {
       const rivalIdx = g.steps.findIndex(s => s.type === 'eatRival');
@@ -9220,6 +9228,7 @@ class Game {
 
   dismissTutorialIntro() {
     this.introPending = false;
+    this.pointerScreen = null; // the tap on the card must not become a steering point
     document.getElementById('tutorialIntroOverlay').classList.add('hidden');
   }
 
@@ -10008,7 +10017,7 @@ class Game {
       }
       // v13: the pacer's par comes from finished rounds only (an early
       // "leave run" would drag it down).
-      if (this.timeRemaining <= 0.5) {
+      if (this.timeRemaining <= 0.5 && !this.challenge) {
         const recent = (this.save.stats.recentArenaScores || []).concat(this.player.score);
         this.save.stats.recentArenaScores = recent.slice(-CONFIG.rival.history);
       }
@@ -10233,6 +10242,7 @@ class Game {
   }
 
   resumeGame() {
+    this.pointerScreen = null;
     if (!this.paused) return;
     this.paused = false;
     this.state = GameState.PLAYING;
@@ -10853,6 +10863,7 @@ class Game {
   }
 
   pickMutation(id) {
+    this.pointerScreen = null;
     if (!this.evolutionPending) return;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionPending = false;
@@ -10871,6 +10882,7 @@ class Game {
    *  just pick or wait out the auto-pick timer). Shared by both Arena
    *  mutations and Campaign powers since they reuse the same overlay. */
   skipEvolutionOffer() {
+    this.pointerScreen = null;
     if (!this.evolutionPending) return;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionPending = false;
@@ -11003,7 +11015,10 @@ class Game {
       const tx = this.camera.x + (p.x - this.width / 2) / this.zoom;
       const ty = this.camera.y + (p.y - this.height / 2) / this.zoom;
       this.pointerWorld = { x: tx, y: ty };
-      if (Math.hypot(tx - this.player.x, ty - this.player.y) > 4) this.player.moveToward(tx, ty, dt);
+      // Dead zone = the inner part of the hole on screen, so a cursor or
+      // finger resting on the hole parks it (desktop has no "lift").
+      const sd = Math.hypot(tx - this.player.x, ty - this.player.y) * this.zoom;
+      if (sd > Math.max(8, this.player.radius * this.zoom * 0.6)) this.player.moveToward(tx, ty, dt);
     }
   }
 
@@ -11118,7 +11133,9 @@ class Game {
    *  difficulty factor. Daily/challenge rounds use the fixed dailyT factor. */
   computeParScore() {
     const R = CONFIG.rival;
-    const hist = (this.save.stats.recentArenaScores || []).slice().sort((a, b) => a - b);
+    // Shared seeds (Daily, friend challenges) get the same pacer for everyone.
+    const shared = this.isDailyRun || this.challenge;
+    const hist = shared ? [] : (this.save.stats.recentArenaScores || []).slice().sort((a, b) => a - b);
     const base = hist.length ? hist[Math.floor(hist.length / 2)] : R.defaultPar;
     return Math.round(clamp(base, R.minPar, R.maxPar) * lerp(R.parFactor[0], R.parFactor[1], this.difficultyT));
   }
