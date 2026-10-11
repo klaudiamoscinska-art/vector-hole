@@ -241,6 +241,7 @@
         </button>
         <div class="hub-header-right">
           <div class="currency-row">
+            <button class="energy-chip" type="button" aria-label="Energia — szczegóły"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span class="energy-chip-text"><span class="energy-count">5/5</span><span class="energy-timer">PEŁNA</span></span></button>
             <div class="coin-display">
               <span class="coin-icon">◇</span>
               <span id="coinCountMenu">0</span>
@@ -488,8 +489,31 @@
       <div class="revive-progress"><div id="reviveProgressBar" class="revive-progress-fill"></div><span id="reviveProgressPct">0%</span></div>
       <p id="reviveMissing" class="hint-text">—</p>
       <button id="btnReviveAd" class="btn btn-gold btn-mega">+20 S · OBEJRZYJ REKLAMĘ</button>
+      <button id="btnRevivePrisms" class="btn btn-secondary">+20 S · 8 ◆</button>
       <div class="revive-timer"><div id="reviveTimerBar" class="revive-timer-bar"></div></div>
       <button id="btnReviveNo" class="btn btn-link">Nie, zakończ misję</button>
+    </div>
+  </div>
+
+  <!-- ===================== MISSION START CARD (v15) =====================
+       Every mission waits on a tap: NELA's line, the goals, twists and the
+       boosters in play. The clock starts on the tap (owner feedback). -->
+  <div id="missionStartOverlay" class="screen overlay-screen start-overlay hidden" role="dialog" aria-modal="true" aria-label="Start misji">
+    <div id="missionStartCard" class="mission-card start-card"></div>
+  </div>
+
+  <!-- ===================== ENERGY (v15 session limit) ===================== -->
+  <div id="energySheet" class="screen overlay-screen briefing-overlay energy-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="energySheetTitle">
+    <div class="screen-inner briefing-sheet energy-sheet">
+      <div class="energy-bolt" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
+      <h2 class="section-title" id="energySheetTitle">ENERGIA</h2>
+      <div class="energy-big"><span id="energySheetValue">5/5</span></div>
+      <div class="energy-pips" id="energySheetPips"></div>
+      <p class="energy-timer-line" id="energySheetTimer">—</p>
+      <p class="hint-text">Każda runda i każda próba misji kosztuje 1 energię. <strong>Wygrana misja ją zwraca.</strong> Energia odnawia się sama: 1 co 20 minut.</p>
+      <button id="btnEnergyRefill" class="btn btn-gold btn-mega">PEŁNA ENERGIA · 12 ◆</button>
+      <button id="btnEnergyAd" class="btn btn-secondary">+1 ENERGIA · OBEJRZYJ REKLAMĘ</button>
+      <button id="btnEnergyClose" class="btn btn-link">Zamknij</button>
     </div>
   </div>
 
@@ -525,6 +549,7 @@
         </div>
         <div class="hub-header-right">
           <div class="currency-row">
+            <button class="energy-chip" type="button" aria-label="Energia — szczegóły"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span class="energy-chip-text"><span class="energy-count">5/5</span><span class="energy-timer">PEŁNA</span></span></button>
             <div class="coin-display"><span class="coin-icon">◇</span><span id="coinCountDistricts">0</span></div>
             <div class="coin-display prism-display"><span class="coin-icon">◆</span><span id="prismCountDistricts">0</span></div>
           </div>
@@ -581,9 +606,10 @@
       <div class="mission-result-stats">
         <div class="mr-stat" id="missionResultScoreTile"><span class="mr-stat-label">WYNIK</span><span class="mr-stat-value" id="missionResultScore">0</span></div>
         <div class="mr-stat"><span class="mr-stat-label" id="missionResultTimeLabel">CZAS</span><span class="mr-stat-value" id="missionResultTime">0:00</span></div>
-        <div class="mr-stat mr-stat-medal" id="missionResultMedalTile"><span class="mr-stat-label">MEDAL</span><span class="mr-stat-value" id="missionResultMedalStar">☆</span></div>
       </div>
-      <p class="mission-result-medal" id="missionResultMedal">—</p>
+      <!-- v15: three stars per mission (clear / fast / expert or special). -->
+      <div class="mr-stars" id="missionResultStars" aria-label="Gwiazdki"></div>
+      <ul class="mission-result-medal" id="missionResultMedal"></ul>
 
       <div class="nela-bubble" id="missionResultNelaBubble">
         <span class="nela-avatar" aria-hidden="true"></span>
