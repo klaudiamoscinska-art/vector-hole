@@ -254,3 +254,148 @@ window.__qaSwallowScene = function () {
   return { eating: g.objects.filter(o => o.eating && o.eater === p).length, ghosts: g.swallowGhosts.length };
 };
 `;
+
+/** v15 campaign bot (shared by campaign-bots, calibrate and difficulty).
+ *  __qaPlayMission(id, opts): opts.style 'expert' (default; sees the whole
+ *  board, re-aims every frame, flees bigger rivals early, steers around
+ *  glitch zones) or 'casual' (sees only the screen -- or the light circle
+ *  in a blackout --, re-aims every ~0.4 s, goes for the nearest goal-ish
+ *  bite, follows the edge arrow when nothing is in view, notices a bigger
+ *  rival / glitch zone only up close). opts.openLimit runs without a time
+ *  limit (calibration); opts.boosters pre-picks mission boosters. */
+export const CAMPAIGN_BOT = `
+window.__qaPlayMission = function (id, opts) {
+  opts = opts || {};
+  const style = opts.style || 'expert';
+  const g = window.game;
+  const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
+  let vnow = realNow();
+  performance.now = () => vnow;
+  const def = campaignMissionById(id);
+  const limit0 = def.timeLimit;
+  if (opts.openLimit) def.timeLimit = 900;
+  g.missionBoosters = opts.boosters || [];
+  g.startCampaignMission(id);
+  if (g.introPending) g.dismissTutorialIntro();
+  if (g.rafId) cancelAnimationFrame(g.rafId);
+  g.running = false;
+  const dt = 1 / 30;
+  const m = g.mission;
+  let frames = 0, wander = Math.random() * 6.28;
+  window.__qaLastPos = null; window.__qaRoam = 0;
+  const B = CONFIG.campaign.bounds;
+  const vw = (opts.viewW || 390) / 2, vh = (opts.viewH || 844) / 2;
+  while (!m.ended && !m.finishing && frames < 30 * (opts.openLimit ? 900 : 420)) {
+    if (g.evolutionPending) { const c = document.querySelector('#evolutionCards .evolution-card'); if (c) c.click(); else g.skipEvolutionOffer(); continue; }
+    if (g.introPending) g.dismissTutorialIntro();
+    if (g.revivePending) { g.declineRevive(); break; }
+    const p = g.player;
+    const casual = style === 'casual';
+    if (!casual || frames % 12 === 0) {
+      const tier = g.campaignTierIndex(g.campaignPlayerTier().id);
+      const goalTypes = g.campaignGoalEntityTypes();
+      if (frames % 15 === 0) g.__qaComboPending = g.campaignGoalItems().some(it => /combo/i.test(it.label) && it.progress < it.target);
+      const comboPending = g.__qaComboPending;
+      const dark = m.def.setup.dark;
+      const vis = dark ? g.darkVision() * 0.9 : 0;
+      const sees = (x, y) => dark ? Math.hypot(x - p.x, y - p.y) < vis
+        : (!casual || (Math.abs(x - g.camera.x) < vw && Math.abs(y - g.camera.y) < vh));
+      let fx = 0, fy = 0;
+      for (const b of g.bots) {
+        const d = Math.hypot(b.x - p.x, b.y - p.y);
+        const danger = (casual ? 70 : 170) + b.radius + (m.def.setup.fragile ? 60 : 0);
+        if (b.radius > p.radius * 1.1 && d < danger && (!casual || Math.random() < 0.75)) { fx -= (b.x - p.x) / (d + 1); fy -= (b.y - p.y) / (d + 1); }
+      }
+      for (const z of (g.glitchZones || [])) {
+        const d = Math.hypot(z.x - p.x, z.y - p.y);
+        const margin = casual ? 25 : 70 + (m.def.setup.fragile ? 40 : 0);
+        if (d < z.r + p.radius + margin) { const k = 1.5; fx -= (z.x - p.x) / (d + 1) * k; fy -= (z.y - p.y) / (d + 1) * k; }
+      }
+      let target = null, best = -1;
+      const reachable = (x, y, reach) => Math.hypot(x - clamp(x, B.minX + p.radius, B.maxX - p.radius), y - clamp(y, B.minY + p.radius, B.maxY - p.radius)) < reach;
+      if (!(fx || fy)) {
+        for (const e of g.campaignEntities) {
+          if (e.consumed || e.eating || !e.live) continue;
+          if (!sees(e.x, e.y)) continue;
+          const touch = e.type === 'gate' || (e.type === 'node' && e.glyph === 'mostek' && !e.mostekPowered && tier >= e.stats.minTier);
+          if (e.type === 'node' && e.glyph === 'mostek' && !touch) continue;
+          if (!touch) {
+            if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
+            if (e.type === 'landmark' && !e.unlocked) continue;
+            if (tier < e.stats.minTier) continue;
+          }
+          if (e.type === 'gate' && (!goalTypes.has('gate') || m.gatesPassed.has(e))) continue;
+          // Skip food sitting inside a glitch zone.
+          if ((g.glitchZones || []).some(z => Math.hypot(z.x - e.x, z.y - e.y) < z.r + p.radius * 0.5)) continue;
+          const d = Math.hypot(e.x - p.x, e.y - p.y);
+          const small = comboPending && (e.type === 'fragment' || e.type === 'capsule');
+          const s = casual
+            ? (small ? 3 : goalTypes.has(e.type) ? 2 : 1) / (d + 60)
+            : (small ? 40 : (goalTypes.has(e.type) ? 4 : 1) * ((e.stats && e.stats.growth) || 2)) / (d + 60);
+          if (s > best) { best = s; target = e; }
+        }
+        for (const b of g.bots) {
+          const d = Math.hypot(b.x - p.x, b.y - p.y);
+          if (!sees(b.x, b.y)) continue;
+          if (!reachable(b.x, b.y, Math.max(p.radius, b.radius) * 0.7)) continue;
+          if (p.radius > b.radius * 1.2 && d < 700) { const s = (b.racer ? 10 : 6) / (d + 60); if (s > best) { best = s; target = b; } }
+        }
+        // Nothing worth it in view: follow the edge arrow (what a human sees).
+        if (!target || (casual && !(target instanceof CampaignEntity && goalTypes.has(target.type)) && Math.random() < 0.3)) {
+          const guides = g.campaignGuideTargets();
+          let gd = Infinity;
+          for (const e of guides) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d < gd && (!target || d > 0)) { gd = d; if (!target || casual) target = e; } }
+        }
+      }
+      if (fx || fy) { const n = Math.hypot(fx, fy); g.keyDir = { x: fx / n, y: fy / n }; }
+      else if (target && target.type === 'gate' && target.isGateOpen === false && Math.hypot(target.x - p.x, target.y - p.y) < p.radius + 60) { g.keyDir = { x: 0, y: 0 }; g.pointerWorld = { x: p.x, y: p.y }; }
+      else if (target && target.glyph === 'pas_przelotu') {
+        // A corridor counts when crossed all the way through while lit:
+        // wait beside it while dark, then run straight across.
+        const hw = target.zoneHalfWidth || 90;
+        const inside = Math.abs(p.x - target.x) < hw + p.radius;
+        if (inside) { if (!target._qaDir) target._qaDir = p.x < target.x ? 1 : -1; g.keyDir = { x: target._qaDir, y: 0 }; }
+        else {
+          target._qaDir = 0;
+          const side = p.x < target.x ? -1 : 1;
+          const wantX = target.x + side * (hw + p.radius + 30);
+          if (Math.abs(p.x - wantX) > 20 && !target.isGateOpen) g.keyDir = { x: wantX > p.x ? 1 : -1, y: 0 };
+          else g.keyDir = target.isGateOpen ? { x: -side, y: 0 } : { x: 0, y: 0 };
+        }
+      }
+      else if (target) {
+        // A finger is not a vector: the casual player's aim wobbles ±12°.
+        let ang = Math.atan2(target.y - p.y, target.x - p.x);
+        if (casual) ang += (Math.random() - 0.5) * 0.42;
+        g.keyDir = { x: Math.cos(ang), y: Math.sin(ang) };
+      }
+      else { wander += casual ? (Math.random() - 0.5) * 1.2 : 0.04; g.keyDir = { x: Math.cos(wander), y: Math.sin(wander) }; }
+    }
+    // Unstick like a human would: no real progress for 3 s -> roam a bit.
+    if (frames % 90 === 0) { if (window.__qaLastPos && Math.hypot(p.x - window.__qaLastPos.x, p.y - window.__qaLastPos.y) < 40) window.__qaRoam = 30; window.__qaLastPos = { x: p.x, y: p.y }; }
+    if (window.__qaRoam > 0) { window.__qaRoam--; wander += 0.08; g.keyDir = { x: Math.cos(wander), y: Math.sin(wander) }; }
+    vnow += dt * 1000;
+    g.updateCampaign(dt);
+    if (opts.render && frames % 30 === 0 && !m.ended) g.renderCampaign(frames * dt);
+    frames++;
+  }
+  // Success has a short celebration delay (beginMissionSuccess uses a
+  // real setTimeout) -- commit it directly instead of waiting on it.
+  const success = !!m.finishing && !m.ended && !m.failReason;
+  if (success) g.endCampaignMission(true);
+  else if (!m.ended) g.endCampaignMission(false);
+  g.keyDir = { x: 0, y: 0 };
+  performance.now = realNow;
+  def.timeLimit = limit0;
+  return { id, success: success && !!g.save.campaign.completed[id], elapsed: +m.elapsed.toFixed(1), limit: limit0, fail: success ? null : (m.failReason || 'time'), diff: def.diff, stars: success ? g.missionStarBits(m) : 0 };
+};
+`;
+
+/** A save with every district open (campaign bots). */
+export async function allDistrictsSave(page) {
+  const save = await veteranSave(page, { missions: 0 });
+  save.campaign.unlockedDistricts = DISTRICT_IDS_ALL;
+  save.energy = { value: 5, lastTick: 0, infiniteUntil: 4e12, freeDailyDate: null };
+  return save;
+}
+export const DISTRICT_IDS_ALL = ['plac', 'park', 'port', 'galeria', 'dachy', 'rdzen', 'metro', 'bazar', 'fabryka', 'zatoka', 'ogrody', 'chmura'];

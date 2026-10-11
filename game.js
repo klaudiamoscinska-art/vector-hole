@@ -347,9 +347,11 @@ const CONFIG = {
     nelaDisplaySeconds: 4.5,
     // v15 mission twists (setup flags compiled from MISSION_SPECS):
     // Łowcy -- bigger rivals chase the player (in bursts, then rest).
-    hunter: { range: 360, chaseSeconds: 3.6, restSeconds: 1.8, speedMult: 1.0 },
+    hunter: { range: 300, chaseSeconds: 3.0, restSeconds: 2.4, afterHitRest: 6, speedMult: 1.0 },
     // Złodziej -- a rival racing the player for the goal objects.
-    racer: { radius: 26, speedMult: 0.82, decision: 0.35 },
+    // It waits until the hole can eat the race objects, then runs at
+    // speedBase + speedPerDiff * difficulty of its own speed.
+    racer: { radius: 26, speedBase: 0.45, speedPerDiff: 0.05, decision: 0.4, headStart: 2 },
     // Złoty bajt -- flees once the hole is near.
     runner: { speed: 128, panicRange: 230, wanderSpeed: 40 },
     // Strefa glitcha -- a drifting zone that costs growth like a rival hit.
@@ -1656,7 +1658,7 @@ const CHAPTER_II = [
       ['Wagon z bajtami', 'b:4 e:vehicle:4', 'D', 4],
       ['Konduktorzy', 'r:3', 'H3 B40', 3],
       ['Rozjazd', 'c:12 b:3', '', 4],
-      ['Głębokie perony', 'e:heavy:2:tramwaj', 'D H1', 4],
+      ['Głębokie perony', 'e:heavy:2:tramwaj', 'D', 4],
       ['Iskrownik', 'a:pylon:4', 'Z2', 3],
       ['Ślepy tor', 'e:structure:2 b:4', 'D', 4],
       ['Godzina zero', 's:2200', '', 4],
@@ -1684,7 +1686,7 @@ const CHAPTER_II = [
       ['Pierwszy targ', 'e:capsule:10', 'R', 2],
       ['Kramy', 'e:prop:8:kiosk', '', 2],
       ['Złodziej kapsuł', 'e:capsule:12', 'R', 3],
-      ['Tłum w alejce', 'c:12', '', 2],
+      ['Tłum w alejce', 'c:12 e:prop:6:kiosk', '', 2],
       ['Złoty interes', 'b:4', 'R', 3],
       ['Lampiony', 'e:marker:6', '', 2],
       ['Targowanie', 's:1200', '', 3],
@@ -1693,7 +1695,7 @@ const CHAPTER_II = [
       ['Stragan z autami', 'e:vehicle:6', '', 3],
       ['Nocne pawilony', 'e:structure:3:pawilon', '', 3],
       ['Wyścig o lampiony', 'e:marker:6', 'R', 4],
-      ['Bazarowe combo', 'c:15', '', 3],
+      ['Bazarowe combo', 'c:15 e:vehicle:4', '', 3],
       ['Ochroniarze', 'r:3', 'H3 B40', 4],
       ['Hurtownia', 'e:structure:4:magazyn', 'Z2', 4],
       ['Gorący towar', 'b:6', 'Z2', 4],
@@ -1701,7 +1703,7 @@ const CHAPTER_II = [
       ['Złodziej aut', 'e:vehicle:6', 'R', 4],
       ['Licytacja', 's:2500', '', 4],
       ['Labirynt kramów', 'e:prop:12 c:10', 'Z3', 4],
-      ['Szybka sprzedaż', 'e:capsule:14', 'R W', 4],
+      ['Szybka sprzedaż', 'e:capsule:14', 'R', 4],
       ['Ciemna strona bazaru', 'e:marker:6', 'D R', 5],
       ['Złote godziny', 'b:6 s:1500', '', 4],
       ['Mistrzowie handlu', 'r:4', 'H3 B50', 5],
@@ -1722,7 +1724,7 @@ const CHAPTER_II = [
     success: ['Taśma zatrzymana.', 'Hala ucichła.', 'Produkcja Glitcha spada.', 'Kolejna linia czysta.', 'Fabryka traci moc.', 'Nadzorcy uciekli.'],
     rows: [
       ['Brama fabryki', 'e:prop:8 t:3', 'Z1', 3],
-      ['Taśmociąg', 'c:12', 'Z2', 3],
+      ['Taśmociąg', 'c:12 e:prop:8:skrzynia', 'Z2', 3],
       ['Pikselowe skrzynie', 'e:prop:10:skrzynia', 'Z2', 3],
       ['Nadzorcy', 'r:2', 'H2', 3],
       ['Hala montażowa', 'e:vehicle:6', 'Z3', 3],
@@ -1744,7 +1746,7 @@ const CHAPTER_II = [
       ['Rozdzielnia', 'a:node:5:zasilacz e:heavy:1', 'Z2', 4],
       ['Hala zero', 'e:heavy:4', 'H2', 5],
       ['Złomowisko', 'e:structure:5', 'Z4', 5],
-      ['Precyzja', 'c:16', 'F Z2', 5],
+      ['Precyzja', 'c:16 e:vehicle:5', 'F Z2', 5],
       ['Wieże chłodnicze', 'e:tower:2:maszt', 'Z3', 5],
       ['Awaria w hali', 's:3000', 'D H2', 5],
       ['Wielki piec', 'e:heavy:3 e:tower:1', 'Z2', 4],
@@ -1777,7 +1779,7 @@ const CHAPTER_II = [
       ['Rejs nocny', 'g:5', 'P', 4],
       ['Skarb zatoki', 'b:6 e:structure:2', 'H1', 4],
       ['Statek widmo', 'e:heavy:3', 'D', 4],
-      ['Prądy', 'c:16', 'Z2', 4],
+      ['Prądy', 'c:16 b:4', 'Z2', 4],
       ['Latarnicy', 'r:4', 'H3 B50', 5],
       ['Drugi brzeg', 'g:1 e:marker:8:krysztal', 'O D', 5],
       ['Morze bajtów', 'b:8', '', 4],
@@ -1786,7 +1788,7 @@ const CHAPTER_II = [
       ['Fale glitcha', 'e:capsule:18', 'W Z3', 5],
       ['Rejs bez kolizji', 'g:4', 'P F', 5],
       ['Piraci', 'r:4', 'H4 B55', 5],
-      ['Zatopiony magazyn', 'e:structure:5:magazyn', 'D H1', 5],
+      ['Zatopiony magazyn', 'e:structure:5:magazyn', 'D', 5],
       ['Hologramowy horyzont', 't:6', 'D', 4],
       ['Wyścig łodzi', 'e:marker:8:krysztal', 'R', 5],
       ['Ostatni sztorm', 'e:tower:2 s:2500', 'Z3', 5],
@@ -1804,7 +1806,7 @@ const CHAPTER_II = [
       ['Wejście do ogrodów', 'e:prop:10:drzewo', '', 3],
       ['Delikatne pąki', 'e:capsule:12', 'F', 3],
       ['Ogrodowe bramy', 'g:4', '', 3],
-      ['Rytm kwiatów', 'c:16', '', 3],
+      ['Rytm kwiatów', 'c:16 e:prop:8:drzewo', '', 3],
       ['Ścieżka bez błędu', 'e:prop:10', 'F H1', 4],
       ['Zaczarowane latarnie', 'e:prop:8:latarnia c:10', '', 3],
       ['Złote nasiona', 'b:6', 'F', 4],
@@ -1813,7 +1815,7 @@ const CHAPTER_II = [
       ['Kwietne pylony', 'a:pylon:5', 'F', 4],
       ['Wiszące mosty', 'a:node:3:mostek e:structure:2', '', 4],
       ['Szklarnia', 'e:heavy:2', 'Z2', 4],
-      ['Pnącza', 'c:18', 'F', 5],
+      ['Pnącza', 'c:18 e:structure:2', 'F', 5],
       ['Ogród nocą', 'e:prop:12:latarnia', 'D', 4],
       ['Kolibry', 'b:8', 'H1', 5],
       ['Taras', 't:5', 'F', 4],
@@ -1826,7 +1828,7 @@ const CHAPTER_II = [
       ['Mgła w ogrodzie', 'e:heavy:3', 'D H2', 5],
       ['Ogrodowy rekord', 's:3500', '', 5],
       ['Wiszące tarasy', 'e:tower:2', 'F Z2', 5],
-      ['Bez jednego płatka', 'c:20', 'F', 5],
+      ['Bez jednego płatka', 'c:20 b:5', 'F', 5],
       ['Ogrodnicy nocy', 'r:4', 'D H3 B55', 5],
       ['Lustrzana sadzawka', 'a:pylon:5:lustro e:tower:1', '', 5],
       ['Ostatni rozkwit', 't:6 e:heavy:2', 'F H2', 5],
@@ -1848,16 +1850,16 @@ const CHAPTER_II = [
       ['Antywirusy', 'r:3', 'H3 B55', 4],
       ['Bufor', 's:3000', 'H2', 5],
       ['Przeciążenie', 'a:node:5:zasilacz', 'Z4', 4],
-      ['Wyciek danych', 'e:marker:8', 'R D', 5],
+      ['Wyciek danych', 'e:marker:6', 'R Z1', 5],
       ['Chmura burzowa', 'e:heavy:3', 'Z3 H1', 5],
-      ['Szyfr', 'c:20', 'F', 5],
+      ['Szyfr', 'c:20 e:heavy:1', 'F', 5],
       ['Serwery lustrzane', 'a:pylon:6:lustro', 'D', 5],
       ['Złote klucze', 'b:8', 'H2', 5],
       ['Zapora', 'g:5', 'P F', 5],
       ['Administratorzy', 'r:4', 'H4 B55', 5],
       ['Wielka migracja', 'e:tower:2', 'Z3', 5],
       ['Ciemny sektor', 'e:structure:5', 'D H2', 5],
-      ['Pakiet zero', 'e:capsule:18', 'R W', 5],
+      ['Pakiet zero', 'e:capsule:18', 'W Z2', 5],
       ['Bezbłędny transfer', 'e:vehicle:10', 'F Z2', 5],
       ['Rekord chmury', 's:4000', 'Z2', 5],
       ['Rdzeń danych', 't:6', 'D H2', 5],
@@ -1867,7 +1869,7 @@ const CHAPTER_II = [
       ['Strażnicy chmury', 'r:5', 'H4 B60', 5],
       ['Ciemna chmura', 'e:tower:3', 'D Z2', 5],
       ['Ostatni pakiet', 'b:8 e:structure:3', 'F', 5],
-      ['Pełna synchronizacja', 's:4000', 'H2 Z2', 5],
+      ['Pełna synchronizacja', 's:4000', 'H1 Z2', 5],
       ['Kaskada serwerów', 'e:heavy:4 e:tower:2', 'H2', 5],
       ['Przed restartem', 'c:22 t:6', 'D', 5],
       ['Serwer Główny', 'a:node:4:zasilacz L:serwer', 'D H3 Z3', 5,
@@ -2065,8 +2067,8 @@ const DIFFICULTY = [
   { id: 1, label: 'ŁATWA', color: '#46D99A', timeFactor: 2.1, timePad: 20, spare: 0.4 },
   { id: 2, label: 'ŚREDNIA', color: '#50F0FA', timeFactor: 1.75, timePad: 14, spare: 0.3 },
   { id: 3, label: 'TRUDNA', color: '#EFCB63', timeFactor: 1.5, timePad: 9, spare: 0.25 },
-  { id: 4, label: 'BARDZO TRUDNA', color: '#FF54AD', timeFactor: 1.32, timePad: 6, spare: 0.2 },
-  { id: 5, label: 'EKSTREMALNA', color: '#9875FF', timeFactor: 1.2, timePad: 4, spare: 0.15 }
+  { id: 4, label: 'BARDZO TRUDNA', color: '#FF54AD', timeFactor: 1.24, timePad: 4, spare: 0.2 },
+  { id: 5, label: 'EKSTREMALNA', color: '#9875FF', timeFactor: 1.12, timePad: 3, spare: 0.15 }
 ];
 const tierUnits = k => CAMPAIGN_TIERS[k - 1].minUnits;
 const round5 = v => Math.round(v / 5) * 5;
@@ -2109,12 +2111,12 @@ function stepTier(step) {
 // and the mission's difficulty -- re-run the calibration after changing a
 // mission spec, the growth curve or the twists. Missing entries fall back
 // to an estimate.
-const MISSION_BOT_TIME = {};
+const MISSION_BOT_TIME = { M01: [9, 15], M02: [21, 31], M03: [15, 19], M04: [39, 44], M05: [6, 7], M06: [23, 27], M07: [18, 21], M08: [33, 43], M09: [23, 30], M10: [19, 26], M11: [39, 52], M12: [53, 60], M13: [20, 25], M14: [21, 28], M15: [35, 41], M16: [40, 56], M17: [23, 30], M18: [12, 16], M19: [45, 51], M20: [55, 203], M21: [22, 28], M22: [43, 83], M23: [37, 56], M24: [55, 436], M25: [29, 39], M26: [29, 42], M27: [37, 43], M28: [23, 35], M29: [40, 52], M30: [41, 61], M31: [35, 39], M32: [36, 49], M33: [19, 23], M34: [37, 84], M35: [42, 53], M36: [21, 32], M37: [41, 53], M38: [45, 52], M39: [21, 25], M40: [57, 86], M41: [49, 52], M42: [48, 56], M43: [42, 52], M44: [33, 43], M45: [45, 63], M46: [28, 42], M47: [55, 121], M48: [52, 61], M49: [46, 56], M50: [31, 41], M51: [11, 12], M52: [45, 54], M53: [108, 355], M54: [53, 67], M55: [50, 66], M56: [48, 58], M57: [40, 60], M58: [205, 249], M59: [47, 54], M60: [54, 59], M61: [29, 36], M62: [23, 25], M63: [31, 48], M64: [37, 50], M65: [40, 48], M66: [47, 186], M67: [21, 33], M68: [54, 76], M69: [42, 52], M70: [43, 57], M71: [62, 93], M72: [14, 17], M73: [68, 87], M74: [66, 104], M75: [31, 37], M76: [62, 81], M77: [33, 45], M78: [64, 74], M79: [46, 55], M80: [50, 57], M81: [66, 78], M82: [76, 108], M83: [76, 191], M84: [35, 53], M85: [116, 204], M86: [46, 59], M87: [28, 40], M88: [70, 92], M89: [94, 133], M90: [81, 307], M91: [17, 20], M92: [26, 38], M93: [19, 22], M94: [26, 29], M95: [24, 30], M96: [25, 31], M97: [47, 59], M98: [20, 25], M99: [23, 59], M100: [40, 52], M101: [41, 50], M102: [24, 26], M103: [21, 28], M104: [73, 113], M105: [55, 71], M106: [57, 69], M107: [43, 55], M108: [34, 43], M109: [49, 63], M110: [47, 104], M111: [22, 30], M112: [36, 53], M113: [70, 80], M114: [79, 119], M115: [68, 81], M116: [34, 40], M117: [46, 55], M118: [39, 47], M119: [39, 47], M120: [66, 82], M121: [25, 46], M122: [34, 66], M123: [35, 41], M124: [36, 96], M125: [49, 73], M126: [46, 58], M127: [42, 54], M128: [44, 76], M129: [25, 41], M130: [50, 117], M131: [61, 92], M132: [68, 106], M133: [38, 64], M134: [86, 109], M135: [63, 108], M136: [46, 55], M137: [36, 40], M138: [69, 79], M139: [52, 68], M140: [78, 127], M141: [57, 70], M142: [48, 121], M143: [54, 85], M144: [34, 69], M145: [64, 171], M146: [81, 500], M147: [51, 67], M148: [125, 165], M149: [81, 126], M150: [83, 149], M151: [27, 36], M152: [21, 24], M153: [8, 9], M154: [31, 42], M155: [46, 61], M156: [43, 50], M157: [13, 19], M158: [25, 31], M159: [8, 21], M160: [49, 406], M161: [44, 50], M162: [32, 39], M163: [54, 69], M164: [16, 18], M165: [61, 114], M166: [61, 82], M167: [48, 74], M168: [87, 263], M169: [32, 47], M170: [48, 53], M171: [76, 105], M172: [78, 94], M173: [23, 53], M174: [15, 20], M175: [77, 172], M176: [61, 94], M177: [55, 78], M178: [27, 30], M179: [78, 95], M180: [77, 151], M181: [31, 41], M182: [23, 30], M183: [11, 12], M184: [25, 33], M185: [39, 67], M186: [24, 33], M187: [40, 44], M188: [79, 110], M189: [37, 49], M190: [31, 38], M191: [45, 57], M192: [48, 58], M193: [21, 25], M194: [42, 59], M195: [54, 89], M196: [37, 50], M197: [10, 13], M198: [67, 133], M199: [21, 31], M200: [47, 61], M201: [65, 108], M202: [73, 87], M203: [105, 162], M204: [58, 68], M205: [68, 81], M206: [38, 50], M207: [173, 272], M208: [40, 49], M209: [44, 56], M210: [43, 51], M211: [22, 33], M212: [60, 74], M213: [15, 22], M214: [65, 88], M215: [57, 310], M216: [59, 71], M217: [69, 91], M218: [23, 34], M219: [62, 133], M220: [25, 31], M221: [34, 44], M222: [59, 85], M223: [15, 22], M224: [117, 298], M225: [57, 106], M226: [109, 337], M227: [20, 30], M228: [56, 106], M229: [66, 83], M230: [68, 139], M231: [45, 53], M232: [36, 57], M233: [75, 126], M234: [137, 191], M235: [92, 137], M236: [72, 78], M237: [77, 133], M238: [58, 65], M239: [31, 50], M240: [190, 381] };
 
 /** v15 twist hints (shown in the briefing, start card and as chips). */
 const TWIST_INFO = {
   hunters: { label: 'ŁOWCY', color: '#ff3860', hint: 'Łowcy polują na mniejsze wiry. Uciekaj, dopóki ich nie przerośniesz.' },
-  racer: { label: 'ZŁODZIEJ', color: '#EFCB63', hint: 'Złodziej zbiera te same cele. Bądź szybszy albo go pochłoń, gdy urośniesz.' },
+  racer: { label: 'ZŁODZIEJ', color: '#EFCB63', hint: 'Złodziej zbiera te same cele — rusza, gdy już możesz je zjadać. Bądź szybszy albo go pochłoń.' },
   dark: { label: 'CIEMNOŚĆ', color: '#9875FF', hint: 'Prąd padł: widać tylko to, co blisko wiru. Strzałka prowadzi do celu.' },
   glitch: { label: 'STREFY GLITCHA', color: '#FF54AD', hint: 'Różowe strefy glitcha zabierają masę i zrywają combo. Omijaj je.' },
   fragile: { label: 'KRUCHY WIR', color: '#50F0FA', hint: 'Kruchy wir: jedno zderzenie z większym rywalem albo strefą i misja przepada.' },
@@ -2174,15 +2176,21 @@ function compileMission(spec, order) {
     const spare = raceStep && raceStep.eat === type ? n : Math.max(1, Math.ceil(n * D.spare));
     s[key] = Math.max(s[key] || 0, n + spare);
   });
+  const comboStep = steps.find(st => st.combo);
+  if (s.capsuleWaves && comboStep) s.capsulesPerWave = Math.max(s.capsulesPerWave || 8, comboStep.combo + 3);
   if (s.capsuleWaves && raceStep && raceStep.eat === 'capsule') s.capsulesPerWave = Math.max(s.capsulesPerWave || 8, Math.ceil(raceStep.n * 2 / s.capsuleWaves.length));
-  if (s.hunters) s.bots = Math.max(s.bots || 0, s.hunters);
+  // More than two hunters at once turned into a hit-lock; the extra
+  // rivals of an "H3/H4" mission roam instead (bosses keep three).
+  if (s.hunters) { s.hunters = Math.min(s.hunters, s.fragile ? 1 : diff >= 5 && s.landmark ? 3 : 2); s.bots = Math.max(s.bots || 0, s.hunters); }
   // Growth ladder up to the highest tier any step needs.
   for (let k = 1; k < need; k++) {
     const food = LADDER_FOOD[k];
     const units = tierUnits(k + 1) - tierUnits(k);
     const eats = Math.ceil(units / CAMPAIGN_ENTITY_STATS[food].growth);
     const key = SETUP_KEY[food];
-    s[key] = Math.max(s[key] || 0, Math.ceil(eats * (1.35 + D.spare * 0.6)) + 2);
+    // Hits (hunters, glitch zones) cost growth: lay more climb food then.
+    const hazard = (s.hunters ? 0.35 : 0) + (s.glitch ? 0.25 : 0);
+    s[key] = Math.max(s[key] || 0, Math.ceil(eats * (1.35 + D.spare * 0.6 + hazard)) + 2);
     est += eats * SEC_PER_EAT[k];
   }
   s.fragments = Math.max(s.fragments || 0, 8);
@@ -2204,7 +2212,11 @@ function compileMission(spec, order) {
   const bt = MISSION_BOT_TIME[spec.id];
   const botMed = bt ? bt[0] : Math.max(20, est * 0.8);
   const botP90 = bt ? bt[1] : botMed * 1.3;
-  const timeLimit = spec.time || Math.max(45, round5(botMed * D.timeFactor + D.timePad), round5(botP90 * 1.08 + 5));
+  // (p90 is capped: one stuck bot run must not stretch the limit.)
+  // The floor keeps a slow-but-clean expert run inside the limit on the
+  // friendly levels; the hard ones are held to the median pace.
+  const floor = Math.min(botP90, botMed * (1.6 - 0.1 * diff)) * (1.1 - 0.05 * diff) + 5;
+  const timeLimit = spec.time || Math.max(diff >= 4 ? 30 : 45, round5(botMed * D.timeFactor + D.timePad), round5(floor));
   // Stars: 1 = clear, 2 = a brisk clear, 3 = expert pace (or the mission's
   // own special challenge, kept from the v10 medals).
   const t2 = Math.min(timeLimit - 10, round5(botMed + (timeLimit - botMed) * 0.45));
@@ -2400,7 +2412,7 @@ const MISSION_SPECS = [
     nela: ['Pod kopułą bije serce miasta. Najpierw ciężkie pojazdy, potem sama kopuła.', 'Kopuła otwarta.'] },
   { id: 'M57', d: 'rdzen', diff: 4, name: 'Wszystkie rozmiary', steps: [{ tier: 6 }],
     nela: ['Od fragmentu do wieżowca: przejdź wszystkie sześć rozmiarów w jednej misji.', 'Sześć rozmiarów. Jedna dziura.'] },
-  { id: 'M58', d: 'rdzen', diff: 5, name: 'Ostatni strażnicy', steps: [{ rival: 5 }], setup: { hunters: 3, botRadius: 70 },
+  { id: 'M58', d: 'rdzen', diff: 5, name: 'Ostatni strażnicy', steps: [{ rival: 5 }], setup: { hunters: 2, botRadius: 70 },
     nela: ['Ostatni strażnicy Rdzenia to giganci. Unikaj ich, dopóki nie urośniesz — potem pochłoń pięciu.', 'Nikt już nie strzeże Rdzenia.'] },
   { id: 'M59', d: 'rdzen', diff: 4, name: 'Sygnał z wieży', steps: [{ activate: 'pylon', n: 3 }, { eat: 'tower', n: 2, glyph: 'maszt' }],
     nela: ['Trzy pylony nadają sygnał przez maszty. Naładuj pylony, potem pochłoń maszty.', 'Sygnał niesie się po całym mieście.'] },
@@ -9686,17 +9698,24 @@ class Game {
       const ring = Math.min(s.starterRing || 0, s.fragments);
       for (let i = 0; i < ring; i++) {
         const a = i * 2.4 - 1.2, rr = 60 + i * 12;
-        this.campaignEntities.push(new CampaignEntity('fragment', clamp(start.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(start.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20)));
+        this.campaignEntities.push(new CampaignEntity('fragment', clamp(start.x + Math.cos(a) * rr, b.minX + 40, b.maxX - 40), clamp(start.y + Math.sin(a) * rr, b.minY + 40, b.maxY - 40)));
       }
       addMany('fragment', s.fragments - ring);
     }
     // Tight pockets of fragments for combo goals (see compileMission()).
+    // v15: pockets sit away from the start (a pocket next to it made a
+    // combo goal a 3-second formality).
+    const awayFromStart = (pad) => () => {
+      let q;
+      for (let k = 0; k < 16; k++) { q = this.randomInCampaignBounds(pad); if (dist(q.x, q.y, start.x, start.y) > 380) break; }
+      return q;
+    };
     for (let c = 0; c < (s.fragmentClusters || 0); c++) {
-      const center = place(110);
+      const center = place(110, awayFromStart(130));
       for (let i = 0; i < (s.clusterSize || 10); i++) {
         const a = i * 2.4, rr = 22 + 10 * Math.sqrt(i);
         this.campaignEntities.push(new CampaignEntity('fragment',
-          clamp(center.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(center.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20)));
+          clamp(center.x + Math.cos(a) * rr, b.minX + 40, b.maxX - 40), clamp(center.y + Math.sin(a) * rr, b.minY + 40, b.maxY - 40)));
       }
     }
 
@@ -9719,7 +9738,7 @@ class Game {
         for (let i = 0; i < n; i++) {
           const a = i * 2.4, rr = 30 + 14 * Math.sqrt(i);
           this.campaignEntities.push(new CampaignEntity('capsule',
-            clamp(center.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(center.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20), { spawnAt: waveStart }));
+            clamp(center.x + Math.cos(a) * rr, b.minX + 40, b.maxX - 40), clamp(center.y + Math.sin(a) * rr, b.minY + 40, b.maxY - 40), { spawnAt: waveStart }));
         }
       });
     }
@@ -9768,8 +9787,9 @@ class Game {
         for (let i = 0; i < s.gates; i++) {
           const t = (i + 1) / (s.gates + 1);
           const gx = lerp(b.minX + 80, b.maxX - 80, t);
+          const spacing = (b.maxX - b.minX - 160) / (s.gates + 1);
           const opts = s.gateKind === 'pas'
-            ? { glyph: 'pas_przelotu', zoneHalfWidth: 90, phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }
+            ? { glyph: 'pas_przelotu', zoneHalfWidth: Math.min(90, Math.round(spacing * 0.3)), phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }
             : { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) };
           this.campaignEntities.push(new CampaignEntity('gate', gx, cy, opts));
         }
@@ -9911,7 +9931,8 @@ class Game {
       const bot = new Bot(BOT_NAME_POOL[i], p.x, p.y);
       bot.radius = def.setup.botRadius || CONFIG.campaign.rivalRadius;
       bot.styleOverride = BOT_STYLES[i % BOT_STYLES.length];
-      bot.hunter = !!def.setup.hunters;
+      // Only the first `hunters` rivals hunt; the rest roam as before.
+      bot.hunter = i < (def.setup.hunters || 0);
       this.bots.push(bot);
     }
     if (def.setup.racer) {
@@ -10019,9 +10040,21 @@ class Game {
   }
 
   updateRacerBot(bot, dt) {
-    const R = CONFIG.campaign.racer, p = this.player;
-    bot.tempSpeedMult = R.speedMult;
+    const R = CONFIG.campaign.racer, p = this.player, m = this.mission;
+    bot.tempSpeedMult = R.speedBase + R.speedPerDiff * (m.def.diff || 1);
     const d = dist(bot.x, bot.y, p.x, p.y);
+    // A fair race: the thief starts once the hole can eat what it steals.
+    if (!m.raceStarted) {
+      const need = (CAMPAIGN_ENTITY_STATS[m.def.setup.raceType] || { minTier: 1 }).minTier;
+      if (this.campaignTierIndex(this.campaignPlayerTier().id) >= need) {
+        m.raceStartIn = m.raceStartIn == null ? R.headStart : m.raceStartIn - dt;
+        if (m.raceStartIn <= 0) { m.raceStarted = true; this.showBanner('ZŁODZIEJ RUSZA!', 'Zbieraj szybciej niż on', '#EFCB63', 1.2, 3); }
+      }
+      bot.tempSpeedMult = 0.35;
+      if (!bot.wanderTarget || dist(bot.x, bot.y, bot.wanderTarget.x, bot.wanderTarget.y) < 40) bot.wanderTarget = this.randomInCampaignBounds(80);
+      bot.moveToward(bot.wanderTarget.x, bot.wanderTarget.y, dt);
+      return;
+    }
     if (p.radius > bot.radius * EAT_HOLE_RATIO && d < 220) {
       bot.moveToward(bot.x + (bot.x - p.x) / (d || 1) * 200, bot.y + (bot.y - p.y) / (d || 1) * 200, dt);
     } else {
@@ -10067,10 +10100,12 @@ class Game {
    *  bit under the hole's own speed -- a wall or a corner is how you catch
    *  one. */
   updateRunners(dt) {
-    const R = CONFIG.campaign.runner, p = this.player, b = CONFIG.campaign.bounds;
+    const R = CONFIG.campaign.runner, b = CONFIG.campaign.bounds;
     for (const e of this.campaignEntities) {
       if (e.type !== 'runner' || e.consumed || e.eating || !e.live) continue;
-      const d = dist(e.x, e.y, p.x, p.y);
+      // Flees whichever hole is closer -- the thief too.
+      let p = this.player, d = dist(e.x, e.y, p.x, p.y);
+      if (this.racer && this.mission.raceStarted) { const dr = dist(e.x, e.y, this.racer.x, this.racer.y); if (dr < d) { p = this.racer; d = dr; } }
       let vx, vy, sp;
       if (d < R.panicRange + p.radius) {
         vx = (e.x - p.x) / (d || 1); vy = (e.y - p.y) / (d || 1);
@@ -10083,10 +10118,12 @@ class Game {
         e.wa = (e.wa || 0) + (Math.random() - 0.5) * dt * 2;
         vx = Math.cos(e.wa); vy = Math.sin(e.wa); sp = R.wanderSpeed;
       }
-      e.x = clamp(e.x + vx * sp * dt, b.minX + e.radius, b.maxX - e.radius);
-      e.y = clamp(e.y + vy * sp * dt, b.minY + e.radius, b.maxY - e.radius);
-      if (e.x <= b.minX + e.radius || e.x >= b.maxX - e.radius) e.wa = Math.PI - (e.wa || 0);
-      if (e.y <= b.minY + e.radius || e.y >= b.maxY - e.radius) e.wa = -(e.wa || 0);
+      // Never into a corner the (clamped) hole can't reach.
+      const mg = Math.max(40, this.player.radius * 0.9);
+      e.x = clamp(e.x + vx * sp * dt, b.minX + mg, b.maxX - mg);
+      e.y = clamp(e.y + vy * sp * dt, b.minY + mg, b.maxY - mg);
+      if (e.x <= b.minX + mg || e.x >= b.maxX - mg) e.wa = Math.PI - (e.wa || 0);
+      if (e.y <= b.minY + mg || e.y >= b.maxY - mg) e.wa = -(e.wa || 0);
     }
   }
 
@@ -10123,6 +10160,8 @@ class Game {
       return;
     }
     if (source === 'bot') m.botHitCount++;
+    // A hunter that just landed a hit backs off for a while.
+    for (const b of this.bots) if (b.hunter && b.hunting) { b.restT = CONFIG.campaign.hunter.afterHitRest; b.chaseT = 0; }
     if (m.def.setup.fragile) { this.failCampaignMission('hit'); return; }
     const loss = m.growthUnits * CONFIG.campaign.hitPenaltyFraction;
     m.growthUnits = Math.max(0, m.growthUnits - loss);
@@ -10752,7 +10791,7 @@ class Game {
     // under the goals (red/gold rows -- a threat, not a goal).
     const s = m.def.setup || {};
     const extra = [];
-    if (s.racer) extra.push({ icon: GOAL_ICONS.racer, color: '#EFCB63', label: 'Złodziej', count: `${m.racerCount}/${s.raceTarget}`, cls: 'twist-danger' });
+    if (s.racer) extra.push({ icon: GOAL_ICONS.racer, color: '#EFCB63', label: 'Złodziej', count: m.raceStarted ? `${m.racerCount}/${s.raceTarget}` : 'czeka', cls: 'twist-danger' });
     if (s.fragile && !m.shields) extra.push({ icon: GOAL_ICONS.fragile, color: '#50F0FA', label: 'Kruchy wir', count: '', cls: 'twist-danger' });
     if (m.shields) extra.push({ icon: CARD_ICONS.shield, color: '#EFCB63', label: 'Tarcza', count: `×${m.shields}`, cls: 'twist-shield' });
     this.hudSet('missionGoalItems', 'html', goalItems.map(it => `
@@ -11338,7 +11377,7 @@ class Game {
     }
     const types = this.campaignGoalEntityTypes();
     const glyph = m.goalGlyph;
-    return this.campaignEntities.filter(e => {
+    const goals = this.campaignEntities.filter(e => {
       if (e.consumed || e.eating || e.live === false || !types.has(e.type)) return false;
       if (e.type === 'gate') return !m.gatesPassed.has(e);
       if (glyph && e.glyph !== glyph && e.type !== 'landmark') return false;
@@ -11347,6 +11386,12 @@ class Game {
       if (e.type === 'landmark' && !e.unlocked) return false;
       return !(e.stats && tier < e.stats.minTier);
     });
+    if (goals.length || g.type === 'tutorialChecklist') return goals;
+    // v15: nothing in the goal is within reach yet (too small) -- point at
+    // food that grows the hole instead of leaving the arrow dark (in a
+    // blackout there was no way to find it).
+    return this.campaignEntities.filter(e => !e.consumed && !e.eating && e.live !== false && e.stats && e.type !== 'gate'
+      && e.type !== 'landmark' && e.type !== 'node' && e.type !== 'pylon' && tier >= e.stats.minTier);
   }
 
   drawCampaignGoalArrow(ctx, time) {
