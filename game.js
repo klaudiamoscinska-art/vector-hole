@@ -261,7 +261,37 @@ const CONFIG = {
     reviveSeconds: 20,        // mission revive: extra time granted
     reviveMinProgress: 0.4,   // only offered when the goal is at least this done
     reviveOfferSeconds: 7,    // offer auto-declines after this long
+    revivePrisms: 8,          // v15: the same +time bought with prisms instead of an ad
     freePrisms: 5
+  },
+  // v15 "Wyzwanie": the session limit (owner: "limitowany czas rozgrywki w
+  // sesji z możliwością dokupienia przed odnowieniem"). Every Arena round and
+  // every mission attempt costs 1 energy; a WON mission gives it back, so
+  // only defeats (and Arena rounds) drain it. It refills one point per
+  // regenMinutes up to `max`; rewards and purchases may push it above max.
+  // Free: the tutorial, the first `freeArenaRuns` rounds, the first Daily
+  // attempt of the day.
+  energy: {
+    max: 5,
+    regenMinutes: 20,
+    refillPrisms: 12,         // full refill before the timer does it
+    adGain: 1,                // per rewarded ad (capped by AD_PLACEMENTS.energy_ad)
+    freeArenaRuns: 3,
+    cap: 30
+  },
+  // v15: one-shot mission boosters bought (or won) before a mission starts.
+  boosters: {
+    unlockMission: 'M04',     // after Plac Neonów's boss (+1 of each as a gift)
+    timeBonus: 15,            // "Zegar": seconds added to the limit
+    shieldHits: 2,            // "Tarcza": hits absorbed (rivals, glitch zones, a fragile vortex)
+    pityFails: 3              // after this many defeats in a row NELA lends a free Zegar (once per mission)
+  },
+  // v15: three stars per mission. Star 1 = clear; star 2 = clear within
+  // the "fast" time; star 3 = the expert time (or the mission's special
+  // challenge). Every `chestEvery` stars opens a star chest.
+  stars: {
+    chestEvery: 15,
+    chest: { coins: 120, prisms: 3, booster: 1 }
   },
   overdrive: {
     triggerSecondsRemaining: 12,
@@ -300,7 +330,10 @@ const CONFIG = {
       // v10: T4/T5/T6 classes, each sized between the previous tier's
       // radius anchor and its own (46..66 / 66..90 / 90..118 px).
       structure: 54, heavy: 76, tower: 100,
-      gate: 18
+      gate: 18,
+      // v15: a fleeing golden byte (T1, eatable from the start) and a
+      // drifting glitch zone (a hazard, never eaten; radius set per zone).
+      runner: 12, glitch: 90
     },
     // v10: campaign rivals are fixed-size (see rivalRadius); a mission can
     // field bigger ones with setup.botRadius.
@@ -312,6 +345,19 @@ const CONFIG = {
     },
     gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
     nelaDisplaySeconds: 4.5,
+    // v15 mission twists (setup flags compiled from MISSION_SPECS):
+    // Łowcy -- bigger rivals chase the player (in bursts, then rest).
+    hunter: { range: 300, chaseSeconds: 3.0, restSeconds: 2.4, afterHitRest: 6, speedMult: 1.0 },
+    // Złodziej -- a rival racing the player for the goal objects.
+    // It waits until the hole can eat the race objects, then runs at
+    // speedBase + speedPerDiff * difficulty of its own speed.
+    racer: { radius: 26, speedBase: 0.45, speedPerDiff: 0.05, decision: 0.4, headStart: 2 },
+    // Złoty bajt -- flees once the hole is near.
+    runner: { speed: 128, panicRange: 230, wanderSpeed: 40 },
+    // Strefa glitcha -- a drifting zone that costs growth like a rival hit.
+    glitch: { minRadius: 70, maxRadius: 105, speed: 34, hitInvulnMs: 1400 },
+    // Awaria prądu -- you only see a circle around the hole.
+    dark: { vision: 175, perRadius: 1.7 },
     // A 1400x1400 box centered in the shared 3000x3000 world (see
     // buildCampaignMission) — the mission's actual playable area: entities
     // spawn here, drawCampaignMinimap() frames it, and clampToCampaignBounds()
@@ -819,6 +865,22 @@ class SoundEngine {
     this.noise({ dur: 0.9, vol: 0.05, freq: 7000, type: 'highpass', when: seq.length * 0.09 });
   }
 
+  /** v15: one rising chime per star on the mission result. */
+  star(i) {
+    if (!this.sfxOn()) return;
+    const f = [1046.5, 1318.5, 1567.98][i] || 1046.5;
+    this.tone({ type: 'triangle', freq: f, dur: 0.28, vol: 0.1 });
+    this.tone({ type: 'sine', freq: f * 2, dur: 0.18, vol: 0.04, when: 0.04 });
+    this.noise({ dur: 0.25, vol: 0.03, freq: 8000, type: 'highpass', when: 0.02 });
+  }
+
+  /** v15: the energy refill / mission start "power up". */
+  energy() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sawtooth', freq: 220, freqEnd: 880, dur: 0.25, vol: 0.05, filter: 2400 });
+    this.tone({ type: 'sine', freq: 880, freqEnd: 1320, dur: 0.18, vol: 0.06, when: 0.18 });
+  }
+
   fail() {
     if (!this.sfxOn()) return;
     [392, 349.23, 311.13, 261.63].forEach((f, i) => this.tone({ type: 'triangle', freq: f, dur: 0.3, vol: 0.12, when: i * 0.14 }));
@@ -913,7 +975,9 @@ const AD_PLACEMENTS = {
   chest_skip: { label: 'Skrzynia teraz', dailyCap: 3 },
   login_double: { label: '×2 nagroda dnia' },
   free_prisms: { label: '+5 pryzmatów', dailyCap: 3 },
-  turbo_free: { label: 'Turbo start gratis', dailyCap: 2 }
+  turbo_free: { label: 'Turbo start gratis', dailyCap: 2 },
+  // v15: one energy point per ad, a few times a day.
+  energy_ad: { label: '+1 energia', dailyCap: 5 }
 };
 
 // Store catalog for providers with IAP (see 'native' above). Prices are
@@ -925,6 +989,8 @@ const IAP_PRODUCTS = [
   { sku: 'prisms_s', name: 'Garść pryzmatów', price: '4,99 zł', grant: { prisms: 40 }, desc: '40 pryzmatów' },
   { sku: 'prisms_m', name: 'Skrzynia pryzmatów', price: '19,99 zł', grant: { prisms: 200 }, desc: '200 pryzmatów (+25% gratis)' },
   { sku: 'prisms_l', name: 'Skarbiec pryzmatów', price: '44,99 zł', grant: { prisms: 520 }, desc: '520 pryzmatów (+45% gratis)' },
+  // v15: the session limit's paid skip -- no energy cost for an hour.
+  { sku: 'energy_hour', name: 'Godzina bez limitu', price: '7,99 zł', grant: { infiniteEnergyMin: 60 }, desc: 'Przez 60 minut każda runda i misja za darmo (bez zużywania energii)' },
   { sku: 'no_ads', name: 'Bez reklam', price: '14,99 zł', oneTime: true, grant: { noAds: true }, desc: 'Wyłącza reklamy między rundami na zawsze (nagrody za reklamę zostają do wyboru)' }
 ];
 
@@ -1316,6 +1382,17 @@ const RUN_TOOLS = [
   { id: 'boost', name: 'Turbo start', price: 70, desc: 'Startujesz od razu z rozmiarem T2 — Twój wir od pierwszej sekundy przerasta rywali.', hot: true }
 ];
 
+// v15 mission boosters (owner: "przed rozpoczęciem levelu powinno dać się
+// dokupić toole"): picked in the briefing, one use each, bought with coins
+// when none is in stock. Star chests, the login calendar and NELA's pity
+// loan also hand them out.
+const MISSION_BOOSTERS = [
+  { id: 'time', name: 'Zegar', short: '+15 s', price: 60, color: '#50F0FA', icon: 'clock', desc: '+15 s do limitu czasu misji.' },
+  { id: 'start', name: 'Turbo start', short: 'start od T2', price: 80, color: '#FF54AD', icon: 'bolt', desc: 'Wir startuje od razu z rozmiarem T2.' },
+  { id: 'magnet', name: 'Magnes', short: 'cała misja', price: 50, color: '#46D99A', icon: 'magnet', desc: 'Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.' },
+  { id: 'shield', name: 'Tarcza', short: '2 zderzenia', price: 70, color: '#EFCB63', icon: 'shield', desc: 'Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.' }
+];
+
 // Simple neon-line-art glyphs for the evolution/power cards (SVG, inline —
 // no assets/build step). Keyed by `icon` on MUTATIONS/CAMPAIGN_POWERS below.
 // Player feedback: the cards should show what a tool *does* instead of
@@ -1355,7 +1432,14 @@ const GOAL_ICONS = {
   rival: '<circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="12" r="3" fill="currentColor"/>',
   portal: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
   score: CARD_ICONS.star,
-  combo: CARD_ICONS.burst
+  combo: CARD_ICONS.burst,
+  // v15
+  runner: '<path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z" fill="currentColor"/><path d="M11 8.5l2-1v9" stroke="#04101D" stroke-width="1.8" fill="none"/>',
+  hunters: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9.5l3 1.5M16 9.5l-3 1.5M8.5 16c2-1.8 5-1.8 7 0" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  racer: '<path d="M4 18l5-12h6l5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 13h10" stroke="currentColor" stroke-width="2"/>',
+  dark: '<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" fill="currentColor"/>',
+  glitch: '<path d="M3 6h7v3H3zM12 6h9v3h-9zM6 11h12v3H6zM3 16h5v3H3zM10 16h11v3H10z" fill="currentColor"/>',
+  fragile: '<path d="M12 2l3 7-4 3 5 4-3 6M12 2L9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
 };
 
 // Fill color per CampaignEntity `type`, by size tier -- shared by
@@ -1463,21 +1547,35 @@ const CAMPAIGN_ENTITY_STATS = {
   landmark: { growth: 32, score: 160, minTier: 4, label: 'landmark' },
   structure: { growth: 16, score: 80, minTier: 4, label: 'pawilon' },
   heavy: { growth: 24, score: 120, minTier: 5, label: 'ciężki pojazd' },
-  tower: { growth: 40, score: 200, minTier: 6, label: 'wieżowiec' }
+  tower: { growth: 40, score: 200, minTier: 6, label: 'wieżowiec' },
+  // v15: the fleeing golden byte -- tiny, but worth chasing.
+  runner: { growth: 3, score: 60, minTier: 1, label: 'złoty bajt' }
 };
 
 // v10: each boss landmark is gated at its own tier (and sized/valued by
 // CONFIG.campaign.landmarkByTier) -- an Iglica smaller than an ordinary
 // T6 tower read as a contradiction.
-const LANDMARK_TIERS = { kino: 4, fontanna: 4, dzwig: 5, galeria_glowna: 5, iglica_wejscie: 5, iglica: 6, rdzen_miasta_glowny: 6 };
+const LANDMARK_TIERS = { kino: 4, fontanna: 4, dzwig: 5, galeria_glowna: 5, iglica_wejscie: 5, iglica: 6, rdzen_miasta_glowny: 6,
+  stacja: 5, bazar_brama: 5, fabryka: 6, latarnia: 6, drzewo: 6, serwer: 6 };
 const LANDMARK_ART = {
   kino: 'lm_kino', fontanna: 'lm_fontanna', dzwig: 'lm_dzwig', galeria_glowna: 'lm_galeria',
-  iglica_wejscie: 'lm_iglica', iglica: 'lm_iglica', rdzen_miasta_glowny: 'lm_rdzen'
+  iglica_wejscie: 'lm_iglica', iglica: 'lm_iglica', rdzen_miasta_glowny: 'lm_rdzen',
+  stacja: 'lm_stacja', bazar_brama: 'lm_bazar', fabryka: 'lm_fabryka', latarnia: 'lm_latarnia', drzewo: 'lm_drzewo', serwer: 'lm_serwer'
 };
 // Accusative ("Pochłoń ...") names of each boss landmark.
 const LANDMARK_NAMES = {
   kino: 'neonowe kino', fontanna: 'fontannę', dzwig: 'dźwig', galeria_glowna: 'galerię',
-  iglica_wejscie: 'bramę iglicy', iglica: 'iglicę', rdzen_miasta_glowny: 'rdzeń miasta'
+  iglica_wejscie: 'bramę iglicy', iglica: 'iglicę', rdzen_miasta_glowny: 'rdzeń miasta',
+  stacja: 'Stację Centralną', bazar_brama: 'Bramę Bazaru', fabryka: 'Fabrykę Pikseli', latarnia: 'Latarnię Hologramów',
+  drzewo: 'Drzewo Światła', serwer: 'Serwer Główny'
+};
+// v15: the name plate under every boss landmark (owner: the second
+// district's tile had no name while Plac's Kino had a sign). Kino paints
+// its own marquee, so it needs none.
+const LANDMARK_SIGNS = {
+  fontanna: 'FONTANNA', dzwig: 'DŹWIG', galeria_glowna: 'GALERIA', iglica_wejscie: 'BRAMA IGLICY', iglica: 'IGLICA',
+  rdzen_miasta_glowny: 'RDZEŃ', stacja: 'STACJA', bazar_brama: 'BAZAR', fabryka: 'FABRYKA', latarnia: 'LATARNIA',
+  drzewo: 'DRZEWO', serwer: 'SERWER'
 };
 
 // Per-mission visual glyph tables (mission-screen brief, Task 1): several
@@ -1527,6 +1625,351 @@ const DISTRICTS = [
   { id: 'rdzen', name: 'Rdzeń Miasta', order: 6, missions: ['M21', 'M22', 'M23', 'M55', 'M56', 'M57', 'M58', 'M59', 'M60', 'M24'] }
 ];
 
+// v15 "Rozdział II: Głęboki Glitch" -- six more districts, 30 missions
+// each, authored as compact rows the same compiler turns into missions:
+//   [name, steps, twists, diff, nela?]
+// steps: e:TYPE:N[:GLYPH] eat · b:N golden bytes · t:K tier · c:N combo ·
+//   g:N gates · r:N rivals · a:node|pylon:N[:GLYPH] activate · L:ID boss ·
+//   s:N score
+// twists: H<n> hunters · R racer · D dark · Z<n> glitch zones · F fragile ·
+//   P pas gates · O portal · W capsule waves · A arc layout · B<n> rival radius
+// NELA speaks the district's flavor line, and explains a twist the first
+// time it shows up in the district.
+const CHAPTER_II = [
+  {
+    id: 'metro', name: 'Tunele Metra', color: '#2BCBDD', floor: 'rdzen', boss: 'stacja',
+    won: 'Tunele Metra odzyskane! Nocny Bazar czeka.',
+    story: 'Glitch uciekł pod ziemię. W tunelach metra gasną światła, a puste składy wożą skażony kod. Zejdź na dół i przywróć ruch.',
+    flavor: ['Pod ziemią słychać tylko szum pustych składów.', 'Peron migocze — Glitch przestawił rozkład jazdy.', 'Tory iskrzą skażonym kodem.', 'Tu nikt nie czeka na pociąg. Tylko Ty i Glitch.',
+      'Echo w tunelu niesie się daleko. Glitch też je słyszy.', 'Kolejna stacja do odzyskania.', 'W metrze liczy się każda sekunda.', 'Głębiej pod miastem, bliżej źródła Glitcha.'],
+    success: ['Pociągi znów jadą.', 'Stacja odzyskana.', 'Tunel świeci jak nowy.', 'Rozkład jazdy wrócił do normy.', 'Słyszysz? To prawdziwy pociąg.', 'Kolejna linia czysta.'],
+    rows: [
+      ['Ostatni kurs', 'e:fragment:12 t:2', 'D', 2],
+      ['Złote bajty', 'b:3', '', 2],
+      ['Peron w mroku', 'e:prop:8 t:3', 'D', 3],
+      ['Rozkład jazdy', 'e:vehicle:5', '', 2],
+      ['Pościg w tunelu', 'b:5', 'D', 3],
+      ['Kontrola biletów', 'r:2', 'H2', 3],
+      ['Iskry na torach', 'c:10 e:prop:5', '', 2],
+      ['Skład widmo', 'e:heavy:1:tramwaj', 'D', 3],
+      ['Szczur danych', 'b:6 t:3', 'H1', 4],
+      ['Zwrotnice', 'a:node:4:zasilacz e:vehicle:3', '', 3],
+      ['Tunel serwisowy', 'e:structure:3:magazyn', 'D', 3],
+      ['Nocny przejazd', 'g:3', 'P', 3],
+      ['Wagon z bajtami', 'b:4 e:vehicle:4', 'D', 4],
+      ['Konduktorzy', 'r:3', 'H3 B40', 3],
+      ['Rozjazd', 'c:12 b:3', '', 4],
+      ['Głębokie perony', 'e:heavy:2:tramwaj', 'D', 4],
+      ['Iskrownik', 'a:pylon:4', 'Z2', 3],
+      ['Ślepy tor', 'e:structure:2 b:4', 'D', 4],
+      ['Godzina zero', 's:2200', '', 4],
+      ['Pociąg towarowy', 'e:heavy:3:tramwaj', '', 3],
+      ['Awaria sieci', 'a:node:5', 'D Z2', 4],
+      ['Ucieczka z zajezdni', 'b:7', 'H2', 4],
+      ['Ciemna linia', 't:5 e:heavy:1:tramwaj', 'D H2', 5],
+      ['Bez świateł', 'e:prop:10 c:8', 'D', 4],
+      ['Kontrolerzy w mroku', 'r:3', 'D H3 B45', 4],
+      ['Wieżowiec nad tunelem', 'e:tower:1:wiezowiec', '', 4],
+      ['Linia zero', 'c:16 e:heavy:1', 'F', 5],
+      ['Zasilanie trakcji', 'a:node:4:zasilacz e:structure:2', 'D', 4],
+      ['Ekspres bajtów', 'b:8 s:1500', 'Z2', 4],
+      ['Stacja Centralna', 'a:node:3:zasilacz L:stacja', 'D H2', 5,
+        'Stacja Centralna — serce metra. Po ciemku zbierz trzy zasilacze, uciekaj przed łowcami i pochłoń całą stację (T5).']
+    ]
+  },
+  {
+    id: 'bazar', name: 'Nocny Bazar', color: '#EFCB63', floor: 'plac', boss: 'bazar_brama',
+    won: 'Nocny Bazar odzyskany! Fabryka Pikseli czeka.',
+    story: 'Nocny Bazar nigdy nie śpi. Glitch handluje tu skradzioną energią, a jego Złodziej zgarnia wszystko, czego nie zgarniesz przed nim.',
+    flavor: ['Między kramami pachnie ozonem i skażonym neonem.', 'Bazar tętni — a Glitch liczy zyski.', 'Kto pierwszy, ten lepszy. Tak działa ten bazar.', 'Lampiony mrugają w rytm skażonego kodu.',
+      'Kolejna alejka do odzyskania.', 'Tu wszystko ma cenę. Glitch płaci skradzioną energią.', 'Tłum kramów, a w nim Twój cel.', 'Ceny szaleją, a energia ucieka.'],
+    success: ['Kramy znów świecą uczciwym światłem.', 'Alejka odzyskana.', 'Bazar wraca do życia.', 'Kupcy znów się uśmiechają.', 'Najlepszy interes tej nocy.', 'Energia wróciła do miasta.'],
+    rows: [
+      ['Pierwszy targ', 'e:capsule:10', 'R', 2],
+      ['Kramy', 'e:prop:8:kiosk', '', 2],
+      ['Złodziej kapsuł', 'e:capsule:12', 'R', 3],
+      ['Tłum w alejce', 'c:12 e:prop:6:kiosk', '', 2],
+      ['Złoty interes', 'b:4', 'R', 3],
+      ['Lampiony', 'e:prop:8:latarnia', '', 2],
+      ['Targowanie', 's:1200', '', 3],
+      ['Fala klientów', 'e:capsule:16 c:8', 'W', 3],
+      ['Kieszonkowiec', 'e:prop:10', 'R H1', 4],
+      ['Stragan z autami', 'e:vehicle:6', '', 3],
+      ['Nocne pawilony', 'e:structure:3:pawilon', '', 3],
+      ['Wyścig o lampiony', 'e:prop:8:latarnia', 'R', 4],
+      ['Bazarowe combo', 'c:15 e:vehicle:4', '', 3],
+      ['Ochroniarze', 'r:3', 'H3 B40', 4],
+      ['Hurtownia', 'e:structure:4:magazyn', 'Z2', 4],
+      ['Gorący towar', 'b:6', 'Z2', 4],
+      ['Kontrabanda', 'e:heavy:2:ciezarowka', '', 3],
+      ['Złodziej aut', 'e:vehicle:6', 'R', 4],
+      ['Licytacja', 's:2500', '', 4],
+      ['Labirynt kramów', 'e:prop:12 c:10', 'Z3', 4],
+      ['Szybka sprzedaż', 'e:capsule:14', 'R', 4],
+      ['Ciemna strona bazaru', 'e:marker:6', 'R Z1', 5],
+      ['Złote godziny', 'b:6 s:1500', '', 4],
+      ['Mistrzowie handlu', 'r:4', 'H3 B50', 5],
+      ['Magazyn nocny', 'e:heavy:3', 'D', 4],
+      ['Bez straty', 'e:prop:12', 'F Z1', 4],
+      ['Wielka dostawa', 'e:tower:1:wiezowiec e:heavy:1', '', 4],
+      ['Złodziej bajtów', 'b:6', 'R H1', 5],
+      ['Bazar w ogniu', 'c:18 s:2000', 'Z2', 5],
+      ['Brama Bazaru', 'a:pylon:4 L:bazar_brama', 'H2 Z2', 5,
+        'Brama Bazaru trzyma cały handel Glitcha. Naładuj cztery pylony, omijaj strefy i łowców, a potem pochłoń bramę (T5).']
+    ]
+  },
+  {
+    id: 'fabryka', name: 'Fabryka Pikseli', color: '#FF54AD', floor: 'port', boss: 'fabryka',
+    won: 'Fabryka Pikseli odzyskana! Zatoka Hologramów czeka.',
+    story: 'W Fabryce Pikseli Glitch produkuje sam siebie. Hale pełne są stref skażenia, a nadzorcy pilnują taśm. Zatrzymaj produkcję.',
+    flavor: ['Taśmy jadą, prasy biją, Glitch rośnie.', 'Hala huczy skażonym kodem.', 'Tu powstają nowe kawałki Glitcha.', 'Uważaj — podłoga iskrzy.',
+      'Kolejna linia produkcyjna do zatrzymania.', 'Hala nie lubi gości.', 'Każdy piksel tutaj to skażenie.', 'Fabryka pracuje na trzy zmiany. Ty na jedną, ale lepiej.'],
+    success: ['Taśma zatrzymana.', 'Hala ucichła.', 'Produkcja Glitcha spada.', 'Kolejna linia czysta.', 'Fabryka traci moc.', 'Maszyny cichną jedna po drugiej.'],
+    rows: [
+      ['Brama fabryki', 'e:prop:8 t:3', 'Z1', 3],
+      ['Taśmociąg', 'c:12 e:prop:8:skrzynia', 'Z2', 3],
+      ['Pikselowe skrzynie', 'e:prop:10:skrzynia', 'Z2', 3],
+      ['Nadzorcy', 'r:2', 'H2', 3],
+      ['Hala montażowa', 'e:vehicle:6', 'Z3', 3],
+      ['Wadliwa partia', 'e:marker:6', 'Z2 H1', 4],
+      ['Wózki widłowe', 'e:heavy:2:ciezarowka', '', 3],
+      ['Prasa', 'a:node:4:zasilacz', 'Z3', 4],
+      ['Iskry spawalnicze', 'c:14 e:prop:6', 'Z2', 4],
+      ['Magazyn części', 'e:structure:4:magazyn', 'H2', 4],
+      ['Kontrola jakości', 's:2500', 'Z2', 4],
+      ['Linia produkcyjna', 'e:heavy:3', 'Z3', 4],
+      ['Przegrzanie', 'a:pylon:4', 'Z4', 4],
+      ['Brygadziści', 'r:3', 'H3 B50', 4],
+      ['Złoty prototyp', 'b:5', 'Z3', 4],
+      ['Komin', 'e:tower:1:maszt', 'H1', 4],
+      ['Bez awarii', 'e:vehicle:8', 'F', 4],
+      ['Nocna zmiana w hali', 'e:structure:3', 'D Z2', 5],
+      ['Reaktor pikseli', 't:6', 'Z3', 4],
+      ['Roboty', 'r:4', 'H4 B45', 5],
+      ['Rozdzielnia', 'a:node:5:zasilacz e:heavy:1', 'Z2', 4],
+      ['Hala zero', 'e:heavy:4', 'H2', 5],
+      ['Złomowisko', 'e:structure:5', 'Z4', 5],
+      ['Precyzja', 'c:16 e:vehicle:5', 'F Z2', 5],
+      ['Wieże chłodnicze', 'e:tower:2:maszt', 'Z3', 5],
+      ['Awaria w hali', 's:3000', 'D H2', 5],
+      ['Wielki piec', 'e:heavy:3 e:tower:1', 'Z2', 4],
+      ['Zmiana kierownika', 'r:4', 'H3 B60', 5],
+      ['Ostatnia partia', 'e:tower:3', 'H2 Z2', 5],
+      ['Serce fabryki', 'a:node:4:zasilacz L:fabryka', 'H2 Z3', 5,
+        'Serce fabryki bije Glitchem. Zbierz cztery zasilacze między strefami, urośnij do T6 i pochłoń całą fabrykę.']
+    ]
+  },
+  {
+    id: 'zatoka', name: 'Zatoka Hologramów', color: '#9875FF', floor: 'galeria', boss: 'latarnia',
+    won: 'Zatoka Hologramów odzyskana! Wiszące Ogrody czekają.',
+    story: 'Zatoka Hologramów to morze światła i portali. Glitch ukrywa tu złote bajty w mgle i rozstawia na wodzie swoje latarnie.',
+    flavor: ['Hologramowe fale biją o nabrzeże.', 'Mgła nad zatoką gęstnieje.', 'Na wodzie migoczą hologramy.', 'Portale otwierają się i gasną jak fale.',
+      'Zatoka pamięta czasy przed Glitchem.', 'Kolejny brzeg do odzyskania.', 'Tu łatwo zgubić kierunek. Ufaj strzałce.', 'Przypływ niesie skażony kod.'],
+    success: ['Zatoka się uspokaja.', 'Fale znów są czyste.', 'Mgła opadła.', 'Kolejny brzeg odzyskany.', 'Latarnie świecą dla Ciebie.', 'Hologramy wracają do normy.'],
+    rows: [
+      ['Hologramowe molo', 'g:1 e:marker:6:krysztal', 'O', 3],
+      ['Fale', 'e:capsule:16', 'W', 3],
+      ['Latarnie na wodzie', 'g:3', '', 2],
+      ['Złote ryby', 'b:5', '', 3],
+      ['Mgła', 'e:prop:10 t:3', 'D', 3],
+      ['Port widm', 'e:heavy:2:ciezarowka', '', 3],
+      ['Pasy przelotu', 'g:4', 'P', 3],
+      ['Rafa danych', 'b:5 e:marker:6:krysztal', 'Z2', 4],
+      ['Przypływ', 'c:14 e:capsule:10', 'W', 2],
+      ['Hologramowi strażnicy', 'r:3', 'H3 B45', 4],
+      ['Mgła nad zatoką', 'b:5', 'D', 4],
+      ['Lustra na wodzie', 'a:pylon:4:lustro', '', 3],
+      ['Odbicia', 'a:pylon:5:lustro e:structure:2', 'D', 4],
+      ['Rejs nocny', 'g:5', 'P', 3],
+      ['Skarb zatoki', 'b:6 e:structure:2', 'H1', 4],
+      ['Statek widmo', 'e:heavy:3', 'D', 4],
+      ['Prądy', 'c:16 b:4', 'Z2', 4],
+      ['Latarnicy', 'r:4', 'H3 B50', 5],
+      ['Drugi brzeg', 'g:1 e:marker:8:krysztal', 'O D', 5],
+      ['Morze bajtów', 'b:8', '', 4],
+      ['Sztorm', 's:3000', 'Z3', 5],
+      ['Głębina', 'e:tower:2', 'D', 5],
+      ['Fale glitcha', 'e:capsule:18', 'W Z3', 5],
+      ['Rejs bez kolizji', 'g:4', 'P F Z1', 4],
+      ['Piraci', 'r:4', 'H4 B55', 5],
+      ['Zatopiony magazyn', 'e:structure:5:magazyn', 'D', 5],
+      ['Hologramowy horyzont', 't:6', 'D', 4],
+      ['Wyścig łodzi', 'e:marker:8:krysztal', 'R', 5],
+      ['Ostatni sztorm', 'e:tower:2 s:2500', 'Z3', 5],
+      ['Latarnia Hologramów', 'a:pylon:4:lustro L:latarnia', 'D H2', 5,
+        'Latarnia Hologramów wyssała światło z całej zatoki. W ciemności aktywuj cztery lustra, unikaj łowców i pochłoń latarnię (T6).']
+    ]
+  },
+  {
+    id: 'ogrody', name: 'Wiszące Ogrody', color: '#46D99A', floor: 'park', boss: 'drzewo',
+    won: 'Wiszące Ogrody odzyskane! Chmura Danych czeka.',
+    story: 'Wiszące Ogrody unoszą się nad miastem na kruchych tarasach. Tu nie ma miejsca na błąd: jedno złe zderzenie i cały ogród spada.',
+    flavor: ['Tarasy kołyszą się nad miastem.', 'Kwiaty świecą skażonym światłem.', 'W ogrodach liczy się precyzja.', 'Wiatr niesie pyłek Glitcha.',
+      'Kolejny taras do odzyskania.', 'Każda ścieżka prowadzi wyżej.', 'Tarasy pamiętają każdy ruch.', 'Ostrożnie — pod tarasem jest tylko powietrze.'],
+    success: ['Ogród rozkwita.', 'Taras odzyskany.', 'Kwiaty świecą czystym światłem.', 'Ani jednego złamanego płatka.', 'Ogrody znów oddychają.', 'Pyłek Glitcha opadł.'],
+    rows: [
+      ['Wejście do ogrodów', 'e:prop:10:drzewo', '', 3],
+      ['Delikatne pąki', 'e:capsule:12', 'F Z1', 3],
+      ['Furtki ogrodu', 'g:4', '', 3],
+      ['Rytm kwiatów', 'c:16 e:prop:8:drzewo', '', 3],
+      ['Ścieżka bez błędu', 'e:prop:10', 'F H1', 4],
+      ['Zaczarowane latarnie', 'e:prop:8:latarnia c:10', '', 3],
+      ['Złote nasiona', 'b:6', 'F Z1', 4],
+      ['Ogrodnicy', 'r:3', 'H3 B50', 4],
+      ['Altany', 'e:structure:4:pawilon', '', 4],
+      ['Kwietne pylony', 'a:pylon:5', 'F', 4],
+      ['Wiszące mosty', 'a:node:3:mostek e:structure:2', '', 4],
+      ['Szklarnia', 'e:heavy:2', 'Z2', 4],
+      ['Pnącza', 'c:18 e:structure:2', 'F', 5],
+      ['Ogród nocą', 'e:prop:12:latarnia', 'D', 4],
+      ['Kolibry', 'b:8', 'H1', 5],
+      ['Taras', 't:5', 'F', 4],
+      ['Bramy wiatru', 'g:5', 'F Z1', 3],
+      ['Strażnicy ogrodów', 'r:4', 'H4 B50', 5],
+      ['Kaskady', 'e:capsule:20 c:12', 'W', 4],
+      ['Kwitnące wieże', 'e:tower:1:wiezowiec', 'F', 5],
+      ['Pyłek glitcha', 'e:structure:4', 'Z4', 5],
+      ['Złoty ogród', 'b:7 s:1800', 'F', 5],
+      ['Mgła w ogrodzie', 'e:heavy:3', 'D H2', 5],
+      ['Ogrodowy rekord', 's:3500', '', 5],
+      ['Wiszące tarasy', 'e:tower:2', 'F Z2', 5],
+      ['Bez jednego płatka', 'c:20 b:5', 'F Z1', 5],
+      ['Ogrodnicy nocy', 'r:3 b:4', 'D H2 B45', 5],
+      ['Lustrzana sadzawka', 'a:pylon:5:lustro e:tower:1', '', 5],
+      ['Ostatni rozkwit', 't:6 e:heavy:2', 'F H2', 5],
+      ['Drzewo Światła', 'a:pylon:4 L:drzewo', 'F H2', 5,
+        'Drzewo Światła trzyma ogrody w powietrzu. Kruchy wir i łowca na ogonie: naładuj cztery pylony bez jednego zderzenia i pochłoń drzewo (T6).']
+    ]
+  },
+  {
+    id: 'chmura', name: 'Chmura Danych', color: '#C6D5E3', floor: 'dachy', boss: 'serwer',
+    story: 'Ostatnia kryjówka Glitcha: Chmura Danych nad miastem. Tu zebrał wszystko, czego się nauczył. Ostatnia bitwa o Neonowe Miasto.',
+    flavor: ['Chmura pulsuje skradzionymi danymi.', 'Glitch zna już wszystkie Twoje sztuczki.', 'Serwery szumią jak burza.', 'Każdy pakiet tutaj to kawałek miasta.',
+      'Jeszcze jeden sektor bliżej Serwera Głównego.', 'Tu Glitch jest najsilniejszy.', 'Dane płyną szybciej, niż widać.', 'Ostatnie piętra chmury.'],
+    success: ['Sektor odszyfrowany.', 'Dane wracają do miasta.', 'Chmura rzednie.', 'Glitch traci kolejny serwer.', 'Transfer zakończony.', 'Jeszcze bliżej rdzenia chmury.'],
+    rows: [
+      ['Logowanie', 'e:capsule:14 c:10', 'R', 4],
+      ['Pakiety', 'b:7', 'Z2', 4],
+      ['Zapora ogniowa', 'g:4', 'P Z2', 4],
+      ['Kopia zapasowa', 'e:structure:4', 'D', 4],
+      ['Antywirusy', 'r:3', 'H3 B55', 4],
+      ['Bufor', 's:3000', 'H2', 5],
+      ['Przeciążenie', 'a:node:5:zasilacz', 'Z4', 4],
+      ['Wyciek danych', 'e:marker:6', 'R Z1', 5],
+      ['Chmura burzowa', 'e:heavy:3', 'Z3 H1', 5],
+      ['Szyfr', 'c:20 e:heavy:1', 'F', 5],
+      ['Serwery lustrzane', 'a:pylon:6:lustro', 'D', 5],
+      ['Złote klucze', 'b:8', 'H2', 5],
+      ['Zapora', 'g:5 b:3', 'P F Z1', 4],
+      ['Administratorzy', 'r:4', 'H4 B55', 5],
+      ['Wielka migracja', 'e:tower:2', 'Z3', 5],
+      ['Ciemny sektor', 'e:structure:5', 'D H2', 5],
+      ['Pakiet zero', 'e:capsule:18', 'W Z2', 5],
+      ['Bezbłędny transfer', 'e:vehicle:10', 'F Z2', 5],
+      ['Rekord chmury', 's:4000', 'Z2', 5],
+      ['Rdzeń danych', 't:6', 'D H2', 5],
+      ['Szybki bajt', 'b:8', 'R', 5],
+      ['Burza pakietów', 'c:20 e:heavy:2', 'Z3', 5],
+      ['Główny router', 'a:node:5:zasilacz e:tower:1', 'D', 5],
+      ['Strażnicy chmury', 'r:5', 'H4 B60', 5],
+      ['Ciemna chmura', 'e:tower:3', 'D Z2', 5],
+      ['Ostatni pakiet', 'b:8 e:structure:3', 'F', 5],
+      ['Pełna synchronizacja', 'e:tower:2 s:3000', 'H1 Z2', 5],
+      ['Kaskada serwerów', 'e:heavy:4 e:tower:2', 'H2', 5],
+      ['Przed restartem', 'c:22 t:6', 'D', 5],
+      ['Serwer Główny', 'a:node:4:zasilacz L:serwer', 'D H3 Z3', 5,
+        'To tu Glitch się narodził. W ciemności, między strefami i łowcami, zbierz cztery zasilacze i pochłoń Serwer Główny. Neonowe Miasto czeka.']
+    ]
+  }
+];
+
+// v15 review: "some very hard", not most -- at most this many EKSTREMALNA
+// missions per district (the boss and the latest rows keep it; the rest
+// become BARDZO TRUDNA).
+const EXTREME_CAP = { metro: 3, bazar: 4, fabryka: 5, zatoka: 5, ogrody: 6, chmura: 10 };
+
+/** Parses CHAPTER_II rows into MISSION_SPECS entries (ids M61 onward). */
+function chapterTwoSpecs() {
+  const specs = [];
+  let n = 61;
+  CHAPTER_II.forEach((dist, di) => {
+    let extremes = 0;
+    const diffs = dist.rows.map(r => r[3]).reverse().map(d => (d === 5 && ++extremes > (EXTREME_CAP[dist.id] || 5)) ? 4 : d).reverse();
+    dist.rows.forEach((row, i) => {
+      const [name, stepStr, twistStr, , nelaText] = row;
+      const diff = diffs[i];
+      const steps = stepStr.split(' ').filter(Boolean).map(tok => {
+        const p = tok.split(':');
+        switch (p[0]) {
+          case 'e': return p[3] ? { eat: p[1], n: +p[2], glyph: p[3] } : { eat: p[1], n: +p[2] };
+          case 'b': return { eat: 'runner', n: +p[1] };
+          case 't': return { tier: +p[1] };
+          case 'c': return { combo: +p[1] };
+          case 'g': return { gates: +p[1] };
+          case 'r': return { rival: +p[1] };
+          case 'a': return { activate: p[1], n: +p[2], glyph: p[3] };
+          case 'L': return { landmark: p[1] };
+          case 's': return { score: +p[1] };
+        }
+        throw new Error('Bad mission step ' + tok);
+      });
+      const setup = {};
+      steps.forEach(st => {
+        if (st.activate && st.glyph) setup[st.activate === 'node' ? 'nodeGlyph' : 'pylonGlyph'] = st.glyph;
+        if (st.activate) delete st.glyph;
+      });
+      twistStr.split(' ').filter(Boolean).forEach(tok => {
+        const k = tok[0], v = tok.slice(1);
+        if (k === 'H') setup.hunters = +v || 1;
+        else if (k === 'R') setup.racer = true;
+        else if (k === 'D') setup.dark = true;
+        else if (k === 'Z') setup.glitch = +v || 1;
+        else if (k === 'F') setup.fragile = true;
+        else if (k === 'P') setup.gateKind = 'pas';
+        else if (k === 'O') setup.gateKind = 'portal';
+        else if (k === 'A') setup.arcLayout = true;
+        else if (k === 'B') setup.botRadius = +v;
+        else if (k === 'W') {
+          const cap = steps.find(st => st.eat === 'capsule');
+          const waves = 3;
+          setup.capsuleWaves = [0, 15, 30];
+          setup.capsulesPerWave = Math.ceil(((cap ? cap.n : 16) * 1.35) / waves);
+        }
+      });
+      if (!setup.gateKind && steps.some(st => st.gates)) setup.gateKind = 'brama';
+      // NELA: the district's flavor line, plus the hint for a twist the
+      // first time it appears in this district.
+      const twists = ['hunters', 'racer', 'dark', 'glitch', 'fragile'].filter(t => setup[t]);
+      if (steps.some(st => st.eat === 'runner')) twists.push('runner');
+      // (the twist hints themselves are listed in the briefing and on the
+      // start card -- repeating them here doubled the text)
+      const start = nelaText || dist.flavor[i % dist.flavor.length];
+      const isBoss = i === dist.rows.length - 1;
+      const next = CHAPTER_II[di + 1];
+      const spec = {
+        id: `M${n++}`, d: dist.id, diff, name, steps, setup,
+        nela: [start, isBoss ? (next ? dist.won : 'Serwer Główny pochłonięty. Glitch zniknął z Neonowego Miasta — na dobre.') : dist.success[i % dist.success.length]]
+      };
+      if (isBoss) {
+        spec.medal = { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' };
+        spec.reward = next ? { coins: 300 + di * 60, unlockDistrict: next.id } : { coins: 1200 };
+      }
+      specs.push(spec);
+    });
+  });
+  return specs;
+}
+
+// Rozdział II districts join the strip after Rdzeń Miasta (ids M61+, in
+// row order -- chapterTwoSpecs() hands out the same ids).
+(() => {
+  let n = 61;
+  CHAPTER_II.forEach((d, i) => {
+    DISTRICTS.push({ id: d.id, name: d.name, order: 7 + i, chapter: 2, missions: d.rows.map(() => `M${n++}`) });
+  });
+})();
+
+
 // v14 story: each district's situation in NELA's words, shown as her speech
 // bubble on top of the district's missions (player feedback: the story
 // lines were grey italics nobody noticed).
@@ -1538,6 +1981,7 @@ const DISTRICT_STORY = {
   dachy: 'Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.',
   rdzen: 'Rdzeń Miasta. Stąd Glitch steruje wszystkim. Pochłoń Rdzeń, a Neonowe Miasto znów zaświeci.'
 };
+CHAPTER_II.forEach(d => { DISTRICT_STORY[d.id] = d.story; });
 
 // v14: NELA's face -- a hexagonal city-AI lens (inline SVG, no image files),
 // dropped into every .nela-avatar slot (district story, briefings, results,
@@ -1601,7 +2045,12 @@ const NOUNS = {
   lustro: ['lustro', 'lustra', 'luster'],
   brama: ['bramę', 'bramy', 'bram'],
   pas_przelotu: ['pas przelotu', 'pasy przelotu', 'pasów przelotu'],
+  drzewo: ['drzewo', 'drzewa', 'drzew'],
+  latarnia: ['latarnię', 'latarnie', 'latarni'],
+  lawka: ['ławkę', 'ławki', 'ławek'],
+  kiosk: ['kiosk', 'kioski', 'kiosków'],
   rival: ['rywala', 'rywali', 'rywali'],
+  runner: ['złoty bajt', 'złote bajty', 'złotych bajtów'],
   misja: ['nowa misja', 'nowe misje', 'nowych misji']
 };
 function plural(n, forms) {
@@ -1612,18 +2061,33 @@ function plural(n, forms) {
 function nounFor(key, n) { return `${n} ${plural(n, NOUNS[key] || [key, key, key])}`; }
 
 const ACTIVATE_VERBS = { wezel: 'Wyłącz', zasilacz: 'Zbierz', mostek: 'Zasil', pylon: 'Naładuj', lustro: 'Aktywuj' };
-const SETUP_KEY = { fragment: 'fragments', capsule: 'capsules', prop: 'props', vehicle: 'vehicles', marker: 'markers', node: 'nodes', pylon: 'pylons', structure: 'structures', heavy: 'heavies', tower: 'towers' };
+const SETUP_KEY = { fragment: 'fragments', capsule: 'capsules', prop: 'props', vehicle: 'vehicles', marker: 'markers', node: 'nodes', pylon: 'pylons', structure: 'structures', heavy: 'heavies', tower: 'towers', runner: 'runners' };
 const GLYPH_KEY = { prop: 'propGlyph', marker: 'markerGlyph', vehicle: 'vehicleGlyph', node: 'nodeGlyph', pylon: 'pylonGlyph', structure: 'structureGlyph', heavy: 'heavyGlyph', tower: 'towerGlyph' };
 // The food that carries a hole from tier k to k+1 (the growth ladder).
 const LADDER_FOOD = { 1: 'fragment', 2: 'prop', 3: 'vehicle', 4: 'structure', 5: 'heavy' };
 // Rough seconds per eat at each object tier (travel + bite), calibrated by
 // the automated mission playthrough.
 const SEC_PER_EAT = { 1: 1.3, 2: 1.9, 3: 2.6, 4: 3.4, 5: 4.2, 6: 5 };
+// v15 difficulty ladder (owner: "levele powinny mieć rosnący poziom
+// trudności, a niektóre z nich powinny być bardzo trudne"). Each mission
+// carries diff 1-5; the time limit is the expert bot's median clear time
+// (MISSION_BOT_TIME, measured by qa/calibrate.mjs) x timeFactor + timePad,
+// so "BARDZO TRUDNA" leaves a human about a quarter more time than a
+// perfect, map-reading bot -- and spares shrink with the level too.
+const DIFFICULTY = [
+  null,
+  { id: 1, label: 'ŁATWA', color: '#46D99A', timeFactor: 2.1, timePad: 20, spare: 0.4 },
+  { id: 2, label: 'ŚREDNIA', color: '#50F0FA', timeFactor: 1.75, timePad: 14, spare: 0.3 },
+  { id: 3, label: 'TRUDNA', color: '#EFCB63', timeFactor: 1.5, timePad: 9, spare: 0.25 },
+  { id: 4, label: 'BARDZO TRUDNA', color: '#FF54AD', timeFactor: 1.24, timePad: 4, spare: 0.2 },
+  { id: 5, label: 'EKSTREMALNA', color: '#9875FF', timeFactor: 1.12, timePad: 3, spare: 0.15 }
+];
 const tierUnits = k => CAMPAIGN_TIERS[k - 1].minUnits;
 const round5 = v => Math.round(v / 5) * 5;
 
 function stepLabel(step, setup) {
   if (step.label) return step.label;
+  if (step.eat === 'runner') return `Złap ${nounFor('runner', step.n)}`;
   if (step.eat) return `Pochłoń ${nounFor(step.glyph || step.eat, step.n)}`;
   if (step.tier) return `Urośnij do rozmiaru T${step.tier}`;
   if (step.combo) return `Zbuduj combo ×${step.combo}`;
@@ -1653,15 +2117,29 @@ function stepTier(step) {
   return 1;
 }
 
-// v10 balance: [time limit, time-medal seconds] per mission, calibrated
-// from an automated playthrough of every mission (a greedy bot, 4 runs
-// each): limit = 2.2x the bot's slowest clear + 20 s, medal = 1.5x its
-// median clear + 8 s -- generous for a first try, tight for the medal.
-const MISSION_TIMING = { M01: [60, 20], M02: [75, 40], M03: [80, 35], M04: [90, 55], M05: [60, 15], M06: [70, 40], M07: [75, 40], M08: [95, 55], M09: [75, 40], M10: [75, 45], M11: [130, 70], M12: [120, 65], M13: [75, 45], M14: [70, 40], M15: [70, 40], M16: [105, 65], M17: [80, 40], M18: [90, 45], M19: [110, 65], M20: [130, 70], M21: [80, 50], M22: [110, 65], M23: [145, 60], M24: [130, 80], M25: [95, 55], M26: [110, 60], M27: [105, 65], M28: [60, 30], M29: [100, 60], M30: [110, 65], M31: [105, 65], M32: [105, 65], M33: [60, 35], M34: [85, 50], M35: [135, 70], M36: [60, 30], M37: [130, 65], M38: [125, 65], M39: [70, 40], M40: [120, 65], M41: [125, 75], M42: [125, 80], M43: [125, 75], M44: [105, 50], M45: [135, 75], M46: [85, 55], M47: [140, 80], M48: [130, 75], M49: [135, 85], M50: [110, 50], M51: [60, 30], M52: [130, 70], M53: [140, 80], M54: [150, 80], M55: [140, 80], M56: [130, 80], M57: [130, 75], M58: [180, 115], M59: [130, 75], M60: [125, 70] };
+// v15: the expert campaign bot's [median, p90] clear time per mission in
+// seconds (qa/calibrate.mjs: several runs per mission under an open time
+// limit). compileMission() derives the limit and the star times from these
+// and the mission's difficulty -- re-run the calibration after changing a
+// mission spec, the growth curve or the twists. Missing entries fall back
+// to an estimate.
+const MISSION_BOT_TIME = { M01: [8, 11], M02: [22, 25], M03: [16, 23], M04: [37, 43], M05: [5, 6], M06: [20, 23], M07: [20, 26], M08: [34, 50], M09: [21, 29], M10: [21, 24], M11: [38, 49], M12: [46, 95], M13: [23, 30], M14: [25, 32], M15: [29, 45], M16: [44, 73], M17: [23, 31], M18: [13, 14], M19: [42, 56], M20: [47, 74], M21: [22, 28], M22: [40, 131], M23: [41, 53], M24: [66, 128], M25: [35, 47], M26: [27, 40], M27: [37, 46], M28: [24, 31], M29: [37, 41], M30: [43, 60], M31: [33, 38], M32: [38, 45], M33: [17, 25], M34: [38, 47], M35: [41, 68], M36: [24, 34], M37: [36, 49], M38: [39, 52], M39: [25, 29], M40: [59, 128], M41: [44, 62], M42: [44, 49], M43: [45, 57], M44: [32, 37], M45: [45, 59], M46: [30, 36], M47: [81, 280], M48: [54, 63], M49: [46, 56], M50: [29, 49], M51: [11, 13], M52: [51, 61], M53: [121, 385], M54: [47, 69], M55: [50, 53], M56: [48, 132], M57: [47, 55], M58: [216, 305], M59: [44, 54], M60: [59, 61], M61: [27, 30], M62: [20, 24], M63: [39, 51], M64: [32, 39], M65: [45, 53], M66: [37, 47], M67: [20, 29], M68: [61, 79], M69: [45, 69], M70: [46, 53], M71: [55, 68], M72: [12, 14], M73: [58, 94], M74: [54, 108], M75: [30, 44], M76: [67, 93], M77: [33, 40], M78: [65, 79], M79: [47, 60], M80: [51, 64], M81: [81, 130], M82: [62, 120], M83: [86, 305], M84: [39, 52], M85: [91, 113], M86: [48, 52], M87: [27, 37], M88: [81, 101], M89: [101, 139], M90: [112, 243], M91: [18, 30], M92: [27, 36], M93: [18, 21], M94: [18, 29], M95: [26, 38], M96: [28, 33], M97: [49, 65], M98: [23, 29], M99: [29, 50], M100: [37, 46], M101: [39, 47], M102: [27, 42], M103: [24, 47], M104: [74, 88], M105: [45, 49], M106: [56, 68], M107: [47, 54], M108: [31, 48], M109: [52, 60], M110: [40, 72], M111: [20, 30], M112: [22, 29], M113: [72, 82], M114: [93, 140], M115: [62, 81], M116: [36, 47], M117: [50, 67], M118: [40, 53], M119: [41, 68], M120: [62, 88], M121: [29, 42], M122: [36, 55], M123: [31, 43], M124: [39, 71], M125: [46, 73], M126: [34, 88], M127: [44, 54], M128: [46, 84], M129: [25, 49], M130: [53, 123], M131: [76, 98], M132: [55, 81], M133: [37, 84], M134: [86, 181], M135: [50, 76], M136: [56, 66], M137: [46, 51], M138: [71, 87], M139: [48, 61], M140: [74, 213], M141: [67, 124], M142: [54, 66], M143: [75, 127], M144: [31, 53], M145: [60, 99], M146: [75, 115], M147: [58, 63], M148: [120, 174], M149: [63, 84], M150: [79, 140], M151: [27, 33], M152: [21, 26], M153: [8, 10], M154: [32, 37], M155: [45, 55], M156: [46, 59], M157: [12, 17], M158: [77, 118], M159: [13, 23], M160: [54, 135], M161: [45, 54], M162: [27, 32], M163: [52, 64], M164: [15, 18], M165: [58, 101], M166: [66, 87], M167: [55, 88], M168: [109, 155], M169: [28, 36], M170: [51, 61], M171: [69, 81], M172: [73, 86], M173: [22, 42], M174: [15, 28], M175: [123, 201], M176: [70, 96], M177: [49, 65], M178: [28, 32], M179: [85, 106], M180: [55, 86], M181: [29, 39], M182: [29, 37], M183: [11, 11], M184: [25, 32], M185: [32, 43], M186: [27, 36], M187: [47, 55], M188: [82, 185], M189: [47, 57], M190: [33, 37], M191: [45, 53], M192: [52, 60], M193: [23, 31], M194: [48, 58], M195: [56, 77], M196: [39, 52], M197: [12, 13], M198: [72, 316], M199: [22, 25], M200: [45, 72], M201: [74, 100], M202: [73, 102], M203: [80, 191], M204: [59, 79], M205: [61, 95], M206: [54, 94], M207: [153, 443], M208: [41, 52], M209: [48, 60], M210: [47, 57], M211: [24, 28], M212: [61, 72], M213: [15, 20], M214: [57, 67], M215: [76, 263], M216: [57, 82], M217: [57, 94], M218: [21, 37], M219: [59, 80], M220: [28, 30], M221: [36, 45], M222: [54, 78], M223: [42, 88], M224: [114, 163], M225: [67, 106], M226: [60, 174], M227: [21, 40], M228: [51, 88], M229: [62, 83], M230: [87, 397], M231: [51, 68], M232: [37, 44], M233: [61, 92], M234: [105, 223], M235: [89, 95], M236: [77, 84], M237: [67, 86], M238: [56, 183], M239: [36, 41], M240: [123, 201] };
+
+/** v15 twist hints (shown in the briefing, start card and as chips). */
+const TWIST_INFO = {
+  hunters: { label: 'ŁOWCY', color: '#ff3860', hint: 'Łowcy polują na mniejsze wiry. Uciekaj, dopóki ich nie przerośniesz.' },
+  racer: { label: 'ZŁODZIEJ', color: '#EFCB63', hint: 'Złodziej zbiera te same cele — rusza, gdy już możesz je zjadać. Na starcie jest większy: nie wpadaj na niego. Zbieraj szybciej niż on, a gdy urośniesz, pochłoń go — straci czas.' },
+  dark: { label: 'CIEMNOŚĆ', color: '#9875FF', hint: 'Prąd padł: widać tylko to, co blisko wiru. Strzałka prowadzi do celu.' },
+  glitch: { label: 'STREFY GLITCHA', color: '#FF54AD', hint: 'Różowe strefy glitcha zabierają masę i zrywają combo. Omijaj je.' },
+  fragile: { label: 'KRUCHY WIR', color: '#50F0FA', hint: 'Kruchy wir: jedno zderzenie z większym rywalem albo strefą i misja przepada.' },
+  runner: { label: 'ZŁOTE BAJTY', color: '#EFCB63', hint: 'Złote bajty uciekają, gdy się zbliżasz. Zapędź je w róg.' }
+};
 
 function compileMission(spec, order) {
   const s = Object.assign({}, spec.setup || {});
   const steps = spec.steps.map(st => Object.assign({}, st));
+  const diff = clamp(spec.diff || 1, 1, 5);
+  const D = DIFFICULTY[diff];
   let need = Math.max(1, ...steps.map(stepTier), s.minTier || 1);
   const goalCounts = {};
   let est = 0;
@@ -1669,12 +2147,12 @@ function compileMission(spec, order) {
     if (st.eat) {
       goalCounts[st.eat] = (goalCounts[st.eat] || 0) + st.n;
       if (st.glyph) s[GLYPH_KEY[st.eat]] = st.glyph;
-      est += st.n * SEC_PER_EAT[CAMPAIGN_ENTITY_STATS[st.eat].minTier];
+      est += st.n * (st.eat === 'runner' ? 3 : SEC_PER_EAT[CAMPAIGN_ENTITY_STATS[st.eat].minTier]);
     }
     if (st.activate) { s[SETUP_KEY[st.activate]] = Math.max(s[SETUP_KEY[st.activate]] || 0, st.n); est += st.n * 3.5; }
     if (st.landmark) { s.landmark = st.landmark; est += 6; }
     if (st.gates) { s.gates = Math.max(s.gates || 0, st.gates); est += st.gates * 7 + (s.gateKind === 'portal' ? 6 : 0); }
-    if (st.rival) { s.bots = Math.max(s.bots || 0, Math.min(3, st.rival + 1)); est += st.rival * 8; }
+    if (st.rival) { s.bots = Math.max(s.bots || 0, Math.min(4, st.rival + 1)); est += st.rival * 8; }
     if (st.combo) {
       est += st.combo * 0.8 + 8;
       // A long chain needs dense pockets of small food -- and spare pockets,
@@ -1688,7 +2166,7 @@ function compileMission(spec, order) {
     if (st.score) {
       // Score goals need a points-rich board: top up the climb food.
       est += st.score / 55;
-      need = Math.max(need, st.score >= 2500 ? 5 : st.score >= 1200 ? 4 : 3);
+      need = Math.max(need, st.score >= 3500 ? 6 : st.score >= 2500 ? 5 : st.score >= 1200 ? 4 : 3);
     }
   });
   // Bigger rivals (setup.botRadius) only become prey once the hole is
@@ -1698,19 +2176,33 @@ function compileMission(spec, order) {
     const tierForPrey = CAMPAIGN_TIERS.filter(t => t.minUnits <= preyUnits).length;
     need = Math.max(need, Math.min(6, tierForPrey + 1));
   }
+  // v15: the racer chases the first eat goal; it gets twice the goal count
+  // on the board, so the race always has a winner.
+  const raceStep = s.racer ? steps.find(st => st.eat) : null;
+  if (s.racer && !raceStep) s.racer = false;
+  if (raceStep) { s.raceType = raceStep.eat; s.raceGlyph = raceStep.glyph || null; s.raceTarget = raceStep.n; }
   Object.keys(goalCounts).forEach(type => {
     const n = goalCounts[type];
     const key = SETUP_KEY[type];
     if (type === 'capsule' && s.capsuleWaves) return;
-    s[key] = Math.max(s[key] || 0, n + Math.max(1, Math.ceil(n * 0.3)));
+    const spare = raceStep && raceStep.eat === type ? n : Math.max(1, Math.ceil(n * D.spare));
+    s[key] = Math.max(s[key] || 0, n + spare);
   });
+  const comboStep = steps.find(st => st.combo);
+  if (s.capsuleWaves && comboStep) s.capsulesPerWave = Math.max(s.capsulesPerWave || 8, comboStep.combo + 3);
+  if (s.capsuleWaves && raceStep && raceStep.eat === 'capsule') s.capsulesPerWave = Math.max(s.capsulesPerWave || 8, Math.ceil(raceStep.n * 2 / s.capsuleWaves.length));
+  // More than two hunters at once turned into a hit-lock; the extra
+  // rivals of an "H3/H4" mission roam instead (bosses keep three).
+  if (s.hunters) { s.hunters = Math.min(s.hunters, s.fragile ? 1 : diff >= 5 && s.landmark ? 3 : 2); s.bots = Math.max(s.bots || 0, s.hunters); }
   // Growth ladder up to the highest tier any step needs.
   for (let k = 1; k < need; k++) {
     const food = LADDER_FOOD[k];
     const units = tierUnits(k + 1) - tierUnits(k);
     const eats = Math.ceil(units / CAMPAIGN_ENTITY_STATS[food].growth);
     const key = SETUP_KEY[food];
-    s[key] = Math.max(s[key] || 0, Math.ceil(eats * 1.6) + 2);
+    // Hits (hunters, glitch zones) cost growth: lay more climb food then.
+    const hazard = (s.hunters ? 0.35 : 0) + (s.glitch ? 0.25 : 0);
+    s[key] = Math.max(s[key] || 0, Math.ceil(eats * (1.35 + D.spare * 0.6 + hazard)) + 2);
     est += eats * SEC_PER_EAT[k];
   }
   s.fragments = Math.max(s.fragments || 0, 8);
@@ -1719,35 +2211,57 @@ function compileMission(spec, order) {
   // asked for (combo multiplies on top), topping up the top-tier food.
   const scoreStep = steps.find(st => st.score);
   if (scoreStep) {
-    const top = LADDER_FOOD[Math.min(need, 5)];
+    const top = need >= 6 ? 'tower' : LADDER_FOOD[Math.min(need, 5)];
     const avail = () => Object.keys(SETUP_KEY).reduce((sum, t) => sum + (s[SETUP_KEY[t]] || 0) * CAMPAIGN_ENTITY_STATS[t].score, 0);
-    while (avail() < scoreStep.score * 1.5) s[SETUP_KEY[top]] = (s[SETUP_KEY[top]] || 0) + 1;
+    while (avail() < scoreStep.score * 1.3) s[SETUP_KEY[top]] = (s[SETUP_KEY[top]] || 0) + 1;
   }
+  if (s.hunters) est *= 1.12;
+  if (s.dark) est *= 1.25;
+  if (s.glitch) est *= 1 + 0.05 * s.glitch;
 
   const activateStep = steps.find(st => st.activate);
-  const timing = MISSION_TIMING[spec.id];
-  // Floor by the tier the mission needs: growing to T4+ simply takes time.
-  const floor = { 1: 60, 2: 60, 3: 70, 4: 90, 5: 110, 6: 130 }[need];
-  const timeLimit = spec.time || Math.max(floor, timing ? timing[0] : round5(est * 1.5 + 20));
-  const medal = spec.medal || { type: 'timeUnder', seconds: timing ? timing[1] : round5(est * 1.15 + 10) };
-  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w ${formatClock(medal.seconds)}`;
+  // v15 timing: the expert bot's measured clear time scaled by difficulty.
+  const bt = MISSION_BOT_TIME[spec.id];
+  const botMed = bt ? bt[0] : Math.max(20, est * 0.8);
+  const botP90 = bt ? bt[1] : botMed * 1.3;
+  // (p90 is capped: one stuck bot run must not stretch the limit.)
+  // The floor keeps a slow-but-clean expert run inside the limit on the
+  // friendly levels; the hard ones are held to the median pace.
+  // v15 review: a high-variance expert run (p90) stays inside the limit
+  // up to 1.6 x (ŁATWA) .. 1.2 x (EKSTREMALNA) the median.
+  const floor = Math.min(botP90, botMed * (1.7 - 0.1 * diff)) + 3;
+  const timeLimit = spec.time || Math.max(diff >= 4 ? 30 : 45, round5(botMed * D.timeFactor + D.timePad), round5(floor));
+  // Stars: 1 = clear, 2 = a brisk clear, 3 = expert pace (or the mission's
+  // own special challenge, kept from the v10 medals).
+  // Stars stay humanly reachable: ★★ never under 1.3 x and ★★★ never
+  // under ~1.1 x the expert bot's median.
+  const t2 = Math.min(timeLimit - 5, Math.max(round5(botMed * 1.3), round5(botMed + (timeLimit - botMed) * 0.45)));
+  const t3 = Math.min(t2 - 5, Math.max(10, round5(botMed * 1.1 + 3)));
+  const timeStar = sec => ({ type: 'timeUnder', seconds: sec, label: `Ukończ w ${formatClock(sec)}` });
+  const special = spec.medal && spec.medal.type !== 'timeUnder' ? spec.medal : null;
+  const stars = [{ type: 'clear', label: 'Ukończ misję' }, timeStar(t2), special || timeStar(t3)];
   steps.forEach(st => { st.label = stepLabel(st, s); });
   const district = DISTRICTS.find(d => d.id === spec.d);
+  const twists = ['hunters', 'racer', 'dark', 'glitch', 'fragile'].filter(k => s[k]);
+  if (goalCounts.runner) twists.push('runner');
   return {
-    id: spec.id, district: spec.d, order, name: spec.name, timeLimit,
+    id: spec.id, district: spec.d, order, name: spec.name, timeLimit, diff, twists,
     goal: {
       type: 'objectives', steps,
       label: steps.map(st => st.label).join(' · '),
       activator: activateStep ? activateStep.activate : null,
       count: activateStep ? activateStep.n : 0
     },
-    medal,
+    stars,
+    // Legacy alias (v14 single medal = today's third star).
+    medal: stars[2],
     setup: s,
     needTier: need,
     estSeconds: Math.round(est),
+    botSeconds: Math.round(botMed),
     evolutionOffer: timeLimit >= 110 && district && district.order >= 2 ? { atSeconds: 25, count: 2 } : (spec.evolution || null),
     nela: { start: spec.nela[0], success: spec.nela[1] },
-    reward: spec.reward || { coins: 30 + 10 * ((district && district.order) || 1) }
+    reward: spec.reward || { coins: 20 + 10 * ((district && district.order) || 1) + 10 * diff }
   };
 }
 
@@ -1769,162 +2283,164 @@ function compileMission(spec, order) {
 // missions are M25-M60, slotted into their districts' order below.
 const MISSION_SPECS = [
   // ---- Plac Neonów ----
-  { id: 'M01', d: 'plac', name: 'Pierwszy apetyt', steps: [{ eat: 'capsule', n: 3 }, { tier: 2 }],
+  { id: 'M01', d: 'plac', diff: 1, name: 'Pierwszy apetyt', steps: [{ eat: 'capsule', n: 3 }, { tier: 2 }],
     nela: ['Kapsuły energii ładują Twój wir mocniej niż fragmenty — trzy wystarczą, żeby urosnąć.', 'Wir pulsuje mocniej!'] },
-  { id: 'M02', d: 'plac', name: 'Dobra trasa', steps: [{ eat: 'prop', n: 6 }, { tier: 3 }], setup: { clusters: 2 },
+  { id: 'M02', d: 'plac', diff: 1, name: 'Dobra trasa', steps: [{ eat: 'prop', n: 6 }, { tier: 3 }], setup: { clusters: 2 },
     medal: { type: 'visitBothClusters', label: 'Pochłaniaj w obu skupiskach' },
     nela: ['Elementy uliczne stoją w dwóch skupiskach. Wybierz trasę i rośnij.', 'Plac nabiera kształtu.'] },
-  { id: 'M03', d: 'plac', name: 'Łańcuch reakcji', steps: [{ combo: 10 }, { eat: 'prop', n: 4 }], setup: { arcLayout: true, fragments: 20 },
+  { id: 'M03', d: 'plac', diff: 1, name: 'Łańcuch reakcji', steps: [{ combo: 10 }, { eat: 'prop', n: 4 }], setup: { arcLayout: true, fragments: 20 },
     nela: ['Fragmenty ułożyły się w łuk: połącz dziesięć kęsów bez przerwy, a potem pochłoń cztery elementy uliczne.', 'Reakcja łańcuchowa ruszyła!'] },
-  { id: 'M25', d: 'plac', name: 'Godzina szczytu', steps: [{ eat: 'vehicle', n: 4 }],
+  { id: 'M25', d: 'plac', diff: 1, name: 'Godzina szczytu', steps: [{ eat: 'vehicle', n: 4 }],
     nela: ['Samochody utknęły w korku na placu. Urośnij do T3 i zgarnij je.', 'Korek rozładowany — w Twoim wirze.'] },
-  { id: 'M26', d: 'plac', name: 'Obce dziury', steps: [{ rival: 2 }],
+  { id: 'M26', d: 'plac', diff: 2, name: 'Obce dziury', steps: [{ rival: 2 }],
     nela: ['Po placu krążą obce dziury. Urośnij i pochłoń dwie z nich.', 'Rywale zniknęli w Twoim wirze.'] },
-  { id: 'M27', d: 'plac', name: 'Wyłącznik', steps: [{ activate: 'node', n: 3 }],
+  { id: 'M27', d: 'plac', diff: 1, name: 'Wyłącznik', steps: [{ activate: 'node', n: 3 }],
     nela: ['Trzy węzły blokują zasilanie placu. Urośnij do T3 i pochłoń je.', 'Prąd znów płynie przez plac.'] },
-  { id: 'M28', d: 'plac', name: 'Neonowa seria', steps: [{ combo: 8 }, { eat: 'vehicle', n: 3 }],
+  { id: 'M28', d: 'plac', diff: 2, name: 'Neonowa seria', steps: [{ combo: 8 }, { eat: 'vehicle', n: 3 }],
     nela: ['Seria kęsów podbija mnożnik punktów. Zbuduj combo ×8 i zgarnij trzy auta.', 'Mnożnik pod sufit!'] },
-  { id: 'M29', d: 'plac', name: 'Pawilon na rogu', steps: [{ eat: 'structure', n: 2, glyph: 'pawilon' }],
+  { id: 'M29', d: 'plac', diff: 2, name: 'Pawilon na rogu', steps: [{ eat: 'structure', n: 2, glyph: 'pawilon' }],
     nela: ['Na rogu placu stoją szklane pawilony — obiekty T4. Urośnij, a zmieścisz je w sobie.', 'Pierwsze pawilony pochłonięte. Twój wir robi się naprawdę wielki.'] },
-  { id: 'M30', d: 'plac', name: 'Rekord placu', steps: [{ score: 900 }],
+  { id: 'M30', d: 'plac', diff: 2, name: 'Rekord placu', steps: [{ score: 900 }],
     nela: ['Pokaż, ile potrafisz: 900 punktów. Combo mnoży każdy kęs.', 'Plac zapamięta ten wynik.'] },
-  { id: 'M04', d: 'plac', name: 'Pierwszy wielki kęs', steps: [{ activate: 'node', n: 2 }, { landmark: 'kino' }],
+  { id: 'M04', d: 'plac', diff: 2, name: 'Pierwszy wielki kęs', steps: [{ activate: 'node', n: 2 }, { landmark: 'kino' }],
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
     nela: ['Kino to obiekt T4 i chronią je dwa węzły. Wyłącz je, urośnij i pochłoń kino.', 'Kino odzyskane. Park Impulsów otwarty!'],
     reward: { coins: 120, unlockDistrict: 'park' } },
 
   // ---- Park Impulsów ----
-  { id: 'M05', d: 'park', name: 'Pierwszy impuls', steps: [{ gates: 2 }], setup: { gateKind: 'brama' },
+  { id: 'M05', d: 'park', diff: 1, name: 'Pierwszy impuls', steps: [{ gates: 2 }], setup: { gateKind: 'brama' },
     nela: ['Bramy otwierają się w rytmie impulsu. Poczekaj, aż zaświecą, i przejdź.', 'Park znów oddycha.'] },
-  { id: 'M06', d: 'park', name: 'Zielona fala', steps: [{ eat: 'capsule', n: 12 }, { combo: 6 }],
+  { id: 'M06', d: 'park', diff: 2, name: 'Zielona fala', steps: [{ eat: 'capsule', n: 12 }, { combo: 6 }],
     setup: { capsuleWaves: [0, 16, 32], capsulesPerWave: 8 },
     medal: { type: 'comboAtLeast', count: 8, label: 'Zbuduj combo ×8' },
     nela: ['Kapsuły napływają falami. Łap je seriami.', 'Energia płynie dalej.'] },
-  { id: 'M07', d: 'park', name: 'Dwie drogi', steps: [{ eat: 'marker', n: 3, glyph: 'znacznik_ogrodu' }],
+  { id: 'M07', d: 'park', diff: 1, name: 'Dwie drogi', steps: [{ eat: 'marker', n: 3, glyph: 'znacznik_ogrodu' }],
     medal: { type: 'bothRoutesUsed', label: 'Zbierz znaczniki z obu stron parku' },
     nela: ['Znaczniki ogrodu leżą po obu stronach alei. Skrót kusi, obejście też prowadzi do celu.', 'Masz własny sposób na ten park.'] },
-  { id: 'M31', d: 'park', name: 'Ogrodowe bramy', steps: [{ gates: 3 }, { eat: 'prop', n: 6 }], setup: { gateKind: 'brama' },
+  { id: 'M31', d: 'park', diff: 2, name: 'Ogrodowe bramy', steps: [{ gates: 3 }, { eat: 'prop', n: 6 }], setup: { gateKind: 'brama' },
     nela: ['Trzy bramy, jeden rytm. Po drodze posprzątaj alejki.', 'Alejki lśnią czystością.'] },
-  { id: 'M32', d: 'park', name: 'Pawilony w parku', steps: [{ eat: 'structure', n: 3, glyph: 'pawilon' }],
+  { id: 'M32', d: 'park', diff: 2, name: 'Pawilony w parku', steps: [{ eat: 'structure', n: 3, glyph: 'pawilon' }],
     nela: ['Szklane pawilony zasłaniają widok na fontannę. Zrób miejsce.', 'Widok na fontannę odsłonięty.'] },
-  { id: 'M33', d: 'park', name: 'Bieg wokół stawu', steps: [{ combo: 12 }, { eat: 'structure', n: 1, glyph: 'pawilon' }], setup: { arcLayout: true, fragments: 24 },
+  { id: 'M33', d: 'park', diff: 3, name: 'Bieg wokół stawu', steps: [{ combo: 12 }, { eat: 'structure', n: 1, glyph: 'pawilon' }], setup: { arcLayout: true, fragments: 24 },
     nela: ['Fragmenty otaczają staw: dwanaście kęsów bez przerwy. Potem urośnij do T4 i pochłoń pawilon.', 'Taki rytm słychać w całym parku.'] },
-  { id: 'M34', d: 'park', name: 'Strażnicy parku', steps: [{ rival: 3 }],
-    nela: ['Trzech rywali patroluje park. Urośnij szybciej niż oni.', 'Teraz to Ty pilnujesz parku.'] },
-  { id: 'M35', d: 'park', name: 'Reklamy w zieleni', steps: [{ eat: 'structure', n: 3, glyph: 'billboard' }],
+  { id: 'M34', d: 'park', diff: 2, name: 'Strażnicy parku', steps: [{ rival: 3 }], setup: { hunters: 1 },
+    nela: ['Po parku krąży czterech rywali, a jeden z nich poluje na Ciebie. Urośnij szybciej niż oni i pochłoń trzech.', 'Teraz to Ty pilnujesz parku.'] },
+  { id: 'M35', d: 'park', diff: 2, name: 'Reklamy w zieleni', steps: [{ eat: 'structure', n: 3, glyph: 'billboard' }],
     nela: ['Ktoś postawił billboardy między drzewami. Usuń je.', 'Zieleń znów jest zielona.'] },
-  { id: 'M36', d: 'park', name: 'Pylony ogrodu', steps: [{ activate: 'pylon', n: 3 }, { combo: 6 }],
+  { id: 'M36', d: 'park', diff: 3, name: 'Pylony ogrodu', steps: [{ activate: 'pylon', n: 3 }, { combo: 6 }],
     medal: { type: 'pylonsUnbroken', label: 'Naładuj pylony bez przerywania combo' },
     nela: ['Pylony zasilają fontannę. Naładuj wszystkie trzy.', 'Pylony buczą równym rytmem.'] },
-  { id: 'M08', d: 'park', name: 'Serce ogrodu', steps: [{ activate: 'pylon', n: 3 }, { landmark: 'fontanna' }],
+  { id: 'M08', d: 'park', diff: 3, name: 'Serce ogrodu', steps: [{ activate: 'pylon', n: 3 }, { landmark: 'fontanna' }],
     medal: { type: 'pylonsUnbroken', label: 'Naładuj pylony bez przerywania combo' },
     nela: ['Jeszcze trzy impulsy. Naładuj pylony i obudź serce ogrodu.', 'Fontanna wróciła. Port Syntez czeka!'],
     reward: { coins: 150, unlockDistrict: 'port' } },
 
   // ---- Port Syntez ----
-  { id: 'M09', d: 'port', name: 'Dostawa energii', steps: [{ eat: 'prop', n: 6, glyph: 'skrzynia' }, { tier: 3 }],
+  { id: 'M09', d: 'port', diff: 2, name: 'Dostawa energii', steps: [{ eat: 'prop', n: 6, glyph: 'skrzynia' }, { tier: 3 }],
     nela: ['Port stoi bez prądu. Zacznij od skrzyń przy nabrzeżu.', 'Pierwsza dostawa dotarła.'] },
-  { id: 'M10', d: 'port', name: 'Pełny załadunek', steps: [{ eat: 'marker', n: 3, glyph: 'paleta' }],
+  { id: 'M10', d: 'port', diff: 2, name: 'Pełny załadunek', steps: [{ eat: 'marker', n: 3, glyph: 'paleta' }],
     medal: { type: 'bothRoutesUsed', label: 'Zbierz palety z obu stron doku' },
     nela: ['Oznaczone palety stoją po obu stronach doku. Znajdź je.', 'Załadunek kompletny.'] },
-  { id: 'M11', d: 'port', name: 'Konwój', steps: [{ eat: 'vehicle', n: 6, glyph: 'konwoj' }],
+  { id: 'M11', d: 'port', diff: 2, name: 'Konwój', steps: [{ eat: 'vehicle', n: 6, glyph: 'konwoj' }],
     nela: ['Konwój wjeżdża do portu. Zatrzymaj sześć jego pojazdów.', 'Konwój zatrzymany.'] },
-  { id: 'M37', d: 'port', name: 'Magazyny', steps: [{ eat: 'structure', n: 3, glyph: 'magazyn' }],
+  { id: 'M37', d: 'port', diff: 2, name: 'Magazyny', steps: [{ eat: 'structure', n: 3, glyph: 'magazyn' }],
     nela: ['Magazyny portu pękają w szwach. Opróżnij trzy.', 'Magazyny puste, port lżejszy.'] },
-  { id: 'M38', d: 'port', name: 'Ciężki towar', steps: [{ eat: 'heavy', n: 1, glyph: 'ciezarowka' }],
+  { id: 'M38', d: 'port', diff: 3, name: 'Ciężki towar', steps: [{ eat: 'heavy', n: 1, glyph: 'ciezarowka' }],
     nela: ['Do portu wjechała ciężarówka — obiekt T5. Urośnij przez magazyny i ją pochłoń.', 'Pierwszy ciężki pojazd! Teraz nic Cię nie zatrzyma.'] },
-  { id: 'M39', d: 'port', name: 'Nocna zmiana', steps: [{ eat: 'prop', n: 6, glyph: 'skrzynia' }, { combo: 10 }],
+  { id: 'M39', d: 'port', diff: 3, name: 'Nocna zmiana', steps: [{ eat: 'prop', n: 6, glyph: 'skrzynia' }, { combo: 10 }],
     nela: ['Nocna zmiana. Skrzynie i jedna długa seria kęsów.', 'Załadunek w rekordowym tempie.'] },
-  { id: 'M40', d: 'port', name: 'Dokerzy', steps: [{ rival: 3 }], setup: { botRadius: 40 },
+  { id: 'M40', d: 'port', diff: 3, name: 'Dokerzy', steps: [{ rival: 3 }], setup: { hunters: 2, botRadius: 40 },
     nela: ['Dokerzy to więksi rywale. Zbliż się dopiero, gdy wyraźnie ich przerośniesz.', 'Port należy do Ciebie.'] },
-  { id: 'M41', d: 'port', name: 'Flota ciężarówek', steps: [{ eat: 'heavy', n: 3, glyph: 'ciezarowka' }],
+  { id: 'M41', d: 'port', diff: 3, name: 'Flota ciężarówek', steps: [{ eat: 'heavy', n: 3, glyph: 'ciezarowka' }],
     nela: ['Cała flota czeka na rozładunek. Pochłoń trzy ciężarówki.', 'Flota zniknęła z nabrzeża.'] },
-  { id: 'M42', d: 'port', name: 'Zasilacze portu', steps: [{ activate: 'node', n: 4 }, { eat: 'structure', n: 2, glyph: 'magazyn' }],
+  { id: 'M42', d: 'port', diff: 3, name: 'Zasilacze portu', steps: [{ activate: 'node', n: 4 }, { eat: 'structure', n: 2, glyph: 'magazyn' }],
     setup: { nodeGlyph: 'zasilacz' },
     nela: ['Dźwig potrzebuje prądu. Zbierz cztery zasilacze i zrób miejsce przy magazynach.', 'Zasilanie gotowe. Dźwig drgnął.'] },
-  { id: 'M12', d: 'port', name: 'Upadek dźwigu', steps: [{ activate: 'node', n: 3 }, { landmark: 'dzwig' }],
-    setup: { nodeGlyph: 'zasilacz' },
+  { id: 'M12', d: 'port', diff: 4, name: 'Upadek dźwigu', steps: [{ activate: 'node', n: 3 }, { landmark: 'dzwig' }],
+    setup: { hunters: 1, nodeGlyph: 'zasilacz' },
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
     nela: ['Trzy zasilacze, jeden dźwig T5. Rośnij po drodze.', 'Dźwig opadł. Galeria Glitch się otwiera!'],
     reward: { coins: 180, unlockDistrict: 'galeria' } },
 
   // ---- Galeria Glitch ----
-  { id: 'M13', d: 'galeria', name: 'Druga strona', steps: [{ gates: 1 }, { eat: 'marker', n: 6, glyph: 'krysztal' }],
+  { id: 'M13', d: 'galeria', diff: 2, name: 'Druga strona', steps: [{ gates: 1 }, { eat: 'marker', n: 6, glyph: 'krysztal' }],
     setup: { gateKind: 'portal' },
     nela: ['Portal migocze — wejdź, gdy świeci. Kryształy czekają po drugiej stronie.', 'Druga strona galerii odzyskana.'] },
-  { id: 'M14', d: 'galeria', name: 'Witryny', steps: [{ eat: 'marker', n: 4, glyph: 'witryna' }],
+  { id: 'M14', d: 'galeria', diff: 2, name: 'Witryny', steps: [{ eat: 'marker', n: 4, glyph: 'witryna' }],
     medal: { type: 'comboAtLeast', count: 5, label: 'Zbuduj combo ×5' },
     nela: ['Witryny wciąż świecą starym światłem. Zgaś je.', 'Witryny zgasły. Galeria czeka na nową wystawę.'] },
-  { id: 'M15', d: 'galeria', name: 'Przed zamknięciem', steps: [{ eat: 'marker', n: 4, glyph: 'klucz_sektora' }],
-    nela: ['Sektory zamykają się jeden po drugim. Zbierz klucze, zanim zgasną światła.', 'Wszystkie sektory otwarte na nowo.'] },
-  { id: 'M43', d: 'galeria', name: 'Ekrany', steps: [{ eat: 'structure', n: 4, glyph: 'billboard' }],
+  { id: 'M15', d: 'galeria', diff: 3, name: 'Przed zamknięciem', steps: [{ eat: 'marker', n: 4, glyph: 'klucz_sektora' }], setup: { dark: true },
+    nela: ['Światła w galerii już zgasły. Zbierz klucze sektorów po ciemku — strzałka pokaże drogę.', 'Wszystkie sektory otwarte na nowo.'] },
+  { id: 'M43', d: 'galeria', diff: 3, name: 'Ekrany', steps: [{ eat: 'structure', n: 4, glyph: 'billboard' }],
     nela: ['Ekrany galerii nadają szum. Wyłącz je, pochłaniając.', 'Cisza. Wreszcie widać sztukę.'] },
-  { id: 'M44', d: 'galeria', name: 'Rój glitcha', steps: [{ combo: 14 }, { eat: 'heavy', n: 1, glyph: 'tramwaj' }],
+  { id: 'M44', d: 'galeria', diff: 4, name: 'Rój glitcha', steps: [{ combo: 14 }, { eat: 'heavy', n: 1, glyph: 'tramwaj' }],
     nela: ['Glitch zbił fragmenty w gęste roje: czternaście kęsów bez przerwy. Potem urośnij do T5 i pochłoń tramwaj.', 'Glitch naprawiony rytmem.'] },
-  { id: 'M45', d: 'galeria', name: 'Tramwaj sztuki', steps: [{ eat: 'heavy', n: 2, glyph: 'tramwaj' }],
+  { id: 'M45', d: 'galeria', diff: 3, name: 'Tramwaj sztuki', steps: [{ eat: 'heavy', n: 2, glyph: 'tramwaj' }],
     nela: ['Tramwaje wożą eksponaty między salami. Pochłoń dwa — razem z ładunkiem.', 'Eksponaty bezpieczne w Twoim rdzeniu.'] },
-  { id: 'M46', d: 'galeria', name: 'Lustrzane odbicia', steps: [{ activate: 'pylon', n: 4 }], setup: { pylonGlyph: 'lustro' },
+  { id: 'M46', d: 'galeria', diff: 3, name: 'Lustrzane odbicia', steps: [{ activate: 'pylon', n: 4 }], setup: { pylonGlyph: 'lustro' },
     medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra bez przerywania combo' },
     nela: ['Cztery lustra kierują światło do galerii. Aktywuj wszystkie.', 'Światło odbija się po całej galerii.'] },
-  { id: 'M47', d: 'galeria', name: 'Kuratorzy', steps: [{ rival: 3 }], setup: { botRadius: 50 },
+  { id: 'M47', d: 'galeria', diff: 4, name: 'Kuratorzy', steps: [{ rival: 3 }], setup: { hunters: 2, botRadius: 50 },
     nela: ['Kuratorzy galerii to duzi rywale. Rośnij, aż wyraźnie ich przerośniesz, i pochłoń trzech.', 'Teraz to Ty decydujesz, co wisi w galerii.'] },
-  { id: 'M48', d: 'galeria', name: 'Wielka wystawa', steps: [{ score: 2500 }],
+  { id: 'M48', d: 'galeria', diff: 3, name: 'Wielka wystawa', steps: [{ score: 2500 }],
     nela: ['Zdobądź 2500 punktów — tyle warta jest wielka wystawa.', 'Wystawa otwarta z hukiem.'] },
-  { id: 'M16', d: 'galeria', name: 'Kaskada luster', steps: [{ activate: 'pylon', n: 3 }, { landmark: 'galeria_glowna' }],
-    setup: { pylonGlyph: 'lustro' },
+  { id: 'M16', d: 'galeria', diff: 4, name: 'Kaskada luster', steps: [{ activate: 'pylon', n: 3 }, { landmark: 'galeria_glowna' }],
+    setup: { glitch: 2, pylonGlyph: 'lustro' },
     medal: { type: 'pylonsUnbroken', label: 'Aktywuj lustra bez przerywania combo' },
     nela: ['Trzy lustra otwierają galerię — obiekt T5. Aktywuj je i urośnij.', 'Galeria lśni jak nowa. Dachy Prądu czekają!'],
     reward: { coins: 220, unlockDistrict: 'dachy' } },
 
   // ---- Dachy Prądu ----
-  { id: 'M17', d: 'dachy', name: 'Nad miastem', steps: [{ eat: 'prop', n: 6, glyph: 'modul_dachowy' }, { tier: 3 }],
+  { id: 'M17', d: 'dachy', diff: 2, name: 'Nad miastem', steps: [{ eat: 'prop', n: 6, glyph: 'modul_dachowy' }, { tier: 3 }],
     nela: ['Dachy Prądu widać z każdego okna. Zacznij od modułów na dachach.', 'Pierwszy dach znów świeci.'] },
-  { id: 'M18', d: 'dachy', name: 'Tor lotu', steps: [{ gates: 3 }], setup: { gateKind: 'pas' },
+  { id: 'M18', d: 'dachy', diff: 3, name: 'Tor lotu', steps: [{ gates: 3 }], setup: { gateKind: 'pas' },
     nela: ['Trzy pasy przelotu. Przeleć przez każdy w całości, póki świeci.', 'Tor lotu czysty od krawędzi do krawędzi.'] },
-  { id: 'M19', d: 'dachy', name: 'Brama iglicy', steps: [{ activate: 'node', n: 2 }, { landmark: 'iglica_wejscie' }],
+  { id: 'M19', d: 'dachy', diff: 3, name: 'Brama iglicy', steps: [{ activate: 'node', n: 2 }, { landmark: 'iglica_wejscie' }],
     setup: { nodeGlyph: 'mostek' },
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
     nela: ['Dwa mostki prowadzą do bramy iglicy (T5). Zasil je i urośnij.', 'Brama otwarta. Iglica czeka.'] },
-  { id: 'M49', d: 'dachy', name: 'Parking na dachu', steps: [{ eat: 'heavy', n: 3, glyph: 'autobus' }],
+  { id: 'M49', d: 'dachy', diff: 3, name: 'Parking na dachu', steps: [{ eat: 'heavy', n: 3, glyph: 'autobus' }],
     nela: ['Ktoś zaparkował autobusy na dachu. Nie pytaj, jak — po prostu je pochłoń.', 'Dach odciążony.'] },
-  { id: 'M50', d: 'dachy', name: 'Burza', steps: [{ combo: 15 }, { eat: 'heavy', n: 1, glyph: 'autobus' }],
+  { id: 'M50', d: 'dachy', diff: 4, name: 'Burza', steps: [{ combo: 15 }, { eat: 'heavy', n: 1, glyph: 'autobus' }], setup: { glitch: 2 },
     nela: ['Nadciąga burza: piętnaście kęsów bez przerwy, a potem pochłoń autobus, zanim uderzy piorun.', 'Burza przeszła bokiem.'] },
-  { id: 'M51', d: 'dachy', name: 'Wyścig po dachach', steps: [{ gates: 4 }], setup: { gateKind: 'brama' },
+  { id: 'M51', d: 'dachy', diff: 3, name: 'Wyścig po dachach', steps: [{ gates: 4 }], setup: { gateKind: 'brama' },
     nela: ['Cztery bramy na krawędziach dachów. Wyczuj rytm każdej.', 'Nikt nie śmiga po dachach szybciej.'] },
-  { id: 'M52', d: 'dachy', name: 'Pierwszy maszt', steps: [{ eat: 'tower', n: 1, glyph: 'maszt' }],
+  { id: 'M52', d: 'dachy', diff: 3, name: 'Pierwszy maszt', steps: [{ eat: 'tower', n: 1, glyph: 'maszt' }],
     nela: ['Maszt radiowy to obiekt T6 — największa klasa w mieście. Urośnij do granic.', 'Maszt runął. Jesteś kolosem.'] },
-  { id: 'M53', d: 'dachy', name: 'Strażnicy dachów', steps: [{ rival: 4 }], setup: { botRadius: 60 },
+  { id: 'M53', d: 'dachy', diff: 4, name: 'Strażnicy dachów', steps: [{ rival: 4 }], setup: { hunters: 3, botRadius: 60 },
     nela: ['Strażnicy dachów są ogromni. Na początku omijaj ich, rośnij — potem pochłoń czterech.', 'Dachy są Twoje.'] },
-  { id: 'M54', d: 'dachy', name: 'Las anten', steps: [{ eat: 'heavy', n: 2, glyph: 'autobus' }, { eat: 'tower', n: 2, glyph: 'maszt' }],
+  { id: 'M54', d: 'dachy', diff: 4, name: 'Las anten', steps: [{ eat: 'heavy', n: 2, glyph: 'autobus' }, { eat: 'tower', n: 2, glyph: 'maszt' }],
     nela: ['Las anten zagłusza sygnał. Urośnij na autobusach i powal dwa maszty.', 'Sygnał czysty jak nigdy.'] },
-  { id: 'M20', d: 'dachy', name: 'Iglica', steps: [{ landmark: 'iglica' }],
+  { id: 'M20', d: 'dachy', diff: 4, name: 'Iglica', steps: [{ landmark: 'iglica' }], setup: { hunters: 2 },
     nela: ['Najwyższy punkt miasta. Iglica to T6 — urośnij do granic i ją pochłoń.', 'Iglica pochłonięta. Rdzeń Miasta się budzi!'],
     reward: { coins: 260, unlockDistrict: 'rdzen' } },
 
   // ---- Rdzeń Miasta ----
-  { id: 'M21', d: 'rdzen', name: 'Powrót sygnału', steps: [{ eat: 'marker', n: 4, glyph: 'emiter' }],
+  { id: 'M21', d: 'rdzen', diff: 3, name: 'Powrót sygnału', steps: [{ eat: 'marker', n: 4, glyph: 'emiter' }],
     nela: ['Sygnał milczy od dawna. Znajdź cztery emitery.', 'Sygnał wraca do Rdzenia.'] },
-  { id: 'M22', d: 'rdzen', name: 'Czytelny chaos', steps: [{ combo: 12 }, { score: 2000 }],
+  { id: 'M22', d: 'rdzen', diff: 4, name: 'Czytelny chaos', steps: [{ combo: 12 }, { score: 2000 }], setup: { glitch: 2 },
     nela: ['Chaos ma swój rytm: zbuduj combo ×12 i zdobądź 2000 punktów.', 'Chaos opanowany.'] },
-  { id: 'M23', d: 'rdzen', name: 'Ostatni obwód', steps: [{ activate: 'node', n: 4 }, { tier: 5 }],
+  { id: 'M23', d: 'rdzen', diff: 3, name: 'Ostatni obwód', steps: [{ activate: 'node', n: 4 }, { tier: 5 }],
     nela: ['Wysokie napięcie. Wyłącz cztery węzły i urośnij do T5, żeby wytrzymać prąd.', 'Obwód zamknięty.'] },
-  { id: 'M55', d: 'rdzen', name: 'Wieżowce', steps: [{ eat: 'tower', n: 2, glyph: 'wiezowiec' }],
+  { id: 'M55', d: 'rdzen', diff: 3, name: 'Wieżowce', steps: [{ eat: 'tower', n: 2, glyph: 'wiezowiec' }],
     nela: ['Wieżowce Rdzenia rzucają cień na całe miasto. Pochłoń dwa.', 'Niebo nad Rdzeniem odsłonięte.'] },
-  { id: 'M56', d: 'rdzen', name: 'Kopuła', steps: [{ eat: 'heavy', n: 3 }, { eat: 'tower', n: 1, glyph: 'kopula' }],
+  { id: 'M56', d: 'rdzen', diff: 4, name: 'Kopuła', steps: [{ eat: 'heavy', n: 3 }, { eat: 'tower', n: 1, glyph: 'kopula' }], setup: { hunters: 1 },
     nela: ['Pod kopułą bije serce miasta. Najpierw ciężkie pojazdy, potem sama kopuła.', 'Kopuła otwarta.'] },
-  { id: 'M57', d: 'rdzen', name: 'Wszystkie rozmiary', steps: [{ tier: 6 }],
+  { id: 'M57', d: 'rdzen', diff: 4, name: 'Wszystkie rozmiary', steps: [{ tier: 6 }],
     nela: ['Od fragmentu do wieżowca: przejdź wszystkie sześć rozmiarów w jednej misji.', 'Sześć rozmiarów. Jedna dziura.'] },
-  { id: 'M58', d: 'rdzen', name: 'Ostatni strażnicy', steps: [{ rival: 5 }], setup: { botRadius: 70 },
+  { id: 'M58', d: 'rdzen', diff: 5, name: 'Ostatni strażnicy', steps: [{ rival: 5 }], setup: { hunters: 2, botRadius: 70 },
     nela: ['Ostatni strażnicy Rdzenia to giganci. Unikaj ich, dopóki nie urośniesz — potem pochłoń pięciu.', 'Nikt już nie strzeże Rdzenia.'] },
-  { id: 'M59', d: 'rdzen', name: 'Sygnał z wieży', steps: [{ activate: 'pylon', n: 3 }, { eat: 'tower', n: 2, glyph: 'maszt' }],
+  { id: 'M59', d: 'rdzen', diff: 4, name: 'Sygnał z wieży', steps: [{ activate: 'pylon', n: 3 }, { eat: 'tower', n: 2, glyph: 'maszt' }],
     nela: ['Trzy pylony nadają sygnał przez maszty. Naładuj pylony, potem pochłoń maszty.', 'Sygnał niesie się po całym mieście.'] },
-  { id: 'M60', d: 'rdzen', name: 'Rekord Rdzenia', steps: [{ score: 5000 }],
+  { id: 'M60', d: 'rdzen', diff: 4, name: 'Rekord Rdzenia', steps: [{ score: 5000 }],
     nela: ['Ostatni sprawdzian przed finałem: 5000 punktów.', 'Rekord, którego nikt nie pobije.'] },
-  { id: 'M24', d: 'rdzen', name: 'Miasto na nowo', steps: [{ activate: 'node', n: 3 }, { landmark: 'rdzen_miasta_glowny' }],
+  { id: 'M24', d: 'rdzen', diff: 5, name: 'Miasto na nowo', steps: [{ activate: 'node', n: 3 }, { landmark: 'rdzen_miasta_glowny' }], setup: { hunters: 2 },
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
-    nela: ['Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.', 'Miasto czyste. Neonowe Miasto znów świeci.'],
-    reward: { coins: 400, unlockSkin: 'aurora' } }
+    nela: ['Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.', 'Rdzeń odzyskany! Ale Glitch uciekł pod ziemię — Tunele Metra czekają.'],
+    reward: { coins: 400, unlockSkin: 'aurora', unlockDistrict: 'metro' } }
 ];
+MISSION_SPECS.push(...chapterTwoSpecs());
+
 
 const CAMPAIGN_MISSIONS = [
   // Prologue tutorial, not part of the GDD's 24-mission list. Player
@@ -2012,13 +2528,16 @@ const FEATURE_GATES = {
     || (s.owned || []).length > 1 || ((s.auras || {}).owned || []).length > 1
     || ((s.effects || {}).owned || []).length > 1 || ((s.overdriveSkins || {}).owned || []).length > 1,
   // v10: M03 (M04 became Plac Neonów's boss, the district's last mission).
-  wyzwania: s => !!(s.campaign.completed['M03'] || s.campaign.completed['M04'])
+  wyzwania: s => !!(s.campaign.completed['M03'] || s.campaign.completed['M04']),
+  // v15: mission boosters after Plac Neonów's boss.
+  boosters: s => !!s.campaign.completed[CONFIG.boosters.unlockMission]
 };
 
 const UNLOCK_ICONS = {
   arena: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>',
   warsztat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5a5.5 5.5 0 01-7.44 5.16L6 20l-2-2 7.34-7.66A5.5 5.5 0 1121 7.5z"/></svg>',
   wyzwania: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M7 5H4a3 3 0 003 3M17 5h3a3 3 0 01-3 3"/></svg>',
+  boosters: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>',
   district: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>'
 };
 
@@ -2041,6 +2560,11 @@ const FEATURE_UNLOCKS = [
     desc: 'Codzienna misja i Wyzwanie dnia: ta sama mapa dla wszystkich, walka o rekord i serię dni z rzędu.',
     cta: 'OTWÓRZ WYZWANIA', isUnlocked: s => FEATURE_GATES.wyzwania(s)
   },
+  {
+    id: 'boosters', eyebrow: 'NOWOŚĆ W ODPRAWIE', title: 'WZMOCNIENIA', color: '#46D99A', icon: UNLOCK_ICONS.boosters,
+    desc: 'Przed każdą misją możesz wziąć Zegar (+15 s), Turbo start, Magnes albo Tarczę. Na start dostajesz po jednym w prezencie!',
+    cta: 'ŚWIETNIE', isUnlocked: s => FEATURE_GATES.boosters(s)
+  },
   ...DISTRICTS.filter(d => d.id !== 'plac').map(d => ({
     id: 'district:' + d.id, districtId: d.id, eyebrow: 'NOWA DZIELNICA', title: d.name.toUpperCase(), color: '#9875FF',
     icon: UNLOCK_ICONS.district,
@@ -2059,7 +2583,7 @@ function campaignDistrictOf(missionId) {
 }
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
-const SAVE_SCHEMA_VERSION = 11;
+const SAVE_SCHEMA_VERSION = 12;
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -2082,6 +2606,13 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 /** 27355 -> "27 355" (thin no-break space), for scores on the results UI. */
 function formatNum(n) {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
+}
+
+/** v15: long waits as "1 h 40 min" (formatClock() is for m:ss clocks). */
+function formatDuration(sec) {
+  if (sec < 3600) return formatClock(sec);
+  const h = Math.floor(sec / 3600), m = Math.ceil((sec % 3600) / 60);
+  return m ? `${h} h ${m} min` : `${h} h`;
 }
 
 function formatClock(sec) {
@@ -2229,7 +2760,14 @@ function defaultSave() {
     // district so a fresh save can play Mission 01 with no prior unlock.
     // v8: discoveredTypes/discoveredHoleEating track what Arena is allowed
     // to show (see createObjects()) -- empty until M00 teaches them.
-    campaign: { unlockedDistricts: ['plac'], completed: {}, medals: {}, discoveredTypes: [], discoveredHoleEating: false },
+    campaign: { unlockedDistricts: ['plac'], completed: {}, medals: {}, discoveredTypes: [], discoveredHoleEating: false,
+      // v15: stars = bitmask per mission (1 clear, 2 fast, 4 expert/special),
+      // attempts/fails = tries and defeats in a row, pity = NELA's free
+      // Zegar already lent, starChests = star chests opened.
+      stars: {}, attempts: {}, fails: {}, pity: {}, starChests: 0 },
+    // v15: session energy (CONFIG.energy) and one-shot mission boosters.
+    energy: { value: 5, lastTick: 0, infiniteUntil: 0, freeDailyDate: null },
+    boosters: { time: 0, start: 0, magnet: 0, shield: 0, gift: false },
     // v7: two more Warsztat cosmetic categories (GDD 4.0 §5.3) alongside
     // owned/selected (ring skins) and auras (trail).
     effects: { owned: ['classic'], selected: 'classic' },
@@ -2279,7 +2817,11 @@ function sanitizeSave(save) {
   };
   const out = fix(save, def);
   // Free-form maps keep their own keys (fix() only knows defaultSave's keys).
-  for (const k of ['completed', 'medals']) out.campaign[k] = (save.campaign && typeof save.campaign[k] === 'object' && save.campaign[k]) || {};
+  for (const k of ['completed', 'medals', 'stars', 'attempts', 'fails', 'pity']) out.campaign[k] = (save.campaign && typeof save.campaign[k] === 'object' && save.campaign[k]) || {};
+  for (const k of ['stars', 'attempts', 'fails']) {
+    for (const id of Object.keys(out.campaign[k])) { const v = Number(out.campaign[k][id]); out.campaign[k][id] = Number.isFinite(v) ? clamp(Math.floor(v), 0, k === 'stars' ? 7 : 1e6) : 0; }
+  }
+  out.energy.value = Math.min(out.energy.value, CONFIG.energy.cap);
   out.ads.used = (save.ads && typeof save.ads.used === 'object' && save.ads.used) || {};
   out.coins = Math.min(out.coins, SAVE_CURRENCY_CAP);
   out.prisms = Math.min(out.prisms, SAVE_CURRENCY_CAP);
@@ -2476,6 +3018,32 @@ function migrateSave(data) {
       retention: { installDate: null, activeDays: [], sessions: 0 },
       challenge: null,
       integrity: { tampered: false }
+    };
+  }
+
+  if (data.schemaVersion < 12) {
+    // v11 -> v12 (v15 "Wyzwanie"): three stars instead of one medal, energy,
+    // mission boosters, Rozdział II. A cleared mission keeps star 1; its old
+    // medal counts as star 2 (a time medal) or star 3 (a special challenge).
+    // A save that already beat the finale (M24) gets Rozdział II opened.
+    const c = { ...data.campaign };
+    const stars = {};
+    Object.keys(c.completed || {}).forEach(id => { if (c.completed[id]) stars[id] = 1; });
+    Object.keys(c.medals || {}).forEach(id => {
+      if (!c.medals[id]) return;
+      const def = CAMPAIGN_MISSIONS.find(m => m.id === id);
+      stars[id] = (stars[id] || 1) | (def && def.medal && def.medal.type !== 'timeUnder' ? 4 : 2);
+    });
+    const unlocked = (c.unlockedDistricts || ['plac']).slice();
+    if (c.completed && c.completed.M24 && !unlocked.includes('metro')) unlocked.push('metro');
+    data = {
+      ...data,
+      schemaVersion: 12,
+      // Stars already held don't open a burst of chests at once.
+      campaign: { ...c, unlockedDistricts: unlocked, stars, attempts: {}, fails: {}, pity: {},
+        starChests: Math.floor(Object.values(stars).reduce((n, b) => n + (b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1), 0) / CONFIG.stars.chestEvery) },
+      energy: { value: CONFIG.energy.max, lastTick: 0, infiniteUntil: 0, freeDailyDate: null },
+      boosters: { time: 0, start: 0, magnet: 0, shield: 0, gift: false }
     };
   }
 
@@ -3465,6 +4033,136 @@ const OBJECT_ART = {
     c.beginPath(); c.moveTo(0, -r * 0.95); c.lineTo(0, r * 0.85); c.moveTo(-r * 0.75, -r * 0.05); c.lineTo(r * 0.75, -r * 0.05); c.stroke();
   },
 
+  /* ---------- v15: Rozdział II boss landmarks + the golden byte ---------- */
+
+  lm_stacja(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.86, r * 1.0, r * 0.15, 0, 0, Math.PI * 2); c.fill();
+    roundRectPath(c, -r * 0.92, -r * 0.2, r * 1.84, r * 1.04, r * 0.05);
+    paintBody(c, col, -r * 0.2, r * 0.84, { light: 0.2, dark: -0.62 });
+    // the arched tunnel mouth
+    c.beginPath(); c.moveTo(-r * 0.5, r * 0.84); c.lineTo(-r * 0.5, r * 0.25); c.arc(0, r * 0.25, r * 0.5, Math.PI, 0); c.lineTo(r * 0.5, r * 0.84); c.closePath();
+    c.fillStyle = shadeColor(col, -0.82); c.fill();
+    c.strokeStyle = shadeColor(col, 0.5); c.lineWidth = r * 0.05; c.stroke();
+    c.strokeStyle = rgbaColor('#ffffff', 0.5); c.lineWidth = r * 0.025;
+    c.beginPath(); c.moveTo(-r * 0.22, r * 0.84); c.lineTo(-r * 0.1, r * 0.4); c.moveTo(r * 0.22, r * 0.84); c.lineTo(r * 0.1, r * 0.4); c.stroke();
+    // the "M" roundel on a mast
+    c.strokeStyle = col; c.lineWidth = r * 0.05;
+    c.beginPath(); c.moveTo(0, -r * 0.2); c.lineTo(0, -r * 0.5); c.stroke();
+    c.beginPath(); c.arc(0, -r * 0.72, r * 0.26, 0, Math.PI * 2);
+    paintBody(c, col, -r * 0.98, -r * 0.46, { light: 0.6, glow: 18 });
+    c.save(); c.shadowBlur = 8; c.shadowColor = '#fff'; c.fillStyle = '#fff';
+    c.font = `${Math.round(r * 0.3)}px 'Russo One', sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('M', 0, -r * 0.7); c.restore();
+  },
+
+  lm_bazar(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.88, r * 1.0, r * 0.15, 0, 0, Math.PI * 2); c.fill();
+    [-1, 1].forEach(d => { roundRectPath(c, d * r * 0.72 - r * 0.1, -r * 0.35, r * 0.2, r * 1.22, r * 0.04); paintBody(c, col, -r * 0.35, r * 0.87, { light: 0.3, dark: -0.55 }); });
+    // curved double roof
+    c.beginPath(); c.moveTo(-r * 1.05, -r * 0.32); c.quadraticCurveTo(0, -r * 0.62, r * 1.05, -r * 0.32); c.lineTo(r * 0.9, -r * 0.5); c.quadraticCurveTo(0, -r * 0.82, -r * 0.9, -r * 0.5); c.closePath();
+    paintBody(c, col, -r * 0.82, -r * 0.32, { light: 0.5, glow: 16 });
+    c.beginPath(); c.moveTo(-r * 0.7, -r * 0.62); c.quadraticCurveTo(0, -r * 0.95, r * 0.7, -r * 0.62); c.lineTo(r * 0.55, -r * 0.76); c.quadraticCurveTo(0, -r * 1.06, -r * 0.55, -r * 0.76); c.closePath();
+    paintBody(c, col, -r * 1.06, -r * 0.62, { light: 0.6, glow: 12 });
+    // hanging lanterns between the pillars
+    for (let i = -2; i <= 2; i++) {
+      const x = i * r * 0.26, y = -r * 0.1 + Math.abs(i) * r * 0.05;
+      c.strokeStyle = rgbaColor('#ffffff', 0.4); c.lineWidth = 1; c.beginPath(); c.moveTo(x, -r * 0.36); c.lineTo(x, y - r * 0.08); c.stroke();
+      c.save(); c.shadowBlur = 10; c.shadowColor = i % 2 ? '#FF54AD' : col; c.fillStyle = i % 2 ? '#FF54AD' : shadeColor(col, 0.5);
+      c.beginPath(); c.ellipse(x, y, r * 0.08, r * 0.11, 0, 0, Math.PI * 2); c.fill(); c.restore();
+    }
+    roundRectPath(c, -r * 0.5, r * 0.35, r * 1.0, r * 0.5, r * 0.04); c.fillStyle = shadeColor(col, -0.7); c.fill();
+  },
+
+  lm_fabryka(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.88, r * 1.0, r * 0.15, 0, 0, Math.PI * 2); c.fill();
+    // two chimneys behind
+    [[-0.55, -1.0], [-0.2, -0.82]].forEach(([x, top]) => { roundRectPath(c, x * r, top * r, r * 0.18, r * 1.4, r * 0.03); paintBody(c, col, top * r, r * 0.4, { light: 0.35, dark: -0.5, glow: 6 }); });
+    c.save(); c.strokeStyle = rgbaColor('#ffffff', 0.55); c.lineWidth = r * 0.03;
+    [[-0.46, -1.1, 0.12], [-0.11, -0.93, 0.1]].forEach(([x, y, rr]) => { c.beginPath(); c.arc(x * r, y * r, rr * r, 0, Math.PI * 2); c.stroke(); });
+    c.restore();
+    // sawtooth hall
+    c.beginPath(); c.moveTo(-r * 0.95, r * 0.86); c.lineTo(-r * 0.95, -r * 0.05);
+    for (let i = 0; i < 4; i++) { const x0 = -r * 0.95 + i * r * 0.475; c.lineTo(x0 + r * 0.475, -r * 0.35); c.lineTo(x0 + r * 0.475, -r * 0.05); }
+    c.lineTo(r * 0.95, r * 0.86); c.closePath();
+    paintBody(c, col, -r * 0.35, r * 0.86, { light: 0.25, dark: -0.6 });
+    // pixel windows
+    for (let y = r * 0.1; y < r * 0.6; y += r * 0.18) for (let x = -r * 0.8; x < r * 0.8; x += r * 0.2) {
+      c.fillStyle = (Math.round(x * 7 + y * 3) % 3) ? shadeColor(col, 0.55) : '#ffffff'; c.fillRect(x, y, r * 0.1, r * 0.1);
+    }
+    roundRectPath(c, -r * 0.18, r * 0.62, r * 0.36, r * 0.24, r * 0.02); c.fillStyle = shadeColor(col, -0.75); c.fill();
+  },
+
+  lm_latarnia(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.8, r * 0.15, 0, 0, Math.PI * 2); c.fill();
+    // light beams
+    c.save(); c.globalAlpha = 0.35;
+    [-1, 1].forEach(d => { c.beginPath(); c.moveTo(0, -r * 0.72); c.lineTo(d * r * 1.1, -r * 1.02); c.lineTo(d * r * 1.1, -r * 0.5); c.closePath(); c.fillStyle = shadeColor(col, 0.6); c.fill(); });
+    c.restore();
+    c.beginPath(); c.moveTo(-r * 0.36, r * 0.88); c.lineTo(-r * 0.2, -r * 0.55); c.lineTo(r * 0.2, -r * 0.55); c.lineTo(r * 0.36, r * 0.88); c.closePath();
+    paintBody(c, col, -r * 0.55, r * 0.88, { light: 0.45, dark: -0.55, glow: 10 });
+    // stripes
+    c.save(); c.clip();
+    c.fillStyle = rgbaColor('#ffffff', 0.55);
+    for (let y = -r * 0.35; y < r * 0.85; y += r * 0.36) c.fillRect(-r * 0.4, y, r * 0.8, r * 0.14);
+    c.restore();
+    roundRectPath(c, -r * 0.28, -r * 0.62, r * 0.56, r * 0.1, r * 0.02); paintBody(c, col, -r * 0.62, -r * 0.52, { glow: 4 });
+    roundRectPath(c, -r * 0.16, -r * 0.86, r * 0.32, r * 0.26, r * 0.04);
+    c.save(); c.shadowBlur = 20; c.shadowColor = '#fff'; c.fillStyle = '#ffffff'; c.fill(); c.restore();
+    c.beginPath(); c.moveTo(-r * 0.2, -r * 0.86); c.lineTo(0, -r * 1.04); c.lineTo(r * 0.2, -r * 0.86); c.closePath();
+    paintBody(c, col, -r * 1.04, -r * 0.86, { glow: 8 });
+  },
+
+  lm_drzewo(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.9, r * 0.15, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(-r * 0.14, r * 0.88); c.lineTo(-r * 0.08, r * 0.05); c.lineTo(-r * 0.32, -r * 0.25); c.lineTo(-r * 0.22, -r * 0.3); c.lineTo(0, -r * 0.08);
+    c.lineTo(r * 0.24, -r * 0.34); c.lineTo(r * 0.32, -r * 0.26); c.lineTo(r * 0.08, r * 0.05); c.lineTo(r * 0.14, r * 0.88); c.closePath();
+    paintBody(c, col, -r * 0.34, r * 0.88, { light: 0.2, dark: -0.6, glow: 6 });
+    // canopy: layered glowing blobs
+    [[-0.5, -0.45, 0.36], [0.5, -0.45, 0.36], [0, -0.7, 0.42], [-0.25, -0.25, 0.3], [0.27, -0.22, 0.3]].forEach(([x, y, rr], i) => {
+      c.beginPath(); c.arc(x * r, y * r, rr * r, 0, Math.PI * 2);
+      paintBody(c, col, (y - rr) * r, (y + rr) * r, { light: 0.35 + i * 0.05, dark: -0.45, glow: 14 });
+    });
+    c.save(); c.shadowBlur = 8; c.shadowColor = '#fff'; c.fillStyle = '#ffffff';
+    [[-0.5, -0.5], [0.42, -0.6], [0, -0.85], [0.15, -0.3], [-0.3, -0.2]].forEach(([x, y]) => { c.beginPath(); c.arc(x * r, y * r, r * 0.045, 0, Math.PI * 2); c.fill(); });
+    c.restore();
+  },
+
+  lm_serwer(c, r, col) {
+    c.fillStyle = rgbaColor(col, 0.3);
+    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.9, r * 0.15, 0, 0, Math.PI * 2); c.fill();
+    for (let i = 0; i < 5; i++) {
+      const y = r * 0.68 - i * r * 0.3;
+      roundRectPath(c, -r * 0.55, y, r * 1.1, r * 0.24, r * 0.04);
+      paintBody(c, col, y, y + r * 0.24, { light: 0.3, dark: -0.6, glow: i === 4 ? 14 : 4 });
+      for (let k = 0; k < 4; k++) { c.fillStyle = (i + k) % 3 ? '#46D99A' : '#ffffff'; c.fillRect(-r * 0.42 + k * r * 0.1, y + r * 0.09, r * 0.05, r * 0.05); }
+      c.fillStyle = rgbaColor('#ffffff', 0.35); c.fillRect(r * 0.05, y + r * 0.1, r * 0.4, r * 0.03);
+    }
+    // the cloud on top
+    c.beginPath();
+    c.arc(-r * 0.32, -r * 0.72, r * 0.2, Math.PI * 0.5, Math.PI * 1.5); c.arc(-r * 0.05, -r * 0.86, r * 0.26, Math.PI, 0); c.arc(r * 0.3, -r * 0.74, r * 0.2, Math.PI * 1.3, Math.PI * 0.5); c.closePath();
+    paintBody(c, col, -r * 1.12, -r * 0.52, { light: 0.65, glow: 20 });
+  },
+
+  // v15 runner: a golden data byte -- a faceted gem with bit-ticks.
+  bajt(c, r, col) {
+    c.save(); c.shadowBlur = 14; c.shadowColor = col;
+    c.beginPath();
+    for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; const px = Math.cos(a) * r, py = Math.sin(a) * r; if (k) c.lineTo(px, py); else c.moveTo(px, py); }
+    c.closePath(); c.fillStyle = col; c.fill(); c.restore();
+    c.fillStyle = shadeColor(col, 0.55);
+    c.beginPath(); c.moveTo(0, -r); c.lineTo(r * 0.87, -r * 0.5); c.lineTo(0, 0); c.lineTo(-r * 0.87, -r * 0.5); c.closePath(); c.fill();
+    c.fillStyle = shadeColor(col, -0.35);
+    c.beginPath(); c.moveTo(0, r); c.lineTo(r * 0.87, r * 0.5); c.lineTo(0, 0); c.lineTo(-r * 0.87, r * 0.5); c.closePath(); c.fill();
+    c.fillStyle = '#04101D';
+    c.font = `${Math.round(r * 0.9)}px 'Russo One', sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('1', 0, r * 0.05);
+  },
+
   // Overdrive bonus portal: dark well + bright rim; live: swirl arms.
   portal(c, r, col) {
     const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
@@ -3587,7 +4285,8 @@ function drawObjectLive(ctx, kind, color, r, t, seed) {
       ctx.fillRect(x, -r * 0.72, r * 0.08, r * 0.74);
       break;
     }
-    case 'lm_kino': case 'lm_fontanna': case 'lm_dzwig': case 'lm_galeria': case 'lm_iglica': case 'lm_rdzen': {
+    case 'lm_kino': case 'lm_fontanna': case 'lm_dzwig': case 'lm_galeria': case 'lm_iglica': case 'lm_rdzen':
+    case 'lm_stacja': case 'lm_bazar': case 'lm_fabryka': case 'lm_latarnia': case 'lm_drzewo': case 'lm_serwer': {
       ctx.save();
       ctx.rotate(t * 0.5 + seed);
       ctx.strokeStyle = rgbaColor(color, 0.5); ctx.lineWidth = 1.5;
@@ -3912,6 +4611,7 @@ function drawCityScene(canvas, progress, t) {
 }
 
 const DISTRICT_COLORS = { plac: '#50F0FA', park: '#46D99A', port: '#EFCB63', galeria: '#FF54AD', dachy: '#9875FF', rdzen: '#CBD5E1' };
+CHAPTER_II.forEach(d => { DISTRICT_COLORS[d.id] = d.color; });
 
 /** The boss landmark of a district (its missions' `setup.landmark`, last one wins). */
 function districtLandmarkId(district) {
@@ -3971,6 +4671,21 @@ function drawDistrictTile(canvas, district, done, total, unlocked, t) {
   if (!unlocked) {
     ctx.fillStyle = 'rgba(4, 16, 29, 0.55)'; ctx.fillRect(0, 0, w, h);
   }
+}
+
+/** v15: a boss landmark's neon name plate, under its base. */
+function drawLandmarkSign(ctx, text, r, col) {
+  const fs = clamp(Math.round(r * 0.2), 8, 22);
+  ctx.save();
+  ctx.font = `${fs}px ${FONT_DISPLAY}`;
+  const tw = ctx.measureText(text).width;
+  const w = tw + fs * 1.1, h = fs * 1.5, y = r * 0.98;
+  roundRectPath(ctx, -w / 2, y - h / 2, w, h, h * 0.3);
+  ctx.fillStyle = 'rgba(4, 16, 29, 0.88)'; ctx.fill();
+  ctx.lineWidth = Math.max(1, fs * 0.1); ctx.strokeStyle = col; ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 0, y + fs * 0.05);
+  ctx.restore();
 }
 
 /** Today's real Daily Seed Challenge layout as a mini-map: every object
@@ -4189,7 +4904,11 @@ const CITY_DISTRICT_MAP = [
   'oogggggg'
 ];
 const CITY_DISTRICT_KEYS = { p: 'plac', k: 'park', o: 'port', g: 'galeria', d: 'dachy', R: 'rdzen' };
-const CITY_LOT_BASE = { plac: '#081620', park: '#061b19', port: '#0a131b', galeria: '#120c1d', dachy: '#0c0f22', rdzen: '#0a121b' };
+const CITY_LOT_BASE = { plac: '#081620', park: '#061b19', port: '#0a131b', galeria: '#120c1d', dachy: '#0c0f22', rdzen: '#0a121b',
+  metro: '#06141a', bazar: '#14110a', fabryka: '#140a14', zatoka: '#0e0c1f', ogrody: '#071a12', chmura: '#0d1218' };
+// v15: Rozdział II districts reuse a Rozdział I lot painter in their own color.
+const DISTRICT_FLOOR = {};
+CHAPTER_II.forEach(d => { DISTRICT_FLOOR[d.id] = d.floor; });
 
 /** Floor accent for a district: its color mixed toward the panel slate, so
  *  full-saturation tier colors stay reserved for the objects (a cyan curb
@@ -4548,7 +5267,7 @@ function paintCityChunk(c, i, j, theme) {
   c.fillRect(lx, ly, ls, ls);
   const lotRng = new SeededRNG(cityHash(i, j, 2));
   const variant = Math.floor(lotRng.next() * 3);
-  (CITY_LOT_PAINTERS[d] || CITY_LOT_PAINTERS.plac)(c, lx, ly, ls, col, lotRng, variant);
+  (CITY_LOT_PAINTERS[d] || CITY_LOT_PAINTERS[DISTRICT_FLOOR[d]] || CITY_LOT_PAINTERS.plac)(c, lx, ly, ls, col, lotRng, variant);
   const sign = !theme && citySignCells()[`${i},${j}`];
   if (sign) {
     // The district's name painted across its central lot (rdzen's lot sits
@@ -5069,6 +5788,7 @@ class CampaignEntity {
       case 'heavy': return OBJECT_ART[this.glyph] ? this.glyph : 'autobus';
       case 'tower': return OBJECT_ART[this.glyph] ? this.glyph : 'wiezowiec';
       case 'landmark': return LANDMARK_ART[this.landmarkId] || 'landmark';
+      case 'runner': return 'bajt';
       default: return null;
     }
   }
@@ -5155,12 +5875,13 @@ class CampaignEntity {
       const locked = this.type === 'landmark' && !this.unlocked;
       // Mostek keeps its T3 size color; unpowered it's drawn dim and
       // without its live glow, powered it lights up fully.
-      const color = SIZE_TIER_COLORS[this.stats.minTier];
+      const color = this.type === 'runner' ? '#EFCB63' : SIZE_TIER_COLORS[this.stats.minTier];
       if (inactive) ctx.globalAlpha *= 0.35;
       if (this.glyph === 'mostek' && !this.mostekPowered) ctx.globalAlpha *= 0.55;
       if (locked) ctx.globalAlpha *= 0.45;
       drawObjectArt(ctx, art, color, r, performance.now() / 1000, artSeed(this.x, this.y),
         { live: !inactive && !locked, variant: this.glyph === 'konwoj' ? 'konwoj' : undefined });
+      if (this.type === 'landmark' && LANDMARK_SIGNS[this.landmarkId]) drawLandmarkSign(ctx, LANDMARK_SIGNS[this.landmarkId], r, color);
       if (locked) {
         ctx.globalAlpha = 1;
         ctx.strokeStyle = 'rgba(242, 248, 255, 0.55)';
@@ -5768,6 +6489,12 @@ class Game {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.save = loadSave();
+    // v15: saves that already beat Plac Neonów get the boosters gift.
+    if (this.save.campaign.completed[CONFIG.boosters.unlockMission] && !this.save.boosters.gift) {
+      this.save.boosters.gift = true;
+      MISSION_BOOSTERS.forEach(x => { this.save.boosters[x.id] = (this.save.boosters[x.id] || 0) + 1; });
+      saveGame(this.save);
+    }
     // GDD 4.0 §5.3 Warsztat select-then-equip flow: what's currently
     // previewed in each of the 4 cosmetic categories, reset to the saved
     // (actually equipped) loadout whenever openWarsztatScreen() runs.
@@ -6205,12 +6932,30 @@ class Game {
     document.getElementById('missionBriefing').addEventListener('click', (e) => {
       if (e.target.id === 'missionBriefing') this.closeMissionBriefing();
     });
+    // v15: GRAJ in the briefing launches (boosters + energy); every other
+    // mission GRAJ opens that briefing first.
     document.addEventListener('click', (e) => {
-      const btn = e.target.closest && e.target.closest('[data-mc-play]');
+      if (!e.target.closest) return;
+      const boost = e.target.closest('[data-booster]');
+      if (boost) { this.toggleBriefingBooster(boost.dataset.booster); return; }
+      const launch = e.target.closest('[data-mc-launch]');
+      if (launch && !launch.disabled) { this.launchMission(launch.dataset.mcLaunch); return; }
+      const btn = e.target.closest('[data-mc-play]');
       if (!btn || btn.disabled) return;
-      this.closeMissionBriefing();
-      this.startCampaignMission(btn.dataset.mcPlay);
+      this.openMissionBriefing(btn.dataset.mcPlay);
     });
+    document.getElementById('missionStartOverlay').addEventListener('click', (e) => {
+      if (e.target.closest && e.target.closest('#btnMissionBack')) { this.cancelMissionStart(); return; }
+      this.beginMissionPlay();
+    });
+    document.querySelectorAll('.energy-chip').forEach(el => el.addEventListener('click', () => this.openEnergySheet()));
+    document.getElementById('btnEnergyAd').addEventListener('click', () => this.energyFromAd());
+    document.getElementById('btnEnergyRefill').addEventListener('click', () => this.energyRefillPrisms());
+    document.getElementById('btnEnergyClose').addEventListener('click', () => this.closeEnergySheet());
+    document.getElementById('energySheet').addEventListener('click', (e) => { if (e.target.id === 'energySheet') this.closeEnergySheet(); });
+    document.getElementById('btnRevivePrisms').addEventListener('click', () => this.acceptRevivePrisms());
+    clearInterval(this.energyInterval);
+    this.energyInterval = setInterval(() => this.updateEnergyDisplays(), 1000);
     document.querySelectorAll('.nela-avatar').forEach(el => { el.innerHTML = NELA_AVATAR; });
     // A tap closes NELA's in-mission bubble (it must never sit on the board).
     document.getElementById('nelaToast').addEventListener('click', () => this.hideNelaToast());
@@ -6690,6 +7435,11 @@ class Game {
     if (g.prisms) this.save.prisms = (this.save.prisms || 0) + g.prisms;
     if (g.auraId && !this.save.auras.owned.includes(g.auraId)) this.save.auras.owned.push(g.auraId);
     if (g.noAds) ent.noAds = true;
+    if (g.infiniteEnergyMin) {
+      const en = this.save.energy;
+      en.infiniteUntil = Math.max(en.infiniteUntil || 0, Date.now()) + g.infiniteEnergyMin * 60000;
+      en.value = Math.max(en.value, CONFIG.energy.max);
+    }
     ent.purchased.push(prod.sku);
     saveGame(this.save);
     this.queueRewardCelebration({
@@ -6923,13 +7673,15 @@ class Game {
   }
 
   confirmRunSetup() {
-    const tool = RUN_TOOLS.find(t => t.id === this.selectedRunTool);
-    if (tool && tool.price > 0) {
-      this.save.coins -= tool.price;
-      saveGame(this.save);
-      this.updateCoinDisplays();
-    }
-    this.startRound();
+    this.requireEnergy('arena', () => {
+      const tool = RUN_TOOLS.find(t => t.id === this.selectedRunTool);
+      if (tool && tool.price > 0) {
+        this.save.coins -= tool.price;
+        saveGame(this.save);
+        this.updateCoinDisplays();
+      }
+      this.startRound();
+    });
   }
 
   openProfileScreen() {
@@ -6978,8 +7730,10 @@ class Game {
 
   startDailyChallenge() {
     const { seed, dateKey } = dailySeedForDate(new Date());
-    this.analytics.track('daily_challenge_start', { dateKey, seed });
-    this.startRound({ seed, daily: true });
+    this.requireEnergy('daily', () => {
+      this.analytics.track('daily_challenge_start', { dateKey, seed });
+      this.startRound({ seed, daily: true });
+    });
   }
 
   /* ---- Golden Shot v11: retention metrics, consent, privacy ---- */
@@ -7100,8 +7854,10 @@ class Game {
   acceptChallenge() {
     const ch = this.save.challenge;
     if (!ch || !this.isArenaUnlocked()) return;
-    this.analytics.track('challenge_accept', { score: ch.score });
-    this.startRound({ seed: ch.seed, challenge: { score: ch.score, from: ch.from || 'Znajomy' } });
+    this.requireEnergy('arena', () => {
+      this.analytics.track('challenge_accept', { score: ch.score });
+      this.startRound({ seed: ch.seed, challenge: { score: ch.score, from: ch.from || 'Znajomy' } });
+    });
   }
 
   dismissChallenge() {
@@ -7333,10 +8089,11 @@ class Game {
     const nextId = this.nextCampaignMissionId();
     const next = nextId && campaignMissionById(nextId);
     const district = next && DISTRICTS.find(d => d.id === next.district);
-    document.getElementById('hubCampaignEyebrow').textContent = next ? 'NASTĘPNA MISJA' : 'KAMPANIA';
+    // v15: the district's name heads the tile (owner: a district without a name).
+    document.getElementById('hubCampaignEyebrow').textContent = next ? district.name.toUpperCase() : 'KAMPANIA';
     document.getElementById('hubCampaignTile').style.setProperty('--q', next ? (DISTRICT_COLORS[district.id] || '#46D99A') : '#46D99A');
     document.getElementById('hubCampaignTitle').textContent = next ? `${missionCode(next)} · ${next.name}` : 'Ukończona!';
-    document.getElementById('hubCampaignSub').textContent = next ? this.missionStepRows(next)[0].label : 'Zagraj misje ponownie po medale';
+    document.getElementById('hubCampaignSub').textContent = next ? this.missionStepRows(next)[0].label : `Zbieraj gwiazdki: ★ ${this.totalStars()}`;
     const daily = document.getElementById('btnDaily');
     const wyzwania = this.isWyzwaniaUnlocked();
     daily.classList.toggle('locked', !wyzwania);
@@ -7528,7 +8285,7 @@ class Game {
           '<ul class="info-sheet-list"><li>+1 za co 3. rozegraną rundę GRAJ 2:00</li>' +
             `<li>+${CONFIG.daily.newRecordBonusPrisms} za nowy rekord w Wyzwaniu dnia</li>` +
             '<li>Nagrody Core City od poziomu 7</li></ul>',
-          'Wydajesz je w <strong>Warsztacie</strong> na rzadsze Smugi.'
+          'Wydajesz je w <strong>Warsztacie</strong> na rzadsze Smugi, na pełną energię i na dodatkowe sekundy w misji.'
         ]
       });
       return;
@@ -7541,7 +8298,7 @@ class Game {
         '<ul class="info-sheet-list"><li>Za każdą rundę GRAJ 2:00 i Wyzwanie dnia</li>' +
           '<li>Za pierwsze ukończenie misji w Dzielnicach</li>' +
           '<li>Za każdy nowy poziom Core City</li></ul>',
-        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury) i na jednorazowe dodatki przed rundą (Tarcza, Magnes).'
+        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Magnes, Tarcza).'
       ]
     });
   }
@@ -7954,13 +8711,17 @@ class Game {
       this.selectedRunTool = 'boost';
       this.populateRunToolGrid();
       this.showScreen('runSetupScreen');
+    } else if (!this.energyFreeFor('arena') && this.energyNow() < 1) {
+      this.openEnergySheet({ empty: true, onRefill: () => this.onUpsellClick() });
     } else if (this.monetization.placementLeft('turbo_free') > 0) {
       // Golden Shot v11: can't afford it -> a free Turbo start for an ad,
       // straight into the rematch (startRound() never charges for tools).
       if (await this.monetization.rewarded('turbo_free')) {
         this.selectedRunTool = 'boost';
-        if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
-        else this.startRound();
+        this.requireEnergy('arena', () => {
+          if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
+          else this.startRound();
+        });
       }
     } else {
       this.openFreeChest();
@@ -8205,7 +8966,9 @@ class Game {
   startArenaRound() {
     if (!this.isArenaUnlocked()) return;
     this.selectedRunTool = 'none';
-    if ((this.save.stats.runsPlayed || 0) < CONFIG.difficulty.rampStartRuns) { this.startRound(); return; }
+    if ((this.save.stats.runsPlayed || 0) < CONFIG.difficulty.rampStartRuns) { this.requireEnergy('arena', () => this.startRound()); return; }
+    // v15: no energy -> the energy sheet now, not after picking a tool.
+    if (!this.energyFreeFor('arena') && this.energyNow() < 1) { this.openEnergySheet({ empty: true, onRefill: () => this.startArenaRound() }); return; }
     this.populateRunToolGrid();
     this.showScreen('runSetupScreen');
   }
@@ -8288,6 +9051,7 @@ class Game {
       return !e.isGateOpen ? 'rgba(255,255,255,0.2)' : (e.isGateTelegraphing ? '#EFCB63' : '#50F0FA');
     }
 
+    if (e.type === 'runner') return '#EFCB63';
     const stats = CAMPAIGN_ENTITY_STATS[e.type];
     return stats ? SIZE_TIER_COLORS[stats.minTier] : '#fff';
   }
@@ -8301,6 +9065,7 @@ class Game {
     if (type === 'rival') return { icon: GOAL_ICONS.rival, color: '#ff3860' };
     if (type === 'portal') return { icon: GOAL_ICONS.portal, color: '#9875FF' };
     if (type === 'score') return { icon: GOAL_ICONS.score, color: '#EFCB63' };
+    if (type === 'runner') return { icon: GOAL_ICONS.runner, color: '#EFCB63' };
     // landmark's minTier (4) already resolves to SIZE_TIER_COLORS[4] below --
     // no separate override needed now that it's the same violet as the board object.
     const stats = CAMPAIGN_ENTITY_STATS[type];
@@ -8339,50 +9104,413 @@ class Game {
     const district = DISTRICTS.find(d => d.id === def.district);
     const color = DISTRICT_COLORS[def.district] || '#50F0FA';
     const done = !!c.completed[def.id];
-    const medal = !!c.medals[def.id];
+    const bits = c.stars[def.id] || 0;
     const playable = this.isMissionPlayable(def.id);
     const d = district.missions.indexOf(def.id);
     const prev = d > 0 ? campaignMissionById(district.missions[d - 1]) : null;
-    const STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z"/></svg>';
     const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>';
-    const status = done ? `<span class="mc-status done">✓ UKOŃCZONA</span>` : (playable ? '' : `<span class="mc-status locked">ZABLOKOWANA</span>`);
+    const status = done ? this.starsHtml(bits, 'mc-status-stars') : (playable ? '' : `<span class="mc-status locked">ZABLOKOWANA</span>`);
+    const D = DIFFICULTY[def.diff || 1];
+    const diff = def.id === 'M00' ? '' : `<span class="mc-diff" style="--diff-color:${D.color}">${this.diffBarsHtml(def.diff || 1)}${D.label}</span>`;
     const rows = this.missionStepRows(def).map((r, i) =>
       `<li class="mc-goal"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span></li>`).join('');
     const reward = done
       ? '✓ nagroda odebrana'
       : `◇ +${def.reward.coins} monet${def.reward.unlockDistrict ? ' · nowa dzielnica' : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
+    // v15: the three star conditions (earned ones lit).
+    const starRows = (def.stars || []).map((st, i) => `<span class="mc-star${bits & (1 << i) ? ' earned' : ''}"><b>${'★'.repeat(i + 1)}</b>${i === 0 ? 'ukończ' : this.starShortLabel(st)}</span>`).join('');
     const meta = `<div class="mc-meta">` +
       `<span class="mc-meta-item">${CLOCK}${def.untimed ? 'bez limitu' : formatClock(def.timeLimit)}</span>` +
-      `<span class="mc-meta-item mc-meta-medal${medal ? ' earned' : ''}">${STAR}Medal: ${medal ? 'zdobyty' : def.medal.label}</span>` +
-      `<span class="mc-meta-item mc-meta-reward">${reward}</span></div>`;
+      `<span class="mc-meta-item mc-meta-reward">${reward}</span></div>` +
+      (def.untimed ? '' : `<div class="mc-stars">${starRows}</div>`);
+    const twists = (def.twists || []).length ? `<div class="mc-twists">${def.twists.map(t => `<span class="mc-twist" style="--t-color:${TWIST_INFO[t].color}"><svg viewBox="0 0 24 24">${GOAL_ICONS[t] || GOAL_ICONS.runner}</svg>${TWIST_INFO[t].label}</span>`).join('')}</div>` : '';
+    const twistHints = opts.nela && (def.twists || []).length ? `<ul class="mc-twist-hints">${def.twists.map(t => `<li>${TWIST_INFO[t].hint}</li>`).join('')}</ul>` : '';
     const nela = opts.nela ? `<div class="nela-bubble mc-nela"><span class="nela-avatar" aria-hidden="true">${NELA_AVATAR}</span>` +
       `<span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line">${def.nela.start}</span></span></div>` : '';
     const lock = !playable && prev ? `<p class="mc-lock">Najpierw ukończ ${missionCode(prev)} „${prev.name}”.</p>` : '';
     // A locked mission's button leads to what unlocks it (no dead end).
     const prevPlayable = !playable && prev && this.isMissionPlayable(prev.id);
     const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
+    // v15: in the briefing GRAJ launches (boosters + energy); everywhere
+    // else it opens the briefing first.
+    const attr = opts.launch ? 'data-mc-launch' : 'data-mc-play';
     const play = !opts.play ? ''
-      : playable ? `<button class="btn btn-primary btn-mega mc-play" data-mc-play="${def.id}">${done ? 'ZAGRAJ PONOWNIE' : 'GRAJ'}${PLAY_SVG}</button>`
+      : playable ? `<button class="btn btn-primary btn-mega mc-play" ${attr}="${def.id}">${done ? 'ZAGRAJ PONOWNIE' : 'GRAJ'}${PLAY_SVG}</button>`
         : prevPlayable ? `<button class="btn btn-secondary mc-play mc-play-prev" data-mc-play="${prev.id}">NAJPIERW ${missionCode(prev)}${PLAY_SVG}</button>`
           : `<button class="btn btn-primary btn-mega mc-play" disabled>ZABLOKOWANA</button>`;
+    const boosts = opts.launch && playable && def.id !== 'M00' && this.boostersUnlocked() ? this.boosterTilesHtml(def) : '';
     return `<div class="mc-head" style="--d-color:${color}">` +
-      `<span class="mc-code">${missionCode(def)}</span><span class="mc-eyebrow">${opts.eyebrow || district.name.toUpperCase()}</span>${status}</div>` +
+      `<span class="mc-code">${missionCode(def)}</span><span class="mc-eyebrow">${opts.eyebrow || district.name.toUpperCase()}</span>${diff}${status}</div>` +
       `<h3 class="mc-name">${def.name}</h3>${nela}` +
-      `<div class="mc-label">CEL MISJI</div><ol class="mc-goals">${rows}</ol>${meta}${lock}${play}`;
+      `<div class="mc-label">CEL MISJI</div><ol class="mc-goals">${rows}</ol>${twists}${twistHints}${meta}${lock}${boosts}${play}`;
   }
 
   openMissionBriefing(missionId) {
     const def = campaignMissionById(missionId);
     if (!def) return;
     this.selectedMissionId = missionId;
+    this.briefingBoosters = new Set();
     const card = document.getElementById('briefingCard');
-    card.innerHTML = this.missionCardHtml(def, { nela: true, play: true });
+    card.innerHTML = this.missionCardHtml(def, { nela: true, play: true, launch: true });
     card.style.setProperty('--d-color', DISTRICT_COLORS[def.district] || '#50F0FA');
     const h = card.querySelector('.mc-name');
     if (h) h.id = 'briefingName';
+    this.refreshBriefingBoosters();
     document.getElementById('missionBriefing').classList.remove('hidden');
+    const sheet = document.querySelector('#missionBriefing .briefing-sheet');
+    if (sheet) sheet.scrollTop = 0;
     this.sound.ui();
     this.analytics.track('mission_briefing', { missionId });
+  }
+
+  /* ---------- v15: energy (the session limit) ---------- */
+
+  /** Regenerates energy up to CONFIG.energy.max from the stored tick and
+   *  returns the current value. A clock set backwards never pays out. */
+  energyNow() {
+    const E = CONFIG.energy, en = this.save.energy, now = Date.now();
+    const step = E.regenMinutes * 60000;
+    if (!en.lastTick || en.lastTick > now) en.lastTick = now;
+    if (en.value >= E.max) { en.lastTick = now; return en.value; }
+    const gained = Math.floor((now - en.lastTick) / step);
+    if (gained > 0) {
+      en.value = Math.min(E.max, en.value + gained);
+      en.lastTick = en.value >= E.max ? now : en.lastTick + gained * step;
+    }
+    return en.value;
+  }
+
+  energyInfinite() { return Date.now() < (this.save.energy.infiniteUntil || 0); }
+
+  /** ms until the next point (0 when full). */
+  energyNextInMs() {
+    const E = CONFIG.energy, en = this.save.energy;
+    if (this.energyNow() >= E.max) return 0;
+    return Math.max(0, en.lastTick + E.regenMinutes * 60000 - Date.now());
+  }
+
+  grantEnergy(n, refund) {
+    const E = CONFIG.energy, en = this.save.energy;
+    this.energyNow();
+    const wasFull = en.value >= E.max;
+    en.value = Math.min(E.cap, en.value + n);
+    if (en.value >= E.max && !wasFull) en.lastTick = Date.now();
+    saveGame(this.save);
+    this.updateEnergyDisplays();
+    if (!refund) this.analytics.track('energy_gain', { n, value: en.value });
+  }
+
+  /** Is this play free of charge? (tutorial, newbie rounds, first Daily
+   *  attempt of the day, an active "no limit" hour). */
+  energyFreeFor(kind) {
+    if (this.energyInfinite()) return true;
+    if (kind === 'tutorial') return true;
+    if (kind === 'arena') return (this.save.stats.runsPlayed || 0) < CONFIG.energy.freeArenaRuns;
+    if (kind === 'daily') return this.save.energy.freeDailyDate !== dailySeedForDate(new Date()).dateKey;
+    return false;
+  }
+
+  /** Charges one energy for a play of `kind` and runs onPlay(charged) -- or,
+   *  when there's none left, opens the energy sheet (refill, ad, wait),
+   *  which continues into the play after a refill. */
+  requireEnergy(kind, onPlay) {
+    if (this.energyFreeFor(kind)) {
+      if (kind === 'daily' && !this.energyInfinite()) { this.save.energy.freeDailyDate = dailySeedForDate(new Date()).dateKey; saveGame(this.save); }
+      onPlay(false);
+      return true;
+    }
+    const E = CONFIG.energy, en = this.save.energy;
+    if (this.energyNow() < 1) {
+      this.analytics.track('energy_empty', { kind });
+      this.openEnergySheet({ empty: true, onRefill: () => this.requireEnergy(kind, onPlay) });
+      return false;
+    }
+    if (en.value >= E.max) en.lastTick = Date.now();
+    en.value--;
+    saveGame(this.save);
+    this.updateEnergyDisplays();
+    this.analytics.track('energy_spend', { kind, left: en.value });
+    onPlay(true);
+    return true;
+  }
+
+  updateEnergyDisplays() {
+    if (this.running && document.getElementById('energySheet').classList.contains('hidden')) return;
+    const E = CONFIG.energy;
+    const v = this.energyNow();
+    const inf = this.energyInfinite();
+    const next = this.energyNextInMs();
+    const timer = inf ? '∞' : next ? formatClock(Math.ceil(next / 1000)) : 'PEŁNA';
+    const html = inf ? '∞' : `${v}<small>/${E.max}</small>`;
+    document.querySelectorAll('.energy-count').forEach(el => { if (el.innerHTML !== html) el.innerHTML = html; });
+    document.querySelectorAll('.energy-timer').forEach(el => { if (el.textContent !== timer) el.textContent = timer; });
+    document.querySelectorAll('.energy-chip').forEach(el => el.classList.toggle('empty', !inf && v < 1));
+    const sheet = document.getElementById('energySheet');
+    if (sheet && !sheet.classList.contains('hidden')) this.renderEnergySheet();
+  }
+
+  openEnergySheet(opts = {}) {
+    this.energySheetOpts = opts;
+    this.renderEnergySheet();
+    document.getElementById('energySheet').classList.remove('hidden');
+    this.sound.ui();
+    this.analytics.track('energy_sheet', { empty: !!opts.empty });
+  }
+
+  renderEnergySheet() {
+    const E = CONFIG.energy, opts = this.energySheetOpts || {};
+    const v = this.energyNow(), inf = this.energyInfinite();
+    const next = this.energyNextInMs();
+    document.getElementById('energySheetTitle').textContent = opts.empty && v < 1 && !inf ? 'BRAK ENERGII' : 'ENERGIA';
+    document.getElementById('energySheetValue').textContent = inf ? '∞' : `${v}/${E.max}`;
+    document.getElementById('energySheetTimer').textContent = inf
+      ? `Bez limitu jeszcze ${formatClock(Math.ceil((this.save.energy.infiniteUntil - Date.now()) / 1000))}`
+      : next ? `+1 za ${formatClock(Math.ceil(next / 1000))} · pełna za ${formatDuration(Math.ceil((next + (E.max - v - 1) * E.regenMinutes * 60000) / 1000))}` : 'Energia pełna';
+    document.getElementById('energySheetPips').innerHTML = Array.from({ length: E.max }, (_, i) => `<i class="${inf || i < v ? 'on' : ''}"></i>`).join('');
+    const adLeft = this.monetization.placementLeft('energy_ad');
+    const btnAd = document.getElementById('btnEnergyAd');
+    btnAd.classList.toggle('hidden', inf || v >= E.cap || adLeft <= 0);
+    btnAd.textContent = `+${E.adGain} ENERGIA · REKLAMA (zostało ${adLeft})`;
+    const btnBuy = document.getElementById('btnEnergyRefill');
+    btnBuy.classList.toggle('hidden', inf || v >= E.max);
+    btnBuy.textContent = `PEŁNA ENERGIA · ${E.refillPrisms} ◆`;
+    btnBuy.classList.toggle('btn-disabled-look', (this.save.prisms || 0) < E.refillPrisms);
+  }
+
+  closeEnergySheet() {
+    document.getElementById('energySheet').classList.add('hidden');
+    this.energySheetOpts = null;
+  }
+
+  async energyFromAd() {
+    if (this.energyAdBusy) return;
+    this.energyAdBusy = true;
+    let ok = false;
+    try { ok = await this.monetization.rewarded('energy_ad'); } finally { this.energyAdBusy = false; }
+    if (!ok) return;
+    this.grantEnergy(CONFIG.energy.adGain);
+    this.sound.energy();
+    this.afterEnergyRefill();
+  }
+
+  energyRefillPrisms() {
+    const E = CONFIG.energy;
+    if ((this.save.prisms || 0) < E.refillPrisms) {
+      this.closeEnergySheet();
+      this.closeMissionBriefing();
+      this.openCurrencyInfo(true);
+      return;
+    }
+    this.save.prisms -= E.refillPrisms;
+    this.energyNow();
+    this.save.energy.value = Math.max(this.save.energy.value, E.max);
+    this.save.energy.lastTick = Date.now();
+    saveGame(this.save);
+    this.updateEnergyDisplays();
+    this.updateCoinDisplays();
+    this.sound.energy();
+    this.analytics.track('energy_refill', { prisms: E.refillPrisms });
+    this.afterEnergyRefill();
+  }
+
+  /** After a refill bought from an empty-energy prompt, go straight on
+   *  into the play the player asked for. */
+  afterEnergyRefill() {
+    const onRefill = this.energySheetOpts && this.energySheetOpts.onRefill;
+    this.closeEnergySheet();
+    if (onRefill) onRefill();
+  }
+
+  /* ---------- v15: mission boosters ---------- */
+
+  boostersUnlocked() { return !!this.save.campaign.completed[CONFIG.boosters.unlockMission]; }
+
+  /** The welcome gift when boosters unlock: one of each. */
+  checkBoosterGift() {
+    const b = this.save.boosters;
+    if (b.gift || !this.boostersUnlocked()) return;
+    b.gift = true;
+    MISSION_BOOSTERS.forEach(x => { b[x.id] = (b[x.id] || 0) + 1; });
+    saveGame(this.save);
+  }
+
+  toggleBriefingBooster(id) {
+    const sel = this.briefingBoosters || (this.briefingBoosters = new Set());
+    if (sel.has(id)) sel.delete(id); else sel.add(id);
+    this.sound.ui();
+    this.refreshBriefingBoosters();
+  }
+
+  /** Coins the current booster pick costs (only what's not in stock). */
+  briefingBoosterCost() {
+    let cost = 0;
+    (this.briefingBoosters || new Set()).forEach(id => {
+      const b = MISSION_BOOSTERS.find(x => x.id === id);
+      if (b && !(this.save.boosters[id] > 0)) cost += b.price;
+    });
+    return cost;
+  }
+
+  refreshBriefingBoosters() {
+    const card = document.getElementById('briefingCard');
+    const sel = this.briefingBoosters || new Set();
+    card.querySelectorAll('[data-booster]').forEach(el => {
+      el.classList.toggle('selected', sel.has(el.dataset.booster));
+      el.setAttribute('aria-pressed', sel.has(el.dataset.booster) ? 'true' : 'false');
+    });
+    const cost = this.briefingBoosterCost();
+    const btn = card.querySelector('.mc-play[data-mc-launch]');
+    if (btn) {
+      const def = campaignMissionById(btn.dataset.mcLaunch);
+      const energy = def && this.energyFreeFor(def.id === 'M00' ? 'tutorial' : 'mission') ? '' : '<span class="mc-play-cost"><svg class="inline-bolt" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>1</span>';
+      btn.innerHTML = `GRAJ${cost ? ` <span class="mc-play-cost">−${cost} ◇</span>` : ''}${energy}<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>`;
+    }
+    const note = card.querySelector('.mc-boost-note');
+    if (note) {
+      const short = cost > this.save.coins;
+      const miss = cost - this.save.coins;
+      note.textContent = short ? `Brakuje ${miss} ${plural(miss, ['monety', 'monet', 'monet'])} na wybrane wzmocnienia.` : (sel.size ? 'Wybrane wzmocnienia zużyjesz w tej próbie — także jeśli się nie uda.' : 'Wzmocnienia są opcjonalne — dotknij, aby wybrać.');
+      note.classList.toggle('warn', short);
+    }
+  }
+
+  /** Briefing GRAJ: pay for the picked boosters (stock first, then coins),
+   *  charge one energy and start the mission. */
+  launchMission(id) {
+    const def = campaignMissionById(id);
+    if (!def || !this.isMissionPlayable(id)) return;
+    const sel = Array.from(this.briefingBoosters || []);
+    const cost = this.briefingBoosterCost();
+    if (cost > this.save.coins) {
+      this.refreshBriefingBoosters();
+      this.sound.hurt();
+      return;
+    }
+    this.requireEnergy(id === 'M00' ? 'tutorial' : 'mission', charged => {
+      sel.forEach(bid => {
+        if (this.save.boosters[bid] > 0) this.save.boosters[bid]--;
+        else this.save.coins -= MISSION_BOOSTERS.find(x => x.id === bid).price;
+      });
+      if (sel.length) this.analytics.track('booster_use', { missionId: id, boosters: sel.join(','), coins: cost });
+      saveGame(this.save);
+      this.missionBoosters = sel;
+      this.briefingBoosters = new Set();
+      this.closeMissionBriefing();
+      this.startCampaignMission(id);
+      if (this.mission) this.mission.energyCharged = charged;
+    });
+  }
+
+  /** Can this booster help in this mission? (Tarcza needs a hazard.) */
+  boosterUseful(id, def) {
+    if (id !== 'shield' || !def) return true;
+    const s = def.setup || {};
+    return !!(s.bots || s.glitch || s.racer);
+  }
+
+  boosterTilesHtml(def) {
+    const sel = this.briefingBoosters || new Set();
+    const tiles = MISSION_BOOSTERS.map(b => {
+      const have = this.save.boosters[b.id] || 0;
+      if (!this.boosterUseful(b.id, def)) {
+        return `<button type="button" class="mc-boost off" disabled style="--b-color:${b.color}" aria-label="${b.name}: brak zagrożeń w tej misji">` +
+          `<span class="mc-boost-icon"><svg viewBox="0 0 24 24">${CARD_ICONS[b.icon]}</svg></span>` +
+          `<span class="mc-boost-name">${b.name}</span><span class="mc-boost-short">brak zagrożeń</span>` +
+          `<span class="mc-boost-badge${have ? ' owned' : ''}">${have ? `×${have}` : `${b.price} ◇`}</span></button>`;
+      }
+      return `<button type="button" class="mc-boost${sel.has(b.id) ? ' selected' : ''}" data-booster="${b.id}" style="--b-color:${b.color}" aria-pressed="${sel.has(b.id)}" aria-label="${b.name}: ${b.desc}">` +
+        `<span class="mc-boost-icon"><svg viewBox="0 0 24 24">${CARD_ICONS[b.icon]}</svg></span>` +
+        `<span class="mc-boost-name">${b.name}</span><span class="mc-boost-short">${b.short}</span>` +
+        `<span class="mc-boost-badge${have ? ' owned' : ''}">${have ? `×${have}` : `${b.price} ◇`}</span></button>`;
+    }).join('');
+    return `<div class="mc-label">WZMOCNIENIA</div><div class="mc-boosts">${tiles}</div><p class="mc-boost-note"></p>`;
+  }
+
+  /* ---------- v15: the tap-to-start card ---------- */
+
+  showMissionStartCard(def) {
+    this.introPending = true;
+    const district = DISTRICTS.find(d => d.id === def.district);
+    const D = DIFFICULTY[def.diff || 1];
+    const card = document.getElementById('missionStartCard');
+    card.style.setProperty('--d-color', DISTRICT_COLORS[def.district] || '#50F0FA');
+    const rows = this.missionStepRows(def).map((r, i) =>
+      `<li class="mc-goal"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span></li>`).join('');
+    const twists = (def.twists || []).map(t => `<span class="mc-twist" style="--t-color:${TWIST_INFO[t].color}"><svg viewBox="0 0 24 24">${GOAL_ICONS[t] || GOAL_ICONS.runner}</svg>${TWIST_INFO[t].label}</span>`).join('');
+    const boosts = (this.mission.boosters || []).map(id => { const b = MISSION_BOOSTERS.find(x => x.id === id); return `<span class="mc-twist boost" style="--t-color:${b.color}"><svg viewBox="0 0 24 24">${CARD_ICONS[b.icon]}</svg>${b.name.toUpperCase()}</span>`; }).join('');
+    card.innerHTML = `<div class="mc-head"><span class="mc-code">${missionCode(def)}</span><span class="mc-eyebrow">${district.name.toUpperCase()}</span>` +
+      `<span class="mc-diff" style="--diff-color:${D.color}">${this.diffBarsHtml(def.diff)}${D.label}</span></div>` +
+      `<h3 class="mc-name">${def.name}</h3>` +
+      `<div class="nela-bubble mc-nela"><span class="nela-avatar" aria-hidden="true">${NELA_AVATAR}</span><span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line">${def.nela.start}</span></span></div>` +
+      `<ol class="mc-goals">${rows}</ol>` +
+      (twists || boosts ? `<div class="mc-twists">${twists}${boosts}</div>` : '') +
+      ((def.twists || []).length ? `<ul class="mc-twist-hints">${def.twists.map(t => `<li>${TWIST_INFO[t].hint}</li>`).join('')}</ul>` : '') +
+      `<div class="start-meta"><span><svg class="inline-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${this.starShortLabel(st)}`).join(' · ')}</span></div>` +
+      `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></button>` +
+      `<p class="start-tap">Zegar ruszy po dotknięciu</p>` +
+      `<button type="button" class="btn btn-link start-back" id="btnMissionBack">Zmień wzmocnienia</button>`;
+    document.getElementById('missionStartOverlay').classList.remove('hidden');
+    this.sound.nela();
+  }
+
+  /** v15 review: back out of the start card before the clock runs -- the
+   *  energy and the boosters come back (as stock) and the briefing opens. */
+  cancelMissionStart() {
+    const m = this.mission;
+    if (!m || m.ended || !this.introPending) return;
+    if (this.paused) { this.paused = false; this.sound.setDucked(false); }
+    document.getElementById('pauseSheet').classList.add('hidden');
+    m.boosters.forEach(id => { this.save.boosters[id] = (this.save.boosters[id] || 0) + 1; });
+    if (m.energyCharged) this.grantEnergy(1, true);
+    this.save.campaign.attempts[m.def.id] = Math.max(0, (this.save.campaign.attempts[m.def.id] || 1) - 1);
+    m.ended = true;
+    this.running = false;
+    this.introPending = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.monetization.gameplayStop();
+    document.getElementById('missionStartOverlay').classList.add('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    saveGame(this.save);
+    this.state = GameState.MENU;
+    this.selectedDistrictId = m.def.district;
+    this.openCampaignScreen();
+    this.openMissionBriefing(m.def.id);
+    this.analytics.track('mission_back', { missionId: m.def.id });
+  }
+
+  /** Tap on the start card: the clock starts now. */
+  beginMissionPlay() {
+    const el = document.getElementById('missionStartOverlay');
+    if (el.classList.contains('hidden')) return;
+    // Paused (Esc / tab hidden) while the card was up: resume properly.
+    if (this.paused) this.resumeGame();
+    el.classList.add('hidden');
+    this.introPending = false;
+    this.pointerScreen = null;
+    this.lastTime = performance.now();
+    this.showBanner('START!', this.mission ? this.mission.def.name : '', '#46D99A', 0.9, 3);
+    this.sound.energy();
+    this.analytics.track('mission_go', { missionId: this.mission && this.mission.def.id });
+  }
+
+  /** Short label of a star condition ("1:05", "bez zderzeń", "combo ×8"). */
+  starShortLabel(st) {
+    switch (st.type) {
+      case 'timeUnder': return formatClock(st.seconds);
+      case 'noBotHit': return 'bez zderzeń';
+      case 'comboAtLeast': return `combo ×${st.count}`;
+      case 'pylonsUnbroken': return 'combo przy pylonach';
+      case 'visitBothClusters': case 'bothRoutesUsed': return 'obie strony';
+      default: return st.label.toLowerCase();
+    }
+  }
+
+  diffBarsHtml(diff) {
+    return `<span class="diff-bars" aria-hidden="true">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= diff ? 'on' : ''}"></i>`).join('')}</span>`;
+  }
+
+  starsHtml(bits, cls = '') {
+    return `<span class="star-row ${cls}" aria-label="${Game.starCount(bits)} z 3 gwiazdek">${[0, 1, 2].map(i => `<i class="${bits & (1 << i) ? 'on' : ''}">★</i>`).join('')}</span>`;
   }
 
   closeMissionBriefing() {
@@ -8537,7 +9665,8 @@ class Game {
     const color = DISTRICT_COLORS[district.id] || '#50F0FA';
     document.getElementById('campaignScreen').style.setProperty('--d-color', color);
     document.getElementById('districtTitle').textContent = district.name.toUpperCase();
-    document.getElementById('districtRebuildLine').textContent = `${doneCount}/${district.missions.length} · ${rebuildPct}%`;
+    const dStars = district.missions.reduce((n, id) => n + Game.starCount(c.stars[id] || 0), 0);
+    document.getElementById('districtRebuildLine').textContent = `${doneCount}/${district.missions.length} · ★ ${dStars}/${district.missions.length * 3}`;
     document.getElementById('districtRebuildBar').style.width = rebuildPct + '%';
     document.getElementById('districtStoryText').textContent = DISTRICT_STORY[district.id] || '';
 
@@ -8561,32 +9690,32 @@ class Game {
 
     const list = document.getElementById('missionList');
     list.innerHTML = '';
-    let medalCount = 0;
+    let starCount = 0;
     // Each row: code, name, its first goal (with icon) and a state icon --
     // a tap opens the mission's briefing (openMissionBriefing()).
     const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
     const PLAY_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
     const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
-    const STAR_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z"/></svg>';
     district.missions.forEach((id, i) => {
       const def = campaignMissionById(id);
       const done = !!c.completed[id];
       const prevDone = i === 0 || c.completed[district.missions[i - 1]];
-      const medal = !!c.medals[id];
-      if (medal) medalCount++;
+      const bits = c.stars[id] || 0;
+      starCount += Game.starCount(bits);
       const first = this.missionStepRows(def)[0];
+      const D = DIFFICULTY[def.diff || 1];
       const row = document.createElement('button');
       row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '') + (id === nextId ? ' current' : '');
       const icon = done ? CHECK_ICON : (prevDone ? PLAY_ICON : LOCK_ICON);
       row.innerHTML = `<span class="mission-row-id">${def.id === 'M00' ? 'START' : missionCode(def)}</span>` +
         `<span class="mission-row-main"><span class="mission-row-name">${def.name}</span>` +
         `<span class="mission-row-goal"><span class="mission-row-goal-icon" style="color:${first.color}"><svg viewBox="0 0 24 24">${first.icon}</svg></span>${first.label}${def.goal.steps && def.goal.steps.length > 1 ? ` <em>+${def.goal.steps.length - 1} ${plural(def.goal.steps.length - 1, ['cel', 'cele', 'celów'])}</em>` : ''}</span></span>` +
-        `<span class="mission-row-medal${medal ? ' earned' : ''}" title="${medal ? 'Medal zdobyty' : 'Medal do zdobycia'}">${STAR_ICON}</span>` +
+        (def.id === 'M00' ? '<span class="mission-row-medal"></span>' : `<span class="mission-row-medal" title="${D.label}">${this.starsHtml(bits, 'mini')}<span class="mission-row-diff" style="--diff-color:${D.color}">${this.diffBarsHtml(def.diff || 1)}</span></span>`) +
         `<span class="mission-row-icon">${icon}</span>`;
       row.addEventListener('click', () => this.openMissionBriefing(id));
       list.appendChild(row);
     });
-    document.getElementById('missionMedalsFootnote').textContent = `MEDALE ${medalCount}/${district.missions.length}`;
+    document.getElementById('missionMedalsFootnote').textContent = `GWIAZDKI ${starCount}/${district.missions.length * 3}`;
     this.selectedMissionId = nextId || district.missions[0];
   }
 
@@ -8648,17 +9777,24 @@ class Game {
       const ring = Math.min(s.starterRing || 0, s.fragments);
       for (let i = 0; i < ring; i++) {
         const a = i * 2.4 - 1.2, rr = 60 + i * 12;
-        this.campaignEntities.push(new CampaignEntity('fragment', clamp(start.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(start.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20)));
+        this.campaignEntities.push(new CampaignEntity('fragment', clamp(start.x + Math.cos(a) * rr, b.minX + 40, b.maxX - 40), clamp(start.y + Math.sin(a) * rr, b.minY + 40, b.maxY - 40)));
       }
       addMany('fragment', s.fragments - ring);
     }
     // Tight pockets of fragments for combo goals (see compileMission()).
+    // v15: pockets sit away from the start (a pocket next to it made a
+    // combo goal a 3-second formality).
+    const awayFromStart = (pad) => () => {
+      let q;
+      for (let k = 0; k < 16; k++) { q = this.randomInCampaignBounds(pad); if (dist(q.x, q.y, start.x, start.y) > 380) break; }
+      return q;
+    };
     for (let c = 0; c < (s.fragmentClusters || 0); c++) {
-      const center = place(110);
+      const center = place(110, awayFromStart(130));
       for (let i = 0; i < (s.clusterSize || 10); i++) {
         const a = i * 2.4, rr = 22 + 10 * Math.sqrt(i);
         this.campaignEntities.push(new CampaignEntity('fragment',
-          clamp(center.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(center.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20)));
+          clamp(center.x + Math.cos(a) * rr, b.minX + 40, b.maxX - 40), clamp(center.y + Math.sin(a) * rr, b.minY + 40, b.maxY - 40)));
       }
     }
 
@@ -8681,7 +9817,7 @@ class Game {
         for (let i = 0; i < n; i++) {
           const a = i * 2.4, rr = 30 + 14 * Math.sqrt(i);
           this.campaignEntities.push(new CampaignEntity('capsule',
-            clamp(center.x + Math.cos(a) * rr, b.minX + 20, b.maxX - 20), clamp(center.y + Math.sin(a) * rr, b.minY + 20, b.maxY - 20), { spawnAt: waveStart }));
+            clamp(center.x + Math.cos(a) * rr, b.minX + 40, b.maxX - 40), clamp(center.y + Math.sin(a) * rr, b.minY + 40, b.maxY - 40), { spawnAt: waveStart }));
         }
       });
     }
@@ -8689,6 +9825,22 @@ class Game {
     if (s.structures) addMany('structure', s.structures, null, glyphOr('structureGlyph', pickFrom(TIERS.structure.subtypes)));
     if (s.heavies) addMany('heavy', s.heavies, null, glyphOr('heavyGlyph', pickFrom(TIERS.heavy.subtypes)));
     if (s.towers) addMany('tower', s.towers, null, glyphOr('towerGlyph', pickFrom(TIERS.tower.subtypes)));
+    // v15: golden bytes start away from the hole (they flee anyway).
+    if (s.runners) addMany('runner', s.runners, () => {
+      let p;
+      for (let k = 0; k < 12; k++) { p = this.randomInCampaignBounds(60); if (dist(p.x, p.y, start.x, start.y) > 380) break; }
+      return p;
+    }, () => ({ glyph: 'bajt', wa: rand(0, Math.PI * 2) }));
+    // v15: glitch zones drift across the board; none opens on the start.
+    this.glitchZones = [];
+    const G = CONFIG.campaign.glitch;
+    for (let i = 0; i < (s.glitch || 0); i++) {
+      const r = rand(G.minRadius, G.maxRadius);
+      let p;
+      for (let k = 0; k < 20; k++) { p = this.randomInCampaignBounds(r + 20); if (dist(p.x, p.y, start.x, start.y) > r + 240) break; }
+      const a = rand(0, Math.PI * 2);
+      this.glitchZones.push({ x: p.x, y: p.y, r, vx: Math.cos(a) * G.speed, vy: Math.sin(a) * G.speed, seed: rand(0, 100) });
+    }
 
     if (s.markers) {
       const glyph = s.markerGlyph;
@@ -8714,8 +9866,9 @@ class Game {
         for (let i = 0; i < s.gates; i++) {
           const t = (i + 1) / (s.gates + 1);
           const gx = lerp(b.minX + 80, b.maxX - 80, t);
+          const spacing = (b.maxX - b.minX - 160) / (s.gates + 1);
           const opts = s.gateKind === 'pas'
-            ? { glyph: 'pas_przelotu', zoneHalfWidth: 90, phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }
+            ? { glyph: 'pas_przelotu', zoneHalfWidth: Math.min(90, Math.round(spacing * 0.3)), phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }
             : { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) };
           this.campaignEntities.push(new CampaignEntity('gate', gx, cy, opts));
         }
@@ -8822,11 +9975,18 @@ class Game {
       // M00's step-by-step guidance (see updateTutorialGuidance()) --
       // harmless no-ops for every other goal type.
       tutorialStepDone: def.goal.type === 'tutorialChecklist' ? def.goal.steps.map(() => false) : [],
-      tutorialRivalHintShown: false
+      tutorialRivalHintShown: false,
+      // v15: twists + boosters.
+      failReason: null,
+      racerCount: 0,
+      glitchHits: 0,
+      shields: 0,
+      boosters: []
     };
 
     this.buildCampaignMission(def);
     this.mission.goalGlyph = this.computeCampaignGoalGlyph();
+    this.save.campaign.attempts[def.id] = (this.save.campaign.attempts[def.id] || 0) + 1;
 
     if (this.campaignSpawn) {
       this.player.x = this.campaignSpawn.x;
@@ -8838,13 +9998,48 @@ class Game {
     }
 
     this.bots = [];
+    // v15: rivals never spawn on top of the start (hunters would open the
+    // mission with a hit).
+    const farSpot = (pad, minD) => {
+      let p;
+      for (let k = 0; k < 20; k++) { p = this.randomInCampaignBounds(pad); if (dist(p.x, p.y, this.player.x, this.player.y) > minD) break; }
+      return p;
+    };
     for (let i = 0; i < (def.setup.bots || 0); i++) {
-      const p = this.randomInCampaignBounds(150);
+      const p = farSpot(150, def.setup.hunters ? 520 : 260);
       const bot = new Bot(BOT_NAME_POOL[i], p.x, p.y);
       bot.radius = def.setup.botRadius || CONFIG.campaign.rivalRadius;
       bot.styleOverride = BOT_STYLES[i % BOT_STYLES.length];
+      // Only the first `hunters` rivals hunt; the rest roam as before.
+      bot.hunter = i < (def.setup.hunters || 0);
       this.bots.push(bot);
     }
+    if (def.setup.racer) {
+      const p = farSpot(120, 420);
+      const racer = new Bot('Złodziej', p.x, p.y);
+      racer.radius = CONFIG.campaign.racer.radius;
+      racer.styleOverride = 'sun';
+      racer.edgeColor = '#EFCB63';
+      racer.racer = true;
+      this.bots.push(racer);
+      this.racer = racer;
+    } else {
+      this.racer = null;
+    }
+
+    // v15 boosters picked in the briefing (consumed by launchMission()).
+    const boosters = (this.missionBoosters || []).filter(id => MISSION_BOOSTERS.some(b => b.id === id));
+    this.missionBoosters = [];
+    this.mission.boosters = boosters;
+    if (boosters.includes('time')) this.mission.bonusTime = CONFIG.boosters.timeBonus;
+    if (boosters.includes('shield')) this.mission.shields = CONFIG.boosters.shieldHits;
+    if (boosters.includes('magnet')) this.activeMutations.add('magnes');
+    if (boosters.includes('start')) {
+      this.mission.growthUnits = Math.max(this.mission.growthUnits, tierUnits(2));
+      this.syncCampaignRadius();
+      this.mission.tierId = this.campaignPlayerTier().id;
+    }
+    this.mission.timeRemaining = def.timeLimit + (this.mission.bonusTime || 0);
 
     this.camera.x = this.player.x;
     this.camera.y = this.player.y;
@@ -8866,8 +10061,11 @@ class Game {
     this.running = true;
     this.monetization.gameplayStart();
     this.state = GameState.PLAYING;
+    // v15: every mission waits on a tap (owner: "rozpoczęcie levelu powinno
+    // być na kliknięcie, aby gracz miał czas przeczytać komunikat") -- the
+    // start card holds NELA's line and the goals until the player is ready.
     if (def.goal.type === 'tutorialChecklist') this.showTutorialStepIntro(0);
-    else this.showNelaToast(def.nela.start);
+    else this.showMissionStartCard(def);
     // v14: the goal box flashes in once, so the first glance lands on it.
     const goalBox = document.getElementById('hud-goal');
     goalBox.classList.remove('goal-intro');
@@ -8884,10 +10082,210 @@ class Game {
   /* ---- Mission update loop ---- */
 
   updateCampaignBot(bot, dt) {
+    if (bot.racer) { this.updateRacerBot(bot, dt); return; }
+    bot.tempSpeedMult = 1;
+    bot.hunting = false;
+    if (bot.hunter) {
+      // v15 Łowcy: a bigger rival chases the player in bursts (then rests,
+      // so it can be outrun); once outgrown it runs away instead.
+      const H = CONFIG.campaign.hunter, p = this.player;
+      const d = dist(bot.x, bot.y, p.x, p.y);
+      if (bot.restT > 0) bot.restT -= dt;
+      else if (bot.radius > p.radius * EAT_HOLE_RATIO && d < H.range && !p.invulnerable) {
+        bot.chaseT = (bot.chaseT || 0) + dt;
+        if (bot.chaseT > H.chaseSeconds) { bot.chaseT = 0; bot.restT = H.restSeconds; }
+        bot.hunting = true;
+        bot.tempSpeedMult = H.speedMult;
+        bot.moveToward(p.x, p.y, dt);
+        return;
+      } else if (p.radius > bot.radius * EAT_HOLE_RATIO && d < 240) {
+        bot.tempSpeedMult = 0.8;
+        bot.moveToward(bot.x + (bot.x - p.x) / (d || 1) * 200, bot.y + (bot.y - p.y) / (d || 1) * 200, dt);
+        return;
+      }
+      bot.chaseT = Math.max(0, (bot.chaseT || 0) - dt);
+    }
     if (!bot.wanderTarget || dist(bot.x, bot.y, bot.wanderTarget.x, bot.wanderTarget.y) < 40) {
       bot.wanderTarget = this.randomInCampaignBounds(80);
     }
     bot.moveToward(bot.wanderTarget.x, bot.wanderTarget.y, dt);
+  }
+
+  /** v15 Złodziej: races the player for the first eat goal's objects, and
+   *  runs from the player once it can be eaten. */
+  /** The player's own tally on the race goal (swallows in progress count). */
+  raceMine() {
+    const m = this.mission, s = m.def.setup;
+    const step = m.def.goal.steps.find(st => st.eat === s.raceType && (st.glyph || null) === s.raceGlyph) || { eat: s.raceType, n: s.raceTarget };
+    const inMouth = this.campaignEntities.filter(x => x.eating && !x.consumed && x.eater === this.player && x.type === s.raceType && (!s.raceGlyph || x.glyph === s.raceGlyph)).length;
+    return this.objectiveProgress(step)[0] + inMouth;
+  }
+
+  isRaceTarget(e) {
+    const s = this.mission.def.setup;
+    return e.type === s.raceType && (!s.raceGlyph || e.glyph === s.raceGlyph) && e.live && !e.eating && !e.consumed;
+  }
+
+  updateRacerBot(bot, dt) {
+    const R = CONFIG.campaign.racer, p = this.player, m = this.mission;
+    bot.tempSpeedMult = R.speedBase + R.speedPerDiff * (m.def.diff || 1);
+    const d = dist(bot.x, bot.y, p.x, p.y);
+    // A fair race: the thief starts once the hole can eat what it steals.
+    // Race already won by the player: the thief just roams.
+    if (m.raceWon || (m.raceStarted && this.raceMine() >= m.def.setup.raceTarget)) {
+      m.raceWon = true;
+      bot.tempSpeedMult = 0.5;
+      if (!bot.wanderTarget || dist(bot.x, bot.y, bot.wanderTarget.x, bot.wanderTarget.y) < 40) bot.wanderTarget = this.randomInCampaignBounds(80);
+      bot.moveToward(bot.wanderTarget.x, bot.wanderTarget.y, dt);
+      return;
+    }
+    if (!m.raceStarted) {
+      const need = (CAMPAIGN_ENTITY_STATS[m.def.setup.raceType] || { minTier: 1 }).minTier;
+      if (this.campaignTierIndex(this.campaignPlayerTier().id) >= need) {
+        m.raceStartIn = m.raceStartIn == null ? R.headStart : m.raceStartIn - dt;
+        if (m.raceStartIn <= 0) { m.raceStarted = true; this.showBanner('ZŁODZIEJ RUSZA!', 'Zbieraj szybciej niż on', '#EFCB63', 1.2, 3); }
+      }
+      bot.tempSpeedMult = 0.35;
+      if (!bot.wanderTarget || dist(bot.x, bot.y, bot.wanderTarget.x, bot.wanderTarget.y) < 40) bot.wanderTarget = this.randomInCampaignBounds(80);
+      bot.moveToward(bot.wanderTarget.x, bot.wanderTarget.y, dt);
+      return;
+    }
+    if (p.radius > bot.radius * EAT_HOLE_RATIO && d < 220) {
+      bot.moveToward(bot.x + (bot.x - p.x) / (d || 1) * 200, bot.y + (bot.y - p.y) / (d || 1) * 200, dt);
+    } else {
+      bot.decisionTimer -= dt;
+      if (bot.decisionTimer <= 0 || !bot.raceTarget || !this.isRaceTarget(bot.raceTarget)) {
+        bot.decisionTimer = R.decision;
+        let best = null, bd = Infinity;
+        for (const e of this.campaignEntities) {
+          if (!this.isRaceTarget(e)) continue;
+          const de = dist(bot.x, bot.y, e.x, e.y);
+          if (de < bd) { bd = de; best = e; }
+        }
+        bot.raceTarget = best;
+      }
+      const t = bot.raceTarget;
+      if (t) bot.moveToward(t.x, t.y, dt);
+      else {
+        if (!bot.wanderTarget || dist(bot.x, bot.y, bot.wanderTarget.x, bot.wanderTarget.y) < 40) bot.wanderTarget = this.randomInCampaignBounds(80);
+        bot.moveToward(bot.wanderTarget.x, bot.wanderTarget.y, dt);
+      }
+    }
+    // The thief takes what it touches (no size gate -- it steals).
+    for (const e of this.campaignEntities) {
+      if (!this.isRaceTarget(e)) continue;
+      if (dist(bot.x, bot.y, e.x, e.y) < bot.radius * 0.9 + e.radius * 0.4) e.startEating(bot);
+    }
+  }
+
+  /** A goal object the thief swallowed: its point, not the player's. */
+  resolveRacerEat(e) {
+    const m = this.mission;
+    m.racerCount++;
+    this.spawnParticles(e.x, e.y, '#EFCB63', 10);
+    this.addFloatText(e.x, e.y - 20, 'ZŁODZIEJ +1', '#EFCB63', 14);
+    const s = m.def.setup;
+    const mine = this.raceMine();
+    if (m.raceWon || mine >= s.raceTarget) return;
+    const left = this.campaignEntities.filter(x => x.type === s.raceType && (!s.raceGlyph || x.glyph === s.raceGlyph) && !x.consumed && !x.eating).length;
+    if (m.racerCount >= s.raceTarget || mine + left < s.raceTarget) this.failCampaignMission('racer');
+    else if (m.racerCount === s.raceTarget - 1) this.showBanner('ZŁODZIEJ TUŻ, TUŻ!', 'Brakuje mu jeszcze jednego', '#EFCB63', 1.2, 3);
+  }
+
+  /** v15 golden bytes: drift until the hole comes close, then flee at a
+   *  bit under the hole's own speed -- a wall or a corner is how you catch
+   *  one. */
+  updateRunners(dt) {
+    const R = CONFIG.campaign.runner, b = CONFIG.campaign.bounds;
+    for (const e of this.campaignEntities) {
+      if (e.type !== 'runner' || e.consumed || e.eating || !e.live) continue;
+      // Flees whichever hole is closer -- the thief too.
+      let p = this.player, d = dist(e.x, e.y, p.x, p.y);
+      if (this.racer && this.mission.raceStarted) { const dr = dist(e.x, e.y, this.racer.x, this.racer.y); if (dr < d) { p = this.racer; d = dr; } }
+      let vx, vy, sp;
+      if (d < R.panicRange + p.radius) {
+        vx = (e.x - p.x) / (d || 1); vy = (e.y - p.y) / (d || 1);
+        // Bias away from the walls so it doesn't hug one forever.
+        const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
+        vx += (cx - e.x) / 2600; vy += (cy - e.y) / 2600;
+        const n = Math.hypot(vx, vy) || 1; vx /= n; vy /= n;
+        sp = Math.min(R.speed, p.getSpeed() * 0.78);
+      } else {
+        e.wa = (e.wa || 0) + (Math.random() - 0.5) * dt * 2;
+        vx = Math.cos(e.wa); vy = Math.sin(e.wa); sp = R.wanderSpeed;
+      }
+      // Never into a corner the (clamped) hole can't reach.
+      const mg = Math.max(40, this.player.radius * 0.9);
+      e.x = clamp(e.x + vx * sp * dt, b.minX + mg, b.maxX - mg);
+      e.y = clamp(e.y + vy * sp * dt, b.minY + mg, b.maxY - mg);
+      if (e.x <= b.minX + mg || e.x >= b.maxX - mg) e.wa = Math.PI - (e.wa || 0);
+      if (e.y <= b.minY + mg || e.y >= b.maxY - mg) e.wa = -(e.wa || 0);
+    }
+  }
+
+  /** v15 glitch zones: drift and bounce inside the board; touching one
+   *  costs growth like a bigger rival's hit. */
+  updateGlitchZones(dt) {
+    const zones = this.glitchZones || [];
+    if (!zones.length) return;
+    const b = CONFIG.campaign.bounds, p = this.player;
+    for (const z of zones) {
+      z.x += z.vx * dt; z.y += z.vy * dt;
+      if (z.x < b.minX + z.r || z.x > b.maxX - z.r) { z.vx = -z.vx; z.x = clamp(z.x, b.minX + z.r, b.maxX - z.r); }
+      if (z.y < b.minY + z.r || z.y > b.maxY - z.r) { z.vy = -z.vy; z.y = clamp(z.y, b.minY + z.r, b.maxY - z.r); }
+      if (!p.invulnerable && dist(z.x, z.y, p.x, p.y) < z.r + p.radius * 0.3) {
+        this.mission.glitchHits++;
+        this.campaignHit('glitch', z.x, z.y);
+      }
+    }
+  }
+
+  /** v15: one penalty for every hazard (a bigger rival, a glitch zone):
+   *  Tarcza absorbs it, a fragile vortex fails the mission, otherwise it
+   *  costs a share of growth and the combo. */
+  campaignHit(source, fromX, fromY) {
+    const m = this.mission;
+    const p = this.player;
+    // Counted even when a shield takes it ("bez zderzenia" means none),
+    // and the hunter backs off / the hole is knocked out of the zone.
+    if (source === 'bot') m.botHitCount++;
+    for (const b of this.bots) if (b.hunter && b.hunting) { b.restT = CONFIG.campaign.hunter.afterHitRest; b.chaseT = 0; }
+    if (fromX != null) {
+      const d = dist(p.x, p.y, fromX, fromY) || 1;
+      p.x += (p.x - fromX) / d * 40; p.y += (p.y - fromY) / d * 40;
+      this.clampToCampaignBounds(p);
+    }
+    if (m.shields > 0) {
+      m.shields--;
+      p.invulnerableUntil = performance.now() + 2200;
+      this.ripples.push(new Ripple(p.x, p.y, '#EFCB63', p.radius, p.radius * 2.6, 0.5));
+      this.showBanner('TARCZA!', m.shields ? `Zostało osłon: ${m.shields}` : 'Ostatnia osłona zużyta', '#EFCB63', 1.1, 3);
+      this.sound.coin();
+      this.vibrate(30);
+      return;
+    }
+    if (m.def.setup.fragile) { this.failCampaignMission('hit'); return; }
+    const loss = m.growthUnits * CONFIG.campaign.hitPenaltyFraction;
+    m.growthUnits = Math.max(0, m.growthUnits - loss);
+    this.syncCampaignRadius();
+    this.comboCount = 0; this.comboMultiplier = 1; this.comboTimer = 0;
+    p.invulnerableUntil = performance.now() + (source === 'glitch' ? CONFIG.campaign.glitch.hitInvulnMs : CONFIG.campaign.hitInvulnMs);
+    this.sound.hurt();
+    this.triggerShake(8);
+    this.spawnParticles(p.x, p.y, source === 'glitch' ? '#FF54AD' : '#ff3860', 20);
+    this.vibrate([30, 40, 30]);
+    this.analytics.track(source === 'glitch' ? 'mission_glitch_hit' : 'mission_bot_hit', { missionId: m.def.id });
+  }
+
+  /** v15: a mission lost before the clock ran out (the thief won, or a
+   *  fragile vortex took a hit). */
+  failCampaignMission(reason) {
+    const m = this.mission;
+    if (!m || m.ended || m.finishing) return;
+    m.failReason = reason;
+    this.flashScreen('#FF54AD', 0.3);
+    this.triggerShake(12);
+    this.endCampaignMission(false);
   }
 
   handleCampaignEating() {
@@ -9116,18 +10514,10 @@ class Game {
         // GDD 07: contact with a bigger bot costs a fraction of current
         // growth and breaks combo, with brief safe invulnerability — not
         // Arena's shrink-to-base-radius (campaign's early missions must
-        // not teach through sudden elimination).
-        const loss = m.growthUnits * CONFIG.campaign.hitPenaltyFraction;
-        m.growthUnits = Math.max(0, m.growthUnits - loss);
-        this.syncCampaignRadius();
-        this.comboCount = 0; this.comboMultiplier = 1; this.comboTimer = 0;
-        this.player.invulnerableUntil = performance.now() + CONFIG.campaign.hitInvulnMs;
-        m.botHitCount++;
-        this.sound.hurt();
-        this.triggerShake(8);
-        this.spawnParticles(this.player.x, this.player.y, '#ff3860', 20);
-        this.vibrate([30, 40, 30]);
-        this.analytics.track('mission_bot_hit', { missionId: m.def.id });
+        // not teach through sudden elimination). v15: campaignHit() (a
+        // shield absorbs it; a fragile vortex fails).
+        this.campaignHit('bot');
+        if (m.ended) return;
       } else if (this.player.radius > bot.radius * EAT_HOLE_RATIO) {
         // Rivals are prey too, once the player has outgrown them -- Campaign
         // bots were pure threats before (a documented simplification), the
@@ -9150,7 +10540,8 @@ class Game {
           saveGame(this.save);
         }
         this.addSwallowGhost(this.player, bot, bot.edgeColor);
-        bot.radius = m.def.setup.botRadius || CONFIG.campaign.rivalRadius;
+        bot.radius = bot.racer ? CONFIG.campaign.racer.radius : (m.def.setup.botRadius || CONFIG.campaign.rivalRadius);
+        bot.raceTarget = null;
         const p = this.randomInCampaignBounds(150);
         bot.x = p.x; bot.y = p.y;
         bot.invulnerableUntil = performance.now() + INVULN_TIME * 1000;
@@ -9217,7 +10608,7 @@ class Game {
    *  new DOM/CSS pause pattern is needed. */
   offerCampaignPowers(count) {
     this.evolutionPending = true;
-    const cards = pickUnique(CAMPAIGN_POWERS, count);
+    const cards = pickUnique(CAMPAIGN_POWERS.filter(p => !this.activeMutations.has(p.id)), count);
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id), mode: 'campaign' });
     this.showPowerCards(cards, id => this.pickCampaignPower(id), 'Działa do końca tej misji. Gra czeka, aż wybierzesz.');
     clearTimeout(this.evolutionAutoPickTimer);
@@ -9459,6 +10850,8 @@ class Game {
   }
 
   dismissTutorialIntro() {
+    // (QA bots call this to clear any pre-start card -- v15's start card too.)
+    if (!document.getElementById('missionStartOverlay').classList.contains('hidden')) { this.beginMissionPlay(); return; }
     this.introPending = false;
     this.pointerScreen = null; // the tap on the card must not become a steering point
     document.getElementById('tutorialIntroOverlay').classList.add('hidden');
@@ -9490,11 +10883,23 @@ class Game {
       // rival's hit shrinks the hole) and must not re-announce.
       m.stepsDoneShown = doneNow.map((d, k) => d || !!(m.stepsDoneShown && m.stepsDoneShown[k]));
     }
+    // v15: the thief's tally, a fragile vortex and the shields left ride
+    // under the goals (red/gold rows -- a threat, not a goal).
+    const s = m.def.setup || {};
+    const extra = [];
+    if (s.racer) extra.push({ icon: GOAL_ICONS.racer, color: '#EFCB63', label: 'Złodziej', count: m.raceStarted ? `${m.racerCount}/${s.raceTarget}` : 'czeka', cls: 'twist-danger' });
+    if (s.fragile && !m.shields) extra.push({ icon: GOAL_ICONS.fragile, color: '#50F0FA', label: 'Kruchy wir', count: '', cls: 'twist-danger' });
+    if (m.shields) extra.push({ icon: CARD_ICONS.shield, color: '#EFCB63', label: 'Tarcza', count: `×${m.shields}`, cls: 'twist-shield' });
     this.hudSet('missionGoalItems', 'html', goalItems.map(it => `
       <div class="mission-goal-item${it.progress >= it.target ? ' done' : ''}">
         <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
         <span class="mission-goal-text">${it.label}</span>
         <span class="mission-goal-count">${it.display || `${Math.min(it.progress, it.target)}/${it.target}`}</span>
+      </div>`).join('') + extra.map(it => `
+      <div class="mission-goal-item ${it.cls}">
+        <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
+        <span class="mission-goal-text">${it.label}</span>
+        <span class="mission-goal-count">${it.count}</span>
       </div>`).join(''));
 
     // Growth-tier "pasek ładowania": a compact bar + badge (e.g. "T1"),
@@ -9560,6 +10965,7 @@ class Game {
     this.applyPlayerMovement(dt);
     this.clampToCampaignBounds(this.player);
     for (const bot of this.bots) { this.updateCampaignBot(bot, dt); this.clampToCampaignBounds(bot); }
+    this.updateRunners(dt);
     for (const e of this.campaignEntities) e.update(dt, m.elapsed);
 
     this.handleCampaignEating();
@@ -9567,11 +10973,16 @@ class Game {
     for (const e of this.campaignEntities) {
       if (e.consumed && !e._resolved) {
         e._resolved = true;
-        this.resolveCampaignEntity(e);
+        if (e.eater && e.eater !== this.player) this.resolveRacerEat(e);
+        else this.resolveCampaignEntity(e);
+        if (m.ended) return;
       }
     }
+    this.updateGlitchZones(dt);
+    if (m.ended) return;
     this.handleCampaignGates();
     this.handleCampaignCollisions();
+    if (m.ended) return;
     this.updateMutationEffectsCampaign(dt);
     this.updateCombo(dt);
     if (this.comboCount === 0 && m._wasComboActive) {
@@ -9628,7 +11039,9 @@ class Game {
     const m = this.mission;
     const A = CONFIG.ads;
     const frac = this.campaignGoalFraction();
-    if (m.revived || m.reviveDeclined || frac < A.reviveMinProgress || this.monetization.placementLeft('mission_revive') <= 0) {
+    const adLeft = this.monetization.placementLeft('mission_revive') > 0;
+    const prismsOk = (this.save.prisms || 0) >= A.revivePrisms;
+    if (m.revived || m.reviveDeclined || frac < A.reviveMinProgress || (!adLeft && !prismsOk)) {
       this.endCampaignMission(false);
       return;
     }
@@ -9641,6 +11054,10 @@ class Game {
     document.getElementById('reviveProgressBar').style.width = Math.round(frac * 100) + '%';
     document.getElementById('reviveProgressPct').textContent = Math.round(frac * 100) + '%';
     document.getElementById('btnReviveAd').textContent = `+${A.reviveSeconds} S · OBEJRZYJ REKLAMĘ`;
+    document.getElementById('btnReviveAd').classList.toggle('hidden', !adLeft);
+    // v15: the same seconds for prisms (no ad needed).
+    document.getElementById('btnRevivePrisms').textContent = `+${A.reviveSeconds} S · ${A.revivePrisms} ◆`;
+    document.getElementById('btnRevivePrisms').classList.toggle('hidden', !prismsOk);
     document.getElementById('reviveOverlay').classList.remove('hidden');
     this.sound.whoosh();
     this.vibrate([30, 30, 30]);
@@ -9686,6 +11103,25 @@ class Game {
     this.lastTime = performance.now();
   }
 
+  acceptRevivePrisms() {
+    const m = this.mission, A = CONFIG.ads;
+    if (!this.revivePending || this.reviveAdInFlight || !m || m.ended) return;
+    if ((this.save.prisms || 0) < A.revivePrisms) return;
+    this.save.prisms -= A.revivePrisms;
+    saveGame(this.save);
+    this.analytics.track('revive_prisms', { missionId: m.def.id });
+    m.revived = true;
+    m.bonusTime = (m.bonusTime || 0) + A.reviveSeconds;
+    m.timeRemaining = A.reviveSeconds;
+    this.hideReviveOffer();
+    this.lastCountdownSec = null;
+    this.player.invulnerableUntil = performance.now() + 2000;
+    this.showBanner(`+${A.reviveSeconds} S!`, 'Dokończ misję!', '#46D99A', 1.3, 4);
+    this.sound.fanfare(false);
+    this.updateCoinDisplays();
+    this.lastTime = performance.now();
+  }
+
   declineRevive() {
     if (!this.revivePending || this.reviveAdInFlight) return;
     this.hideReviveOffer();
@@ -9707,19 +11143,20 @@ class Game {
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
 
-    let medalEarned = false;
-    const medal = m.def.medal;
-    if (success) {
-      switch (medal.type) {
-        case 'timeUnder': medalEarned = m.elapsed <= medal.seconds; break;
-        case 'visitBothClusters': medalEarned = m.clustersVisited.has('A') && m.clustersVisited.has('B'); break;
-        case 'noBotHit': medalEarned = m.botHitCount === 0; break;
-        case 'comboUnbroken': medalEarned = !m.comboBroken; break;
-        case 'comboAtLeast': medalEarned = Math.max(m.bestCombo, m.maxComboDuringCapsule) >= medal.count; break;
-        case 'bothRoutesUsed': medalEarned = m.markersRoutes.has('A') && m.markersRoutes.has('B'); break;
-        case 'pylonsUnbroken': medalEarned = !m.pylonComboBroken; break;
-      }
-    }
+    // v15: three stars (bit 1 clear, bit 2 the fast time, bit 4 expert
+    // time / special challenge), each kept from the best attempt.
+    const c = this.save.campaign;
+    const id = m.def.id;
+    if (!success && !m.failReason) m.failReason = 'time';
+    const starBits = success ? this.missionStarBits(m) : 0;
+    const prevBits = c.stars[id] || 0;
+    const newStarBits = starBits & ~prevBits;
+    if (starBits) c.stars[id] = prevBits | starBits;
+    const medalEarned = !!(starBits & 4);
+    // Energy: a won mission gives its point back; defeats in a row arm
+    // NELA's pity Zegar (CONFIG.boosters.pityFails).
+    if (success && m.energyCharged) this.grantEnergy(1, true);
+    c.fails[id] = success ? 0 : (c.fails[id] || 0) + 1;
 
     let firstClear = false;
     if (success && !this.save.campaign.completed[m.def.id]) {
@@ -9740,21 +11177,83 @@ class Game {
       }
     }
     if (medalEarned) this.save.campaign.medals[m.def.id] = true;
+    this.checkBoosterGift();
     this.lastXpResult = this.grantXp(success ? CONFIG.progression.xpMissionSuccess : CONFIG.progression.xpMissionFail);
+    this.checkStarChests();
     saveGame(this.save);
 
     this.analytics.track('mission_end', {
-      missionId: m.def.id, success, medalEarned, firstClear,
+      missionId: m.def.id, success, medalEarned, firstClear, diff: m.def.diff,
+      stars: starBits, newStars: newStarBits, failReason: success ? null : m.failReason,
+      attempt: c.attempts[id] || 1, boosters: m.boosters.join(',') || null,
       durationMs: Math.round(m.elapsed * 1000)
     });
 
-    this.showMissionResultScreen(success, medalEarned, firstClear);
+    this.showMissionResultScreen(success, starBits, newStarBits, firstClear);
   }
 
-  showMissionResultScreen(success, medalEarned, firstClear) {
+  /** v15: is one star condition met by this (successful) attempt? */
+  starConditionMet(cond, m) {
+    switch (cond.type) {
+      case 'clear': return true;
+      case 'timeUnder': return m.elapsed <= cond.seconds;
+      case 'visitBothClusters': return m.clustersVisited.has('A') && m.clustersVisited.has('B');
+      case 'noBotHit': return m.botHitCount === 0;
+      case 'comboUnbroken': return !m.comboBroken;
+      case 'comboAtLeast': return Math.max(m.bestCombo, m.maxComboDuringCapsule) >= cond.count;
+      case 'bothRoutesUsed': return m.markersRoutes.has('A') && m.markersRoutes.has('B');
+      case 'pylonsUnbroken': return !m.pylonComboBroken;
+    }
+    return false;
+  }
+
+  missionStarBits(m) {
+    const stars = m.def.stars || [{ type: 'clear' }];
+    return stars.reduce((bits, cond, i) => bits | (this.starConditionMet(cond, m) ? 1 << i : 0), 0);
+  }
+
+  static starCount(bits) { return (bits & 1) + ((bits >> 1) & 1) + ((bits >> 2) & 1); }
+
+  totalStars() {
+    const st = this.save.campaign.stars;
+    return Object.keys(st).reduce((n, id) => n + Game.starCount(st[id] || 0), 0);
+  }
+
+  /** v15: every CONFIG.stars.chestEvery stars opens a star chest. */
+  checkStarChests() {
+    const c = this.save.campaign, S = CONFIG.stars;
+    const due = Math.floor(this.totalStars() / S.chestEvery);
+    while (c.starChests < due) {
+      c.starChests++;
+      const booster = MISSION_BOOSTERS[(c.starChests - 1) % MISSION_BOOSTERS.length];
+      this.save.coins += S.chest.coins;
+      this.save.prisms = (this.save.prisms || 0) + S.chest.prisms;
+      this.save.boosters[booster.id] = (this.save.boosters[booster.id] || 0) + S.chest.booster;
+      this.queueRewardCelebration({
+        kicker: 'SKRZYNIA GWIAZD', eyebrow: `${c.starChests * S.chestEvery} GWIAZDEK`, title: 'Skrzynia gwiazd!', color: '#EFCB63',
+        icon: REWARD_CATEGORY_ICONS.bundle, noCta: true,
+        desc: `+${S.chest.coins} monet · +${S.chest.prisms} pryzmaty · wzmocnienie „${booster.name}”. Następna za ${S.chestEvery} gwiazdek.`
+      });
+      this.analytics.track('star_chest', { n: c.starChests });
+    }
+  }
+
+  showMissionResultScreen(success, starBits, newStarBits, firstClear) {
+    const medalEarned = !!(newStarBits & 6);
     const m = this.mission;
     const def = m.def;
-    document.getElementById('missionResultTitle').textContent = success ? 'MISJA UKOŃCZONA' : 'CZAS MINĄŁ';
+    const c = this.save.campaign;
+    const failTitle = { time: 'CZAS MINĄŁ', racer: 'ZŁODZIEJ BYŁ SZYBSZY', hit: 'WIR ROZBITY' }[m.failReason] || 'CZAS MINĄŁ';
+    document.getElementById('missionResultTitle').textContent = success ? (Game.starCount(starBits) === 3 ? 'PERFEKCYJNIE!' : 'MISJA UKOŃCZONA') : failTitle;
+    // v15 pity: after a few defeats in a row NELA lends one Zegar (+15 s).
+    let pityLoan = false;
+    if (!success && (c.fails[def.id] || 0) >= CONFIG.boosters.pityFails && !c.pity[def.id] && this.boostersUnlocked()) {
+      c.pity[def.id] = true;
+      this.save.boosters.time = (this.save.boosters.time || 0) + 1;
+      pityLoan = true;
+      saveGame(this.save);
+      this.analytics.track('pity_booster', { missionId: def.id });
+    }
     // v12 hero emblem: a ring + check drawn in the district's color (gold
     // with a medal), or a pink clock when time ran out.
     const hero = document.getElementById('missionHero');
@@ -9763,11 +11262,13 @@ class Game {
     this.sound.setIntensity(0);
     if (success) this.sound.fanfare(firstClear); else this.sound.fail();
     document.getElementById('missionResultEyebrow').textContent = `${missionCode(def)} · ${def.name}`;
-    document.getElementById('missionResultNela').textContent = success
-      ? def.nela.success
-      : (this.campaignGoalFraction() >= 0.5
-        ? 'Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.'
-        : 'Tym razem Glitch był szybszy. Zacznij od najbliższych celów, a reszta pójdzie sama.');
+    const failLine = pityLoan ? `Ta misja daje w kość. Masz ode mnie Zegar (+${CONFIG.boosters.timeBonus} s) — wybierz go w odprawie.`
+      : m.failReason === 'racer' ? 'Następnym razem zbieraj najpierw cele obok Złodzieja — a gdy urośniesz, pochłoń go, żeby stracił czas.'
+        : m.failReason === 'hit' ? 'Kruchy wir pękł. Tarcza z odprawy przyjmie dwa zderzenia za Ciebie.'
+          : this.campaignGoalFraction() >= 0.5 ? 'Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.'
+            : def.diff >= 4 ? 'Ta misja jest naprawdę trudna. Zegar albo Turbo start z odprawy mogą pomóc.'
+              : 'Tym razem Glitch był szybszy. Zacznij od najbliższych celów, a reszta pójdzie sama.';
+    document.getElementById('missionResultNela').textContent = success ? def.nela.success : failLine;
     this.animateNumber(document.getElementById('missionResultScore'), this.player.score, 1000);
     // Score only where a goal asks for it; on a timeout the clock equals
     // the limit, so the tile shows how far the goals got instead.
@@ -9775,22 +11276,30 @@ class Game {
     document.getElementById('missionResultScoreTile').classList.toggle('hidden', !scoreGoal && !this.player.score);
     document.getElementById('missionResultTimeLabel').textContent = success ? 'CZAS' : 'POSTĘP';
     document.getElementById('missionResultTime').textContent = success ? formatClock(m.elapsed) : `${Math.round(this.campaignGoalFraction() * 100)}%`;
-    const medalOwned = medalEarned || !!this.save.campaign.medals[def.id];
-    document.getElementById('missionResultMedalStar').textContent = medalOwned ? '★' : '☆';
-    document.getElementById('missionResultMedalTile').classList.toggle('earned', medalOwned);
+    // v15: three stars -- this attempt's lit, older ones dimmer, new ones pop.
+    const owned = c.stars[def.id] || 0;
+    const starsEl = document.getElementById('missionResultStars');
+    starsEl.innerHTML = [0, 1, 2].map(i => {
+      const bit = 1 << i;
+      const cls = (starBits & bit) ? ((newStarBits & bit) ? 'on new' : 'on') : ((owned & bit) ? 'old' : '');
+      return `<span class="mr-star ${cls}" style="animation-delay:${0.35 + i * 0.28}s">★</span>`;
+    }).join('');
+    if (success) newStarBits && [0, 1, 2].forEach(i => { if (newStarBits & (1 << i)) setTimeout(() => this.sound.star(i), 350 + i * 280); });
     this.renderXpCard('mission', this.lastXpResult);
-    if (success) setTimeout(() => this.launchConfetti('missionConfetti', medalEarned ? 80 : 50), 250);
+    if (success) setTimeout(() => this.launchConfetti('missionConfetti', Game.starCount(starBits) >= 3 ? 90 : 50), 250);
     const medalLine = document.getElementById('missionResultMedal');
     if (success) {
-      medalLine.textContent = medalEarned ? `Medal zdobyty: ${def.medal.label}`
-        : medalOwned ? `Medal masz już z wcześniejszej próby (${def.medal.label})`
-          : `Medal: ${def.medal.label} — zagraj ponownie, żeby go zdobyć`;
+      medalLine.innerHTML = (def.stars || []).map((cond, i) => {
+        const bit = 1 << i;
+        const st = (starBits & bit) ? 'done' : (owned & bit) ? 'had' : '';
+        return `<li class="mr-star-row ${st}"><span class="mr-star-mini">${'★'.repeat(i + 1)}</span>${cond.label}${st === 'had' ? ' <em>(wcześniej)</em>' : ''}</li>`;
+      }).join('');
     } else {
       const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
         .map(it => `${it.label} (${it.display || `${Math.min(it.progress, it.target)}/${it.target}`})`);
-      medalLine.textContent = missing.length ? `Zostało: ${missing.join(' · ')}` : '';
+      medalLine.innerHTML = missing.length ? `<li class="mr-star-row missing">Zostało: ${missing.join(' · ')}</li>` : '';
     }
-    medalLine.classList.toggle('earned', medalOwned);
+    medalLine.classList.toggle('earned', !!medalEarned);
     document.getElementById('missionResultReward').textContent = firstClear
       ? `+${def.reward.coins} monet${def.reward.unlockSkin ? ' · Wir finałowy!' : ''}`
       : '';
@@ -9823,7 +11332,7 @@ class Game {
       nextCard.innerHTML = this.missionCardHtml(nextDef, { eyebrow: newDistrict ? `NOWA DZIELNICA · ${DISTRICTS.find(d => d.id === nextDef.district).name.toUpperCase()}` : 'NASTĘPNA MISJA' });
       nextCard.style.setProperty('--d-color', DISTRICT_COLORS[nextDef.district] || '#50F0FA');
       btnNext.innerHTML = `GRAJ ${missionCode(nextDef)}${PLAY}`;
-      btnNext.onclick = () => this.startCampaignMission(nextId);
+      btnNext.onclick = () => this.openMissionBriefing(nextId);
     } else if (success && CAMPAIGN_MISSIONS.every(md => this.isMissionDone(md.id))) {
       btnNext.textContent = 'WRÓĆ DO MIASTA';
       btnNext.onclick = () => { this.updateCoinDisplays(); this.showScreen('mainMenu'); };
@@ -9833,9 +11342,11 @@ class Game {
       document.getElementById('btnMissionMap').classList.add('hidden');
     } else {
       btnNext.innerHTML = `SPRÓBUJ PONOWNIE${PLAY}`;
-      btnNext.onclick = () => this.startCampaignMission(def.id);
+      btnNext.onclick = () => this.openMissionBriefing(def.id);
     }
-    btnRetry.onclick = () => this.startCampaignMission(def.id);
+    // v15: every (re)start goes through the briefing -- boosters and the
+    // energy cost are decided there.
+    btnRetry.onclick = () => this.openMissionBriefing(def.id);
     document.getElementById('btnMissionMap').onclick = () => { this.updateCoinDisplays(); this.selectedDistrictId = nextDef ? nextDef.district : def.district; this.openCampaignScreen(); };
 
     this.updateCoinDisplays();
@@ -9860,6 +11371,7 @@ class Game {
     ctx.save();
     ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
     this.drawCampaignGrid(ctx, time);
+    this.drawGlitchZones(ctx, time);
     const goalTypes = this.campaignGoalEntityTypes();
     const playerTier = this.campaignTierIndex(this.campaignPlayerTier().id);
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
@@ -9886,9 +11398,64 @@ class Game {
     for (const f of this.floatTexts) f.draw(ctx);
     ctx.restore();
 
+    this.drawDarkness(ctx);
     if (this.showMinimap) this.drawCampaignMinimap(ctx);
     this.drawCampaignGoalArrow(ctx, time);
     this.drawJuiceScreen(ctx, this.mission ? this.mission.timeRemaining : undefined);
+  }
+
+  /** v15 glitch zones: a pink hazard field with drifting scan bars and
+   *  broken pixel blocks (light and open -- never a dark disc, which would
+   *  read as a hole). */
+  drawGlitchZones(ctx, time) {
+    const zones = this.glitchZones;
+    if (!zones || !zones.length) return;
+    for (const z of zones) {
+      if (!this.isInView(z.x, z.y, z.r + 10)) continue;
+      const pulse = 0.5 + 0.5 * Math.sin(time * 4 + z.seed);
+      ctx.save();
+      ctx.translate(z.x, z.y);
+      ctx.fillStyle = `rgba(255, 84, 173, ${0.1 + 0.06 * pulse})`;
+      ctx.beginPath(); ctx.arc(0, 0, z.r, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = 'rgba(255, 84, 173, 0.22)';
+      const off = (time * 40 + z.seed * 10) % 18;
+      for (let y = -z.r - 18 + off; y < z.r; y += 18) ctx.fillRect(-z.r, y, z.r * 2, 4);
+      for (let k = 0; k < 6; k++) {
+        const ph = Math.floor(time * 6 + k * 13 + z.seed);
+        const bx = Math.sin(ph * 12.9898) * z.r * 0.7, by = Math.cos(ph * 78.233) * z.r * 0.7;
+        ctx.fillStyle = k % 2 ? 'rgba(80, 240, 250, 0.45)' : 'rgba(255, 84, 173, 0.6)';
+        ctx.fillRect(bx, by, 10 + (ph % 3) * 6, 4);
+      }
+      ctx.restore();
+      ctx.strokeStyle = `rgba(255, 84, 173, ${0.55 + 0.35 * pulse})`;
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([12, 8]);
+      ctx.lineDashOffset = -time * 30;
+      ctx.beginPath(); ctx.arc(0, 0, z.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /** v15 "Awaria prądu": only a circle of light around the hole. */
+  darkVision() {
+    const D = CONFIG.campaign.dark;
+    return D.vision + this.player.radius * D.perRadius;
+  }
+
+  drawDarkness(ctx) {
+    if (!this.mission || !this.mission.def.setup.dark || !this.player) return;
+    const px = this.player.x - this.camera.x + this.width / 2, py = this.player.y - this.camera.y + this.height / 2;
+    const v = this.darkVision();
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const g = ctx.createRadialGradient(px, py, v * 0.55, px, py, v);
+    g.addColorStop(0, 'rgba(2, 6, 12, 0)');
+    g.addColorStop(1, 'rgba(2, 6, 12, 0.95)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, this.width, this.height);
+    ctx.restore();
   }
 
   /** v13: what the player can act on for the goal right now -- the nearest
@@ -9906,7 +11473,7 @@ class Game {
     }
     const types = this.campaignGoalEntityTypes();
     const glyph = m.goalGlyph;
-    return this.campaignEntities.filter(e => {
+    const goals = this.campaignEntities.filter(e => {
       if (e.consumed || e.eating || e.live === false || !types.has(e.type)) return false;
       if (e.type === 'gate') return !m.gatesPassed.has(e);
       if (glyph && e.glyph !== glyph && e.type !== 'landmark') return false;
@@ -9915,6 +11482,12 @@ class Game {
       if (e.type === 'landmark' && !e.unlocked) return false;
       return !(e.stats && tier < e.stats.minTier);
     });
+    if (goals.length || g.type === 'tutorialChecklist') return goals;
+    // v15: nothing in the goal is within reach yet (too small) -- point at
+    // food that grows the hole instead of leaving the arrow dark (in a
+    // blackout there was no way to find it).
+    return this.campaignEntities.filter(e => !e.consumed && !e.eating && e.live !== false && e.stats && e.type !== 'gate'
+      && e.type !== 'landmark' && e.type !== 'node' && e.type !== 'pylon' && tier >= e.stats.minTier);
   }
 
   drawCampaignGoalArrow(ctx, time) {
@@ -9923,7 +11496,9 @@ class Game {
     const targets = this.campaignGuideTargets();
     // "Seen" = well inside the screen; one half-cut by an edge or hidden
     // under the minimap still gets the arrow (QA, M07).
+    const dark = this.mission && this.mission.def.setup.dark;
     const seen = e => { const sx = e.x - this.camera.x + this.width / 2, sy = e.y - this.camera.y + this.height / 2;
+      if (dark) return dist(e.x, e.y, p.x, p.y) < this.darkVision() * 0.75;
       return sx > 40 && sx < this.width - 40 && sy > 40 && sy < this.height - 40; };
     if (!targets.length || targets.some(seen)) return;
     let best = null, bd = Infinity;
@@ -10012,8 +11587,15 @@ class Game {
     // minimap used to hide fragments/props/vehicles/capsules/markers/gates
     // entirely (player feedback: the map should represent everything).
     const toMini = (x, y) => ({ x: px + (x - b.minX) * scaleX, y: py + (y - b.minY) * scaleY });
+    // v15: in a blackout the map shows only the board and the holes.
+    const dark = this.mission && this.mission.def.setup.dark;
+    for (const z of (this.glitchZones || [])) {
+      const c = toMini(z.x, z.y);
+      ctx.fillStyle = 'rgba(255, 84, 173, 0.35)';
+      ctx.beginPath(); ctx.arc(c.x, c.y, z.r * scaleX, 0, Math.PI * 2); ctx.fill();
+    }
     for (const e of this.campaignEntities) {
-      if (e.consumed || !e.live) continue;
+      if (e.consumed || !e.live || dark) continue;
       const big = e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate';
       const size = big ? 3.5 : 2.2;
       const p = toMini(e.x, e.y);
@@ -10194,10 +11776,14 @@ class Game {
     // Golden Shot v8/v11: no interstitials during the newbie runs, only every
     // Nth replay after that, time-capped and skipped with "Bez reklam"
     // (all enforced inside Monetization.interstitial()).
-    if (this.playCount % CONFIG.ads.interstitialEveryNthReplay === 0) await this.monetization.interstitial('replay');
+    // v15: no ad in front of an empty energy bar.
+    const canPlay = this.energyFreeFor('arena') || this.energyNow() >= 1;
+    if (canPlay && this.playCount % CONFIG.ads.interstitialEveryNthReplay === 0) await this.monetization.interstitial('replay');
     // A lost friend challenge replays the same map ("rewanż").
-    if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
-    else this.startRound();
+    this.requireEnergy('arena', () => {
+      if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
+      else this.startRound();
+    });
   }
 
   async watchRewardedAd() {
@@ -10558,11 +12144,21 @@ class Game {
    *  instead of replaying the mission they paused (player feedback: the
    *  restart button should restart the current mission). */
   restartFromPause() {
+    if (this.mode !== 'campaign' && !this.energyFreeFor('arena') && this.energyNow() < 1) {
+      this.openEnergySheet({ empty: true });
+      return;
+    }
     document.getElementById('pauseSheet').classList.add('hidden');
     if (this.mode === 'campaign' && this.mission) {
-      this.startCampaignMission(this.mission.def.id);
+      // v15: a restart is a new attempt -- the current one counts as lost
+      // and the briefing (boosters, energy) opens for the next.
+      const id = this.mission.def.id;
+      this.leaveCampaignMission();
+      this.selectedDistrictId = this.mission.def.district;
+      this.openCampaignScreen();
+      this.openMissionBriefing(id);
     } else {
-      this.startRound();
+      this.requireEnergy('arena', () => this.startRound());
     }
   }
 
@@ -10607,9 +12203,14 @@ class Game {
     this.hideReviveOffer();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
-    if (this.mission) {
+    if (this.mission && !this.mission.ended) {
       this.mission.ended = true;
       this.hideNelaToast();
+      document.getElementById('missionStartOverlay').classList.add('hidden');
+      this.introPending = false;
+      const c = this.save.campaign;
+      c.fails[this.mission.def.id] = (c.fails[this.mission.def.id] || 0) + 1;
+      saveGame(this.save);
       this.analytics.track('mission_end', {
         missionId: this.mission.def.id, success: false, medalEarned: false, firstClear: false, abandoned: true
       });

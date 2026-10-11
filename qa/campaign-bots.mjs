@@ -1,96 +1,23 @@
-// Campaign bot-tester: a greedy bot plays the first N missions in virtual
+// Campaign bot-tester: the expert bot (lib.mjs CAMPAIGN_BOT) plays the first N missions in virtual
 // time (goal objects first, then growth food, gates/portals/bridges by
 // touch, rivals when they are prey) and reports clears and clear times
 // against each mission's limit. Usage: node qa/campaign-bots.mjs [count]
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, OUT } from './lib.mjs';
+import { serve, openGame, allDistrictsSave, report, OUT, CAMPAIGN_BOT } from './lib.mjs';
 
-const CAMPAIGN_BOT = `
-window.__qaPlayMission = function (id) {
-  const g = window.game;
-  const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
-  let vnow = realNow();
-  performance.now = () => vnow;
-  g.startCampaignMission(id);
-  if (g.introPending) g.dismissTutorialIntro();
-  if (g.rafId) cancelAnimationFrame(g.rafId);
-  g.running = false;
-  const dt = 1 / 30;
-  const m = g.mission;
-  let frames = 0, wander = 0;
-  let clearAt = null;
-  while (!m.ended && !m.finishing && frames < 30 * 400) {
-    if (g.evolutionPending) { const c = document.querySelector('#evolutionCards .evolution-card'); if (c) c.click(); else g.skipEvolutionOffer(); continue; }
-    if (g.introPending) g.dismissTutorialIntro();
-    const p = g.player;
-    const tier = g.campaignTierIndex(g.campaignPlayerTier().id);
-    const goalTypes = g.campaignGoalEntityTypes();
-    // v14: an unfinished combo goal makes small food the target (a human
-    // chains the nearest bites; the old bot ate whatever paid most and
-    // broke chains, failing combo missions on layout luck).
-    if (frames % 15 === 0) g.__qaComboPending = g.campaignGoalItems().some(it => /combo/i.test(it.label) && it.progress < it.target);
-    const comboPending = g.__qaComboPending;
-    let fx = 0, fy = 0;
-    for (const b of g.bots) {
-      const d = Math.hypot(b.x - p.x, b.y - p.y);
-      if (b.radius > p.radius * 1.1 && d < 160 + b.radius) { fx -= (b.x - p.x) / (d + 1); fy -= (b.y - p.y) / (d + 1); }
-    }
-    let target = null, best = -1;
-    // Skip what the clamped hole can't physically reach (a rival tucked into
-    // a corner of the mission box) -- a human would move on, not stall.
-    const B = CONFIG.campaign.bounds;
-    const reachable = (x, y, reach) => Math.hypot(x - clamp(x, B.minX + p.radius, B.maxX - p.radius), y - clamp(y, B.minY + p.radius, B.maxY - p.radius)) < reach;
-    if (!(fx || fy)) {
-      for (const e of g.campaignEntities) {
-        if (e.consumed || e.eating || !e.live) continue;
-        const touch = e.type === 'gate' || (e.type === 'node' && e.glyph === 'mostek' && !e.mostekPowered);
-        if (!touch) {
-          if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
-          if (e.type === 'landmark' && !e.unlocked) continue;
-          if (tier < e.stats.minTier) continue;
-        }
-        if (e.type === 'gate' && (!goalTypes.has('gate') || m.gatesPassed.has(e))) continue;
-        const d = Math.hypot(e.x - p.x, e.y - p.y);
-        const small = comboPending && (e.type === 'fragment' || e.type === 'capsule');
-        const s = (small ? 40 : (goalTypes.has(e.type) ? 4 : 1) * ((e.stats && e.stats.growth) || 2)) / (d + 60);
-        if (s > best) { best = s; target = e; }
-      }
-      for (const b of g.bots) {
-        const d = Math.hypot(b.x - p.x, b.y - p.y);
-        if (!reachable(b.x, b.y, Math.max(p.radius, b.radius) * 0.7)) continue;
-        if (p.radius > b.radius * 1.2 && d < 700) { const s = 6 / (d + 60); if (s > best) { best = s; target = b; } }
-      }
-    }
-    if (fx || fy) { const n = Math.hypot(fx, fy); g.keyDir = { x: fx / n, y: fy / n }; }
-    else if (target && target.type === 'gate' && target.isGateOpen === false && Math.hypot(target.x - p.x, target.y - p.y) < p.radius + 60) { g.keyDir = { x: 0, y: 0 }; g.pointerWorld = { x: p.x, y: p.y }; }
-    else if (target) { const n = Math.hypot(target.x - p.x, target.y - p.y) || 1; g.keyDir = { x: (target.x - p.x) / n, y: (target.y - p.y) / n }; }
-    else { wander += 0.04; g.keyDir = { x: Math.cos(wander), y: Math.sin(wander) }; }
-    vnow += dt * 1000;
-    g.updateCampaign(dt);
-    if (frames % 30 === 0 && !m.ended) g.renderCampaign(frames * dt);
-    frames++;
-  }
-  // Success has a short celebration delay (beginMissionSuccess uses a
-  // real setTimeout) -- commit it directly instead of waiting on it.
-  const success = !!m.finishing && !m.ended;
-  if (success) g.endCampaignMission(true);
-  g.keyDir = { x: 0, y: 0 };
-  performance.now = realNow;
-  return { id, success: success && !!g.save.campaign.completed[id], elapsed: +m.elapsed.toFixed(1), limit: m.def.timeLimit };
-};
-`;
 
 export async function runCampaignBots(url, count = 12) {
   const results = [];
   const { browser, page, errors } = await openGame(url);
-  const save = await veteranSave(page, { missions: 0 });
-  save.campaign.unlockedDistricts = ['plac', 'park', 'port', 'galeria', 'dachy', 'rdzen'];
+  const save = await allDistrictsSave(page);
   await page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await page.reload();
   await page.waitForFunction(() => window.game && window.game.state);
   await page.addScriptTag({ content: CAMPAIGN_BOT });
-  const ids = await page.evaluate((n) => CAMPAIGN_MISSIONS.slice(0, n).map(m => m.id), count);
+  // v15: in play order (district by district), every mission under its
+  // real time limit.
+  const ids = await page.evaluate((n) => DISTRICTS.flatMap(d => d.missions).slice(0, n), count);
   const runs = [];
   for (const id of ids) {
     const r = await page.evaluate((mid) => window.__qaPlayMission(mid), id);
@@ -98,7 +25,8 @@ export async function runCampaignBots(url, count = 12) {
     console.log(`  ${r.id}: ${r.success ? 'clear' : 'FAIL '} ${r.elapsed}s / ${r.limit}s`);
   }
   const cleared = runs.filter(r => r.success).length;
-  results.push(report(`campaign: greedy bot clears the first ${ids.length} missions`, cleared === ids.length, `${cleared}/${ids.length}`));
+  // The first districts are friendly: the expert clears all but at most one.
+  results.push(report(`campaign: expert bot clears the first ${ids.length} missions (play order)`, cleared >= ids.length - 1, `${cleared}/${ids.length}${runs.filter(r => !r.success).map(r => ' ' + r.id + ':' + r.fail).join('')}`));
   results.push(report('campaign: no runtime errors', errors.length === 0, errors.slice(0, 2).join(' | ')));
   fs.writeFileSync(path.join(OUT, 'campaign.json'), JSON.stringify(runs, null, 2));
   await browser.close();

@@ -59,7 +59,7 @@ export async function runFlowChecks(url) {
     }, NAV_TOP);
     results.push(report(`flow ${vp.width}x${vp.height}: Miasto has no sticky/floating element`, r.sticky.length === 0, r.sticky.join(', ')));
     results.push(report(`flow ${vp.width}x${vp.height}: GRAJ and the whole hub fit above the nav (no scrolling)`, r.playBottom <= r.navTop && r.chestBottom <= r.navTop + 1 && r.overflow <= 1, JSON.stringify(r)));
-    results.push(report(`flow ${vp.width}x${vp.height}: Miasto keeps to a handful of tappable things (<= 9)`, r.visibleButtons <= 9, `${r.visibleButtons}`));
+    results.push(report(`flow ${vp.width}x${vp.height}: Miasto keeps to a handful of tappable things (<= 10, v15 energy chip included)`, r.visibleButtons <= 10, `${r.visibleButtons}`));
     results.push(report(`flow ${vp.width}x${vp.height}: hub campaign tile names the next mission`, /^M\d\d · /.test(r.campaign), r.campaign));
     await done(g, `Miasto ${vp.width}x${vp.height}`);
   }
@@ -79,19 +79,21 @@ export async function runFlowChecks(url) {
       const nela = (sheet.querySelector('.nela-line') || {}).textContent;
       const avatar = !!sheet.querySelector('.nela-avatar svg');
       const meta = sheet.querySelector('.mc-meta').textContent;
-      sheet.querySelector('[data-mc-play]').click();
+      const stars = sheet.querySelectorAll('.mc-stars .mc-star').length;
+      sheet.querySelector('[data-mc-launch]').click();
       await new Promise(res => setTimeout(res, 100));
       const started = gm.mode === 'campaign' && gm.mission && gm.mission.def.id === next && gm.running;
       const closed = sheet.classList.contains('hidden');
-      const toast = document.getElementById('nelaToast');
-      const toastOk = !toast.classList.contains('hidden') && document.getElementById('nelaToastText').textContent === def.nela.start && !!toast.querySelector('.nela-avatar svg');
+      // v15: the mission opens on the tap-to-start card with NELA's line.
+      const start = document.getElementById('missionStartOverlay');
+      const toastOk = !start.classList.contains('hidden') && start.textContent.includes(def.nela.start) && !!start.querySelector('.nela-avatar svg');
       gm.leaveRun && gm.leaveRun();
-      return { next, open, goals, steps: def.goal.steps.length, nelaOk: nela === def.nela.start, avatar, metaOk: meta.includes(formatClock(def.timeLimit)) && meta.includes(def.medal.label), started, closed, toastOk };
+      return { next, open, goals, steps: def.goal.steps.length, nelaOk: nela === def.nela.start, avatar, metaOk: meta.includes(formatClock(def.timeLimit)) && stars === 3, started, closed, toastOk };
     });
     results.push(report('flow: hub campaign tile opens the next mission\'s briefing', r.open, JSON.stringify(r)));
-    results.push(report('flow: briefing lists every goal as its own row + NELA (with avatar) + time and medal', r.goals === r.steps && r.nelaOk && r.avatar && r.metaOk, JSON.stringify(r)));
+    results.push(report('flow: briefing lists every goal as its own row + NELA (with avatar) + time and the 3 star conditions', r.goals === r.steps && r.nelaOk && r.avatar && r.metaOk, JSON.stringify(r)));
     results.push(report('flow: briefing GRAJ starts exactly that mission and closes the sheet', r.started && r.closed));
-    results.push(report('flow: mission opens with NELA\'s bubble (avatar + the mission\'s line)', r.toastOk));
+    results.push(report('flow: mission opens on the start card with NELA\'s bubble (avatar + the mission\'s line)', r.toastOk));
     await done(g, `briefing`);
   }
 
@@ -140,7 +142,10 @@ export async function runFlowChecks(url) {
         goals: card.querySelectorAll('.mc-goal').length, btn: btn.textContent.trim(), cardAbove: card.getBoundingClientRect().bottom <= btn.getBoundingClientRect().top,
         nela: document.getElementById('missionResultNela').textContent === campaignMissionById(id).nela.success };
       btn.click();
-      res.startedNext = gm.mission && gm.mission.def.id === next;
+      // v15: the button opens the next mission's briefing (boosters, energy).
+      res.briefed = !document.getElementById('missionBriefing').classList.contains('hidden') && !!document.querySelector(`#briefingCard [data-mc-launch="${next}"]`);
+      document.querySelector('#briefingCard [data-mc-launch]').click();
+      res.startedNext = gm.mission && gm.mission.def.id === next && res.briefed;
       cancelAnimationFrame(gm.rafId); gm.running = false;
       // a failed attempt: retry is the main button, the missing goals are listed
       gm.mission.elapsed = 9999; gm.endCampaignMission(false);
@@ -152,7 +157,7 @@ export async function runFlowChecks(url) {
     });
     const code = await g.page.evaluate((id) => missionCode(campaignMissionById(id)), r.next);
     results.push(report('flow: result screen previews the next mission (code, goals) above its button', r.cardShown && r.cardCode === code && r.goals > 0 && r.cardAbove && r.btn.includes(code), JSON.stringify(r)));
-    results.push(report('flow: result button starts that next mission; NELA reacts in her bubble', r.startedNext && r.nela));
+    results.push(report('flow: result button briefs and starts that next mission; NELA reacts in her bubble', r.startedNext && r.nela));
     results.push(report('flow: a failed mission offers SPRÓBUJ PONOWNIE and lists what is missing', /SPRÓBUJ PONOWNIE/.test(r.failBtn) && r.failMissing && r.failNoNext, JSON.stringify(r)));
     await done(g, `result`);
   }
@@ -167,13 +172,13 @@ export async function runFlowChecks(url) {
       delete c.completed.M00;
       const legacyNext = gm.nextCampaignMissionId();
       c.completed.M00 = true;
-      // replaying a mission whose medal was won earlier
-      c.medals.M02 = true;
+      // replaying a mission whose stars were won earlier (v15: 2 of 3)
+      c.stars.M02 = 3;
       gm.startCampaignMission('M02'); cancelAnimationFrame(gm.rafId); gm.running = false;
       gm.mission.elapsed = 999; gm.endCampaignMission(true);
       await new Promise(res => setTimeout(res, 50));
       gm.unlockQueue = []; clearTimeout(gm.unlockShowTimer); document.getElementById('unlockOverlay').classList.add('hidden');
-      const star = document.getElementById('missionResultMedalStar').textContent;
+      const star = document.querySelectorAll('#missionResultStars .mr-star.old').length + document.querySelectorAll('#missionResultStars .mr-star.on').length >= 2 ? '★' : '☆';
       const eyebrow = (document.querySelector('#missionResultNextCard .mc-eyebrow') || {}).textContent;
       // a finished step is announced once, even if it drops and comes back
       gm.startCampaignMission('M01'); cancelAnimationFrame(gm.rafId); gm.running = false;
@@ -188,7 +193,7 @@ export async function runFlowChecks(url) {
       return { legacyNext, star, eyebrow, banners };
     });
     results.push(report('flow: a pre-tutorial save (M01 done, no M00) is not sent back to the tutorial', r.legacyNext && r.legacyNext !== 'M00', JSON.stringify(r)));
-    results.push(report('flow: a replay keeps showing a medal won earlier; no false "NOWA DZIELNICA"', r.star === '★' && !/NOWA DZIELNICA/.test(r.eyebrow || ''), JSON.stringify(r)));
+    results.push(report('flow: a replay keeps showing stars won earlier; no false "NOWA DZIELNICA"', r.star === '★' && !/NOWA DZIELNICA/.test(r.eyebrow || ''), JSON.stringify(r)));
     results.push(report('flow: "CEL ZALICZONY" fires once per step', r.banners === 1, JSON.stringify(r)));
     await done(g, 'regressions');
   }

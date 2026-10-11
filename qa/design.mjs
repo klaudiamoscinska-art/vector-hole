@@ -241,7 +241,7 @@ export async function runDesignChecks(url) {
   {
     const src = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8') + fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     const strings = (src.match(/'[^'\n]*'|`[^`\n]*`|>[^<\n]+</g) || []).join('\n');
-    const bad = ['Urosłaś', 'urosłaś', 'większa od', 'Gotowa.', 'nietykalna', 'strażniczk', 'kuratork', 'Najszybsza', 'uruchomiłaś', 'będziesz gotowa', 'Złap go pierwsza', 'naprawdę duża']
+    const bad = ['Urosłaś', 'urosłaś', 'większa od', 'Gotowa.', 'nietykalna', 'strażniczk', 'kuratork', 'Najszybsza', 'uruchomiłaś', 'będziesz gotowa', 'Złap go pierwsza', 'naprawdę duża', 'Bądź szybszy', 'Bądź szybsza', 'zgarniesz pierwszy']
       .filter(w => strings.includes(w));
     results.push(report('copy: gender-neutral player address', bad.length === 0, bad.join(', ')));
     const jargon = ['NEON GOD', 'BLACKOUT FINISH', 'PORTAL STORM', 'RUSH HOUR', 'NOWY PB'].filter(w => strings.includes(w));

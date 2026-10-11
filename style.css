@@ -4283,3 +4283,150 @@ body[data-gfx="0"] #hud::before { display: none; }
 #mainMenu:not(.first-run) .hub-header { margin-bottom: auto; }
 #mainMenu:not(.first-run) .hub-chest-row { margin-bottom: auto; }
 @media (min-height: 800px) { #mainMenu:not(.first-run) .hub-city { height: clamp(178px, 34vh, 300px); max-height: 300px; } }
+
+/* ===================== v15 „Wyzwanie”: stars, difficulty, boosters, start card, energy ===================== */
+
+/* Difficulty chip: 5 bars + label in the level's color. */
+.mc-diff { flex: none; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 3px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; color: var(--diff-color); background: rgba(255, 255, 255, 0.05);
+  border: 1px solid color-mix(in srgb, var(--diff-color) 45%, transparent); white-space: nowrap; }
+.diff-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; }
+.diff-bars i { width: 3px; border-radius: 1px; background: rgba(255, 255, 255, 0.16); }
+.diff-bars i:nth-child(1) { height: 4px; } .diff-bars i:nth-child(2) { height: 5.5px; } .diff-bars i:nth-child(3) { height: 7px; }
+.diff-bars i:nth-child(4) { height: 8.5px; } .diff-bars i:nth-child(5) { height: 10px; }
+.diff-bars i.on { background: currentColor; box-shadow: 0 0 4px currentColor; }
+.mc-head .mc-diff + .star-row { margin-left: 4px; }
+
+/* Stars: earned = gold glow, the rest dim. */
+.star-row { display: inline-flex; gap: 1px; font-size: 13px; line-height: 1; color: rgba(255, 255, 255, 0.18); }
+.star-row i { font-style: normal; }
+.star-row i.on { color: var(--nc-gold); text-shadow: 0 0 6px rgba(239, 203, 99, 0.7); }
+.star-row.mini { font-size: 12px; }
+.mc-status-stars { flex: none; margin-left: 6px; }
+.mc-stars { display: flex; flex-wrap: wrap; gap: 6px; }
+.mc-star { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  color: var(--nc-text-dim); background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); }
+.mc-star b { font-weight: 400; color: rgba(239, 203, 99, 0.45); letter-spacing: -1px; }
+.mc-star.earned { color: var(--nc-text); border-color: rgba(239, 203, 99, 0.45); }
+.mc-star.earned b { color: var(--nc-gold); text-shadow: 0 0 6px rgba(239, 203, 99, 0.7); }
+
+/* Twist chips + hints. */
+.mc-twists { display: flex; flex-wrap: wrap; gap: 6px; }
+.mc-twist { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  letter-spacing: 0.08em; color: var(--t-color); background: color-mix(in srgb, var(--t-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--t-color) 45%, transparent); }
+.mc-twist svg { width: 13px; height: 13px; }
+.mc-twist.boost { border-style: dashed; }
+.mc-twist-hints { margin: -2px 0 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; line-height: 1.35; color: var(--nc-text-dim); }
+
+/* Boosters in the briefing: 4 toggle tiles. */
+.mc-boosts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mc-boost { --b-color: var(--nc-cyan); position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 76px;
+  padding: 8px 4px 6px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.04);
+  color: var(--nc-text); font-family: inherit; cursor: pointer; transition: transform 0.12s, border-color 0.12s, background 0.12s; }
+.mc-boost:active { transform: scale(0.96); }
+.mc-boost-icon { width: 24px; height: 24px; color: var(--b-color); filter: drop-shadow(0 0 5px var(--b-color)); }
+.mc-boost-icon svg { width: 100%; height: 100%; display: block; }
+.mc-boost-name { font-size: 11.5px; font-weight: 800; line-height: 1.1; }
+.mc-boost-short { font-size: 9.5px; color: var(--nc-text-dim); line-height: 1.1; text-align: center; }
+.mc-boost-badge { margin-top: 2px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 800; color: var(--nc-gold); background: rgba(239, 203, 99, 0.1); }
+.mc-boost-badge.owned { color: #04101D; background: var(--b-color); }
+.mc-boost.selected { border-color: var(--b-color); background: color-mix(in srgb, var(--b-color) 16%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--b-color) 35%, transparent) inset; }
+.mc-boost.selected::after { content: '✓'; position: absolute; top: 4px; right: 6px; font-size: 11px; font-weight: 900; color: var(--b-color); }
+.mc-boost-note { margin: -4px 0 0; min-height: 15px; font-size: 11.5px; color: var(--nc-text-dim); }
+.mc-boost-note.warn { color: var(--nc-pink); }
+.mc-play-cost { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 999px; font-family: var(--font-ui, inherit); font-size: 12px;
+  letter-spacing: 0.02em; vertical-align: middle; background: rgba(4, 16, 29, 0.18); }
+
+/* Briefing sheet: scrolls inside itself on short phones; GRAJ stays reachable. */
+.briefing-overlay > .briefing-sheet { max-height: calc(100% - 8px); overflow-y: auto; }
+
+/* Tap-to-start card: centered over the frozen board. */
+.start-overlay { z-index: 125; align-items: center !important; background: rgba(2, 8, 16, 0.62) !important; cursor: pointer; padding: 16px; }
+.start-card { max-width: 420px; animation: briefing-up 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5); }
+.start-card .mc-name { font-size: 24px; }
+.start-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--nc-text-dim); }
+.start-meta .start-stars { color: var(--nc-gold); }
+.start-card .btn { width: 100%; max-width: none; font-size: 22px; letter-spacing: 0.12em; }
+.start-card .btn svg { width: 20px; height: 20px; }
+.start-tap { margin: -4px 0 0; text-align: center; font-size: 11.5px; color: var(--nc-text-dim); animation: start-blink 1.6s ease-in-out infinite; }
+@keyframes start-blink { 50% { opacity: 0.45; } }
+
+/* In-round twist rows under the goals. */
+.mission-goal-item.twist-danger .mission-goal-text, .mission-goal-item.twist-danger .mission-goal-count { color: #ff8fb0; }
+.mission-goal-item.twist-shield .mission-goal-text, .mission-goal-item.twist-shield .mission-goal-count { color: var(--nc-gold); }
+
+/* Mission list row: stars + difficulty bars. */
+#missionList .mission-row-medal { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.mission-row-diff { color: var(--diff-color); display: inline-flex; }
+
+/* Mission result: three big stars. */
+.mr-stars { display: flex; justify-content: center; gap: 10px; margin: -2px 0 -4px; }
+.mr-star { font-size: 40px; line-height: 1; color: rgba(255, 255, 255, 0.12); transform: scale(0.6); opacity: 0;
+  animation: star-pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
+.mr-star:nth-child(2) { font-size: 50px; margin-top: -8px; }
+.mr-star.old { color: rgba(239, 203, 99, 0.35); }
+.mr-star.on { color: var(--nc-gold); text-shadow: 0 0 16px rgba(239, 203, 99, 0.85); }
+.mr-star.new { animation-name: star-pop-new; }
+@keyframes star-pop { to { transform: scale(1); opacity: 1; } }
+@keyframes star-pop-new { 0% { transform: scale(0.3) rotate(-30deg); opacity: 0; } 70% { transform: scale(1.25) rotate(6deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+#missionResultScreen ul.mission-result-medal { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px; width: 100%; max-width: 440px; }
+.mr-star-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--nc-text-dim); }
+.mr-star-row .mr-star-mini { min-width: 38px; color: rgba(239, 203, 99, 0.35); letter-spacing: -1px; }
+.mr-star-row.done { color: var(--nc-text); }
+.mr-star-row.done .mr-star-mini { color: var(--nc-gold); }
+.mr-star-row.had .mr-star-mini { color: rgba(239, 203, 99, 0.65); }
+.mr-star-row em { font-style: normal; font-weight: 600; color: var(--nc-text-dim-2); }
+.mr-star-row.missing { color: var(--nc-text-dim); line-height: 1.35; }
+
+/* Energy chip (Miasto / Dzielnice headers). */
+.energy-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 4px 9px 4px 7px; border-radius: 20px;
+  background: var(--nc-panel); border: 1px solid rgba(70, 217, 154, 0.35); color: var(--nc-green); font-family: inherit; cursor: pointer; }
+.energy-chip > svg { width: 16px; height: 16px; filter: drop-shadow(0 0 4px currentColor); }
+.energy-chip-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05; }
+.energy-count { font-size: 13px; font-weight: 800; color: var(--nc-text); }
+.energy-timer { font-size: 9px; font-weight: 700; color: var(--nc-text-dim); letter-spacing: 0.04em; }
+.energy-chip.empty { color: var(--nc-pink); border-color: rgba(255, 84, 173, 0.55); animation: energy-empty 1.4s ease-in-out infinite; }
+@keyframes energy-empty { 50% { box-shadow: 0 0 12px rgba(255, 84, 173, 0.45); } }
+@media (max-width: 400px) {
+  .energy-chip { padding: 4px 7px 4px 5px; gap: 3px; }
+  .energy-timer { display: none; }
+}
+
+/* Energy sheet. */
+.energy-overlay { z-index: 140; }
+.energy-sheet { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  background: var(--nc-panel-2); border: 1px solid var(--nc-border); border-radius: 22px 22px 0 0; padding-top: 18px !important; }
+.energy-sheet .btn { width: 100%; max-width: 360px; }
+.energy-sheet .section-title { margin: 0; }
+.energy-bolt { width: 54px; height: 54px; color: var(--nc-green); filter: drop-shadow(0 0 12px rgba(70, 217, 154, 0.7)); }
+.energy-bolt svg { width: 100%; height: 100%; }
+.energy-big { font-family: var(--font-display); font-size: 36px; color: #fff; line-height: 1; }
+.energy-pips { display: flex; gap: 6px; }
+.energy-pips i { width: 26px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); }
+.energy-pips i.on { background: var(--nc-green); box-shadow: 0 0 8px rgba(70, 217, 154, 0.6); }
+.energy-timer-line { margin: 0; font-size: 13px; font-weight: 700; color: var(--nc-gold); }
+.btn-disabled-look { opacity: 0.55; }
+/* v15: the energy chip joins the header -- keep the gear on screen on phones. */
+.nav-screen > .app-header > div:first-child { min-width: 0; }
+.nav-screen > .app-header .app-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-screen > .app-header .hub-header-right { flex: none; }
+@media (max-width: 440px) {
+  #campaignScreen .app-title { font-size: 21px; }
+  #campaignScreen .coin-display, #mainMenu .coin-display { padding: 6px 9px; gap: 4px; }
+  #campaignScreen .currency-row, #mainMenu .currency-row { gap: 5px; }
+}
+.energy-count small { font-size: 10px; font-weight: 700; color: var(--nc-text-dim); }
+@media (max-width: 400px) {
+  .energy-count small { display: none; }
+  #campaignScreen .prism-display { display: none; }
+}
+.inline-bolt { width: 0.95em; height: 0.95em; vertical-align: -0.12em; }
+@media (max-width: 440px) {
+  #campaignScreen .prism-display, #campaignScreen .energy-timer { display: none; }
+}
+.mc-boost.off { opacity: 0.38; cursor: not-allowed; }
+.start-back { margin: -6px auto 0; font-size: 12.5px; padding: 6px 12px; }
+/* v15 review: the briefing's GRAJ stays in view however long the card. */
+.briefing-sheet .mc-play { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 18px rgba(7, 23, 37, 0.85); }
