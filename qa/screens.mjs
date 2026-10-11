@@ -101,7 +101,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(dir, name + '.png
   await g.page.evaluate(() => document.querySelector('#missionList .mission-row:nth-child(2)').click());
   await g.page.waitForTimeout(450);
   await shot(g.page, '19-briefing');
-  await g.page.evaluate(() => document.querySelector('#briefingCard [data-mc-play]').click());
+  await g.page.evaluate(() => document.querySelector('#briefingCard [data-mc-launch]').click());
   await g.page.waitForTimeout(900);
   await g.page.evaluate(() => { const gm = window.game; cancelAnimationFrame(gm.rafId); gm.running = false; gm.renderCampaign(1); });
   await shot(g.page, '20-mission-start-nela');
@@ -138,6 +138,43 @@ for (const vp of [{ width: 375, height: 667 }]) { // SE-class phone
   await g.page.evaluate(() => [...document.querySelectorAll('#skinGrid .skin-card')][1].click());
   await g.page.waitForTimeout(400);
   await shot(g.page, '27-warsztat-buy-se');
+  if (g.errors.length) console.log('errors', g.errors);
+  await g.browser.close();
+}
+// v15: briefing with boosters, tap-to-start card, twists, stars, energy.
+{
+  const g = await openGame(url, { viewport: { width: 402, height: 874 } });
+  const save = await veteranSave(g.page, { coins: 600, runsPlayed: 6, missions: 75 });
+  save.prisms = 20;
+  await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
+  await g.page.reload();
+  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForTimeout(500);
+  await g.page.evaluate(() => { window.game.openCampaignScreen(); window.game.selectCampaignDistrict('metro'); });
+  await g.page.waitForTimeout(400);
+  await shot(g.page, '28-v15-dzielnice-metro');
+  await g.page.evaluate(() => { const gm = window.game; gm.openMissionBriefing(gm.nextCampaignMissionId()); gm.toggleBriefingBooster('time'); gm.toggleBriefingBooster('magnet'); });
+  await g.page.waitForTimeout(400);
+  await shot(g.page, '29-v15-briefing-boosters');
+  await g.page.evaluate(() => { document.querySelector('[data-mc-launch]').click(); const gm = window.game; cancelAnimationFrame(gm.rafId); gm.running = false; gm.renderCampaign(1); });
+  await g.page.waitForTimeout(400);
+  await shot(g.page, '30-v15-start-card');
+  for (const [id, name] of [['M61', '31-v15-dark'], ['M110', '32-v15-glitch'], ['M91', '33-v15-racer']]) {
+    await g.page.evaluate((mid) => {
+      const gm = window.game; gm.leaveCampaignMission(); gm.startCampaignMission(mid); gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false;
+      const realNow = performance.now.bind(performance); let v = realNow(); performance.now = () => v;
+      for (let f = 0; f < 120; f++) { v += 33.3; gm.keyDir = { x: Math.cos(f / 40), y: -Math.abs(Math.sin(f / 50)) }; gm.updateCampaign(1 / 30); }
+      gm.keyDir = { x: 0, y: 0 }; gm.banner = null; gm.renderCampaign(v / 1000); performance.now = realNow;
+    }, id);
+    await shot(g.page, name);
+  }
+  await g.page.evaluate(() => { const gm = window.game; gm.leaveCampaignMission(); gm.startCampaignMission('M61'); gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.mission.elapsed = 10; gm.endCampaignMission(true); });
+  await g.page.waitForTimeout(1600);
+  await g.page.evaluate(() => { window.game.unlockQueue = []; document.getElementById('unlockOverlay').classList.add('hidden'); document.getElementById('missionConfetti').innerHTML = ''; });
+  await shot(g.page, '34-v15-result-stars');
+  await g.page.evaluate(() => { const gm = window.game; gm.save.energy.value = 0; gm.save.energy.lastTick = Date.now(); gm.openEnergySheet({ empty: true }); });
+  await g.page.waitForTimeout(400);
+  await shot(g.page, '35-v15-energy-empty');
   if (g.errors.length) console.log('errors', g.errors);
   await g.browser.close();
 }

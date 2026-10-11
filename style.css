@@ -4423,3 +4423,6 @@ body[data-gfx="0"] #hud::before { display: none; }
   #campaignScreen .prism-display { display: none; }
 }
 .inline-bolt { width: 0.95em; height: 0.95em; vertical-align: -0.12em; }
+@media (max-width: 440px) {
+  #campaignScreen .prism-display, #campaignScreen .energy-timer { display: none; }
+}
