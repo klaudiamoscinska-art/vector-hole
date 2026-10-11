@@ -1390,7 +1390,7 @@ const MISSION_BOOSTERS = [
   { id: 'time', name: 'Zegar', short: '+15 s', price: 60, color: '#50F0FA', icon: 'clock', desc: '+15 s do limitu czasu misji.' },
   { id: 'start', name: 'Turbo start', short: 'start od T2', price: 80, color: '#FF54AD', icon: 'bolt', desc: 'Wir startuje od razu z rozmiarem T2.' },
   { id: 'magnet', name: 'Magnes', short: 'cała misja', price: 50, color: '#46D99A', icon: 'magnet', desc: 'Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.' },
-  { id: 'shield', name: 'Tarcza', short: '2 zderzenia', price: 70, color: '#EFCB63', icon: 'shield', desc: 'Pochłania 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.' }
+  { id: 'shield', name: 'Tarcza', short: '2 zderzenia', price: 70, color: '#EFCB63', icon: 'shield', desc: 'Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.' }
 ];
 
 // Simple neon-line-art glyphs for the evolution/power cards (SVG, inline —
@@ -1638,6 +1638,7 @@ const DISTRICTS = [
 const CHAPTER_II = [
   {
     id: 'metro', name: 'Tunele Metra', color: '#2BCBDD', floor: 'rdzen', boss: 'stacja',
+    won: 'Tunele Metra odzyskane! Nocny Bazar czeka.',
     story: 'Glitch uciekł pod ziemię. W tunelach metra gasną światła, a puste składy wożą skażony kod. Zejdź na dół i przywróć ruch.',
     flavor: ['Pod ziemią słychać tylko szum pustych składów.', 'Peron migocze — Glitch przestawił rozkład jazdy.', 'Tory iskrzą skażonym kodem.', 'Tu nikt nie czeka na pociąg. Tylko Ty i Glitch.',
       'Echo w tunelu niesie się daleko. Glitch też je słyszy.', 'Kolejna stacja do odzyskania.', 'W metrze liczy się każda sekunda.', 'Głębiej pod miastem, bliżej źródła Glitcha.'],
@@ -1646,7 +1647,7 @@ const CHAPTER_II = [
       ['Ostatni kurs', 'e:fragment:12 t:2', 'D', 2],
       ['Złote bajty', 'b:3', '', 2],
       ['Peron w mroku', 'e:prop:8 t:3', 'D', 3],
-      ['Rozkład jazdy', 'e:vehicle:5:konwoj', '', 2],
+      ['Rozkład jazdy', 'e:vehicle:5', '', 2],
       ['Pościg w tunelu', 'b:5', 'D', 3],
       ['Kontrola biletów', 'r:2', 'H2', 3],
       ['Iskry na torach', 'c:10 e:prop:5', '', 2],
@@ -1662,7 +1663,7 @@ const CHAPTER_II = [
       ['Iskrownik', 'a:pylon:4', 'Z2', 3],
       ['Ślepy tor', 'e:structure:2 b:4', 'D', 4],
       ['Godzina zero', 's:2200', '', 4],
-      ['Pociąg towarowy', 'e:heavy:3:ciezarowka', '', 3],
+      ['Pociąg towarowy', 'e:heavy:3:tramwaj', '', 3],
       ['Awaria sieci', 'a:node:5', 'D Z2', 4],
       ['Ucieczka z zajezdni', 'b:7', 'H2', 4],
       ['Ciemna linia', 't:5 e:heavy:1:tramwaj', 'D H2', 5],
@@ -1678,23 +1679,24 @@ const CHAPTER_II = [
   },
   {
     id: 'bazar', name: 'Nocny Bazar', color: '#EFCB63', floor: 'plac', boss: 'bazar_brama',
-    story: 'Nocny Bazar nigdy nie śpi. Glitch handluje tu skradzioną energią, a jego Złodziej zgarnia wszystko, czego nie zgarniesz pierwszy.',
+    won: 'Nocny Bazar odzyskany! Fabryka Pikseli czeka.',
+    story: 'Nocny Bazar nigdy nie śpi. Glitch handluje tu skradzioną energią, a jego Złodziej zgarnia wszystko, czego nie zgarniesz przed nim.',
     flavor: ['Między kramami pachnie ozonem i skażonym neonem.', 'Bazar tętni — a Glitch liczy zyski.', 'Kto pierwszy, ten lepszy. Tak działa ten bazar.', 'Lampiony mrugają w rytm skażonego kodu.',
       'Kolejna alejka do odzyskania.', 'Tu wszystko ma cenę. Glitch płaci skradzioną energią.', 'Tłum kramów, a w nim Twój cel.', 'Ceny szaleją, a energia ucieka.'],
-    success: ['Kramy znów świecą uczciwym światłem.', 'Alejka odzyskana.', 'Bazar wraca do życia.', 'Złodziej odchodzi z pustymi rękami.', 'Najlepszy interes tej nocy.', 'Energia wróciła do miasta.'],
+    success: ['Kramy znów świecą uczciwym światłem.', 'Alejka odzyskana.', 'Bazar wraca do życia.', 'Kupcy znów się uśmiechają.', 'Najlepszy interes tej nocy.', 'Energia wróciła do miasta.'],
     rows: [
       ['Pierwszy targ', 'e:capsule:10', 'R', 2],
       ['Kramy', 'e:prop:8:kiosk', '', 2],
       ['Złodziej kapsuł', 'e:capsule:12', 'R', 3],
       ['Tłum w alejce', 'c:12 e:prop:6:kiosk', '', 2],
       ['Złoty interes', 'b:4', 'R', 3],
-      ['Lampiony', 'e:marker:6', '', 2],
+      ['Lampiony', 'e:prop:8:latarnia', '', 2],
       ['Targowanie', 's:1200', '', 3],
       ['Fala klientów', 'e:capsule:16 c:8', 'W', 3],
       ['Kieszonkowiec', 'e:prop:10', 'R H1', 4],
       ['Stragan z autami', 'e:vehicle:6', '', 3],
       ['Nocne pawilony', 'e:structure:3:pawilon', '', 3],
-      ['Wyścig o lampiony', 'e:marker:6', 'R', 4],
+      ['Wyścig o lampiony', 'e:prop:8:latarnia', 'R', 4],
       ['Bazarowe combo', 'c:15 e:vehicle:4', '', 3],
       ['Ochroniarze', 'r:3', 'H3 B40', 4],
       ['Hurtownia', 'e:structure:4:magazyn', 'Z2', 4],
@@ -1704,11 +1706,11 @@ const CHAPTER_II = [
       ['Licytacja', 's:2500', '', 4],
       ['Labirynt kramów', 'e:prop:12 c:10', 'Z3', 4],
       ['Szybka sprzedaż', 'e:capsule:14', 'R', 4],
-      ['Ciemna strona bazaru', 'e:marker:6', 'D R', 5],
+      ['Ciemna strona bazaru', 'e:marker:6', 'R Z1', 5],
       ['Złote godziny', 'b:6 s:1500', '', 4],
       ['Mistrzowie handlu', 'r:4', 'H3 B50', 5],
       ['Magazyn nocny', 'e:heavy:3', 'D', 4],
-      ['Bez straty', 'e:prop:12', 'F', 4],
+      ['Bez straty', 'e:prop:12', 'F Z1', 4],
       ['Wielka dostawa', 'e:tower:1:wiezowiec e:heavy:1', '', 4],
       ['Złodziej bajtów', 'b:6', 'R H1', 5],
       ['Bazar w ogniu', 'c:18 s:2000', 'Z2', 5],
@@ -1718,10 +1720,11 @@ const CHAPTER_II = [
   },
   {
     id: 'fabryka', name: 'Fabryka Pikseli', color: '#FF54AD', floor: 'port', boss: 'fabryka',
+    won: 'Fabryka Pikseli odzyskana! Zatoka Hologramów czeka.',
     story: 'W Fabryce Pikseli Glitch produkuje sam siebie. Hale pełne są stref skażenia, a nadzorcy pilnują taśm. Zatrzymaj produkcję.',
-    flavor: ['Taśmy jadą, prasy biją, Glitch rośnie.', 'Hala huczy skażonym kodem.', 'Tu powstają nowe kawałki Glitcha.', 'Uważaj pod nogi — podłoga iskrzy.',
-      'Kolejna linia produkcyjna do zatrzymania.', 'Nadzorcy nie lubią gości.', 'Każdy piksel tutaj to skażenie.', 'Fabryka pracuje na trzy zmiany. Ty na jedną, ale lepiej.'],
-    success: ['Taśma zatrzymana.', 'Hala ucichła.', 'Produkcja Glitcha spada.', 'Kolejna linia czysta.', 'Fabryka traci moc.', 'Nadzorcy uciekli.'],
+    flavor: ['Taśmy jadą, prasy biją, Glitch rośnie.', 'Hala huczy skażonym kodem.', 'Tu powstają nowe kawałki Glitcha.', 'Uważaj — podłoga iskrzy.',
+      'Kolejna linia produkcyjna do zatrzymania.', 'Hala nie lubi gości.', 'Każdy piksel tutaj to skażenie.', 'Fabryka pracuje na trzy zmiany. Ty na jedną, ale lepiej.'],
+    success: ['Taśma zatrzymana.', 'Hala ucichła.', 'Produkcja Glitcha spada.', 'Kolejna linia czysta.', 'Fabryka traci moc.', 'Maszyny cichną jedna po drugiej.'],
     rows: [
       ['Brama fabryki', 'e:prop:8 t:3', 'Z1', 3],
       ['Taśmociąg', 'c:12 e:prop:8:skrzynia', 'Z2', 3],
@@ -1758,25 +1761,26 @@ const CHAPTER_II = [
   },
   {
     id: 'zatoka', name: 'Zatoka Hologramów', color: '#9875FF', floor: 'galeria', boss: 'latarnia',
+    won: 'Zatoka Hologramów odzyskana! Wiszące Ogrody czekają.',
     story: 'Zatoka Hologramów to morze światła i portali. Glitch ukrywa tu złote bajty w mgle i rozstawia na wodzie swoje latarnie.',
-    flavor: ['Hologramowe fale biją o nabrzeże.', 'Mgła nad zatoką gęstnieje.', 'Na wodzie migocze coś złotego.', 'Portale otwierają się i gasną jak fale.',
+    flavor: ['Hologramowe fale biją o nabrzeże.', 'Mgła nad zatoką gęstnieje.', 'Na wodzie migoczą hologramy.', 'Portale otwierają się i gasną jak fale.',
       'Zatoka pamięta czasy przed Glitchem.', 'Kolejny brzeg do odzyskania.', 'Tu łatwo zgubić kierunek. Ufaj strzałce.', 'Przypływ niesie skażony kod.'],
     success: ['Zatoka się uspokaja.', 'Fale znów są czyste.', 'Mgła opadła.', 'Kolejny brzeg odzyskany.', 'Latarnie świecą dla Ciebie.', 'Hologramy wracają do normy.'],
     rows: [
       ['Hologramowe molo', 'g:1 e:marker:6:krysztal', 'O', 3],
       ['Fale', 'e:capsule:16', 'W', 3],
-      ['Latarnie na wodzie', 'g:3', '', 3],
+      ['Latarnie na wodzie', 'g:3', '', 2],
       ['Złote ryby', 'b:5', '', 3],
       ['Mgła', 'e:prop:10 t:3', 'D', 3],
       ['Port widm', 'e:heavy:2:ciezarowka', '', 3],
-      ['Pasy przelotu', 'g:4', 'P', 4],
-      ['Rafa danych', 'g:1 e:marker:8:krysztal', 'O', 4],
-      ['Przypływ', 'c:14 e:capsule:10', 'W', 4],
+      ['Pasy przelotu', 'g:4', 'P', 3],
+      ['Rafa danych', 'b:5 e:marker:6:krysztal', 'Z2', 4],
+      ['Przypływ', 'c:14 e:capsule:10', 'W', 2],
       ['Hologramowi strażnicy', 'r:3', 'H3 B45', 4],
       ['Mgła nad zatoką', 'b:5', 'D', 4],
-      ['Boje', 'a:pylon:4:lustro', '', 3],
+      ['Lustra na wodzie', 'a:pylon:4:lustro', '', 3],
       ['Odbicia', 'a:pylon:5:lustro e:structure:2', 'D', 4],
-      ['Rejs nocny', 'g:5', 'P', 4],
+      ['Rejs nocny', 'g:5', 'P', 3],
       ['Skarb zatoki', 'b:6 e:structure:2', 'H1', 4],
       ['Statek widmo', 'e:heavy:3', 'D', 4],
       ['Prądy', 'c:16 b:4', 'Z2', 4],
@@ -1786,30 +1790,31 @@ const CHAPTER_II = [
       ['Sztorm', 's:3000', 'Z3', 5],
       ['Głębina', 'e:tower:2', 'D', 5],
       ['Fale glitcha', 'e:capsule:18', 'W Z3', 5],
-      ['Rejs bez kolizji', 'g:4', 'P F', 5],
+      ['Rejs bez kolizji', 'g:4', 'P F Z1', 4],
       ['Piraci', 'r:4', 'H4 B55', 5],
       ['Zatopiony magazyn', 'e:structure:5:magazyn', 'D', 5],
       ['Hologramowy horyzont', 't:6', 'D', 4],
       ['Wyścig łodzi', 'e:marker:8:krysztal', 'R', 5],
       ['Ostatni sztorm', 'e:tower:2 s:2500', 'Z3', 5],
       ['Latarnia Hologramów', 'a:pylon:4:lustro L:latarnia', 'D H2', 5,
-        'Latarnia Hologramów oślepia całą zatokę. W ciemności aktywuj cztery lustra, unikaj łowców i pochłoń latarnię (T6).']
+        'Latarnia Hologramów wyssała światło z całej zatoki. W ciemności aktywuj cztery lustra, unikaj łowców i pochłoń latarnię (T6).']
     ]
   },
   {
     id: 'ogrody', name: 'Wiszące Ogrody', color: '#46D99A', floor: 'park', boss: 'drzewo',
+    won: 'Wiszące Ogrody odzyskane! Chmura Danych czeka.',
     story: 'Wiszące Ogrody unoszą się nad miastem na kruchych tarasach. Tu nie ma miejsca na błąd: jedno złe zderzenie i cały ogród spada.',
     flavor: ['Tarasy kołyszą się nad miastem.', 'Kwiaty świecą skażonym światłem.', 'W ogrodach liczy się precyzja.', 'Wiatr niesie pyłek Glitcha.',
-      'Kolejny taras do odzyskania.', 'Ogrodnicy Glitcha pilnują ścieżek.', 'Tu wszystko jest delikatne. Ty też.', 'Ostrożnie — pod tarasem jest tylko powietrze.'],
+      'Kolejny taras do odzyskania.', 'Każda ścieżka prowadzi wyżej.', 'Tarasy pamiętają każdy ruch.', 'Ostrożnie — pod tarasem jest tylko powietrze.'],
     success: ['Ogród rozkwita.', 'Taras odzyskany.', 'Kwiaty świecą czystym światłem.', 'Ani jednego złamanego płatka.', 'Ogrody znów oddychają.', 'Pyłek Glitcha opadł.'],
     rows: [
       ['Wejście do ogrodów', 'e:prop:10:drzewo', '', 3],
-      ['Delikatne pąki', 'e:capsule:12', 'F', 3],
-      ['Ogrodowe bramy', 'g:4', '', 3],
+      ['Delikatne pąki', 'e:capsule:12', 'F Z1', 3],
+      ['Furtki ogrodu', 'g:4', '', 3],
       ['Rytm kwiatów', 'c:16 e:prop:8:drzewo', '', 3],
       ['Ścieżka bez błędu', 'e:prop:10', 'F H1', 4],
       ['Zaczarowane latarnie', 'e:prop:8:latarnia c:10', '', 3],
-      ['Złote nasiona', 'b:6', 'F', 4],
+      ['Złote nasiona', 'b:6', 'F Z1', 4],
       ['Ogrodnicy', 'r:3', 'H3 B50', 4],
       ['Altany', 'e:structure:4:pawilon', '', 4],
       ['Kwietne pylony', 'a:pylon:5', 'F', 4],
@@ -1819,7 +1824,7 @@ const CHAPTER_II = [
       ['Ogród nocą', 'e:prop:12:latarnia', 'D', 4],
       ['Kolibry', 'b:8', 'H1', 5],
       ['Taras', 't:5', 'F', 4],
-      ['Bramy wiatru', 'g:5', 'F', 5],
+      ['Bramy wiatru', 'g:5', 'F Z1', 3],
       ['Strażnicy ogrodów', 'r:4', 'H4 B50', 5],
       ['Kaskady', 'e:capsule:20 c:12', 'W', 4],
       ['Kwitnące wieże', 'e:tower:1:wiezowiec', 'F', 5],
@@ -1828,12 +1833,12 @@ const CHAPTER_II = [
       ['Mgła w ogrodzie', 'e:heavy:3', 'D H2', 5],
       ['Ogrodowy rekord', 's:3500', '', 5],
       ['Wiszące tarasy', 'e:tower:2', 'F Z2', 5],
-      ['Bez jednego płatka', 'c:20 b:5', 'F', 5],
-      ['Ogrodnicy nocy', 'r:4', 'D H3 B55', 5],
+      ['Bez jednego płatka', 'c:20 b:5', 'F Z1', 5],
+      ['Ogrodnicy nocy', 'r:3 b:4', 'D H2 B45', 5],
       ['Lustrzana sadzawka', 'a:pylon:5:lustro e:tower:1', '', 5],
       ['Ostatni rozkwit', 't:6 e:heavy:2', 'F H2', 5],
       ['Drzewo Światła', 'a:pylon:4 L:drzewo', 'F H2', 5,
-        'Drzewo Światła trzyma ogrody w powietrzu. Kruchy wir i dwóch łowców: naładuj cztery pylony bez jednego zderzenia i pochłoń drzewo (T6).']
+        'Drzewo Światła trzyma ogrody w powietrzu. Kruchy wir i łowca na ogonie: naładuj cztery pylony bez jednego zderzenia i pochłoń drzewo (T6).']
     ]
   },
   {
@@ -1855,7 +1860,7 @@ const CHAPTER_II = [
       ['Szyfr', 'c:20 e:heavy:1', 'F', 5],
       ['Serwery lustrzane', 'a:pylon:6:lustro', 'D', 5],
       ['Złote klucze', 'b:8', 'H2', 5],
-      ['Zapora', 'g:5', 'P F', 5],
+      ['Zapora', 'g:5 b:3', 'P F Z1', 4],
       ['Administratorzy', 'r:4', 'H4 B55', 5],
       ['Wielka migracja', 'e:tower:2', 'Z3', 5],
       ['Ciemny sektor', 'e:structure:5', 'D H2', 5],
@@ -1869,7 +1874,7 @@ const CHAPTER_II = [
       ['Strażnicy chmury', 'r:5', 'H4 B60', 5],
       ['Ciemna chmura', 'e:tower:3', 'D Z2', 5],
       ['Ostatni pakiet', 'b:8 e:structure:3', 'F', 5],
-      ['Pełna synchronizacja', 's:4000', 'H1 Z2', 5],
+      ['Pełna synchronizacja', 'e:tower:2 s:3000', 'H1 Z2', 5],
       ['Kaskada serwerów', 'e:heavy:4 e:tower:2', 'H2', 5],
       ['Przed restartem', 'c:22 t:6', 'D', 5],
       ['Serwer Główny', 'a:node:4:zasilacz L:serwer', 'D H3 Z3', 5,
@@ -1878,14 +1883,21 @@ const CHAPTER_II = [
   }
 ];
 
+// v15 review: "some very hard", not most -- at most this many EKSTREMALNA
+// missions per district (the boss and the latest rows keep it; the rest
+// become BARDZO TRUDNA).
+const EXTREME_CAP = { metro: 3, bazar: 4, fabryka: 5, zatoka: 5, ogrody: 6, chmura: 10 };
+
 /** Parses CHAPTER_II rows into MISSION_SPECS entries (ids M61 onward). */
 function chapterTwoSpecs() {
   const specs = [];
   let n = 61;
   CHAPTER_II.forEach((dist, di) => {
-    const seen = new Set();
+    let extremes = 0;
+    const diffs = dist.rows.map(r => r[3]).reverse().map(d => (d === 5 && ++extremes > (EXTREME_CAP[dist.id] || 5)) ? 4 : d).reverse();
     dist.rows.forEach((row, i) => {
-      const [name, stepStr, twistStr, diff, nelaText] = row;
+      const [name, stepStr, twistStr, , nelaText] = row;
+      const diff = diffs[i];
       const steps = stepStr.split(' ').filter(Boolean).map(tok => {
         const p = tok.split(':');
         switch (p[0]) {
@@ -1929,14 +1941,14 @@ function chapterTwoSpecs() {
       // first time it appears in this district.
       const twists = ['hunters', 'racer', 'dark', 'glitch', 'fragile'].filter(t => setup[t]);
       if (steps.some(st => st.eat === 'runner')) twists.push('runner');
-      const fresh = twists.find(t => !seen.has(t));
-      twists.forEach(t => seen.add(t));
-      const start = nelaText || `${dist.flavor[i % dist.flavor.length]}${fresh ? ' ' + TWIST_INFO[fresh].hint : ''}`;
+      // (the twist hints themselves are listed in the briefing and on the
+      // start card -- repeating them here doubled the text)
+      const start = nelaText || dist.flavor[i % dist.flavor.length];
       const isBoss = i === dist.rows.length - 1;
       const next = CHAPTER_II[di + 1];
       const spec = {
         id: `M${n++}`, d: dist.id, diff, name, steps, setup,
-        nela: [start, isBoss ? (next ? `${dist.name} odzyskane! ${next.name} czeka.` : 'Serwer Główny pochłonięty. Glitch zniknął z Neonowego Miasta — na dobre.') : dist.success[i % dist.success.length]]
+        nela: [start, isBoss ? (next ? dist.won : 'Serwer Główny pochłonięty. Glitch zniknął z Neonowego Miasta — na dobre.') : dist.success[i % dist.success.length]]
       };
       if (isBoss) {
         spec.medal = { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' };
@@ -2111,12 +2123,12 @@ function stepTier(step) {
 // and the mission's difficulty -- re-run the calibration after changing a
 // mission spec, the growth curve or the twists. Missing entries fall back
 // to an estimate.
-const MISSION_BOT_TIME = { M01: [9, 15], M02: [21, 31], M03: [15, 19], M04: [39, 44], M05: [6, 7], M06: [23, 27], M07: [18, 21], M08: [33, 43], M09: [23, 30], M10: [19, 26], M11: [39, 52], M12: [53, 60], M13: [20, 25], M14: [21, 28], M15: [35, 41], M16: [40, 56], M17: [23, 30], M18: [12, 16], M19: [45, 51], M20: [55, 203], M21: [22, 28], M22: [43, 83], M23: [37, 56], M24: [55, 436], M25: [29, 39], M26: [29, 42], M27: [37, 43], M28: [23, 35], M29: [40, 52], M30: [41, 61], M31: [35, 39], M32: [36, 49], M33: [19, 23], M34: [37, 84], M35: [42, 53], M36: [21, 32], M37: [41, 53], M38: [45, 52], M39: [21, 25], M40: [57, 86], M41: [49, 52], M42: [48, 56], M43: [42, 52], M44: [33, 43], M45: [45, 63], M46: [28, 42], M47: [55, 121], M48: [52, 61], M49: [46, 56], M50: [31, 41], M51: [11, 12], M52: [45, 54], M53: [108, 355], M54: [53, 67], M55: [50, 66], M56: [48, 58], M57: [40, 60], M58: [205, 249], M59: [47, 54], M60: [54, 59], M61: [29, 36], M62: [23, 25], M63: [31, 48], M64: [37, 50], M65: [40, 48], M66: [47, 186], M67: [21, 33], M68: [54, 76], M69: [42, 52], M70: [43, 57], M71: [62, 93], M72: [14, 17], M73: [68, 87], M74: [66, 104], M75: [31, 37], M76: [62, 81], M77: [33, 45], M78: [64, 74], M79: [46, 55], M80: [50, 57], M81: [66, 78], M82: [76, 108], M83: [76, 191], M84: [35, 53], M85: [116, 204], M86: [46, 59], M87: [28, 40], M88: [70, 92], M89: [94, 133], M90: [81, 307], M91: [17, 20], M92: [26, 38], M93: [19, 22], M94: [26, 29], M95: [24, 30], M96: [25, 31], M97: [47, 59], M98: [20, 25], M99: [23, 59], M100: [40, 52], M101: [41, 50], M102: [24, 26], M103: [21, 28], M104: [73, 113], M105: [55, 71], M106: [57, 69], M107: [43, 55], M108: [34, 43], M109: [49, 63], M110: [47, 104], M111: [22, 30], M112: [36, 53], M113: [70, 80], M114: [79, 119], M115: [68, 81], M116: [34, 40], M117: [46, 55], M118: [39, 47], M119: [39, 47], M120: [66, 82], M121: [25, 46], M122: [34, 66], M123: [35, 41], M124: [36, 96], M125: [49, 73], M126: [46, 58], M127: [42, 54], M128: [44, 76], M129: [25, 41], M130: [50, 117], M131: [61, 92], M132: [68, 106], M133: [38, 64], M134: [86, 109], M135: [63, 108], M136: [46, 55], M137: [36, 40], M138: [69, 79], M139: [52, 68], M140: [78, 127], M141: [57, 70], M142: [48, 121], M143: [54, 85], M144: [34, 69], M145: [64, 171], M146: [81, 500], M147: [51, 67], M148: [125, 165], M149: [81, 126], M150: [83, 149], M151: [27, 36], M152: [21, 24], M153: [8, 9], M154: [31, 42], M155: [46, 61], M156: [43, 50], M157: [13, 19], M158: [25, 31], M159: [8, 21], M160: [49, 406], M161: [44, 50], M162: [32, 39], M163: [54, 69], M164: [16, 18], M165: [61, 114], M166: [61, 82], M167: [48, 74], M168: [87, 263], M169: [32, 47], M170: [48, 53], M171: [76, 105], M172: [78, 94], M173: [23, 53], M174: [15, 20], M175: [77, 172], M176: [61, 94], M177: [55, 78], M178: [27, 30], M179: [78, 95], M180: [77, 151], M181: [31, 41], M182: [23, 30], M183: [11, 12], M184: [25, 33], M185: [39, 67], M186: [24, 33], M187: [40, 44], M188: [79, 110], M189: [37, 49], M190: [31, 38], M191: [45, 57], M192: [48, 58], M193: [21, 25], M194: [42, 59], M195: [54, 89], M196: [37, 50], M197: [10, 13], M198: [67, 133], M199: [21, 31], M200: [47, 61], M201: [65, 108], M202: [73, 87], M203: [105, 162], M204: [58, 68], M205: [68, 81], M206: [38, 50], M207: [173, 272], M208: [40, 49], M209: [44, 56], M210: [43, 51], M211: [22, 33], M212: [60, 74], M213: [15, 22], M214: [65, 88], M215: [57, 310], M216: [59, 71], M217: [69, 91], M218: [23, 34], M219: [62, 133], M220: [25, 31], M221: [34, 44], M222: [59, 85], M223: [15, 22], M224: [117, 298], M225: [57, 106], M226: [109, 337], M227: [20, 30], M228: [56, 106], M229: [66, 83], M230: [68, 139], M231: [45, 53], M232: [36, 57], M233: [75, 126], M234: [137, 191], M235: [92, 137], M236: [72, 78], M237: [77, 133], M238: [58, 65], M239: [31, 50], M240: [190, 381] };
+const MISSION_BOT_TIME = { M01: [8, 11], M02: [22, 25], M03: [16, 23], M04: [37, 43], M05: [5, 6], M06: [20, 23], M07: [20, 26], M08: [34, 50], M09: [21, 29], M10: [21, 24], M11: [38, 49], M12: [46, 95], M13: [23, 30], M14: [25, 32], M15: [29, 45], M16: [44, 73], M17: [23, 31], M18: [13, 14], M19: [42, 56], M20: [47, 74], M21: [22, 28], M22: [40, 131], M23: [41, 53], M24: [66, 128], M25: [35, 47], M26: [27, 40], M27: [37, 46], M28: [24, 31], M29: [37, 41], M30: [43, 60], M31: [33, 38], M32: [38, 45], M33: [17, 25], M34: [38, 47], M35: [41, 68], M36: [24, 34], M37: [36, 49], M38: [39, 52], M39: [25, 29], M40: [59, 128], M41: [44, 62], M42: [44, 49], M43: [45, 57], M44: [32, 37], M45: [45, 59], M46: [30, 36], M47: [81, 280], M48: [54, 63], M49: [46, 56], M50: [29, 49], M51: [11, 13], M52: [51, 61], M53: [121, 385], M54: [47, 69], M55: [50, 53], M56: [48, 132], M57: [47, 55], M58: [216, 305], M59: [44, 54], M60: [59, 61], M61: [27, 30], M62: [20, 24], M63: [39, 51], M64: [32, 39], M65: [45, 53], M66: [37, 47], M67: [20, 29], M68: [61, 79], M69: [45, 69], M70: [46, 53], M71: [55, 68], M72: [12, 14], M73: [58, 94], M74: [54, 108], M75: [30, 44], M76: [67, 93], M77: [33, 40], M78: [65, 79], M79: [47, 60], M80: [51, 64], M81: [81, 130], M82: [62, 120], M83: [86, 305], M84: [39, 52], M85: [91, 113], M86: [48, 52], M87: [27, 37], M88: [81, 101], M89: [101, 139], M90: [112, 243], M91: [18, 30], M92: [27, 36], M93: [18, 21], M94: [18, 29], M95: [26, 38], M96: [28, 33], M97: [49, 65], M98: [23, 29], M99: [29, 50], M100: [37, 46], M101: [39, 47], M102: [27, 42], M103: [24, 47], M104: [74, 88], M105: [45, 49], M106: [56, 68], M107: [47, 54], M108: [31, 48], M109: [52, 60], M110: [40, 72], M111: [20, 30], M112: [22, 29], M113: [72, 82], M114: [93, 140], M115: [62, 81], M116: [36, 47], M117: [50, 67], M118: [40, 53], M119: [41, 68], M120: [62, 88], M121: [29, 42], M122: [36, 55], M123: [31, 43], M124: [39, 71], M125: [46, 73], M126: [34, 88], M127: [44, 54], M128: [46, 84], M129: [25, 49], M130: [53, 123], M131: [76, 98], M132: [55, 81], M133: [37, 84], M134: [86, 181], M135: [50, 76], M136: [56, 66], M137: [46, 51], M138: [71, 87], M139: [48, 61], M140: [74, 213], M141: [67, 124], M142: [54, 66], M143: [75, 127], M144: [31, 53], M145: [60, 99], M146: [75, 115], M147: [58, 63], M148: [120, 174], M149: [63, 84], M150: [79, 140], M151: [27, 33], M152: [21, 26], M153: [8, 10], M154: [32, 37], M155: [45, 55], M156: [46, 59], M157: [12, 17], M158: [77, 118], M159: [13, 23], M160: [54, 135], M161: [45, 54], M162: [27, 32], M163: [52, 64], M164: [15, 18], M165: [58, 101], M166: [66, 87], M167: [55, 88], M168: [109, 155], M169: [28, 36], M170: [51, 61], M171: [69, 81], M172: [73, 86], M173: [22, 42], M174: [15, 28], M175: [123, 201], M176: [70, 96], M177: [49, 65], M178: [28, 32], M179: [85, 106], M180: [55, 86], M181: [29, 39], M182: [29, 37], M183: [11, 11], M184: [25, 32], M185: [32, 43], M186: [27, 36], M187: [47, 55], M188: [82, 185], M189: [47, 57], M190: [33, 37], M191: [45, 53], M192: [52, 60], M193: [23, 31], M194: [48, 58], M195: [56, 77], M196: [39, 52], M197: [12, 13], M198: [72, 316], M199: [22, 25], M200: [45, 72], M201: [74, 100], M202: [73, 102], M203: [80, 191], M204: [59, 79], M205: [61, 95], M206: [54, 94], M207: [153, 443], M208: [41, 52], M209: [48, 60], M210: [47, 57], M211: [24, 28], M212: [61, 72], M213: [15, 20], M214: [57, 67], M215: [76, 263], M216: [57, 82], M217: [57, 94], M218: [21, 37], M219: [59, 80], M220: [28, 30], M221: [36, 45], M222: [54, 78], M223: [42, 88], M224: [114, 163], M225: [67, 106], M226: [60, 174], M227: [21, 40], M228: [51, 88], M229: [62, 83], M230: [87, 397], M231: [51, 68], M232: [37, 44], M233: [61, 92], M234: [105, 223], M235: [89, 95], M236: [77, 84], M237: [67, 86], M238: [56, 183], M239: [36, 41], M240: [123, 201] };
 
 /** v15 twist hints (shown in the briefing, start card and as chips). */
 const TWIST_INFO = {
   hunters: { label: 'ŁOWCY', color: '#ff3860', hint: 'Łowcy polują na mniejsze wiry. Uciekaj, dopóki ich nie przerośniesz.' },
-  racer: { label: 'ZŁODZIEJ', color: '#EFCB63', hint: 'Złodziej zbiera te same cele — rusza, gdy już możesz je zjadać. Bądź szybszy albo go pochłoń.' },
+  racer: { label: 'ZŁODZIEJ', color: '#EFCB63', hint: 'Złodziej zbiera te same cele — rusza, gdy już możesz je zjadać. Na starcie jest większy: nie wpadaj na niego. Zbieraj szybciej niż on, a gdy urośniesz, pochłoń go — straci czas.' },
   dark: { label: 'CIEMNOŚĆ', color: '#9875FF', hint: 'Prąd padł: widać tylko to, co blisko wiru. Strzałka prowadzi do celu.' },
   glitch: { label: 'STREFY GLITCHA', color: '#FF54AD', hint: 'Różowe strefy glitcha zabierają masę i zrywają combo. Omijaj je.' },
   fragile: { label: 'KRUCHY WIR', color: '#50F0FA', hint: 'Kruchy wir: jedno zderzenie z większym rywalem albo strefą i misja przepada.' },
@@ -2215,12 +2227,16 @@ function compileMission(spec, order) {
   // (p90 is capped: one stuck bot run must not stretch the limit.)
   // The floor keeps a slow-but-clean expert run inside the limit on the
   // friendly levels; the hard ones are held to the median pace.
-  const floor = Math.min(botP90, botMed * (1.6 - 0.1 * diff)) * (1.1 - 0.05 * diff) + 5;
+  // v15 review: a high-variance expert run (p90) stays inside the limit
+  // up to 1.6 x (ŁATWA) .. 1.2 x (EKSTREMALNA) the median.
+  const floor = Math.min(botP90, botMed * (1.7 - 0.1 * diff)) + 3;
   const timeLimit = spec.time || Math.max(diff >= 4 ? 30 : 45, round5(botMed * D.timeFactor + D.timePad), round5(floor));
   // Stars: 1 = clear, 2 = a brisk clear, 3 = expert pace (or the mission's
   // own special challenge, kept from the v10 medals).
-  const t2 = Math.min(timeLimit - 10, round5(botMed + (timeLimit - botMed) * 0.45));
-  const t3 = Math.min(t2 - 5, Math.max(10, round5(botMed * 1.08 + 2)));
+  // Stars stay humanly reachable: ★★ never under 1.3 x and ★★★ never
+  // under ~1.1 x the expert bot's median.
+  const t2 = Math.min(timeLimit - 5, Math.max(round5(botMed * 1.3), round5(botMed + (timeLimit - botMed) * 0.45)));
+  const t3 = Math.min(t2 - 5, Math.max(10, round5(botMed * 1.1 + 3)));
   const timeStar = sec => ({ type: 'timeUnder', seconds: sec, label: `Ukończ w ${formatClock(sec)}` });
   const special = spec.medal && spec.medal.type !== 'timeUnder' ? spec.medal : null;
   const stars = [{ type: 'clear', label: 'Ukończ misję' }, timeStar(t2), special || timeStar(t3)];
@@ -2308,7 +2324,7 @@ const MISSION_SPECS = [
   { id: 'M33', d: 'park', diff: 3, name: 'Bieg wokół stawu', steps: [{ combo: 12 }, { eat: 'structure', n: 1, glyph: 'pawilon' }], setup: { arcLayout: true, fragments: 24 },
     nela: ['Fragmenty otaczają staw: dwanaście kęsów bez przerwy. Potem urośnij do T4 i pochłoń pawilon.', 'Taki rytm słychać w całym parku.'] },
   { id: 'M34', d: 'park', diff: 2, name: 'Strażnicy parku', steps: [{ rival: 3 }], setup: { hunters: 1 },
-    nela: ['Trzech rywali patroluje park. Urośnij szybciej niż oni.', 'Teraz to Ty pilnujesz parku.'] },
+    nela: ['Po parku krąży czterech rywali, a jeden z nich poluje na Ciebie. Urośnij szybciej niż oni i pochłoń trzech.', 'Teraz to Ty pilnujesz parku.'] },
   { id: 'M35', d: 'park', diff: 2, name: 'Reklamy w zieleni', steps: [{ eat: 'structure', n: 3, glyph: 'billboard' }],
     nela: ['Ktoś postawił billboardy między drzewami. Usuń je.', 'Zieleń znów jest zielona.'] },
   { id: 'M36', d: 'park', diff: 3, name: 'Pylony ogrodu', steps: [{ activate: 'pylon', n: 3 }, { combo: 6 }],
@@ -2354,7 +2370,7 @@ const MISSION_SPECS = [
     medal: { type: 'comboAtLeast', count: 5, label: 'Zbuduj combo ×5' },
     nela: ['Witryny wciąż świecą starym światłem. Zgaś je.', 'Witryny zgasły. Galeria czeka na nową wystawę.'] },
   { id: 'M15', d: 'galeria', diff: 3, name: 'Przed zamknięciem', steps: [{ eat: 'marker', n: 4, glyph: 'klucz_sektora' }], setup: { dark: true },
-    nela: ['Sektory zamykają się jeden po drugim. Zbierz klucze, zanim zgasną światła.', 'Wszystkie sektory otwarte na nowo.'] },
+    nela: ['Światła w galerii już zgasły. Zbierz klucze sektorów po ciemku — strzałka pokaże drogę.', 'Wszystkie sektory otwarte na nowo.'] },
   { id: 'M43', d: 'galeria', diff: 3, name: 'Ekrany', steps: [{ eat: 'structure', n: 4, glyph: 'billboard' }],
     nela: ['Ekrany galerii nadają szum. Wyłącz je, pochłaniając.', 'Cisza. Wreszcie widać sztukę.'] },
   { id: 'M44', d: 'galeria', diff: 4, name: 'Rój glitcha', steps: [{ combo: 14 }, { eat: 'heavy', n: 1, glyph: 'tramwaj' }],
@@ -2420,7 +2436,7 @@ const MISSION_SPECS = [
     nela: ['Ostatni sprawdzian przed finałem: 5000 punktów.', 'Rekord, którego nikt nie pobije.'] },
   { id: 'M24', d: 'rdzen', diff: 5, name: 'Miasto na nowo', steps: [{ activate: 'node', n: 3 }, { landmark: 'rdzen_miasta_glowny' }], setup: { hunters: 2 },
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
-    nela: ['Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.', 'Miasto czyste. Neonowe Miasto znów świeci.'],
+    nela: ['Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.', 'Rdzeń odzyskany! Ale Glitch uciekł pod ziemię — Tunele Metra czekają.'],
     reward: { coins: 400, unlockSkin: 'aurora', unlockDistrict: 'metro' } }
 ];
 MISSION_SPECS.push(...chapterTwoSpecs());
@@ -6928,7 +6944,10 @@ class Game {
       if (!btn || btn.disabled) return;
       this.openMissionBriefing(btn.dataset.mcPlay);
     });
-    document.getElementById('missionStartOverlay').addEventListener('click', () => this.beginMissionPlay());
+    document.getElementById('missionStartOverlay').addEventListener('click', (e) => {
+      if (e.target.closest && e.target.closest('#btnMissionBack')) { this.cancelMissionStart(); return; }
+      this.beginMissionPlay();
+    });
     document.querySelectorAll('.energy-chip').forEach(el => el.addEventListener('click', () => this.openEnergySheet()));
     document.getElementById('btnEnergyAd').addEventListener('click', () => this.energyFromAd());
     document.getElementById('btnEnergyRefill').addEventListener('click', () => this.energyRefillPrisms());
@@ -8266,7 +8285,7 @@ class Game {
           '<ul class="info-sheet-list"><li>+1 za co 3. rozegraną rundę GRAJ 2:00</li>' +
             `<li>+${CONFIG.daily.newRecordBonusPrisms} za nowy rekord w Wyzwaniu dnia</li>` +
             '<li>Nagrody Core City od poziomu 7</li></ul>',
-          'Wydajesz je w <strong>Warsztacie</strong> na rzadsze Smugi.'
+          'Wydajesz je w <strong>Warsztacie</strong> na rzadsze Smugi, na pełną energię i na dodatkowe sekundy w misji.'
         ]
       });
       return;
@@ -8279,7 +8298,7 @@ class Game {
         '<ul class="info-sheet-list"><li>Za każdą rundę GRAJ 2:00 i Wyzwanie dnia</li>' +
           '<li>Za pierwsze ukończenie misji w Dzielnicach</li>' +
           '<li>Za każdy nowy poziom Core City</li></ul>',
-        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury) i na jednorazowe dodatki przed rundą (Tarcza, Magnes).'
+        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Magnes, Tarcza).'
       ]
     });
   }
@@ -8692,6 +8711,8 @@ class Game {
       this.selectedRunTool = 'boost';
       this.populateRunToolGrid();
       this.showScreen('runSetupScreen');
+    } else if (!this.energyFreeFor('arena') && this.energyNow() < 1) {
+      this.openEnergySheet({ empty: true, onRefill: () => this.onUpsellClick() });
     } else if (this.monetization.placementLeft('turbo_free') > 0) {
       // Golden Shot v11: can't afford it -> a free Turbo start for an ad,
       // straight into the rematch (startRound() never charges for tools).
@@ -8947,7 +8968,7 @@ class Game {
     this.selectedRunTool = 'none';
     if ((this.save.stats.runsPlayed || 0) < CONFIG.difficulty.rampStartRuns) { this.requireEnergy('arena', () => this.startRound()); return; }
     // v15: no energy -> the energy sheet now, not after picking a tool.
-    if (!this.energyFreeFor('arena') && this.energyNow() < 1) { this.requireEnergy('arena', () => this.startArenaRound()); return; }
+    if (!this.energyFreeFor('arena') && this.energyNow() < 1) { this.openEnergySheet({ empty: true, onRefill: () => this.startArenaRound() }); return; }
     this.populateRunToolGrid();
     this.showScreen('runSetupScreen');
   }
@@ -9097,7 +9118,7 @@ class Game {
       ? '✓ nagroda odebrana'
       : `◇ +${def.reward.coins} monet${def.reward.unlockDistrict ? ' · nowa dzielnica' : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
     // v15: the three star conditions (earned ones lit).
-    const starRows = (def.stars || []).map((st, i) => `<span class="mc-star${bits & (1 << i) ? ' earned' : ''}"><b>${'★'.repeat(i + 1)}</b>${i === 0 ? 'ukończ' : st.type === 'timeUnder' ? formatClock(st.seconds) : st.label.toLowerCase()}</span>`).join('');
+    const starRows = (def.stars || []).map((st, i) => `<span class="mc-star${bits & (1 << i) ? ' earned' : ''}"><b>${'★'.repeat(i + 1)}</b>${i === 0 ? 'ukończ' : this.starShortLabel(st)}</span>`).join('');
     const meta = `<div class="mc-meta">` +
       `<span class="mc-meta-item">${CLOCK}${def.untimed ? 'bez limitu' : formatClock(def.timeLimit)}</span>` +
       `<span class="mc-meta-item mc-meta-reward">${reward}</span></div>` +
@@ -9117,7 +9138,7 @@ class Game {
       : playable ? `<button class="btn btn-primary btn-mega mc-play" ${attr}="${def.id}">${done ? 'ZAGRAJ PONOWNIE' : 'GRAJ'}${PLAY_SVG}</button>`
         : prevPlayable ? `<button class="btn btn-secondary mc-play mc-play-prev" data-mc-play="${prev.id}">NAJPIERW ${missionCode(prev)}${PLAY_SVG}</button>`
           : `<button class="btn btn-primary btn-mega mc-play" disabled>ZABLOKOWANA</button>`;
-    const boosts = opts.launch && playable && def.id !== 'M00' && this.boostersUnlocked() ? this.boosterTilesHtml() : '';
+    const boosts = opts.launch && playable && def.id !== 'M00' && this.boostersUnlocked() ? this.boosterTilesHtml(def) : '';
     return `<div class="mc-head" style="--d-color:${color}">` +
       `<span class="mc-code">${missionCode(def)}</span><span class="mc-eyebrow">${opts.eyebrow || district.name.toUpperCase()}</span>${diff}${status}</div>` +
       `<h3 class="mc-name">${def.name}</h3>${nela}` +
@@ -9214,13 +9235,15 @@ class Game {
   }
 
   updateEnergyDisplays() {
+    if (this.running && document.getElementById('energySheet').classList.contains('hidden')) return;
     const E = CONFIG.energy;
     const v = this.energyNow();
     const inf = this.energyInfinite();
     const next = this.energyNextInMs();
     const timer = inf ? '∞' : next ? formatClock(Math.ceil(next / 1000)) : 'PEŁNA';
-    document.querySelectorAll('.energy-count').forEach(el => { el.innerHTML = inf ? '∞' : `${v}<small>/${E.max}</small>`; });
-    document.querySelectorAll('.energy-timer').forEach(el => { el.textContent = timer; });
+    const html = inf ? '∞' : `${v}<small>/${E.max}</small>`;
+    document.querySelectorAll('.energy-count').forEach(el => { if (el.innerHTML !== html) el.innerHTML = html; });
+    document.querySelectorAll('.energy-timer').forEach(el => { if (el.textContent !== timer) el.textContent = timer; });
     document.querySelectorAll('.energy-chip').forEach(el => el.classList.toggle('empty', !inf && v < 1));
     const sheet = document.getElementById('energySheet');
     if (sheet && !sheet.classList.contains('hidden')) this.renderEnergySheet();
@@ -9247,7 +9270,7 @@ class Game {
     const adLeft = this.monetization.placementLeft('energy_ad');
     const btnAd = document.getElementById('btnEnergyAd');
     btnAd.classList.toggle('hidden', inf || v >= E.cap || adLeft <= 0);
-    btnAd.textContent = `+${E.adGain} ENERGIA · OBEJRZYJ REKLAMĘ (${adLeft})`;
+    btnAd.textContent = `+${E.adGain} ENERGIA · REKLAMA (zostało ${adLeft})`;
     const btnBuy = document.getElementById('btnEnergyRefill');
     btnBuy.classList.toggle('hidden', inf || v >= E.max);
     btnBuy.textContent = `PEŁNA ENERGIA · ${E.refillPrisms} ◆`;
@@ -9274,6 +9297,7 @@ class Game {
     const E = CONFIG.energy;
     if ((this.save.prisms || 0) < E.refillPrisms) {
       this.closeEnergySheet();
+      this.closeMissionBriefing();
       this.openCurrencyInfo(true);
       return;
     }
@@ -9344,7 +9368,8 @@ class Game {
     const note = card.querySelector('.mc-boost-note');
     if (note) {
       const short = cost > this.save.coins;
-      note.textContent = short ? `Brakuje ${cost - this.save.coins} monet na wybrane wzmocnienia.` : (sel.size ? 'Wzmocnienia zużyjesz na tę próbę.' : 'Wzmocnienia są opcjonalne — dotknij, aby wybrać.');
+      const miss = cost - this.save.coins;
+      note.textContent = short ? `Brakuje ${miss} ${plural(miss, ['monety', 'monet', 'monet'])} na wybrane wzmocnienia.` : (sel.size ? 'Wybrane wzmocnienia zużyjesz w tej próbie — także jeśli się nie uda.' : 'Wzmocnienia są opcjonalne — dotknij, aby wybrać.');
       note.classList.toggle('warn', short);
     }
   }
@@ -9376,10 +9401,23 @@ class Game {
     });
   }
 
-  boosterTilesHtml() {
+  /** Can this booster help in this mission? (Tarcza needs a hazard.) */
+  boosterUseful(id, def) {
+    if (id !== 'shield' || !def) return true;
+    const s = def.setup || {};
+    return !!(s.bots || s.glitch || s.racer);
+  }
+
+  boosterTilesHtml(def) {
     const sel = this.briefingBoosters || new Set();
     const tiles = MISSION_BOOSTERS.map(b => {
       const have = this.save.boosters[b.id] || 0;
+      if (!this.boosterUseful(b.id, def)) {
+        return `<button type="button" class="mc-boost off" disabled style="--b-color:${b.color}" aria-label="${b.name}: brak zagrożeń w tej misji">` +
+          `<span class="mc-boost-icon"><svg viewBox="0 0 24 24">${CARD_ICONS[b.icon]}</svg></span>` +
+          `<span class="mc-boost-name">${b.name}</span><span class="mc-boost-short">brak zagrożeń</span>` +
+          `<span class="mc-boost-badge${have ? ' owned' : ''}">${have ? `×${have}` : `${b.price} ◇`}</span></button>`;
+      }
       return `<button type="button" class="mc-boost${sel.has(b.id) ? ' selected' : ''}" data-booster="${b.id}" style="--b-color:${b.color}" aria-pressed="${sel.has(b.id)}" aria-label="${b.name}: ${b.desc}">` +
         `<span class="mc-boost-icon"><svg viewBox="0 0 24 24">${CARD_ICONS[b.icon]}</svg></span>` +
         `<span class="mc-boost-name">${b.name}</span><span class="mc-boost-short">${b.short}</span>` +
@@ -9406,17 +9444,46 @@ class Game {
       `<div class="nela-bubble mc-nela"><span class="nela-avatar" aria-hidden="true">${NELA_AVATAR}</span><span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line">${def.nela.start}</span></span></div>` +
       `<ol class="mc-goals">${rows}</ol>` +
       (twists || boosts ? `<div class="mc-twists">${twists}${boosts}</div>` : '') +
-      `<div class="start-meta"><span><svg class="inline-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${st.type === 'timeUnder' ? formatClock(st.seconds) : 'wyzwanie'}`).join(' · ')}</span></div>` +
+      ((def.twists || []).length ? `<ul class="mc-twist-hints">${def.twists.map(t => `<li>${TWIST_INFO[t].hint}</li>`).join('')}</ul>` : '') +
+      `<div class="start-meta"><span><svg class="inline-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${this.starShortLabel(st)}`).join(' · ')}</span></div>` +
       `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></button>` +
-      `<p class="start-tap">Zegar ruszy po dotknięciu</p>`;
+      `<p class="start-tap">Zegar ruszy po dotknięciu</p>` +
+      `<button type="button" class="btn btn-link start-back" id="btnMissionBack">Zmień wzmocnienia</button>`;
     document.getElementById('missionStartOverlay').classList.remove('hidden');
     this.sound.nela();
+  }
+
+  /** v15 review: back out of the start card before the clock runs -- the
+   *  energy and the boosters come back (as stock) and the briefing opens. */
+  cancelMissionStart() {
+    const m = this.mission;
+    if (!m || m.ended || !this.introPending) return;
+    if (this.paused) { this.paused = false; this.sound.setDucked(false); }
+    document.getElementById('pauseSheet').classList.add('hidden');
+    m.boosters.forEach(id => { this.save.boosters[id] = (this.save.boosters[id] || 0) + 1; });
+    if (m.energyCharged) this.grantEnergy(1, true);
+    this.save.campaign.attempts[m.def.id] = Math.max(0, (this.save.campaign.attempts[m.def.id] || 1) - 1);
+    m.ended = true;
+    this.running = false;
+    this.introPending = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.monetization.gameplayStop();
+    document.getElementById('missionStartOverlay').classList.add('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    saveGame(this.save);
+    this.state = GameState.MENU;
+    this.selectedDistrictId = m.def.district;
+    this.openCampaignScreen();
+    this.openMissionBriefing(m.def.id);
+    this.analytics.track('mission_back', { missionId: m.def.id });
   }
 
   /** Tap on the start card: the clock starts now. */
   beginMissionPlay() {
     const el = document.getElementById('missionStartOverlay');
     if (el.classList.contains('hidden')) return;
+    // Paused (Esc / tab hidden) while the card was up: resume properly.
+    if (this.paused) this.resumeGame();
     el.classList.add('hidden');
     this.introPending = false;
     this.pointerScreen = null;
@@ -9424,6 +9491,18 @@ class Game {
     this.showBanner('START!', this.mission ? this.mission.def.name : '', '#46D99A', 0.9, 3);
     this.sound.energy();
     this.analytics.track('mission_go', { missionId: this.mission && this.mission.def.id });
+  }
+
+  /** Short label of a star condition ("1:05", "bez zderzeń", "combo ×8"). */
+  starShortLabel(st) {
+    switch (st.type) {
+      case 'timeUnder': return formatClock(st.seconds);
+      case 'noBotHit': return 'bez zderzeń';
+      case 'comboAtLeast': return `combo ×${st.count}`;
+      case 'pylonsUnbroken': return 'combo przy pylonach';
+      case 'visitBothClusters': case 'bothRoutesUsed': return 'obie strony';
+      default: return st.label.toLowerCase();
+    }
   }
 
   diffBarsHtml(diff) {
@@ -10034,6 +10113,14 @@ class Game {
 
   /** v15 Złodziej: races the player for the first eat goal's objects, and
    *  runs from the player once it can be eaten. */
+  /** The player's own tally on the race goal (swallows in progress count). */
+  raceMine() {
+    const m = this.mission, s = m.def.setup;
+    const step = m.def.goal.steps.find(st => st.eat === s.raceType && (st.glyph || null) === s.raceGlyph) || { eat: s.raceType, n: s.raceTarget };
+    const inMouth = this.campaignEntities.filter(x => x.eating && !x.consumed && x.eater === this.player && x.type === s.raceType && (!s.raceGlyph || x.glyph === s.raceGlyph)).length;
+    return this.objectiveProgress(step)[0] + inMouth;
+  }
+
   isRaceTarget(e) {
     const s = this.mission.def.setup;
     return e.type === s.raceType && (!s.raceGlyph || e.glyph === s.raceGlyph) && e.live && !e.eating && !e.consumed;
@@ -10044,6 +10131,14 @@ class Game {
     bot.tempSpeedMult = R.speedBase + R.speedPerDiff * (m.def.diff || 1);
     const d = dist(bot.x, bot.y, p.x, p.y);
     // A fair race: the thief starts once the hole can eat what it steals.
+    // Race already won by the player: the thief just roams.
+    if (m.raceWon || (m.raceStarted && this.raceMine() >= m.def.setup.raceTarget)) {
+      m.raceWon = true;
+      bot.tempSpeedMult = 0.5;
+      if (!bot.wanderTarget || dist(bot.x, bot.y, bot.wanderTarget.x, bot.wanderTarget.y) < 40) bot.wanderTarget = this.randomInCampaignBounds(80);
+      bot.moveToward(bot.wanderTarget.x, bot.wanderTarget.y, dt);
+      return;
+    }
     if (!m.raceStarted) {
       const need = (CAMPAIGN_ENTITY_STATS[m.def.setup.raceType] || { minTier: 1 }).minTier;
       if (this.campaignTierIndex(this.campaignPlayerTier().id) >= need) {
@@ -10090,10 +10185,11 @@ class Game {
     this.spawnParticles(e.x, e.y, '#EFCB63', 10);
     this.addFloatText(e.x, e.y - 20, 'ZŁODZIEJ +1', '#EFCB63', 14);
     const s = m.def.setup;
-    const [mine] = this.objectiveProgress(m.def.goal.steps.find(st => st.eat === s.raceType && (st.glyph || null) === s.raceGlyph) || { eat: s.raceType, n: s.raceTarget });
+    const mine = this.raceMine();
+    if (m.raceWon || mine >= s.raceTarget) return;
     const left = this.campaignEntities.filter(x => x.type === s.raceType && (!s.raceGlyph || x.glyph === s.raceGlyph) && !x.consumed && !x.eating).length;
     if (m.racerCount >= s.raceTarget || mine + left < s.raceTarget) this.failCampaignMission('racer');
-    else if (m.racerCount === s.raceTarget - 1) this.showBanner('ZŁODZIEJ TUŻ, TUŻ!', `Brakuje mu 1`, '#EFCB63', 1.2, 3);
+    else if (m.racerCount === s.raceTarget - 1) this.showBanner('ZŁODZIEJ TUŻ, TUŻ!', 'Brakuje mu jeszcze jednego', '#EFCB63', 1.2, 3);
   }
 
   /** v15 golden bytes: drift until the hole comes close, then flee at a
@@ -10150,30 +10246,30 @@ class Game {
   campaignHit(source, fromX, fromY) {
     const m = this.mission;
     const p = this.player;
+    // Counted even when a shield takes it ("bez zderzenia" means none),
+    // and the hunter backs off / the hole is knocked out of the zone.
+    if (source === 'bot') m.botHitCount++;
+    for (const b of this.bots) if (b.hunter && b.hunting) { b.restT = CONFIG.campaign.hunter.afterHitRest; b.chaseT = 0; }
+    if (fromX != null) {
+      const d = dist(p.x, p.y, fromX, fromY) || 1;
+      p.x += (p.x - fromX) / d * 40; p.y += (p.y - fromY) / d * 40;
+      this.clampToCampaignBounds(p);
+    }
     if (m.shields > 0) {
       m.shields--;
-      p.invulnerableUntil = performance.now() + 1500;
+      p.invulnerableUntil = performance.now() + 2200;
       this.ripples.push(new Ripple(p.x, p.y, '#EFCB63', p.radius, p.radius * 2.6, 0.5));
       this.showBanner('TARCZA!', m.shields ? `Zostało osłon: ${m.shields}` : 'Ostatnia osłona zużyta', '#EFCB63', 1.1, 3);
       this.sound.coin();
       this.vibrate(30);
       return;
     }
-    if (source === 'bot') m.botHitCount++;
-    // A hunter that just landed a hit backs off for a while.
-    for (const b of this.bots) if (b.hunter && b.hunting) { b.restT = CONFIG.campaign.hunter.afterHitRest; b.chaseT = 0; }
     if (m.def.setup.fragile) { this.failCampaignMission('hit'); return; }
     const loss = m.growthUnits * CONFIG.campaign.hitPenaltyFraction;
     m.growthUnits = Math.max(0, m.growthUnits - loss);
     this.syncCampaignRadius();
     this.comboCount = 0; this.comboMultiplier = 1; this.comboTimer = 0;
     p.invulnerableUntil = performance.now() + (source === 'glitch' ? CONFIG.campaign.glitch.hitInvulnMs : CONFIG.campaign.hitInvulnMs);
-    // Knock the hole out of a glitch zone so one touch is one hit.
-    if (fromX != null) {
-      const d = dist(p.x, p.y, fromX, fromY) || 1;
-      p.x += (p.x - fromX) / d * 40; p.y += (p.y - fromY) / d * 40;
-      this.clampToCampaignBounds(p);
-    }
     this.sound.hurt();
     this.triggerShake(8);
     this.spawnParticles(p.x, p.y, source === 'glitch' ? '#FF54AD' : '#ff3860', 20);
@@ -10512,7 +10608,7 @@ class Game {
    *  new DOM/CSS pause pattern is needed. */
   offerCampaignPowers(count) {
     this.evolutionPending = true;
-    const cards = pickUnique(CAMPAIGN_POWERS, count);
+    const cards = pickUnique(CAMPAIGN_POWERS.filter(p => !this.activeMutations.has(p.id)), count);
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id), mode: 'campaign' });
     this.showPowerCards(cards, id => this.pickCampaignPower(id), 'Działa do końca tej misji. Gra czeka, aż wybierzesz.');
     clearTimeout(this.evolutionAutoPickTimer);
@@ -11134,7 +11230,7 @@ class Game {
       this.save.prisms = (this.save.prisms || 0) + S.chest.prisms;
       this.save.boosters[booster.id] = (this.save.boosters[booster.id] || 0) + S.chest.booster;
       this.queueRewardCelebration({
-        kicker: 'SKRZYNIA GWIAZD', eyebrow: `${c.starChests * S.chestEvery} GWIAZD`, title: 'Skrzynia gwiazd!', color: '#EFCB63',
+        kicker: 'SKRZYNIA GWIAZD', eyebrow: `${c.starChests * S.chestEvery} GWIAZDEK`, title: 'Skrzynia gwiazd!', color: '#EFCB63',
         icon: REWARD_CATEGORY_ICONS.bundle, noCta: true,
         desc: `+${S.chest.coins} monet · +${S.chest.prisms} pryzmaty · wzmocnienie „${booster.name}”. Następna za ${S.chestEvery} gwiazdek.`
       });
@@ -11166,11 +11262,11 @@ class Game {
     this.sound.setIntensity(0);
     if (success) this.sound.fanfare(firstClear); else this.sound.fail();
     document.getElementById('missionResultEyebrow').textContent = `${missionCode(def)} · ${def.name}`;
-    const failLine = pityLoan ? `Ta misja daje w kość. Pożyczam Ci Zegar (+${CONFIG.boosters.timeBonus} s) — wybierz go w odprawie.`
-      : m.failReason === 'racer' ? 'Złodziej był szybszy. Zbieraj najpierw to, co blisko niego — albo urośnij i go pochłoń.'
+    const failLine = pityLoan ? `Ta misja daje w kość. Masz ode mnie Zegar (+${CONFIG.boosters.timeBonus} s) — wybierz go w odprawie.`
+      : m.failReason === 'racer' ? 'Następnym razem zbieraj najpierw cele obok Złodzieja — a gdy urośniesz, pochłoń go, żeby stracił czas.'
         : m.failReason === 'hit' ? 'Kruchy wir pękł. Tarcza z odprawy przyjmie dwa zderzenia za Ciebie.'
           : this.campaignGoalFraction() >= 0.5 ? 'Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.'
-            : def.diff >= 4 ? 'To jedna z najtrudniejszych misji. Zegar albo Turbo start z odprawy dużo zmieniają.'
+            : def.diff >= 4 ? 'Ta misja jest naprawdę trudna. Zegar albo Turbo start z odprawy mogą pomóc.'
               : 'Tym razem Glitch był szybszy. Zacznij od najbliższych celów, a reszta pójdzie sama.';
     document.getElementById('missionResultNela').textContent = success ? def.nela.success : failLine;
     this.animateNumber(document.getElementById('missionResultScore'), this.player.score, 1000);
@@ -11680,7 +11776,9 @@ class Game {
     // Golden Shot v8/v11: no interstitials during the newbie runs, only every
     // Nth replay after that, time-capped and skipped with "Bez reklam"
     // (all enforced inside Monetization.interstitial()).
-    if (this.playCount % CONFIG.ads.interstitialEveryNthReplay === 0) await this.monetization.interstitial('replay');
+    // v15: no ad in front of an empty energy bar.
+    const canPlay = this.energyFreeFor('arena') || this.energyNow() >= 1;
+    if (canPlay && this.playCount % CONFIG.ads.interstitialEveryNthReplay === 0) await this.monetization.interstitial('replay');
     // A lost friend challenge replays the same map ("rewanż").
     this.requireEnergy('arena', () => {
       if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });

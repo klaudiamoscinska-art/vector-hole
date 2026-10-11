@@ -12,7 +12,7 @@ Uwagi właścicielki i co zmieniono:
 | Druga dzielnica nie ma nazwy | Każdy boss dzielnicy ma neonową tabliczkę z nazwą (jak „KINO” na Placu): FONTANNA, DŹWIG, GALERIA…; kafel Kampanii na Mieście nosi nazwę dzielnicy |
 | Start levelu na kliknięcie, żeby przeczytać komunikat | Misja otwiera się zamrożona z kartą startu (NELA, cele, zwroty akcji, wzmocnienia, czasy gwiazdek); zegar rusza dopiero po dotknięciu |
 | Przed levelem dokupić toole | Odprawa przed każdą misją: Zegar +15 s, Turbo start (T2), Magnes, Tarcza (2 zderzenia); z zapasu albo za monety, koszt widoczny na GRAJ; po M04 po jednym w prezencie |
-| Rosnąca trudność, niektóre levele bardzo trudne | 5 poziomów trudności (ŁATWA → EKSTREMALNA), limity liczone z czasu bota-eksperta; zmierzone przejścia za 1. razem (bot „casual”): 100% → 97% → 86% → 63% → 45% |
+| Rosnąca trudność, niektóre levele bardzo trudne | 5 poziomów trudności (ŁATWA → EKSTREMALNA), limity liczone z czasu bota-eksperta; zmierzone przejścia za 1. razem (bot „casual”): 100% → 99% → 89% → 60% → 53% |
 | Trzy medale | Trzy gwiazdki na misję (ukończ / szybki czas / czas eksperta lub wyzwanie), skrzynia gwiazd co 15 gwiazdek, tytuł „PERFEKCYJNIE!” |
 | Więcej dzielnic i ciekawszych misji, na miesiąc gry | Rozdział II „Głęboki Glitch”: 6 nowych dzielnic × 30 misji (razem 240), 6 nowych bossów, 6 zwrotów akcji: Łowcy, Złodziej, Ciemność, Strefy glitcha, Kruchy wir, Złote bajty |
 | Limitowany czas gry w sesji z dokupieniem | Energia: 5 punktów, +1 co 20 min; runda/próba = 1, wygrana misja zwraca; przy 0 arkusz „BRAK ENERGII”: pełna za 12 pryzmatów, +1 za reklamę, „Godzina bez limitu” w sklepie |

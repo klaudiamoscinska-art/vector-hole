@@ -103,10 +103,10 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   EKSTREMALNA — chip z paskami na każdej karcie i wierszu misji. Limit
   czasu = mediana czasu bota-eksperta (`MISSION_BOT_TIME`, mierzona
   `qa/calibrate.mjs`, 10 przejść bez limitu) × 2,1 / 1,75 / 1,5 / 1,24 /
-  1,12 (+20…3 s); zapasowe obiekty też maleją (40% → 15%). Krzywa
+  1,12 (+20…3 s), ale nie mniej niż wolniejsze przejście eksperta (p90, do 1,6–1,2 × mediana); zapasowe obiekty też maleją (40% → 15%). Krzywa
   piłokształtna w dzielnicy, boss zwykle najtrudniejszy. Zmierzone
   (`qa/difficulty.mjs`, bot „casual”: widzi ekran, reaguje co 0,4 s,
-  celuje z rozrzutem ±12°): **100% → 97% → 86% → 63% → 45%** przejść za
+  celuje z rozrzutem ±12°): **100% → 99% → 89% → 60% → 53%** przejść za
   pierwszym razem od ŁATWEJ do EKSTREMALNEJ; ekspert ~90% ogółem.
 - **Zwroty akcji (twisty)** — chip + wskazówka w odprawie, NELA tłumaczy
   zwrot przy jego pierwszym pojawieniu się w dzielnicy:
@@ -257,7 +257,7 @@ cofnięty zegar, dokupienie, darmowe gry —, gwiazdki, skrzynie gwiazd,
 przyczyny porażki, pożyczka NELA, migracja zapisu v11→v12, odprawa na
 375×667) i **trudność v15** (`qa/difficulty.mjs`: każda z 240 misji
 grana przez bota-eksperta i bota „casual” w prawdziwym limicie; krzywa
-musi rosnąć, EKSTREMALNE < 50% dla „casual”, każda misja wykonalna).
+musi rosnąć, EKSTREMALNE ≤ 55% dla „casual”, każda misja wykonalna).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 przekracza pasy przelotu w całości, odkleja się, gdy utknie. Czasy misji

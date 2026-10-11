@@ -71,17 +71,19 @@ export async function runV15Checks(url) {
     const g = await seeded(url, s => { s.boosters = { time: 1, start: 0, magnet: 0, shield: 0, gift: true }; s.coins = 1000; });
     const r = await g.page.evaluate(() => {
       game.openMissionBriefing('M06');
+      const offOnSafe = !!document.querySelector('#briefingCard .mc-boost.off') && document.querySelectorAll('#briefingCard .mc-boost').length === 4;
+      game.openMissionBriefing('M26');
       const tiles = document.querySelectorAll('#briefingCard [data-booster]').length;
       game.toggleBriefingBooster('time'); game.toggleBriefingBooster('start'); game.toggleBriefingBooster('shield');
       const label = document.querySelector('[data-mc-launch]').innerText;
       const coins0 = game.save.coins;
       document.querySelector('[data-mc-launch]').click();
       const m = game.mission;
-      return { tiles, label, spent: coins0 - game.save.coins, stockTime: game.save.boosters.time, boosters: m.boosters, bonus: m.bonusTime, limit: m.def.timeLimit,
+      return { tiles, offOnSafe, label, spent: coins0 - game.save.coins, stockTime: game.save.boosters.time, boosters: m.boosters, bonus: m.bonusTime, limit: m.def.timeLimit,
         remaining: Math.round(m.timeRemaining), tier: game.campaignPlayerTier().id, shields: m.shields };
     });
     const price = 80 + 70;
-    results.push(report('boosters: four booster tiles in the briefing', r.tiles === 4, `${r.tiles}`));
+    results.push(report('boosters: four booster tiles in the briefing; Tarcza is off where nothing can hit you', r.tiles === 4 && r.offOnSafe, `${r.tiles} ${r.offOnSafe}`));
     results.push(report('boosters: GRAJ shows the coin cost before anything is spent', r.label.includes(`−${price}`), r.label.replace(/\s+/g, ' ')));
     results.push(report('boosters: stock is used first, the rest is paid in coins', r.stockTime === 0 && r.spent === price, JSON.stringify({ spent: r.spent, stock: r.stockTime })));
     results.push(report('boosters: Zegar +15 s, Turbo start at T2, Tarcza 2 hits', r.bonus === 15 && r.remaining === r.limit + 15 && r.tier === 'T2' && r.shields === 2, JSON.stringify(r)));

@@ -4426,3 +4426,7 @@ body[data-gfx="0"] #hud::before { display: none; }
 @media (max-width: 440px) {
   #campaignScreen .prism-display, #campaignScreen .energy-timer { display: none; }
 }
+.mc-boost.off { opacity: 0.38; cursor: not-allowed; }
+.start-back { margin: -6px auto 0; font-size: 12.5px; padding: 6px 12px; }
+/* v15 review: the briefing's GRAJ stays in view however long the card. */
+.briefing-sheet .mc-play { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 18px rgba(7, 23, 37, 0.85); }
