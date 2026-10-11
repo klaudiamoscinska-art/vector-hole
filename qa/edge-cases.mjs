@@ -101,7 +101,12 @@ export async function runEdgeCases(url) {
       const gm = window.game;
       const realNow = Date.now;
       const claims = [];
-      const shift = (ms) => { const base = realNow(); Date.now = () => base + ms; const RD = Date; window.Date = class extends RD { constructor(...a) { super(...(a.length ? a : [Date.now()])); } static now() { return realNow() + ms; } }; };
+      // v15: shifts are taken from today's UTC noon, so the result does not
+      // depend on the hour the suite runs (52 h from 23:00 is 3 days ahead).
+      const d0 = new Date(realNow()), noon = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate(), 12);
+      const RD0 = Date;
+      const shift = (ms) => { const t = noon + ms; window.Date = class extends RD0 { constructor(...a) { super(...(a.length ? a : [t])); } static now() { return t; } }; };
+      shift(0);
       gm.save.login = { lastClaimDate: null, day: 0, totalClaims: 0 };
       const tryClaim = () => { const before = gm.save.login.totalClaims; gm.claimLoginReward(); claims.push(gm.save.login.totalClaims > before); };
       tryClaim();
@@ -109,6 +114,7 @@ export async function runEdgeCases(url) {
       shift(52 * 3600e3); tryClaim();
       shift(0); tryClaim();
       shift(26 * 3600e3); tryClaim();
+      window.Date = RD0;
       return claims;
     });
     const exploitClaims = clock.slice(3).filter(Boolean).length;

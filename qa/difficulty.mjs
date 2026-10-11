@@ -47,7 +47,10 @@ export async function runDifficultyChecks(url, runs = 2, workers = 4) {
   fs.writeFileSync(path.join(OUT, 'difficulty.json'), JSON.stringify({ byDiff, runs: all }, null, 1));
 
   const c = d => byDiff[d - 1].casual;
-  results.push(report('difficulty: every mission is beatable (the expert bot clears each one)', expertFails.length <= 3, `never cleared: ${expertFails.join(' ') || 'none'}`));
+  // With 2 runs a mission the expert clears 70% of the time still shows
+  // 0/2 about one time in ten -- allow a few such (qa/calibrate.mjs and a
+  // longer run of the named ones settle it).
+  results.push(report('difficulty: every mission is beatable (the expert bot clears almost every one in 2 tries)', expertFails.length <= Math.ceil(ids.length * 0.035), `never cleared: ${expertFails.join(' ') || 'none'}`));
   results.push(report('difficulty: the expert bot clears ≥ 85% of all attempts', rate(r => r.style === 'expert') >= 0.85, pct(rate(r => r.style === 'expert'))));
   results.push(report('difficulty: easy missions are friendly (casual ≥ 80% at ŁATWA)', c(1) >= 0.8, pct(c(1))));
   results.push(report('difficulty: the ladder rises (casual pass rate falls level by level)', c(1) >= c(2) && c(2) >= c(3) - 0.05 && c(3) >= c(4) - 0.05 && c(4) >= c(5) - 0.05 && c(1) - c(5) >= 0.35, byDiff.map(x => pct(x.casual)).join(' → ')));
