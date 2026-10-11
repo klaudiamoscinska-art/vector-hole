@@ -1,4 +1,4 @@
-# Vector Hole — jak działa gra (stan v14)
+# Vector Hole — jak działa gra (stan v15)
 
 Jedyny aktualny opis projektowy gry. Liczby pochodzą z `CONFIG` i tabel w
 `game.js` — przy zmianie balansu poprawiaj **ten** plik razem z kodem.
@@ -83,28 +83,71 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   dotykiem, puszczenie palca zatrzymuje dziurę.
 - Opcjonalnie pływający joystick (Ustawienia) i WASD/strzałki.
 
-## 4. Kampania (Dzielnice)
+## 4. Kampania (Dzielnice) — v15 „Wyzwanie”
 
-- 6 dzielnic × 10 misji + samouczek M00 (61 wpisów, numeracja na mapie
-  M01–M60 według kolejności, wewnętrzne id zostają dla zapisów). Misje są
-  zapisane jako listy celów (`MISSION_SPECS` → `compileMission()`), czasy
-  skalibrowane automatycznym przejściem. Ostatnia misja dzielnicy (boss —
-  budowla do pochłonięcia) otwiera kolejną; finał daje Wir „Aurora Finału”.
-- Portal (M13), Mostek (M19), Pas przelotu (M18) mają własne mechaniki.
-- Misje mają medale (opcjonalne) i rewanż z reklamą „+20 s” od 40% postępu.
-- **Odprawa (v14)**: każda misja przed startem ma kartę (`missionCardHtml()`):
-  kod i dzielnica, nazwa, dymek NELA, cele jako numerowane wiersze z ikoną,
-  czas, medal, nagroda i GRAJ. Ta sama karta: arkusz po dotknięciu misji
-  w Dzielnicach (`openMissionBriefing()`), karta „NASTĘPNA MISJA” na górze
-  Dzielnic i podgląd następnej misji w wyniku (nad przyciskiem
-  „GRAJ Mxx”). Po powtórce „następna” = pierwsza nieukończona
-  (`nextCampaignMissionId()`), po bossie — pierwsza misja nowej dzielnicy.
-- W misji: pole celu rozbłyska na starcie, każdy zaliczony cel misji
-  wieloetapowej daje baner „CEL ZALICZONY” z liczbą pozostałych.
-- Misje z celem combo mają zawsze zapasowe skupisko fragmentów (v14 także
-  dla układu z łukiem), więc zerwane combo da się powtórzyć.
-- Strzałka na krawędzi ekranu (v13) wskazuje najbliższy obiekt celu, gdy
-  żadnego nie widać.
+- **12 dzielnic, 240 misji + samouczek M00.** Rozdział I (6 × 10:
+  Plac Neonów, Park Impulsów, Port Syntez, Galeria Glitch, Dachy Prądu,
+  Rdzeń Miasta, M01–M60) i Rozdział II „Głęboki Glitch” (6 × 30: Tunele
+  Metra, Nocny Bazar, Fabryka Pikseli, Zatoka Hologramów, Wiszące Ogrody,
+  Chmura Danych, M61–M240). Numeracja na mapie według kolejności,
+  wewnętrzne id zostają dla zapisów. Ostatnia misja dzielnicy (boss —
+  budowla z neonową tabliczką z nazwą) otwiera kolejną; M24 otwiera
+  Rozdział II, finał M240 „Serwer Główny”. Rozdział I to opisy
+  w `MISSION_SPECS`, Rozdział II — zwięzłe wiersze `CHAPTER_II`
+  (`[nazwa, cele, zwroty akcji, trudność]`, parser `chapterTwoSpecs()`),
+  wszystko kompiluje `compileMission()`.
+- Rozgrywka na miesiąc: 240 misji × 3 gwiazdki, misje bardzo trudne
+  wymagające kilku podejść, energia ograniczająca porażki w sesji,
+  Arena i Wyzwanie dnia obok.
+- **Trudność 1–5** (`DIFFICULTY`): ŁATWA, ŚREDNIA, TRUDNA, BARDZO TRUDNA,
+  EKSTREMALNA — chip z paskami na każdej karcie i wierszu misji. Limit
+  czasu = mediana czasu bota-eksperta (`MISSION_BOT_TIME`, mierzona
+  `qa/calibrate.mjs`, 10 przejść bez limitu) × 2,1 / 1,75 / 1,5 / 1,24 /
+  1,12 (+20…3 s); zapasowe obiekty też maleją (40% → 15%). Krzywa
+  piłokształtna w dzielnicy, boss zwykle najtrudniejszy. Zmierzone
+  (`qa/difficulty.mjs`, bot „casual”: widzi ekran, reaguje co 0,4 s,
+  celuje z rozrzutem ±12°): **100% → 97% → 86% → 63% → 45%** przejść za
+  pierwszym razem od ŁATWEJ do EKSTREMALNEJ; ekspert ~90% ogółem.
+- **Zwroty akcji (twisty)** — chip + wskazówka w odprawie, NELA tłumaczy
+  zwrot przy jego pierwszym pojawieniu się w dzielnicy:
+  - **Łowcy** (`hunters`): więksi rywale gonią gracza seriami (3 s pościgu,
+    2,4 s odpoczynku, 6 s po trafieniu); przerośnięci uciekają.
+  - **Złodziej** (`racer`): złoty rywal zbiera te same cele; rusza, gdy
+    gracz już może je jeść; jeśli zbierze tyle, ile cel misji — porażka
+    „ZŁODZIEJ BYŁ SZYBSZY”. Można go pochłonąć (wraca na start).
+  - **Ciemność** (`dark`): widać tylko krąg wokół wiru, minimapa pokazuje
+    same dziury, strzałka prowadzi do celu (albo do jedzenia, gdy cel
+    jest jeszcze za duży).
+  - **Strefy glitcha** (`glitch`): różowe, dryfujące pola; dotknięcie
+    zabiera 25% wzrostu i combo.
+  - **Kruchy wir** (`fragile`): jedno zderzenie (rywal, strefa) =
+    porażka „WIR ROZBITY”.
+  - **Złote bajty** (cel `runner`): uciekają przed wirem (i Złodziejem)
+    z ~78% jego prędkości; łapie się je przy ścianie.
+- **Trzy gwiazdki** zamiast medalu: ★ ukończ, ★★ szybki czas, ★★★ czas
+  eksperta albo specjalne wyzwanie misji (np. bez zderzenia). Każda
+  gwiazdka liczy się z najlepszej próby; co 15 gwiazdek **Skrzynia
+  gwiazd** (120 monet, 3 pryzmaty, wzmocnienie). Trzy gwiazdki = tytuł
+  „PERFEKCYJNIE!”.
+- **Wzmocnienia** (`MISSION_BOOSTERS`, po M04 + po jednym w prezencie):
+  Zegar +15 s (60), Turbo start od T2 (80), Magnes na całą misję (50),
+  Tarcza na 2 zderzenia (70 monet; chroni też kruchy wir). Wybiera się
+  je w odprawie (najpierw z zapasu, resztę za monety — koszt widać na
+  GRAJ, nic nie znika jednym dotknięciem). Po 3 porażkach z rzędu NELA
+  pożycza jeden Zegar (raz na misję).
+- **Start na dotknięcie (v15)**: po GRAJ misja otwiera się zamrożona
+  z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji,
+  wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po dotknięciu.
+- **Odprawa**: każda misja startuje przez arkusz odprawy
+  (`openMissionBriefing()`): z Dzielnic, z kafla na Mieście, z wyniku
+  („GRAJ Mxx”, „SPRÓBUJ PONOWNIE”, „POWTÓRZ”) i z pauzy („zacznij od
+  nowa” = nowa próba). Tam: cele, zwroty, czas, gwiazdki, nagroda,
+  wzmocnienia, koszt energii.
+- Portal, Mostek, Pas przelotu mają własne mechaniki; rewanż „+20 s” od
+  40% postępu za reklamę **albo 8 pryzmatów**.
+- W misji: pole celu rozbłyska na starcie, „CEL ZALICZONY”, strzałka na
+  krawędzi ekranu do najbliższego celu; skupiska combo nigdy tuż przy
+  starcie; nic nie chowa się w rogu poza zasięgiem wiru.
 - **Misje nigdy nie napełniają Core City** — tylko Arena i Wyzwanie dnia.
 
 ### Samouczek M00 (v13)
@@ -139,11 +182,20 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a arkusz
   pyta „KUP I ZAŁÓŻ · cena” (zamknięcie = powrót do założonego, nic nie
   wydane); przedmiot z nagrody mówi, skąd go zdobyć (`onCosmeticPick()`).
+- **Energia (v15, limit sesji):** 5 punktów, +1 co 20 min. Każda runda
+  Areny i każda próba misji kosztuje 1; **wygrana misja zwraca punkt**,
+  więc energię zjadają porażki i rundy. Za darmo: samouczek, 3 pierwsze
+  rundy, pierwsza próba Wyzwania dnia danego dnia. Przy 0 — arkusz „BRAK
+  ENERGII” z licznikiem i dokupieniem przed odnowieniem: pełna energia za
+  12 pryzmatów, +1 za reklamę (5 dziennie), w sklepie natywnym „Godzina
+  bez limitu”; po dokupieniu gra od razu startuje to, co było wybrane.
+  Chip energii (błyskawica, n/5 i licznik) w nagłówku Miasta i Dzielnic.
 - **Retencja:** 7-dniowy kalendarz logowania, darmowa skrzynia co 4 h,
   Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
 - **Monetyzacja (`Monetization`):** tylko reklamy z nagrodą (×2 monety,
-  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, darmowe Turbo) i
+  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, darmowe Turbo, +1
+  energia) i
   reklamy między rundami co 3. powtórka (nie w rundach nowicjusza, min.
   2,5 min odstępu). Sklep IAP pojawia się tylko z natywnym opakowaniem;
   w przeglądarce działa oznaczony dostawca demo.
@@ -198,8 +250,20 @@ z ekranu głównego iPhone'a 13 Pro), **przepływ v14** (`qa/flow.mjs`: ekran
 startu, Miasto bez przewijania i bez przyklejonych elementów, GRAJ następnej
 misji w Dzielnicach bez przewijania, odprawa, podgląd następnej misji
 w wyniku, dymki NELA, Warsztat: dotknij = załóż, zakup wymaga
-potwierdzenia), kariera 20 rund Areny i 22 misje. Bot kampanii, gdy cel
-combo jest otwarty, celuje w najbliższe małe kąski (jak człowiek). Bot „casual” (`ARENA_BOT`,
+potwierdzenia), kariera 20 rund Areny, 30 pierwszych misji,
+**systemy v15** (`qa/v15.mjs`: 240 misji kompletnych i skalibrowanych,
+start na dotknięcie, wzmocnienia, energia — wydanie, zwrot, odnowienie,
+cofnięty zegar, dokupienie, darmowe gry —, gwiazdki, skrzynie gwiazd,
+przyczyny porażki, pożyczka NELA, migracja zapisu v11→v12, odprawa na
+375×667) i **trudność v15** (`qa/difficulty.mjs`: każda z 240 misji
+grana przez bota-eksperta i bota „casual” w prawdziwym limicie; krzywa
+musi rosnąć, EKSTREMALNE < 50% dla „casual”, każda misja wykonalna).
+Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
+glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
+przekracza pasy przelotu w całości, odkleja się, gdy utknie. Czasy misji
+kalibruje `node qa/calibrate.mjs 10 4` (wynik wklejany do
+`MISSION_BOT_TIME`) — po każdej zmianie misji, krzywej wzrostu lub
+zwrotów akcji. Bot „casual” (`ARENA_BOT`,
 styl `casual`) widzi tylko ekran, reaguje co ~0,4 s i celuje w najbliższy
 kąsek — to nim mierzymy decyzje projektowe.
 
@@ -232,3 +296,10 @@ czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.
 - Pliki w `design/` to oryginalne makiety (paleta, układ ekranów, katalog
   obiektów, plansze finałowe). Paleta z `design/reference/asset_bible.svg`
   obowiązuje; układy ekranów od tamtej pory ewoluowały (v12/v13).
+- **v15 — do decyzji właścicielki:** parametry energii (5 punktów, 20 min,
+  12 pryzmatów za pełną, Arena kosztuje 1) to propozycja — warto je
+  dostroić po pierwszych danych D1/D7 (`energy_empty`, `energy_refill`).
+  Rozdział II używa malarzy podłóg z Rozdziału I w nowych kolorach
+  (`DISTRICT_FLOOR`), nie osobnej grafiki dzielnic. Bot „casual” jest
+  przybliżeniem człowieka — prawdziwe testy z graczami mogą przesunąć
+  krzywą (wystarczy zmienić `DIFFICULTY.timeFactor`).

@@ -4,6 +4,39 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v15 „Wyzwanie” — 240 misji, rosnąca trudność, 3 gwiazdki, energia
+Uwagi właścicielki i co zmieniono:
+
+| Uwaga | Zmiana |
+|---|---|
+| Druga dzielnica nie ma nazwy | Każdy boss dzielnicy ma neonową tabliczkę z nazwą (jak „KINO” na Placu): FONTANNA, DŹWIG, GALERIA…; kafel Kampanii na Mieście nosi nazwę dzielnicy |
+| Start levelu na kliknięcie, żeby przeczytać komunikat | Misja otwiera się zamrożona z kartą startu (NELA, cele, zwroty akcji, wzmocnienia, czasy gwiazdek); zegar rusza dopiero po dotknięciu |
+| Przed levelem dokupić toole | Odprawa przed każdą misją: Zegar +15 s, Turbo start (T2), Magnes, Tarcza (2 zderzenia); z zapasu albo za monety, koszt widoczny na GRAJ; po M04 po jednym w prezencie |
+| Rosnąca trudność, niektóre levele bardzo trudne | 5 poziomów trudności (ŁATWA → EKSTREMALNA), limity liczone z czasu bota-eksperta; zmierzone przejścia za 1. razem (bot „casual”): 100% → 97% → 86% → 63% → 45% |
+| Trzy medale | Trzy gwiazdki na misję (ukończ / szybki czas / czas eksperta lub wyzwanie), skrzynia gwiazd co 15 gwiazdek, tytuł „PERFEKCYJNIE!” |
+| Więcej dzielnic i ciekawszych misji, na miesiąc gry | Rozdział II „Głęboki Glitch”: 6 nowych dzielnic × 30 misji (razem 240), 6 nowych bossów, 6 zwrotów akcji: Łowcy, Złodziej, Ciemność, Strefy glitcha, Kruchy wir, Złote bajty |
+| Limitowany czas gry w sesji z dokupieniem | Energia: 5 punktów, +1 co 20 min; runda/próba = 1, wygrana misja zwraca; przy 0 arkusz „BRAK ENERGII”: pełna za 12 pryzmatów, +1 za reklamę, „Godzina bez limitu” w sklepie |
+
+Poza uwagami:
+- **Porażki z sensem**: trzy przyczyny („CZAS MINĄŁ”, „ZŁODZIEJ BYŁ
+  SZYBSZY”, „WIR ROZBITY”) z podpowiedzią NELA; po 3 porażkach z rzędu
+  NELA pożycza Zegar; rewanż „+20 s” także za 8 pryzmatów.
+- **Każdy start przez odprawę** (Dzielnice, Miasto, wynik, powtórka,
+  restart z pauzy) — wzmocnienia i koszt energii zawsze przed grą.
+- **Uczciwość planszy**: skupiska combo nigdy tuż przy starcie (combo
+  w 3 s), nic w rogu poza zasięgiem wiru, strzałka prowadzi do jedzenia,
+  gdy cel jest jeszcze za duży (w ciemności nie było jak go znaleźć).
+- **Dźwięk**: dzwonek każdej gwiazdki, „power-up” startu i energii.
+- **Telemetria**: `mission_end` z trudnością, gwiazdkami, przyczyną
+  porażki, numerem próby i wzmocnieniami; `energy_spend/empty/refill/gain`,
+  `booster_use`, `pity_booster`, `star_chest`, `mission_go`.
+- **Zapis v12** z migracją: stary medal → 2. albo 3. gwiazdka, gracz po
+  finale dostaje Rozdział II, pełną energię i wzmocnienia w prezencie.
+- **QA**: `qa/v15.mjs` (41 testów systemów), `qa/difficulty.mjs` (każda
+  z 240 misji grana przez eksperta i „casuala”), `qa/calibrate.mjs`
+  (kalibracja czasów), wspólny bot kampanii w `qa/lib.mjs`; test cofania
+  zegara nie zależy już od godziny uruchomienia.
+
 ## v14 „Czytelność” — jedna jasna akcja na ekran, misje z odprawą
 Uwagi właścicielki i co zmieniono:
 

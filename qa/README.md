@@ -11,8 +11,11 @@ node qa/features.mjs       # audio, every ad placement (demo + mocked native IAP
 node qa/visual.mjs         # v12: Neon City floor (Arena/Campaign/menus), swallow animation, crown, cached HUD, camera + radius cap, sticky result CTA, rasterized render budget
 node qa/design.mjs         # v13: first seconds (first bite, bites/10 s), close race vs the pacer, drag steering, tutorial, newbie path, Daily preview = real map, locked-object hint, gender-neutral copy, phone layouts (iPhone 16 Pro / SE: nav labels + profile reset on screen)
 node qa/flow.mjs          # v14: start screen = logo + GRAJ, Miasto without a floating GRAJ and without scrolling, Dzielnice starts the next mission without scrolling, briefing on every mission tap, result previews the next mission, NELA bubbles, Warsztat tap-to-wear / confirm-to-buy, review regressions (legacy saves, replays, step banners)
+node qa/v15.mjs            # v15: 240-mission content, tap-to-start, boosters, energy (spend/refund/regen/refill/free plays), stars + chests, fail reasons, pity Zegar, save v11 -> v12, briefing layout
+node qa/difficulty.mjs 2 4 # v15: every mission by the expert + casual campaign bot under its real limit -> pass rate per difficulty (must rise), per district
+node qa/calibrate.mjs 10 4 # v15: re-measure MISSION_BOT_TIME (expert bot, no limit) and print the table for game.js
 node qa/arena-bots.mjs 20  # a 20-round Arena career: greedy/random/afk players, difficulty curve, economy, frame budget
-node qa/campaign-bots.mjs 22  # greedy bot plays the first N campaign missions in virtual time
+node qa/campaign-bots.mjs 30  # the expert campaign bot plays the first N missions (play order) under their real limits
 node qa/screens.mjs        # phone-size screenshots of the v11 + v12 screens -> qa/out/screens/
 ```
 
@@ -33,3 +36,10 @@ Player styles in `ARENA_BOT`: `greedy` (sees the whole map, best value per
 distance — an expert), `casual` (v13: sees only the screen, re-aims every
 ~0.4 s, goes for the nearest bite — the yardstick for design decisions),
 `random` and `afk`.
+
+v15 campaign bot (`CAMPAIGN_BOT` in `lib.mjs`, `__qaPlayMission(id, opts)`):
+`expert` (whole board, re-aims every frame, flees bigger rivals and glitch
+zones early) or `casual` (screen-only view, or the light circle in a
+blackout; re-aims every ~0.4 s with ±12° aim wobble; follows the edge
+arrow when nothing is in view). `openLimit` plays without a time limit
+(calibration), `boosters` pre-picks mission boosters.
