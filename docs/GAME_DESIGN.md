@@ -1,4 +1,4 @@
-# Vector Hole — jak działa gra (stan v13)
+# Vector Hole — jak działa gra (stan v14)
 
 Jedyny aktualny opis projektowy gry. Liczby pochodzą z `CONFIG` i tabel w
 `game.js` — przy zmianie balansu poprawiaj **ten** plik razem z kodem.
@@ -12,8 +12,14 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
 > centrum (Core City).
 
 - Pochłanianie = oczyszczanie; energia z rund Areny odbudowuje Core City,
-  misje kampanii odzyskują dzielnice. Premisa pojawia się na ekranie
-  powitalnym, w wyniku samouczka (NELA przedstawia się) i w M01.
+  misje kampanii odzyskują dzielnice. NELA przedstawia się w wyniku
+  samouczka i w M01.
+- **NELA jest postacią (v14)**: awatar (soczewka SI w heksagonie,
+  `NELA_AVATAR`), różowy dymek z podpisem „NELA” i krótki sygnał dźwiękowy
+  (`SoundEngine.nela()`). Mówi: w odprawie misji, na starcie misji (dymek
+  w grze), w wyniku misji i w historii każdej dzielnicy (`DISTRICT_STORY`,
+  także w świętowaniu nowej dzielnicy). Szare kursywy z v13 nikt nie
+  zauważał.
 - **Gracz jest zawsze adresowany neutralnie płciowo**: czas teraźniejszy
   („rośniesz”), tryb rozkazujący, albo podmiotem jest wir/dziura („Twój wir
   urósł”). Żadnych form „urosłaś/urosłeś”, „gotowa/gotowy”
@@ -86,6 +92,17 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   budowla do pochłonięcia) otwiera kolejną; finał daje Wir „Aurora Finału”.
 - Portal (M13), Mostek (M19), Pas przelotu (M18) mają własne mechaniki.
 - Misje mają medale (opcjonalne) i rewanż z reklamą „+20 s” od 40% postępu.
+- **Odprawa (v14)**: każda misja przed startem ma kartę (`missionCardHtml()`):
+  kod i dzielnica, nazwa, dymek NELA, cele jako numerowane wiersze z ikoną,
+  czas, medal, nagroda i GRAJ. Ta sama karta: arkusz po dotknięciu misji
+  w Dzielnicach (`openMissionBriefing()`), karta „NASTĘPNA MISJA” na górze
+  Dzielnic i podgląd następnej misji w wyniku (nad przyciskiem
+  „GRAJ Mxx”). Po powtórce „następna” = pierwsza nieukończona
+  (`nextCampaignMissionId()`), po bossie — pierwsza misja nowej dzielnicy.
+- W misji: pole celu rozbłyska na starcie, każdy zaliczony cel misji
+  wieloetapowej daje baner „CEL ZALICZONY” z liczbą pozostałych.
+- Misje z celem combo mają zawsze zapasowe skupisko fragmentów (v14 także
+  dla układu z łukiem), więc zerwane combo da się powtórzyć.
 - Strzałka na krawędzi ekranu (v13) wskazuje najbliższy obiekt celu, gdy
   żadnego nie widać.
 - **Misje nigdy nie napełniają Core City** — tylko Arena i Wyzwanie dnia.
@@ -118,6 +135,10 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   rozgrywki, tylko Arena/Dzienne), Smuga „Iskra” 500 monet, „Żar” 15 i
   „Zawirowanie” 30 pryzmatów. Dodatki na rundę: Tarcza 45, Magnes 25,
   Turbo start 70 monet.
+- **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go
+  zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a arkusz
+  pyta „KUP I ZAŁÓŻ · cena” (zamknięcie = powrót do założonego, nic nie
+  wydane); przedmiot z nagrody mówi, skąd go zdobyć (`onCosmeticPick()`).
 - **Retencja:** 7-dniowy kalendarz logowania, darmowa skrzynia co 4 h,
   Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
@@ -142,13 +163,43 @@ iOS). Gdy nie ma `navigator.audioSession` (Chrome na iOS, starsze iOS),
 gra odtwarza w tle ciche, zapętlone `<audio>`, które przełącza stronę w tryb
 odtwarzania mediów — inaczej przełącznik „cicho” wycisza Web Audio.
 
+## 5b. Ekrany i przepływ (v14 „Czytelność”)
+
+Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
+(sprawdza `qa/flow.mjs` na 402×874 i 375×667).
+
+- **Start (pierwsze uruchomienie):** logo, żywe demo gry, jeden przycisk
+  GRAJ, „Pierwsza misja · ok. 1 min”. Bez nawigacji.
+- **Miasto:** nagłówek (pierścień poziomu gracza z XP, nazwa, monety,
+  pryzmaty, ustawienia) → karta Core City (miasto, LVL, „Następna nagroda”,
+  procent i pasek w stopce karty; dotknięcie = wszystkie nagrody) → GRAJ
+  (runda 2:00) w treści ekranu, nigdy przyklejony → kafle **Kampania**
+  (następna misja → odprawa) i **Wyzwanie dnia** (stan dnia, seria) →
+  skrzynia. Karta miasta wypełnia wolną wysokość, więc nic nie wisi
+  w powietrzu.
+- **Dzielnice:** poziomy pasek dzielnic → nazwa i postęp → karta
+  „NASTĘPNA MISJA” z GRAJ → historia dzielnicy (NELA) → lista misji
+  (kod, nazwa, pierwszy cel z ikoną, gwiazdka medalu). Dotknięcie misji =
+  odprawa; zablokowana mówi, którą misję najpierw ukończyć.
+- **Wynik misji:** wynik / czas / medal, NELA, nagroda, XP, karta następnej
+  misji, „GRAJ Mxx”, POWTÓRZ / DZIELNICE, „Wróć do Miasta”.
+- **Wynik Areny:** wynik, rozmiar i miejsce, haczyk (rekord / wyzwanie),
+  jedna karta NAGRODY (monety, XP, Core City), tabela, pasek akcji.
+- Usunięte jako szum: napisy „VECTOR HOLE” nad tytułami zakładek,
+  przyciski POWRÓT/DO MIASTA tam, gdzie jest dolna nawigacja.
+
 ## 6. QA (boty)
 
 `node qa/run-all.mjs` — przypadki brzegowe, funkcje v11, grafika v12,
 **design v13** (`qa/design.mjs`: pierwsze sekundy, wyścig, sterowanie,
 samouczek, ścieżka nowicjusza, mapa dnia, podpowiedź za dużego obiektu,
 teksty, układ na telefonach 402×874 / 402×740 / 375×667 i aplikacja
-z ekranu głównego iPhone'a 13 Pro), kariera 20 rund Areny i 22 misje. Bot „casual” (`ARENA_BOT`,
+z ekranu głównego iPhone'a 13 Pro), **przepływ v14** (`qa/flow.mjs`: ekran
+startu, Miasto bez przewijania i bez przyklejonych elementów, GRAJ następnej
+misji w Dzielnicach bez przewijania, odprawa, podgląd następnej misji
+w wyniku, dymki NELA, Warsztat: dotknij = załóż, zakup wymaga
+potwierdzenia), kariera 20 rund Areny i 22 misje. Bot kampanii, gdy cel
+combo jest otwarty, celuje w najbliższe małe kąski (jak człowiek). Bot „casual” (`ARENA_BOT`,
 styl `casual`) widzi tylko ekran, reaguje co ~0,4 s i celuje w najbliższy
 kąsek — to nim mierzymy decyzje projektowe.
 

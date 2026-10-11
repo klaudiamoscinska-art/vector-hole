@@ -26,6 +26,11 @@ window.__qaPlayMission = function (id) {
     const p = g.player;
     const tier = g.campaignTierIndex(g.campaignPlayerTier().id);
     const goalTypes = g.campaignGoalEntityTypes();
+    // v14: an unfinished combo goal makes small food the target (a human
+    // chains the nearest bites; the old bot ate whatever paid most and
+    // broke chains, failing combo missions on layout luck).
+    if (frames % 15 === 0) g.__qaComboPending = g.campaignGoalItems().some(it => /combo/i.test(it.label) && it.progress < it.target);
+    const comboPending = g.__qaComboPending;
     let fx = 0, fy = 0;
     for (const b of g.bots) {
       const d = Math.hypot(b.x - p.x, b.y - p.y);
@@ -47,7 +52,8 @@ window.__qaPlayMission = function (id) {
         }
         if (e.type === 'gate' && (!goalTypes.has('gate') || m.gatesPassed.has(e))) continue;
         const d = Math.hypot(e.x - p.x, e.y - p.y);
-        const s = (goalTypes.has(e.type) ? 4 : 1) * ((e.stats && e.stats.growth) || 2) / (d + 60);
+        const small = comboPending && (e.type === 'fragment' || e.type === 'capsule');
+        const s = (small ? 40 : (goalTypes.has(e.type) ? 4 : 1) * ((e.stats && e.stats.growth) || 2)) / (d + 60);
         if (s > best) { best = s; target = e; }
       }
       for (const b of g.bots) {
