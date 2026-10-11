@@ -9,10 +9,11 @@ import { runCampaignBots } from './campaign-bots.mjs';
 import { runFeatureChecks } from './features.mjs';
 import { runVisualChecks } from './visual.mjs';
 import { runDesignChecks } from './design.mjs';
+import { runFlowChecks } from './flow.mjs';
 
 const { server, url } = await serve();
 const all = [];
-for (const [name, fn] of [['edge cases', () => runEdgeCases(url)], ['features', () => runFeatureChecks(url)], ['visual', () => runVisualChecks(url)], ['design', () => runDesignChecks(url)], ['arena bots', () => runArenaBots(url, 20)], ['campaign bots', () => runCampaignBots(url, 22)]]) {
+for (const [name, fn] of [['edge cases', () => runEdgeCases(url)], ['features', () => runFeatureChecks(url)], ['visual', () => runVisualChecks(url)], ['design', () => runDesignChecks(url)], ['flow', () => runFlowChecks(url)], ['arena bots', () => runArenaBots(url, 20)], ['campaign bots', () => runCampaignBots(url, 22)]]) {
   console.log(`\n=== ${name} ===`);
   try { all.push(...await fn()); } catch (e) { all.push({ name: `${name} crashed`, ok: false, details: String(e && e.stack || e) }); console.log('CRASH', e); }
 }

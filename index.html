@@ -75,11 +75,11 @@
     </div>
 
     <div id="hud-goal" class="hud-panel hud-goal-box hidden">
-      <div class="hud-goal-section-title">CEL RUNDY</div>
+      <div class="hud-goal-section-title">CEL MISJI</div>
       <div id="missionGoalItems" class="mission-goal-items"></div>
     </div>
 
-    <div id="nelaToast" class="nela-toast hidden"></div>
+    <div id="nelaToast" class="nela-toast hidden" role="status"><span class="nela-avatar" aria-hidden="true"></span><span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line" id="nelaToastText"></span></span></div>
 
     <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
 
@@ -113,7 +113,7 @@
       </button>
       <button id="btnRestart" class="btn btn-secondary pause-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.6 6.36"/><path d="M3 21v-6h6"/></svg>
-        RESTART MISJI / RUNDY
+        <span id="btnRestartLabel">ZACZNIJ OD NOWA</span>
       </button>
       <button id="btnControls" class="btn btn-secondary pause-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="4"/><circle cx="8" cy="13" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.3" fill="currentColor" stroke="none"/></svg>
@@ -225,11 +225,20 @@
   <!-- ===================== MIASTO / CORE CITY (main hub, GDD 4.0 §5.1) ===================== -->
   <div id="mainMenu" class="screen">
     <div class="screen-inner hub-inner nav-screen">
-      <div class="app-header">
-        <div>
-          <div class="app-eyebrow">VECTOR HOLE</div>
-          <h1 class="app-title">MIASTO<span class="app-title-sub">CORE CITY</span></h1>
-        </div>
+      <!-- v14: one compact header -- who you are (player level, tap = what
+           it gives) + wallet + settings. The old "MIASTO / CORE CITY" title,
+           the separate XP card and the eyebrow labels repeated what the nav
+           tab and the city card already say. -->
+      <div class="app-header hub-header">
+        <button id="hubPlayerLevel" class="hub-player-chip hub-full-only" aria-label="Poziom gracza — co to jest?">
+          <span class="hub-player-ring" id="hubPlayerRing" style="--xp:0">
+            <span id="hubPlayerLevelValue">1</span>
+          </span>
+          <span class="hub-player-text">
+            <span class="hub-player-name" id="hubPlayerName">Gość</span>
+            <span class="hub-player-sub" id="hubPlayerXpText">POZIOM 1 · 0 / 120 XP</span>
+          </span>
+        </button>
         <div class="hub-header-right">
           <div class="currency-row">
             <div class="coin-display">
@@ -247,16 +256,12 @@
         </div>
       </div>
 
-      <!-- First-run welcome (shown instead of everything marked
-           .hub-full-only below while Arena is still locked, i.e. before M00
-           clears -- see Game.updateCoinDisplays()). Player feedback: a brand
-           new player saw ~10 tappable-looking things (currencies, reward
-           chips, level dots, locked tabs) and had to hunt for the one action
-           that actually mattered; this card leaves exactly one. -->
+      <!-- First-run attract screen (shown instead of everything marked
+           .hub-full-only while Arena is still locked, i.e. before M00
+           clears). v14: logo, the live demo of the game and ONE button --
+           the three feature cards and the premise paragraph went (nobody
+           reads them before playing; NELA tells the story in the tutorial). -->
       <div id="hubWelcome" class="hub-welcome hidden">
-        <!-- Golden Shot v9 attract screen: a live demo of the actual game
-             (Game.drawWelcomeScene()) -- the hole spiraling neon city
-             objects into itself and growing, under the game logo. -->
         <div class="welcome-stage">
           <canvas id="hubWelcomeScene" class="welcome-scene" aria-hidden="true"></canvas>
           <div class="welcome-logo">
@@ -265,26 +270,12 @@
             <span class="welcome-logo-sub">POCHŁOŃ NEONOWE MIASTO</span>
           </div>
         </div>
-        <div class="welcome-features">
-          <div class="welcome-feature" style="--f-color: var(--nc-cyan)">
-            <span class="welcome-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5a9.5 9.5 0 0 1 9.5 9.5M21.5 12A9.5 9.5 0 0 1 12 21.5M12 21.5A9.5 9.5 0 0 1 2.5 12M2.5 12A9.5 9.5 0 0 1 12 2.5" stroke-dasharray="4 3"/></svg></span>
-            <b>Pochłaniaj</b><span>i rośnij z każdym kęsem</span>
-          </div>
-          <div class="welcome-feature" style="--f-color: var(--nc-pink)">
-            <span class="welcome-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="6"/><circle cx="18" cy="12" r="3"/><path d="M14.5 12h0"/></svg></span>
-            <b>Zjadaj</b><span>mniejszych rywali</span>
-          </div>
-          <div class="welcome-feature" style="--f-color: var(--nc-gold)">
-            <span class="welcome-feature-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z"/></svg></span>
-            <b>Łap złoto</b><span>złoty rdzeń = SZAŁ ×2</span>
-          </div>
-        </div>
         <button id="btnStartTutorial" class="btn btn-primary btn-mega welcome-cta">
-          ZACZNIJ GRĘ
+          GRAJ
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
         </button>
         <p id="welcomeChallengeNote" class="welcome-challenge-note hidden"></p>
-        <p class="welcome-note">Glitch skaził miasto. Pochłoń skażone ulice, a ich energia odbuduje centrum.<br>Samouczek ok. 1 min · potem odblokujesz rundy <b>GRAJ 2:00</b></p>
+        <p class="welcome-note">Pierwsza misja · ok. 1 min</p>
       </div>
 
       <!-- Golden Shot v11: a friend's challenge link ("Pobij mój wynik!"). -->
@@ -294,83 +285,57 @@
         <button id="btnAcceptChallenge" class="btn btn-gold btn-small">PRZYJMIJ</button>
         <button id="btnDismissChallenge" class="hub-challenge-x" aria-label="Odrzuć wyzwanie">×</button>
       </div>
-      <!-- Golden Shot v8: player XP level (every round and mission feeds it). -->
-      <button id="hubPlayerLevel" class="player-level-row hub-full-only" aria-label="Poziom gracza — co to jest?">
-        <span class="player-level-badge"><span class="player-level-lvl">POZ.</span><span id="hubPlayerLevelValue">1</span></span>
-        <span class="player-level-body">
-          <span class="player-level-title">POZIOM GRACZA <strong id="hubPlayerLevelNext">→ nagroda +55 monet</strong></span>
-          <span class="player-level-track"><span id="hubPlayerXpBar" class="player-level-fill"></span></span>
-          <span id="hubPlayerXpText" class="player-level-xp">0 / 120 XP</span>
-        </span>
+
+      <!-- Core City as an actual city: drawCityScene() builds it up building
+           by building as it charges. v14: level, progress and the next
+           reward live INSIDE the card (one glance); tap = the full road of
+           rewards (openCoreCityRoadmap()). -->
+      <div class="hub-city hub-full-only" id="hubHeroStage" role="button" tabindex="0" aria-label="Core City — poziomy i nagrody">
+        <canvas id="hubCityCanvas" class="hub-city-canvas"></canvas>
+        <div class="hub-city-badge"><span class="hub-city-sub">CORE CITY</span><span id="hubLevelLabel" class="hub-city-lvl">LVL 1</span></div>
+        <div class="hub-city-foot">
+          <div class="hub-city-next">
+            <span id="hubRewardChip1Icon" class="hub-city-next-icon" aria-hidden="true"></span>
+            <span class="hub-city-next-text"><span class="hub-city-next-prefix">Następna nagroda: </span><strong id="hubRewardChip1">—</strong></span>
+            <span id="hubChargeValue" class="hub-city-pct">0%</span>
+          </div>
+          <div class="hub-city-progress"><div id="hubCityBar" class="hub-city-progress-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- v14: GRAJ sits in the page flow right under the city it builds --
+           no more sticky plate floating over the content. -->
+      <button id="btnStart" class="btn btn-primary btn-mega hub-play hub-full-only">
+        <span class="hub-play-main">GRAJ<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></span>
+        <span class="hub-play-sub">runda 2:00 · odbudowuje Core City</span>
       </button>
 
-      <div class="hub-eyebrow-label hub-full-only">POSTĘP MIASTA · CORE CITY</div>
-
-      <div class="hub-card hub-hero hub-full-only">
-        <!-- Core City as an actual city (player feedback: the old static
-             skyline under the % never changed). drawCityScene() builds it up
-             building by building as Core City charges -- one sixth of the
-             skyline per level, a crane over the one under construction. -->
-        <div class="hub-city" id="hubHeroStage" role="button" tabindex="0" aria-label="Poziomy i nagrody Core City">
-          <canvas id="hubCityCanvas" class="hub-city-canvas"></canvas>
-          <div class="hub-city-badge">
-            <span id="hubLevelLabel" class="hub-city-lvl">LVL 1</span>
-            <span class="hub-city-sub">CORE CITY</span>
-          </div>
-          <div class="hub-city-pct"><span id="hubChargeValue">0%</span><span class="hub-city-pct-sub">do następnej nagrody</span></div>
-        </div>
-        <div class="hub-city-progress"><div id="hubCityBar" class="hub-city-progress-fill"></div></div>
-        <p class="hub-hero-caption">Każda runda <strong>GRAJ 2:00</strong> i <strong>Wyzwanie dnia</strong> dobudowuje miasto.</p>
-
-        <div class="hub-reward-chips">
-          <div class="hub-reward-chip-label">Po 100% odblokujesz:</div>
-          <div class="hub-reward-chips-row" id="hubRewardChips">
-            <button id="hubRewardChipItem" class="hub-reward-chip">
-              <span class="hub-reward-chip-info" aria-hidden="true">i</span>
-              <span id="hubRewardChip1Icon" class="hub-reward-chip-icon"></span>
-              <span id="hubRewardChip1">—</span>
-            </button>
-            <button id="hubRewardChipCoins" class="hub-reward-chip">
-              <span class="hub-reward-chip-info" aria-hidden="true">i</span>
-              <span class="hub-reward-chip-icon">◇</span>
-              <span id="hubRewardChip2">—</span>
-            </button>
-          </div>
-        </div>
-
-        <button class="hub-level-dots" id="hubLevelDots" aria-label="Poziomy i nagrody Core City"></button>
-      </div>
-
-      <div class="hub-cta-row hub-full-only" id="hubCtaRow">
-        <button id="btnStart" class="btn btn-primary">
-          GRAJ 2:00
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
+      <div class="hub-quick-row hub-full-only">
+        <!-- Campaign shortcut: the next mission to do, one tap to its briefing. -->
+        <button id="hubCampaignTile" class="hub-quick-tile hub-quick-campaign">
+          <span class="hub-quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></span>
+          <span class="hub-quick-text">
+            <span class="hub-quick-eyebrow" id="hubCampaignEyebrow">NASTĘPNA MISJA</span>
+            <strong id="hubCampaignTitle">—</strong>
+            <span class="hub-quick-sub" id="hubCampaignSub">—</span>
+          </span>
         </button>
-        <button id="btnDaily" class="btn btn-secondary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>
-          WYZWANIE DNIA
+        <button id="btnDaily" class="hub-quick-tile hub-quick-daily">
+          <span class="hub-quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg></span>
+          <span class="hub-quick-text">
+            <span class="hub-quick-eyebrow">WYZWANIE DNIA</span>
+            <strong id="hubDailyTitle">Ta sama mapa dla wszystkich</strong>
+            <span class="hub-quick-sub" id="hubDailySub">—</span>
+          </span>
         </button>
       </div>
+
       <!-- Golden Shot v8: free chest on a 4 h cooldown (an appointment to come back). -->
       <button id="hubFreeChest" class="hub-chest-row hub-full-only">
         <span class="hub-chest-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="currentColor" fill-opacity="0.18"/><path d="M3 11V8a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v3"/><path d="M8 4v7M16 4v7"/><rect x="10" y="9.5" width="4" height="5" rx="1" fill="currentColor"/></svg></span>
         <span class="hub-chest-text"><span id="hubChestTitle">DARMOWA SKRZYNIA</span><strong id="hubChestSub">Gotowa do otwarcia!</strong></span>
         <span id="hubChestCta" class="hub-chest-cta">OTWÓRZ</span>
       </button>
-
-      <div class="hub-how-tiles hub-full-only">
-        <div class="hub-how-tile"><b style="color:var(--nc-cyan)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></b><span><strong>Rundy 2:00</strong> budują miasto</span></div>
-        <div class="hub-how-tile"><b style="color:var(--nc-green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></b><span><strong>Misje</strong> czekają w Dzielnicach</span></div>
-        <div class="hub-how-tile"><b style="color:var(--nc-gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9h18M12 9v12M12 9C9 9 7 7.5 7 5.5 7 4 8 3 9.5 3 11.5 3 12 6 12 9zM12 9c3 0 5-1.5 5-3.5C17 4 16 3 14.5 3 12.5 3 12 6 12 9z"/></svg></b><span><strong>Nagrody</strong> trafiają do Warsztatu</span></div>
-      </div>
-
-      <button id="hubNextRewardRow" class="hub-next-reward-row hub-full-only">
-        <span class="hub-next-reward-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9h18M12 9v12M12 9C9 9 7 7.5 7 5.5 7 4 8 3 9.5 3 11.5 3 12 6 12 9zM12 9c3 0 5-1.5 5-3.5C17 4 16 3 14.5 3 12.5 3 12 6 12 9z"/></svg></span>
-        <span class="hub-next-reward-text">WSZYSTKIE NAGRODY CORE CITY<strong id="hubRewardPreview">—</strong></span>
-        <span class="hub-next-reward-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
-      </button>
-
-      <p class="hint-text hub-full-only">Steruj myszką lub dotykiem. Pochłaniaj mniejsze obiekty i rywali, uciekaj przed większymi!</p>
     </div>
   </div>
 
@@ -556,7 +521,6 @@
     <div class="screen-inner nav-screen">
       <div class="app-header">
         <div>
-          <div class="app-eyebrow">VECTOR HOLE</div>
           <h1 class="app-title">DZIELNICE</h1>
         </div>
         <div class="hub-header-right">
@@ -570,49 +534,63 @@
         </div>
       </div>
 
-      <!-- District picker: not in the GDD mockup (which shows one district's
-           detail view), but a way to switch among the 6 districts has to
-           exist somewhere -- a compact chip strip keeps the district
-           name/rebuild-%/mission-list below it visually dominant, matching
-           the mockup's proportions. -->
+      <!-- v14: districts as a compact horizontal strip (was a 2x3 grid of
+           tall tiles that pushed the missions -- and the old play button at
+           the very bottom -- below the fold). -->
       <div id="districtMap" class="district-strip"></div>
 
-      <p id="districtIntro" class="hint-text district-intro">Kampania: krótkie misje z celami do wykonania. Każda dzielnica wprowadza nowe obiekty i kończy się wielką budowlą do pochłonięcia. Ukończone misje odblokowują <strong>Warsztat</strong> oraz <strong>Wyzwania</strong>.</p>
-
-      <h2 class="district-name" id="districtTitle">—</h2>
-      <p class="district-rebuild-line" id="districtRebuildLine">—</p>
-
-      <div id="missionList" class="mission-list"></div>
-      <p class="hint-text mission-medals-footnote" id="missionMedalsFootnote">Medale są dodatkowe — nie blokują kolejnych misji.</p>
-
-      <div class="mission-detail">
-        <div class="mission-detail-name" id="missionDetailName">—</div>
-        <div class="mission-detail-line" id="missionDetailGoal">—</div>
-        <div class="mission-detail-line" id="missionDetailMedal">—</div>
-        <div class="mission-detail-line mission-detail-nela" id="missionDetailNela">—</div>
-        <div class="mission-detail-line mission-detail-reward" id="missionDetailReward">—</div>
+      <div class="district-head">
+        <h2 class="district-name" id="districtTitle">—</h2>
+        <span class="district-rebuild-line" id="districtRebuildLine">—</span>
+      </div>
+      <div class="district-head-bar"><span id="districtRebuildBar"></span></div>
+      <!-- The mission to do next, briefed in place with its own GRAJ: no
+           scrolling to the bottom of the list to start a level. -->
+      <div id="missionNextCard" class="mission-card mission-card-next"></div>
+      <!-- The district's story, told by NELA (v14: the story lines were grey
+           italics nobody noticed). -->
+      <div class="nela-bubble district-story" id="districtStory">
+        <span class="nela-avatar" aria-hidden="true"></span>
+        <span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line" id="districtStoryText">—</span></span>
       </div>
 
-      <button id="btnPlayMission" class="btn btn-primary">ZAGRAJ MISJĘ</button>
-      <button id="btnCampaignBack" class="btn btn-secondary">DO MIASTA</button>
+
+      <div class="mission-list-head"><span>WSZYSTKIE MISJE</span><span id="missionMedalsFootnote">—</span></div>
+      <div id="missionList" class="mission-list"></div>
+    </div>
+  </div>
+
+  <!-- ===================== MISSION BRIEFING (v14) =====================
+       Tapping any mission opens its briefing: NELA's line, the goals as
+       big icon rows, time limit, medal, reward -- and GRAJ right there. -->
+  <div id="missionBriefing" class="screen overlay-screen briefing-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="briefingName">
+    <div class="screen-inner briefing-sheet">
+      <button id="btnBriefingClose" class="briefing-close" aria-label="Zamknij">×</button>
+      <div id="briefingCard" class="mission-card"></div>
     </div>
   </div>
 
   <!-- ===================== MISSION RESULT (Vector Hole v3) ===================== -->
   <div id="missionResultScreen" class="screen hidden">
     <div class="confetti-layer" id="missionConfetti" aria-hidden="true"></div>
-    <div class="screen-inner result-anim">
+    <div class="screen-inner result-anim mission-result-inner">
       <div id="missionHero" class="mission-hero" aria-hidden="true"><svg viewBox="0 0 64 64"><circle class="mh-ring" cx="32" cy="32" r="27"/><path class="mh-check" d="M19 33l9 9 17-19"/><path class="mh-clock" d="M32 18v15l9 6"/></svg></div>
       <div class="result-eyebrow" id="missionResultEyebrow">—</div>
       <h2 class="section-title" id="missionResultTitle">MISJA UKOŃCZONA</h2>
-      <p class="hint-text mission-result-nela" id="missionResultNela">—</p>
 
-      <div class="result-summary">
-        <div class="result-score">Wynik: <span id="missionResultScore">0</span></div>
+      <div class="mission-result-stats">
+        <div class="mr-stat" id="missionResultScoreTile"><span class="mr-stat-label">WYNIK</span><span class="mr-stat-value" id="missionResultScore">0</span></div>
+        <div class="mr-stat"><span class="mr-stat-label" id="missionResultTimeLabel">CZAS</span><span class="mr-stat-value" id="missionResultTime">0:00</span></div>
+        <div class="mr-stat mr-stat-medal" id="missionResultMedalTile"><span class="mr-stat-label">MEDAL</span><span class="mr-stat-value" id="missionResultMedalStar">☆</span></div>
+      </div>
+      <p class="mission-result-medal" id="missionResultMedal">—</p>
+
+      <div class="nela-bubble" id="missionResultNelaBubble">
+        <span class="nela-avatar" aria-hidden="true"></span>
+        <span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line" id="missionResultNela">—</span></span>
       </div>
 
-      <p class="mission-result-medal" id="missionResultMedal">—</p>
-      <p class="hint-text mission-result-reward" id="missionResultReward">—</p>
+      <p class="mission-result-reward" id="missionResultReward">—</p>
       <div class="result-card result-xp-card" id="missionXpCard">
         <div class="result-xp-head">
           <span class="result-xp-level" id="missionXpLevel">POZIOM 1</span>
@@ -622,10 +600,18 @@
         <span class="result-xp-text" id="missionXpText">0 / 120 XP</span>
       </div>
 
-      <button id="btnMissionNext" class="btn btn-primary">DALEJ</button>
-      <button id="btnMissionRetry" class="btn btn-secondary">SPRÓBUJ PONOWNIE</button>
-      <button id="btnMissionMap" class="btn btn-secondary">MAPA DZIELNIC</button>
-      <button id="btnMissionMenu" class="btn btn-secondary">MENU GŁÓWNE</button>
+      <!-- v14: where the next button leads -- the next mission's briefing
+           (goals, time, reward) right above it. -->
+      <div id="missionResultNextCard" class="mission-card mission-card-mini hidden"></div>
+
+      <div class="mission-result-actions">
+        <button id="btnMissionNext" class="btn btn-primary btn-mega">DALEJ</button>
+        <div class="mission-result-row">
+          <button id="btnMissionRetry" class="btn btn-secondary">POWTÓRZ</button>
+          <button id="btnMissionMap" class="btn btn-secondary">DZIELNICE</button>
+          <button id="btnMissionMenu" class="btn btn-secondary">MIASTO</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -634,7 +620,6 @@
     <div class="screen-inner nav-screen">
       <div class="app-header">
         <div>
-          <div class="app-eyebrow">VECTOR HOLE</div>
           <h1 class="app-title">WARSZTAT</h1>
         </div>
         <div class="hub-header-right">
@@ -657,54 +642,19 @@
             <div class="warsztat-preview-glow"></div>
             <canvas id="warsztatPreviewCanvas" class="warsztat-preview-canvas"></canvas>
           </div>
+          <!-- v14: name + bonus + the rest of the loadout in one line (the
+               "PODGLĄD NA ŻYWO" caption and the 2x2 "AKTYWNE ELEMENTY"
+               tiles repeated what the tabs and the grid already show). -->
           <div class="warsztat-preview-labels">
-            <div class="warsztat-preview-label">PODGLĄD NA ŻYWO</div>
-            <div class="warsztat-preview-sublabel">TWÓJ WIR</div>
+            <div class="warsztat-preview-name" id="warsztatPreviewName">—</div>
             <div class="warsztat-perk" id="warsztatPerk">
               <span class="warsztat-perk-label">BONUS WIRU W RUNDZIE</span>
               <strong id="warsztatPerkValue">—</strong>
             </div>
-          </div>
-        </div>
-        <div class="warsztat-active-list">
-          <div class="warsztat-active-list-title">AKTYWNE ELEMENTY</div>
-          <div class="warsztat-active-row">
-            <span class="warsztat-active-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg></span>
-            <span class="warsztat-active-name">Wir</span>
-            <span class="warsztat-active-value" id="warsztatActiveCore">—</span>
-          </div>
-          <div class="warsztat-active-row">
-            <span class="warsztat-active-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg></span>
-            <span class="warsztat-active-name">Smuga</span>
-            <span class="warsztat-active-value" id="warsztatActiveTrail">—</span>
-          </div>
-          <div class="warsztat-active-row">
-            <span class="warsztat-active-icon"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
-            <span class="warsztat-active-name">Efekt</span>
-            <span class="warsztat-active-value" id="warsztatActiveEffect">—</span>
-          </div>
-          <div class="warsztat-active-row">
-            <span class="warsztat-active-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg></span>
-            <span class="warsztat-active-name">Finisz</span>
-            <span class="warsztat-active-value" id="warsztatActiveOverdrive">—</span>
+            <div class="warsztat-preview-loadout" id="warsztatPreviewLoadout">—</div>
           </div>
         </div>
       </div>
-
-      <!-- Golden Shot v11 store: rewarded prisms always; paid packs only
-           when a real payment provider is attached (Monetization). -->
-      <div class="store-card">
-        <div class="store-free">
-          <span class="store-free-icon" aria-hidden="true">◆</span>
-          <span class="store-free-body"><strong>DARMOWE PRYZMATY</strong><span id="freePrismsLeft">Zostało dziś: 3</span></span>
-          <button id="btnFreePrisms" class="btn btn-gold btn-small">+5 ◆ · REKLAMA</button>
-        </div>
-        <div id="storePaid" class="store-paid hidden">
-          <div class="store-paid-title">SKLEP</div>
-          <div id="storeProducts" class="store-products"></div>
-        </div>
-      </div>
-
       <div class="shop-tabs">
         <button id="tabSkins" class="toggle-btn active">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>
@@ -724,6 +674,7 @@
         </button>
       </div>
 
+      <p class="hint-text warsztat-hint">Dotknij, żeby założyć. Zablokowane obejrzysz na podglądzie.</p>
       <div class="skin-grid-header">
         <span class="skin-grid-header-title">ZESTAWY I KOSMETYKI</span>
         <span id="cosmeticUnlockedCount" class="skin-grid-header-count">0 / 0 ODBLOKOWANE</span>
@@ -734,8 +685,20 @@
       <div id="effectGrid" class="skin-grid hidden"></div>
       <div id="overdriveSkinGrid" class="skin-grid hidden"></div>
 
-      <button id="btnEquip" class="btn btn-primary">ZAŁÓŻ</button>
-      <button id="btnShopBack" class="btn btn-secondary">POWRÓT</button>
+      <!-- Golden Shot v11 store: rewarded prisms always; paid packs only
+           when a real payment provider is attached (Monetization). -->
+      <div class="store-card">
+        <div class="store-free">
+          <span class="store-free-icon" aria-hidden="true">◆</span>
+          <span class="store-free-body"><strong>DARMOWE PRYZMATY</strong><span id="freePrismsLeft">Zostało dziś: 3</span></span>
+          <button id="btnFreePrisms" class="btn btn-gold btn-small">+5 ◆ · REKLAMA</button>
+        </div>
+        <div id="storePaid" class="store-paid hidden">
+          <div class="store-paid-title">SKLEP</div>
+          <div id="storeProducts" class="store-products"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -747,7 +710,6 @@
     <div class="screen-inner nav-screen">
       <div class="app-header">
         <div>
-          <div class="app-eyebrow">VECTOR HOLE</div>
           <h1 class="app-title">WYZWANIA</h1>
         </div>
         <div class="hub-header-right">
@@ -828,8 +790,6 @@
         <p id="hubMissionText" class="hub-mission-text">—</p>
         <p class="mission-day-hint">Liczy się w każdej rundzie GRAJ 2:00 i w Wyzwaniu dnia.</p>
       </div>
-
-      <button id="btnChallengesBack" class="btn btn-secondary">DO MIASTA</button>
     </div>
   </div>
 
@@ -860,6 +820,10 @@
       </div>
 
       <p id="resultHookLine" class="result-hook hidden"></p>
+      <!-- v14: one "NAGRODY" card (was three separate cards for coins, XP
+           and Core City stacked on top of each other). -->
+      <div class="result-rewards">
+      <div class="result-rewards-title">NAGRODY</div>
       <div class="result-card result-coins-card">
         <span class="result-coins-icon">◇</span>
         <div class="result-coins-body">
@@ -876,18 +840,6 @@
         <div class="result-xp-track"><div class="result-xp-bar" id="resultXpBar"></div></div>
         <span class="result-xp-text" id="resultXpText">0 / 120 XP</span>
       </div>
-
-      <!-- Golden Shot v8 upgrade funnel: shown when the difficulty curve
-           starts to bite (lost the podium) -- points at the run tools. -->
-      <div id="resultUpsell" class="result-card result-upsell hidden">
-        <span class="result-upsell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span>
-        <div class="result-upsell-body">
-          <span class="result-card-label" id="resultUpsellLabel">RYWALE SĄ CORAZ SILNIEJSI</span>
-          <span class="result-upsell-text" id="resultUpsellText">Zacznij następną rundę od T2 z Turbo startem.</span>
-        </div>
-        <button id="btnUpsell" class="btn btn-gold btn-small">WZMOCNIJ SIĘ</button>
-      </div>
-
       <div class="result-card result-core-card">
         <span class="result-card-label">POSTĘP CORE CITY</span>
         <div class="result-core-row">
@@ -901,8 +853,19 @@
           <div id="resultCoreBar" class="result-core-bar-after"></div>
         </div>
       </div>
+      </div>
 
-      <p class="hint-text win-rule-caption">Liczą się punkty: combo i rywale mnożą wynik.</p>
+      <!-- Golden Shot v8 upgrade funnel: shown when the difficulty curve
+           starts to bite (lost the podium) -- points at the run tools. -->
+      <div id="resultUpsell" class="result-card result-upsell hidden">
+        <span class="result-upsell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span>
+        <div class="result-upsell-body">
+          <span class="result-card-label" id="resultUpsellLabel">RYWALE SĄ CORAZ SILNIEJSI</span>
+          <span class="result-upsell-text" id="resultUpsellText">Zacznij następną rundę od T2 z Turbo startem.</span>
+        </div>
+        <button id="btnUpsell" class="btn btn-gold btn-small">WZMOCNIJ SIĘ</button>
+      </div>
+
       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
 
       <p id="dailyResultLine" class="hint-text daily-result hidden"></p>

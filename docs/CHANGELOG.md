@@ -4,6 +4,40 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v14 „Czytelność” — jedna jasna akcja na ekran, misje z odprawą
+Uwagi właścicielki i co zmieniono:
+
+| Uwaga | Zmiana |
+|---|---|
+| Ekran startowy ma dużo niepotrzebnych elementów | Logo + żywe demo gry + jeden przycisk GRAJ (bez 3 kart cech i akapitu premisy) |
+| GRAJ „lewituje” z ekranem | Miasto bez przyklejonej płyty: nagłówek z poziomem gracza, karta Core City (poziom, następna nagroda, pasek w środku karty), duży GRAJ w treści ekranu, kafle Kampania/Wyzwanie dnia, skrzynia — wszystko mieści się bez przewijania (także 375×667) |
+| Po misji „DALEJ: M12”, ale nie wiadomo, dokąd się idzie | Wynik misji: kafle wynik/czas/medal, NELA w dymku, a nad przyciskiem „GRAJ M12” karta następnej misji (cele z ikonami, czas, medal, nagroda); po porażce „SPRÓBUJ PONOWNIE” i lista brakujących celów |
+| W Dzielnicach trzeba zjechać na sam dół, żeby uruchomić misję | Dzielnice: poziomy pasek dzielnic, karta „NASTĘPNA MISJA” z własnym GRAJ na górze, każda misja z listy otwiera odprawę (arkusz od dołu) z przyciskiem GRAJ |
+| Opisy misji mało czytelne | Cele jako numerowane wiersze z ikoną i dużą czcionką (odprawa, karta następnej misji, wynik); większe pole celu w misji z rozbłyskiem na starcie; baner „CEL ZALICZONY” po każdym zaliczonym celu |
+| Teksty fabularne niezauważalne | NELA jako postać: awatar (soczewka SI w heksagonie), różowe dymki, sygnał dźwiękowy; historia każdej dzielnicy w Dzielnicach i w świętowaniu nowej dzielnicy |
+| Dużo elementów zaburzających czytelność | Usunięte: napisy „VECTOR HOLE” nad tytułami, przyciski POWRÓT/DO MIASTA dublujące nawigację, osobne karty monet/XP/Core City w wyniku Areny (teraz jedna karta NAGRODY), podpis „Liczą się punkty…”, kafelki „jak grać”, droga poziomów i dwa czipy nagród w Mieście, „AKTYWNE ELEMENTY” w Warsztacie |
+
+Poza uwagami:
+- **Warsztat**: dotknięcie posiadanego przedmiotu od razu go zakłada
+  (przycisk ZAŁÓŻ był pod całą siatką); przedmiot na sprzedaż pokazuje się
+  na podglądzie i wymaga potwierdzenia „KUP I ZAŁÓŻ” (wcześniej jedno
+  dotknięcie wydawało monety); przedmioty z nagród mówią, skąd je zdobyć.
+- **Pauza**: „ZACZNIJ RUNDĘ/MISJĘ OD NOWA” zamiast „RESTART MISJI / RUNDY”.
+- **Balans misji combo**: misje z łukiem fragmentów (M03, M33) dostają
+  zapasowe skupisko — zerwane combo nie przekreśla już misji.
+- **Runda recenzji (UX + kod)**: dymek NELA nisko nad minimapą, zamykany
+  dotknięciem i chowany pod pauzą/rewanżem/ewolucją; „rozmiar T2” zamiast
+  „poziom T2” (poziom = tylko gracz); medal jako „Medal: Ukończ w 0:35”;
+  wynik misji bez kafla WYNIK, gdy cel nie dotyczy punktów, „POSTĘP” po
+  porażce, trzy równe wyjścia POWTÓRZ / DZIELNICE / MIASTO; zakup
+  w Warsztacie jako arkusz od dołu z „NIE TERAZ”; zablokowana misja
+  prowadzi do tej, która ją odblokowuje; stare zapisy (M01 bez M00) nie
+  wracają do samouczka; powtórka pamięta wcześniejszy medal; „CEL
+  ZALICZONY” raz na cel; przyciski ≥ 40 px.
+- **QA**: nowy zestaw `qa/flow.mjs` (36 testów przepływu i regresji), bot kampanii
+  goni małe kąski, gdy cel combo jest otwarty (jak człowiek), nowe zrzuty
+  17–25 w `qa/screens.mjs`. Arkusz stylów odchudzony o ~100 martwych reguł.
+
 ## v13.5 — iPhone 13 Pro: plansza ucięta na dole
 v13.4 rozciągało aplikację, ale `html`/`body` zostawały krótsze i obcinały
 dół planszy z minimapą. Przyczyna u źródła: pasek statusu

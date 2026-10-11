@@ -794,6 +794,15 @@ class SoundEngine {
     this.tone({ type: 'triangle', freq: 1250, freqEnd: 900, dur: 0.05, vol: 0.07 });
   }
 
+  /** v14: NELA's "incoming transmission" -- a soft rising digital chirp
+   *  under her speech bubbles, so her lines get noticed. */
+  nela() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sine', freq: 660, freqEnd: 990, dur: 0.09, vol: 0.06 });
+    this.tone({ type: 'sine', freq: 1320, freqEnd: 1480, dur: 0.12, vol: 0.05, when: 0.09 });
+    this.noise({ dur: 0.08, vol: 0.02, freq: 4000, type: 'highpass', when: 0.02 });
+  }
+
   coin() {
     if (!this.sfxOn()) return;
     this.tone({ type: 'square', freq: 987.77, dur: 0.07, vol: 0.07, filter: 5000 });
@@ -1388,7 +1397,7 @@ const MUTATIONS = [
   { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Gdy rywal Cię pochłonie, po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
   { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
   { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
-  { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM POZIOMIE', desc: 'Gdy urośniesz o poziom, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
+  { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM ROZMIARZE', desc: 'Gdy urośniesz o rozmiar, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
   { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Najbliższy rywal dostaje różowy celownik. Zjedz go, a zgarniesz +40 punktów ekstra.', icon: 'target', weight: 2, color: '#EFCB63' }
 ];
 
@@ -1495,7 +1504,7 @@ function randomStreetGlyph() { return PROP_STREET_GLYPHS[randInt(0, PROP_STREET_
 const CAMPAIGN_POWERS = [
   { id: 'magnes', name: 'Magnes', tag: 'CAŁĄ MISJĘ', desc: 'Obiekty, które możesz zjeść, same płyną do Ciebie, gdy są blisko.', icon: 'magnet', color: '#50F0FA' },
   { id: 'reaktor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kęsami masz 2,1 s zamiast 1,5 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', color: '#EFCB63' },
-  { id: 'impuls', name: 'Impuls', tag: 'NA NOWYM POZIOMIE', desc: 'Za każdym razem, gdy urośniesz o poziom, dostajesz +20% prędkości na 2 s.', icon: 'bolt', color: '#46D99A' },
+  { id: 'impuls', name: 'Impuls', tag: 'NA NOWYM ROZMIARZE', desc: 'Za każdym razem, gdy urośniesz o rozmiar, dostajesz +20% prędkości na 2 s.', icon: 'bolt', color: '#46D99A' },
   { id: 'skaner', name: 'Skaner', tag: 'CO 8 S', desc: 'Co 8 s podświetla najbliższy obiekt — od razu widać, dokąd jechać.', icon: 'radar', color: '#9875FF' }
 ];
 
@@ -1517,6 +1526,27 @@ const DISTRICTS = [
   { id: 'dachy', name: 'Dachy Prądu', order: 5, missions: ['M17', 'M18', 'M19', 'M49', 'M50', 'M51', 'M52', 'M53', 'M54', 'M20'] },
   { id: 'rdzen', name: 'Rdzeń Miasta', order: 6, missions: ['M21', 'M22', 'M23', 'M55', 'M56', 'M57', 'M58', 'M59', 'M60', 'M24'] }
 ];
+
+// v14 story: each district's situation in NELA's words, shown as her speech
+// bubble on top of the district's missions (player feedback: the story
+// lines were grey italics nobody noticed).
+const DISTRICT_STORY = {
+  plac: 'Plac Neonów był sercem nocnego miasta. Glitch zgasił neony i zamienił wszystko w zepsuty kod. Pochłoń skażenie, a światła wrócą.',
+  park: 'W Parku Impulsów bramy zgubiły rytm, a fontanna pompuje szum zamiast wody. Wyczuj puls parku i odzyskaj fontannę.',
+  port: 'Port Syntez stoi w korku skażonych ciężarówek, a nad wszystkim góruje Dźwig. Urośnij tak, żeby zmieścić go w sobie.',
+  galeria: 'Galeria Glitch to labirynt witryn i portali. Tu nic nie jest tym, czym się wydaje. Trzymaj się celu.',
+  dachy: 'Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.',
+  rdzen: 'Rdzeń Miasta. Stąd Glitch steruje wszystkim. Pochłoń Rdzeń, a Neonowe Miasto znów zaświeci.'
+};
+
+// v14: NELA's face -- a hexagonal city-AI lens (inline SVG, no image files),
+// dropped into every .nela-avatar slot (district story, briefings, results,
+// the in-mission toast).
+const NELA_AVATAR = '<svg viewBox="0 0 48 48"><path d="M24 3 42.2 13.5v21L24 45 5.8 34.5v-21z" fill="#0A2032" stroke="#FF54AD" stroke-width="2.4" stroke-linejoin="round"/>' +
+  '<path d="M24 8.5 37.4 16.2v15.6L24 39.5 10.6 31.8V16.2z" fill="none" stroke="#9875FF" stroke-width="1.2" opacity="0.7"/>' +
+  '<g class="nela-eye"><circle cx="24" cy="24" r="8.6" fill="none" stroke="#50F0FA" stroke-width="2" opacity="0.55"/>' +
+  '<circle cx="24" cy="24" r="5.4" fill="#50F0FA"/><circle cx="24" cy="24" r="2.2" fill="#04101D"/><circle cx="25.8" cy="22.2" r="1" fill="#fff"/></g>' +
+  '<path d="M12.5 24h3.2M32.3 24h3.2" stroke="#FF54AD" stroke-width="2" stroke-linecap="round"/></svg>';
 
 /* ----------------------- Mission compiler (v10) -----------------------
    Player feedback: missions didn't match the growth model (e.g. "eat 12
@@ -1595,7 +1625,7 @@ const round5 = v => Math.round(v / 5) * 5;
 function stepLabel(step, setup) {
   if (step.label) return step.label;
   if (step.eat) return `Pochłoń ${nounFor(step.glyph || step.eat, step.n)}`;
-  if (step.tier) return `Urośnij do poziomu T${step.tier}`;
+  if (step.tier) return `Urośnij do rozmiaru T${step.tier}`;
   if (step.combo) return `Zbuduj combo ×${step.combo}`;
   if (step.gates) {
     if (setup.gateKind === 'portal') return 'Przejdź przez portal';
@@ -1649,7 +1679,10 @@ function compileMission(spec, order) {
       est += st.combo * 0.8 + 8;
       // A long chain needs dense pockets of small food -- and spare pockets,
       // so a broken chain can always be retried (fragments don't respawn).
-      if (!s.capsuleWaves) s.fragmentClusters = Math.max(s.fragmentClusters || 0, Math.ceil(st.combo / 7) + (s.arcLayout ? 0 : 1));
+      // v14: arc layouts get the spare pocket too -- a broken chain on the
+      // arc used to leave too little food to retry (M33 failed ~1 in 6
+      // automated runs on layout luck alone).
+      if (!s.capsuleWaves) s.fragmentClusters = Math.max(s.fragmentClusters || 0, Math.ceil(st.combo / 7) + 1);
       s.clusterSize = Math.max(s.clusterSize || 0, st.combo + 3);
     }
     if (st.score) {
@@ -1697,7 +1730,7 @@ function compileMission(spec, order) {
   const floor = { 1: 60, 2: 60, 3: 70, 4: 90, 5: 110, 6: 130 }[need];
   const timeLimit = spec.time || Math.max(floor, timing ? timing[0] : round5(est * 1.5 + 20));
   const medal = spec.medal || { type: 'timeUnder', seconds: timing ? timing[1] : round5(est * 1.15 + 10) };
-  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w max ${medal.seconds} s`;
+  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w ${formatClock(medal.seconds)}`;
   steps.forEach(st => { st.label = stepLabel(st, s); });
   const district = DISTRICTS.find(d => d.id === spec.d);
   return {
@@ -1737,14 +1770,14 @@ function compileMission(spec, order) {
 const MISSION_SPECS = [
   // ---- Plac Neonów ----
   { id: 'M01', d: 'plac', name: 'Pierwszy apetyt', steps: [{ eat: 'capsule', n: 3 }, { tier: 2 }],
-    nela: ['Tu NELA. Kapsuły energii ładują Twój wir mocniej niż fragmenty — trzy wystarczą, żeby urosnąć.', 'Wir pulsuje mocniej!'] },
+    nela: ['Kapsuły energii ładują Twój wir mocniej niż fragmenty — trzy wystarczą, żeby urosnąć.', 'Wir pulsuje mocniej!'] },
   { id: 'M02', d: 'plac', name: 'Dobra trasa', steps: [{ eat: 'prop', n: 6 }, { tier: 3 }], setup: { clusters: 2 },
-    medal: { type: 'visitBothClusters', label: 'Jedz w obu skupiskach' },
+    medal: { type: 'visitBothClusters', label: 'Pochłaniaj w obu skupiskach' },
     nela: ['Elementy uliczne stoją w dwóch skupiskach. Wybierz trasę i rośnij.', 'Plac nabiera kształtu.'] },
   { id: 'M03', d: 'plac', name: 'Łańcuch reakcji', steps: [{ combo: 10 }, { eat: 'prop', n: 4 }], setup: { arcLayout: true, fragments: 20 },
     nela: ['Fragmenty ułożyły się w łuk: połącz dziesięć kęsów bez przerwy, a potem pochłoń cztery elementy uliczne.', 'Reakcja łańcuchowa ruszyła!'] },
   { id: 'M25', d: 'plac', name: 'Godzina szczytu', steps: [{ eat: 'vehicle', n: 4 }],
-    nela: ['Samochody zjeżdżają na plac. Urośnij do T3, zanim odjadą.', 'Korek rozładowany — w Twoim wirze.'] },
+    nela: ['Samochody utknęły w korku na placu. Urośnij do T3 i zgarnij je.', 'Korek rozładowany — w Twoim wirze.'] },
   { id: 'M26', d: 'plac', name: 'Obce dziury', steps: [{ rival: 2 }],
     nela: ['Po placu krążą obce dziury. Urośnij i pochłoń dwie z nich.', 'Rywale zniknęli w Twoim wirze.'] },
   { id: 'M27', d: 'plac', name: 'Wyłącznik', steps: [{ activate: 'node', n: 3 }],
@@ -1879,8 +1912,8 @@ const MISSION_SPECS = [
     nela: ['Wieżowce Rdzenia rzucają cień na całe miasto. Pochłoń dwa.', 'Niebo nad Rdzeniem odsłonięte.'] },
   { id: 'M56', d: 'rdzen', name: 'Kopuła', steps: [{ eat: 'heavy', n: 3 }, { eat: 'tower', n: 1, glyph: 'kopula' }],
     nela: ['Pod kopułą bije serce miasta. Najpierw ciężkie pojazdy, potem sama kopuła.', 'Kopuła otwarta.'] },
-  { id: 'M57', d: 'rdzen', name: 'Wszystkie poziomy', steps: [{ tier: 6 }],
-    nela: ['Od fragmentu do wieżowca: przejdź wszystkie sześć poziomów w jednej misji.', 'Sześć poziomów. Jedna dziura.'] },
+  { id: 'M57', d: 'rdzen', name: 'Wszystkie rozmiary', steps: [{ tier: 6 }],
+    nela: ['Od fragmentu do wieżowca: przejdź wszystkie sześć rozmiarów w jednej misji.', 'Sześć rozmiarów. Jedna dziura.'] },
   { id: 'M58', d: 'rdzen', name: 'Ostatni strażnicy', steps: [{ rival: 5 }], setup: { botRadius: 70 },
     nela: ['Ostatni strażnicy Rdzenia to giganci. Unikaj ich, dopóki nie urośniesz — potem pochłoń pięciu.', 'Nikt już nie strzeże Rdzenia.'] },
   { id: 'M59', d: 'rdzen', name: 'Sygnał z wieży', steps: [{ activate: 'pylon', n: 3 }, { eat: 'tower', n: 2, glyph: 'maszt' }],
@@ -1939,7 +1972,7 @@ const CAMPAIGN_MISSIONS = [
         }
       ]
     },
-    medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 70 s' },
+    medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 1:10' },
     // A couple more of each spawned than required (buffer, not everything
     // has to be reachable) since Campaign entities don't respawn mid-mission.
     // v13: starterRing puts the first fragments right around the start --
@@ -2011,7 +2044,8 @@ const FEATURE_UNLOCKS = [
   ...DISTRICTS.filter(d => d.id !== 'plac').map(d => ({
     id: 'district:' + d.id, districtId: d.id, eyebrow: 'NOWA DZIELNICA', title: d.name.toUpperCase(), color: '#9875FF',
     icon: UNLOCK_ICONS.district,
-    desc: `${nounFor('misja', d.missions.length)}, nowe obiekty do pochłonięcia i kolejny kawałek miasta do odbudowy.`,
+    // v14: the district's story (NELA's words) instead of a generic line.
+    desc: `${DISTRICT_STORY[d.id]} Czeka ${nounFor('misja', d.missions.length)}.`,
     cta: 'DO DZIELNICY', isUnlocked: s => (s.campaign.unlockedDistricts || []).includes(d.id)
   }))
 ];
@@ -6124,7 +6158,6 @@ class Game {
       if (this.isWyzwaniaUnlocked()) this.openChallengesScreen(); else this.openLockedTabInfo('wyzwania');
     });
     document.getElementById('btnPlayDaily').addEventListener('click', () => this.startDailyChallenge());
-    document.getElementById('btnChallengesBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
     // GDD 4.0 §5.1-§5.4 bottom nav (Miasto/Dzielnice/Warsztat/Wyzwania).
     document.getElementById('btnNavMiasto').addEventListener('click', () => this.showScreen('mainMenu'));
@@ -6157,16 +6190,30 @@ class Game {
       el.addEventListener('click', () => this.openCurrencyInfo(isPrism));
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openCurrencyInfo(isPrism); } });
     });
-    document.getElementById('hubRewardChipItem').addEventListener('click', () => this.openNextRewardInfo());
-    document.getElementById('hubRewardChipCoins').addEventListener('click', () => this.openNextRewardCoinsInfo());
-    document.getElementById('hubLevelDots').addEventListener('click', () => this.openCoreCityRoadmap());
-    document.getElementById('hubNextRewardRow').addEventListener('click', () => this.openCoreCityRoadmap());
     const heroStage = document.getElementById('hubHeroStage');
     heroStage.addEventListener('click', () => this.openCoreCityRoadmap());
     heroStage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openCoreCityRoadmap(); } });
 
-    document.getElementById('btnCampaignBack').addEventListener('click', () => this.showScreen('mainMenu'));
-    document.getElementById('btnPlayMission').addEventListener('click', () => this.startCampaignMission(this.selectedMissionId));
+    // v14 campaign flow: the hub's campaign tile opens the next mission's
+    // briefing; any mission card's GRAJ (briefing, Dzielnice's "next"
+    // card) starts it via a delegated [data-mc-play] click.
+    document.getElementById('hubCampaignTile').addEventListener('click', () => {
+      const next = this.nextCampaignMissionId();
+      if (next) this.openMissionBriefing(next); else this.openCampaignScreen();
+    });
+    document.getElementById('btnBriefingClose').addEventListener('click', () => this.closeMissionBriefing());
+    document.getElementById('missionBriefing').addEventListener('click', (e) => {
+      if (e.target.id === 'missionBriefing') this.closeMissionBriefing();
+    });
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest && e.target.closest('[data-mc-play]');
+      if (!btn || btn.disabled) return;
+      this.closeMissionBriefing();
+      this.startCampaignMission(btn.dataset.mcPlay);
+    });
+    document.querySelectorAll('.nela-avatar').forEach(el => { el.innerHTML = NELA_AVATAR; });
+    // A tap closes NELA's in-mission bubble (it must never sit on the board).
+    document.getElementById('nelaToast').addEventListener('click', () => this.hideNelaToast());
     // Player feedback: every level needs a way back to the main menu --
     // the mission result screen previously only offered Next/Retry/Map.
     document.getElementById('btnMissionMenu').addEventListener('click', () => {
@@ -6190,8 +6237,6 @@ class Game {
       document.getElementById('resetProfileConfirm').classList.add('hidden');
     });
     document.getElementById('btnResetProfileYes').addEventListener('click', () => this.resetProfile());
-    document.getElementById('btnShopBack').addEventListener('click', () => this.showScreen('mainMenu'));
-    document.getElementById('btnEquip').addEventListener('click', () => this.onEquipClick());
     // GDD 4.0 §5.3: Warsztat has 4 equip categories (Rdzeń/Trail/Efekt
     // pochłaniania/Overdrive) instead of the old 2 (Ring/Aura tabs).
     const shopTabs = [
@@ -6361,7 +6406,7 @@ class Game {
 
       const meta = document.createElement('div');
       meta.className = owned ? 'skin-owned-badge' : 'skin-price';
-      meta.textContent = owned ? (selected ? 'WYBRANY' : 'POSIADANE') : this.cosmeticLockLabel(item);
+      meta.textContent = owned ? (selected ? 'ZAŁOŻONE' : 'ZAŁÓŻ') : this.cosmeticLockLabel(item);
       body.appendChild(meta);
       card.appendChild(body);
 
@@ -6382,7 +6427,7 @@ class Game {
     if (item.unlockSource) {
       return item.unlockSource.type === 'coreCity'
         ? `CORE CITY LVL ${item.unlockSource.level}`
-        : `MISJA ${campaignMissionById(item.unlockSource.id) ? missionCode(campaignMissionById(item.unlockSource.id)) : item.unlockSource.id}`;
+        : `NAGRODA ZA ${campaignMissionById(item.unlockSource.id) ? missionCode(campaignMissionById(item.unlockSource.id)) : item.unlockSource.id}`;
     }
     if (item.priceType === 'prisms') return `◆ ${item.pricePrisms}`;
     return `◇ ${item.priceCoins != null ? item.priceCoins : item.price}`;
@@ -6404,131 +6449,98 @@ class Game {
   }
 
   populateShop() {
-    this.renderCosmeticGrid('skinGrid', SKINS, this.save.owned, this.pendingLoadout.skin, skin => this.onSkinClick(skin));
+    this.renderCosmeticGrid('skinGrid', SKINS, this.save.owned, this.pendingLoadout.skin, skin => this.onCosmeticPick('skin', skin));
     this.updateCosmeticUnlockedCount();
-  }
-
-  onSkinClick(skin) {
-    const owned = this.save.owned.includes(skin.id);
-    if (owned) {
-      this.pendingLoadout.skin = skin.id;
-    } else if (skin.unlockSource) {
-      this.analytics.track('cosmetic_preview', { skinId: skin.id, locked: true });
-      return;
-    } else if (this.save.coins >= skin.price) {
-      this.save.coins -= skin.price;
-      this.save.owned.push(skin.id);
-      this.pendingLoadout.skin = skin.id;
-      this.analytics.track('soft_purchase', { skinId: skin.id, price: skin.price, currency: 'coins' });
-      saveGame(this.save);
-    } else {
-      this.analytics.track('cosmetic_preview', { skinId: skin.id, price: skin.price, affordable: false });
-      return;
-    }
-    this.populateShop();
-    this.updateCoinDisplays();
-    this.updateWarsztatPreview();
   }
 
   /** Phase 7 shop v2's second cosmetic category — gives Prisms an actual
    *  sink alongside Coins (GDD 10.1/10.2). Renamed "Trail" in the Warsztat
    *  UI per GDD 4.0 §5.3, same following-glow render path underneath. */
   populateAuras() {
-    this.renderCosmeticGrid('auraGrid', AURAS, this.save.auras.owned, this.pendingLoadout.aura, aura => this.onAuraClick(aura));
+    this.renderCosmeticGrid('auraGrid', AURAS, this.save.auras.owned, this.pendingLoadout.aura, aura => this.onCosmeticPick('aura', aura));
     this.updateCosmeticUnlockedCount();
-  }
-
-  onAuraClick(aura) {
-    const owned = this.save.auras.owned.includes(aura.id);
-    if (owned) {
-      this.pendingLoadout.aura = aura.id;
-    } else if (aura.unlockSource) {
-      this.analytics.track('cosmetic_preview', { auraId: aura.id, locked: true });
-      return;
-    } else if (aura.priceType === 'prisms') {
-      if (this.save.prisms < aura.pricePrisms) {
-        this.analytics.track('cosmetic_preview', { auraId: aura.id, affordable: false });
-        return;
-      }
-      this.save.prisms -= aura.pricePrisms;
-      this.save.auras.owned.push(aura.id);
-      this.pendingLoadout.aura = aura.id;
-      this.analytics.track('soft_purchase', { auraId: aura.id, price: aura.pricePrisms, currency: 'prisms' });
-      saveGame(this.save);
-    } else {
-      if (this.save.coins < aura.priceCoins) {
-        this.analytics.track('cosmetic_preview', { auraId: aura.id, affordable: false });
-        return;
-      }
-      this.save.coins -= aura.priceCoins;
-      this.save.auras.owned.push(aura.id);
-      this.pendingLoadout.aura = aura.id;
-      this.analytics.track('soft_purchase', { auraId: aura.id, price: aura.priceCoins, currency: 'coins' });
-      saveGame(this.save);
-    }
-    this.populateAuras();
-    this.updateCoinDisplays();
-    this.updateWarsztatPreview();
   }
 
   /** GDD 4.0 §5.3 category 3: "Efekt pochłaniania" — see the color override
    *  in triggerEatFeedback(). 'classic' (free, color: null) is always owned. */
   populateEffects() {
-    this.renderCosmeticGrid('effectGrid', EAT_EFFECTS, this.save.effects.owned, this.pendingLoadout.effect, effect => this.onEffectClick(effect));
+    this.renderCosmeticGrid('effectGrid', EAT_EFFECTS, this.save.effects.owned, this.pendingLoadout.effect, effect => this.onCosmeticPick('effect', effect));
     this.updateCosmeticUnlockedCount();
-  }
-
-  onEffectClick(effect) {
-    const owned = this.save.effects.owned.includes(effect.id);
-    if (owned) {
-      this.pendingLoadout.effect = effect.id;
-    } else if (effect.unlockSource) {
-      this.analytics.track('cosmetic_preview', { effectId: effect.id, locked: true });
-      return;
-    } else if (this.save.coins >= (effect.priceCoins || 0)) {
-      this.save.coins -= (effect.priceCoins || 0);
-      this.save.effects.owned.push(effect.id);
-      this.pendingLoadout.effect = effect.id;
-      this.analytics.track('soft_purchase', { effectId: effect.id, price: effect.priceCoins || 0, currency: 'coins' });
-      saveGame(this.save);
-    } else {
-      return;
-    }
-    this.populateEffects();
-    this.updateCoinDisplays();
-    this.updateWarsztatPreview();
   }
 
   /** GDD 4.0 §5.3 category 4: "Overdrive" — a cosmetic tint on Arena's
    *  existing seeded Overdrive finish, see checkOverdriveTrigger(). */
   populateOverdriveSkins() {
-    this.renderCosmeticGrid('overdriveSkinGrid', OVERDRIVE_SKINS, this.save.overdriveSkins.owned, this.pendingLoadout.overdriveSkin, skin => this.onOverdriveSkinClick(skin));
+    this.renderCosmeticGrid('overdriveSkinGrid', OVERDRIVE_SKINS, this.save.overdriveSkins.owned, this.pendingLoadout.overdriveSkin, skin => this.onCosmeticPick('overdriveSkin', skin));
     this.updateCosmeticUnlockedCount();
   }
 
-  onOverdriveSkinClick(skin) {
-    const owned = this.save.overdriveSkins.owned.includes(skin.id);
-    if (owned) {
-      this.pendingLoadout.overdriveSkin = skin.id;
-    } else if (skin.unlockSource) {
-      this.analytics.track('cosmetic_preview', { overdriveSkinId: skin.id, locked: true });
-      return;
-    } else if (this.save.coins >= (skin.priceCoins || 0)) {
-      this.save.coins -= (skin.priceCoins || 0);
-      this.save.overdriveSkins.owned.push(skin.id);
-      this.pendingLoadout.overdriveSkin = skin.id;
-      this.analytics.track('soft_purchase', { overdriveSkinId: skin.id, price: skin.priceCoins || 0, currency: 'coins' });
-      saveGame(this.save);
-    } else {
+  /** v14 Warsztat: one handler for every category. An owned item is put on
+   *  at once (the ZAŁÓŻ button sat below the whole grid); anything else is
+   *  previewed on the live hole while a sheet says what it costs or where
+   *  it comes from -- a purchase always needs that confirming tap (a single
+   *  tap used to spend the coins). */
+  onCosmeticPick(cat, item) {
+    const C = {
+      skin: { owned: this.save.owned, noun: 'Wir', key: 'skinId' },
+      aura: { owned: this.save.auras.owned, noun: 'Smuga', key: 'auraId' },
+      effect: { owned: this.save.effects.owned, noun: 'Efekt pochłaniania', key: 'effectId' },
+      overdriveSkin: { owned: this.save.overdriveSkins.owned, noun: 'Finisz', key: 'overdriveSkinId' }
+    }[cat];
+    this.sound.ui();
+    if (C.owned.includes(item.id)) {
+      this.pendingLoadout[cat] = item.id;
+      this.onEquipClick();
+      this.updateWarsztatPreview();
       return;
     }
-    this.populateOverdriveSkins();
-    this.updateCoinDisplays();
+    const equipped = { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected, overdriveSkin: this.save.overdriveSkins.selected }[cat];
+    this.pendingLoadout[cat] = item.id;
     this.updateWarsztatPreview();
+    const revert = () => { this.pendingLoadout[cat] = equipped; this.updateWarsztatPreview(); };
+    const title = `${C.noun} „${item.name}”`;
+    const perk = cat === 'skin' && item.perkLabel ? [`Bonus w rundzie: <strong>${item.perkLabel}</strong>`] : [];
+    const icon = REWARD_CATEGORY_ICONS[cat === 'overdriveSkin' ? 'overdrive' : cat];
+    if (item.unlockSource) {
+      this.analytics.track('cosmetic_preview', { [C.key]: item.id, locked: true });
+      const src = item.unlockSource.type === 'iap' ? 'w Pakiecie startowym' : `jako nagrodę: ${this.cosmeticLockLabel(item)}`;
+      this.openInfoSheet({ icon, title, body: [...perk, `Tego nie kupisz za monety — zdobędziesz ${src}. Na podglądzie widać, jak wygląda.`], onClose: revert, bottom: true });
+      return;
+    }
+    const prisms = item.priceType === 'prisms';
+    const price = prisms ? item.pricePrisms : (item.priceCoins != null ? item.priceCoins : (item.price || 0));
+    const have = prisms ? (this.save.prisms || 0) : this.save.coins;
+    const sym = prisms ? '◆' : '◇';
+    if (have < price) {
+      this.analytics.track('cosmetic_preview', { [C.key]: item.id, price, affordable: false });
+      this.openInfoSheet({
+        icon, title,
+        body: [...perk, `Cena: <strong>${price} ${sym}</strong> — brakuje jeszcze ${price - have} ${sym}.`,
+          prisms ? 'Pryzmaty dostajesz za co 3. rundę, rekordy w Wyzwaniu dnia i reklamę „Darmowe pryzmaty”.' : 'Monety zdobywasz w każdej rundzie GRAJ 2:00 i w Wyzwaniu dnia.'],
+        action: this.isArenaUnlocked() ? { label: 'ZAGRAJ RUNDĘ', onClick: () => this.startArenaRound() } : null,
+        onClose: revert, closeLabel: 'NIE TERAZ', bottom: true
+      });
+      return;
+    }
+    this.openInfoSheet({
+      icon, title,
+      body: [...perk, `Cena: <strong>${price} ${sym}</strong> (masz ${have} ${sym}). Na podglądzie widać, jak wygląda.`],
+      action: { label: `KUP I ZAŁÓŻ · ${price} ${sym}`, onClick: () => {
+        if (prisms) this.save.prisms -= price; else this.save.coins -= price;
+        C.owned.push(item.id);
+        this.analytics.track('soft_purchase', { [C.key]: item.id, price, currency: prisms ? 'prisms' : 'coins' });
+        this.pendingLoadout[cat] = item.id;
+        this.onEquipClick();
+        this.sound.coin();
+        this.updateCoinDisplays();
+        this.updateWarsztatPreview();
+      } },
+      onClose: revert, closeLabel: 'NIE TERAZ', bottom: true
+    });
   }
 
-  /** GDD 4.0 §5.3 "ZAŁÓŻ" — commits the pending loadout (built up across
-   *  all 4 tabs) to the actual save all at once. */
+  /** Commits the pending loadout to the save (Warsztat picks and the
+   *  in-run quick-equip popup both go through here). */
   onEquipClick() {
     this.save.selected = this.pendingLoadout.skin;
     this.save.auras.selected = this.pendingLoadout.aura;
@@ -6706,12 +6718,11 @@ class Game {
 
     // The preview canvas itself is redrawn every frame from pendingLoadout
     // by renderWarsztatCanvases(); this just refreshes the text labels.
-    document.getElementById('warsztatActiveCore').textContent = skin.name;
+    document.getElementById('warsztatPreviewName').textContent = skin.name;
     document.getElementById('warsztatPerkValue').textContent = skin.perkLabel || '—';
     document.getElementById('warsztatPerk').classList.toggle('none', !(skin.perks && skin.perks.length));
-    document.getElementById('warsztatActiveTrail').textContent = (aura && aura.name) || 'Brak';
-    document.getElementById('warsztatActiveEffect').textContent = (effect && effect.name) || 'Klasyczny';
-    document.getElementById('warsztatActiveOverdrive').textContent = (overdrive && overdrive.name) || 'Klasyczny';
+    document.getElementById('warsztatPreviewLoadout').textContent =
+      `Smuga: ${(aura && aura.name) || 'Brak'} · Efekt: ${(effect && effect.name) || 'Klasyczny'} · Finisz: ${(overdrive && overdrive.name) || 'Klasyczny'}`;
   }
 
   /** Keeps the Warsztat hole canvases animated while the screen is open
@@ -7000,7 +7011,10 @@ class Game {
     // v13: not on the first-run welcome card (it covered ZACZNIJ GRĘ on 360 px
     // phones). Nothing is sent before a decision, so asking after the
     // tutorial changes nothing legally.
-    if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running || this.isFirstRun());
+    // v14: only over the nav tabs -- on a result screen it covered the main
+    // button ("GRAJ M01" right after the tutorial).
+    const onNavScreen = !document.getElementById('bottomNav').classList.contains('hidden');
+    if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running || this.isFirstRun() || !onNavScreen);
   }
 
   setConsent(analytics) {
@@ -7252,16 +7266,13 @@ class Game {
     const nextReward = CORE_CITY_LEVEL_REWARDS[level + 1];
     const nextRewardLabel = nextReward ? nextReward.label : 'Premia';
     const nextRewardCoins = nextReward ? nextReward.coins : CONFIG.hub.milestoneFallbackCoins;
-    document.getElementById('hubRewardChip1').textContent = nextRewardLabel;
-    document.getElementById('hubRewardChip2').textContent = `+${nextRewardCoins} monet`;
+    document.getElementById('hubRewardChip1').textContent = nextReward ? `${nextRewardLabel} + ${nextRewardCoins} monet` : `+${nextRewardCoins} monet`;
     document.getElementById('hubRewardChip1Icon').innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(nextReward)];
-    document.getElementById('hubRewardPreview').textContent = `Następna: ${nextRewardLabel}`;
-    this.renderHubLevelDots(level);
 
     const arenaUnlocked = this.isArenaUnlocked();
     document.getElementById('btnStart').disabled = !arenaUnlocked;
-    document.getElementById('btnDaily').disabled = !arenaUnlocked;
     document.getElementById('btnStart').classList.toggle('is-new', arenaUnlocked && this.isUnlockFresh('arena'));
+    this.updateHubQuickTiles();
     // First-run welcome: until M00 clears, Miasto shows only a short pitch
     // and the ZAGRAJ TUTORIAL button (#hubWelcome) -- the Core City card,
     // currencies, CTA row, info panel and bottom nav (renderBottomNav())
@@ -7269,8 +7280,6 @@ class Game {
     // obvious thing to tap (player feedback).
     document.getElementById('mainMenu').classList.toggle('first-run', this.isFirstRun());
     document.getElementById('hubWelcome').classList.toggle('hidden', !this.isFirstRun());
-    const districtIntro = document.getElementById('districtIntro');
-    if (districtIntro) districtIntro.classList.toggle('hidden', this.isWyzwaniaUnlocked());
 
     const { dateKey } = dailySeedForDate(new Date());
     const { mission } = missionForDate(new Date());
@@ -7295,9 +7304,9 @@ class Game {
 
     const goalText = document.getElementById('dailyGoalText');
     if (this.save.daily.lastSeedDate === dateKey) {
-      goalText.textContent = `Cel: pobij dzisiejszy rekord (${this.save.daily.lastSeedScore} pkt). Nagroda: +${CONFIG.daily.completionBonusCoins} monet, a za nowy rekord +${CONFIG.daily.newRecordBonusCoins} monet i +${CONFIG.daily.newRecordBonusPrisms} pryzmatów.`;
+      goalText.textContent = `Twój rekord dziś: ${formatNum(this.save.daily.lastSeedScore)} pkt. Pobij go: +${CONFIG.daily.newRecordBonusCoins} monet i +${CONFIG.daily.newRecordBonusPrisms} ◆.`;
     } else {
-      goalText.textContent = `Twoja pierwsza próba dziś — ten sam układ mapy co u wszystkich graczy. Nagroda za ukończenie: +${CONFIG.daily.completionBonusCoins} monet.`;
+      goalText.textContent = `Jedna mapa dla wszystkich graczy. Za ukończenie: +${CONFIG.daily.completionBonusCoins} monet.`;
     }
     document.getElementById('dailyStreakValue').textContent = this.save.daily.streak || 0;
     document.getElementById('dailyRewardFirst').textContent = `+${CONFIG.hub.coreCity.dailyFirstClearGain}% Core City`;
@@ -7316,6 +7325,58 @@ class Game {
     if (rewardDef.effectId) return 'effect';
     if (rewardDef.overdriveSkinId) return 'overdrive';
     return 'bonus';
+  }
+
+  /** v14 hub shortcuts under GRAJ: the next campaign mission (one tap to
+   *  its briefing) and the Daily challenge (today's state / streak). */
+  updateHubQuickTiles() {
+    const nextId = this.nextCampaignMissionId();
+    const next = nextId && campaignMissionById(nextId);
+    const district = next && DISTRICTS.find(d => d.id === next.district);
+    document.getElementById('hubCampaignEyebrow').textContent = next ? 'NASTĘPNA MISJA' : 'KAMPANIA';
+    document.getElementById('hubCampaignTile').style.setProperty('--q', next ? (DISTRICT_COLORS[district.id] || '#46D99A') : '#46D99A');
+    document.getElementById('hubCampaignTitle').textContent = next ? `${missionCode(next)} · ${next.name}` : 'Ukończona!';
+    document.getElementById('hubCampaignSub').textContent = next ? this.missionStepRows(next)[0].label : 'Zagraj misje ponownie po medale';
+    const daily = document.getElementById('btnDaily');
+    const wyzwania = this.isWyzwaniaUnlocked();
+    daily.classList.toggle('locked', !wyzwania);
+    const { dateKey } = dailySeedForDate(new Date());
+    const playedToday = this.save.daily.lastSeedDate === dateKey;
+    const streak = this.save.daily.streak || 0;
+    document.getElementById('hubDailyTitle').textContent = !wyzwania ? 'Wkrótce' : (playedToday ? `Rekord dnia: ${formatNum(this.save.daily.lastSeedScore || 0)}` : 'Nowa mapa dziś');
+    document.getElementById('hubDailySub').textContent = !wyzwania
+      ? 'Odblokujesz po misji M03'
+      : (streak > 0 ? `Seria: ${streak} ${plural(streak, ['dzień', 'dni', 'dni'])} z rzędu` : `+${CONFIG.daily.completionBonusCoins} monet za ukończenie`);
+  }
+
+  /** The campaign mission to do next: the first uncleared mission (whose
+   *  predecessor is cleared) in the earliest unlocked district, or null
+   *  once every unlocked mission is done. */
+  nextCampaignMissionId() {
+    const c = this.save.campaign;
+    for (const d of DISTRICTS) {
+      if (!c.unlockedDistricts.includes(d.id)) continue;
+      const id = d.missions.find((m, i) => !this.isMissionDone(m) && (i === 0 || this.isMissionDone(d.missions[i - 1])));
+      if (id) return id;
+    }
+    return null;
+  }
+
+  /** Cleared -- M00 also counts as cleared on saves from before the
+   *  tutorial existed (M01 done; FEATURE_GATES.arena accepts those too). */
+  isMissionDone(id) {
+    const c = this.save.campaign.completed;
+    return !!(c[id] || (id === 'M00' && c.M01));
+  }
+
+  /** True when a mission can be started: its district is open and the
+   *  mission before it (in that district) is cleared. */
+  isMissionPlayable(id) {
+    const def = campaignMissionById(id);
+    const d = def && DISTRICTS.find(x => x.id === def.district);
+    if (!d || !this.save.campaign.unlockedDistricts.includes(d.id)) return false;
+    const i = d.missions.indexOf(id);
+    return i === 0 || this.isMissionDone(d.missions[i - 1]);
   }
 
   /** True until the M00 tutorial clears -- Miasto then collapses to the
@@ -7430,7 +7491,13 @@ class Game {
   /** Generic "what is this?" popup (#infoSheet). `body` is a list of
    *  paragraphs/HTML snippets (authored strings only, never user input);
    *  `action` optionally adds a primary button ({label, onClick}). */
-  openInfoSheet({ icon = '', title, body = [], action = null }) {
+  openInfoSheet({ icon = '', title, body = [], action = null, onClose = null, closeLabel = 'ROZUMIEM', bottom = false }) {
+    this.closeInfoSheet();
+    this.infoSheetOnClose = onClose;
+    document.getElementById('btnInfoSheetClose').textContent = closeLabel;
+    // v14: a bottom sheet over a light scrim (Warsztat purchases keep the
+    // live preview visible above it).
+    document.getElementById('infoSheet').classList.toggle('info-sheet-bottom', bottom);
     document.getElementById('infoSheetIcon').innerHTML = icon;
     document.getElementById('infoSheetIcon').classList.toggle('hidden', !icon);
     document.getElementById('infoSheetTitle').textContent = title;
@@ -7446,6 +7513,9 @@ class Game {
   closeInfoSheet() {
     document.getElementById('infoSheet').classList.add('hidden');
     this.infoSheetAction = null;
+    const onClose = this.infoSheetOnClose;
+    this.infoSheetOnClose = null;
+    if (onClose) onClose();
   }
 
   openCurrencyInfo(isPrism) {
@@ -7498,40 +7568,8 @@ class Game {
       '</ul>';
   }
 
-  openNextRewardInfo() {
-    const level = this.save.hub.coreLevel || 1;
-    const def = CORE_CITY_LEVEL_REWARDS[level + 1];
-    const category = this.coreCityRewardCategory(def);
-    this.openInfoSheet({
-      icon: REWARD_CATEGORY_ICONS[category],
-      title: def ? def.label : 'Premia',
-      body: [
-        this.rewardCategoryExplanation(category),
-        `Dostaniesz go automatycznie, gdy Core City dojdzie do 100% (LVL ${level} → ${level + 1}). Trafi prosto do Warsztatu.`,
-        this.coreCityHowToFillHtml()
-      ],
-      action: { label: 'WSZYSTKIE NAGRODY', onClick: () => this.openCoreCityRoadmap() }
-    });
-  }
-
-  openNextRewardCoinsInfo() {
-    const level = this.save.hub.coreLevel || 1;
-    const def = CORE_CITY_LEVEL_REWARDS[level + 1];
-    const coins = def ? def.coins : CONFIG.hub.milestoneFallbackCoins;
-    this.openInfoSheet({
-      icon: '◇',
-      title: `+${coins} monet`,
-      body: [
-        `Monety dostajesz razem z nagrodą za osiągnięcie LVL ${level + 1} Core City.`,
-        'Wydasz je w Warsztacie lub na dodatki przed rundą.'
-      ],
-      action: { label: 'WSZYSTKIE NAGRODY', onClick: () => this.openCoreCityRoadmap() }
-    });
-  }
-
   /** Every authored Core City level reward in one list, with the
-   *  current/done state -- what the level dots and the "wszystkie nagrody"
-   *  row open. */
+   *  current/done state -- what a tap on Miasto's city card opens. */
   openCoreCityRoadmap() {
     const level = this.save.hub.coreLevel || 1;
     const pct = this.save.hub.coreCharge || 0;
@@ -7592,46 +7630,6 @@ class Game {
       });
     }
   }
-
-  /** Three circles connected by a track (poprzedni / aktualny / następny
-   *  poziom) -- GDD 4.0 §5.1 mockup's "✓ LVL1 — ● LVL2 — ○ LVL3" progress
-   *  row, generalized to any level: done levels get a checkmark, the
-   *  current level a filled dot, future levels stay hollow. */
-  renderHubLevelDots(level) {
-    // Milestone road (player feedback: the old three dots never changed and
-    // didn't say what each level gives): six stops with the reward icon of
-    // each level, filled up to where Core City actually is, with the
-    // current level's charge running along the segment to the next stop.
-    const wrap = document.getElementById('hubLevelDots');
-    wrap.innerHTML = '';
-    const first = Math.max(1, Math.min(level - 1, 100));
-    const pct = (this.save.hub.coreCharge || 0) / 100;
-    for (let n = first; n < first + 6; n++) {
-      if (n > first) {
-        const seg = document.createElement('div');
-        seg.className = 'hub-level-connector';
-        const fill = document.createElement('div');
-        fill.className = 'hub-level-connector-fill';
-        fill.style.width = (n <= level ? 100 : n === level + 1 ? pct * 100 : 0) + '%';
-        seg.appendChild(fill);
-        wrap.appendChild(seg);
-      }
-      const item = document.createElement('div');
-      item.className = 'hub-level-item' + (n === level ? ' current' : '') + (n < level ? ' done' : '') + (n === level + 1 ? ' next' : '');
-      const circle = document.createElement('div');
-      circle.className = 'hub-level-circle';
-      const def = CORE_CITY_LEVEL_REWARDS[n];
-      if (n <= level) circle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
-      else circle.innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(def)];
-      item.appendChild(circle);
-      const label = document.createElement('div');
-      label.className = 'hub-level-label';
-      label.textContent = `LVL ${n}`;
-      item.appendChild(label);
-      wrap.appendChild(item);
-    }
-  }
-
 
   /** GDD 4.0 §5.4 Wyzwania tab: Daily rotating mission + Daily Seed
    *  Challenge, both with a UTC countdown to the next reset. */
@@ -7713,10 +7711,9 @@ class Game {
     const p = this.save.player || { level: 1, xp: 0 };
     const need = P.xpForLevel(p.level);
     document.getElementById('hubPlayerLevelValue').textContent = p.level;
-    document.getElementById('hubPlayerXpBar').style.width = clamp(p.xp / need, 0, 1) * 100 + '%';
-    document.getElementById('hubPlayerXpText').textContent = `${p.xp} / ${need} XP`;
-    const nextPrisms = (p.level + 1) % P.levelPrismsEvery === 0 ? ` + ${P.levelPrisms} ◆` : '';
-    document.getElementById('hubPlayerLevelNext').textContent = `→ poziom ${p.level + 1}: +${P.levelCoins(p.level + 1)} monet${nextPrisms}`;
+    document.getElementById('hubPlayerRing').style.setProperty('--xp', clamp(p.xp / need, 0, 1).toFixed(3));
+    document.getElementById('hubPlayerName').textContent = this.playerDisplayName();
+    document.getElementById('hubPlayerXpText').innerHTML = `POZIOM ${p.level}<span class="hub-player-xp"> · ${p.xp} / ${need} XP</span>`;
   }
 
   openPlayerLevelInfo() {
@@ -7756,6 +7753,7 @@ class Game {
     if (this.running || this.isFirstRun() || !(this.save.stats.runsPlayed > 0)) return;
     if (document.getElementById('mainMenu').classList.contains('hidden')) return;
     if (!document.getElementById('unlockOverlay').classList.contains('hidden')) return;
+    if (!document.getElementById('missionBriefing').classList.contains('hidden') || !document.getElementById('infoSheet').classList.contains('hidden')) return;
     const st = this.loginState();
     if (st.claimedToday) return;
     this.renderLoginGrid(st.day, false);
@@ -7980,6 +7978,7 @@ class Game {
     document.getElementById('resetProfileConfirm').classList.add('hidden');
     document.getElementById('tutorialIntroOverlay').classList.add('hidden');
     document.getElementById('loginRewardScreen').classList.add('hidden');
+    this.closeMissionBriefing();
     this.closeInfoSheet();
     this.introPending = false;
     if (id === 'mainMenu') {
@@ -7996,10 +7995,11 @@ class Game {
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'tutorialIntroOverlay', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen', 'missionBriefing'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
+    this.closeInfoSheet(); // runs (and clears) a pending onClose
   }
 
   /** GDD 4.0 §5.1-§5.4: one persistent bottom nav across the 4 hub screens.
@@ -8308,6 +8308,87 @@ class Game {
     return { icon: GOAL_ICONS[type] || GOAL_ICONS.fragment, color };
   }
 
+  /** Icon + color for one authored objective step (shared by the in-round
+   *  goal box and the v14 mission briefing cards). */
+  objectiveIconDef(st, setup) {
+    if (st.landmark) return { icon: GOAL_ICONS.landmark, color: SIZE_TIER_COLORS[LANDMARK_TIERS[st.landmark]] };
+    if (st.tier) return { icon: GOAL_ICONS.tier, color: CAMPAIGN_TIERS[st.tier - 1].color };
+    const kind = st.eat || st.activate || (st.combo && 'combo') ||
+      (st.gates && (setup.gateKind === 'portal' ? 'portal' : 'gate')) || (st.rival && 'rival') || (st.score && 'score');
+    return this.campaignGoalIcon(kind);
+  }
+
+  /** A mission's goals as briefing rows ({icon, color, label}) -- without
+   *  progress, for the cards shown before a mission starts. */
+  missionStepRows(def) {
+    const g = def.goal;
+    if (g.type === 'objectives') return g.steps.map(st => ({ ...this.objectiveIconDef(st, def.setup), label: st.label }));
+    if (g.type === 'tutorialChecklist') {
+      return g.steps.map(step => ({ ...(step.type === 'eatRival' ? { icon: CARD_ICONS.target, color: '#ff3860' } : this.campaignGoalIcon(step.entityType)), label: step.label }));
+    }
+    return [{ ...this.campaignGoalIcon(g.entityType || 'fragment'), label: g.label }];
+  }
+
+  /** v14 mission card (briefing sheet, Dzielnice's next-mission card, the
+   *  result screen's "next" preview): code + district, name, NELA's line,
+   *  the goals as icon rows, time / medal / reward, and optionally GRAJ.
+   *  opts: { eyebrow, nela, play, compact }. Strings are authored game
+   *  data (no player input), so plain template HTML is safe here. */
+  missionCardHtml(def, opts = {}) {
+    const c = this.save.campaign;
+    const district = DISTRICTS.find(d => d.id === def.district);
+    const color = DISTRICT_COLORS[def.district] || '#50F0FA';
+    const done = !!c.completed[def.id];
+    const medal = !!c.medals[def.id];
+    const playable = this.isMissionPlayable(def.id);
+    const d = district.missions.indexOf(def.id);
+    const prev = d > 0 ? campaignMissionById(district.missions[d - 1]) : null;
+    const STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z"/></svg>';
+    const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>';
+    const status = done ? `<span class="mc-status done">✓ UKOŃCZONA</span>` : (playable ? '' : `<span class="mc-status locked">ZABLOKOWANA</span>`);
+    const rows = this.missionStepRows(def).map((r, i) =>
+      `<li class="mc-goal"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span></li>`).join('');
+    const reward = done
+      ? '✓ nagroda odebrana'
+      : `◇ +${def.reward.coins} monet${def.reward.unlockDistrict ? ' · nowa dzielnica' : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
+    const meta = `<div class="mc-meta">` +
+      `<span class="mc-meta-item">${CLOCK}${def.untimed ? 'bez limitu' : formatClock(def.timeLimit)}</span>` +
+      `<span class="mc-meta-item mc-meta-medal${medal ? ' earned' : ''}">${STAR}Medal: ${medal ? 'zdobyty' : def.medal.label}</span>` +
+      `<span class="mc-meta-item mc-meta-reward">${reward}</span></div>`;
+    const nela = opts.nela ? `<div class="nela-bubble mc-nela"><span class="nela-avatar" aria-hidden="true">${NELA_AVATAR}</span>` +
+      `<span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line">${def.nela.start}</span></span></div>` : '';
+    const lock = !playable && prev ? `<p class="mc-lock">Najpierw ukończ ${missionCode(prev)} „${prev.name}”.</p>` : '';
+    // A locked mission's button leads to what unlocks it (no dead end).
+    const prevPlayable = !playable && prev && this.isMissionPlayable(prev.id);
+    const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
+    const play = !opts.play ? ''
+      : playable ? `<button class="btn btn-primary btn-mega mc-play" data-mc-play="${def.id}">${done ? 'ZAGRAJ PONOWNIE' : 'GRAJ'}${PLAY_SVG}</button>`
+        : prevPlayable ? `<button class="btn btn-secondary mc-play mc-play-prev" data-mc-play="${prev.id}">NAJPIERW ${missionCode(prev)}${PLAY_SVG}</button>`
+          : `<button class="btn btn-primary btn-mega mc-play" disabled>ZABLOKOWANA</button>`;
+    return `<div class="mc-head" style="--d-color:${color}">` +
+      `<span class="mc-code">${missionCode(def)}</span><span class="mc-eyebrow">${opts.eyebrow || district.name.toUpperCase()}</span>${status}</div>` +
+      `<h3 class="mc-name">${def.name}</h3>${nela}` +
+      `<div class="mc-label">CEL MISJI</div><ol class="mc-goals">${rows}</ol>${meta}${lock}${play}`;
+  }
+
+  openMissionBriefing(missionId) {
+    const def = campaignMissionById(missionId);
+    if (!def) return;
+    this.selectedMissionId = missionId;
+    const card = document.getElementById('briefingCard');
+    card.innerHTML = this.missionCardHtml(def, { nela: true, play: true });
+    card.style.setProperty('--d-color', DISTRICT_COLORS[def.district] || '#50F0FA');
+    const h = card.querySelector('.mc-name');
+    if (h) h.id = 'briefingName';
+    document.getElementById('missionBriefing').classList.remove('hidden');
+    this.sound.ui();
+    this.analytics.track('mission_briefing', { missionId });
+  }
+
+  closeMissionBriefing() {
+    document.getElementById('missionBriefing').classList.add('hidden');
+  }
+
   /** Rows for the "CEL RUNDY" HUD section: one per goal shape, two for
    *  activateAndDevour (activator progress + the landmark bite itself),
    *  so each row shows its own icon/label/progress instead of one
@@ -8323,11 +8404,7 @@ class Game {
       case 'objectives':
         return g.steps.map(st => {
           const [progress, target] = this.objectiveProgress(st);
-          const kind = st.eat || st.activate || (st.landmark && 'landmark') || (st.tier && 'tier') || (st.combo && 'combo') ||
-            (st.gates && (m.def.setup.gateKind === 'portal' ? 'portal' : 'gate')) || (st.rival && 'rival') || (st.score && 'score');
-          let iconDef = this.campaignGoalIcon(kind);
-          if (st.landmark) iconDef = { icon: GOAL_ICONS.landmark, color: SIZE_TIER_COLORS[LANDMARK_TIERS[st.landmark]] };
-          if (st.tier) iconDef = { icon: GOAL_ICONS.tier, color: CAMPAIGN_TIERS[st.tier - 1].color };
+          const iconDef = this.objectiveIconDef(st, m.def.setup);
           const display = st.tier ? `T${Math.min(progress, target)}/T${target}`
             : st.score ? `${Math.min(progress, target)}/${target}` : null;
           return { ...iconDef, label: st.label, progress, target, display, done: progress >= target };
@@ -8425,13 +8502,14 @@ class Game {
     const unlockerDistrict = unlocker && DISTRICTS.find(d => d.id === unlocker.district);
     this.openInfoSheet({
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
-      title: `${district.name} — zablokowana`,
+      title: 'Dzielnica zablokowana',
       body: [
-        `${district.name} to ${nounFor('misja', district.missions.length)} z nowymi obiektami do pochłonięcia.`,
+        `${district.name}: ${nounFor('misja', district.missions.length)} i obiekty, których jeszcze nie znasz.`,
         unlocker
           ? `Odblokujesz ją, kończąc ostatnią misję poprzedniej dzielnicy: <strong>${missionCode(unlocker)} „${unlocker.name}”</strong> (${unlockerDistrict.name}).`
           : 'Odblokujesz ją, kończąc poprzednią dzielnicę.'
-      ]
+      ],
+      action: unlocker ? { label: 'DO ODPRAWY: ' + missionCode(unlocker), onClick: () => this.openMissionBriefing(unlocker.id) } : null
     });
   }
 
@@ -8453,65 +8531,63 @@ class Game {
     // GDD 4.0 §8.4 anti-confusion: this header shows the district's OWN
     // rebuild % (§6 "0/4, 1/4... nie używać wielkiego okręgu Core City"),
     // never the Miasto/Core City percentage.
-    const doneCount = district.missions.filter(id => this.save.campaign.completed[id]).length;
+    const c = this.save.campaign;
+    const doneCount = district.missions.filter(id => c.completed[id]).length;
     const rebuildPct = Math.round((doneCount / district.missions.length) * 100);
+    const color = DISTRICT_COLORS[district.id] || '#50F0FA';
+    document.getElementById('campaignScreen').style.setProperty('--d-color', color);
     document.getElementById('districtTitle').textContent = district.name.toUpperCase();
-    document.getElementById('districtRebuildLine').textContent = `ODBUDOWA: ${rebuildPct}% · ${doneCount} z ${district.missions.length} misji`;
+    document.getElementById('districtRebuildLine').textContent = `${doneCount}/${district.missions.length} · ${rebuildPct}%`;
+    document.getElementById('districtRebuildBar').style.width = rebuildPct + '%';
+    document.getElementById('districtStoryText').textContent = DISTRICT_STORY[district.id] || '';
+
+    // v14: the mission to do next is briefed at the top with its own GRAJ
+    // (player feedback: starting a level meant scrolling to the bottom).
+    const nextId = district.missions.find((id, i) => !this.isMissionDone(id) && (i === 0 || this.isMissionDone(district.missions[i - 1])));
+    const nextCard = document.getElementById('missionNextCard');
+    if (nextId) {
+      const def = campaignMissionById(nextId);
+      nextCard.innerHTML = this.missionCardHtml(def, { eyebrow: 'NASTĘPNA MISJA', play: true });
+    } else {
+      const nextDistrict = DISTRICTS.find(d => d.order === district.order + 1);
+      nextCard.innerHTML = `<div class="mc-head"><span class="mc-code">✓</span><span class="mc-eyebrow">DZIELNICA ODBUDOWANA</span></div>` +
+        `<h3 class="mc-name">Dzielnica odbudowana!</h3>` +
+        `<p class="mc-lock">${nextDistrict ? (c.unlockedDistricts.includes(nextDistrict.id) ? `Ruszaj dalej: ${nextDistrict.name} czeka.` : `Następna: ${nextDistrict.name}.`) : 'Całe Neonowe Miasto odzyskane. Wracaj po medale!'}</p>` +
+        (nextDistrict && c.unlockedDistricts.includes(nextDistrict.id) ? `<button class="btn btn-primary mc-play" data-district-go="${nextDistrict.id}">DO DZIELNICY ${nextDistrict.name.toUpperCase()}</button>` : '');
+      const go = nextCard.querySelector('[data-district-go]');
+      if (go) go.addEventListener('click', () => this.selectCampaignDistrict(go.dataset.districtGo));
+    }
+    nextCard.style.setProperty('--d-color', color);
 
     const list = document.getElementById('missionList');
     list.innerHTML = '';
-    let firstPlayableId = null;
     let medalCount = 0;
-    // GDD 4.0 §5.2 mockup: each row is "M0X / name / status caps line",
-    // with a checkmark (done) or play icon (current) on the right --
-    // never plain emoji, matching the mockup's clean line-icon language.
+    // Each row: code, name, its first goal (with icon) and a state icon --
+    // a tap opens the mission's briefing (openMissionBriefing()).
     const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
     const PLAY_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
     const LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
+    const STAR_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z"/></svg>';
     district.missions.forEach((id, i) => {
       const def = campaignMissionById(id);
-      const done = !!this.save.campaign.completed[id];
-      const prevDone = i === 0 || this.save.campaign.completed[district.missions[i - 1]];
-      // Preselect the next mission to actually do, not a cleared one.
-      if (prevDone && !done && !firstPlayableId) firstPlayableId = id;
-      if (this.save.campaign.medals[id]) medalCount++;
+      const done = !!c.completed[id];
+      const prevDone = i === 0 || c.completed[district.missions[i - 1]];
+      const medal = !!c.medals[id];
+      if (medal) medalCount++;
+      const first = this.missionStepRows(def)[0];
       const row = document.createElement('button');
-      row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '');
+      row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '') + (id === nextId ? ' current' : '');
       const icon = done ? CHECK_ICON : (prevDone ? PLAY_ICON : LOCK_ICON);
-      const status = done ? 'UKOŃCZONA · POWTÓRZ' : (prevDone ? 'DOSTĘPNA · GRAJ' : 'ZABLOKOWANA');
-      row.innerHTML = `<span class="mission-row-main">` +
-        `<span class="mission-row-id">${def.id === 'M00' ? 'START' : missionCode(def)}</span>` +
-        `<span class="mission-row-name">${def.name}</span>` +
-        `<span class="mission-row-status">${status}</span>` +
-        `</span><span class="mission-row-icon">${icon}</span>`;
-      row.addEventListener('click', () => this.selectCampaignMission(id));
+      row.innerHTML = `<span class="mission-row-id">${def.id === 'M00' ? 'START' : missionCode(def)}</span>` +
+        `<span class="mission-row-main"><span class="mission-row-name">${def.name}</span>` +
+        `<span class="mission-row-goal"><span class="mission-row-goal-icon" style="color:${first.color}"><svg viewBox="0 0 24 24">${first.icon}</svg></span>${first.label}${def.goal.steps && def.goal.steps.length > 1 ? ` <em>+${def.goal.steps.length - 1} ${plural(def.goal.steps.length - 1, ['cel', 'cele', 'celów'])}</em>` : ''}</span></span>` +
+        `<span class="mission-row-medal${medal ? ' earned' : ''}" title="${medal ? 'Medal zdobyty' : 'Medal do zdobycia'}">${STAR_ICON}</span>` +
+        `<span class="mission-row-icon">${icon}</span>`;
+      row.addEventListener('click', () => this.openMissionBriefing(id));
       list.appendChild(row);
     });
-    document.getElementById('missionMedalsFootnote').innerHTML =
-      `Medale: ${medalCount}/${district.missions.length} · opcjonalne.<br>Nie blokują kolejnych misji.`;
-    this.selectCampaignMission(firstPlayableId || district.missions[0]);
-  }
-
-  selectCampaignMission(missionId) {
-    const def = campaignMissionById(missionId);
-    this.selectedMissionId = missionId;
-    document.getElementById('missionDetailName').textContent = `${missionCode(def)} · ${def.name}`;
-    document.getElementById('missionDetailGoal').textContent = 'Cel: ' + def.goal.label;
-    document.getElementById('missionDetailMedal').textContent = 'Medal: ' + def.medal.label;
-    document.getElementById('missionDetailNela').textContent = `NELA: „${def.nela.start}”`;
-    const district = DISTRICTS.find(d => d.id === def.district);
-    const idxInDistrict = district.missions.indexOf(missionId);
-    const prevDone = idxInDistrict === 0 || this.save.campaign.completed[district.missions[idxInDistrict - 1]];
-    // Locked rows are selectable (a tap previews the mission) rather than
-    // disabled buttons that ignore taps; the detail line says why GRAJ is off.
-    const prevDef = idxInDistrict > 0 ? campaignMissionById(district.missions[idxInDistrict - 1]) : null;
-    document.getElementById('missionDetailReward').textContent = this.save.campaign.completed[missionId]
-      ? 'Ukończona — możesz zagrać ponownie dla wprawy.'
-      : !prevDone
-        ? `Zablokowana — najpierw ukończ ${missionCode(prevDef)} „${prevDef.name}”.`
-        : `Pierwsze ukończenie: +${def.reward.coins} monet${def.reward.unlockDistrict ? ' + nowa dzielnica' : ''}.`;
-    document.getElementById('btnPlayMission').disabled = !prevDone;
-    document.querySelectorAll('#missionList .mission-row').forEach((el, i) => el.classList.toggle('selected', district.missions[i] === missionId));
+    document.getElementById('missionMedalsFootnote').textContent = `MEDALE ${medalCount}/${district.missions.length}`;
+    this.selectedMissionId = nextId || district.missions[0];
   }
 
   /* ---- Mission build/spawn ---- */
@@ -8792,6 +8868,11 @@ class Game {
     this.state = GameState.PLAYING;
     if (def.goal.type === 'tutorialChecklist') this.showTutorialStepIntro(0);
     else this.showNelaToast(def.nela.start);
+    // v14: the goal box flashes in once, so the first glance lands on it.
+    const goalBox = document.getElementById('hud-goal');
+    goalBox.classList.remove('goal-intro');
+    void goalBox.offsetWidth;
+    goalBox.classList.add('goal-intro');
     this.updateCampaignHUD();
     this.analytics.track('mission_start', { missionId: def.id, district: def.district });
 
@@ -8876,7 +8957,7 @@ class Game {
       sweep.lineWidth = 6;
       this.ripples.push(sweep);
       this.spawnParticles(this.player.x, this.player.y, newTier.color, 22, 1.5);
-      this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY POZIOM WZROSTU!', newTier.color, 1.3, 2);
+      this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY ROZMIAR!', newTier.color, 1.3, 2);
       this.sound.tierUp();
       this.flashScreen(newTier.color, 0.18);
       if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
@@ -9345,13 +9426,17 @@ class Game {
     el.classList.add('hidden');
   }
 
+  /** v14: NELA's line as a speech bubble with her avatar and a chirp
+   *  (was a small italic text strip). Stays a little longer for long lines. */
   showNelaToast(text) {
     const el = document.getElementById('nelaToast');
-    el.textContent = 'NELA: „' + text + '”';
+    document.getElementById('nelaToastText').textContent = text;
     el.classList.remove('hidden');
     requestAnimationFrame(() => el.classList.add('visible'));
+    this.sound.nela();
     clearTimeout(this.nelaTimer);
-    this.nelaTimer = setTimeout(() => el.classList.remove('visible'), CONFIG.campaign.nelaDisplaySeconds * 1000);
+    const secs = CONFIG.campaign.nelaDisplaySeconds + Math.min(2.5, text.length / 40);
+    this.nelaTimer = setTimeout(() => el.classList.remove('visible'), secs * 1000);
   }
 
   /** M00's opening instructions, unlike every other mission's auto-fading
@@ -9388,7 +9473,24 @@ class Game {
     // for activateAndDevour, so activator progress and the landmark bite
     // each get their own line instead of one combined string+number).
     // v12: only re-parsed when a row actually changed (was every frame).
-    this.hudSet('missionGoalItems', 'html', this.campaignGoalItems().map(it => `
+    const goalItems = this.campaignGoalItems();
+    // v14: a finished step of a multi-step mission gets its own moment
+    // ("CEL ZALICZONY" + what's left) instead of only a quiet strike-through.
+    if (m.def.goal.type !== 'tutorialChecklist' && goalItems.length > 1) {
+      const doneNow = goalItems.map(it => it.progress >= it.target);
+      if (m.stepsDoneShown && !doneNow.every(Boolean)) {
+        const i = doneNow.findIndex((d, k) => d && !m.stepsDoneShown[k]);
+        if (i >= 0) {
+          const nextGoal = goalItems.find((it, k) => !doneNow[k]);
+          this.showBanner('CEL ZALICZONY', `Teraz: ${nextGoal.label}`, '#46D99A', 2.1, 2);
+          this.sound.coin();
+        }
+      }
+      // Remember every step ever announced: a tier step can drop (a bigger
+      // rival's hit shrinks the hole) and must not re-announce.
+      m.stepsDoneShown = doneNow.map((d, k) => d || !!(m.stepsDoneShown && m.stepsDoneShown[k]));
+    }
+    this.hudSet('missionGoalItems', 'html', goalItems.map(it => `
       <div class="mission-goal-item${it.progress >= it.target ? ' done' : ''}">
         <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
         <span class="mission-goal-text">${it.label}</span>
@@ -9531,9 +9633,10 @@ class Game {
       return;
     }
     this.revivePending = true;
+    this.hideNelaToast();
     m.reviveDeclined = true; // one offer per attempt, whatever the answer
     const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
-      .map(it => `${it.label} (${Math.min(it.progress, it.target)}/${it.target})`);
+      .map(it => `${it.label} (${it.display || `${Math.min(it.progress, it.target)}/${it.target}`})`);
     document.getElementById('reviveMissing').textContent = missing.length ? `Zostało: ${missing.join(' · ')}` : '';
     document.getElementById('reviveProgressBar').style.width = Math.round(frac * 100) + '%';
     document.getElementById('reviveProgressPct').textContent = Math.round(frac * 100) + '%';
@@ -9661,42 +9764,83 @@ class Game {
     if (success) this.sound.fanfare(firstClear); else this.sound.fail();
     document.getElementById('missionResultEyebrow').textContent = `${missionCode(def)} · ${def.name}`;
     document.getElementById('missionResultNela').textContent = success
-      ? `NELA: „${def.nela.success}”`
-      : 'Spróbuj jeszcze raz — teraz znasz już trasę.';
+      ? def.nela.success
+      : (this.campaignGoalFraction() >= 0.5
+        ? 'Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.'
+        : 'Tym razem Glitch był szybszy. Zacznij od najbliższych celów, a reszta pójdzie sama.');
     this.animateNumber(document.getElementById('missionResultScore'), this.player.score, 1000);
+    // Score only where a goal asks for it; on a timeout the clock equals
+    // the limit, so the tile shows how far the goals got instead.
+    const scoreGoal = !!(def.goal.steps && def.goal.steps.some(st => st.score));
+    document.getElementById('missionResultScoreTile').classList.toggle('hidden', !scoreGoal && !this.player.score);
+    document.getElementById('missionResultTimeLabel').textContent = success ? 'CZAS' : 'POSTĘP';
+    document.getElementById('missionResultTime').textContent = success ? formatClock(m.elapsed) : `${Math.round(this.campaignGoalFraction() * 100)}%`;
+    const medalOwned = medalEarned || !!this.save.campaign.medals[def.id];
+    document.getElementById('missionResultMedalStar').textContent = medalOwned ? '★' : '☆';
+    document.getElementById('missionResultMedalTile').classList.toggle('earned', medalOwned);
     this.renderXpCard('mission', this.lastXpResult);
     if (success) setTimeout(() => this.launchConfetti('missionConfetti', medalEarned ? 80 : 50), 250);
-    document.getElementById('missionResultMedal').textContent = medalEarned
-      ? `★ Medal: ${def.medal.label}`
-      : `Medal nieukończony: ${def.medal.label}`;
-    document.getElementById('missionResultMedal').classList.toggle('earned', medalEarned);
+    const medalLine = document.getElementById('missionResultMedal');
+    if (success) {
+      medalLine.textContent = medalEarned ? `Medal zdobyty: ${def.medal.label}`
+        : medalOwned ? `Medal masz już z wcześniejszej próby (${def.medal.label})`
+          : `Medal: ${def.medal.label} — zagraj ponownie, żeby go zdobyć`;
+    } else {
+      const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
+        .map(it => `${it.label} (${it.display || `${Math.min(it.progress, it.target)}/${it.target}`})`);
+      medalLine.textContent = missing.length ? `Zostało: ${missing.join(' · ')}` : '';
+    }
+    medalLine.classList.toggle('earned', medalOwned);
     document.getElementById('missionResultReward').textContent = firstClear
-      ? `+${def.reward.coins} monet (pierwsze ukończenie)${def.reward.unlockDistrict ? ' + nowa dzielnica!' : ''}${def.reward.unlockSkin ? ' + kosmetyk finałowy!' : ''}`
-      : (success ? 'Nagroda za pierwsze ukończenie już odebrana wcześniej.' : 'Brak nagrody — czas minął.');
+      ? `+${def.reward.coins} monet${def.reward.unlockSkin ? ' · Wir finałowy!' : ''}`
+      : '';
+    document.getElementById('missionResultReward').classList.toggle('gained', firstClear);
+    document.getElementById('missionResultReward').classList.toggle('hidden', !firstClear);
 
+    // v14: what comes next, briefed above the button that leads there --
+    // the next mission in this district, or after its boss the first
+    // mission of the next one (player feedback: "DALEJ: M12" said nothing
+    // about where it goes).
     const district = DISTRICTS.find(d => d.id === def.district);
     const idx = district.missions.indexOf(def.id);
-    const nextId = success ? district.missions[idx + 1] : null;
+    // After a replay the "next" is the frontier (the mission still to do),
+    // not the already-cleared one after it.
+    const following = district.missions[idx + 1];
+    const followingOk = following && this.isMissionPlayable(following);
+    const nextId = !success ? null
+      : (followingOk && !this.save.campaign.completed[following]) ? following
+        : (this.nextCampaignMissionId() || (followingOk ? following : null));
+    const nextDef = nextId && campaignMissionById(nextId);
+    const nextCard = document.getElementById('missionResultNextCard');
     const btnNext = document.getElementById('btnMissionNext');
-    if (nextId) {
-      btnNext.textContent = `DALEJ: ${missionCode(campaignMissionById(nextId))}`;
-      btnNext.classList.remove('hidden');
+    const btnRetry = document.getElementById('btnMissionRetry');
+    const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
+    nextCard.classList.toggle('hidden', !nextDef);
+    btnRetry.classList.toggle('hidden', !success);
+    document.getElementById('btnMissionMap').classList.remove('hidden');
+    if (nextDef) {
+      const newDistrict = firstClear && !!def.reward.unlockDistrict && nextDef.district === def.reward.unlockDistrict;
+      nextCard.innerHTML = this.missionCardHtml(nextDef, { eyebrow: newDistrict ? `NOWA DZIELNICA · ${DISTRICTS.find(d => d.id === nextDef.district).name.toUpperCase()}` : 'NASTĘPNA MISJA' });
+      nextCard.style.setProperty('--d-color', DISTRICT_COLORS[nextDef.district] || '#50F0FA');
+      btnNext.innerHTML = `GRAJ ${missionCode(nextDef)}${PLAY}`;
       btnNext.onclick = () => this.startCampaignMission(nextId);
+    } else if (success && CAMPAIGN_MISSIONS.every(md => this.isMissionDone(md.id))) {
+      btnNext.textContent = 'WRÓĆ DO MIASTA';
+      btnNext.onclick = () => { this.updateCoinDisplays(); this.showScreen('mainMenu'); };
     } else if (success) {
-      const isFinalMission = district.order === DISTRICTS.length;
-      btnNext.textContent = isFinalMission ? 'KAMPANIA UKOŃCZONA — DO MIASTA' : 'DZIELNICA UKOŃCZONA — DO MAPY';
-      btnNext.classList.remove('hidden');
-      btnNext.onclick = isFinalMission
-        ? () => { this.updateCoinDisplays(); this.showScreen('mainMenu'); }
-        : () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
+      btnNext.innerHTML = `DZIELNICE${PLAY}`;
+      btnNext.onclick = () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
+      document.getElementById('btnMissionMap').classList.add('hidden');
     } else {
-      btnNext.classList.add('hidden');
+      btnNext.innerHTML = `SPRÓBUJ PONOWNIE${PLAY}`;
+      btnNext.onclick = () => this.startCampaignMission(def.id);
     }
-    document.getElementById('btnMissionRetry').onclick = () => this.startCampaignMission(def.id);
-    document.getElementById('btnMissionMap').onclick = () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
+    btnRetry.onclick = () => this.startCampaignMission(def.id);
+    document.getElementById('btnMissionMap').onclick = () => { this.updateCoinDisplays(); this.selectedDistrictId = nextDef ? nextDef.district : def.district; this.openCampaignScreen(); };
 
     this.updateCoinDisplays();
     this.showScreen('missionResultScreen');
+    document.querySelector('#missionResultScreen > .screen-inner').scrollTop = 0;
     this.queueUnlockCelebrations();
   }
 
@@ -10226,7 +10370,7 @@ class Game {
     const { ranked, place, coinsEarned } = this.finalizeRun();
     const corePctAfter = this.save.hub.coreCharge || 0;
 
-    document.getElementById('finalPlace').textContent = '#' + place;
+    document.getElementById('finalPlace').textContent = `${place}.`;
     // Golden Shot v8 triumph screen: count-ups, place-based headline, confetti.
     this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100, '', formatNum);
     this.animateNumber(document.getElementById('finalCoins'), coinsEarned, 1100);
@@ -10328,7 +10472,7 @@ class Game {
 
     const missionLine = document.getElementById('missionResultLine');
     if (this.missionJustCompleted) {
-      missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}" — +${this.activeMission.rewardCoins} monet`;
+      missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}” — +${this.activeMission.rewardCoins} monet`;
       missionLine.classList.remove('hidden');
     } else {
       missionLine.classList.add('hidden');
@@ -10385,6 +10529,8 @@ class Game {
     this.state = GameState.PAUSED;
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('controlsPanel').classList.add('hidden');
+    this.hideNelaToast();
+    document.getElementById('btnRestartLabel').textContent = this.mode === 'campaign' ? 'ZACZNIJ MISJĘ OD NOWA' : 'ZACZNIJ RUNDĘ OD NOWA';
     document.getElementById('pauseSheet').classList.remove('hidden');
     if (this.revivePending) clearTimeout(this.reviveTimer);
     this.sound.setDucked(true);
@@ -10677,7 +10823,7 @@ class Game {
   startFrenzy() {
     const G = CONFIG.golden;
     this.frenzyEndsAt = this.timeRemaining - G.frenzySeconds;
-    this.showBanner('SZAŁ!', 'Punkty ×2 · jesz o poziom większe obiekty', '#EFCB63', 1.4, 4);
+    this.showBanner('SZAŁ!', 'Punkty ×2 · jesz o rozmiar większe obiekty', '#EFCB63', 1.4, 4);
     this.sound.frenzy();
     this.flashScreen('#EFCB63', 0.25);
     this.triggerShake(8);
@@ -11003,6 +11149,7 @@ class Game {
    *  can pick a card or hit "POMIŃ" to close the window without picking;
    *  autoPickMs is only a safety net against an AFK tab. */
   offerEvolution() {
+    this.hideNelaToast();
     this.evolutionPending = true;
     const cards = this.pickMutationCards();
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id) });
