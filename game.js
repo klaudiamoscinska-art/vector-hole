@@ -9338,7 +9338,7 @@ class Game {
     const btn = card.querySelector('.mc-play[data-mc-launch]');
     if (btn) {
       const def = campaignMissionById(btn.dataset.mcLaunch);
-      const energy = def && this.energyFreeFor(def.id === 'M00' ? 'tutorial' : 'mission') ? '' : '<span class="mc-play-cost">⚡1</span>';
+      const energy = def && this.energyFreeFor(def.id === 'M00' ? 'tutorial' : 'mission') ? '' : '<span class="mc-play-cost"><svg class="inline-bolt" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>1</span>';
       btn.innerHTML = `GRAJ${cost ? ` <span class="mc-play-cost">−${cost} ◇</span>` : ''}${energy}<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>`;
     }
     const note = card.querySelector('.mc-boost-note');
@@ -9406,7 +9406,7 @@ class Game {
       `<div class="nela-bubble mc-nela"><span class="nela-avatar" aria-hidden="true">${NELA_AVATAR}</span><span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line">${def.nela.start}</span></span></div>` +
       `<ol class="mc-goals">${rows}</ol>` +
       (twists || boosts ? `<div class="mc-twists">${twists}${boosts}</div>` : '') +
-      `<div class="start-meta"><span>⏱ ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${st.type === 'timeUnder' ? formatClock(st.seconds) : 'wyzwanie'}`).join(' · ')}</span></div>` +
+      `<div class="start-meta"><span><svg class="inline-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${st.type === 'timeUnder' ? formatClock(st.seconds) : 'wyzwanie'}`).join(' · ')}</span></div>` +
       `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></button>` +
       `<p class="start-tap">Zegar ruszy po dotknięciu</p>`;
     document.getElementById('missionStartOverlay').classList.remove('hidden');
