@@ -136,8 +136,13 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   GRAJ, nic nie znika jednym dotknięciem). Po 3 porażkach z rzędu NELA
   pożycza jeden Zegar (raz na misję).
 - **Start na dotknięcie (v15)**: po GRAJ misja otwiera się zamrożona
-  z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji,
-  wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po dotknięciu.
+  z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji
+  z wyjaśnieniem, wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po
+  dotknięciu; „Zmień wzmocnienia” wraca do odprawy i oddaje energię oraz
+  wzmocnienia.
+- Najwyżej 3–10 misji EKSTREMALNYCH na dzielnicę Rozdziału II
+  (`EXTREME_CAP`; boss i ostatnie misje), reszta oznaczonych 5 staje się
+  BARDZO TRUDNA. Tarcza jest wyłączona w misjach bez zagrożeń.
 - **Odprawa**: każda misja startuje przez arkusz odprawy
   (`openMissionBriefing()`): z Dzielnic, z kafla na Mieście, z wyniku
   („GRAJ Mxx”, „SPRÓBUJ PONOWNIE”, „POWTÓRZ”) i z pauzy („zacznij od

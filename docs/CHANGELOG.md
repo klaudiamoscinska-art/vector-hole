@@ -26,6 +26,16 @@ Poza uwagami:
 - **Uczciwość planszy**: skupiska combo nigdy tuż przy starcie (combo
   w 3 s), nic w rogu poza zasięgiem wiru, strzałka prowadzi do jedzenia,
   gdy cel jest jeszcze za duży (w ciemności nie było jak go znaleźć).
+- **Runda recenzji (design + kod, dwóch niezależnych recenzentów)**:
+  formy neutralne płciowo w nowych tekstach, „Nocny Bazar odzyskany”,
+  progi ★★/★★★ nie szybsze niż 1,3×/1,1× ekspert, najwyżej 3–10 misji
+  EKSTREMALNYCH na dzielnicę (reszta BARDZO TRUDNA), „Kruchy wir” zawsze
+  z zagrożeniem, Tarcza wyłączona tam, gdzie nic nie uderza, i liczy
+  zderzenie do wyzwania „bez zderzeń”, „Zmień wzmocnienia” na karcie
+  startu (zwraca energię i wzmocnienia), Złodziej nie wygrywa po
+  wygranym już wyścigu, GRAJ z pustą energią nie pobiera podwójnie,
+  reklama nigdy przed pustą energią, karta startu nie zasłania pauzy,
+  duplikaty i nazwy misji poprawione.
 - **Dźwięk**: dzwonek każdej gwiazdki, „power-up” startu i energii.
 - **Telemetria**: `mission_end` z trudnością, gwiazdkami, przyczyną
   porażki, numerem próby i wzmocnieniami; `energy_spend/empty/refill/gain`,
