@@ -4239,3 +4239,47 @@ body[data-gfx="0"] #hud::before { display: none; }
 /* Wyzwania v14: the same wide column as the other tabs. */
 #challengesScreen .screen-inner > *:not(.app-header) { width: 100%; max-width: 440px; }
 #challengesScreen #btnPlayDaily { max-width: 440px; }
+
+/* ---- v14 review round ---- */
+/* NELA's in-mission bubble sits low (above the minimap), never over the
+   goal ahead; a tap closes it. */
+.nela-toast { top: auto; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(8px); pointer-events: auto; cursor: pointer; }
+.nela-toast.visible { transform: translateX(-50%) translateY(0); }
+@media (max-height: 700px) { .nela-toast { bottom: calc(160px + env(safe-area-inset-bottom, 0px)); } }
+
+/* Miasto: Core City card no taller than it needs; LVL as a chip. */
+#mainMenu:not(.first-run) .hub-city { flex: 0 1 auto; height: clamp(178px, 30vh, 250px); max-height: 250px; min-height: 160px; }
+.hub-city-badge { flex-direction: row; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(4, 16, 29, 0.72); border: 1px solid rgba(80, 240, 250, 0.35); }
+.hub-city-badge .hub-city-sub { margin: 0; font-size: 9.5px; }
+.hub-city-badge .hub-city-lvl { font-size: 14px; text-shadow: none; }
+@media (max-width: 400px) { .hub-city-next-prefix { display: none; } }
+.hub-quick-text strong { -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis; display: block; }
+
+/* Info sheet as a bottom sheet (Warsztat: the preview stays visible). */
+#infoSheet.info-sheet-bottom { align-items: flex-end !important; background: linear-gradient(to bottom, rgba(4, 16, 29, 0) 0%, rgba(4, 16, 29, 0.35) 35%, rgba(4, 16, 29, 0.85) 100%) !important; }
+#infoSheet.info-sheet-bottom > .info-sheet-panel { margin: 0 auto calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 460px; animation: briefing-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Mission result: score tile only when it matters; three equal exits. */
+.mission-result-stats { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.mission-result-row .btn { font-size: 12px; padding: 11px 6px; }
+.mc-play-prev { font-size: 15px; padding: 13px 16px; }
+@media (max-height: 760px) {
+  #missionResultScreen .mission-hero { width: 44px; height: 44px; }
+  #missionResultScreen > .mission-result-inner { gap: 8px; padding-top: 12px; }
+  #missionResultScreen .section-title { font-size: 22px; }
+  #missionResultScreen .mr-stat { padding: 6px; }
+  #missionResultScreen .mr-stat-value { font-size: 19px; }
+  #missionResultScreen .nela-bubble { padding: 8px 10px; }
+  #missionResultScreen .nela-line { font-size: 13px; }
+  #missionResultScreen .result-xp-card { padding: 7px 12px; gap: 4px; }
+}
+
+/* Tap targets >= 40 px for everything that reacts to a tap. */
+.hub-gear-btn { width: 40px; height: 40px; }
+.coin-display { min-height: 40px; }
+.consent-actions .btn, #btnFreePrisms { min-height: 40px; }
+/* Tall phones: the content block sits centred between header and nav
+   (free space split above/below) instead of leaving a void at the bottom. */
+#mainMenu:not(.first-run) .hub-header { margin-bottom: auto; }
+#mainMenu:not(.first-run) .hub-chest-row { margin-bottom: auto; }
+@media (min-height: 800px) { #mainMenu:not(.first-run) .hub-city { height: clamp(178px, 34vh, 300px); max-height: 300px; } }

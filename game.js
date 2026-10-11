@@ -1397,7 +1397,7 @@ const MUTATIONS = [
   { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Gdy rywal Cię pochłonie, po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
   { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
   { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
-  { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM POZIOMIE', desc: 'Gdy urośniesz o poziom, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
+  { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM ROZMIARZE', desc: 'Gdy urośniesz o rozmiar, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
   { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Najbliższy rywal dostaje różowy celownik. Zjedz go, a zgarniesz +40 punktów ekstra.', icon: 'target', weight: 2, color: '#EFCB63' }
 ];
 
@@ -1504,7 +1504,7 @@ function randomStreetGlyph() { return PROP_STREET_GLYPHS[randInt(0, PROP_STREET_
 const CAMPAIGN_POWERS = [
   { id: 'magnes', name: 'Magnes', tag: 'CAŁĄ MISJĘ', desc: 'Obiekty, które możesz zjeść, same płyną do Ciebie, gdy są blisko.', icon: 'magnet', color: '#50F0FA' },
   { id: 'reaktor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kęsami masz 2,1 s zamiast 1,5 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', color: '#EFCB63' },
-  { id: 'impuls', name: 'Impuls', tag: 'NA NOWYM POZIOMIE', desc: 'Za każdym razem, gdy urośniesz o poziom, dostajesz +20% prędkości na 2 s.', icon: 'bolt', color: '#46D99A' },
+  { id: 'impuls', name: 'Impuls', tag: 'NA NOWYM ROZMIARZE', desc: 'Za każdym razem, gdy urośniesz o rozmiar, dostajesz +20% prędkości na 2 s.', icon: 'bolt', color: '#46D99A' },
   { id: 'skaner', name: 'Skaner', tag: 'CO 8 S', desc: 'Co 8 s podświetla najbliższy obiekt — od razu widać, dokąd jechać.', icon: 'radar', color: '#9875FF' }
 ];
 
@@ -1533,7 +1533,7 @@ const DISTRICTS = [
 const DISTRICT_STORY = {
   plac: 'Plac Neonów był sercem nocnego miasta. Glitch zgasił neony i zamienił wszystko w zepsuty kod. Pochłoń skażenie, a światła wrócą.',
   park: 'W Parku Impulsów bramy zgubiły rytm, a fontanna pompuje szum zamiast wody. Wyczuj puls parku i odzyskaj fontannę.',
-  port: 'Port Syntez stoi w korku skażonych ciężarówek. Nad wszystkim góruje Dźwig. Urośnij do T5 i zrób z nim porządek.',
+  port: 'Port Syntez stoi w korku skażonych ciężarówek, a nad wszystkim góruje Dźwig. Urośnij tak, żeby zmieścić go w sobie.',
   galeria: 'Galeria Glitch to labirynt witryn i portali. Tu nic nie jest tym, czym się wydaje. Trzymaj się celu.',
   dachy: 'Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.',
   rdzen: 'Rdzeń Miasta. Stąd Glitch steruje wszystkim. Pochłoń Rdzeń, a Neonowe Miasto znów zaświeci.'
@@ -1625,7 +1625,7 @@ const round5 = v => Math.round(v / 5) * 5;
 function stepLabel(step, setup) {
   if (step.label) return step.label;
   if (step.eat) return `Pochłoń ${nounFor(step.glyph || step.eat, step.n)}`;
-  if (step.tier) return `Urośnij do poziomu T${step.tier}`;
+  if (step.tier) return `Urośnij do rozmiaru T${step.tier}`;
   if (step.combo) return `Zbuduj combo ×${step.combo}`;
   if (step.gates) {
     if (setup.gateKind === 'portal') return 'Przejdź przez portal';
@@ -1730,7 +1730,7 @@ function compileMission(spec, order) {
   const floor = { 1: 60, 2: 60, 3: 70, 4: 90, 5: 110, 6: 130 }[need];
   const timeLimit = spec.time || Math.max(floor, timing ? timing[0] : round5(est * 1.5 + 20));
   const medal = spec.medal || { type: 'timeUnder', seconds: timing ? timing[1] : round5(est * 1.15 + 10) };
-  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w max ${medal.seconds} s`;
+  if (medal.type === 'timeUnder' && !medal.label) medal.label = `Ukończ w ${formatClock(medal.seconds)}`;
   steps.forEach(st => { st.label = stepLabel(st, s); });
   const district = DISTRICTS.find(d => d.id === spec.d);
   return {
@@ -1770,14 +1770,14 @@ function compileMission(spec, order) {
 const MISSION_SPECS = [
   // ---- Plac Neonów ----
   { id: 'M01', d: 'plac', name: 'Pierwszy apetyt', steps: [{ eat: 'capsule', n: 3 }, { tier: 2 }],
-    nela: ['Tu NELA. Kapsuły energii ładują Twój wir mocniej niż fragmenty — trzy wystarczą, żeby urosnąć.', 'Wir pulsuje mocniej!'] },
+    nela: ['Kapsuły energii ładują Twój wir mocniej niż fragmenty — trzy wystarczą, żeby urosnąć.', 'Wir pulsuje mocniej!'] },
   { id: 'M02', d: 'plac', name: 'Dobra trasa', steps: [{ eat: 'prop', n: 6 }, { tier: 3 }], setup: { clusters: 2 },
-    medal: { type: 'visitBothClusters', label: 'Jedz w obu skupiskach' },
+    medal: { type: 'visitBothClusters', label: 'Pochłaniaj w obu skupiskach' },
     nela: ['Elementy uliczne stoją w dwóch skupiskach. Wybierz trasę i rośnij.', 'Plac nabiera kształtu.'] },
   { id: 'M03', d: 'plac', name: 'Łańcuch reakcji', steps: [{ combo: 10 }, { eat: 'prop', n: 4 }], setup: { arcLayout: true, fragments: 20 },
     nela: ['Fragmenty ułożyły się w łuk: połącz dziesięć kęsów bez przerwy, a potem pochłoń cztery elementy uliczne.', 'Reakcja łańcuchowa ruszyła!'] },
   { id: 'M25', d: 'plac', name: 'Godzina szczytu', steps: [{ eat: 'vehicle', n: 4 }],
-    nela: ['Samochody zjeżdżają na plac. Urośnij do T3, zanim odjadą.', 'Korek rozładowany — w Twoim wirze.'] },
+    nela: ['Samochody utknęły w korku na placu. Urośnij do T3 i zgarnij je.', 'Korek rozładowany — w Twoim wirze.'] },
   { id: 'M26', d: 'plac', name: 'Obce dziury', steps: [{ rival: 2 }],
     nela: ['Po placu krążą obce dziury. Urośnij i pochłoń dwie z nich.', 'Rywale zniknęli w Twoim wirze.'] },
   { id: 'M27', d: 'plac', name: 'Wyłącznik', steps: [{ activate: 'node', n: 3 }],
@@ -1912,8 +1912,8 @@ const MISSION_SPECS = [
     nela: ['Wieżowce Rdzenia rzucają cień na całe miasto. Pochłoń dwa.', 'Niebo nad Rdzeniem odsłonięte.'] },
   { id: 'M56', d: 'rdzen', name: 'Kopuła', steps: [{ eat: 'heavy', n: 3 }, { eat: 'tower', n: 1, glyph: 'kopula' }],
     nela: ['Pod kopułą bije serce miasta. Najpierw ciężkie pojazdy, potem sama kopuła.', 'Kopuła otwarta.'] },
-  { id: 'M57', d: 'rdzen', name: 'Wszystkie poziomy', steps: [{ tier: 6 }],
-    nela: ['Od fragmentu do wieżowca: przejdź wszystkie sześć poziomów w jednej misji.', 'Sześć poziomów. Jedna dziura.'] },
+  { id: 'M57', d: 'rdzen', name: 'Wszystkie rozmiary', steps: [{ tier: 6 }],
+    nela: ['Od fragmentu do wieżowca: przejdź wszystkie sześć rozmiarów w jednej misji.', 'Sześć rozmiarów. Jedna dziura.'] },
   { id: 'M58', d: 'rdzen', name: 'Ostatni strażnicy', steps: [{ rival: 5 }], setup: { botRadius: 70 },
     nela: ['Ostatni strażnicy Rdzenia to giganci. Unikaj ich, dopóki nie urośniesz — potem pochłoń pięciu.', 'Nikt już nie strzeże Rdzenia.'] },
   { id: 'M59', d: 'rdzen', name: 'Sygnał z wieży', steps: [{ activate: 'pylon', n: 3 }, { eat: 'tower', n: 2, glyph: 'maszt' }],
@@ -1972,7 +1972,7 @@ const CAMPAIGN_MISSIONS = [
         }
       ]
     },
-    medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 70 s' },
+    medal: { type: 'timeUnder', seconds: 70, label: 'Ukończ w 1:10' },
     // A couple more of each spawned than required (buffer, not everything
     // has to be reachable) since Campaign entities don't respawn mid-mission.
     // v13: starterRing puts the first fragments right around the start --
@@ -6212,6 +6212,8 @@ class Game {
       this.startCampaignMission(btn.dataset.mcPlay);
     });
     document.querySelectorAll('.nela-avatar').forEach(el => { el.innerHTML = NELA_AVATAR; });
+    // A tap closes NELA's in-mission bubble (it must never sit on the board).
+    document.getElementById('nelaToast').addEventListener('click', () => this.hideNelaToast());
     // Player feedback: every level needs a way back to the main menu --
     // the mission result screen previously only offered Next/Retry/Map.
     document.getElementById('btnMissionMenu').addEventListener('click', () => {
@@ -6425,7 +6427,7 @@ class Game {
     if (item.unlockSource) {
       return item.unlockSource.type === 'coreCity'
         ? `CORE CITY LVL ${item.unlockSource.level}`
-        : `MISJA ${campaignMissionById(item.unlockSource.id) ? missionCode(campaignMissionById(item.unlockSource.id)) : item.unlockSource.id}`;
+        : `NAGRODA ZA ${campaignMissionById(item.unlockSource.id) ? missionCode(campaignMissionById(item.unlockSource.id)) : item.unlockSource.id}`;
     }
     if (item.priceType === 'prisms') return `◆ ${item.pricePrisms}`;
     return `◇ ${item.priceCoins != null ? item.priceCoins : item.price}`;
@@ -6502,7 +6504,7 @@ class Game {
     if (item.unlockSource) {
       this.analytics.track('cosmetic_preview', { [C.key]: item.id, locked: true });
       const src = item.unlockSource.type === 'iap' ? 'w Pakiecie startowym' : `jako nagrodę: ${this.cosmeticLockLabel(item)}`;
-      this.openInfoSheet({ icon, title, body: [...perk, `Tego nie kupisz za monety — zdobędziesz ${src}. Na podglądzie widać, jak wygląda.`], onClose: revert });
+      this.openInfoSheet({ icon, title, body: [...perk, `Tego nie kupisz za monety — zdobędziesz ${src}. Na podglądzie widać, jak wygląda.`], onClose: revert, bottom: true });
       return;
     }
     const prisms = item.priceType === 'prisms';
@@ -6516,7 +6518,7 @@ class Game {
         body: [...perk, `Cena: <strong>${price} ${sym}</strong> — brakuje jeszcze ${price - have} ${sym}.`,
           prisms ? 'Pryzmaty dostajesz za co 3. rundę, rekordy w Wyzwaniu dnia i reklamę „Darmowe pryzmaty”.' : 'Monety zdobywasz w każdej rundzie GRAJ 2:00 i w Wyzwaniu dnia.'],
         action: this.isArenaUnlocked() ? { label: 'ZAGRAJ RUNDĘ', onClick: () => this.startArenaRound() } : null,
-        onClose: revert
+        onClose: revert, closeLabel: 'NIE TERAZ', bottom: true
       });
       return;
     }
@@ -6533,7 +6535,7 @@ class Game {
         this.updateCoinDisplays();
         this.updateWarsztatPreview();
       } },
-      onClose: revert
+      onClose: revert, closeLabel: 'NIE TERAZ', bottom: true
     });
   }
 
@@ -7331,7 +7333,7 @@ class Game {
     const nextId = this.nextCampaignMissionId();
     const next = nextId && campaignMissionById(nextId);
     const district = next && DISTRICTS.find(d => d.id === next.district);
-    document.getElementById('hubCampaignEyebrow').textContent = 'KAMPANIA';
+    document.getElementById('hubCampaignEyebrow').textContent = next ? 'NASTĘPNA MISJA' : 'KAMPANIA';
     document.getElementById('hubCampaignTile').style.setProperty('--q', next ? (DISTRICT_COLORS[district.id] || '#46D99A') : '#46D99A');
     document.getElementById('hubCampaignTitle').textContent = next ? `${missionCode(next)} · ${next.name}` : 'Ukończona!';
     document.getElementById('hubCampaignSub').textContent = next ? this.missionStepRows(next)[0].label : 'Zagraj misje ponownie po medale';
@@ -7354,10 +7356,17 @@ class Game {
     const c = this.save.campaign;
     for (const d of DISTRICTS) {
       if (!c.unlockedDistricts.includes(d.id)) continue;
-      const id = d.missions.find((m, i) => !c.completed[m] && (i === 0 || c.completed[d.missions[i - 1]]));
+      const id = d.missions.find((m, i) => !this.isMissionDone(m) && (i === 0 || this.isMissionDone(d.missions[i - 1])));
       if (id) return id;
     }
     return null;
+  }
+
+  /** Cleared -- M00 also counts as cleared on saves from before the
+   *  tutorial existed (M01 done; FEATURE_GATES.arena accepts those too). */
+  isMissionDone(id) {
+    const c = this.save.campaign.completed;
+    return !!(c[id] || (id === 'M00' && c.M01));
   }
 
   /** True when a mission can be started: its district is open and the
@@ -7367,7 +7376,7 @@ class Game {
     const d = def && DISTRICTS.find(x => x.id === def.district);
     if (!d || !this.save.campaign.unlockedDistricts.includes(d.id)) return false;
     const i = d.missions.indexOf(id);
-    return i === 0 || !!this.save.campaign.completed[d.missions[i - 1]];
+    return i === 0 || this.isMissionDone(d.missions[i - 1]);
   }
 
   /** True until the M00 tutorial clears -- Miasto then collapses to the
@@ -7482,9 +7491,13 @@ class Game {
   /** Generic "what is this?" popup (#infoSheet). `body` is a list of
    *  paragraphs/HTML snippets (authored strings only, never user input);
    *  `action` optionally adds a primary button ({label, onClick}). */
-  openInfoSheet({ icon = '', title, body = [], action = null, onClose = null }) {
+  openInfoSheet({ icon = '', title, body = [], action = null, onClose = null, closeLabel = 'ROZUMIEM', bottom = false }) {
     this.closeInfoSheet();
     this.infoSheetOnClose = onClose;
+    document.getElementById('btnInfoSheetClose').textContent = closeLabel;
+    // v14: a bottom sheet over a light scrim (Warsztat purchases keep the
+    // live preview visible above it).
+    document.getElementById('infoSheet').classList.toggle('info-sheet-bottom', bottom);
     document.getElementById('infoSheetIcon').innerHTML = icon;
     document.getElementById('infoSheetIcon').classList.toggle('hidden', !icon);
     document.getElementById('infoSheetTitle').textContent = title;
@@ -7740,6 +7753,7 @@ class Game {
     if (this.running || this.isFirstRun() || !(this.save.stats.runsPlayed > 0)) return;
     if (document.getElementById('mainMenu').classList.contains('hidden')) return;
     if (!document.getElementById('unlockOverlay').classList.contains('hidden')) return;
+    if (!document.getElementById('missionBriefing').classList.contains('hidden') || !document.getElementById('infoSheet').classList.contains('hidden')) return;
     const st = this.loginState();
     if (st.claimedToday) return;
     this.renderLoginGrid(st.day, false);
@@ -7985,6 +7999,7 @@ class Game {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
+    this.closeInfoSheet(); // runs (and clears) a pending onClose
   }
 
   /** GDD 4.0 §5.1-§5.4: one persistent bottom nav across the 4 hub screens.
@@ -8334,18 +8349,22 @@ class Game {
     const rows = this.missionStepRows(def).map((r, i) =>
       `<li class="mc-goal"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span></li>`).join('');
     const reward = done
-      ? (medal ? 'Medal zdobyty' : 'Zagraj po medal')
-      : `+${def.reward.coins} monet${def.reward.unlockDistrict ? ' · nowa dzielnica' : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
+      ? '✓ nagroda odebrana'
+      : `◇ +${def.reward.coins} monet${def.reward.unlockDistrict ? ' · nowa dzielnica' : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
     const meta = `<div class="mc-meta">` +
       `<span class="mc-meta-item">${CLOCK}${def.untimed ? 'bez limitu' : formatClock(def.timeLimit)}</span>` +
-      `<span class="mc-meta-item mc-meta-medal${medal ? ' earned' : ''}" title="Medal (opcjonalny)">${STAR}${def.medal.label}</span>` +
-      `<span class="mc-meta-item mc-meta-reward">◇ ${reward}</span></div>`;
+      `<span class="mc-meta-item mc-meta-medal${medal ? ' earned' : ''}">${STAR}Medal: ${medal ? 'zdobyty' : def.medal.label}</span>` +
+      `<span class="mc-meta-item mc-meta-reward">${reward}</span></div>`;
     const nela = opts.nela ? `<div class="nela-bubble mc-nela"><span class="nela-avatar" aria-hidden="true">${NELA_AVATAR}</span>` +
       `<span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line">${def.nela.start}</span></span></div>` : '';
     const lock = !playable && prev ? `<p class="mc-lock">Najpierw ukończ ${missionCode(prev)} „${prev.name}”.</p>` : '';
-    const play = opts.play
-      ? `<button class="btn btn-primary btn-mega mc-play" data-mc-play="${def.id}"${playable ? '' : ' disabled'}>${playable ? (done ? 'ZAGRAJ PONOWNIE' : 'GRAJ') : 'ZABLOKOWANA'}<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></button>`
-      : '';
+    // A locked mission's button leads to what unlocks it (no dead end).
+    const prevPlayable = !playable && prev && this.isMissionPlayable(prev.id);
+    const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
+    const play = !opts.play ? ''
+      : playable ? `<button class="btn btn-primary btn-mega mc-play" data-mc-play="${def.id}">${done ? 'ZAGRAJ PONOWNIE' : 'GRAJ'}${PLAY_SVG}</button>`
+        : prevPlayable ? `<button class="btn btn-secondary mc-play mc-play-prev" data-mc-play="${prev.id}">NAJPIERW ${missionCode(prev)}${PLAY_SVG}</button>`
+          : `<button class="btn btn-primary btn-mega mc-play" disabled>ZABLOKOWANA</button>`;
     return `<div class="mc-head" style="--d-color:${color}">` +
       `<span class="mc-code">${missionCode(def)}</span><span class="mc-eyebrow">${opts.eyebrow || district.name.toUpperCase()}</span>${status}</div>` +
       `<h3 class="mc-name">${def.name}</h3>${nela}` +
@@ -8483,13 +8502,14 @@ class Game {
     const unlockerDistrict = unlocker && DISTRICTS.find(d => d.id === unlocker.district);
     this.openInfoSheet({
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
-      title: `${district.name} — zablokowana`,
+      title: 'Dzielnica zablokowana',
       body: [
-        `${district.name} to ${nounFor('misja', district.missions.length)} z nowymi obiektami do pochłonięcia.`,
+        `${district.name}: ${nounFor('misja', district.missions.length)} i obiekty, których jeszcze nie znasz.`,
         unlocker
           ? `Odblokujesz ją, kończąc ostatnią misję poprzedniej dzielnicy: <strong>${missionCode(unlocker)} „${unlocker.name}”</strong> (${unlockerDistrict.name}).`
           : 'Odblokujesz ją, kończąc poprzednią dzielnicę.'
-      ]
+      ],
+      action: unlocker ? { label: 'DO ODPRAWY: ' + missionCode(unlocker), onClick: () => this.openMissionBriefing(unlocker.id) } : null
     });
   }
 
@@ -8523,7 +8543,7 @@ class Game {
 
     // v14: the mission to do next is briefed at the top with its own GRAJ
     // (player feedback: starting a level meant scrolling to the bottom).
-    const nextId = district.missions.find((id, i) => !c.completed[id] && (i === 0 || c.completed[district.missions[i - 1]]));
+    const nextId = district.missions.find((id, i) => !this.isMissionDone(id) && (i === 0 || this.isMissionDone(district.missions[i - 1])));
     const nextCard = document.getElementById('missionNextCard');
     if (nextId) {
       const def = campaignMissionById(nextId);
@@ -8531,7 +8551,7 @@ class Game {
     } else {
       const nextDistrict = DISTRICTS.find(d => d.order === district.order + 1);
       nextCard.innerHTML = `<div class="mc-head"><span class="mc-code">✓</span><span class="mc-eyebrow">DZIELNICA ODBUDOWANA</span></div>` +
-        `<h3 class="mc-name">${district.name} świeci znowu</h3>` +
+        `<h3 class="mc-name">Dzielnica odbudowana!</h3>` +
         `<p class="mc-lock">${nextDistrict ? (c.unlockedDistricts.includes(nextDistrict.id) ? `Ruszaj dalej: ${nextDistrict.name} czeka.` : `Następna: ${nextDistrict.name}.`) : 'Całe Neonowe Miasto odzyskane. Wracaj po medale!'}</p>` +
         (nextDistrict && c.unlockedDistricts.includes(nextDistrict.id) ? `<button class="btn btn-primary mc-play" data-district-go="${nextDistrict.id}">DO DZIELNICY ${nextDistrict.name.toUpperCase()}</button>` : '');
       const go = nextCard.querySelector('[data-district-go]');
@@ -8560,7 +8580,7 @@ class Game {
       const icon = done ? CHECK_ICON : (prevDone ? PLAY_ICON : LOCK_ICON);
       row.innerHTML = `<span class="mission-row-id">${def.id === 'M00' ? 'START' : missionCode(def)}</span>` +
         `<span class="mission-row-main"><span class="mission-row-name">${def.name}</span>` +
-        `<span class="mission-row-goal"><span class="mission-row-goal-icon" style="color:${first.color}"><svg viewBox="0 0 24 24">${first.icon}</svg></span>${first.label}${def.goal.steps && def.goal.steps.length > 1 ? ` <em>+${def.goal.steps.length - 1}</em>` : ''}</span></span>` +
+        `<span class="mission-row-goal"><span class="mission-row-goal-icon" style="color:${first.color}"><svg viewBox="0 0 24 24">${first.icon}</svg></span>${first.label}${def.goal.steps && def.goal.steps.length > 1 ? ` <em>+${def.goal.steps.length - 1} ${plural(def.goal.steps.length - 1, ['cel', 'cele', 'celów'])}</em>` : ''}</span></span>` +
         `<span class="mission-row-medal${medal ? ' earned' : ''}" title="${medal ? 'Medal zdobyty' : 'Medal do zdobycia'}">${STAR_ICON}</span>` +
         `<span class="mission-row-icon">${icon}</span>`;
       row.addEventListener('click', () => this.openMissionBriefing(id));
@@ -8937,7 +8957,7 @@ class Game {
       sweep.lineWidth = 6;
       this.ripples.push(sweep);
       this.spawnParticles(this.player.x, this.player.y, newTier.color, 22, 1.5);
-      this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY POZIOM WZROSTU!', newTier.color, 1.3, 2);
+      this.showBanner(`${newTier.id} · ${newTier.name.toUpperCase()}`, 'NOWY ROZMIAR!', newTier.color, 1.3, 2);
       this.sound.tierUp();
       this.flashScreen(newTier.color, 0.18);
       if (this.activeMutations.has('impuls')) this.speedBoostUntil = performance.now() + 2000;
@@ -9461,12 +9481,14 @@ class Game {
       if (m.stepsDoneShown && !doneNow.every(Boolean)) {
         const i = doneNow.findIndex((d, k) => d && !m.stepsDoneShown[k]);
         if (i >= 0) {
-          const left = doneNow.filter(d => !d).length;
-          this.showBanner('CEL ZALICZONY', `${goalItems[i].label} · ${plural(left, ['został', 'zostały', 'zostało'])} ${left} ${plural(left, ['cel', 'cele', 'celów'])}`, '#46D99A', 1.2, 2);
+          const nextGoal = goalItems.find((it, k) => !doneNow[k]);
+          this.showBanner('CEL ZALICZONY', `Teraz: ${nextGoal.label}`, '#46D99A', 2.1, 2);
           this.sound.coin();
         }
       }
-      m.stepsDoneShown = doneNow;
+      // Remember every step ever announced: a tier step can drop (a bigger
+      // rival's hit shrinks the hole) and must not re-announce.
+      m.stepsDoneShown = doneNow.map((d, k) => d || !!(m.stepsDoneShown && m.stepsDoneShown[k]));
     }
     this.hudSet('missionGoalItems', 'html', goalItems.map(it => `
       <div class="mission-goal-item${it.progress >= it.target ? ' done' : ''}">
@@ -9611,9 +9633,10 @@ class Game {
       return;
     }
     this.revivePending = true;
+    this.hideNelaToast();
     m.reviveDeclined = true; // one offer per attempt, whatever the answer
     const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
-      .map(it => `${it.label} (${Math.min(it.progress, it.target)}/${it.target})`);
+      .map(it => `${it.label} (${it.display || `${Math.min(it.progress, it.target)}/${it.target}`})`);
     document.getElementById('reviveMissing').textContent = missing.length ? `Zostało: ${missing.join(' · ')}` : '';
     document.getElementById('reviveProgressBar').style.width = Math.round(frac * 100) + '%';
     document.getElementById('reviveProgressPct').textContent = Math.round(frac * 100) + '%';
@@ -9746,24 +9769,33 @@ class Game {
         ? 'Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.'
         : 'Tym razem Glitch był szybszy. Zacznij od najbliższych celów, a reszta pójdzie sama.');
     this.animateNumber(document.getElementById('missionResultScore'), this.player.score, 1000);
-    document.getElementById('missionResultTime').textContent = formatClock(m.elapsed);
-    document.getElementById('missionResultMedalStar').textContent = medalEarned ? '★' : '☆';
-    document.getElementById('missionResultMedalTile').classList.toggle('earned', medalEarned);
+    // Score only where a goal asks for it; on a timeout the clock equals
+    // the limit, so the tile shows how far the goals got instead.
+    const scoreGoal = !!(def.goal.steps && def.goal.steps.some(st => st.score));
+    document.getElementById('missionResultScoreTile').classList.toggle('hidden', !scoreGoal && !this.player.score);
+    document.getElementById('missionResultTimeLabel').textContent = success ? 'CZAS' : 'POSTĘP';
+    document.getElementById('missionResultTime').textContent = success ? formatClock(m.elapsed) : `${Math.round(this.campaignGoalFraction() * 100)}%`;
+    const medalOwned = medalEarned || !!this.save.campaign.medals[def.id];
+    document.getElementById('missionResultMedalStar').textContent = medalOwned ? '★' : '☆';
+    document.getElementById('missionResultMedalTile').classList.toggle('earned', medalOwned);
     this.renderXpCard('mission', this.lastXpResult);
     if (success) setTimeout(() => this.launchConfetti('missionConfetti', medalEarned ? 80 : 50), 250);
     const medalLine = document.getElementById('missionResultMedal');
     if (success) {
-      medalLine.textContent = medalEarned ? `Medal zdobyty: ${def.medal.label}` : `Medal: ${def.medal.label} — zagraj ponownie, żeby go zdobyć`;
+      medalLine.textContent = medalEarned ? `Medal zdobyty: ${def.medal.label}`
+        : medalOwned ? `Medal masz już z wcześniejszej próby (${def.medal.label})`
+          : `Medal: ${def.medal.label} — zagraj ponownie, żeby go zdobyć`;
     } else {
       const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
         .map(it => `${it.label} (${it.display || `${Math.min(it.progress, it.target)}/${it.target}`})`);
       medalLine.textContent = missing.length ? `Zostało: ${missing.join(' · ')}` : '';
     }
-    medalLine.classList.toggle('earned', medalEarned);
+    medalLine.classList.toggle('earned', medalOwned);
     document.getElementById('missionResultReward').textContent = firstClear
-      ? `+${def.reward.coins} monet${def.reward.unlockDistrict ? ' · nowa dzielnica!' : ''}${def.reward.unlockSkin ? ' · kosmetyk finałowy!' : ''}`
-      : (success ? 'Nagroda za pierwsze ukończenie odebrana wcześniej' : 'Bez nagrody tym razem');
+      ? `+${def.reward.coins} monet${def.reward.unlockSkin ? ' · Wir finałowy!' : ''}`
+      : '';
     document.getElementById('missionResultReward').classList.toggle('gained', firstClear);
+    document.getElementById('missionResultReward').classList.toggle('hidden', !firstClear);
 
     // v14: what comes next, briefed above the button that leads there --
     // the next mission in this district, or after its boss the first
@@ -9785,18 +9817,20 @@ class Game {
     const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
     nextCard.classList.toggle('hidden', !nextDef);
     btnRetry.classList.toggle('hidden', !success);
+    document.getElementById('btnMissionMap').classList.remove('hidden');
     if (nextDef) {
-      const newDistrict = nextDef.district !== def.district;
+      const newDistrict = firstClear && !!def.reward.unlockDistrict && nextDef.district === def.reward.unlockDistrict;
       nextCard.innerHTML = this.missionCardHtml(nextDef, { eyebrow: newDistrict ? `NOWA DZIELNICA · ${DISTRICTS.find(d => d.id === nextDef.district).name.toUpperCase()}` : 'NASTĘPNA MISJA' });
       nextCard.style.setProperty('--d-color', DISTRICT_COLORS[nextDef.district] || '#50F0FA');
       btnNext.innerHTML = `GRAJ ${missionCode(nextDef)}${PLAY}`;
       btnNext.onclick = () => this.startCampaignMission(nextId);
-    } else if (success && CAMPAIGN_MISSIONS.every(md => this.save.campaign.completed[md.id])) {
+    } else if (success && CAMPAIGN_MISSIONS.every(md => this.isMissionDone(md.id))) {
       btnNext.textContent = 'WRÓĆ DO MIASTA';
       btnNext.onclick = () => { this.updateCoinDisplays(); this.showScreen('mainMenu'); };
     } else if (success) {
       btnNext.innerHTML = `DZIELNICE${PLAY}`;
       btnNext.onclick = () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
+      document.getElementById('btnMissionMap').classList.add('hidden');
     } else {
       btnNext.innerHTML = `SPRÓBUJ PONOWNIE${PLAY}`;
       btnNext.onclick = () => this.startCampaignMission(def.id);
@@ -10336,7 +10370,7 @@ class Game {
     const { ranked, place, coinsEarned } = this.finalizeRun();
     const corePctAfter = this.save.hub.coreCharge || 0;
 
-    document.getElementById('finalPlace').textContent = '#' + place;
+    document.getElementById('finalPlace').textContent = `${place}.`;
     // Golden Shot v8 triumph screen: count-ups, place-based headline, confetti.
     this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100, '', formatNum);
     this.animateNumber(document.getElementById('finalCoins'), coinsEarned, 1100);
@@ -10438,7 +10472,7 @@ class Game {
 
     const missionLine = document.getElementById('missionResultLine');
     if (this.missionJustCompleted) {
-      missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}" — +${this.activeMission.rewardCoins} monet`;
+      missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}” — +${this.activeMission.rewardCoins} monet`;
       missionLine.classList.remove('hidden');
     } else {
       missionLine.classList.add('hidden');
@@ -10495,6 +10529,7 @@ class Game {
     this.state = GameState.PAUSED;
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('controlsPanel').classList.add('hidden');
+    this.hideNelaToast();
     document.getElementById('btnRestartLabel').textContent = this.mode === 'campaign' ? 'ZACZNIJ MISJĘ OD NOWA' : 'ZACZNIJ RUNDĘ OD NOWA';
     document.getElementById('pauseSheet').classList.remove('hidden');
     if (this.revivePending) clearTimeout(this.reviveTimer);
@@ -10788,7 +10823,7 @@ class Game {
   startFrenzy() {
     const G = CONFIG.golden;
     this.frenzyEndsAt = this.timeRemaining - G.frenzySeconds;
-    this.showBanner('SZAŁ!', 'Punkty ×2 · jesz o poziom większe obiekty', '#EFCB63', 1.4, 4);
+    this.showBanner('SZAŁ!', 'Punkty ×2 · jesz o rozmiar większe obiekty', '#EFCB63', 1.4, 4);
     this.sound.frenzy();
     this.flashScreen('#EFCB63', 0.25);
     this.triggerShake(8);
@@ -11114,6 +11149,7 @@ class Game {
    *  can pick a card or hit "POMIŃ" to close the window without picking;
    *  autoPickMs is only a safety net against an AFK tab. */
   offerEvolution() {
+    this.hideNelaToast();
     this.evolutionPending = true;
     const cards = this.pickMutationCards();
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id) });

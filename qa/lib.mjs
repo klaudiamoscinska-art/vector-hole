@@ -69,8 +69,12 @@ export async function openGame(baseUrl, { save = null, viewport = { width: 420, 
 export async function veteranSave(page, overrides = {}) {
   return page.evaluate((o) => {
     const s = defaultSave();
-    const ids = CAMPAIGN_MISSIONS.slice(0, o.missions || 6).map(m => m.id);
+    // v14: completed in district (play) order, with every district whose
+    // predecessor's boss is cleared unlocked -- a real save, not the
+    // CAMPAIGN_MISSIONS array order (which left Plac done but Park locked).
+    const ids = DISTRICTS.flatMap(d => d.missions).slice(0, o.missions || 6);
     ids.forEach(id => { s.campaign.completed[id] = true; });
+    DISTRICTS.forEach((d, i) => { if (i > 0 && s.campaign.completed[DISTRICTS[i - 1].missions[DISTRICTS[i - 1].missions.length - 1]] && !s.campaign.unlockedDistricts.includes(d.id)) s.campaign.unlockedDistricts.push(d.id); });
     s.campaign.discoveredTypes = Object.keys(TIERS).filter(k => k !== 'portal' && k !== 'golden');
     s.campaign.discoveredHoleEating = true;
     s.unlocks.announced = unlockedFeatureIds(s);

@@ -75,7 +75,7 @@
     </div>
 
     <div id="hud-goal" class="hud-panel hud-goal-box hidden">
-      <div class="hud-goal-section-title">CEL RUNDY</div>
+      <div class="hud-goal-section-title">CEL MISJI</div>
       <div id="missionGoalItems" class="mission-goal-items"></div>
     </div>
 
@@ -292,14 +292,11 @@
            rewards (openCoreCityRoadmap()). -->
       <div class="hub-city hub-full-only" id="hubHeroStage" role="button" tabindex="0" aria-label="Core City — poziomy i nagrody">
         <canvas id="hubCityCanvas" class="hub-city-canvas"></canvas>
-        <div class="hub-city-badge">
-          <span id="hubLevelLabel" class="hub-city-lvl">LVL 1</span>
-          <span class="hub-city-sub">CORE CITY</span>
-        </div>
+        <div class="hub-city-badge"><span class="hub-city-sub">CORE CITY</span><span id="hubLevelLabel" class="hub-city-lvl">LVL 1</span></div>
         <div class="hub-city-foot">
           <div class="hub-city-next">
             <span id="hubRewardChip1Icon" class="hub-city-next-icon" aria-hidden="true"></span>
-            <span class="hub-city-next-text">Następna nagroda: <strong id="hubRewardChip1">—</strong></span>
+            <span class="hub-city-next-text"><span class="hub-city-next-prefix">Następna nagroda: </span><strong id="hubRewardChip1">—</strong></span>
             <span id="hubChargeValue" class="hub-city-pct">0%</span>
           </div>
           <div class="hub-city-progress"><div id="hubCityBar" class="hub-city-progress-fill"></div></div>
@@ -318,7 +315,7 @@
         <button id="hubCampaignTile" class="hub-quick-tile hub-quick-campaign">
           <span class="hub-quick-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></span>
           <span class="hub-quick-text">
-            <span class="hub-quick-eyebrow" id="hubCampaignEyebrow">KAMPANIA</span>
+            <span class="hub-quick-eyebrow" id="hubCampaignEyebrow">NASTĘPNA MISJA</span>
             <strong id="hubCampaignTitle">—</strong>
             <span class="hub-quick-sub" id="hubCampaignSub">—</span>
           </span>
@@ -582,8 +579,8 @@
       <h2 class="section-title" id="missionResultTitle">MISJA UKOŃCZONA</h2>
 
       <div class="mission-result-stats">
-        <div class="mr-stat"><span class="mr-stat-label">WYNIK</span><span class="mr-stat-value" id="missionResultScore">0</span></div>
-        <div class="mr-stat"><span class="mr-stat-label">CZAS</span><span class="mr-stat-value" id="missionResultTime">0:00</span></div>
+        <div class="mr-stat" id="missionResultScoreTile"><span class="mr-stat-label">WYNIK</span><span class="mr-stat-value" id="missionResultScore">0</span></div>
+        <div class="mr-stat"><span class="mr-stat-label" id="missionResultTimeLabel">CZAS</span><span class="mr-stat-value" id="missionResultTime">0:00</span></div>
         <div class="mr-stat mr-stat-medal" id="missionResultMedalTile"><span class="mr-stat-label">MEDAL</span><span class="mr-stat-value" id="missionResultMedalStar">☆</span></div>
       </div>
       <p class="mission-result-medal" id="missionResultMedal">—</p>
@@ -612,8 +609,8 @@
         <div class="mission-result-row">
           <button id="btnMissionRetry" class="btn btn-secondary">POWTÓRZ</button>
           <button id="btnMissionMap" class="btn btn-secondary">DZIELNICE</button>
+          <button id="btnMissionMenu" class="btn btn-secondary">MIASTO</button>
         </div>
-        <button id="btnMissionMenu" class="btn btn-link">Wróć do Miasta</button>
       </div>
     </div>
   </div>
@@ -677,6 +674,7 @@
         </button>
       </div>
 
+      <p class="hint-text warsztat-hint">Dotknij, żeby założyć. Zablokowane obejrzysz na podglądzie.</p>
       <div class="skin-grid-header">
         <span class="skin-grid-header-title">ZESTAWY I KOSMETYKI</span>
         <span id="cosmeticUnlockedCount" class="skin-grid-header-count">0 / 0 ODBLOKOWANE</span>
@@ -687,7 +685,6 @@
       <div id="effectGrid" class="skin-grid hidden"></div>
       <div id="overdriveSkinGrid" class="skin-grid hidden"></div>
 
-      <p class="hint-text warsztat-hint">Dotknij, żeby założyć. Zablokowane obejrzysz na podglądzie.</p>
       <!-- Golden Shot v11 store: rewarded prisms always; paid packs only
            when a real payment provider is attached (Monetization). -->
       <div class="store-card">

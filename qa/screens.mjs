@@ -129,6 +129,15 @@ for (const vp of [{ width: 375, height: 667 }]) { // SE-class phone
   await g.page.evaluate(() => window.game.openMissionBriefing(window.game.nextCampaignMissionId()));
   await g.page.waitForTimeout(450);
   await shot(g.page, '25-briefing-se');
+  await g.page.evaluate(() => { const gm = window.game; const id = gm.nextCampaignMissionId(); gm.closeMissionBriefing(); gm.startCampaignMission(id); cancelAnimationFrame(gm.rafId); gm.running = false; gm.mission.elapsed = 31; gm.endCampaignMission(true); });
+  await g.page.waitForTimeout(1300);
+  await g.page.evaluate(() => { window.game.unlockQueue = []; document.getElementById('unlockOverlay').classList.add('hidden'); document.getElementById('missionConfetti').innerHTML = ''; });
+  await shot(g.page, '26-mission-result-se');
+  await g.page.evaluate(() => { const gm = window.game; gm.save.coins = 900; gm.openWarsztatScreen(); });
+  await g.page.waitForTimeout(400);
+  await g.page.evaluate(() => [...document.querySelectorAll('#skinGrid .skin-card')][1].click());
+  await g.page.waitForTimeout(400);
+  await shot(g.page, '27-warsztat-buy-se');
   if (g.errors.length) console.log('errors', g.errors);
   await g.browser.close();
 }

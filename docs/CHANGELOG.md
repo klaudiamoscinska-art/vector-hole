@@ -25,7 +25,16 @@ Poza uwagami:
 - **Pauza**: „ZACZNIJ RUNDĘ/MISJĘ OD NOWA” zamiast „RESTART MISJI / RUNDY”.
 - **Balans misji combo**: misje z łukiem fragmentów (M03, M33) dostają
   zapasowe skupisko — zerwane combo nie przekreśla już misji.
-- **QA**: nowy zestaw `qa/flow.mjs` (24 testy przepływu), bot kampanii
+- **Runda recenzji (UX + kod)**: dymek NELA nisko nad minimapą, zamykany
+  dotknięciem i chowany pod pauzą/rewanżem/ewolucją; „rozmiar T2” zamiast
+  „poziom T2” (poziom = tylko gracz); medal jako „Medal: Ukończ w 0:35”;
+  wynik misji bez kafla WYNIK, gdy cel nie dotyczy punktów, „POSTĘP” po
+  porażce, trzy równe wyjścia POWTÓRZ / DZIELNICE / MIASTO; zakup
+  w Warsztacie jako arkusz od dołu z „NIE TERAZ”; zablokowana misja
+  prowadzi do tej, która ją odblokowuje; stare zapisy (M01 bez M00) nie
+  wracają do samouczka; powtórka pamięta wcześniejszy medal; „CEL
+  ZALICZONY” raz na cel; przyciski ≥ 40 px.
+- **QA**: nowy zestaw `qa/flow.mjs` (36 testów przepływu i regresji), bot kampanii
   goni małe kąski, gdy cel combo jest otwarty (jak człowiek), nowe zrzuty
   17–25 w `qa/screens.mjs`. Arkusz stylów odchudzony o ~100 martwych reguł.
 

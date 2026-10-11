@@ -7,10 +7,9 @@
 // spends coins on a single tap. Usage: node qa/flow.mjs
 import { serve, openGame, veteranSave, report } from './lib.mjs';
 
-async function seeded(url, saveOpts = {}, opts = {}, mutate = null) {
+async function seeded(url, saveOpts = {}, opts = {}) {
   const g = await openGame(url, opts);
   const save = await veteranSave(g.page, saveOpts);
-  if (mutate) await g.page.evaluate(mutate, null).catch(() => {});
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
   await g.page.waitForFunction(() => window.game && window.game.state);
@@ -23,6 +22,11 @@ const NAV_TOP = `(() => { const n = document.getElementById('bottomNav'); return
 
 export async function runFlowChecks(url) {
   const results = [];
+  // Every browser session reports its own runtime errors.
+  const done = async (g, label) => {
+    results.push(report(`flow: no runtime errors (${label})`, g.errors.length === 0, g.errors.slice(0, 3).join(' | ')));
+    await g.browser.close();
+  };
 
   // --- First launch: logo + one button, nothing else to read -------------
   {
@@ -37,7 +41,7 @@ export async function runFlowChecks(url) {
     });
     results.push(report('flow: start screen has exactly one button, on screen (375x667)', r.buttons === 1 && r.ctaBottom <= r.H, JSON.stringify(r)));
     results.push(report('flow: start screen copy is short (<= 12 words)', r.words <= 12, `${r.words} words`));
-    await g.browser.close();
+    await done(g, `start screen`);
   }
 
   // --- Miasto: GRAJ in the page flow, everything fits a phone -------------
@@ -57,7 +61,7 @@ export async function runFlowChecks(url) {
     results.push(report(`flow ${vp.width}x${vp.height}: GRAJ and the whole hub fit above the nav (no scrolling)`, r.playBottom <= r.navTop && r.chestBottom <= r.navTop + 1 && r.overflow <= 1, JSON.stringify(r)));
     results.push(report(`flow ${vp.width}x${vp.height}: Miasto keeps to a handful of tappable things (<= 9)`, r.visibleButtons <= 9, `${r.visibleButtons}`));
     results.push(report(`flow ${vp.width}x${vp.height}: hub campaign tile names the next mission`, /^M\d\d · /.test(r.campaign), r.campaign));
-    await g.browser.close();
+    await done(g, `Miasto ${vp.width}x${vp.height}`);
   }
 
   // --- Hub campaign tile -> briefing -> GRAJ starts that mission ----------
@@ -88,7 +92,7 @@ export async function runFlowChecks(url) {
     results.push(report('flow: briefing lists every goal as its own row + NELA (with avatar) + time and medal', r.goals === r.steps && r.nelaOk && r.avatar && r.metaOk, JSON.stringify(r)));
     results.push(report('flow: briefing GRAJ starts exactly that mission and closes the sheet', r.started && r.closed));
     results.push(report('flow: mission opens with NELA\'s bubble (avatar + the mission\'s line)', r.toastOk));
-    await g.browser.close();
+    await done(g, `briefing`);
   }
 
   // --- Dzielnice: the next mission starts without scrolling ---------------
@@ -107,13 +111,14 @@ export async function runFlowChecks(url) {
       const rows = [...document.querySelectorAll('#missionList .mission-row')];
       rows[rows.length - 1].click();
       await new Promise(res => setTimeout(res, 50));
-      const lockedSheet = document.querySelector('#briefingCard [data-mc-play]').disabled && /Najpierw ukończ/.test(document.getElementById('briefingCard').textContent);
+      const lockBtn = document.querySelector('#briefingCard .mc-play');
+      const lockedSheet = !!lockBtn && /Najpierw ukończ/.test(document.getElementById('briefingCard').textContent) && (lockBtn.disabled || !!lockBtn.dataset.mcPlay);
       gm.closeMissionBriefing();
       return { id: btn.dataset.mcPlay, next: gm.nextCampaignMissionId(), btnBottom: Math.round(b.bottom), navTop: Math.round(navTop), tappable: !!(hit && hit.closest('[data-mc-play]')), story: story.length, lockedSheet, rows: rows.length };
     }, NAV_TOP);
     results.push(report(`flow ${vp.width}x${vp.height}: Dzielnice — next mission's GRAJ on screen without scrolling`, r.btnBottom <= r.navTop && r.tappable && r.id === r.next, JSON.stringify(r)));
     results.push(report(`flow ${vp.width}x${vp.height}: Dzielnice — district story by NELA, locked rows explain themselves`, r.story > 40 && r.lockedSheet, JSON.stringify(r)));
-    await g.browser.close();
+    await done(g, `Dzielnice ${vp.width}x${vp.height}`);
   }
 
   // --- Result: the next mission is previewed above the button -------------
@@ -149,7 +154,43 @@ export async function runFlowChecks(url) {
     results.push(report('flow: result screen previews the next mission (code, goals) above its button', r.cardShown && r.cardCode === code && r.goals > 0 && r.cardAbove && r.btn.includes(code), JSON.stringify(r)));
     results.push(report('flow: result button starts that next mission; NELA reacts in her bubble', r.startedNext && r.nela));
     results.push(report('flow: a failed mission offers SPRÓBUJ PONOWNIE and lists what is missing', /SPRÓBUJ PONOWNIE/.test(r.failBtn) && r.failMissing && r.failNoNext, JSON.stringify(r)));
-    await g.browser.close();
+    await done(g, `result`);
+  }
+
+  // --- Review regressions: legacy saves, replays, step banners --------------
+  {
+    const g = await seeded(url, { missions: 4 });
+    const r = await g.page.evaluate(async () => {
+      const gm = window.game;
+      const c = gm.save.campaign;
+      // a save from before M00 existed: M01-M03 done, M00 not
+      delete c.completed.M00;
+      const legacyNext = gm.nextCampaignMissionId();
+      c.completed.M00 = true;
+      // replaying a mission whose medal was won earlier
+      c.medals.M02 = true;
+      gm.startCampaignMission('M02'); cancelAnimationFrame(gm.rafId); gm.running = false;
+      gm.mission.elapsed = 999; gm.endCampaignMission(true);
+      await new Promise(res => setTimeout(res, 50));
+      gm.unlockQueue = []; clearTimeout(gm.unlockShowTimer); document.getElementById('unlockOverlay').classList.add('hidden');
+      const star = document.getElementById('missionResultMedalStar').textContent;
+      const eyebrow = (document.querySelector('#missionResultNextCard .mc-eyebrow') || {}).textContent;
+      // a finished step is announced once, even if it drops and comes back
+      gm.startCampaignMission('M01'); cancelAnimationFrame(gm.rafId); gm.running = false;
+      let banners = 0;
+      const orig = gm.showBanner.bind(gm);
+      gm.showBanner = (t, ...a) => { if (t === 'CEL ZALICZONY') banners++; return orig(t, ...a); };
+      const m = gm.mission;
+      m.eatenByType.capsule = 3; gm.updateCampaignHUD();
+      m.eatenByType.capsule = 0; gm.updateCampaignHUD();
+      m.eatenByType.capsule = 3; gm.updateCampaignHUD();
+      gm.showBanner = orig;
+      return { legacyNext, star, eyebrow, banners };
+    });
+    results.push(report('flow: a pre-tutorial save (M01 done, no M00) is not sent back to the tutorial', r.legacyNext && r.legacyNext !== 'M00', JSON.stringify(r)));
+    results.push(report('flow: a replay keeps showing a medal won earlier; no false "NOWA DZIELNICA"', r.star === '★' && !/NOWA DZIELNICA/.test(r.eyebrow || ''), JSON.stringify(r)));
+    results.push(report('flow: "CEL ZALICZONY" fires once per step', r.banners === 1, JSON.stringify(r)));
+    await done(g, 'regressions');
   }
 
   // --- Warsztat: tap = wear; buying needs a confirming tap -----------------
@@ -183,8 +224,7 @@ export async function runFlowChecks(url) {
     results.push(report('flow: Warsztat — a tap on an item for sale previews it and asks, spends nothing', r.afterTap.coins === r.coins0 && !r.afterTap.owned && r.afterTap.sheet && r.afterTap.preview && r.reverted, JSON.stringify(r)));
     results.push(report('flow: Warsztat — KUP I ZAŁÓŻ buys and wears it', r.bought.owned && r.bought.equipped && r.bought.coins === r.coins0 - r.price, JSON.stringify(r.bought)));
     results.push(report('flow: Warsztat — an owned item is worn with one tap (no ZAŁÓŻ button at the bottom)', r.worn && !r.equipBtn));
-    if (g.errors.length) results.push(report('flow: no runtime errors', false, g.errors.slice(0, 3).join(' | ')));
-    await g.browser.close();
+    await done(g, `Warsztat`);
   }
 
   return results;
