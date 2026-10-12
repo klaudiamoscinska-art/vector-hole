@@ -289,7 +289,7 @@
       <!-- Golden Shot v11: a friend's challenge link ("Pobij mój wynik!"). -->
       <div id="hubChallenge" class="hub-challenge hidden">
         <span class="hub-challenge-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></span>
-        <span class="hub-challenge-text"><span>WYZWANIE OD <strong id="hubChallengeFrom">—</strong> · TA SAMA MAPA</span><strong class="hub-challenge-score">Pobij <span id="hubChallengeScore">0</span> pkt</strong></span>
+        <span class="hub-challenge-text"><span>WYZWANIE OD <strong id="hubChallengeFrom" translate="no">—</strong> · TA SAMA MAPA</span><strong class="hub-challenge-score">Pobij <span id="hubChallengeScore">0</span> pkt</strong></span>
         <button id="btnAcceptChallenge" class="btn btn-gold btn-small">PRZYJMIJ</button>
         <button id="btnDismissChallenge" class="hub-challenge-x" aria-label="Odrzuć wyzwanie">×</button>
       </div>
@@ -392,6 +392,13 @@
       <div class="settings-block">
         <div class="settings-title">USTAWIENIA</div>
         <div class="control-row">
+          <span class="control-label">Język</span>
+          <div class="control-toggle" translate="no">
+            <button class="toggle-btn" data-lang="pl">Polski</button>
+            <button class="toggle-btn" data-lang="en">English</button>
+          </div>
+        </div>
+        <div class="control-row">
           <span class="control-label">Dźwięki</span>
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="sfx" data-value="1">Wł.</button>
@@ -423,6 +430,20 @@
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="haptics" data-value="1">Wł.</button>
             <button class="toggle-btn" data-setting="haptics" data-value="0">Wył.</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- v19: progress lives in this browser only (no accounts) -- a backup
+           code carries it to another device or back after cleared data. -->
+      <div class="settings-block">
+        <div class="settings-title">KOPIA ZAPASOWA</div>
+        <p class="hint-text backup-hint">Postęp zapisuje się w tej przeglądarce. Kod kopii przeniesie go na inny telefon albo przywróci po wyczyszczeniu danych.</p>
+        <div class="control-row">
+          <span class="control-label">Kod postępu</span>
+          <div class="control-toggle">
+            <button id="btnBackupCopy" class="toggle-btn">SKOPIUJ</button>
+            <button id="btnBackupLoad" class="toggle-btn">WCZYTAJ</button>
           </div>
         </div>
       </div>
