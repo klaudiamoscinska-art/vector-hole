@@ -210,9 +210,56 @@ kalendarza logowania przed pierwszą ukończoną rundą.
 
 ## 5a. Dźwięk
 
-Cały dźwięk jest syntezowany (WebAudio, `SoundEngine`): efekty zjadania
-rosnące z combo i muzyka zmieniająca tempo z napięciem rundy. Na iPhonie gra
-prosi o sesję audio „playback”, więc gra także przy włączonym przełączniku
+Cały dźwięk jest syntezowany (WebAudio, `SoundEngine`) — zero plików audio.
+
+**Muzyka (v16 „Brzmienie”)** — 15 utworów zapisanych jako dane w
+`MUSIC_TRACKS` (tonacja, skala, tempo, perkusja, bas, sekcje akordów
+z melodią, forma):
+
+- **Miasto i menu**: 3 spokojne, lo-fi utwory (Neonowy Świt, Nocna Linia,
+  Deszcz na Szybie), zmieniają się co pełne przejście (~50 s).
+- **Każda dzielnica ma swój motyw** (12): Wir Neonów (Plac), Zielony Impuls
+  (Park), Fala Syntez (Port), Glitch w Galerii, Wysokie Napięcie (Dachy),
+  Rdzeń Miasta, Ostatni Kurs (Tunele Metra), Targ o Północy (Nocny Bazar),
+  Ośmiobitowa Taśma (Fabryka Pikseli), Mgła nad Zatoką (Zatoka
+  Hologramów), Pnącza (Wiszące Ogrody), Przesył Danych (Chmura Danych).
+  Każdy ma inną progresję akordów, tempo i brzmienie. Misja gra motyw
+  swojej dzielnicy (pod kartą startu cicho, perkusja wchodzi na START);
+  boss dzielnicy uderza dropem w chwili START.
+- **Arena**: każda runda to inny utwór (tasowanie, bez powtórki dwóch
+  ostatnich), a po pełnym przejściu (~45–60 s) gra przechodzi do
+  następnego — runda 2:00 to 2–3 utwory. Wyzwanie dnia i wyzwanie od
+  znajomego: jeden utwór na ziarno, ten sam dla wszystkich.
+- **Wewnątrz utworu**: sekcje A (groove) · B (refren z melodią) ·
+  C (mostek, inne akordy) · D (drop), przejścia perkusji na końcu sekcji,
+  talerz na wejściu, co drugie przejście inny arpeggiator i bas.
+  Warstwy rosną z napięciem: 0 tło/wynik · 1 runda · 2 końcówka (szybciej,
+  szesnastki hi-hatu, jaśniej; **jeden takt narastania i skok do dropu**,
+  potem utwór zostaje i krąży refren → drop, bez zmiany do końca rundy;
+  WIELKI FINISZ zrzuca drop od razu, bez drugiego narastania) ·
+  3 SZAŁ (melodia w oktawach, jeszcze szybciej). Drop to refren z melodią
+  zdublowaną oktawę niżej. Pady „oddychają” ze stopą,
+  melodie i pady mają echo i pogłos.
+- **Pauza** — muzyka schodzi „pod wodę” (filtr dolnoprzepustowy); arkusz
+  pauzy pokazuje „TERAZ GRA” i przycisk **NASTĘPNY**. W rundzie nowy utwór
+  przedstawia się małą plakietką „TERAZ GRA” pod paskiem czasu.
+- **Szafa grająca** (Profil): lista utworów (tempo opisane słowami);
+  dotknięcie odtwarza pełną aranżację od refrenu i ustawia ulubiony na
+  stałe (Miasto, rundy, misje), „Mieszanka” wraca do zmian. Motywy Rozdziału I
+  i utwory menu są od początku; motywy Rozdziału II odblokowuje dojście do
+  ich dzielnicy (odprawa bossa mówi „nowa dzielnica i jej utwór”, po
+  wygranej plansza „NOWY UTWÓR”, zablokowany wiersz podaje misję).
+  Zapis: `save.settings.musicPick` (`'auto'` albo id utworu).
+
+**Efekty**: zjadanie wspina się po skali **bieżącego utworu** (combo gra
+razem z muzyką), fanfary, awans rozmiaru, gwiazdki itd. są transponowane
+do tonacji utworu (durowe utwory mapują fanfary C-dur na swoją tonikę,
+molowe — a-moll). Osobne sygnały: start rundy/misji, „za duże” (głuche
+stuknięcie), objęcie i utrata prowadzenia, tarcza, portal, WIELKI FINISZ
+(narastanie + uderzenie), karty ewolucji i wybór karty, większy rywal
+w pobliżu (bicie serca, najwyżej co 4 s).
+
+Na iPhonie gra prosi o sesję audio „playback”, więc gra także przy włączonym przełączniku
 „cicho” (i przy okazji wycisza muzykę z innych aplikacji); każde tapnięcie
 wznawia dźwięk, jeśli iOS go przerwał. Muzykę i efekty wyłącza się osobno
 w Profilu. Tam też jest „Test dźwięku” (krótka melodia + stan silnika i tryb
@@ -262,7 +309,14 @@ cofnięty zegar, dokupienie, darmowe gry —, gwiazdki, skrzynie gwiazd,
 przyczyny porażki, pożyczka NELA, migracja zapisu v11→v12, odprawa na
 375×667) i **trudność v15** (`qa/difficulty.mjs`: każda z 240 misji
 grana przez bota-eksperta i bota „casual” w prawdziwym limicie; krzywa
-musi rosnąć, EKSTREMALNE ≤ 55% dla „casual”, każda misja wykonalna).
+musi rosnąć, EKSTREMALNE ≤ 55% dla „casual”, każda misja wykonalna),
+**dźwięk v16** (`qa/audio.mjs`: każdy z 15 utworów się kompiluje, każdy
+takt melodii ma 16 kroków, każda dzielnica ma motyw; render offline przez
+prawdziwy mikser — bez przesterów i ciszy, utwory rundy w paśmie 8 dB,
+menu cichsze, warstwy rosną z napięciem, limit głosów; drop w końcówce,
+rotacja Areny, Daily = jeden utwór na ziarno, boss od dropu, pauza „pod
+wodą”, NASTĘPNY, plakietka TERAZ GRA, Szafa grająca z zablokowanymi
+utworami, stres 60 zmian scen, runda bota z włączonym dźwiękiem).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 przekracza pasy przelotu w całości, odkleja się, gdy utknie. Czasy misji
