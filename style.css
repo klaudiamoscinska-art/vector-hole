@@ -4616,3 +4616,5 @@ body.wide .result-actions { position: static; margin: 4px 0 0; padding: 0; backg
 /* Sheets (briefing, energy) are dialogs in the middle, not bottom sheets. */
 body.wide .briefing-overlay { align-items: center !important; }
 body.wide .briefing-overlay > .briefing-sheet { border-radius: 22px; max-height: calc(100% - 40px); padding-bottom: 14px; }
+/* The daily login reward is a modal over Miasto: it dims the rail too. */
+body.wide #loginRewardScreen { z-index: 112; }

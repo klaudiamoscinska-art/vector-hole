@@ -196,6 +196,31 @@ export async function runV21Checks(url) {
     await g.browser.close();
   }
 
+  // --- Thumb pad on a big touch screen: it sits under the finger ------------
+  // (it lives in the HUD, which --ui-scale zooms; screen px must go in
+  // divided by the scale)
+  {
+    const g = await openGame(url, { viewport: { width: 1180, height: 820 }, mobile: true, deviceScaleFactor: 1 });
+    const save = await veteranSave(g.page, { missions: 30, runsPlayed: 6 });
+    save.settings.inputMode = 'thumbpad';
+    await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
+    await g.page.reload();
+    await g.page.waitForFunction(() => window.game && window.game.state);
+    const r = await g.page.evaluate(async () => {
+      game.startRound();
+      await new Promise(res => setTimeout(res, 300));
+      const c = document.getElementById('gameCanvas'), x = 300, y = 720;
+      const t = (type, px, py) => c.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: [new Touch({ identifier: 1, target: c, clientX: px, clientY: py })], changedTouches: [new Touch({ identifier: 1, target: c, clientX: px, clientY: py })] }));
+      t('touchstart', x, y);
+      const b = document.getElementById('thumbpadBase').getBoundingClientRect();
+      return { ui: +game.uiScale.toFixed(2), off: Math.round(Math.hypot(b.left + b.width / 2 - x, b.top + b.height / 2 - y)) };
+    });
+    results.push(report('thumb pad (iPad landscape, UI scaled): the pad appears under the finger', r.ui > 1 && r.off <= 3, JSON.stringify(r)));
+    results.push(report('thumb pad: no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+    await g.browser.close();
+  }
+
   return results;
 }
 

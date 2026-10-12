@@ -7894,8 +7894,11 @@ class Game {
 
     const showThumbpad = (sx, sy) => {
       clearTimeout(this.thumbpadFadeTimer);
-      thumbBase.style.left = sx + 'px';
-      thumbBase.style.top = sy + 'px';
+      // v21: the pad lives in the HUD, zoomed by --ui-scale on big screens --
+      // screen px go in divided by it, so it sits under the finger.
+      const k = this.uiScale || 1;
+      thumbBase.style.left = sx / k + 'px';
+      thumbBase.style.top = sy / k + 'px';
       thumbBase.classList.remove('hidden');
       requestAnimationFrame(() => thumbBase.classList.add('active'));
     };
@@ -7922,7 +7925,8 @@ class Game {
       this.moveVector = { x: nx, y: ny, magnitude: curved };
       // Knob visually follows the raw (linear) finger displacement so it
       // reads as "attached to your thumb"; only the resulting speed is curved.
-      thumbKnob.style.transform = `translate(${nx * clamped * 0.7}px, ${ny * clamped * 0.7}px)`;
+      const k = this.uiScale || 1;
+      thumbKnob.style.transform = `translate(${nx * clamped * 0.7 / k}px, ${ny * clamped * 0.7 / k}px)`;
     };
 
     let anchor = null;
