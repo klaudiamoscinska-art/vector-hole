@@ -594,7 +594,7 @@ class Analytics {
    T third · - hold · . rest. Drums: x hit · o ghost/soft · O open hat. */
 const MUSIC_TRACKS = [
   // ----- Miasto / menus -----
-  { id: 'swit', name: 'Neonowy Świt', menu: true, key: 'F', scale: 'majorPent', bpm: 84, swing: 0.14, kit: 'lofi',
+  { id: 'swit', name: 'Neonowy Świt', menu: true, key: 'C', scale: 'majorPent', bpm: 84, swing: 0.14, kit: 'lofi',
     pad: 'saw', lead: 'bell', arp: 'tri', bass: 'sub',
     drums: { kick: 'x.......x.x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
     bassLine: 'R-----R.R-------', arpLine: '0123',
@@ -630,13 +630,13 @@ const MUSIC_TRACKS = [
       B: { chords: 'Am F C G', lead: 'E5:2 A5:2 C6:2 B5:2 A5:4 E5:4 | F5:2 A5:2 C6:4 A5:2 G5:2 F5:4 | G5:2 C6:2 E6:4 D6:2 C6:2 G5:4 | D6:4 B5:2 G5:2 A5:8' },
       C: { chords: 'F G Em Am', lead: 'C6:6 A5:2 F5:8 | D6:6 B5:2 G5:8 | E6:4 D6:4 B5:4 G5:4 | A5:12 r:4' },
       D: { chords: 'Am F C G', lead: 'B', lift: true }
-    }, form: 'AABCBD', drop: 'D' },
+    }, form: 'ABACBD', drop: 'D' },
   { id: 'impuls', name: 'Zielony Impuls', district: 'park', key: 'C', scale: 'majorPent', bpm: 118, kit: 'clap',
     pad: 'organ', lead: 'pluck', arp: 'tri', bass: 'square',
     drums: { kick: 'x...x...x...x.x.', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
-    bassLine: 'R..R..R.R..R.OR.', arpLine: '0120',
+    bassLine: 'R..R..R.R..R.OR.', bassAlt: 'R.OR.OR.R.OR.FO.', arpLine: '0120',
     sections: {
-      A: { chords: 'C G Am F' },
+      A: { chords: 'F G Em Am' },
       B: { chords: 'C G Am F', lead: 'E5:2 G5:2 C6:2 G5:2 E5:2 G5:2 A5:4 | G5:2 D5:2 G5:2 B5:2 D6:4 B5:4 | C6:2 A5:2 E5:2 A5:2 C6:2 D6:2 E6:4 | D6:2 C6:2 A5:4 C6:8' },
       C: { chords: 'Dm7 G Em7 Am', lead: 'A5:4 F5:4 D5:4 F5:4 | G5:4 B5:4 D6:8 | E6:4 D6:2 B5:2 G5:8 | A5:4 C6:4 E6:8' },
       D: { chords: 'C G Am F', lead: 'B', lift: true }
@@ -644,19 +644,19 @@ const MUSIC_TRACKS = [
   { id: 'fala', name: 'Fala Syntez', district: 'port', key: 'G', scale: 'minor', bpm: 104,
     pad: 'saw', lead: 'saw', arp: 'pluck', bass: 'sub',
     drums: { kick: 'x.......x.x.....', snare: '........x.......', hat: 'x.x.x.x.x.x.x.x.' },
-    bassLine: 'R-----R.R-----O.', arpLine: '0122',
+    bassLine: 'R-----R.R-----O.', bassAlt: 'R--O--R.R--F--O.', arpLine: '0122',
     sections: {
-      A: { chords: 'Gm Eb Bb F' },
+      A: { chords: 'Gm Cm Eb D' },
       B: { chords: 'Gm Eb Bb F', lead: 'D5:3 G5:3 Bb5:2 A5:4 G5:4 | G5:3 Bb5:3 Eb6:2 D6:4 Bb5:4 | F5:3 Bb5:3 D6:2 C6:4 Bb5:4 | A5:3 C6:3 F6:2 D6:8' },
       C: { chords: 'Cm Gm Eb D', lead: 'Eb6:8 D6:4 C6:4 | Bb5:8 A5:4 G5:4 | G5:4 Bb5:4 Eb6:4 F6:4 | F#5:8 A5:8' },
       D: { chords: 'Gm Eb Bb F', lead: 'B', lift: true }
-    }, form: 'AABCBD', drop: 'D' },
+    }, form: 'ABACBD', drop: 'D' },
   { id: 'glitch', name: 'Glitch w Galerii', district: 'galeria', key: 'F#', scale: 'minorPent', bpm: 124, glitch: true,
     pad: 'square', lead: 'square', arp: 'square', bass: 'saw',
     drums: { kick: 'x..x...x..x.....', snare: '....x.......x..x', hat: 'x.xxx.x.x.xxx.x.' },
-    bassLine: 'R..R..O.R..R.FO.', arpLine: '0212',
+    bassLine: 'R..R..O.R..R.FO.', bassAlt: 'RR.R.OO.RR.R.FO.', arpLine: '0212',
     sections: {
-      A: { chords: 'F#m D A E' },
+      A: { chords: 'F#m E D E' },
       B: { chords: 'F#m D A E', lead: 'C#6:1 C#6:1 r:2 A5:2 F#5:2 C#6:2 B5:2 A5:4 | A5:1 A5:1 r:2 F#5:2 D5:2 F#5:2 A5:2 B5:4 | E6:1 E6:1 r:2 C#6:2 A5:2 E5:2 A5:2 C#6:4 | B5:4 G#5:4 E5:8' },
       C: { chords: 'Bm D F#m E', lead: 'D6:4 B5:4 F#5:8 | F#6:4 E6:4 D6:8 | C#6:4 A5:4 F#5:8 | E5:2 G#5:2 B5:2 E6:2 B5:8' },
       D: { chords: 'F#m D A E', lead: 'B', lift: true }
@@ -664,85 +664,85 @@ const MUSIC_TRACKS = [
   { id: 'napiecie', name: 'Wysokie Napięcie', district: 'dachy', key: 'E', scale: 'minor', bpm: 128, arpRate: 1,
     pad: 'saw', lead: 'saw', arp: 'square', bass: 'saw',
     drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..O...O...O...O.' },
-    bassLine: 'RRO.RRO.RRO.RROR', arpLine: '0122',
+    bassLine: 'RRO.RRO.RRO.RROR', bassAlt: 'R.ROR.ROR.RORFRO', arpLine: '0122',
     sections: {
-      A: { chords: 'Em C G D' },
+      A: { chords: 'Em Am Em B' },
       B: { chords: 'Em C G D', lead: 'B5:2 E6:2 G6:2 E6:2 B5:2 G5:2 E5:4 | C6:2 E6:2 G6:2 E6:2 C6:2 G5:2 E5:4 | D6:2 G6:2 B6:2 G6:2 D6:2 B5:2 G5:4 | F#6:4 E6:4 D6:4 A5:4' },
       C: { chords: 'Am Em C B', lead: 'A5:8 C6:8 | B5:8 G5:8 | E6:8 G6:8 | F#6:8 D#6:8' },
       D: { chords: 'Em C G D', lead: 'B', lift: true }
-    }, form: 'AABCBD', drop: 'D' },
+    }, form: 'ABACBD', drop: 'D' },
   { id: 'rdzen', name: 'Rdzeń Miasta', district: 'rdzen', key: 'C', scale: 'minor', bpm: 120,
     pad: 'saw', lead: 'saw', arp: 'square', bass: 'saw',
     drums: { kick: 'x...x...x...x...', snare: '....x.......x.xx', hat: 'x.x.x.x.x.x.x.x.' },
-    bassLine: 'R.RRR.RRR.RRR.OF', arpLine: '0120',
+    bassLine: 'R.RRR.RRR.RRR.OF', bassAlt: 'R..RR..RR..RO.FR', arpLine: '0120',
     sections: {
-      A: { chords: 'Cm Ab Eb Bb' },
+      A: { chords: 'Cm Bb Ab G' },
       B: { chords: 'Cm Ab Eb Bb', lead: 'G5:4 C6:4 Eb6:6 D6:2 | C6:4 Ab5:4 Eb5:4 C6:4 | Bb5:4 G5:4 Eb6:6 F6:2 | D6:8 Bb5:4 F5:4' },
       C: { chords: 'Fm Cm Ab G', lead: 'Ab5:6 G5:2 F5:8 | G5:6 F5:2 Eb5:8 | C6:4 Eb6:4 Ab6:8 | G6:4 F6:4 D6:4 B5:4' },
       D: { chords: 'Cm Ab Eb Bb', lead: 'B', lift: true }
     }, form: 'ABCBAD', drop: 'D' },
 
   // ----- Rozdział II: unlocked with their districts -----
-  { id: 'tunele', name: 'Tunele Metra', district: 'metro', key: 'D', scale: 'minor', bpm: 126,
+  { id: 'tunele', name: 'Ostatni Kurs', district: 'metro', key: 'D', scale: 'minor', bpm: 126,
     pad: 'saw', lead: 'saw', arp: 'pluck', bass: 'saw',
     drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.' },
-    bassLine: 'RORORORORORORORO', arpLine: '012',
+    bassLine: 'RORORORORORORORO', bassAlt: 'RRORRORRORRORROF', arpLine: '012',
     sections: {
-      A: { chords: 'Dm Bb C Am' },
+      A: { chords: 'Dm Gm Dm A' },
       B: { chords: 'Dm Bb C Am', lead: 'A5:6 F5:2 D5:4 F5:4 | D6:6 Bb5:2 F5:4 Bb5:4 | E6:6 C6:2 G5:4 C6:4 | C6:4 A5:4 E5:4 A5:4' },
       C: { chords: 'Gm Dm Bb A', lead: 'Bb5:8 D6:8 | A5:8 F5:8 | D6:4 F6:4 D6:4 Bb5:4 | C#6:8 E6:8' },
       D: { chords: 'Dm Bb C Am', lead: 'B', lift: true }
-    }, form: 'AABCBD', drop: 'D' },
-  { id: 'bazar', name: 'Nocny Bazar', district: 'bazar', key: 'A', scale: 'hijaz', bpm: 104, swing: 0.1,
+    }, form: 'ABACBD', drop: 'D' },
+  { id: 'bazar', name: 'Targ o Północy', district: 'bazar', key: 'A', scale: 'hijaz', bpm: 104, swing: 0.1,
     pad: 'organ', lead: 'pluck', arp: 'tri', bass: 'sub',
     drums: { kick: 'x..x..x...x.....', snare: '....x..x....x...', hat: 'x.xx.xx.x.xx.xx.' },
-    bassLine: 'R..R..R.R...F...', arpLine: '0102',
+    bassLine: 'R..R..R.R...F...', bassAlt: 'R.RR..F.R.RR..O.', arpLine: '0102',
     sections: {
       A: { chords: 'A Bb Gm A' },
       B: { chords: 'A Bb Gm A', lead: 'E5:2 F5:2 E5:2 D5:2 C#5:4 A4:4 | D5:2 F5:2 Bb5:4 A5:2 G5:2 F5:4 | G5:2 Bb5:2 D6:4 Bb5:2 A5:2 G5:4 | F5:2 E5:2 C#5:2 Bb4:2 A4:8' },
       C: { chords: 'Dm C Bb A', lead: 'F5:4 A5:4 D6:8 | E5:4 G5:4 C6:8 | D6:4 Bb5:4 F5:8 | E5:2 F5:2 E5:2 C#5:2 A4:8' },
       D: { chords: 'A Bb Gm A', lead: 'B', lift: true }
     }, form: 'ABACBD', drop: 'D' },
-  { id: 'piksele', name: 'Fabryka Pikseli', district: 'fabryka', key: 'B', scale: 'minor', bpm: 132, kit: 'chip', arpRate: 1,
+  { id: 'piksele', name: 'Ośmiobitowa Taśma', district: 'fabryka', key: 'B', scale: 'minor', bpm: 132, kit: 'chip', arpRate: 1,
     pad: 'square', lead: 'square', arp: 'square', bass: 'square',
     drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
-    bassLine: 'R.O.R.O.R.O.F.O.', arpLine: '012',
+    bassLine: 'R.O.R.O.R.O.F.O.', bassAlt: 'ROROFOFOROROTOFO', arpLine: '012',
     sections: {
-      A: { chords: 'Bm G D A' },
-      B: { chords: 'Bm G D A', lead: 'F#5:2 B5:2 D6:2 F#6:2 E6:2 D6:2 B5:4 | G5:2 B5:2 D6:2 G6:2 F#6:2 D6:2 B5:4 | A5:2 D6:2 F#6:2 A6:2 F#6:2 D6:2 A5:4 | C#6:2 E6:2 A6:4 E6:2 C#6:2 A5:4' },
+      A: { chords: 'Bm Em F# Bm' },
+      B: { chords: 'Bm G D A', lead: 'B4:1 r:1 B5:2 F#5:2 D6:2 r:2 B5:2 C#6:2 D6:2 | G4:1 r:1 G5:2 D6:2 B5:2 r:2 G5:2 A5:2 B5:2 | D5:1 r:1 D6:2 A5:2 F#5:2 r:2 A5:2 B5:2 C#6:2 | E6:4 C#6:2 A5:2 E5:4 r:4' },
       C: { chords: 'Em Bm G F#', lead: 'E6:4 G6:4 B6:8 | F#6:4 D6:4 B5:8 | B5:4 D6:4 G6:8 | A#5:4 C#6:4 F#6:8' },
       D: { chords: 'Bm G D A', lead: 'B', lift: true }
-    }, form: 'AABCBD', drop: 'D' },
-  { id: 'hologramy', name: 'Zatoka Hologramów', district: 'zatoka', key: 'Eb', scale: 'majorPent', bpm: 98, swing: 0.12,
+    }, form: 'ABACBD', drop: 'D' },
+  { id: 'hologramy', name: 'Mgła nad Zatoką', district: 'zatoka', key: 'Eb', scale: 'majorPent', bpm: 98, swing: 0.12,
     pad: 'saw', lead: 'bell', arp: 'tri', bass: 'sub',
     drums: { kick: 'x.......x.x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
-    bassLine: 'R...R.F.R...O...', arpLine: '0213',
+    bassLine: 'R...R.F.R...O...', bassAlt: 'R.....F.R..T.O..', arpLine: '0213',
     sections: {
       A: { chords: 'Ebmaj7 Cm7 Abmaj7 Bb' },
       B: { chords: 'Ebmaj7 Cm7 Abmaj7 Bb', lead: 'G5:4 Bb5:4 D6:4 Bb5:4 | C6:4 Eb6:4 G5:8 | C6:4 Eb6:4 G6:4 Eb6:4 | F6:8 D6:8' },
       C: { chords: 'Fm7 Gm7 Abmaj7 Bb', lead: 'Ab5:8 C6:8 | Bb5:8 D6:8 | Eb6:8 C6:8 | D6:4 F6:4 Bb6:8' },
       D: { chords: 'Ebmaj7 Cm7 Abmaj7 Bb', lead: 'B', lift: true }
-    }, form: 'AABCBD', drop: 'D' },
-  { id: 'ogrody', name: 'Wiszące Ogrody', district: 'ogrody', key: 'D', scale: 'dorian', bpm: 112,
+    }, form: 'ABACBD', drop: 'D' },
+  { id: 'ogrody', name: 'Pnącza', district: 'ogrody', key: 'D', scale: 'dorian', bpm: 112,
     pad: 'organ', lead: 'saw', arp: 'pluck', bass: 'pluck',
     drums: { kick: 'x.....x...x.....', snare: '....x..o....x...', hat: 'x.xxx.xxx.xxx.xx' },
-    bassLine: 'R..O.RR.R..O.FR.', arpLine: '0120',
+    bassLine: 'R..O.RR.R..O.FR.', bassAlt: 'R.OR.RO.R.ORF.R.', arpLine: '0120',
     sections: {
       A: { chords: 'Dm7 G Dm7 G' },
       B: { chords: 'Dm7 G Dm7 G', lead: 'A5:2 C6:2 D6:2 r:2 F6:2 D6:2 C6:4 | B5:2 D6:2 G6:4 F6:2 D6:2 B5:4 | A5:2 C6:2 D6:2 r:2 E6:2 F6:2 A6:4 | G6:4 F6:2 E6:2 D6:8' },
       C: { chords: 'Fmaj7 C Bb A', lead: 'A5:4 C6:4 E6:8 | G5:4 C6:4 E6:8 | F6:4 D6:4 Bb5:8 | C#6:4 E6:4 A6:8' },
       D: { chords: 'Dm7 G Dm7 G', lead: 'B', lift: true }
     }, form: 'ABACBD', drop: 'D' },
-  { id: 'chmura', name: 'Chmura Danych', district: 'chmura', key: 'Bb', scale: 'minor', bpm: 124, kit: 'clap', arpRate: 1,
+  { id: 'chmura', name: 'Przesył Danych', district: 'chmura', key: 'Bb', scale: 'minor', bpm: 124, kit: 'clap', arpRate: 1,
     pad: 'saw', lead: 'saw', arp: 'pluck', bass: 'saw',
     drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..O...O...O...O.' },
-    bassLine: '.RRR.RRR.RRR.RRR', arpLine: '0122',
+    bassLine: '.RRR.RRR.RRR.RRR', bassAlt: '.ROR.ROR.ROR.FOF', arpLine: '0122',
     sections: {
-      A: { chords: 'Bbm Gb Db Ab' },
+      A: { chords: 'Bbm Ebm Bbm F' },
       B: { chords: 'Bbm Gb Db Ab', lead: 'F5:4 Bb5:4 Db6:4 C6:4 | Bb5:4 Db6:4 Gb6:4 F6:4 | Ab5:4 Db6:4 F6:4 Eb6:4 | C6:8 Eb6:4 Ab5:4' },
       C: { chords: 'Ebm Bbm Gb F', lead: 'Gb6:8 F6:4 Eb6:4 | Db6:8 C6:4 Bb5:4 | Bb5:4 Db6:4 Gb6:8 | A5:4 C6:4 F6:8' },
       D: { chords: 'Bbm Gb Db Ab', lead: 'B', lift: true }
-    }, form: 'AABCBD', drop: 'D' }
+    }, form: 'ABACBD', drop: 'D' }
 ];
 const MUSIC_TRACK_BY_ID = Object.fromEntries(MUSIC_TRACKS.map(t => [t.id, t]));
 const MENU_TRACK_IDS = MUSIC_TRACKS.filter(t => t.menu).map(t => t.id);
@@ -805,9 +805,11 @@ function compileSong(id) {
   for (let i = 0; ladder.length < 14; i++) ladder.push(midiHz(tonic + scale[i % scale.length] + 12 * Math.floor(i / scale.length)));
   const song = COMPILED_SONGS[id] = {
     ...t, sections, form: t.form.split(''), ladder,
-    // Stingers (fanfare, tier-up…) were written in A; shift them into the
-    // track's key (-6…+5 semitones) so they never clash with the music.
-    keyRatio: Math.pow(2, (((keyPc - 9 + 18) % 12) - 6) / 12),
+    // Stingers (fanfare, tier-up…) were written in A minor / C major; shift
+    // them into the track's key (-6…+5 semitones) so they never clash.
+    // Major-key tracks map the C-major stingers onto their tonic; minor
+    // tracks map A minor onto theirs (relative keys share the same notes).
+    keyRatio: Math.pow(2, (((keyPc - (/major/i.test(t.scale) ? 0 : 9) + 18) % 12) - 6) / 12),
     arpRate: t.arpRate || 2,
     hats16: t.drums.hat.replace(/\./g, 'o')
   };
@@ -1072,7 +1074,11 @@ class SoundEngine {
 
   /** Stingers are authored in A minor/C major; this shifts them into the
    *  current track's key so a fanfare never fights the music under it. */
-  inKey(f) { return f * (this.song ? this.song.keyRatio : 1); }
+  inKey(f) {
+    const next = this.queued && compileSong(this.queued.id);
+    const song = next || this.song;
+    return f * (song ? song.keyRatio : 1);
+  }
 
   /* ---- game events ---- */
   /** size: eaten radius in px; combo: current chain length. Rate-limited so a
@@ -1091,14 +1097,14 @@ class SoundEngine {
     this.tone({ type: 'sine', freq: f, dur: 0.12, vol: 0.18, when: 0.01 });
     if (size > 30) {
       // Big objects: a sub "gulp" under the blip.
-      this.tone({ type: 'sine', freq: 140, freqEnd: 45, dur: 0.28, vol: 0.45 });
+      this.tone({ type: 'sine', freq: 140, freqEnd: 45, dur: 0.28, vol: 0.3 });
       this.noise({ dur: 0.22, vol: 0.12, freq: 900, freqEnd: 120, type: 'lowpass' });
     }
   }
 
   rivalEaten() {
     if (!this.sfxOn()) return;
-    this.tone({ type: 'sine', freq: 180, freqEnd: 40, dur: 0.45, vol: 0.55 });
+    this.tone({ type: 'sine', freq: 180, freqEnd: 40, dur: 0.45, vol: 0.36 });
     [329.63, 440, 659.25].forEach((f, i) => this.tone({ type: 'sawtooth', freq: this.inKey(f), dur: 0.35, vol: 0.09, when: 0.02 * i, filter: 2400 }));
     this.noise({ dur: 0.35, vol: 0.18, freq: 3000, freqEnd: 200, type: 'lowpass' });
   }
@@ -1129,7 +1135,7 @@ class SoundEngine {
 
   tick(urgent) {
     if (!this.sfxOn()) return;
-    this.tone({ type: 'square', freq: urgent ? 1320 : 880, dur: 0.06, vol: 0.09, filter: 4000 });
+    this.tone({ type: 'square', freq: this.inKey(urgent ? 1320 : 880), dur: 0.06, vol: 0.09, filter: 4000 });
   }
 
   whoosh() {
@@ -1230,9 +1236,11 @@ class SoundEngine {
 
   /** WIELKI FINISZ: a riser into a sub drop and a chord stab. */
   overdrive() {
+    // The finale's own riser replaces the music's: drop on the next bar.
+    this.dropNow();
     if (!this.sfxOn()) return;
     this.noise({ dur: 0.6, vol: 0.14, freq: 300, freqEnd: 7000, type: 'bandpass', q: 2.5, attack: 0.45 });
-    this.tone({ type: 'sine', freq: 120, freqEnd: 38, dur: 0.7, vol: 0.5, when: 0.55 });
+    this.tone({ type: 'sine', freq: 120, freqEnd: 38, dur: 0.7, vol: 0.32, when: 0.55 });
     [220, 261.63, 329.63, 440].forEach(f => this.tone({ type: 'sawtooth', freq: this.inKey(f), dur: 0.5, vol: 0.06, when: 0.55, filter: 2600 }));
   }
 
@@ -1254,14 +1262,18 @@ class SoundEngine {
   /** A bigger rival entering the danger halo: a low double heartbeat. */
   danger() {
     if (!this.sfxOn()) return;
-    this.tone({ type: 'sine', freq: 80, freqEnd: 50, dur: 0.14, vol: 0.4 });
-    this.tone({ type: 'sine', freq: 75, freqEnd: 45, dur: 0.16, vol: 0.32, when: 0.17 });
+    // The sine thump is felt on headphones; the triangle is what a phone
+    // speaker actually plays.
+    [0, 0.17].forEach((w, i) => {
+      this.tone({ type: 'sine', freq: 80 - i * 5, freqEnd: 48, dur: 0.15, vol: 0.28, when: w });
+      this.tone({ type: 'triangle', freq: 160 - i * 10, freqEnd: 110, dur: 0.12, vol: 0.14, when: w });
+    });
   }
 
   /** Round / mission start: kick + a stab on the downbeat. */
   go() {
     if (!this.sfxOn()) return;
-    this.tone({ type: 'sine', freq: 150, freqEnd: 40, dur: 0.3, vol: 0.5 });
+    this.tone({ type: 'sine', freq: 150, freqEnd: 40, dur: 0.3, vol: 0.32 });
     [440, 659.25, 880].forEach(f => this.tone({ type: 'square', freq: this.inKey(f), dur: 0.25, vol: 0.05, filter: 3200 }));
     this.noise({ dur: 0.5, vol: 0.06, freq: 8000, type: 'highpass' });
   }
@@ -1283,9 +1295,12 @@ class SoundEngine {
    *  the round's track (setIntensity(0) turns it into a calm outro). */
   setScene(kind, opts = {}) {
     this.scene = kind; this.sceneOpts = opts;
+    if (kind !== 'menu') this.previewing = false;
     const pick = this.settings.musicPick;
     const pinned = pick && pick !== 'auto' && MUSIC_TRACK_BY_ID[pick] && this.library.isUnlocked(pick) ? pick : null;
     if (kind === 'menu') {
+      // A pinned favourite plays everywhere, menus included.
+      if (pinned) { this.playTrack(pinned); return; }
       if (this.song && this.song.menu && !this.queued) return;
       this.playTrack(this.nextFrom('menu', MENU_TRACK_IDS));
     } else if (kind === 'arena') {
@@ -1341,7 +1356,7 @@ class SoundEngine {
     const current = this.queued ? this.queued.id : this.song && this.song.id;
     if (current === id && !opts.restart) return;
     if (current === id && opts.restart && !this.queued && this.formIdx === 0 && this.barInSection === 0 && this.barCount === 0) return;
-    const q = { id, drop: !!opts.drop };
+    const q = { id, drop: !!opts.drop, section: opts.section };
     if (!this.ctx || !this.musicTimer) { this.queued = null; this.loadSong(q); return; }
     const t = this.ctx.currentTime;
     this.musicIn.gain.cancelScheduledValues(t);
@@ -1355,7 +1370,8 @@ class SoundEngine {
     try { song = compileSong(q.id); } catch (e) { /* authoring error: qa/audio.mjs catches these */ }
     song = song || compileSong('wir');
     this.song = song;
-    this.formIdx = q.drop && song.drop ? Math.max(0, song.form.indexOf(song.drop)) : 0;
+    const startAt = q.drop && song.drop ? song.drop : q.section;
+    this.formIdx = startAt ? Math.max(0, song.form.indexOf(startAt)) : 0;
     this.barInSection = 0; this.stepInBar = 0; this.barCount = 0; this.loopCount = 0;
     this.dropArmed = false; this.dropRiserBar = -1;
     if (!song.menu) { this.recent.push(song.id); if (this.recent.length > 4) this.recent.shift(); }
@@ -1368,6 +1384,11 @@ class SoundEngine {
   applySongFx() {
     if (!this.ctx || !this.delay || !this.song) return;
     this.delay.delayTime.setValueAtTime(Math.min(1.4, 60 / this.song.bpm * 0.75), this.ctx.currentTime);
+  }
+
+  dropNow() {
+    this.armDrop();
+    if (this.dropArmed) this.dropRiserBar = this.barCount;
   }
 
   armDrop() {
@@ -1440,10 +1461,13 @@ class SoundEngine {
       if (this.formIdx >= s.form.length) {
         this.formIdx = 0;
         this.loopCount++;
+        const pinned = this.settings.musicPick && this.settings.musicPick !== 'auto' && MUSIC_TRACK_BY_ID[this.settings.musicPick];
+        // Final stretch / SZAŁ: stay on this track and loop hook → drop
+        // (switching songs every 10 s at the climax read as a medley).
+        if (this.intensity >= 2 && s.drop && s.form.length >= 2) this.formIdx = s.form.length - 2;
         // A full pass done: menus and Arena move on to the next track (a
         // DJ-style cut on the downbeat); missions loop their district theme.
-        const pinned = this.settings.musicPick && this.settings.musicPick !== 'auto';
-        if (!this.queued && (this.scene === 'menu' || (this.scene === 'arena' && !pinned && !this.sceneOpts.daily && !this.sceneOpts.challenge))) {
+        else if (!this.queued && !pinned && (this.scene === 'menu' || (this.scene === 'arena' && !this.sceneOpts.daily && !this.sceneOpts.challenge))) {
           const next = this.scene === 'menu' ? this.nextFrom('menu', MENU_TRACK_IDS) : this.nextGameplayTrack();
           if (next !== s.id) this.queued = { id: next, at: 0 };
         }
@@ -1483,7 +1507,9 @@ class SoundEngine {
 
   kick(when, vol) {
     const chip = this.song.kit === 'chip';
-    this.tone({ type: chip ? 'square' : 'sine', freq: chip ? 160 : 125, freqEnd: 42, dur: chip ? 0.1 : 0.2, vol: chip ? vol * 0.6 : vol, when, bus: this.musicIn, filter: chip ? 900 : null });
+    // A short click on top so phone speakers (nothing under ~120 Hz) hear it.
+    if (!chip) this.noise({ dur: 0.012, vol: vol * 0.25, freq: 3500, when, bus: this.musicIn });
+    this.tone({ type: chip ? 'square' : 'sine', freq: 160, freqEnd: 42, dur: chip ? 0.1 : 0.2, vol: chip ? vol * 0.6 : vol, when, bus: this.musicIn, filter: chip ? 900 : null });
     // Sidechain pump: pads breathe with the kick.
     const t = Math.max(0, this.ctx.currentTime + when), g = this.padBus.gain;
     g.setValueAtTime(1, t); g.linearRampToValueAtTime(0.4, t + 0.012); g.linearRampToValueAtTime(1, t + 0.2);
@@ -1506,7 +1532,7 @@ class SoundEngine {
   }
 
   playStep(when, sd) {
-    const S = this.song, L = this.intensity, bus = this.wetBus;
+    const S = this.song, L = Math.max(this.intensity, this.previewing ? 1 : 0), bus = this.wetBus;
     const sec = S.sections[S.form[this.formIdx]];
     const bar = this.barInSection, s = this.stepInBar;
     const chord = sec.chords[bar % sec.chords.length];
@@ -1552,7 +1578,7 @@ class SoundEngine {
         const bv = S.bass === 'sub' ? 0.2 : 0.13;
         if (S.bass === 'sub') {
           this.tone({ type: 'sine', freq: midiHz(m), dur: sd * hold * 0.95, vol: bv * dv, when, bus: this.musicIn, attack: 0.01 });
-          this.tone({ type: 'triangle', freq: midiHz(m + 12), dur: sd * hold * 0.8, vol: 0.05 * dv, when, bus: this.musicIn });
+          this.tone({ type: 'triangle', freq: midiHz(m + 12), dur: sd * hold * 0.8, vol: 0.09 * dv, when, bus: this.musicIn });
         } else this.voice(S.bass === 'pluck' ? 'pluck' : S.bass, m, sd * hold * 0.9, bv * dv, when, this.musicIn, 0.18 + lv * 0.1);
       }
     }
@@ -1575,7 +1601,9 @@ class SoundEngine {
         const dur = sd * ev.steps * 0.92;
         const lvol = menu ? 0.03 : 0.036 + (lv >= 2 ? 0.008 : 0);
         this.voice(S.lead, ev.midi, dur, lvol, when, bus, 0.9 + lv * 0.25);
-        if (lv >= 3) this.voice('sine', ev.midi + 12, dur, 0.016, when, bus);
+        // The drop is more than a louder hook: the melody gains a lower octave.
+        if (sec.lift && L >= 1) this.voice(S.lead, ev.midi - 12, dur, lvol * 0.5, when, bus, 0.8);
+        if (lv >= 3 && ev.midi < 84) this.voice('sine', ev.midi + 12, dur, 0.016, when, bus);
       }
     }
 
@@ -2106,6 +2134,7 @@ const SIZE_TIER_COLORS = { 1: '#50F0FA', 2: '#FF54AD', 3: '#EFCB63', 4: '#9875FF
 // -- full <svg> markup (not CARD_ICONS' bare <path>) since it's injected
 // via innerHTML directly, not through the evolution-card template.
 const REWARD_CATEGORY_ICONS = {
+  music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg>',
   skin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>',
   aura: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/></svg>',
   effect: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>',
@@ -11839,6 +11868,15 @@ class Game {
       this.save.coins += m.def.reward.coins;
       if (m.def.reward.unlockDistrict && !this.save.campaign.unlockedDistricts.includes(m.def.reward.unlockDistrict)) {
         this.save.campaign.unlockedDistricts.push(m.def.reward.unlockDistrict);
+        // v16: Rozdział II districts bring their own track to Szafa grająca.
+        const track = MUSIC_TRACK_BY_ID[DISTRICT_THEME[m.def.reward.unlockDistrict]];
+        if (track && !FREE_TRACK_DISTRICTS.includes(track.district)) {
+          this.queueRewardCelebration({
+            eyebrow: 'NOWY UTWÓR', title: `„${track.name}”`, color: '#9875FF',
+            icon: REWARD_CATEGORY_ICONS.music,
+            desc: `Gra w misjach dzielnicy ${this.trackSource(track)} i w rundach Areny. Posłuchasz go w Profilu → Szafa grająca.`
+          });
+        }
       }
       if (m.def.reward.unlockSkin && !this.save.owned.includes(m.def.reward.unlockSkin)) {
         this.save.owned.push(m.def.reward.unlockSkin);
@@ -12957,7 +12995,7 @@ class Game {
     const jb = document.getElementById('btnJukebox');
     if (jb) {
       const pick = MUSIC_TRACK_BY_ID[this.save.settings.musicPick];
-      jb.textContent = pick ? pick.name.toUpperCase() : 'MIESZANKA';
+      jb.textContent = `${pick ? pick.name.toUpperCase() : 'MIESZANKA'} ›`;
     }
   }
 
@@ -12969,20 +13007,26 @@ class Game {
     const pick = this.save.settings.musicPick || 'auto';
     const item = (id, name, sub, locked) => `<li><button class="jukebox-item${pick === id ? ' is-active' : ''}${locked ? ' is-locked' : ''}" data-track="${id}"${locked ? ' aria-disabled="true"' : ''}>${note}<span class="jb-text"><span class="jb-name">${escapeHtml(name)}</span><span class="jb-sub">${escapeHtml(sub)}</span></span></button></li>`;
     const unlocked = MUSIC_TRACKS.filter(t => this.isTrackUnlocked(t.id)).length;
+    const tempo = t => t.bpm < 95 ? 'spokojne tempo' : t.bpm < 118 ? 'średnie tempo' : 'szybkie tempo';
     let html = '<ul class="jukebox-list">' + item('auto', 'Mieszanka', 'co rundę inny utwór · w misjach motyw dzielnicy', false);
     html += '<li class="jb-group">DZIELNICE</li>';
     for (const t of MUSIC_TRACKS.filter(x => !x.menu)) {
       const locked = !this.isTrackUnlocked(t.id);
-      html += item(t.id, locked ? 'Utwór zablokowany' : t.name, locked ? `Odblokuj dzielnicę: ${this.trackSource(t)}` : `${this.trackSource(t)} · ${t.bpm} BPM`, locked);
+      const unlocker = locked && CAMPAIGN_MISSIONS.find(m => m.reward && m.reward.unlockDistrict === t.district);
+      html += item(t.id, t.name, locked ? `Odblokujesz${unlocker ? ` po misji ${missionCode(unlocker)}` : ''} · ${this.trackSource(t)}` : `${this.trackSource(t)} · ${tempo(t)}`, locked);
     }
     html += '<li class="jb-group">MIASTO</li>';
-    for (const t of MUSIC_TRACKS.filter(x => x.menu)) html += item(t.id, t.name, `spokojny bit · ${t.bpm} BPM`, false);
+    for (const t of MUSIC_TRACKS.filter(x => x.menu)) html += item(t.id, t.name, `lo-fi · ${tempo(t)}`, false);
     html += '</ul>';
+    // While the sheet is open a preview plays the full arrangement (drums,
+    // bass, melody) from the hook, not the calm menu layer.
+    this.sound.previewing = true;
     this.openInfoSheet({
       icon: note,
       title: 'Szafa grająca',
-      body: [`Utwory: <strong>${unlocked}/${MUSIC_TRACKS.length}</strong>. Dotknij, aby posłuchać i ustawić do rund i misji.`, html],
-      closeLabel: 'GOTOWE'
+      body: [`Utwory: <strong>${unlocked}/${MUSIC_TRACKS.length}</strong>. Dotknij, aby posłuchać i ustawić na stałe — w Mieście, rundach i misjach.`, html],
+      closeLabel: 'GOTOWE',
+      onClose: () => { this.sound.previewing = false; if (!this.running) this.sound.setScene('menu'); }
     });
   }
 
@@ -13003,7 +13047,7 @@ class Game {
     this.sound.unlock();
     this.sound.applySettings();
     // Preview: the pinned track (or the next of the mix) starts right away.
-    this.sound.playTrack(id === 'auto' ? this.sound.nextGameplayTrack() : id, { restart: true });
+    this.sound.playTrack(id === 'auto' ? this.sound.nextGameplayTrack() : id, { restart: true, section: 'B' });
     document.querySelectorAll('.jukebox-item').forEach(b => b.classList.toggle('is-active', b.dataset.track === id));
     this.syncControlsPanel();
     this.analytics.track('music_pick', { track: id });

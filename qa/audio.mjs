@@ -108,6 +108,11 @@ export async function runAudioChecks(url) {
       const bars = a.song.form.reduce((n, f) => n + a.song.sections[f].bars, 0);
       for (let i = 0; i < bars; i++) bar(a);
       const arenaNext = a.queued && a.queued.id;
+      // Final stretch: no medley -- the form wraps to hook → drop instead.
+      const f = mk('glitch'); f.scene = 'arena'; f.sceneOpts = {}; f.intensity = 2;
+      const fb = f.song.form.reduce((n, x) => n + f.song.sections[x].bars, 0);
+      for (let i = 0; i < fb; i++) bar(f);
+      const finalWrap = { queued: !!f.queued, section: f.song.form[f.formIdx] };
       // Missions loop their district theme; the 2nd pass varies (loopCount).
       const c = mk('impuls'); c.scene = 'campaign'; c.sceneOpts = { district: 'park' };
       const cb = c.song.form.reduce((n, f) => n + c.song.sections[f].bars, 0);
@@ -120,13 +125,14 @@ export async function runAudioChecks(url) {
       const b = new SoundEngine({ music: true, sfx: true }); b.loadSong({ id: 'rdzen', drop: true });
       // The eat ladder follows the key (E minor -> E3 = 164.8 Hz).
       const n = mk('napiecie');
-      return { riserBar, inDrop, arenaNext, arenaFrom: 'fala', campaignQueued: !!c.queued, campaignLoop: c.loopCount, dailyQueued: !!d.queued, bossSection: b.song.form[b.formIdx], ladder0: Math.round(n.song.ladder[0] * 10) / 10, keyRatio: +n.song.keyRatio.toFixed(3) };
+      return { finalWrap, riserBar, inDrop, arenaNext, arenaFrom: 'fala', campaignQueued: !!c.queued, campaignLoop: c.loopCount, dailyQueued: !!d.queued, bossSection: b.song.form[b.formIdx], ladder0: Math.round(n.song.ladder[0] * 10) / 10, keyRatio: +n.song.keyRatio.toFixed(3), majorRatio: compileSong('impuls').keyRatio };
     });
     results.push(report('music: final stretch arms a one-bar riser, then jumps to the drop', seq.riserBar >= 0 && seq.inDrop, JSON.stringify({ riserBar: seq.riserBar, inDrop: seq.inDrop })));
     results.push(report('music: Arena moves on to another track after a full pass', !!seq.arenaNext && seq.arenaNext !== seq.arenaFrom, seq.arenaNext));
+    results.push(report('music: in the final stretch the track stays and loops hook → drop (no medley)', !seq.finalWrap.queued && seq.finalWrap.section === 'B', JSON.stringify(seq.finalWrap)));
     results.push(report('music: missions loop their district theme (with a varied 2nd pass), Daily stays on its track', !seq.campaignQueued && seq.campaignLoop === 1 && !seq.dailyQueued));
     results.push(report('music: a district boss opens on the drop', seq.bossSection === 'D', seq.bossSection));
-    results.push(report('sfx: the combo ladder and stingers follow the track key', Math.abs(seq.ladder0 - 164.8) < 0.5 && seq.keyRatio < 1, JSON.stringify(seq)));
+    results.push(report('sfx: the combo ladder and stingers follow the track key', Math.abs(seq.ladder0 - 164.8) < 0.5 && seq.keyRatio < 1 && seq.majorRatio === 1, JSON.stringify(seq)));
     results.push(report('audio bank: no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
     await g.browser.close();
   }
@@ -231,8 +237,10 @@ export async function runAudioChecks(url) {
       document.querySelector('.jukebox-item[data-track="fala"]').click();
       await new Promise(r => setTimeout(r, 450));
       const preview = gm.sound.song.id;
+      const fullPreview = gm.sound.previewing && gm.sound.song.form[gm.sound.formIdx] === 'B';
       const saved = JSON.parse(localStorage.getItem('vectorHoleSave_v1') || '{}');
       gm.closeInfoSheet();
+      const previewOff = !gm.sound.previewing;
       const label = document.getElementById('btnJukebox').textContent;
       // Pinned: an Arena round and a Plac mission both play it.
       gm.startRound({});
@@ -246,11 +254,12 @@ export async function runAudioChecks(url) {
       // Back to the mix.
       gm.pickJukeboxTrack('auto');
       const sanitized = sanitizeSave({ ...gm.save, settings: { ...gm.save.settings, musicPick: 'nie-ma-takiego' } }).settings.musicPick;
-      return { n: items.length, locked, afterLocked, preview, savedPick: saved.settings && saved.settings.musicPick, label, arena, mission, sanitized, pickNow: gm.save.settings.musicPick };
+      return { n: items.length, locked, afterLocked, preview, fullPreview, previewOff, savedPick: saved.settings && saved.settings.musicPick, label, arena, mission, sanitized, pickNow: gm.save.settings.musicPick };
     });
     results.push(report('jukebox: lists every track + Mieszanka; Rozdział II tracks are locked on a Rozdział I save', jb.n === MUSIC_N + 1 && jb.locked.length === 6, JSON.stringify({ n: jb.n, locked: jb.locked })));
     results.push(report('jukebox: a locked track cannot be pinned (the row explains why)', jb.afterLocked === 'auto'));
     results.push(report('jukebox: tapping a track previews it, pins it and saves it', jb.preview === 'fala' && jb.savedPick === 'fala' && /FALA SYNTEZ/.test(jb.label), JSON.stringify({ preview: jb.preview, saved: jb.savedPick, label: jb.label })));
+    results.push(report('jukebox: the preview plays the full arrangement from the hook, and stops previewing on close', jb.fullPreview && jb.previewOff));
     results.push(report('jukebox: a pinned track plays in Arena and in missions', jb.arena === 'fala' && jb.mission === 'fala', JSON.stringify({ arena: jb.arena, mission: jb.mission })));
     results.push(report('jukebox: Mieszanka restores rotation; an unknown saved pick falls back to it', jb.pickNow === 'auto' && jb.sanitized === 'auto'));
 

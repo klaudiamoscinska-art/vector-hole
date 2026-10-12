@@ -4432,7 +4432,7 @@ body[data-gfx="0"] #hud::before { display: none; }
 .briefing-sheet .mc-play { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 18px rgba(7, 23, 37, 0.85); }
 
 /* ---- v16 „Brzmienie”: now playing, pause track row, Szafa grająca ---- */
-.now-playing { position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+.now-playing { position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   display: flex; align-items: center; gap: 6px; max-width: min(62vw, 300px); padding: 6px 12px 6px 9px; border-radius: 999px;
   background: rgba(7, 23, 37, 0.78); border: 1px solid rgba(152, 117, 255, 0.5); color: var(--nc-text); font-size: 11.5px;
   pointer-events: none; opacity: 0; transform: translateY(8px); transition: opacity 0.35s ease, transform 0.35s ease; z-index: 6; }
