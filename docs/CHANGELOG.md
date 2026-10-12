@@ -4,6 +4,20 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v18 „Złoty strzał: ekonomia” — wzmocnienia jako lejek monetyzacji
+| Uwaga | Zmiana |
+|---|---|
+| Przegląd monetyzacji i balansu | Monety tracą wartość (ekspert: ~9 700 niewydanych po 20 rundach) → wzmocnienia misji jako stałe ujście monet; sklep i reklamy dostały drogę do wzmocnień; ceny wzmocnień zbalansowane botem (Sprint 70, Magnes 40) |
+| Kupowanie tooli przed misją (szybkość, start od T2…) | Było od v15 (po M04): Zegar, Turbo start (T2), Magnes, Tarcza. Nowe: **Sprint** (+20% prędkości). Po porażce przycisk **„SPRÓBUJ Z: …”** z wzmocnieniem dobranym do przyczyny; brak monet → **wzmocnienie za reklamę** (3/dzień); **Pakiet wzmocnień** (7,99 zł, 5× każde) i 3× każde w Pakiecie Startowym |
+
+- **Balans (bot „casual”, misje TRUDNE i EKSTREMALNE):** bez wzmocnień 56%,
+  Zegar 73%, Turbo start 67%, Sprint 75%, Magnes 60%; żadne nie robi
+  z EKSTREMALNEJ pewniaka.
+- **Testy**: `qa/v18.mjs` (Sprint, prezent dla obecnych graczy, propozycja
+  po porażce dla każdej przyczyny, odprawa z wybranym wzmocnieniem bez
+  wydawania, reklama za wzmocnienie z limitem, pakiety sklepu, pomiar
+  balansu) w `run-all`.
+
 ## v17.1 „Miasto jako haczyk”
 | Uwaga | Zmiana |
 |---|---|
