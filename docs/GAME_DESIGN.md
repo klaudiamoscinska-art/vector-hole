@@ -278,16 +278,18 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   T1 → T4 („ROŚNIESZ · T2”), mija za duże, aż do nich dorośnie, zjada
   mniejszego RYWALA (+250) i zaczyna od nowa co ~12 s. Licznik WYNIK i
   rozmiar jak w rundzie. Bez nawigacji.
-- **Miasto (v17):** nagłówek (pierścień poziomu gracza z XP, nazwa, monety,
-  pryzmaty, ustawienia) → **żywa scena Areny** („ARENA · RUNDA 2:00”, ta
-  sama mini-runda co na starcie; zajmuje wolną wysokość, dotknięcie = GRAJ)
-  → GRAJ w treści ekranu, nigdy przyklejony, z haczykiem „Twój rekord:
-  X pkt · pobij go!” (przed pierwszą rundą: „runda 2:00 · monety i odbudowa
-  Core City”) → zwarta karta Core City (miasto, LVL, „Następna nagroda”,
-  procent i pasek; dotknięcie = wszystkie nagrody) → kafle **Kampania**
-  (następna misja, pełna nazwa w dwóch liniach → odprawa) i **Wyzwanie
-  dnia** → skrzynia. Bez pustych pasów i bez przewijania (375×667).
-  Pierwsze, co widać po otwarciu gry, to sama gra.
+- **Miasto (v17.1 — jeden bohater, jeden haczyk):** nagłówek (pierścień
+  poziomu gracza z XP, nazwa, monety, pryzmaty, ustawienia) → **karta Core
+  City** zajmująca wolną wysokość: LVL, w niebie hasło „Każda runda buduje
+  Twoje miasto” i konkret „+16% za rundę · nagroda za 7 rund”, nad dźwigiem
+  złoty znacznik „NOWY BUDYNEK”, kontury kolejnych budynków (miasto, które
+  nadejdzie), w stopce następna nagroda, procent i pasek; dotknięcie =
+  wszystkie nagrody → GRAJ w treści ekranu, nigdy przyklejony („runda 2:00
+  · +16% budowy miasta”) → kafle **Kampania** (następna misja, pełna nazwa
+  w dwóch liniach → odprawa) i **Wyzwanie dnia** → skrzynia. Bez pustych
+  pasów i bez przewijania (375×667). Żywa scena Areny z v17 zeszła z Miasta
+  (dwa duże, ruchome panele to był nieporządek i zabierały miastu rolę
+  haczyka); mini-runda została na ekranie powitalnym.
 - **Dzielnice:** poziomy pasek dzielnic → nazwa i postęp → karta
   „NASTĘPNA MISJA” z GRAJ → historia dzielnicy (NELA) → lista misji
   (kod, nazwa, pierwszy cel z ikoną, gwiazdka medalu). Dotknięcie misji =
