@@ -130,11 +130,26 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   gwiazd** (120 monet, 3 pryzmaty, wzmocnienie). Trzy gwiazdki = tytuł
   „PERFEKCYJNIE!”.
 - **Wzmocnienia** (`MISSION_BOOSTERS`, po M04 + po jednym w prezencie):
-  Zegar +15 s (60), Turbo start od T2 (80), Magnes na całą misję (50),
-  Tarcza na 2 zderzenia (70 monet; chroni też kruchy wir). Wybiera się
-  je w odprawie (najpierw z zapasu, resztę za monety — koszt widać na
-  GRAJ, nic nie znika jednym dotknięciem). Po 3 porażkach z rzędu NELA
-  pożycza jeden Zegar (raz na misję).
+  Zegar +15 s (60), Turbo start od T2 (70), **Sprint +15% prędkości**
+  (70, v18), Magnes na całą misję (40), Tarcza na 2 zderzenia (70 monet;
+  chroni też kruchy wir). Wybiera się je w odprawie (najpierw z zapasu,
+  resztę za monety — koszt widać na GRAJ, nic nie znika jednym
+  dotknięciem). Po 3 porażkach z rzędu NELA pożycza jeden Zegar (raz na
+  misję).
+- **Po porażce (v18)**: główny przycisk proponuje wzmocnienie, które
+  odpowiada na przyczynę — czas minął blisko celu → Zegar, daleko → Turbo
+  start, Złodziej → Sprint, rozbity wir → Tarcza („SPRÓBUJ Z: ZEGAR · +15 s
+  · 60 ◇” albo „masz ×1”); otwiera odprawę z wybranym wzmocnieniem, cena na
+  GRAJ, POWTÓRZ = bez wzmocnienia. NELA dopowiada, co da wzmocnienie.
+- **Brak monet w odprawie (v18)**: „▶ Zegar za reklamę” — jedno z wybranych
+  wzmocnień za reklamę (3 dziennie), trafia do zapasu i zostaje wybrane.
+- **Balans wzmocnień (v18, `qa/v18.mjs 3`, bot „casual”, 24 misje TRUDNE
+  i EKSTREMALNE × 3 próby)**: bez wzmocnień 59% przejść, Zegar 79% (+20),
+  Sprint 76% (+17), Magnes 73% (+14), Turbo start 71% (+12). Sprint przy
+  +25% za 50 monet był najmocniejszy i najtańszy (+29), więc ma +15% za
+  70; Turbo start dawał najmniej przy najwyższej cenie, więc 80 → 70;
+  Magnes 50 → 40. Żadne nie robi z EKSTREMALNEJ pewniaka (≤ 77%). Szum
+  pomiaru przy ~50 próbach to ±7 pkt.
 - **Start na dotknięcie (v15)**: po GRAJ misja otwiera się zamrożona
   z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji
   z wyjaśnieniem, wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po
@@ -200,10 +215,21 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
 - **Monetyzacja (`Monetization`):** tylko reklamy z nagrodą (×2 monety,
   +20 s misji, skrzynia, ×2 logowanie, pryzmaty, darmowe Turbo, +1
-  energia) i
+  energia, wzmocnienie misji przy braku monet) i
   reklamy między rundami co 3. powtórka (nie w rundach nowicjusza, min.
   2,5 min odstępu). Sklep IAP pojawia się tylko z natywnym opakowaniem;
-  w przeglądarce działa oznaczony dostawca demo.
+  w przeglądarce działa oznaczony dostawca demo. Sklep: Pakiet Startowy
+  (9,99 zł: 1500 monet, 60 pryzmatów, **3× każde wzmocnienie**, Smuga),
+  **Pakiet wzmocnień** (7,99 zł: 5× każde z pięciu, v18), pryzmaty 4,99 /
+  19,99 / 44,99 zł, Godzina bez limitu 7,99 zł, Bez reklam 14,99 zł.
+  Zasady: każdy pakiet mówi dokładnie, co zawiera (bez losowych nagród
+  za pieniądze), nic nie kupuje się jednym dotknięciem.
+- **Przegląd ekonomii v18 (wnioski):** monety szybko tracą wartość
+  (bot-ekspert ma po 20 rundach ~9 700 niewydanych monet, cały Warsztat
+  to ~5 400) — dlatego zużywalne wzmocnienia misji są głównym, stałym
+  ujściem monet, a pryzmaty/sklep dostały drogę do wzmocnień (pakiety).
+  Wzmocnienia płaci się monetami, nie pryzmatami, celowo: kampania ma
+  pozostać do przejścia bez płacenia (sklep tylko przyspiesza).
 - **Prywatność:** zapis tylko lokalny; statystyki wyłącznie po zgodzie.
   Pasek zgody pojawia się po samouczku (na ekranie powitalnym zasłaniał
   przycisk startu); do decyzji nic nie jest wysyłane.

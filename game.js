@@ -283,6 +283,7 @@ const CONFIG = {
   boosters: {
     unlockMission: 'M04',     // after Plac Neonów's boss (+1 of each as a gift)
     timeBonus: 15,            // "Zegar": seconds added to the limit
+    sprintMult: 1.15,         // v18 "Sprint": vortex speed for the whole mission (bot-balanced, qa/v18.mjs)
     shieldHits: 2,            // "Tarcza": hits absorbed (rivals, glitch zones, a fragile vortex)
     pityFails: 3              // after this many defeats in a row NELA lends a free Zegar (once per mission)
   },
@@ -1677,7 +1678,9 @@ const AD_PLACEMENTS = {
   free_prisms: { label: '+5 pryzmatów', dailyCap: 3 },
   turbo_free: { label: 'Turbo start gratis', dailyCap: 2 },
   // v15: one energy point per ad, a few times a day.
-  energy_ad: { label: '+1 energia', dailyCap: 5 }
+  energy_ad: { label: '+1 energia', dailyCap: 5 },
+  // v18: short on coins in the briefing -- one picked booster for an ad.
+  booster_ad: { label: 'Wzmocnienie za reklamę', dailyCap: 3 }
 };
 
 // Store catalog for providers with IAP (see 'native' above). Prices are
@@ -1685,7 +1688,9 @@ const AD_PLACEMENTS = {
 // store's localized price. No loot boxes: every pack lists exactly what it
 // contains (EU/UK/BE/NL paid-random-reward rules).
 const IAP_PRODUCTS = [
-  { sku: 'starter_pack', name: 'Pakiet Startowy', price: '9,99 zł', oneTime: true, best: true, grant: { coins: 1500, prisms: 60, auraId: 'starter_glow', noAds: false }, desc: '1500 monet · 60 pryzmatów · ekskluzywna Smuga „Zorza Startu”' },
+  { sku: 'starter_pack', name: 'Pakiet Startowy', price: '9,99 zł', oneTime: true, best: true, grant: { coins: 1500, prisms: 60, boosters: 3, auraId: 'starter_glow', noAds: false }, desc: '1500 monet · 60 pryzmatów · 3× każde wzmocnienie misji · ekskluzywna Smuga „Zorza Startu”' },
+  // v18: the level-game staple -- boosters for the hard missions.
+  { sku: 'booster_pack', name: 'Pakiet wzmocnień', price: '7,99 zł', grant: { boosters: 5 }, desc: '5× Zegar, Turbo start, Sprint, Magnes i Tarcza (25 wzmocnień misji)' },
   { sku: 'prisms_s', name: 'Garść pryzmatów', price: '4,99 zł', grant: { prisms: 40 }, desc: '40 pryzmatów' },
   { sku: 'prisms_m', name: 'Skrzynia pryzmatów', price: '19,99 zł', grant: { prisms: 200 }, desc: '200 pryzmatów (+25% gratis)' },
   { sku: 'prisms_l', name: 'Skarbiec pryzmatów', price: '44,99 zł', grant: { prisms: 520 }, desc: '520 pryzmatów (+45% gratis)' },
@@ -2088,9 +2093,12 @@ const RUN_TOOLS = [
 // loan also hand them out.
 const MISSION_BOOSTERS = [
   { id: 'time', name: 'Zegar', short: '+15 s', price: 60, color: '#50F0FA', icon: 'clock', desc: '+15 s do limitu czasu misji.' },
-  { id: 'start', name: 'Turbo start', short: 'start od T2', price: 80, color: '#FF54AD', icon: 'bolt', desc: 'Wir startuje od razu z rozmiarem T2.' },
-  { id: 'magnet', name: 'Magnes', short: 'cała misja', price: 50, color: '#46D99A', icon: 'magnet', desc: 'Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.' },
-  { id: 'shield', name: 'Tarcza', short: '2 zderzenia', price: 70, color: '#EFCB63', icon: 'shield', desc: 'Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.' }
+  { id: 'start', name: 'Turbo start', short: 'start od T2', price: 70, color: '#FF54AD', icon: 'bolt', desc: 'Wir startuje od razu z rozmiarem T2.' },
+  { id: 'magnet', name: 'Magnes', short: 'cała misja', price: 40, color: '#46D99A', icon: 'magnet', desc: 'Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.' },
+  { id: 'shield', name: 'Tarcza', short: '2 zderzenia', price: 70, color: '#EFCB63', icon: 'shield', desc: 'Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.' },
+  // v18 (owner: "kupię toola, aby dał mi szybkość"): the counter to the
+  // Złodziej and to far-apart goals.
+  { id: 'sprint', name: 'Sprint', short: '+15% szybciej', price: 70, color: '#9875FF', icon: 'speed', desc: 'Przez całą misję wir jest o 15% szybszy — dogonisz Złodzieja i zdążysz do dalekich celów.' }
 ];
 
 // Simple neon-line-art glyphs for the evolution/power cards (SVG, inline —
@@ -2100,6 +2108,7 @@ const MISSION_BOOSTERS = [
 const CARD_ICONS = {
   magnet: '<path d="M7 3v9a5 5 0 0010 0V3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M7 3h4M13 3h4" stroke="currentColor" stroke-width="2.2"/>',
   bolt: '<path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/>',
+  speed: '<path d="M3 8h7M1.5 12h8.5M3 16h7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
   shield: '<path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z" fill="none" stroke="currentColor" stroke-width="2.2"/>',
   clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.2" fill="none"/>',
   radar: '<circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M8 12a4 4 0 018 0M5 12a7 7 0 0114 0" fill="none" stroke="currentColor" stroke-width="1.8"/>',
@@ -3263,7 +3272,7 @@ const FEATURE_UNLOCKS = [
   },
   {
     id: 'boosters', eyebrow: 'NOWOŚĆ W ODPRAWIE', title: 'WZMOCNIENIA', color: '#46D99A', icon: UNLOCK_ICONS.boosters,
-    desc: 'Przed każdą misją możesz wziąć Zegar (+15 s), Turbo start, Magnes albo Tarczę. Na start dostajesz po jednym w prezencie!',
+    desc: 'Przed każdą misją możesz wziąć Zegar (+15 s), Turbo start, Sprint, Magnes albo Tarczę. Na start dostajesz po jednym w prezencie!',
     cta: 'ŚWIETNIE', isUnlocked: s => FEATURE_GATES.boosters(s)
   },
   ...DISTRICTS.filter(d => d.id !== 'plac').map(d => ({
@@ -3468,7 +3477,7 @@ function defaultSave() {
       stars: {}, attempts: {}, fails: {}, pity: {}, starChests: 0 },
     // v15: session energy (CONFIG.energy) and one-shot mission boosters.
     energy: { value: 5, lastTick: 0, infiniteUntil: 0, freeDailyDate: null },
-    boosters: { time: 0, start: 0, magnet: 0, shield: 0, gift: false },
+    boosters: { time: 0, start: 0, magnet: 0, shield: 0, sprint: 0, gift: false, sprintGift: false },
     // v7: two more Warsztat cosmetic categories (GDD 4.0 §5.3) alongside
     // owned/selected (ring skins) and auras (trail).
     effects: { owned: ['classic'], selected: 'classic' },
@@ -3746,7 +3755,7 @@ function migrateSave(data) {
       campaign: { ...c, unlockedDistricts: unlocked, stars, attempts: {}, fails: {}, pity: {},
         starChests: Math.floor(Object.values(stars).reduce((n, b) => n + (b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1), 0) / CONFIG.stars.chestEvery) },
       energy: { value: CONFIG.energy.max, lastTick: 0, infiniteUntil: 0, freeDailyDate: null },
-      boosters: { time: 0, start: 0, magnet: 0, shield: 0, gift: false }
+      boosters: { time: 0, start: 0, magnet: 0, shield: 0, sprint: 0, gift: false, sprintGift: false }
     };
   }
 
@@ -7346,7 +7355,14 @@ class Game {
     // v15: saves that already beat Plac Neonów get the boosters gift.
     if (this.save.campaign.completed[CONFIG.boosters.unlockMission] && !this.save.boosters.gift) {
       this.save.boosters.gift = true;
+      this.save.boosters.sprintGift = true;
       MISSION_BOOSTERS.forEach(x => { this.save.boosters[x.id] = (this.save.boosters[x.id] || 0) + 1; });
+      saveGame(this.save);
+    }
+    // v18: players who already got the gift get the new Sprint too.
+    if (this.save.boosters.gift && !this.save.boosters.sprintGift) {
+      this.save.boosters.sprintGift = true;
+      this.save.boosters.sprint = (this.save.boosters.sprint || 0) + 1;
       saveGame(this.save);
     }
     // GDD 4.0 §5.3 Warsztat select-then-equip flow: what's currently
@@ -7794,6 +7810,8 @@ class Game {
     // mission GRAJ opens that briefing first.
     document.addEventListener('click', (e) => {
       if (!e.target.closest) return;
+      const boostAd = e.target.closest('[data-booster-ad]');
+      if (boostAd) { this.watchBoosterAd(boostAd.dataset.boosterAd); return; }
       const boost = e.target.closest('[data-booster]');
       if (boost) { this.toggleBriefingBooster(boost.dataset.booster); return; }
       const launch = e.target.closest('[data-mc-launch]');
@@ -8301,6 +8319,7 @@ class Game {
     if (prod.oneTime && ent.purchased.includes(prod.sku)) return;
     if (g.coins) this.save.coins += g.coins;
     if (g.prisms) this.save.prisms = (this.save.prisms || 0) + g.prisms;
+    if (g.boosters) MISSION_BOOSTERS.forEach(b => { this.save.boosters[b.id] = (this.save.boosters[b.id] || 0) + g.boosters; });
     if (g.auraId && !this.save.auras.owned.includes(g.auraId)) this.save.auras.owned.push(g.auraId);
     if (g.noAds) ent.noAds = true;
     if (g.infiniteEnergyMin) {
@@ -9180,7 +9199,7 @@ class Game {
         '<ul class="info-sheet-list"><li>Za każdą rundę GRAJ 2:00 i Wyzwanie dnia</li>' +
           '<li>Za pierwsze ukończenie misji w Dzielnicach</li>' +
           '<li>Za każdy nowy poziom Core City</li></ul>',
-        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Magnes, Tarcza).'
+        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza).'
       ]
     });
   }
@@ -10032,11 +10051,13 @@ class Game {
       `<div class="mc-label">CEL MISJI</div><ol class="mc-goals">${rows}</ol>${twists}${twistHints}${meta}${lock}${boosts}${play}`;
   }
 
-  openMissionBriefing(missionId) {
+  openMissionBriefing(missionId, opts = {}) {
     const def = campaignMissionById(missionId);
     if (!def) return;
     this.selectedMissionId = missionId;
-    this.briefingBoosters = new Set();
+    // v18: a retry after a defeat arrives with the suggested booster
+    // already picked -- visible on GRAJ, one tap to drop it.
+    this.briefingBoosters = new Set((opts.preselect || []).filter(id => this.boostersUnlocked() && this.boosterUseful(id, def)));
     const card = document.getElementById('briefingCard');
     card.innerHTML = this.missionCardHtml(def, { nela: true, play: true, launch: true });
     card.style.setProperty('--d-color', DISTRICT_COLORS[def.district] || '#50F0FA');
@@ -10258,7 +10279,42 @@ class Game {
       const miss = cost - this.save.coins;
       note.textContent = short ? `Brakuje ${miss} ${plural(miss, ['monety', 'monet', 'monet'])} na wybrane wzmocnienia.` : (sel.size ? 'Wybrane wzmocnienia zużyjesz w tej próbie — także jeśli się nie uda.' : 'Wzmocnienia są opcjonalne — dotknij, aby wybrać.');
       note.classList.toggle('warn', short);
+      // v18: never a dead end -- one of the unpaid boosters for an ad.
+      const adFor = short && this.monetization.placementLeft('booster_ad') > 0
+        ? MISSION_BOOSTERS.find(b => sel.has(b.id) && !(this.save.boosters[b.id] > 0)) : null;
+      if (adFor) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-gold btn-small mc-boost-ad';
+        btn.dataset.boosterAd = adFor.id;
+        btn.textContent = `▶ ${adFor.name} za reklamę`;
+        note.appendChild(document.createTextNode(' '));
+        note.appendChild(btn);
+      }
     }
+  }
+
+  /** v18: a rewarded ad puts one booster in stock (the briefing pick). */
+  async watchBoosterAd(id) {
+    if (this.boosterAdBusy) return;
+    this.boosterAdBusy = true;
+    let ok = false;
+    try { ok = await this.monetization.rewarded('booster_ad'); } finally { this.boosterAdBusy = false; }
+    if (!ok) return;
+    this.save.boosters[id] = (this.save.boosters[id] || 0) + 1;
+    saveGame(this.save);
+    this.analytics.track('booster_ad', { booster: id, missionId: this.selectedMissionId });
+    // Re-render the briefing with the same pick: the tile now says ×1.
+    this.openMissionBriefing(this.selectedMissionId, { preselect: Array.from(this.briefingBoosters || []) });
+  }
+
+  /** v18: the booster that answers this defeat (null before boosters
+   *  unlock): out of time -- Zegar, or Turbo start when far from the goal;
+   *  a cracked fragile vortex / hits -- Tarcza; the Złodziej -- Sprint. */
+  suggestedBooster(def, reason, progress) {
+    if (!this.boostersUnlocked()) return null;
+    const id = reason === 'hit' ? 'shield' : reason === 'racer' ? 'sprint' : (progress >= 0.5 ? 'time' : 'start');
+    return this.boosterUseful(id, def) ? MISSION_BOOSTERS.find(b => b.id === id) : null;
   }
 
   /** Briefing GRAJ: pay for the picked boosters (stock first, then coins),
@@ -10923,6 +10979,7 @@ class Game {
     if (boosters.includes('time')) this.mission.bonusTime = CONFIG.boosters.timeBonus;
     if (boosters.includes('shield')) this.mission.shields = CONFIG.boosters.shieldHits;
     if (boosters.includes('magnet')) this.activeMutations.add('magnes');
+    if (boosters.includes('sprint')) this.player.perkSpeedMult = CONFIG.boosters.sprintMult;
     if (boosters.includes('start')) {
       this.mission.growthUnits = Math.max(this.mission.growthUnits, tierUnits(2));
       this.syncCampaignRadius();
@@ -12171,7 +12228,9 @@ class Game {
           : this.campaignGoalFraction() >= 0.5 ? 'Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.'
             : def.diff >= 4 ? 'Ta misja jest naprawdę trudna. Zegar albo Turbo start z odprawy mogą pomóc.'
               : 'Tym razem Glitch był szybszy. Zacznij od najbliższych celów, a reszta pójdzie sama.';
-    document.getElementById('missionResultNela').textContent = success ? def.nela.success : failLine;
+    const tip = !success && !pityLoan && this.suggestedBooster(def, m.failReason, this.campaignGoalFraction());
+    const tipLine = tip && !failLine.includes(tip.name) ? { time: ` Zegar da Ci +${CONFIG.boosters.timeBonus} s.`, start: ' Z Turbo startem zaczniesz od T2.', shield: ' Tarcza przyjmie dwa zderzenia.', sprint: ' Ze Sprintem wir prześcignie Złodzieja.' }[tip.id] : '';
+    document.getElementById('missionResultNela').textContent = success ? def.nela.success : failLine + (tipLine || '');
     this.animateNumber(document.getElementById('missionResultScore'), this.player.score, 1000);
     // Score only where a goal asks for it; on a timeout the clock equals
     // the limit, so the tile shows how far the goals got instead.
@@ -12223,6 +12282,7 @@ class Game {
       : (followingOk && !this.save.campaign.completed[following]) ? following
         : (this.nextCampaignMissionId() || (followingOk ? following : null));
     const nextDef = nextId && campaignMissionById(nextId);
+    const suggest = !success && this.suggestedBooster(def, m.failReason, this.campaignGoalFraction());
     const nextCard = document.getElementById('missionResultNextCard');
     const btnNext = document.getElementById('btnMissionNext');
     const btnRetry = document.getElementById('btnMissionRetry');
@@ -12243,6 +12303,14 @@ class Game {
       btnNext.innerHTML = `DZIELNICE${PLAY}`;
       btnNext.onclick = () => { this.updateCoinDisplays(); this.openCampaignScreen(); };
       document.getElementById('btnMissionMap').classList.add('hidden');
+    } else if (suggest) {
+      // v18: the retry that answers the defeat, the booster pre-picked in
+      // the briefing (the price shows on GRAJ there; POWTÓRZ = without).
+      const have = this.save.boosters[suggest.id] || 0;
+      btnNext.innerHTML = `SPRÓBUJ Z: ${suggest.name.toUpperCase()}${PLAY}<span class="mr-next-sub">${suggest.short} · ${have ? `masz ×${have}` : `${suggest.price} ◇`}</span>`;
+      btnNext.onclick = () => { this.analytics.track('booster_suggest_used', { missionId: def.id, booster: suggest.id }); this.openMissionBriefing(def.id, { preselect: [suggest.id] }); };
+      btnRetry.classList.remove('hidden');
+      this.analytics.track('booster_suggest_shown', { missionId: def.id, booster: suggest.id, reason: m.failReason });
     } else {
       btnNext.innerHTML = `SPRÓBUJ PONOWNIE${PLAY}`;
       btnNext.onclick = () => this.openMissionBriefing(def.id);
