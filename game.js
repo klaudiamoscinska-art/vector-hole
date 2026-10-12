@@ -210,7 +210,12 @@ const CONFIG = {
       // camera keeps pulling back so the hole spans at most this fraction of
       // the short screen side, down to `floor` -- and never so far out that
       // the view would show past the edge of the 3000x3000 world.
-      holeScreenFrac: 0.24, floor: 0.25 },
+      holeScreenFrac: 0.24, floor: 0.25,
+      // v21: a big screen (laptop, monitor, tablet) shows about as much of
+      // the city as a phone, scaled up -- not a tiny vortex in a huge map
+      // (and no "sees farther" edge). Scale = sqrt(screen area / this),
+      // never below 1 (phones keep their framing), at most viewScaleMax.
+      viewArea: 500000, viewScaleMax: 2.2 },
     hitStopMs: 70,
     maxParticles: 450,
     dangerHaloRange: 260
@@ -5291,7 +5296,9 @@ function prepCanvas(canvas) {
   if (!canvas) return null;
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return null;
-  const dpr = window.devicePixelRatio || 1;
+  // v21: UI canvases sit in layers zoomed by --ui-scale on big screens --
+  // render them that much sharper too.
+  const dpr = (window.devicePixelRatio || 1) * ((window.game && window.game.uiScale) || 1);
   const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
   if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
   const ctx = canvas.getContext('2d');
@@ -7610,6 +7617,7 @@ class Game {
     this.banner = null;
     this.hitStopUntil = 0;
     this.zoom = 1;
+    this.viewScale = 1; // v21: big-screen world scale (see resize())
     this.difficultyT = 0;
     this.botTuning = { aggro: 320, prey: 420, objects: 480, decision: 0.5, passive: 0 };
     this.running = false;
@@ -7701,7 +7709,8 @@ class Game {
     // Re-probe one level above the remembered one each session, so a
     // one-off slow session can't pin a device to low quality forever.
     this.applyGfx(clamp(Math.round(this.save.settings.gfxLevel != null ? this.save.settings.gfxLevel : 2) + 1, 0, 2));
-    window.addEventListener('resize', () => this.resize());
+    window.addEventListener('resize', () => { this.resize(); this.updateStripEdges(); });
+    this.bindDistrictStrip();
     this.bindInput();
     this.bindUI();
     this.populateShop();
@@ -7751,6 +7760,16 @@ class Game {
     this.canvas.style.width = this.width + 'px';
     this.canvas.style.height = this.height + 'px';
     this.dpr = dpr;
+    const zc = CONFIG.juice.zoom;
+    this.viewScale = clamp(Math.sqrt(this.width * this.height / zc.viewArea), 1, zc.viewScaleMax);
+    if (this.mode === 'campaign') this.zoom = this.viewScale;
+    // v21: menus, sheets and the in-round HUD grow on a big screen (CSS
+    // zoom on every #app layer but the canvas, --ui-scale) so they fill a
+    // laptop/monitor instead of a phone-sized strip. Phones stay at 1;
+    // the content was laid out for >= 667 px of height, so the scale keeps
+    // at least ~700 px of layout height.
+    this.uiScale = clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
+    document.documentElement.style.setProperty('--ui-scale', this.uiScale.toFixed(3));
     // Minimap defaults to visible on every viewport — an earlier pass
     // auto-hid it below 700px, which is effectively every phone in
     // portrait and read as the minimap being missing entirely. Only an
@@ -10866,6 +10885,28 @@ class Game {
     this.showScreen('campaignScreen');
   }
 
+  /** v21: the district strip scrolls sideways. A mouse wheel scrolls it
+   *  too (a desktop has no swipe), and a fade on a cut-off edge says
+   *  there is more. */
+  bindDistrictStrip() {
+    const strip = document.getElementById('districtMap');
+    if (!strip) return;
+    strip.addEventListener('wheel', e => {
+      if (strip.scrollWidth <= strip.clientWidth + 1 || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      strip.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }, { passive: false });
+    strip.addEventListener('scroll', () => this.updateStripEdges(), { passive: true });
+  }
+
+  updateStripEdges() {
+    const strip = document.getElementById('districtMap');
+    if (!strip) return;
+    const max = strip.scrollWidth - strip.clientWidth;
+    strip.classList.toggle('more-left', strip.scrollLeft > 6);
+    strip.classList.toggle('more-right', strip.scrollLeft < max - 6);
+  }
+
   renderCampaignMap() {
     const wrap = document.getElementById('districtMap');
     wrap.innerHTML = '';
@@ -10922,6 +10963,14 @@ class Game {
     const nodes = document.querySelectorAll('#districtMap .district-node');
     const districtIdx = DISTRICTS.findIndex(d => d.id === districtId);
     nodes.forEach((el, i) => el.classList.toggle('active', i === districtIdx));
+    // v21: the picked district is never hidden past the strip's edge.
+    const act = nodes[districtIdx], strip = document.getElementById('districtMap');
+    if (act && strip.clientWidth) {
+      const l = act.offsetLeft - strip.offsetLeft, r = l + act.offsetWidth;
+      if (l < strip.scrollLeft) strip.scrollLeft = l - 8;
+      else if (r > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = r - strip.clientWidth + 8;
+    }
+    requestAnimationFrame(() => this.updateStripEdges());
 
     const district = DISTRICTS.find(d => d.id === districtId);
     // GDD 4.0 §8.4 anti-confusion: this header shows the district's OWN
@@ -11301,10 +11350,11 @@ class Game {
 
     this.camera.x = this.player.x;
     this.camera.y = this.player.y;
-    // Campaign keeps its fixed 1:1 framing (camera is clamped to the
-    // mission box); only Arena zooms out with growth. Skin perks are
-    // Arena/Daily-only too -- missions are hand-balanced.
-    this.zoom = 1;
+    // Campaign keeps a fixed framing (camera is clamped to the mission
+    // box; 1:1 on a phone, scaled up on a big screen, v21); only Arena
+    // zooms out with growth. Skin perks are Arena/Daily-only too --
+    // missions are hand-balanced.
+    this.zoom = this.viewScale;
     this.activePerks = [];
     this.floatTexts = [];
     this.banner = null;
@@ -12274,10 +12324,11 @@ class Game {
     // movement extent is untouched.
     const cb = CONFIG.campaign.bounds;
     const cbW = cb.maxX - cb.minX, cbH = cb.maxY - cb.minY;
-    this.camera.x = clamp(this.player.x, cb.minX + this.width / 2, cb.maxX - this.width / 2);
-    this.camera.y = clamp(this.player.y, cb.minY + this.height / 2, cb.maxY - this.height / 2);
-    if (cbW < this.width) this.camera.x = (cb.minX + cb.maxX) / 2;
-    if (cbH < this.height) this.camera.y = (cb.minY + cb.maxY) / 2;
+    const hw = this.viewHalfW, hh = this.viewHalfH;
+    this.camera.x = clamp(this.player.x, cb.minX + hw, cb.maxX - hw);
+    this.camera.y = clamp(this.player.y, cb.minY + hh, cb.maxY - hh);
+    if (cbW < hw * 2) this.camera.x = (cb.minX + cb.maxX) / 2;
+    if (cbH < hh * 2) this.camera.y = (cb.minY + cb.maxY) / 2;
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
     this.updateCampaignHUD();
@@ -12651,7 +12702,9 @@ class Game {
     if (this.shake > 0) { shakeX = rand(-this.shake, this.shake); shakeY = rand(-this.shake, this.shake); }
 
     ctx.save();
-    ctx.translate(this.width / 2 - this.camera.x + shakeX, this.height / 2 - this.camera.y + shakeY);
+    ctx.translate(this.width / 2 + shakeX, this.height / 2 + shakeY);
+    ctx.scale(this.zoom, this.zoom);
+    ctx.translate(-this.camera.x, -this.camera.y);
     this.drawCampaignGrid(ctx, time);
     this.drawGlitchZones(ctx, time);
     const goalTypes = this.campaignGoalEntityTypes();
@@ -12727,8 +12780,9 @@ class Game {
 
   drawDarkness(ctx) {
     if (!this.mission || !this.mission.def.setup.dark || !this.player) return;
-    const px = this.player.x - this.camera.x + this.width / 2, py = this.player.y - this.camera.y + this.height / 2;
-    const v = this.darkVision();
+    const z = this.zoom;
+    const px = (this.player.x - this.camera.x) * z + this.width / 2, py = (this.player.y - this.camera.y) * z + this.height / 2;
+    const v = this.darkVision() * z;
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const g = ctx.createRadialGradient(px, py, v * 0.55, px, py, v);
@@ -12778,13 +12832,14 @@ class Game {
     // "Seen" = well inside the screen; one half-cut by an edge or hidden
     // under the minimap still gets the arrow (QA, M07).
     const dark = this.mission && this.mission.def.setup.dark;
-    const seen = e => { const sx = e.x - this.camera.x + this.width / 2, sy = e.y - this.camera.y + this.height / 2;
+    const z = this.zoom;
+    const seen = e => { const sx = (e.x - this.camera.x) * z + this.width / 2, sy = (e.y - this.camera.y) * z + this.height / 2;
       if (dark) return dist(e.x, e.y, p.x, p.y) < this.darkVision() * 0.75;
       return sx > 40 && sx < this.width - 40 && sy > 40 && sy < this.height - 40; };
     if (!targets.length || targets.some(seen)) return;
     let best = null, bd = Infinity;
     for (const e of targets) { const d = dist(p.x, p.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
-    const sx = best.x - this.camera.x + this.width / 2, sy = best.y - this.camera.y + this.height / 2;
+    const sx = (best.x - this.camera.x) * z + this.width / 2, sy = (best.y - this.camera.y) * z + this.height / 2;
     const cx = this.width / 2, cy = this.height / 2, margin = 46;
     const angle = Math.atan2(sy - cy, sx - cx);
     const k = Math.min(Math.abs((cx - margin) / (Math.cos(angle) || 1e-6)), Math.abs((cy - margin) / (Math.sin(angle) || 1e-6)));
@@ -12851,7 +12906,7 @@ class Game {
   }
 
   drawCampaignMinimap(ctx) {
-    const size = this.minimapSize(), margin = 16;
+    const size = this.minimapSize(), margin = this.minimapMargin();
     const px = this.width - size - margin, py = this.height - size - margin;
     const b = CONFIG.campaign.bounds;
     const scaleX = size / (b.maxX - b.minX), scaleY = size / (b.maxY - b.minY);
@@ -12968,7 +13023,7 @@ class Game {
     this.banner = null;
     this.flashAlpha = 0;
     this.hitStopUntil = 0;
-    this.zoom = CONFIG.juice.zoom.max;
+    this.zoom = CONFIG.juice.zoom.max * this.viewScale;
     this.lateRoundAnnounced = false;
     this.lastPlace = null;
     this.goldenObj = null;
@@ -14390,7 +14445,7 @@ class Game {
     // signature "the city keeps getting smaller" feel).
     const zc = CONFIG.juice.zoom;
     const growT = clamp((this.player.radius - zc.startRadius) / (zc.endRadius - zc.startRadius), 0, 1);
-    let targetZoom = lerp(zc.max, zc.min, Math.sqrt(growT));
+    let targetZoom = lerp(zc.max, zc.min, Math.sqrt(growT)) * this.viewScale;
     targetZoom = Math.min(targetZoom, zc.holeScreenFrac * Math.min(this.width, this.height) / this.player.radius);
     targetZoom = Math.max(targetZoom, zc.floor, this.width / WORLD_W, this.height / WORLD_H);
     this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * zc.lerp);
@@ -14593,11 +14648,12 @@ class Game {
   }
 
   /** v12: a smaller minimap on narrow phones (130 px was 36 % of a 360 px screen). */
-  minimapSize() { return this.width < 400 ? 104 : 130; }
+  minimapSize() { return (this.width < 400 ? 104 : 130) * (this.uiScale || 1); }
+  minimapMargin() { return 16 * (this.uiScale || 1); }
 
   drawMinimap(ctx) {
     const size = this.minimapSize();
-    const margin = 16;
+    const margin = this.minimapMargin();
     const px = this.width - size - margin;
     const py = this.height - size - margin;
     const scale = size / WORLD_W;

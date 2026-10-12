@@ -333,6 +333,18 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 - Usunięte jako szum: napisy „VECTOR HOLE” nad tytułami zakładek,
   przyciski POWRÓT/DO MIASTA tam, gdzie jest dolna nawigacja.
 
+## 5b2. Duże ekrany (v21 „Komputer”)
+- Gra powstała od telefonu; na komputerze nie jest już małym telefonem na
+  środku monitora.
+- **W rundzie** obraz skaluje się do ekranu: komputer widzi mniej więcej
+  tyle miasta co telefon (skala √(pole ekranu / 500 000), od 1 do 2,2), więc
+  wir i obiekty są duże, a gracz na monitorze nie widzi dalej niż na
+  telefonie. Telefony bez zmian.
+- **Menu, arkusze i HUD** rosną z ekranem (1 na telefonie, do 1,6 na dużym
+  monitorze), tak by wypełniały wysokość okna bez przewijania; mapka
+  w rogu rośnie razem z nimi.
+- Pasek dzielnic przewija się kółkiem myszy, a ucięta krawędź się rozmywa.
+
 ## 5c. Języki, platformy i zapis (v19 „Premiera”)
 
 - **Języki:** polski (źródłowy) i angielski. Gra wybiera język przeglądarki
