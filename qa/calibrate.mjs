@@ -4,6 +4,7 @@
 // qa/out/calibration.json. Also reports missions the bot fails to clear
 // at all (a spec to fix, not a time to tune).
 // Usage: node qa/calibrate.mjs [runs=5] [workers=4] [fromId] [toId]
+//    or: node qa/calibrate.mjs [runs] [workers] M05,M13,M18  (just these)
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve, openGame, CAMPAIGN_BOT, allDistrictsSave, OUT } from './lib.mjs';
@@ -35,7 +36,8 @@ async function worker(ids, results) {
 const { browser: b0, page: p0 } = await openGame(url);
 let ids = await p0.evaluate(() => CAMPAIGN_MISSIONS.filter(m => m.id !== 'M00').map(m => m.id));
 await b0.close();
-if (process.argv[4]) { const a = ids.indexOf(process.argv[4]), z = process.argv[5] ? ids.indexOf(process.argv[5]) : ids.length - 1; ids = ids.slice(a, z + 1); }
+if (process.argv[4] && process.argv[4].includes(',')) ids = process.argv[4].split(',');
+else if (process.argv[4]) { const a = ids.indexOf(process.argv[4]), z = process.argv[5] ? ids.indexOf(process.argv[5]) : ids.length - 1; ids = ids.slice(a, z + 1); }
 const results = {};
 const chunks = Array.from({ length: WORKERS }, (_, i) => ids.filter((_, k) => k % WORKERS === i));
 await Promise.all(chunks.map(c => worker(c, results)));

@@ -4,6 +4,24 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v20 „Bramy impulsu” — bramy i portale jako pomocnicy, nie cel
+Zgłoszenie: „portale w misjach bez sensu” — np. M11 „Pierwszy impuls”:
+dotknij dwóch migających słupków na pustej mapie, nic do zjedzenia.
+
+| Było | Jest |
+|---|---|
+| 16 misji z celem „przejdź przez bramę / pas przelotu / portal, gdy świeci” — wir niczego nie je, czeka na mignięcie | Cele z jedzeniem (motyw dzielnicy zostaje); bramy i portale tylko pomagają |
+| Brama: mały słupek na środku mapy, rytm otwarcia | **Brama impulsu** na jezdni (koło ze strzałkami): przejazd daje **+50% prędkości na 2,5 s**, potem ładuje się 5 s (łuk ładowania); pierwsza zawsze na ekranie od startu |
+| Pas przelotu: pas przez całą mapę, trzeba przelecieć w całości, póki świeci | Ta sama brama impulsu |
+| Portal: jednorazowy, w jedną stronę, na mapie, po której i tak można przejechać | **Para portali** w obie strony — skrót do kryształów i z powrotem |
+
+- Odprawa i karta startu mają plakietkę „BRAMY IMPULSU” / „PORTALE”
+  z jednym zdaniem, co robią. Nowe kwestie NELI, opis Parku Impulsów.
+- Czasy 16 misji skalibrowane botem od nowa (`qa/calibrate.mjs` przyjmuje
+  teraz listę misji); bot nie korzysta z bram, więc z nimi gracz łatwiej
+  zdobywa gwiazdki.
+- Testy: `qa/v20.mjs`.
+
 ## v19.1 — „Zmień wzmocnienia” na karcie startu
 - Zgłoszenie: na karcie startu M04 „Zmień wzmocnienia” był wielkim
   rozstrzelonym napisem i otwierał odprawę bez żadnych wzmocnień

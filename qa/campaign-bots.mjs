@@ -1,5 +1,5 @@
 // Campaign bot-tester: the expert bot (lib.mjs CAMPAIGN_BOT) plays the first N missions in virtual
-// time (goal objects first, then growth food, gates/portals/bridges by
+// time (goal objects first, then growth food, bridges by
 // touch, rivals when they are prey) and reports clears and clear times
 // against each mission's limit. Usage: node qa/campaign-bots.mjs [count]
 import fs from 'node:fs';

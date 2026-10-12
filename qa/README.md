@@ -11,13 +11,14 @@ node qa/features.mjs       # audio, every ad placement (demo + mocked native IAP
 node qa/visual.mjs         # v12: Neon City floor (Arena/Campaign/menus), swallow animation, crown, cached HUD, camera + radius cap, sticky result CTA, rasterized render budget
 node qa/design.mjs         # v13: first seconds (first bite, bites/10 s), close race vs the pacer, drag steering, tutorial, newbie path, Daily preview = real map, locked-object hint, gender-neutral copy, phone layouts (iPhone 16 Pro / SE: nav labels + profile reset on screen)
 node qa/flow.mjs          # v14: start screen = logo + GRAJ, Miasto without a floating GRAJ and without scrolling, Dzielnice starts the next mission without scrolling, briefing on every mission tap, result previews the next mission, NELA bubbles, Warsztat tap-to-wear / confirm-to-buy, review regressions (legacy saves, replays, step banners)
+node qa/v20.mjs            # v20: gates are helpers -- no mission asks to go through a gate/portal, impulse pad (+50% speed, recharge), two-way portal pair, M11 „Pierwszy impuls” shows a pad + food on its first frame, EN chips
 node qa/v19.mjs            # v19: English (a full sweep in an en-US browser with ?i18n=log: nothing Polish reaches the screen), language switch, energy off on portals (mocked CrazyGames SDK), cloud save restore/mirror, backup code
 node qa/v18.mjs 3          # v18: Sprint booster, defeat -> suggested booster pre-picked in the briefing, booster for an ad when short on coins, store booster packs, booster balance (casual bot, hard missions, with/without each booster)
 node qa/v17.mjs            # v17: first screen = live mini round (eats, tiers, rival, loop), Miasto (v17.1) = one Core City hero card with its hook in words above GRAJ, no empty band, no scrolling, labels layered over live canvases
 node qa/audio.mjs          # v16: music bank integrity, offline renders (clipping, loudness spread, layers, voice budget), drop/rotation/Daily/boss logic, pause low-pass, NASTĘPNY, TERAZ GRA chip, Szafa grająca, scene stress, a bot round with audio on
 node qa/v15.mjs            # v15: 240-mission content, tap-to-start, boosters, energy (spend/refund/regen/refill/free plays), stars + chests, fail reasons, pity Zegar, save v11 -> v12, briefing layout
 node qa/difficulty.mjs 2 4 # v15: every mission by the expert + casual campaign bot under its real limit -> pass rate per difficulty (must rise), per district
-node qa/calibrate.mjs 10 4 # v15: re-measure MISSION_BOT_TIME (expert bot, no limit) and print the table for game.js
+node qa/calibrate.mjs 10 4 # v15: re-measure MISSION_BOT_TIME (expert bot, no limit) and print the table for game.js (v20: a 3rd arg M05,M13 measures just those)
 node qa/arena-bots.mjs 20  # a 20-round Arena career: greedy/random/afk players, difficulty curve, economy, frame budget
 node qa/campaign-bots.mjs 30  # the expert campaign bot plays the first N missions (play order) under their real limits
 node qa/screens.mjs        # phone-size screenshots of the v11 + v12 screens -> qa/out/screens/
