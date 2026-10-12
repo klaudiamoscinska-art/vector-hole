@@ -153,8 +153,9 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
 - **Start na dotknięcie (v15)**: po GRAJ misja otwiera się zamrożona
   z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji
   z wyjaśnieniem, wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po
-  dotknięciu; „Zmień wzmocnienia” wraca do odprawy i oddaje energię oraz
-  wzmocnienia.
+  dotknięciu; mały przycisk pod START oddaje energię oraz wzmocnienia:
+  „Zmień wzmocnienia” wraca do odprawy z dotychczasowym wyborem, a zanim
+  wzmocnienia się odblokują (przed ukończeniem M04) — „Wróć do mapy”.
 - Najwyżej 3–10 misji EKSTREMALNYCH na dzielnicę Rozdziału II
   (`EXTREME_CAP`; boss i ostatnie misje), reszta oznaczonych 5 staje się
   BARDZO TRUDNA. Tarcza jest wyłączona w misjach bez zagrożeń.

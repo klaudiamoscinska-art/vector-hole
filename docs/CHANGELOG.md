@@ -4,6 +4,15 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v19.1 — „Zmień wzmocnienia” na karcie startu
+- Zgłoszenie: na karcie startu M04 „Zmień wzmocnienia” był wielkim
+  rozstrzelonym napisem i otwierał odprawę bez żadnych wzmocnień
+  (odblokowują się dopiero po ukończeniu M04).
+- Teraz to mała pigułka pod START. Przed odblokowaniem nazywa się
+  „Wróć do mapy” i wraca do Dzielnic; po odblokowaniu „Zmień wzmocnienia”
+  otwiera odprawę z wybranymi wcześniej wzmocnieniami (wracają do zapasu).
+- Testy: `qa/v18.mjs` sprawdza wygląd i oba przypadki.
+
 ## v19 „Premiera” — angielski, energia per platforma, bezpieczny zapis
 Przygotowanie do wydania na portalach (Poki / CrazyGames) i w sklepach:
 

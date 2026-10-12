@@ -147,6 +147,40 @@ export async function runV18Checks(url, runs = 3) {
     await g.browser.close();
   }
 
+  // --- Start card's back link (owner: "Zmień wzmocnienia" was a huge
+  // spaced-out label and opened a briefing with no boosters on M04) -------
+  for (const [label, missions, id] of [['before the unlock', 4, null], ['after the unlock', 40, 'M26']]) {
+    const g = await openGame(url, { viewport: { width: 402, height: 874 } });
+    const save = await veteranSave(g.page, { missions, runsPlayed: 10, coins: 1000 });
+    save.boosters = { time: 2, start: 0, magnet: 0, shield: 0, sprint: 0, gift: true, sprintGift: true };
+    await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
+    await g.page.reload();
+    await g.page.waitForFunction(() => window.game && window.game.state);
+    const r = await g.page.evaluate(async (id) => {
+      const gm = window.game;
+      gm.openMissionBriefing(id || gm.nextCampaignMissionId());
+      if (gm.boostersUnlocked()) gm.toggleBriefingBooster('time');
+      document.querySelector('[data-mc-launch]').click();
+      await new Promise(res => setTimeout(res, 400));
+      const back = document.getElementById('btnMissionBack'), go = document.getElementById('btnMissionGo');
+      const cs = getComputedStyle(back), b = back.getBoundingClientRect(), gb = go.getBoundingClientRect();
+      const look = { text: back.textContent.trim(), font: parseFloat(cs.fontSize), spacing: parseFloat(cs.letterSpacing) || 0, w: Math.round(b.width), goW: Math.round(gb.width), h: Math.round(b.height) };
+      back.click();
+      await new Promise(res => setTimeout(res, 300));
+      const sheet = document.getElementById('missionBriefing');
+      const briefing = !sheet.classList.contains('hidden');
+      return { unlocked: gm.boostersUnlocked(), ...look, briefing, tiles: sheet.querySelectorAll('#briefingCard [data-booster]').length,
+        kept: !!sheet.querySelector('#briefingCard [data-booster="time"].selected'), stock: gm.save.boosters.time, screen: !document.getElementById('campaignScreen').classList.contains('hidden') };
+    }, id);
+    const small = r.font <= 14 && r.spacing <= 1 && r.w < r.goW * 0.7 && r.h >= 32;
+    const ok = r.unlocked
+      ? r.text === 'Zmień wzmocnienia' && r.briefing && r.tiles > 0 && r.kept && r.stock === 2
+      : r.text === 'Wróć do mapy' && !r.briefing && r.screen;
+    results.push(report(`start card ${label}: the back link is a small pill under START, not a second big button`, small, JSON.stringify(r)));
+    results.push(report(`start card ${label}: ${r.unlocked ? '"Zmień wzmocnienia" reopens the briefing with the boosters (picks kept, stock refunded)' : 'no boosters yet -- "Wróć do mapy" goes back to the map'}`, ok && g.errors.length === 0, JSON.stringify(r) + g.errors.slice(0, 1).join('')));
+    await g.browser.close();
+  }
+
   // --- Balance: does each booster earn its price on hard missions? ----------
   {
     const { browser, page, errors } = await openGame(url);
