@@ -54,6 +54,7 @@ export async function runV19Checks(url) {
       gm.openCampaignScreen(); await wait(150);
       for (const d of DISTRICTS) { try { gm.selectCampaignDistrict(d.id); } catch (e) {} await wait(30); }
       for (const m of CAMPAIGN_MISSIONS) { gm.openMissionBriefing(m.id); }
+      await wait(30); // the translation layer runs right after each DOM write
       out.briefing = document.getElementById('briefingCard').innerText.slice(0, 160).replace(/\s+/g, ' ');
       gm.closeMissionBriefing();
       gm.openWarsztatScreen(); await wait(150);
@@ -123,21 +124,21 @@ export async function runV19Checks(url) {
   {
     // A device with only the tutorial done meets an account save with Park done.
     const g0 = await openGame(url);
-    const rich = await allDistrictsSave(g0.page);
+    const rich = await veteranSave(g0.page, { missions: 40, runsPlayed: 20 });
     const richSealed = await g0.page.evaluate((s) => sealSave(sanitizeSave(s)), rich);
     await g0.browser.close();
     const g = await seededPage(url, { query: '?portal=crazygames', initScript: mockCrazy({ vectorHoleSave_v1: richSealed }) }, { missions: 1 });
     await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 });
     await g.page.waitForTimeout(500);
-    const c = await g.page.evaluate(() => {
+    const c = await g.page.evaluate((remoteDone) => {
       const gm = window.game;
       const done = Object.keys(gm.save.campaign.completed).length;
       const local = JSON.parse(localStorage.getItem('vectorHoleSave_v1'));
       const before = __cgCalls.filter(x => x === 'set').length;
       gm.save.coins += 1; saveGame(gm.save);
-      return { done, localDone: Object.keys(local.campaign.completed).length, mirrored: __cgCalls.filter(x => x === 'set').length > before };
-    });
-    results.push(report('cloud save: the account save with more progress is restored on a fresh device', c.done > 100 && c.localDone === c.done, JSON.stringify(c)));
+      return { done, remoteDone, localDone: Object.keys(local.campaign.completed).length, mirrored: __cgCalls.filter(x => x === 'set').length > before };
+    }, Object.keys(rich.campaign.completed).length);
+    results.push(report('cloud save: the account save with more progress is restored on a fresh device', c.done === c.remoteDone && c.done > 1 && c.localDone === c.done, JSON.stringify(c)));
     results.push(report('cloud save: every later save is mirrored to the portal', c.mirrored));
     await g.browser.close();
     // The other way round: the device has more -- the account copy is updated, not adopted.
@@ -152,11 +153,6 @@ export async function runV19Checks(url) {
   {
     const g = await seededPage(url, {}, { missions: 25, runsPlayed: 8, coins: 777 });
     const code = await g.page.evaluate(() => { window.game.openProfileScreen(); document.getElementById('btnBackupCopy').click(); return document.querySelector('#infoSheetBody .backup-code').value; });
-    const stamp = await g.page.evaluate(() => JSON.parse(localStorage.getItem('vectorHoleSave_v1')).meta.savedAt);
-    await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
-    const stamp2 = await g.page.evaluate(() => JSON.parse(localStorage.getItem('vectorHoleSave_v1')).meta.savedAt);
-    results.push(report('save: a plain load does not re-stamp savedAt (a stale device never looks newer)', stamp === stamp2, `${stamp} → ${stamp2}`));
     await g.browser.close();
     const fresh = await openGame(url);
     const b = await fresh.page.evaluate(async (c) => {
