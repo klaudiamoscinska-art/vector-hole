@@ -327,6 +327,24 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 - Usunięte jako szum: napisy „VECTOR HOLE” nad tytułami zakładek,
   przyciski POWRÓT/DO MIASTA tam, gdzie jest dolna nawigacja.
 
+## 5c. Języki, platformy i zapis (v19 „Premiera”)
+
+- **Języki:** polski (źródłowy) i angielski. Gra wybiera język przeglądarki
+  (polski dla `pl-*`, angielski dla pozostałych); Profil → Ustawienia →
+  Język przełącza i zapamiętuje. Tłumaczenie to warstwa na wyjściu
+  (`I18N_EN`), więc nowy polski tekst wymaga wpisu w słowniku (pilnuje
+  `qa/v19.mjs`). Nazwy dzielnic, utworów i misji mają angielskie odpowiedniki
+  (Plac Neonów → Neon Square, Wir Neonów → Neon Vortex…).
+- **Energia per platforma** (`CONFIG.energy.platforms`): na portalach
+  wyłączona (portal płaci za czas gry i reklamy, a energia go ucina), w wersji
+  przeglądarkowej z GitHuba i w aplikacji natywnej włączona (tam ma sens dzięki
+  zakupom). Zmiana to jedna wartość w `CONFIG`; `?energy=0/1` do testów.
+- **Zapis:** lokalnie w przeglądarce (jak dotąd) + na CrazyGames w module
+  danych portalu (konto gracza, synchronizacja urządzeń; przy różnicy wygrywa
+  zapis z większym postępem) + **kopia zapasowa** w Profilu: kod `VH1.…` do
+  skopiowania i wczytania na innym urządzeniu. Gra prosi przeglądarkę
+  o trwałe przechowywanie danych.
+
 ## 6. QA (boty)
 
 `node qa/run-all.mjs` — przypadki brzegowe, funkcje v11, grafika v12,

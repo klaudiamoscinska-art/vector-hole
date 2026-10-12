@@ -4,6 +4,23 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v19 „Premiera” — angielski, energia per platforma, bezpieczny zapis
+Przygotowanie do wydania na portalach (Poki / CrazyGames) i w sklepach:
+
+| Potrzeba | Zmiana |
+|---|---|
+| Gra tylko po polsku (portale są globalne) | **Wersja angielska**: cała gra — interfejs, 240 misji, NELA, opisy, banery w rundzie — ~1800 tekstów i wzorców. Język z przeglądarki (polski dla `pl-*`, angielski dla reszty), przełącznik w Profilu |
+| Energia ucina czas gry na portalach | **Przełącznik energii per platforma**: na portalach wyłączona, w wersji z GitHuba i w aplikacji włączona; `?energy=0/1` do testów — można włączyć w każdej chwili |
+| Ryzyko utraty postępu | **Zapis w chmurze CrazyGames** (konto gracza, synchronizacja urządzeń; wygrywa zapis z większym postępem), **kopia zapasowa** w Profilu (kod do skopiowania i wczytania na innym urządzeniu), prośba o trwałe przechowywanie |
+
+- **Jak działa tłumaczenie:** warstwa na wyjściu — wszystko, co trafia na
+  ekran (napisy i tekst rysowany w grze), przechodzi przez słownik `I18N_EN`;
+  teksty składane z kawałków mają wzorce.
+- **Testy:** `qa/v19.mjs` — bot przechodzi po angielsku wszystkie ekrany,
+  241 odpraw, rundy i wyniki i sprawdza, że nic po polsku nie dotarło na
+  ekran; energia na portalu (udawane SDK CrazyGames); zapis w chmurze w obie
+  strony; kopia zapasowa. Pozostałe testy działają jak polska przeglądarka.
+
 ## v18 „Złoty strzał: ekonomia” — wzmocnienia jako lejek monetyzacji
 | Uwaga | Zmiana |
 |---|---|
