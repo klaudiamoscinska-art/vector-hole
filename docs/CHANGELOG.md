@@ -4,6 +4,18 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v17 „Pierwsze wrażenie” — ekran startowy, który zaprasza do gry
+Uwagi właścicielki i co zmieniono:
+
+| Uwaga | Zmiana |
+|---|---|
+| Pusty kafelek dzielnicy (iPhone) | WebKit rysował animowaną kanwę kafelka nad jego napisem; napisy nad żywymi kanwami (kafle dzielnic, Core City, mapa dnia) mają teraz własną warstwę |
+| Ekran startowy nie zachęca do gry | **Start**: demo to prawdziwa mini-runda (wir je, rośnie T1→T4, zjada rywala, punkty) zamiast wiru stojącego w pustym mieście. **Miasto**: na górze żywa scena Areny tuż nad GRAJ (dotknięcie = gra), GRAJ z rekordem do pobicia, zwarta karta Core City, pełna nazwa następnej misji, bez pustych pasów |
+
+- **Testy**: `qa/v17.mjs` (demo gra całą pętlę, kolejność i brak
+  przewijania na 375×667 i 402×874, haczyk z rekordem, dotknięcie sceny,
+  warstwy napisów nad kanwami) w `run-all`.
+
 ## v16 „Brzmienie” — 15 utworów, muzyka, która się zmienia
 Uwaga właścicielki i co zmieniono:
 
