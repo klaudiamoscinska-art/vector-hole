@@ -319,14 +319,16 @@ window.__qaPlayMission = function (id, opts) {
         for (const e of g.campaignEntities) {
           if (e.consumed || e.eating || !e.live) continue;
           if (!sees(e.x, e.y)) continue;
-          const touch = e.type === 'gate' || (e.type === 'node' && e.glyph === 'mostek' && !e.mostekPowered && tier >= e.stats.minTier);
+          // v20: impulse pads / portals are helpers, never goals -- the bot
+          // doesn't aim for them (mission times are measured without them).
+          if (e.type === 'gate') continue;
+          const touch = e.type === 'node' && e.glyph === 'mostek' && !e.mostekPowered && tier >= e.stats.minTier;
           if (e.type === 'node' && e.glyph === 'mostek' && !touch) continue;
           if (!touch) {
             if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
             if (e.type === 'landmark' && !e.unlocked) continue;
             if (tier < e.stats.minTier) continue;
           }
-          if (e.type === 'gate' && (!goalTypes.has('gate') || m.gatesPassed.has(e))) continue;
           // Skip food sitting inside a glitch zone.
           if ((g.glitchZones || []).some(z => Math.hypot(z.x - e.x, z.y - e.y) < z.r + p.radius * 0.5)) continue;
           const d = Math.hypot(e.x - p.x, e.y - p.y);
@@ -350,21 +352,6 @@ window.__qaPlayMission = function (id, opts) {
         }
       }
       if (fx || fy) { const n = Math.hypot(fx, fy); g.keyDir = { x: fx / n, y: fy / n }; }
-      else if (target && target.type === 'gate' && target.isGateOpen === false && Math.hypot(target.x - p.x, target.y - p.y) < p.radius + 60) { g.keyDir = { x: 0, y: 0 }; g.pointerWorld = { x: p.x, y: p.y }; }
-      else if (target && target.glyph === 'pas_przelotu') {
-        // A corridor counts when crossed all the way through while lit:
-        // wait beside it while dark, then run straight across.
-        const hw = target.zoneHalfWidth || 90;
-        const inside = Math.abs(p.x - target.x) < hw + p.radius;
-        if (inside) { if (!target._qaDir) target._qaDir = p.x < target.x ? 1 : -1; g.keyDir = { x: target._qaDir, y: 0 }; }
-        else {
-          target._qaDir = 0;
-          const side = p.x < target.x ? -1 : 1;
-          const wantX = target.x + side * (hw + p.radius + 30);
-          if (Math.abs(p.x - wantX) > 20 && !target.isGateOpen) g.keyDir = { x: wantX > p.x ? 1 : -1, y: 0 };
-          else g.keyDir = target.isGateOpen ? { x: -side, y: 0 } : { x: 0, y: 0 };
-        }
-      }
       else if (target) {
         // A finger is not a vector: the casual player's aim wobbles ±12°.
         let ang = Math.atan2(target.y - p.y, target.x - p.x);

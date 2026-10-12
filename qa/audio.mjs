@@ -331,7 +331,7 @@ export async function runAudioChecks(url) {
     const cues = await g.page.evaluate(() => {
       const s = window.game.sound;
       if (!s.sfxOn()) return false;
-      ['bump', 'leadTaken', 'leadLost', 'shield', 'portal', 'overdrive', 'cards', 'pick', 'danger', 'go', 'eat', 'tierUp', 'fanfare', 'star', 'golden', 'frenzy'].forEach(k => s[k](20, 3));
+      ['bump', 'leadTaken', 'leadLost', 'shield', 'portal', 'impulse', 'overdrive', 'cards', 'pick', 'danger', 'go', 'eat', 'tierUp', 'fanfare', 'star', 'golden', 'frenzy'].forEach(k => s[k](20, 3));
       return true;
     });
     results.push(report('sfx: every new event cue plays (bump, lead taken/lost, shield, portal, finale, cards, pick, danger, start)', cues && g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));

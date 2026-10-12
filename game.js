@@ -349,7 +349,10 @@ const CONFIG = {
       5: { radius: 78, growth: 48, score: 240 },
       6: { radius: 104, growth: 64, score: 320 }
     },
-    gate: { cycleSeconds: 3.5, openSeconds: 2.0, telegraphSeconds: 1.5 },
+    // v20: gates are helpers, never goals. A lit impulse pad gives the
+    // vortex a speed burst, then recharges; portals come in linked,
+    // two-way pairs (a shortcut across the map).
+    gate: { padRadius: 28, impulseMult: 1.5, impulseSeconds: 2.5, rechargeSeconds: 5, portalCooldown: 1.2 },
     nelaDisplaySeconds: 4.5,
     // v15 mission twists (setup flags compiled from MISSION_SPECS):
     // Łowcy -- bigger rivals chase the player (in bursts, then rest).
@@ -1377,6 +1380,13 @@ class SoundEngine {
     this.noise({ dur: 0.45, vol: 0.06, freq: 600, freqEnd: 6000, type: 'bandpass', q: 3 });
   }
 
+  /** v20 impulse pad: a quick rising whoosh. */
+  impulse() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'triangle', freq: this.inKey(392), freqEnd: this.inKey(392) * 2, dur: 0.16, vol: 0.1 });
+    this.noise({ dur: 0.28, vol: 0.06, freq: 1200, freqEnd: 7000, type: 'bandpass', q: 2 });
+  }
+
   /** WIELKI FINISZ: a riser into a sub drop and a chord stab. */
   overdrive() {
     // The finale's own riser replaces the music's: drop on the next bar.
@@ -2309,6 +2319,7 @@ const GOAL_ICONS = {
   tower: '<path d="M8 21V6l4-3 4 3v15M8 21h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10.5 9h3M10.5 13h3M10.5 17h3" stroke="currentColor" stroke-width="1.6"/>',
   tier: '<path d="M12 3l7 8h-4v9H9v-9H5z" fill="currentColor"/>',
   rival: '<circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="12" r="3" fill="currentColor"/>',
+  impulse: '<path d="M5 6l6 6-6 6M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
   portal: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
   score: CARD_ICONS.star,
   combo: CARD_ICONS.burst,
@@ -2509,10 +2520,10 @@ const DISTRICTS = [
 // each, authored as compact rows the same compiler turns into missions:
 //   [name, steps, twists, diff, nela?]
 // steps: e:TYPE:N[:GLYPH] eat · b:N golden bytes · t:K tier · c:N combo ·
-//   g:N gates · r:N rivals · a:node|pylon:N[:GLYPH] activate · L:ID boss ·
-//   s:N score
+//   r:N rivals · a:node|pylon:N[:GLYPH] activate · L:ID boss · s:N score
+//   (+ g:N: N impulse pads on the roads -- a helper, not a goal, v20)
 // twists: H<n> hunters · R racer · D dark · Z<n> glitch zones · F fragile ·
-//   P pas gates · O portal · W capsule waves · A arc layout · B<n> rival radius
+//   O a linked pair of portals · W capsule waves · A arc layout · B<n> rival radius
 // NELA speaks the district's flavor line, and explains a twist the first
 // time it shows up in the district.
 const CHAPTER_II = [
@@ -2535,7 +2546,7 @@ const CHAPTER_II = [
       ['Szczur danych', 'b:6 t:3', 'H1', 4],
       ['Zwrotnice', 'a:node:4:zasilacz e:vehicle:3', '', 3],
       ['Tunel serwisowy', 'e:structure:3:magazyn', 'D', 3],
-      ['Nocny przejazd', 'g:3', 'P', 3],
+      ['Nocny przejazd', 'e:vehicle:6 g:3', '', 3],
       ['Wagon z bajtami', 'b:4 e:vehicle:4', 'D', 4],
       ['Konduktorzy', 'r:3', 'H3 B40', 3],
       ['Rozjazd', 'c:12 b:3', '', 4],
@@ -2647,30 +2658,30 @@ const CHAPTER_II = [
       'Zatoka pamięta czasy przed Glitchem.', 'Kolejny brzeg do odzyskania.', 'Tu łatwo zgubić kierunek. Ufaj strzałce.', 'Przypływ niesie skażony kod.'],
     success: ['Zatoka się uspokaja.', 'Fale znów są czyste.', 'Mgła opadła.', 'Kolejny brzeg odzyskany.', 'Latarnie świecą dla Ciebie.', 'Hologramy wracają do normy.'],
     rows: [
-      ['Hologramowe molo', 'g:1 e:marker:6:krysztal', 'O', 3],
+      ['Hologramowe molo', 'e:marker:6:krysztal', 'O', 3],
       ['Fale', 'e:capsule:16', 'W', 3],
-      ['Latarnie na wodzie', 'g:3', '', 2],
+      ['Latarnie na wodzie', 'e:prop:8:latarnia g:3', '', 2],
       ['Złote ryby', 'b:5', '', 3],
       ['Mgła', 'e:prop:10 t:3', 'D', 3],
       ['Port widm', 'e:heavy:2:ciezarowka', '', 3],
-      ['Pasy przelotu', 'g:4', 'P', 3],
+      ['Pasy przelotu', 'e:capsule:14 g:4', '', 3],
       ['Rafa danych', 'b:5 e:marker:6:krysztal', 'Z2', 4],
       ['Przypływ', 'c:14 e:capsule:10', 'W', 2],
       ['Hologramowi strażnicy', 'r:3', 'H3 B45', 4],
       ['Mgła nad zatoką', 'b:5', 'D', 4],
       ['Lustra na wodzie', 'a:pylon:4:lustro', '', 3],
       ['Odbicia', 'a:pylon:5:lustro e:structure:2', 'D', 4],
-      ['Rejs nocny', 'g:5', 'P', 3],
+      ['Rejs nocny', 'e:prop:10 g:5', '', 3],
       ['Skarb zatoki', 'b:6 e:structure:2', 'H1', 4],
       ['Statek widmo', 'e:heavy:3', 'D', 4],
       ['Prądy', 'c:16 b:4', 'Z2', 4],
       ['Latarnicy', 'r:4', 'H3 B50', 5],
-      ['Drugi brzeg', 'g:1 e:marker:8:krysztal', 'O D', 5],
+      ['Drugi brzeg', 'e:marker:8:krysztal', 'O D', 5],
       ['Morze bajtów', 'b:8', '', 4],
       ['Sztorm', 's:3000', 'Z3', 5],
       ['Głębina', 'e:tower:2', 'D', 5],
       ['Fale glitcha', 'e:capsule:18', 'W Z3', 5],
-      ['Rejs bez kolizji', 'g:4', 'P F Z1', 4],
+      ['Rejs bez kolizji', 'e:capsule:14 g:4', 'F Z1', 4],
       ['Piraci', 'r:4', 'H4 B55', 5],
       ['Zatopiony magazyn', 'e:structure:5:magazyn', 'D', 5],
       ['Hologramowy horyzont', 't:6', 'D', 4],
@@ -2690,7 +2701,7 @@ const CHAPTER_II = [
     rows: [
       ['Wejście do ogrodów', 'e:prop:10:drzewo', '', 3],
       ['Delikatne pąki', 'e:capsule:12', 'F Z1', 3],
-      ['Furtki ogrodu', 'g:4', '', 3],
+      ['Furtki ogrodu', 'e:capsule:12 g:4', '', 3],
       ['Rytm kwiatów', 'c:16 e:prop:8:drzewo', '', 3],
       ['Ścieżka bez błędu', 'e:prop:10', 'F H1', 4],
       ['Zaczarowane latarnie', 'e:prop:8:latarnia c:10', '', 3],
@@ -2704,7 +2715,7 @@ const CHAPTER_II = [
       ['Ogród nocą', 'e:prop:12:latarnia', 'D', 4],
       ['Kolibry', 'b:8', 'H1', 5],
       ['Taras', 't:5', 'F', 4],
-      ['Bramy wiatru', 'g:5', 'F Z1', 3],
+      ['Bramy wiatru', 'e:prop:10:drzewo g:5', 'F Z1', 3],
       ['Strażnicy ogrodów', 'r:4', 'H4 B50', 5],
       ['Kaskady', 'e:capsule:20 c:12', 'W', 4],
       ['Kwitnące wieże', 'e:tower:1:wiezowiec', 'F', 5],
@@ -2730,7 +2741,7 @@ const CHAPTER_II = [
     rows: [
       ['Logowanie', 'e:capsule:14 c:10', 'R', 4],
       ['Pakiety', 'b:7', 'Z2', 4],
-      ['Zapora ogniowa', 'g:4', 'P Z2', 4],
+      ['Zapora ogniowa', 'e:capsule:16 g:4', 'Z2', 4],
       ['Kopia zapasowa', 'e:structure:4', 'D', 4],
       ['Antywirusy', 'r:3', 'H3 B55', 4],
       ['Bufor', 's:3000', 'H2', 5],
@@ -2740,7 +2751,7 @@ const CHAPTER_II = [
       ['Szyfr', 'c:20 e:heavy:1', 'F', 5],
       ['Serwery lustrzane', 'a:pylon:6:lustro', 'D', 5],
       ['Złote klucze', 'b:8', 'H2', 5],
-      ['Zapora', 'g:5 b:3', 'P F Z1', 4],
+      ['Zapora', 'b:5 g:5', 'F Z1', 4],
       ['Administratorzy', 'r:4', 'H4 B55', 5],
       ['Wielka migracja', 'e:tower:2', 'Z3', 5],
       ['Ciemny sektor', 'e:structure:5', 'D H2', 5],
@@ -2778,6 +2789,7 @@ function chapterTwoSpecs() {
     dist.rows.forEach((row, i) => {
       const [name, stepStr, twistStr, , nelaText] = row;
       const diff = diffs[i];
+      const setup = {};
       const steps = stepStr.split(' ').filter(Boolean).map(tok => {
         const p = tok.split(':');
         switch (p[0]) {
@@ -2785,15 +2797,14 @@ function chapterTwoSpecs() {
           case 'b': return { eat: 'runner', n: +p[1] };
           case 't': return { tier: +p[1] };
           case 'c': return { combo: +p[1] };
-          case 'g': return { gates: +p[1] };
+          case 'g': setup.gates = +p[1]; return null;
           case 'r': return { rival: +p[1] };
           case 'a': return { activate: p[1], n: +p[2], glyph: p[3] };
           case 'L': return { landmark: p[1] };
           case 's': return { score: +p[1] };
         }
         throw new Error('Bad mission step ' + tok);
-      });
-      const setup = {};
+      }).filter(Boolean);
       steps.forEach(st => {
         if (st.activate && st.glyph) setup[st.activate === 'node' ? 'nodeGlyph' : 'pylonGlyph'] = st.glyph;
         if (st.activate) delete st.glyph;
@@ -2805,7 +2816,6 @@ function chapterTwoSpecs() {
         else if (k === 'D') setup.dark = true;
         else if (k === 'Z') setup.glitch = +v || 1;
         else if (k === 'F') setup.fragile = true;
-        else if (k === 'P') setup.gateKind = 'pas';
         else if (k === 'O') setup.gateKind = 'portal';
         else if (k === 'A') setup.arcLayout = true;
         else if (k === 'B') setup.botRadius = +v;
@@ -2816,7 +2826,6 @@ function chapterTwoSpecs() {
           setup.capsulesPerWave = Math.ceil(((cap ? cap.n : 16) * 1.35) / waves);
         }
       });
-      if (!setup.gateKind && steps.some(st => st.gates)) setup.gateKind = 'brama';
       // NELA: the district's flavor line, plus the hint for a twist the
       // first time it appears in this district.
       const twists = ['hunters', 'racer', 'dark', 'glitch', 'fragile'].filter(t => setup[t]);
@@ -2855,10 +2864,10 @@ function chapterTwoSpecs() {
 // lines were grey italics nobody noticed).
 const DISTRICT_STORY = {
   plac: 'Plac Neonów był sercem nocnego miasta. Glitch zgasił neony i zamienił wszystko w zepsuty kod. Pochłoń skażenie, a światła wrócą.',
-  park: 'W Parku Impulsów bramy zgubiły rytm, a fontanna pompuje szum zamiast wody. Wyczuj puls parku i odzyskaj fontannę.',
+  park: 'Park Impulsów pulsuje energią: świecące bramy na alejkach dają wirowi impuls. Tylko fontanna pompuje szum zamiast wody — odzyskaj ją.',
   port: 'Port Syntez stoi w korku skażonych ciężarówek, a nad wszystkim góruje Dźwig. Urośnij tak, żeby zmieścić go w sobie.',
   galeria: 'Galeria Glitch to labirynt witryn i portali. Tu nic nie jest tym, czym się wydaje. Trzymaj się celu.',
-  dachy: 'Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.',
+  dachy: 'Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.',
   rdzen: 'Rdzeń Miasta. Stąd Glitch steruje wszystkim. Pochłoń Rdzeń, a Neonowe Miasto znów zaświeci.'
 };
 CHAPTER_II.forEach(d => { DISTRICT_STORY[d.id] = d.story; });
@@ -2924,7 +2933,6 @@ const NOUNS = {
   mostek: ['mostek', 'mostki', 'mostków'],
   lustro: ['lustro', 'lustra', 'luster'],
   brama: ['bramę', 'bramy', 'bram'],
-  pas_przelotu: ['pas przelotu', 'pasy przelotu', 'pasów przelotu'],
   drzewo: ['drzewo', 'drzewa', 'drzew'],
   latarnia: ['latarnię', 'latarnie', 'latarni'],
   lawka: ['ławkę', 'ławki', 'ławek'],
@@ -2971,12 +2979,6 @@ function stepLabel(step, setup) {
   if (step.eat) return `Pochłoń ${nounFor(step.glyph || step.eat, step.n)}`;
   if (step.tier) return `Urośnij do rozmiaru T${step.tier}`;
   if (step.combo) return `Zbuduj combo ×${step.combo}`;
-  if (step.gates) {
-    if (setup.gateKind === 'portal') return 'Przejdź przez portal';
-    return setup.gateKind === 'pas'
-      ? `Przeleć przez ${nounFor('pas_przelotu', step.gates)}, gdy ${step.gates === 1 ? 'świeci' : 'świecą'}`
-      : `Przejdź przez ${nounFor('brama', step.gates)}, gdy ${step.gates === 1 ? 'jest otwarta' : 'są otwarte'}`;
-  }
   if (step.rival) return `Pochłoń ${nounFor('rival', step.rival)}`;
   if (step.activate) {
     const g = setup[GLYPH_KEY[step.activate]] || (step.activate === 'node' ? 'wezel' : 'pylon');
@@ -3003,7 +3005,7 @@ function stepTier(step) {
 // and the mission's difficulty -- re-run the calibration after changing a
 // mission spec, the growth curve or the twists. Missing entries fall back
 // to an estimate.
-const MISSION_BOT_TIME = { M01: [8, 11], M02: [22, 25], M03: [16, 23], M04: [37, 43], M05: [5, 6], M06: [20, 23], M07: [20, 26], M08: [34, 50], M09: [21, 29], M10: [21, 24], M11: [38, 49], M12: [46, 95], M13: [23, 30], M14: [25, 32], M15: [29, 45], M16: [44, 73], M17: [23, 31], M18: [13, 14], M19: [42, 56], M20: [47, 74], M21: [22, 28], M22: [40, 131], M23: [41, 53], M24: [66, 128], M25: [35, 47], M26: [27, 40], M27: [37, 46], M28: [24, 31], M29: [37, 41], M30: [43, 60], M31: [33, 38], M32: [38, 45], M33: [17, 25], M34: [38, 47], M35: [41, 68], M36: [24, 34], M37: [36, 49], M38: [39, 52], M39: [25, 29], M40: [59, 128], M41: [44, 62], M42: [44, 49], M43: [45, 57], M44: [32, 37], M45: [45, 59], M46: [30, 36], M47: [81, 280], M48: [54, 63], M49: [46, 56], M50: [29, 49], M51: [11, 13], M52: [51, 61], M53: [121, 385], M54: [47, 69], M55: [50, 53], M56: [48, 132], M57: [47, 55], M58: [216, 305], M59: [44, 54], M60: [59, 61], M61: [27, 30], M62: [20, 24], M63: [39, 51], M64: [32, 39], M65: [45, 53], M66: [37, 47], M67: [20, 29], M68: [61, 79], M69: [45, 69], M70: [46, 53], M71: [55, 68], M72: [12, 14], M73: [58, 94], M74: [54, 108], M75: [30, 44], M76: [67, 93], M77: [33, 40], M78: [65, 79], M79: [47, 60], M80: [51, 64], M81: [81, 130], M82: [62, 120], M83: [86, 305], M84: [39, 52], M85: [91, 113], M86: [48, 52], M87: [27, 37], M88: [81, 101], M89: [101, 139], M90: [112, 243], M91: [18, 30], M92: [27, 36], M93: [18, 21], M94: [18, 29], M95: [26, 38], M96: [28, 33], M97: [49, 65], M98: [23, 29], M99: [29, 50], M100: [37, 46], M101: [39, 47], M102: [27, 42], M103: [24, 47], M104: [74, 88], M105: [45, 49], M106: [56, 68], M107: [47, 54], M108: [31, 48], M109: [52, 60], M110: [40, 72], M111: [20, 30], M112: [22, 29], M113: [72, 82], M114: [93, 140], M115: [62, 81], M116: [36, 47], M117: [50, 67], M118: [40, 53], M119: [41, 68], M120: [62, 88], M121: [29, 42], M122: [36, 55], M123: [31, 43], M124: [39, 71], M125: [46, 73], M126: [34, 88], M127: [44, 54], M128: [46, 84], M129: [25, 49], M130: [53, 123], M131: [76, 98], M132: [55, 81], M133: [37, 84], M134: [86, 181], M135: [50, 76], M136: [56, 66], M137: [46, 51], M138: [71, 87], M139: [48, 61], M140: [74, 213], M141: [67, 124], M142: [54, 66], M143: [75, 127], M144: [31, 53], M145: [60, 99], M146: [75, 115], M147: [58, 63], M148: [120, 174], M149: [63, 84], M150: [79, 140], M151: [27, 33], M152: [21, 26], M153: [8, 10], M154: [32, 37], M155: [45, 55], M156: [46, 59], M157: [12, 17], M158: [77, 118], M159: [13, 23], M160: [54, 135], M161: [45, 54], M162: [27, 32], M163: [52, 64], M164: [15, 18], M165: [58, 101], M166: [66, 87], M167: [55, 88], M168: [109, 155], M169: [28, 36], M170: [51, 61], M171: [69, 81], M172: [73, 86], M173: [22, 42], M174: [15, 28], M175: [123, 201], M176: [70, 96], M177: [49, 65], M178: [28, 32], M179: [85, 106], M180: [55, 86], M181: [29, 39], M182: [29, 37], M183: [11, 11], M184: [25, 32], M185: [32, 43], M186: [27, 36], M187: [47, 55], M188: [82, 185], M189: [47, 57], M190: [33, 37], M191: [45, 53], M192: [52, 60], M193: [23, 31], M194: [48, 58], M195: [56, 77], M196: [39, 52], M197: [12, 13], M198: [72, 316], M199: [22, 25], M200: [45, 72], M201: [74, 100], M202: [73, 102], M203: [80, 191], M204: [59, 79], M205: [61, 95], M206: [54, 94], M207: [153, 443], M208: [41, 52], M209: [48, 60], M210: [47, 57], M211: [24, 28], M212: [61, 72], M213: [15, 20], M214: [57, 67], M215: [76, 263], M216: [57, 82], M217: [57, 94], M218: [21, 37], M219: [59, 80], M220: [28, 30], M221: [36, 45], M222: [54, 78], M223: [42, 88], M224: [114, 163], M225: [67, 106], M226: [60, 174], M227: [21, 40], M228: [51, 88], M229: [62, 83], M230: [87, 397], M231: [51, 68], M232: [37, 44], M233: [61, 92], M234: [105, 223], M235: [89, 95], M236: [77, 84], M237: [67, 86], M238: [56, 183], M239: [36, 41], M240: [123, 201] };
+const MISSION_BOT_TIME = { M01: [8, 11], M02: [22, 25], M03: [16, 23], M04: [37, 43], M05: [23, 28], M06: [20, 23], M07: [20, 26], M08: [34, 50], M09: [21, 29], M10: [21, 24], M11: [38, 49], M12: [46, 95], M13: [21, 31], M14: [25, 32], M15: [29, 45], M16: [44, 73], M17: [23, 31], M18: [23, 28], M19: [42, 56], M20: [47, 74], M21: [22, 28], M22: [40, 131], M23: [41, 53], M24: [66, 128], M25: [35, 47], M26: [27, 40], M27: [37, 46], M28: [24, 31], M29: [37, 41], M30: [43, 60], M31: [27, 35], M32: [38, 45], M33: [17, 25], M34: [38, 47], M35: [41, 68], M36: [24, 34], M37: [36, 49], M38: [39, 52], M39: [25, 29], M40: [59, 128], M41: [44, 62], M42: [44, 49], M43: [45, 57], M44: [32, 37], M45: [45, 59], M46: [30, 36], M47: [81, 280], M48: [54, 63], M49: [46, 56], M50: [29, 49], M51: [38, 49], M52: [51, 61], M53: [121, 385], M54: [47, 69], M55: [50, 53], M56: [48, 132], M57: [47, 55], M58: [216, 305], M59: [44, 54], M60: [59, 61], M61: [27, 30], M62: [20, 24], M63: [39, 51], M64: [32, 39], M65: [45, 53], M66: [37, 47], M67: [20, 29], M68: [61, 79], M69: [45, 69], M70: [46, 53], M71: [55, 68], M72: [32, 42], M73: [58, 94], M74: [54, 108], M75: [30, 44], M76: [67, 93], M77: [33, 40], M78: [65, 79], M79: [47, 60], M80: [51, 64], M81: [81, 130], M82: [62, 120], M83: [86, 305], M84: [39, 52], M85: [91, 113], M86: [48, 52], M87: [27, 37], M88: [81, 101], M89: [101, 139], M90: [112, 243], M91: [18, 30], M92: [27, 36], M93: [18, 21], M94: [18, 29], M95: [26, 38], M96: [28, 33], M97: [49, 65], M98: [23, 29], M99: [29, 50], M100: [37, 46], M101: [39, 47], M102: [27, 42], M103: [24, 47], M104: [74, 88], M105: [45, 49], M106: [56, 68], M107: [47, 54], M108: [31, 48], M109: [52, 60], M110: [40, 72], M111: [20, 30], M112: [22, 29], M113: [72, 82], M114: [93, 140], M115: [62, 81], M116: [36, 47], M117: [50, 67], M118: [40, 53], M119: [41, 68], M120: [62, 88], M121: [29, 42], M122: [36, 55], M123: [31, 43], M124: [39, 71], M125: [46, 73], M126: [34, 88], M127: [44, 54], M128: [46, 84], M129: [25, 49], M130: [53, 123], M131: [76, 98], M132: [55, 81], M133: [37, 84], M134: [86, 181], M135: [50, 76], M136: [56, 66], M137: [46, 51], M138: [71, 87], M139: [48, 61], M140: [74, 213], M141: [67, 124], M142: [54, 66], M143: [75, 127], M144: [31, 53], M145: [60, 99], M146: [75, 115], M147: [58, 63], M148: [120, 174], M149: [63, 84], M150: [79, 140], M151: [22, 28], M152: [21, 26], M153: [25, 30], M154: [32, 37], M155: [45, 55], M156: [46, 59], M157: [22, 27], M158: [77, 118], M159: [13, 23], M160: [54, 135], M161: [45, 54], M162: [27, 32], M163: [52, 64], M164: [28, 37], M165: [58, 101], M166: [66, 87], M167: [55, 88], M168: [109, 155], M169: [32, 42], M170: [51, 61], M171: [69, 81], M172: [73, 86], M173: [22, 42], M174: [27, 49], M175: [123, 201], M176: [70, 96], M177: [49, 65], M178: [28, 32], M179: [85, 106], M180: [55, 86], M181: [29, 39], M182: [29, 37], M183: [22, 28], M184: [25, 32], M185: [32, 43], M186: [27, 36], M187: [47, 55], M188: [82, 185], M189: [47, 57], M190: [33, 37], M191: [45, 53], M192: [52, 60], M193: [23, 31], M194: [48, 58], M195: [56, 77], M196: [39, 52], M197: [30, 40], M198: [72, 316], M199: [22, 25], M200: [45, 72], M201: [74, 100], M202: [73, 102], M203: [80, 191], M204: [59, 79], M205: [61, 95], M206: [54, 94], M207: [153, 443], M208: [41, 52], M209: [48, 60], M210: [47, 57], M211: [24, 28], M212: [61, 72], M213: [35, 62], M214: [57, 67], M215: [76, 263], M216: [57, 82], M217: [57, 94], M218: [21, 37], M219: [59, 80], M220: [28, 30], M221: [36, 45], M222: [54, 78], M223: [32, 57], M224: [114, 163], M225: [67, 106], M226: [60, 174], M227: [21, 40], M228: [51, 88], M229: [62, 83], M230: [87, 397], M231: [51, 68], M232: [37, 44], M233: [61, 92], M234: [105, 223], M235: [89, 95], M236: [77, 84], M237: [67, 86], M238: [56, 183], M239: [36, 41], M240: [123, 201] };
 
 /** v15 twist hints (shown in the briefing, start card and as chips). */
 const TWIST_INFO = {
@@ -3012,7 +3014,10 @@ const TWIST_INFO = {
   dark: { label: 'CIEMNOŚĆ', color: '#9875FF', hint: 'Prąd padł: widać tylko to, co blisko wiru. Strzałka prowadzi do celu.' },
   glitch: { label: 'STREFY GLITCHA', color: '#FF54AD', hint: 'Różowe strefy glitcha zabierają masę i zrywają combo. Omijaj je.' },
   fragile: { label: 'KRUCHY WIR', color: '#50F0FA', hint: 'Kruchy wir: jedno zderzenie z większym rywalem albo strefą i misja przepada.' },
-  runner: { label: 'ZŁOTE BAJTY', color: '#EFCB63', hint: 'Złote bajty uciekają, gdy się zbliżasz. Zapędź je w róg.' }
+  runner: { label: 'ZŁOTE BAJTY', color: '#EFCB63', hint: 'Złote bajty uciekają, gdy się zbliżasz. Zapędź je w róg.' },
+  // v20: helpers, not threats.
+  impulse: { label: 'BRAMY IMPULSU', color: '#50F0FA', hint: 'Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.' },
+  portal: { label: 'PORTALE', color: '#9875FF', hint: 'Dwa portale są połączone: wjedź w jeden, wyjedziesz z drugiego. Działają w obie strony.' }
 };
 
 function compileMission(spec, order) {
@@ -3031,7 +3036,6 @@ function compileMission(spec, order) {
     }
     if (st.activate) { s[SETUP_KEY[st.activate]] = Math.max(s[SETUP_KEY[st.activate]] || 0, st.n); est += st.n * 3.5; }
     if (st.landmark) { s.landmark = st.landmark; est += 6; }
-    if (st.gates) { s.gates = Math.max(s.gates || 0, st.gates); est += st.gates * 7 + (s.gateKind === 'portal' ? 6 : 0); }
     if (st.rival) { s.bots = Math.max(s.bots || 0, Math.min(4, st.rival + 1)); est += st.rival * 8; }
     if (st.combo) {
       est += st.combo * 0.8 + 8;
@@ -3124,6 +3128,9 @@ function compileMission(spec, order) {
   const district = DISTRICTS.find(d => d.id === spec.d);
   const twists = ['hunters', 'racer', 'dark', 'glitch', 'fragile'].filter(k => s[k]);
   if (goalCounts.runner) twists.push('runner');
+  // v20: the helpers get a chip + a line too (what the glowing thing does).
+  if (s.gateKind === 'portal') twists.push('portal');
+  else if (s.gates) twists.push('impulse');
   return {
     id: spec.id, district: spec.d, order, name: spec.name, timeLimit, diff, twists,
     goal: {
@@ -3188,8 +3195,8 @@ const MISSION_SPECS = [
     reward: { coins: 120, unlockDistrict: 'park' } },
 
   // ---- Park Impulsów ----
-  { id: 'M05', d: 'park', diff: 1, name: 'Pierwszy impuls', steps: [{ gates: 2 }], setup: { gateKind: 'brama' },
-    nela: ['Bramy otwierają się w rytmie impulsu. Poczekaj, aż zaświecą, i przejdź.', 'Park znów oddycha.'] },
+  { id: 'M05', d: 'park', diff: 1, name: 'Pierwszy impuls', steps: [{ eat: 'fragment', n: 14 }], setup: { gates: 2 },
+    nela: ['Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.', 'Park znów oddycha.'] },
   { id: 'M06', d: 'park', diff: 2, name: 'Zielona fala', steps: [{ eat: 'capsule', n: 12 }, { combo: 6 }],
     setup: { capsuleWaves: [0, 16, 32], capsulesPerWave: 8 },
     medal: { type: 'comboAtLeast', count: 8, label: 'Zbuduj combo ×8' },
@@ -3197,8 +3204,8 @@ const MISSION_SPECS = [
   { id: 'M07', d: 'park', diff: 1, name: 'Dwie drogi', steps: [{ eat: 'marker', n: 3, glyph: 'znacznik_ogrodu' }],
     medal: { type: 'bothRoutesUsed', label: 'Zbierz znaczniki z obu stron parku' },
     nela: ['Znaczniki ogrodu leżą po obu stronach alei. Skrót kusi, obejście też prowadzi do celu.', 'Masz własny sposób na ten park.'] },
-  { id: 'M31', d: 'park', diff: 2, name: 'Ogrodowe bramy', steps: [{ gates: 3 }, { eat: 'prop', n: 6 }], setup: { gateKind: 'brama' },
-    nela: ['Trzy bramy, jeden rytm. Po drodze posprzątaj alejki.', 'Alejki lśnią czystością.'] },
+  { id: 'M31', d: 'park', diff: 2, name: 'Ogrodowe bramy', steps: [{ eat: 'prop', n: 8 }], setup: { gates: 3 },
+    nela: ['Trzy bramy impulsu na alejkach. Rozpędź się i posprzątaj park.', 'Alejki lśnią czystością.'] },
   { id: 'M32', d: 'park', diff: 2, name: 'Pawilony w parku', steps: [{ eat: 'structure', n: 3, glyph: 'pawilon' }],
     nela: ['Szklane pawilony zasłaniają widok na fontannę. Zrób miejsce.', 'Widok na fontannę odsłonięty.'] },
   { id: 'M33', d: 'park', diff: 3, name: 'Bieg wokół stawu', steps: [{ combo: 12 }, { eat: 'structure', n: 1, glyph: 'pawilon' }], setup: { arcLayout: true, fragments: 24 },
@@ -3243,9 +3250,9 @@ const MISSION_SPECS = [
     reward: { coins: 180, unlockDistrict: 'galeria' } },
 
   // ---- Galeria Glitch ----
-  { id: 'M13', d: 'galeria', diff: 2, name: 'Druga strona', steps: [{ gates: 1 }, { eat: 'marker', n: 6, glyph: 'krysztal' }],
+  { id: 'M13', d: 'galeria', diff: 2, name: 'Druga strona', steps: [{ eat: 'marker', n: 6, glyph: 'krysztal' }],
     setup: { gateKind: 'portal' },
-    nela: ['Portal migocze — wejdź, gdy świeci. Kryształy czekają po drugiej stronie.', 'Druga strona galerii odzyskana.'] },
+    nela: ['Kryształy leżą po drugiej stronie galerii. Portal przeniesie Cię tam w mgnieniu oka — i z powrotem.', 'Druga strona galerii odzyskana.'] },
   { id: 'M14', d: 'galeria', diff: 2, name: 'Witryny', steps: [{ eat: 'marker', n: 4, glyph: 'witryna' }],
     medal: { type: 'comboAtLeast', count: 5, label: 'Zbuduj combo ×5' },
     nela: ['Witryny wciąż świecą starym światłem. Zgaś je.', 'Witryny zgasły. Galeria czeka na nową wystawę.'] },
@@ -3273,8 +3280,8 @@ const MISSION_SPECS = [
   // ---- Dachy Prądu ----
   { id: 'M17', d: 'dachy', diff: 2, name: 'Nad miastem', steps: [{ eat: 'prop', n: 6, glyph: 'modul_dachowy' }, { tier: 3 }],
     nela: ['Dachy Prądu widać z każdego okna. Zacznij od modułów na dachach.', 'Pierwszy dach znów świeci.'] },
-  { id: 'M18', d: 'dachy', diff: 3, name: 'Tor lotu', steps: [{ gates: 3 }], setup: { gateKind: 'pas' },
-    nela: ['Trzy pasy przelotu. Przeleć przez każdy w całości, póki świeci.', 'Tor lotu czysty od krawędzi do krawędzi.'] },
+  { id: 'M18', d: 'dachy', diff: 3, name: 'Tor lotu', steps: [{ eat: 'capsule', n: 14 }], setup: { gates: 3 },
+    nela: ['Na dachach świecą bramy impulsu. Leć od jednej do drugiej i łap kapsuły po drodze.', 'Tor lotu czysty od krawędzi do krawędzi.'] },
   { id: 'M19', d: 'dachy', diff: 3, name: 'Brama iglicy', steps: [{ activate: 'node', n: 2 }, { landmark: 'iglica_wejscie' }],
     setup: { nodeGlyph: 'mostek' },
     medal: { type: 'noBotHit', label: 'Ukończ bez zderzenia z większym rywalem' },
@@ -3283,8 +3290,8 @@ const MISSION_SPECS = [
     nela: ['Ktoś zaparkował autobusy na dachu. Nie pytaj, jak — po prostu je pochłoń.', 'Dach odciążony.'] },
   { id: 'M50', d: 'dachy', diff: 4, name: 'Burza', steps: [{ combo: 15 }, { eat: 'heavy', n: 1, glyph: 'autobus' }], setup: { glitch: 2 },
     nela: ['Nadciąga burza: piętnaście kęsów bez przerwy, a potem pochłoń autobus, zanim uderzy piorun.', 'Burza przeszła bokiem.'] },
-  { id: 'M51', d: 'dachy', diff: 3, name: 'Wyścig po dachach', steps: [{ gates: 4 }], setup: { gateKind: 'brama' },
-    nela: ['Cztery bramy na krawędziach dachów. Wyczuj rytm każdej.', 'Nikt nie śmiga po dachach szybciej.'] },
+  { id: 'M51', d: 'dachy', diff: 3, name: 'Wyścig po dachach', steps: [{ eat: 'vehicle', n: 6 }], setup: { gates: 4 },
+    nela: ['Cztery bramy impulsu na dachach. Z impulsem dogonisz każdy pojazd.', 'Nikt nie śmiga po dachach szybciej.'] },
   { id: 'M52', d: 'dachy', diff: 3, name: 'Pierwszy maszt', steps: [{ eat: 'tower', n: 1, glyph: 'maszt' }],
     nela: ['Maszt radiowy to obiekt T6 — największa klasa w mieście. Urośnij do granic.', 'Maszt runął. Jesteś kolosem.'] },
   { id: 'M53', d: 'dachy', diff: 4, name: 'Strażnicy dachów', steps: [{ rival: 4 }], setup: { hunters: 3, botRadius: 60 },
@@ -6884,16 +6891,8 @@ class CampaignEntity {
     }
   }
 
-  get isGateOpen() {
-    const { cycleSeconds, openSeconds } = CONFIG.campaign.gate;
-    return (this.phase % cycleSeconds) < openSeconds;
-  }
-
-  get isGateTelegraphing() {
-    const { cycleSeconds, openSeconds, telegraphSeconds } = CONFIG.campaign.gate;
-    const t = this.phase % cycleSeconds;
-    return t >= openSeconds - telegraphSeconds && t < openSeconds;
-  }
+  /** v20: a pad/portal is ready unless it is recharging after a use. */
+  get isGateOpen() { return this.passCooldown <= 0; }
 
   update(dt, missionElapsed) {
     this._elapsed = missionElapsed;
@@ -6990,53 +6989,41 @@ class CampaignEntity {
 
     switch (this.type) {
       case 'gate': {
-        if (this.glyph === 'portal') {
-          // Portal (M13), per obj-portal (concentric rings) -- a fixed
-          // teleporter instead of a brama pillar.
-          const open = this.isGateOpen;
-          const color = open ? '#68F5FC' : '#9875FF';
-          ctx.strokeStyle = color; ctx.lineWidth = 1.6;
-          ctx.shadowBlur = open ? 18 : 6; ctx.shadowColor = color;
-          ctx.beginPath(); ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2); ctx.stroke();
-          ctx.globalAlpha *= 0.65;
-          ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, Math.PI * 2); ctx.stroke();
-          ctx.globalAlpha *= (0.4 / 0.65);
-          ctx.beginPath(); ctx.arc(0, 0, r * 0.2, 0, Math.PI * 2); ctx.stroke();
-          break;
+        // v20: helpers on the road, never goals. Ready = lit; after a use
+        // it goes dim and an arc refills until it is ready again.
+        const ready = this.isGateOpen;
+        const full = this.rechargeSeconds || 1;
+        const charge = ready ? 1 : clamp(1 - this.passCooldown / full, 0, 1);
+        const t = performance.now() / 1000;
+        const portal = this.glyph === 'portal';
+        const color = portal ? '#9875FF' : '#50F0FA';
+        ctx.globalAlpha *= ready ? 1 : 0.5;
+        ctx.fillStyle = rgbaColor(color, ready ? 0.14 : 0.06);
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 3;
+        ctx.shadowBlur = ready ? 16 : 0; ctx.shadowColor = color;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        if (portal) {
+          // A swirl: two rings turning against each other.
+          ctx.lineWidth = 2.2;
+          for (const [k, dir] of [[0.68, 1], [0.38, -1]]) {
+            ctx.beginPath(); ctx.arc(0, 0, r * k, t * 2.4 * dir, t * 2.4 * dir + Math.PI * 1.4); ctx.stroke();
+          }
+        } else {
+          // Chevrons running along the road, the way the pad pushes.
+          ctx.rotate(this.dir || 0);
+          ctx.lineWidth = 3.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          for (let i = 0; i < 2; i++) {
+            const x = -r * 0.32 + i * r * 0.42;
+            ctx.globalAlpha = (ready ? 0.55 + 0.45 * Math.max(0, Math.sin(t * 6 - i * 1.4)) : 0.5) * (ready ? 1 : 0.5);
+            ctx.beginPath(); ctx.moveTo(x - r * 0.16, -r * 0.34); ctx.lineTo(x + r * 0.16, 0); ctx.lineTo(x - r * 0.16, r * 0.34); ctx.stroke();
+          }
+          ctx.rotate(-(this.dir || 0));
         }
-        if (this.glyph === 'pas_przelotu') {
-          // Pas przelotu (M18), per obj-pas-przelotu -- a lit corridor
-          // strip instead of a single brama pillar.
-          const open = this.isGateOpen;
-          const telegraph = this.isGateTelegraphing;
-          const color = !open ? 'rgba(255,255,255,0.2)' : telegraph ? '#EFCB63' : '#50F0FA';
-          const hw = this.zoneHalfWidth || r;
-          ctx.strokeStyle = color; ctx.lineWidth = 2;
-          ctx.shadowBlur = open ? 14 : 4; ctx.shadowColor = color;
-          // The zone spans the whole mission box vertically (the crossing
-          // check only looks at x), so draw it that tall.
-          const b = CONFIG.campaign.bounds;
-          const top = b.minY - this.y, bottom = b.maxY - this.y;
-          if (open) { ctx.fillStyle = rgbaColor(telegraph ? '#EFCB63' : '#50F0FA', 0.08); ctx.fillRect(-hw, top, hw * 2, bottom - top); }
-          ctx.setLineDash([10, 8]);
-          ctx.beginPath(); ctx.moveTo(-hw, top); ctx.lineTo(-hw, bottom); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(hw, top); ctx.lineTo(hw, bottom); ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(-r * 0.4, -r * 0.4); ctx.lineTo(r * 0.4, 0); ctx.lineTo(-r * 0.4, r * 0.4);
-          ctx.stroke();
-          break;
+        if (!ready) {
+          ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(0, 0, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * charge); ctx.stroke();
         }
-        const open = this.isGateOpen;
-        const telegraph = this.isGateTelegraphing;
-        const color = !open ? 'rgba(255,255,255,0.2)' : telegraph ? '#EFCB63' : '#50F0FA';
-        ctx.strokeStyle = color; ctx.lineWidth = 5;
-        ctx.shadowBlur = open ? 16 : 4; ctx.shadowColor = color;
-        ctx.beginPath();
-        ctx.moveTo(0, -r * 2.4); ctx.lineTo(0, r * 2.4);
-        ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, -r * 2.4, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(0, r * 2.4, 6, 0, Math.PI * 2); ctx.fill();
         break;
       }
     }
@@ -7066,7 +7053,8 @@ class Hole {
     const s = BASE_SPEED * Math.pow(BASE_RADIUS / this.radius, 0.22);
     // tempSpeedMult: set per-frame by Game.updateMutationEffects() for the
     // Slipstream evolution mutation (Phase 4); 1 the rest of the time.
-    return clamp(s, 45, BASE_SPEED) * (this.tempSpeedMult || 1) * (this.perkSpeedMult || 1);
+    // impulseMult: a campaign impulse pad's speed burst (v20).
+    return clamp(s, 45, BASE_SPEED) * (this.tempSpeedMult || 1) * (this.perkSpeedMult || 1) * (this.impulseMult || 1);
   }
 
   moveToward(tx, ty, dt) {
@@ -10271,8 +10259,7 @@ class Game {
   campaignEntityColor(e) {
     if (!e) return '#fff';
     if (e.type === 'gate') {
-      if (e.glyph === 'portal') return e.isGateOpen ? '#68F5FC' : '#9875FF';
-      return !e.isGateOpen ? 'rgba(255,255,255,0.2)' : (e.isGateTelegraphing ? '#EFCB63' : '#50F0FA');
+      return e.glyph === 'portal' ? '#9875FF' : '#50F0FA';
     }
 
     if (e.type === 'runner') return '#EFCB63';
@@ -10303,7 +10290,7 @@ class Game {
     if (st.landmark) return { icon: GOAL_ICONS.landmark, color: SIZE_TIER_COLORS[LANDMARK_TIERS[st.landmark]] };
     if (st.tier) return { icon: GOAL_ICONS.tier, color: CAMPAIGN_TIERS[st.tier - 1].color };
     const kind = st.eat || st.activate || (st.combo && 'combo') ||
-      (st.gates && (setup.gateKind === 'portal' ? 'portal' : 'gate')) || (st.rival && 'rival') || (st.score && 'score');
+      (st.rival && 'rival') || (st.score && 'score');
     return this.campaignGoalIcon(kind);
   }
 
@@ -10867,7 +10854,6 @@ class Game {
         if (st.eat) types.add(st.eat);
         if (st.activate) types.add(st.activate);
         if (st.landmark) types.add('landmark');
-        if (st.gates) types.add('gate');
       }
     }
     return types;
@@ -11037,14 +11023,24 @@ class Game {
 
     // Reserve the landmark plinth and the player's start first.
     if (s.landmark) taken.push({ x: cx, y: cy, r: CONFIG.campaign.landmarkByTier[LANDMARK_TIERS[s.landmark] || 4].radius + 40 });
-    // (Portal missions start beside -- not on -- the portal, which used to
-    // teleport the player on the very first frame.)
+    // (Portal missions start beside -- not on -- the near portal.)
     if (s.gateKind === 'portal') this.campaignSpawn = { x: b.minX + 140, y: cy + 230 };
     else if (s.arcLayout) this.campaignSpawn = { x: cx - 290, y: cy };
     else if (s.landmark) this.campaignSpawn = { x: cx, y: b.maxY - 120 };
     const start = this.campaignSpawn || { x: cx, y: cy + 260 };
     this.campaignSpawn = start;
     taken.push({ x: start.x, y: start.y, r: 70 });
+    // v20: gates are helpers laid before the food, so nothing sits on them:
+    // a linked pair of portals (near the start ↔ the far side), or impulse
+    // pads on the roads.
+    if (s.gateKind === 'portal') {
+      const R = CONFIG.campaign.gate.padRadius;
+      const near = new CampaignEntity('gate', b.minX + 140, cy, { glyph: 'portal', radius: R });
+      const far = new CampaignEntity('gate', b.maxX - 140, cy, { glyph: 'portal', radius: R });
+      near.pair = far; far.pair = near;
+      this.campaignEntities.push(near, far);
+      taken.push({ x: near.x, y: near.y, r: R + 50 }, { x: far.x, y: far.y, r: R + 50 });
+    } else if (s.gates) this.layImpulsePads(s.gates, start, taken);
 
     if (s.arcLayout) {
       // Fragments laid along a loop so a fast, close-quarters combo chain
@@ -11133,27 +11129,6 @@ class Game {
         const half = Math.ceil(s.markers / 2);
         addMany('marker', half, leftHalf, { route: 'A', glyph });
         addMany('marker', s.markers - half, rightHalf, { route: 'B', glyph });
-      }
-    }
-
-    if (s.gates) {
-      if (s.gateKind === 'portal') {
-        // One fixed, one-way, single-use teleporter near the start.
-        const near = { x: b.minX + 140, y: cy };
-        const far = { x: b.maxX - 140, y: cy };
-        this.campaignEntities.push(new CampaignEntity('gate', near.x, near.y, {
-          glyph: 'portal', phase: 0, portalAnchors: [near, far]
-        }));
-      } else {
-        for (let i = 0; i < s.gates; i++) {
-          const t = (i + 1) / (s.gates + 1);
-          const gx = lerp(b.minX + 80, b.maxX - 80, t);
-          const spacing = (b.maxX - b.minX - 160) / (s.gates + 1);
-          const opts = s.gateKind === 'pas'
-            ? { glyph: 'pas_przelotu', zoneHalfWidth: Math.min(90, Math.round(spacing * 0.3)), phase: rand(0, CONFIG.campaign.gate.cycleSeconds) }
-            : { phase: rand(0, CONFIG.campaign.gate.cycleSeconds) };
-          this.campaignEntities.push(new CampaignEntity('gate', gx, cy, opts));
-        }
       }
     }
 
@@ -11708,87 +11683,83 @@ class Game {
     }
   }
 
-  /** Portal (M13, OBJECT_CATALOG_SPEC.md §2.3/§4): a fixed, one-way,
-   *  single-use teleporter instead of a "pass through when open" brama.
-   *  Decisions (open questions in the spec, resolved here): one-way, since
-   *  there's exactly one physical portal entity and no natural anchor to
-   *  teleport back from; single-use per run, since the mission goal is
-   *  just reaching the far-side crystal cluster once, not repeat travel. */
-  handlePortalTouch(e) {
-    const d = dist(this.player.x, this.player.y, e.x, e.y);
-    if (d >= this.player.radius + e.radius || e.passCooldown > 0) return;
-    if (!e.isGateOpen) {
-      this.spawnParticles(e.x, e.y, '#FF54AD', 6);
-      return;
+  /** v20: impulse pads sit on the roads, halfway between two crossings
+   *  (they read as part of the street, chevrons along it). The first one
+   *  is the free spot most in view of the start but not under it, so a new
+   *  player sees it at once; the rest spread out over the map. No randomness:
+   *  every attempt has the same pads. */
+  layImpulsePads(n, start, taken) {
+    const b = CONFIG.campaign.bounds, R = CONFIG.campaign.gate.padRadius;
+    const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
+    const roads = (lo, hi) => { const v = []; for (let k = Math.ceil(lo / CITY_PITCH); k * CITY_PITCH < hi; k++) v.push(k * CITY_PITCH); return v; };
+    // Halfway and quarter points between crossings (a quarter point lets
+    // the first pad sit close to the start, on a small phone too).
+    const mids = (lo, hi) => { const v = []; for (let k = Math.floor(lo / CITY_PITCH); k * CITY_PITCH < hi; k++) for (const f of [0.25, 0.5, 0.75]) { const m = (k + f) * CITY_PITCH; if (m > lo + 80 && m < hi - 80) v.push(m); } return v; };
+    const cand = [];
+    roads(b.minY, b.maxY).forEach(y => mids(b.minX, b.maxX).forEach(x => cand.push({ x, y, dir: x < cx ? 0 : Math.PI })));
+    roads(b.minX, b.maxX).forEach(x => mids(b.minY, b.maxY).forEach(y => cand.push({ x, y, dir: y < cy ? Math.PI / 2 : -Math.PI / 2 })));
+    const fromStart = c => dist(c.x, c.y, start.x, start.y);
+    let pool = cand.filter(c => fromStart(c) > 170 && !taken.some(t => dist(t.x, t.y, c.x, c.y) < t.r + R + 10));
+    const chosen = [];
+    // A phone screen is tall: sideways counts double for "in view".
+    const inView = c => Math.abs(c.x - start.x) * 2 + Math.abs(c.y - start.y);
+    pool.sort((p, q) => inView(p) - inView(q));
+    if (pool.length) chosen.push(pool.shift());
+    while (chosen.length < n && pool.length) {
+      let best = 0, bd = -1;
+      pool.forEach((c, i) => { const d = Math.min(fromStart(c) * 1.5, ...chosen.map(p => dist(p.x, p.y, c.x, c.y))); if (d > bd) { bd = d; best = i; } });
+      chosen.push(pool.splice(best, 1)[0]);
     }
-    const dest = e.portalAnchors[1];
-    this.player.x = dest.x;
-    this.player.y = dest.y;
-    this.player.invulnerableUntil = performance.now() + 800;
-    e.passCooldown = 999; // effectively single-use for the rest of the mission
-    // v10: using the portal counts as passing it (gates objective).
-    this.mission.gatesPassed.add(e);
+    chosen.forEach(c => {
+      this.campaignEntities.push(new CampaignEntity('gate', c.x, c.y, { glyph: 'impulse', radius: R, dir: c.dir }));
+      taken.push({ x: c.x, y: c.y, r: R + 30 });
+    });
+  }
+
+  /** v20: touching a ready pad or portal uses it. */
+  handleCampaignGates() {
+    const p = this.player;
+    for (const e of this.campaignEntities) {
+      if (e.type !== 'gate' || e.passCooldown > 0) continue;
+      if (dist(p.x, p.y, e.x, e.y) >= p.radius + e.radius * 0.8) continue;
+      if (e.glyph === 'portal') this.usePortal(e); else this.useImpulsePad(e);
+    }
+  }
+
+  /** Impulse pad: a short speed burst (applied in updateCampaign()), then
+   *  the pad recharges. */
+  useImpulsePad(e) {
+    const G = CONFIG.campaign.gate, m = this.mission, p = this.player;
+    e.passCooldown = e.rechargeSeconds = G.rechargeSeconds;
+    m.impulseUntil = m.elapsed + G.impulseSeconds;
+    p.impulseMult = G.impulseMult;
+    m.impulses = (m.impulses || 0) + 1;
+    this.spawnParticles(e.x, e.y, '#50F0FA', 16);
+    this.ripples.push(new Ripple(e.x, e.y, '#50F0FA', e.radius, e.radius * 3, 0.45));
+    this.addFloatText(p.x, p.y - p.radius - 18, 'IMPULS!', '#50F0FA', 18, 0.9);
+    this.vibrate(25);
+    this.sound.impulse();
+    if (m.impulses === 1) this.analytics.track('mission_impulse', { missionId: m.def.id });
+  }
+
+  /** Portal: out of its pair, on the inner side (towards the map), both
+   *  ends resting briefly so the vortex doesn't bounce straight back. */
+  usePortal(e) {
+    const dest = e.pair;
+    if (!dest) return;
+    const G = CONFIG.campaign.gate, m = this.mission, p = this.player, b = CONFIG.campaign.bounds;
+    const side = Math.sign((b.minX + b.maxX) / 2 - dest.x) || 1;
+    p.x = dest.x + side * (dest.radius + p.radius + 12);
+    p.y = dest.y;
+    p.invulnerableUntil = performance.now() + 800;
+    e.passCooldown = dest.passCooldown = e.rechargeSeconds = dest.rechargeSeconds = G.portalCooldown;
+    m.portalsUsed = (m.portalsUsed || 0) + 1;
     this.spawnParticles(e.x, e.y, '#9875FF', 18);
-    this.spawnParticles(dest.x, dest.y, '#9875FF', 18);
-    this.ripples.push(new Ripple(dest.x, dest.y, '#9875FF', 10, e.radius * 3, 0.5));
+    this.spawnParticles(p.x, p.y, '#9875FF', 18);
+    this.ripples.push(new Ripple(dest.x, dest.y, '#9875FF', 10, dest.radius * 3, 0.5));
     this.vibrate([30, 20, 30]);
     this.sound.portal();
-    this.analytics.track('mission_portal_use', { missionId: this.mission.def.id });
-  }
-
-  /** Pas przelotu (M18, OBJECT_CATALOG_SPEC.md §2.4): a corridor zone with
-   *  entry/exit tracking instead of a single point-touch gate -- "clearing"
-   *  one means crossing all the way through it while lit, not just
-   *  touching its center point. */
-  handleCorridorZone(e) {
-    const m = this.mission;
-    const hw = e.zoneHalfWidth || e.radius;
-    const inside = Math.abs(this.player.x - e.x) < hw;
-    if (inside && !e._corridorInside) {
-      e._corridorEnteredOpen = e.isGateOpen;
-      e._corridorEnterSide = this.player.x < e.x ? -1 : 1;
-    } else if (!inside && e._corridorInside) {
-      const exitSide = this.player.x < e.x ? -1 : 1;
-      const crossedThrough = exitSide !== e._corridorEnterSide;
-      if (crossedThrough && e._corridorEnteredOpen && e.isGateOpen) {
-        if (!m.gatesPassed.has(e)) {
-          m.gatesPassed.add(e);
-          this.spawnParticles(e.x, e.y, '#50F0FA', 16);
-          this.vibrate(30);
-        }
-      } else if (crossedThrough) {
-        this.spawnParticles(e.x, e.y, '#FF54AD', 8);
-      }
-    }
-    e._corridorInside = inside;
-  }
-
-  handleCampaignGates() {
-    const m = this.mission;
-    for (const e of this.campaignEntities) {
-      if (e.type !== 'gate') continue;
-      if (e.glyph === 'portal') { this.handlePortalTouch(e); continue; }
-      if (e.glyph === 'pas_przelotu') { this.handleCorridorZone(e); continue; }
-      const d = dist(this.player.x, this.player.y, e.x, e.y);
-      if (d < this.player.radius + 16 && e.passCooldown <= 0) {
-        e.passCooldown = 0.6;
-        if (e.isGateOpen) {
-          if (!m.gatesPassed.has(e)) {
-            m.gatesPassed.add(e);
-            this.spawnParticles(e.x, e.y, '#50F0FA', 14);
-            this.vibrate(30);
-          }
-        } else {
-          // Closed: a soft bounce, not a hard block or a random penalty —
-          // GDD 08 "poznaj rytm otwarcia zamiast losowej kary".
-          const dx = this.player.x - e.x, dy = this.player.y - e.y;
-          const dd = Math.hypot(dx, dy) || 1;
-          this.player.x += (dx / dd) * 26;
-          this.player.y += (dy / dd) * 26;
-          this.spawnParticles(e.x, e.y, '#FF54AD', 6);
-        }
-      }
-    }
+    this.analytics.track('mission_portal_use', { missionId: m.def.id });
   }
 
   handleCampaignCollisions() {
@@ -11957,7 +11928,6 @@ class Game {
     if (step.eat) return [step.glyph ? (m.eatenByGlyph[step.glyph] || 0) : (m.eatenByType[step.eat] || 0), step.n];
     if (step.tier) return [this.campaignTierIndex(this.campaignPlayerTier().id), step.tier];
     if (step.combo) return [m.bestCombo, step.combo];
-    if (step.gates) return [m.gatesPassed.size, step.gates];
     if (step.rival) return [m.rivalsEaten, step.rival];
     if (step.activate) return [step.activate === 'node' ? m.nodesDisabled : m.pylonsCharged, step.n];
     if (step.landmark) return [(m.landmark && m.landmark.consumed) ? 1 : 0, 1];
@@ -12250,6 +12220,10 @@ class Game {
     // then offered a revive ad) before knowing what the game is.
     m.timeRemaining = m.def.untimed ? m.def.timeLimit : Math.max(0, m.def.timeLimit + (m.bonusTime || 0) - m.elapsed);
 
+    // v20: an impulse pad's speed burst, with a light trail.
+    const impulse = m.impulseUntil > m.elapsed;
+    this.player.impulseMult = impulse ? CONFIG.campaign.gate.impulseMult : 1;
+    if (impulse && Math.random() < 0.5) this.spawnParticles(this.player.x, this.player.y, '#50F0FA', 1);
     this.applyPlayerMovement(dt);
     this.clampToCampaignBounds(this.player);
     for (const bot of this.bots) { this.updateCampaignBot(bot, dt); this.clampToCampaignBounds(bot); }
@@ -12684,8 +12658,7 @@ class Game {
     const playerTier = this.campaignTierIndex(this.campaignPlayerTier().id);
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
     for (const e of this.campaignEntities) {
-      // Gates (pas przelotu) draw long corridor lines far past their radius.
-      if (e.type !== 'gate' && !this.isInView(e.x, e.y, e.radius * 2)) continue;
+      if (!this.isInView(e.x, e.y, e.radius * 2)) continue;
       // The goal ring only marks goal objects the hole can eat right now --
       // a ring around a still-too-big object read as "eat this" (QA).
       const isGoal = goalTypes.has(e.type) && (!goalGlyph || e.glyph === goalGlyph) && playerTier >= e.stats?.minTier;
@@ -15036,6 +15009,20 @@ class Game {
 
 /* ----------------------- v19: English (Polish -> English) ----------------------- */
 const I18N_EN = {
+  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down.",
+  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down. 10 new missions await.",
+  "Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.": "The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost.",
+  "Trzy bramy impulsu na alejkach. Rozpędź się i posprzątaj park.": "Three impulse gates on the paths. Pick up speed and clean up the park.",
+  "Kryształy leżą po drugiej stronie galerii. Portal przeniesie Cię tam w mgnieniu oka — i z powrotem.": "The crystals lie on the far side of the gallery. The portal takes you there in a blink — and back.",
+  "Na dachach świecą bramy impulsu. Leć od jednej do drugiej i łap kapsuły po drodze.": "Impulse gates glow on the rooftops. Fly from one to the next and grab capsules on the way.",
+  "Cztery bramy impulsu na dachach. Z impulsem dogonisz każdy pojazd.": "Four impulse gates on the rooftops. With a boost you can catch any vehicle.",
+  "Park Impulsów pulsuje energią: świecące bramy na alejkach dają wirowi impuls. Tylko fontanna pompuje szum zamiast wody — odzyskaj ją.": "Pulse Park throbs with energy: glowing gates on the paths give the vortex a boost. Only the fountain pumps static instead of water — win it back.",
+  "Park Impulsów pulsuje energią: świecące bramy na alejkach dają wirowi impuls. Tylko fontanna pompuje szum zamiast wody — odzyskaj ją. Czeka 10 nowych misji.": "Pulse Park throbs with energy: glowing gates on the paths give the vortex a boost. Only the fountain pumps static instead of water — win it back. 10 new missions await.",
+  "BRAMY IMPULSU": "IMPULSE GATES",
+  "PORTALE": "PORTALS",
+  "IMPULS!": "BOOST!",
+  "Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.": "A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Then the gate recharges.",
+  "Dwa portale są połączone: wjedź w jeden, wyjedziesz z drugiego. Działają w obie strony.": "The two portals are linked: go into one, come out of the other. They work both ways.",
   "(masz {0} {1}). Na podglądzie widać, jak wygląda.": "(you have {0} {1}). The preview shows how it looks.",
   "(wcześniej)": "(earlier)",
   "(wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza).": "(how your hole looks), power-ups before a round and boosters before a mission (Clock, Turbo Start, Sprint, Magnet, Shield).",
@@ -15139,7 +15126,6 @@ const I18N_EN = {
   "Brama fabryki": "Factory Gate",
   "Brama iglicy": "Spire Gate",
   "Brama otwarta. Iglica czeka.": "Gate open. The spire awaits.",
-  "Bramy otwierają się w rytmie impulsu. Poczekaj, aż zaświecą, i przejdź.": "The gates open to the pulse. Wait for them to light up, then go through.",
   "Bramy wiatru": "Wind Gates",
   "Bramę Bazaru": "the Bazaar Gate",
   "Brygadziści": "Foremen",
@@ -15190,7 +15176,6 @@ const I18N_EN = {
   "Czas": "Time",
   "Czcionki:": "Fonts:",
   "Czeka w Warsztacie. +{0} monet.": "Waiting in the Workshop. +{0} coins.",
-  "Cztery bramy na krawędziach dachów. Wyczuj rytm każdej.": "Four gates on the rooftop edges. Feel the rhythm of each one.",
   "Cztery lustra kierują światło do galerii. Aktywuj wszystkie.": "Four mirrors guide light into the gallery. Activate them all.",
   "Czułość": "Sensitivity",
   "Czytelny chaos": "Readable Chaos",
@@ -15533,8 +15518,6 @@ const I18N_EN = {
   "Na tym urządzeniu": "On this device",
   "Na wodzie migoczą hologramy.": "Holograms shimmer on the water.",
   "Nad miastem": "Above the City",
-  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Fly through the lanes and shut it down.",
-  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Fly through the lanes and shut it down. 10 new missions await.",
   "Nadciąga burza: piętnaście kęsów bez przerwy, a potem pochłoń autobus, zanim uderzy piorun.": "A storm is coming: fifteen bites without a break, then swallow a bus before the lightning strikes.",
   "Nadzorcy": "Overseers",
   "Nagrody Core City": "Core City Rewards",
@@ -15835,7 +15818,6 @@ const I18N_EN = {
   "Port należy do Ciebie.": "The port is yours.",
   "Port stoi bez prądu. Zacznij od skrzyń przy nabrzeżu.": "The port has no power. Start with the crates on the wharf.",
   "Port widm": "Ghost Port",
-  "Portal migocze — wejdź, gdy świeci. Kryształy czekają po drugiej stronie.": "The portal flickers — enter while it glows. Crystals wait on the other side.",
   "Portale otwierają się i gasną jak fale.": "Portals open and fade like waves.",
   "Postęp do {0}": "Progress to {0}",
   "Postęp na Placu Neonów: {0} z {1} misji.": "Neon Square progress: {0} of {1} missions.",
@@ -15864,20 +15846,6 @@ const I18N_EN = {
   "Przed restartem": "Before restarting",
   "Przed zamknięciem": "Before closing",
   "Przegrzanie": "Overheat",
-  "Przejdź przez 2 bramy, gdy są otwarte": "Pass through 2 gates while they're open",
-  "Przejdź przez 3 bramy, gdy są otwarte": "Pass through 3 gates while they're open",
-  "Przejdź przez 3 bramy, gdy są otwarte · Pochłoń 6 elementów ulicznych": "Pass through 3 gates while they're open · Swallow 6 street props",
-  "Przejdź przez 4 bramy, gdy są otwarte": "Pass through 4 gates while they're open",
-  "Przejdź przez 5 bram, gdy są otwarte": "Pass through 5 gates while they're open",
-  "Przejdź przez portal": "Go through the portal",
-  "Przejdź przez portal · Pochłoń 6 kryształów": "Go through the portal · Swallow 6 crystals",
-  "Przejdź przez portal · Pochłoń 8 kryształów": "Go through the portal · Swallow 8 crystals",
-  "Przejdź przez {0}, gdy {1}": "Pass through {0} while {1}",
-  "Przeleć przez 3 pasy przelotu, gdy świecą": "Fly through 3 flight lanes while they glow",
-  "Przeleć przez 4 pasy przelotu, gdy świecą": "Fly through 4 flight lanes while they glow",
-  "Przeleć przez 5 pasów przelotu, gdy świecą": "Fly through 5 flight lanes while they glow",
-  "Przeleć przez 5 pasów przelotu, gdy świecą · Złap 3 złote bajty": "Fly through 5 flight lanes while they glow · Catch 3 golden bytes",
-  "Przeleć przez {0}, gdy {1}": "Fly through {0} while {1}",
   "Przesył Danych": "Data Stream",
   "Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.": "Survive 1 clash with a bigger rival without losing size.",
   "Przez 60 minut każda runda i misja za darmo (bez zużywania energii)": "Every round and mission free for 60 minutes (no energy used)",
@@ -16070,9 +16038,7 @@ const I18N_EN = {
   "Tramwaje wożą eksponaty między salami. Pochłoń dwa — razem z ładunkiem.": "Trams carry exhibits between halls. Swallow two — cargo and all.",
   "Transfer zakończony.": "Transfer complete.",
   "Tryb sterowania": "Controls",
-  "Trzy bramy, jeden rytm. Po drodze posprzątaj alejki.": "Three gates, one rhythm. Clean up the alleys on the way.",
   "Trzy lustra otwierają galerię — obiekt T5. Aktywuj je i urośnij.": "Three mirrors open the gallery — a T5 object. Activate them and grow.",
-  "Trzy pasy przelotu. Przeleć przez każdy w całości, póki świeci.": "Three flight lanes. Fly through each one end to end while it's lit.",
   "Trzy pylony nadają sygnał przez maszty. Naładuj pylony, potem pochłoń maszty.": "Three pylons broadcast through the masts. Charge the pylons, then swallow the masts.",
   "Trzy węzły blokują zasilanie placu. Urośnij do T3 i pochłoń je.": "Three nodes are cutting power to the square. Grow to T3 and swallow them.",
   "Trzy zasilacze, jeden dźwig T5. Rośnij po drodze.": "Three power cells, one T5 crane. Grow along the way.",
@@ -16157,8 +16123,6 @@ const I18N_EN = {
   "Vector Hole: {0} pkt, {1}. miejsce. Ta sama mapa czeka — dasz radę więcej?": "Vector Hole: {0} pts, #{1}. Same map is waiting — can you beat it?",
   "W Fabryce Pikseli Glitch produkuje sam siebie. Hale pełne są stref skażenia, a nadzorcy pilnują taśm. Zatrzymaj produkcję.": "In the Pixel Factory, Glitch manufactures itself. The halls are full of corruption zones, and overseers guard the belts. Shut down production.",
   "W Fabryce Pikseli Glitch produkuje sam siebie. Hale pełne są stref skażenia, a nadzorcy pilnują taśm. Zatrzymaj produkcję. Czeka 30 nowych misji.": "In the Pixel Factory, Glitch manufactures itself. The halls are full of corruption zones, and overseers guard the belts. Shut down production. 30 new missions await.",
-  "W Parku Impulsów bramy zgubiły rytm, a fontanna pompuje szum zamiast wody. Wyczuj puls parku i odzyskaj fontannę.": "In Pulse Park, the gates have lost their rhythm and the fountain pumps static instead of water. Feel the park's pulse and reclaim the fountain.",
-  "W Parku Impulsów bramy zgubiły rytm, a fontanna pompuje szum zamiast wody. Wyczuj puls parku i odzyskaj fontannę. Czeka 10 nowych misji.": "In Pulse Park, the gates have lost their rhythm and the fountain pumps static instead of water. Feel the park's pulse and reclaim the fountain. 10 new missions await.",
   "W kodzie": "In the code",
   "W metrze liczy się każda sekunda.": "In the metro, every second counts.",
   "W ogrodach liczy się precyzja.": "In the gardens, precision is everything.",

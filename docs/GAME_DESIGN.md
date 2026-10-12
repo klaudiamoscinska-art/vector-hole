@@ -164,8 +164,13 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   („GRAJ Mxx”, „SPRÓBUJ PONOWNIE”, „POWTÓRZ”) i z pauzy („zacznij od
   nowa” = nowa próba). Tam: cele, zwroty, czas, gwiazdki, nagroda,
   wzmocnienia, koszt energii.
-- Portal, Mostek, Pas przelotu mają własne mechaniki; rewanż „+20 s” od
-  40% postępu za reklamę **albo 8 pryzmatów**.
+- **Bramy impulsu i portale (v20) to pomocnicy, nigdy cel misji.**
+  Świecąca brama na jezdni daje wirowi impuls (+50% prędkości na 2,5 s),
+  potem się ładuje (5 s, łuk pokazuje ładowanie). Portale są połączone
+  parą i działają w obie strony (skrót na drugą stronę mapy). Misje
+  z nimi mają cele z jedzeniem; kto z nich korzysta, szybciej zdobywa
+  gwiazdki. Mostek ma własną mechanikę; rewanż „+20 s” od 40% postępu za
+  reklamę **albo 8 pryzmatów**.
 - W misji: pole celu rozbłyska na starcie, „CEL ZALICZONY”, strzałka na
   krawędzi ekranu do najbliższego celu; skupiska combo nigdy tuż przy
   starcie; nic nie chowa się w rogu poza zasięgiem wiru.
@@ -373,7 +378,8 @@ wodą”, NASTĘPNY, plakietka TERAZ GRA, Szafa grająca z zablokowanymi
 utworami, stres 60 zmian scen, runda bota z włączonym dźwiękiem).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
-przekracza pasy przelotu w całości, odkleja się, gdy utknie. Czasy misji
+odkleja się, gdy utknie (bram impulsu i portali nie używa celowo —
+czasy są liczone bez nich). Czasy misji
 kalibruje `node qa/calibrate.mjs 10 4` (wynik wklejany do
 `MISSION_BOT_TIME`) — po każdej zmianie misji, krzywej wzrostu lub
 zwrotów akcji. Bot „casual” (`ARENA_BOT`,
