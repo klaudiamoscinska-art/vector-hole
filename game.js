@@ -2867,7 +2867,7 @@ const DISTRICT_STORY = {
   park: 'Park Impulsów pulsuje energią: świecące bramy na alejkach dają wirowi impuls. Tylko fontanna pompuje szum zamiast wody — odzyskaj ją.',
   port: 'Port Syntez stoi w korku skażonych ciężarówek, a nad wszystkim góruje Dźwig. Urośnij tak, żeby zmieścić go w sobie.',
   galeria: 'Galeria Glitch to labirynt witryn i portali. Tu nic nie jest tym, czym się wydaje. Trzymaj się celu.',
-  dachy: 'Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.',
+  dachy: 'Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.',
   rdzen: 'Rdzeń Miasta. Stąd Glitch steruje wszystkim. Pochłoń Rdzeń, a Neonowe Miasto znów zaświeci.'
 };
 CHAPTER_II.forEach(d => { DISTRICT_STORY[d.id] = d.story; });
@@ -3017,7 +3017,7 @@ const TWIST_INFO = {
   runner: { label: 'ZŁOTE BAJTY', color: '#EFCB63', hint: 'Złote bajty uciekają, gdy się zbliżasz. Zapędź je w róg.' },
   // v20: helpers, not threats.
   impulse: { label: 'BRAMY IMPULSU', color: '#50F0FA', hint: 'Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.' },
-  portal: { label: 'PORTALE', color: '#B79CFF', hint: 'Dwa portale są połączone: wjedź w jeden, wyjedziesz z drugiego. Działają w obie strony.' }
+  portal: { label: 'PORTALE', color: '#9875FF', hint: 'Dwa portale są połączone: wjedź w jeden, wyjedziesz z drugiego. Działają w obie strony.' }
 };
 
 function compileMission(spec, order) {
@@ -6996,7 +6996,7 @@ class CampaignEntity {
         const charge = ready ? 1 : clamp(1 - this.passCooldown / full, 0, 1);
         const t = performance.now() / 1000;
         const portal = this.glyph === 'portal';
-        const color = portal ? '#B79CFF' : '#50F0FA';
+        const color = portal ? '#9875FF' : '#50F0FA';
         ctx.globalAlpha *= ready ? 1 : 0.5;
         ctx.fillStyle = rgbaColor(color, ready ? 0.14 : 0.06);
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
@@ -10259,7 +10259,7 @@ class Game {
   campaignEntityColor(e) {
     if (!e) return '#fff';
     if (e.type === 'gate') {
-      return e.glyph === 'portal' ? '#B79CFF' : '#50F0FA';
+      return e.glyph === 'portal' ? '#9875FF' : '#50F0FA';
     }
 
     if (e.type === 'runner') return '#EFCB63';
@@ -11692,7 +11692,9 @@ class Game {
     const b = CONFIG.campaign.bounds, R = CONFIG.campaign.gate.padRadius;
     const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
     const roads = (lo, hi) => { const v = []; for (let k = Math.ceil(lo / CITY_PITCH); k * CITY_PITCH < hi; k++) v.push(k * CITY_PITCH); return v; };
-    const mids = (lo, hi) => { const v = []; for (let k = Math.floor(lo / CITY_PITCH); k * CITY_PITCH < hi; k++) { const m = (k + 0.5) * CITY_PITCH; if (m > lo + 80 && m < hi - 80) v.push(m); } return v; };
+    // Halfway and quarter points between crossings (a quarter point lets
+    // the first pad sit close to the start, on a small phone too).
+    const mids = (lo, hi) => { const v = []; for (let k = Math.floor(lo / CITY_PITCH); k * CITY_PITCH < hi; k++) for (const f of [0.25, 0.5, 0.75]) { const m = (k + f) * CITY_PITCH; if (m > lo + 80 && m < hi - 80) v.push(m); } return v; };
     const cand = [];
     roads(b.minY, b.maxY).forEach(y => mids(b.minX, b.maxX).forEach(x => cand.push({ x, y, dir: x < cx ? 0 : Math.PI })));
     roads(b.minX, b.maxX).forEach(x => mids(b.minY, b.maxY).forEach(y => cand.push({ x, y, dir: y < cy ? Math.PI / 2 : -Math.PI / 2 })));
@@ -11752,9 +11754,9 @@ class Game {
     p.invulnerableUntil = performance.now() + 800;
     e.passCooldown = dest.passCooldown = e.rechargeSeconds = dest.rechargeSeconds = G.portalCooldown;
     m.portalsUsed = (m.portalsUsed || 0) + 1;
-    this.spawnParticles(e.x, e.y, '#B79CFF', 18);
-    this.spawnParticles(p.x, p.y, '#B79CFF', 18);
-    this.ripples.push(new Ripple(dest.x, dest.y, '#B79CFF', 10, dest.radius * 3, 0.5));
+    this.spawnParticles(e.x, e.y, '#9875FF', 18);
+    this.spawnParticles(p.x, p.y, '#9875FF', 18);
+    this.ripples.push(new Ripple(dest.x, dest.y, '#9875FF', 10, dest.radius * 3, 0.5));
     this.vibrate([30, 20, 30]);
     this.sound.portal();
     this.analytics.track('mission_portal_use', { missionId: m.def.id });
@@ -12656,8 +12658,7 @@ class Game {
     const playerTier = this.campaignTierIndex(this.campaignPlayerTier().id);
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
     for (const e of this.campaignEntities) {
-      // Gates (pas przelotu) draw long corridor lines far past their radius.
-      if (e.type !== 'gate' && !this.isInView(e.x, e.y, e.radius * 2)) continue;
+      if (!this.isInView(e.x, e.y, e.radius * 2)) continue;
       // The goal ring only marks goal objects the hole can eat right now --
       // a ring around a still-too-big object read as "eat this" (QA).
       const isGoal = goalTypes.has(e.type) && (!goalGlyph || e.glyph === goalGlyph) && playerTier >= e.stats?.minTier;
@@ -15008,6 +15009,8 @@ class Game {
 
 /* ----------------------- v19: English (Polish -> English) ----------------------- */
 const I18N_EN = {
+  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down.",
+  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down. 10 new missions await.",
   "Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.": "The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost.",
   "Trzy bramy impulsu na alejkach. Rozpędź się i posprzątaj park.": "Three impulse gates on the paths. Pick up speed and clean up the park.",
   "Kryształy leżą po drugiej stronie galerii. Portal przeniesie Cię tam w mgnieniu oka — i z powrotem.": "The crystals lie on the far side of the gallery. The portal takes you there in a blink — and back.",
@@ -15515,8 +15518,6 @@ const I18N_EN = {
   "Na tym urządzeniu": "On this device",
   "Na wodzie migoczą hologramy.": "Holograms shimmer on the water.",
   "Nad miastem": "Above the City",
-  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Fly through the lanes and shut it down.",
-  "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Fly through the lanes and shut it down. 10 new missions await.",
   "Nadciąga burza: piętnaście kęsów bez przerwy, a potem pochłoń autobus, zanim uderzy piorun.": "A storm is coming: fifteen bites without a break, then swallow a bus before the lightning strikes.",
   "Nadzorcy": "Overseers",
   "Nagrody Core City": "Core City Rewards",
