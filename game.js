@@ -5071,96 +5071,233 @@ function drawLockGlyph(ctx, x, y, s) {
 /* Golden Shot v9 first-run attract scene: a top-down slice of the neon
    city spiraling into a growing hole -- the actual game in miniature, so a
    brand-new player sees what they're about to play before tapping start. */
-const WELCOME_KINDS = [
-  ['fragment', '#50F0FA', 7], ['kapsula', '#50F0FA', 9], ['latarnia', '#FF54AD', 12],
-  ['drzewo', '#FF54AD', 12], ['lawka', '#FF54AD', 12], ['kiosk', '#FF54AD', 13], ['samochod', '#EFCB63', 16]
+/* v17: the first screen is a real, tiny round -- the vortex cruises
+   through the Neon City, swallows everything smaller (score pops, the
+   size tier climbs T1 → T4, the camera zooms out like Arena), passes over
+   things still too big until it has grown into them, and finally eats a
+   smaller rival. The whole game explained in ~15 s, before the first tap
+   (owner: "ekran startowy nie za bardzo zachęca do gry"). World units,
+   same object art and floor as the rounds. */
+const WELCOME_FOOD = [
+  // [kind, tier key, weight, min hole radius to have it on the menu]
+  ['fragment', 'fragment', 7, 0], ['kapsula', 'capsule', 4, 0],
+  ['latarnia', 'prop', 2, 0], ['drzewo', 'prop', 2, 0], ['lawka', 'prop', 2, 0], ['kiosk', 'prop', 1.5, 0],
+  ['samochod', 'vehicle', 1.6, 0], ['wezel', 'node', 0.6, 26], ['pawilon', 'structure', 0.8, 34]
 ];
+const WELCOME_TIERS = [[0, 'T1'], [30, 'T2'], [44, 'T3'], [60, 'T4']];
 
-function drawWelcomeScene(canvas, t) {
+function drawWelcomeScene(canvas, t, opts = {}) {
   const c = prepCanvas(canvas);
   if (!c) return;
   const { ctx, w, h } = c;
-  const st = canvas._scene || (canvas._scene = { items: [], hole: new Hole('', 0, 0, true), grow: 0, last: t, pops: [], parts: [] });
+  const fresh = () => ({ T: 0, r: 22, rGoal: 22, score: 0, shown: 0, tier: 0, objs: [], eating: [], pops: [], parts: [], rival: null, rivalDone: false, flash: 0, tierPop: 0,
+    hx: 1500, hy: 1500, vx: 1, vy: 0, aim: null, aimT: 0 });
+  const st = canvas._scene || (canvas._scene = { ...fresh(), last: t, hole: new Hole('', 0, 0, true) });
   const dt = clamp(t - st.last, 0, 0.05);
   st.last = t;
-  const cx = w / 2, cy = h * 0.58;
-  const baseR = Math.min(w, h) * 0.12;
+  st.T += dt;
+  const T = st.T;
 
-  // v12: the first thing a new player sees is the actual Neon City floor
-  // the rounds are played on, drifting slowly under the hole (was a grid).
-  const zoom = 0.62;
-  const dpr = canvas.width / w;
-  const camX = 1500 + Math.sin(t * 0.05) * 700, camY = 1500 + Math.cos(t * 0.04) * 700;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(zoom, zoom);
-  ctx.translate(-camX, -camY);
-  SCREEN_FLOOR.draw(ctx, { cx: camX, cy: camY - (cy - h / 2) / zoom, hw: w / 2 / zoom + 40, hh: h / 2 / zoom + Math.abs(cy - h / 2) / zoom + 40, zoom, dpr, gfx: 1 }, null);
-  ctx.restore();
-  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.8);
-  bg.addColorStop(0, 'rgba(11, 35, 56, 0.25)'); bg.addColorStop(1, 'rgba(4, 16, 29, 0.85)');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-
-  while (st.items.length < 12) {
-    const k = WELCOME_KINDS[Math.floor(Math.random() * WELCOME_KINDS.length)];
-    st.items.push({ kind: k[0], color: k[1], r: k[2], ang: Math.random() * Math.PI * 2, d: Math.max(w, h) * (0.45 + Math.random() * 0.4), v: 0, seed: Math.random() * 6 });
+  // The vortex steers like a good player: the best bite in reach (a
+  // smaller rival first), re-aimed a few times a second, turning smoothly.
+  let r = st.r;
+  st.aimT -= dt;
+  if (st.aimT <= 0 || (st.aim && st.aim.gone)) {
+    st.aimT = 0.35;
+    let best = null, bestV = -1;
+    if (st.rival && st.rival.k === 0) best = st.rival;
+    else for (const o of st.objs) {
+      if (o.r >= r * 0.82) continue;
+      const d = Math.hypot(o.x - st.hx, o.y - st.hy);
+      const facing = ((o.x - st.hx) * st.vx + (o.y - st.hy) * st.vy) / (d + 1);
+      const v = o.r * o.r / (d + 60) * (1.4 + facing);
+      if (v > bestV) { bestV = v; best = o; }
+    }
+    st.aim = best;
   }
-  const holeR = baseR * (1 + st.grow * 0.6);
-  for (const it of st.items) {
-    it.v = Math.min(it.v + dt * 40, 150);
-    it.d -= it.v * dt * (0.4 + 60 / Math.max(it.d, 30));
-    it.ang += dt * (0.4 + 70 / Math.max(it.d, 40));
-    it.dead = it.d < holeR * 0.45;
-    if (it.dead) {
-      st.grow = Math.min(1, st.grow + 0.03);
-      st.pops.push({ x: cx, y: cy - holeR - 16, life: 0.8, text: `+${it.r > 12 ? 30 : 5}`, color: it.color });
-      for (let i = 0; i < 6; i++) st.parts.push({ a: it.ang + (Math.random() - 0.5), d: holeR * 1.3, life: 0.5, color: it.color });
+  const tx = st.aim ? st.aim.x : 1500, ty = st.aim ? st.aim.y : 1500;
+  const ad = Math.hypot(tx - st.hx, ty - st.hy) || 1;
+  const turn = Math.min(1, dt * 4.5);
+  st.vx += ((tx - st.hx) / ad - st.vx) * turn; st.vy += ((ty - st.hy) / ad - st.vy) * turn;
+  const vl = Math.hypot(st.vx, st.vy) || 1;
+  st.vx /= vl; st.vy /= vl;
+  const speed = 120 * Math.pow(r / 22, 0.35);
+  st.hx = clamp(st.hx + st.vx * speed * dt, 300, 2700); st.hy = clamp(st.hy + st.vy * speed * dt, 300, 2700);
+  const hx = st.hx, hy = st.hy;
+  // `compact`: Miasto's short stage (no logo above, a bigger vortex).
+  const compact = !!opts.compact;
+  const sx = w / 2, sy = h * (compact ? 0.5 : 0.6);
+  const zoom = Math.min(w, h) * (compact ? 0.11 : 0.085) / 22 * Math.pow(22 / r, 0.55);
+  const view = Math.hypot(w, h) / 2 / zoom;
+
+  // Food: keep the screen full, fed from the ring ahead of the vortex.
+  const weights = WELCOME_FOOD.filter(f => r >= f[3]);
+  const total = weights.reduce((a, f) => a + f[2], 0);
+  st.objs = st.objs.filter(o => Math.hypot(o.x - hx, o.y - hy) < view * 1.5);
+  let guard = 0;
+  const first = T < 0.1;
+  while (st.objs.length < 40 && guard++ < 80) {
+    let pick = Math.random() * total, f = weights[0];
+    for (const x of weights) { pick -= x[2]; if (pick <= 0) { f = x; break; } }
+    const tier = TIERS[f[1]];
+    const a = Math.atan2(st.vy, st.vx) + (Math.random() - 0.5) * (first ? 6.28 : 2.6);
+    const d = (first ? 0.15 + Math.random() * 0.85 : 0.7 + Math.random() * 0.5) * view;
+    const ox = hx + Math.cos(a) * d, oy = hy + Math.sin(a) * d;
+    // Fragments come in short street trails, like the rounds' food lines.
+    const n = f[0] === 'fragment' ? 4 : 1, ta = Math.random() * 6.28;
+    for (let i = 0; i < n; i++) st.objs.push({ kind: f[0], x: ox + Math.cos(ta) * i * 26, y: oy + Math.sin(ta) * i * 26, r: tier.minR, color: tier.color, value: tier.value, seed: Math.random() * 6 });
+  }
+
+  // Eat what fits; bigger things wait until the vortex has grown.
+  for (const o of st.objs) {
+    if (o.r < r * 0.82 && Math.hypot(o.x - hx, o.y - hy) < r * 0.9 + o.r * 0.3) { o.dead = o.gone = true; st.eating.push({ ...o, k: 0 }); }
+  }
+  st.objs = st.objs.filter(o => !o.dead);
+  for (const e of st.eating) {
+    e.k += dt / 0.32;
+    if (e.k >= 1 && !e.done) {
+      e.done = true;
+      st.score += e.value;
+      st.rGoal = Math.min(76, Math.sqrt(st.rGoal * st.rGoal + e.r * e.r * 1.15 + 22));
+      st.pops.push({ x: hx + (Math.random() - 0.5) * r, y: hy - r - 10, life: 0.9, text: `+${e.value}`, color: e.color });
+      for (let i = 0; i < 6; i++) st.parts.push({ a: Math.random() * 6.28, d: r * 1.1, life: 0.45, color: e.color });
     }
   }
-  st.items = st.items.filter(it => !it.dead);
-  if (st.grow >= 1) st.grow = 0; // loop the demo
+  st.eating = st.eating.filter(e => !e.done);
 
+  // A smaller rival shows up once the vortex is T3 -- and gets eaten.
+  if (!st.rival && !st.rivalDone && r >= 44) {
+    st.rival = new Hole('', hx + st.vx * view * 0.45 + st.vy * 80, hy + st.vy * view * 0.45 - st.vx * 80, false);
+    st.rival.radius = 26; st.rival.skin = 'custom'; st.rival.edgeColor = '#FF54AD'; st.rival.k = 0;
+  }
+  if (st.rival) {
+    const rv = st.rival;
+    if (rv.k > 0) {
+      rv.k += dt / 0.45;
+      rv.x += (hx - rv.x) * Math.min(1, dt * 9); rv.y += (hy - rv.y) * Math.min(1, dt * 9);
+      if (rv.k >= 1) {
+        st.score += 250; st.rGoal = Math.min(76, st.rGoal + 7); st.rivalDone = true; rv.gone = true; st.rival = null; st.flash = 0.6;
+        st.pops.push({ x: hx, y: hy - r - 24, life: 1.4, text: 'RYWAL ZJEDZONY! +250', color: '#FF54AD', big: true });
+        for (let i = 0; i < 18; i++) st.parts.push({ a: Math.random() * 6.28, d: r * 1.3, life: 0.7, color: '#FF54AD' });
+      }
+    } else {
+      rv.x += Math.sin(T * 1.7) * 20 * dt; rv.y += Math.cos(T * 1.3) * 20 * dt;
+      if (Math.hypot(rv.x - hx, rv.y - hy) < r * 0.8) rv.k = 0.001;
+    }
+  }
+
+  // Growth is eased (≤ 4.5 units/s) so every size tier gets its moment and
+  // a loop lasts ~12–15 s however dense the food happens to be.
+  st.r = Math.min(st.rGoal, st.r + 4.5 * dt);
+  // Size tiers: a pop and a ring each time the vortex outgrows one.
+  let tier = 0;
+  WELCOME_TIERS.forEach(([min], i) => { if (st.r >= min) tier = i; });
+  if (tier > st.tier) { st.tier = tier; st.tierPop = 1; st.hole.growPopAt = performance.now(); }
+  st.tierPop = Math.max(0, st.tierPop - dt * 1.2);
+  st.flash = Math.max(0, st.flash - dt);
+  st.shown += (st.score - st.shown) * Math.min(1, dt * 8);
+  // Loop: fully grown -> a short white-out, then a fresh little vortex.
+  if (st.r >= 74 && st.rivalDone) { const keep = { last: st.last, hole: st.hole }; Object.assign(st, fresh(), keep); st.flash = 0.5; }
+
+  // ---- draw (world space) ----
+  const dpr = canvas.width / w;
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-hx, -hy);
+  SCREEN_FLOOR.draw(ctx, { cx: hx, cy: hy - (sy - h / 2) / zoom, hw: w / 2 / zoom + 60, hh: h / 2 / zoom + Math.abs(sy - h / 2) / zoom + 60, zoom, dpr, gfx: 1 }, null);
+  for (const o of st.objs) {
+    ctx.save(); ctx.translate(o.x, o.y);
+    drawObjectArt(ctx, o.kind, o.color, o.r, t, o.seed);
+    ctx.restore();
+  }
+  if (st.rival && st.rival.k === 0) st.rival.draw(ctx, t);
+  const hole = st.hole;
+  hole.skin = 'rainbow'; hole.x = hx; hole.y = hy; hole.radius = st.r;
+  hole.draw(ctx, t);
+  // Swallowed things spiral down into the core.
+  for (const e of st.eating) {
+    const k = clamp(e.k, 0, 1), a = k * 5;
+    const ex = e.x + (hx - e.x) * k, ey = e.y + (hy - e.y) * k;
+    ctx.save();
+    ctx.translate(ex + Math.cos(a) * r * 0.25 * k, ey + Math.sin(a) * r * 0.25 * k);
+    ctx.rotate(a); ctx.scale(1 - k * 0.85, 1 - k * 0.85);
+    ctx.globalAlpha = 1 - k * 0.6;
+    drawObjectArt(ctx, e.kind, e.color, e.r, t, e.seed);
+    ctx.restore();
+  }
+  if (st.rival && st.rival.k > 0) {
+    const rv = st.rival, s = Math.max(0.05, 1 - rv.k);
+    const rr = rv.radius; rv.radius = rr * s; rv.draw(ctx, t); rv.radius = rr;
+  }
   for (const p of st.parts) {
-    p.life -= dt; p.d *= 0.92; p.a += dt * 6;
-    ctx.globalAlpha = Math.max(0, p.life * 2);
+    p.life -= dt; p.d *= 0.9; p.a += dt * 7;
+    ctx.globalAlpha = clamp(p.life * 2.2, 0, 1);
     ctx.fillStyle = p.color;
-    ctx.fillRect(cx + Math.cos(p.a) * p.d - 1.5, cy + Math.sin(p.a) * p.d - 1.5, 3, 3);
+    ctx.fillRect(hx + Math.cos(p.a) * p.d - 2, hy + Math.sin(p.a) * p.d - 2, 4, 4);
   }
   st.parts = st.parts.filter(p => p.life > 0);
   ctx.globalAlpha = 1;
-
-  for (const it of st.items) {
-    const x = cx + Math.cos(it.ang) * it.d, y = cy + Math.sin(it.ang) * it.d * 0.75;
-    const shrink = clamp((it.d - holeR * 0.45) / (holeR * 1.6), 0.15, 1);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(shrink, shrink);
-    drawObjectArt(ctx, it.kind, it.color, it.r, t, it.seed);
-    ctx.restore();
+  if (st.tierPop > 0) {
+    ctx.strokeStyle = rgbaColor('#EFCB63', st.tierPop);
+    ctx.lineWidth = 3 / zoom;
+    ctx.beginPath(); ctx.arc(hx, hy, st.r * (1.1 + (1 - st.tierPop) * 0.9), 0, Math.PI * 2); ctx.stroke();
   }
+  ctx.restore();
 
-  const hole = st.hole;
-  hole.skin = 'rainbow';
-  hole.x = cx; hole.y = cy; hole.radius = holeR;
-  hole.draw(ctx, t);
-
-  ctx.textAlign = 'center';
-  ctx.font = `16px ${FONT_DISPLAY}`;
+  // ---- screen space: vignette, pops, the mini HUD ----
+  const vig = ctx.createRadialGradient(sx, sy, Math.min(w, h) * 0.25, sx, sy, Math.max(w, h) * 0.75);
+  vig.addColorStop(0, 'rgba(4, 16, 29, 0)'); vig.addColorStop(1, 'rgba(4, 16, 29, 0.6)');
+  ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const p of st.pops) {
-    p.life -= dt; p.y -= 30 * dt;
+    p.life -= dt; p.y -= 26 * dt / zoom;
     ctx.globalAlpha = clamp(p.life * 2, 0, 1);
+    ctx.font = `${p.big ? 17 : 15}px ${FONT_DISPLAY}`;
     ctx.fillStyle = p.color;
-    ctx.fillText(p.text, p.x, p.y);
+    const tw = ctx.measureText(p.text).width / 2 + 8;
+    ctx.fillText(p.text, clamp(sx + (p.x - hx) * zoom, tw, w - tw), sy + (p.y - hy) * zoom);
   }
   st.pops = st.pops.filter(p => p.life > 0);
   ctx.globalAlpha = 1;
-  const fade = ctx.createLinearGradient(0, h * 0.75, 0, h);
-  fade.addColorStop(0, 'rgba(4, 16, 29, 0)'); fade.addColorStop(1, 'rgba(4, 16, 29, 1)');
-  ctx.fillStyle = fade; ctx.fillRect(0, h * 0.75, w, h * 0.25);
-  // Keep the logo (HTML on top) readable over the flying objects.
-  const top = ctx.createLinearGradient(0, 0, 0, h * 0.42);
-  top.addColorStop(0, 'rgba(4, 16, 29, 0.97)'); top.addColorStop(0.55, 'rgba(4, 16, 29, 0.8)'); top.addColorStop(1, 'rgba(4, 16, 29, 0)');
-  ctx.fillStyle = top; ctx.fillRect(0, 0, w, h * 0.42);
+  // Name the rival, so "eat smaller rivals" reads at a glance.
+  if (st.rival && st.rival.k === 0) {
+    const rx = sx + (st.rival.x - hx) * zoom, ry = sy + (st.rival.y - hy - st.rival.radius) * zoom - 12;
+    ctx.font = `12px ${FONT_DISPLAY}`;
+    ctx.fillStyle = '#FF54AD';
+    ctx.fillText('RYWAL', clamp(rx, 30, w - 30), ry);
+  }
+  if (st.tierPop > 0.2) {
+    ctx.font = `${Math.round(20 + st.tierPop * 8)}px ${FONT_DISPLAY}`;
+    ctx.fillStyle = rgbaColor('#EFCB63', Math.min(1, st.tierPop * 1.5));
+    ctx.fillText(`ROŚNIESZ · ${WELCOME_TIERS[st.tier][1]}`, sx, sy + st.r * zoom + 30);
+  }
+  // Score + size pill, like the round's HUD strip.
+  const label = `WYNIK ${formatNum(Math.round(st.shown))}`;
+  ctx.font = `15px ${FONT_DISPLAY}`;
+  const lw = ctx.measureText(label).width;
+  const pw = lw + 66, ph = 30, px = compact ? w - pw - 10 : w / 2 - pw / 2, py = compact ? 8 : h - 64;
+  roundRectPath(ctx, px, py, pw, ph, 15);
+  ctx.fillStyle = 'rgba(7, 23, 37, 0.85)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(80, 240, 250, 0.45)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left';
+  ctx.fillText(label, px + 14, py + ph / 2 + 1);
+  const tierCol = CONFIG.sizeTiers[st.tier] ? CONFIG.sizeTiers[st.tier].color : '#50F0FA';
+  roundRectPath(ctx, px + pw - 44, py + 5, 36, ph - 10, 10);
+  ctx.fillStyle = rgbaColor(tierCol, 0.25); ctx.fill();
+  ctx.fillStyle = tierCol; ctx.textAlign = 'center';
+  ctx.font = `13px ${FONT_DISPLAY}`;
+  ctx.fillText(WELCOME_TIERS[st.tier][1], px + pw - 26, py + ph / 2 + 1);
+  if (st.flash > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${st.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
+
+  if (compact) return;
+  const fade = ctx.createLinearGradient(0, h * 0.86, 0, h);
+  fade.addColorStop(0, 'rgba(4, 16, 29, 0)'); fade.addColorStop(1, 'rgba(4, 16, 29, 0.9)');
+  ctx.fillStyle = fade; ctx.fillRect(0, h * 0.86, w, h * 0.14);
+  // Keep the logo (HTML on top) readable over the city.
+  const top = ctx.createLinearGradient(0, 0, 0, h * 0.36);
+  top.addColorStop(0, 'rgba(4, 16, 29, 0.95)'); top.addColorStop(0.6, 'rgba(4, 16, 29, 0.6)'); top.addColorStop(1, 'rgba(4, 16, 29, 0)');
+  ctx.fillStyle = top; ctx.fillRect(0, 0, w, h * 0.36);
 }
 
 const CITY_SLOT_COUNT = 18;
@@ -7559,6 +7696,11 @@ class Game {
 
   bindUI() {
     document.getElementById('btnStart').addEventListener('click', () => this.startArenaRound());
+    // v17: the live Arena stage on Miasto plays too (never a dead tap).
+    const arenaStage = document.getElementById('hubArenaStage');
+    const playFromStage = () => { const b = document.getElementById('btnStart'); if (!b.disabled) b.click(); };
+    arenaStage.addEventListener('click', playFromStage);
+    arenaStage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playFromStage(); } });
     document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
     // Golden Shot v8 retention loop.
     document.getElementById('btnLoginClaim').addEventListener('click', () => this.claimLoginReward());
@@ -8207,7 +8349,10 @@ class Game {
       let any = false;
       if (visible('mainMenu')) {
         if (this.isFirstRun()) drawWelcomeScene(document.getElementById('hubWelcomeScene'), t);
-        else this.renderHubCity(t);
+        else {
+          this.renderHubCity(t);
+          if (!document.getElementById('btnStart').disabled) drawWelcomeScene(document.getElementById('hubArenaScene'), t, { compact: true });
+        }
         any = true;
       }
       if (visible('campaignScreen')) { this.renderDistrictTiles(t); any = true; }
@@ -8744,6 +8889,7 @@ class Game {
 
     const arenaUnlocked = this.isArenaUnlocked();
     document.getElementById('btnStart').disabled = !arenaUnlocked;
+    document.getElementById('hubArenaStage').classList.toggle('hidden', !arenaUnlocked);
     document.getElementById('btnStart').classList.toggle('is-new', arenaUnlocked && this.isUnlockFresh('arena'));
     this.updateHubQuickTiles();
     // First-run welcome: until M00 clears, Miasto shows only a short pitch
@@ -8821,6 +8967,12 @@ class Game {
     document.getElementById('hubDailySub').textContent = !wyzwania
       ? 'Odblokujesz po misji M03'
       : (streak > 0 ? `Seria: ${streak} ${plural(streak, ['dzień', 'dni', 'dni'])} z rzędu` : `+${CONFIG.daily.completionBonusCoins} monet za ukończenie`);
+    // v17: GRAJ carries a reason to press it -- a record to beat once there
+    // is one, else what the round gives.
+    const best = this.save.stats.bestArenaScore || 0;
+    document.getElementById('hubPlaySub').textContent = best > 0
+      ? `Twój rekord: ${formatNum(best)} pkt · pobij go!`
+      : 'runda 2:00 · monety i odbudowa Core City';
   }
 
   /** The campaign mission to do next: the first uncleared mission (whose

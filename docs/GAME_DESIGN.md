@@ -272,15 +272,22 @@ odtwarzania mediów — inaczej przełącznik „cicho” wycisza Web Audio.
 Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 (sprawdza `qa/flow.mjs` na 402×874 i 375×667).
 
-- **Start (pierwsze uruchomienie):** logo, żywe demo gry, jeden przycisk
-  GRAJ, „Pierwsza misja · ok. 1 min”. Bez nawigacji.
-- **Miasto:** nagłówek (pierścień poziomu gracza z XP, nazwa, monety,
-  pryzmaty, ustawienia) → karta Core City (miasto, LVL, „Następna nagroda”,
-  procent i pasek w stopce karty; dotknięcie = wszystkie nagrody) → GRAJ
-  (runda 2:00) w treści ekranu, nigdy przyklejony → kafle **Kampania**
-  (następna misja → odprawa) i **Wyzwanie dnia** (stan dnia, seria) →
-  skrzynia. Karta miasta wypełnia wolną wysokość, więc nic nie wisi
-  w powietrzu.
+- **Start (pierwsze uruchomienie, v17):** logo, jeden przycisk GRAJ,
+  „Pierwsza misja · ok. 1 min”, a pod logo **prawdziwa mini-runda**: wir
+  sam jeździ po neonowym mieście, wciąga mniejsze obiekty (+punkty), rośnie
+  T1 → T4 („ROŚNIESZ · T2”), mija za duże, aż do nich dorośnie, zjada
+  mniejszego RYWALA (+250) i zaczyna od nowa co ~12 s. Licznik WYNIK i
+  rozmiar jak w rundzie. Bez nawigacji.
+- **Miasto (v17):** nagłówek (pierścień poziomu gracza z XP, nazwa, monety,
+  pryzmaty, ustawienia) → **żywa scena Areny** („ARENA · RUNDA 2:00”, ta
+  sama mini-runda co na starcie; zajmuje wolną wysokość, dotknięcie = GRAJ)
+  → GRAJ w treści ekranu, nigdy przyklejony, z haczykiem „Twój rekord:
+  X pkt · pobij go!” (przed pierwszą rundą: „runda 2:00 · monety i odbudowa
+  Core City”) → zwarta karta Core City (miasto, LVL, „Następna nagroda”,
+  procent i pasek; dotknięcie = wszystkie nagrody) → kafle **Kampania**
+  (następna misja, pełna nazwa w dwóch liniach → odprawa) i **Wyzwanie
+  dnia** → skrzynia. Bez pustych pasów i bez przewijania (375×667).
+  Pierwsze, co widać po otwarciu gry, to sama gra.
 - **Dzielnice:** poziomy pasek dzielnic → nazwa i postęp → karta
   „NASTĘPNA MISJA” z GRAJ → historia dzielnicy (NELA) → lista misji
   (kod, nazwa, pierwszy cel z ikoną, gwiazdka medalu). Dotknięcie misji =

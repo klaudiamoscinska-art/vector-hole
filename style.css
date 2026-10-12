@@ -4465,3 +4465,32 @@ body[data-gfx="0"] #hud::before { display: none; }
 .jb-group { font-size: 10px; letter-spacing: 0.14em; font-weight: 700; color: var(--nc-text-dim, #8fa3b8); margin: 6px 0 0; }
 .jukebox-item.jb-nudge { animation: jb-nudge 0.35s ease; }
 @keyframes jb-nudge { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+/* v17: WebKit (iPhone) paints an animated <canvas> on its own GPU layer and
+   can draw it OVER later, non-composited siblings -- a district tile showed
+   only its skyline, without name or status. Labels over live canvases get
+   their own layer above it. */
+.district-tile-canvas, .hub-city-canvas, .daily-map-canvas { z-index: 0; }
+.district-tile-info, .hub-city-badge, .hub-city-foot, .daily-map-label, .daily-map-you, .daily-modifier { z-index: 1; will-change: transform; }
+
+/* v17 Miasto: no empty bands above the city and below the chest -- the
+   content runs from the header down and the Core City card takes the
+   free height (owner: the start screen did not invite to play). */
+#mainMenu:not(.first-run) .hub-header { margin-bottom: 0; }
+#mainMenu:not(.first-run) .hub-chest-row { margin-bottom: 0; }
+#mainMenu:not(.first-run) .hub-city { flex: 0 0 auto; height: 150px; min-height: 150px; max-height: 150px; }
+@media (min-height: 800px) { #mainMenu:not(.first-run) .hub-city { height: 168px; min-height: 168px; max-height: 168px; } }
+@media (max-height: 700px) { #mainMenu:not(.first-run) .hub-city { height: 124px; min-height: 124px; max-height: 124px; } }
+/* The live Arena stage takes the free height, right above GRAJ. */
+.hub-arena { position: relative; width: 100%; max-width: 440px; flex: 1 1 auto; min-height: 110px; max-height: 440px; border-radius: 18px; overflow: hidden;
+  border: 1px solid rgba(80, 240, 250, 0.3); background: #06121f; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.hub-arena:active { transform: scale(0.99); }
+.hub-arena-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.hub-arena-tag { position: absolute; top: 10px; left: 12px; z-index: 1; will-change: transform; display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 10px; border-radius: 999px; background: rgba(4, 16, 29, 0.75); border: 1px solid rgba(80, 240, 250, 0.35);
+  font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: var(--nc-text); }
+.hub-arena-tag i { width: 7px; height: 7px; border-radius: 50%; background: var(--nc-pink); box-shadow: 0 0 8px var(--nc-pink); animation: hub-live 1.2s ease-in-out infinite; }
+@keyframes hub-live { 50% { opacity: 0.3; } }
+#mainMenu.first-run .hub-arena { display: none; }
+/* The next mission's full name (was cut to "Pierwszy a…"). */
+.hub-quick-text strong { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

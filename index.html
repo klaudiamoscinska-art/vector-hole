@@ -294,6 +294,20 @@
         <button id="btnDismissChallenge" class="hub-challenge-x" aria-label="Odrzuć wyzwanie">×</button>
       </div>
 
+      <!-- v17: the hub opens on the game itself -- a live mini round of
+           Arena (the same attract demo as the first screen); a tap plays. -->
+      <div class="hub-arena hub-full-only" id="hubArenaStage" role="button" tabindex="0" aria-label="Zagraj rundę Areny">
+        <canvas id="hubArenaScene" class="hub-arena-canvas" aria-hidden="true"></canvas>
+        <span class="hub-arena-tag"><i aria-hidden="true"></i>ARENA · RUNDA 2:00</span>
+      </div>
+
+      <!-- v14: GRAJ sits in the page flow right under the city it builds --
+           no more sticky plate floating over the content. -->
+      <button id="btnStart" class="btn btn-primary btn-mega hub-play hub-full-only">
+        <span class="hub-play-main">GRAJ<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></span>
+        <span id="hubPlaySub" class="hub-play-sub">runda 2:00 · monety i odbudowa Core City</span>
+      </button>
+
       <!-- Core City as an actual city: drawCityScene() builds it up building
            by building as it charges. v14: level, progress and the next
            reward live INSIDE the card (one glance); tap = the full road of
@@ -310,13 +324,6 @@
           <div class="hub-city-progress"><div id="hubCityBar" class="hub-city-progress-fill"></div></div>
         </div>
       </div>
-
-      <!-- v14: GRAJ sits in the page flow right under the city it builds --
-           no more sticky plate floating over the content. -->
-      <button id="btnStart" class="btn btn-primary btn-mega hub-play hub-full-only">
-        <span class="hub-play-main">GRAJ<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></span>
-        <span class="hub-play-sub">runda 2:00 · odbudowuje Core City</span>
-      </button>
 
       <div class="hub-quick-row hub-full-only">
         <!-- Campaign shortcut: the next mission to do, one tap to its briefing. -->
