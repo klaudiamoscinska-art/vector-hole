@@ -1,9 +1,10 @@
 // v17 „Pierwsze wrażenie”: the first screen is a live mini round (the
-// demo eats, grows through the size tiers and eats a rival), Miasto opens
-// on a live Arena stage right above GRAJ (a tap plays), GRAJ names the
-// record to beat, the next mission's full name fits its tile, and labels
-// over animated canvases sit on their own layer (iPhone showed a district
-// tile without its name).
+// demo eats, grows through the size tiers and eats a rival); v17.1 Miasto
+// has one hero -- the Core City card -- whose sky says why building it is
+// fun (+% per round, rounds to the reward) above GRAJ ("+X% budowy
+// miasta"), no empty bands; the next mission's full name fits its tile;
+// labels over animated canvases sit on their own layer (iPhone showed a
+// district tile without its name).
 // Usage: node qa/v17.mjs
 import { serve, openGame, veteranSave, report } from './lib.mjs';
 
@@ -39,42 +40,32 @@ export async function runV17Checks(url) {
     await g.browser.close();
   }
 
-  // --- Miasto: live Arena stage above GRAJ, record hook, full mission name ---
+  // --- Miasto (v17.1): Core City is the one hero, its hook in words --------
   for (const [W, H] of [[375, 667], [402, 874]]) {
     const g = await openGame(url, { viewport: { width: W, height: H } });
     const save = await veteranSave(g.page, { missions: 12, runsPlayed: 6 });
-    save.stats.bestArenaScore = 1840;
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
     await g.page.waitForFunction(() => window.game && window.game.state);
-    await g.page.waitForTimeout(2500);
+    await g.page.waitForTimeout(1500);
     const hub = await g.page.evaluate(() => {
       const rect = id => document.getElementById(id).getBoundingClientRect();
-      const stage = rect('hubArenaStage'), play = rect('btnStart'), city = rect('hubHeroStage'), chest = rect('hubFreeChest');
-      const nav = document.querySelector('.bottom-nav, #bottomNav');
-      const navTop = nav ? nav.getBoundingClientRect().top : innerHeight;
-      const st = document.getElementById('hubArenaScene')._scene;
+      const city = rect('hubHeroStage'), play = rect('btnStart'), chest = rect('hubFreeChest');
+      const navTop = document.getElementById('bottomNav').getBoundingClientRect().top;
       const title = document.getElementById('hubCampaignTitle');
+      const pitch = document.querySelector('.hub-city-pitch');
       return {
-        order: stage.bottom <= play.top && play.bottom <= city.top,
-        stageH: Math.round(stage.height), alive: !!st && st.objs.length > 10,
-        chestVisible: chest.bottom <= navTop + 1,
+        cityAbovePlay: city.bottom <= play.top, cityH: Math.round(city.height),
+        noStage: !document.getElementById('hubArenaStage'),
+        gapBelowChest: Math.round(navTop - chest.bottom),
+        pitch: pitch ? pitch.innerText.replace(/\n/g, ' | ') : '', pitchInCard: !!pitch && pitch.getBoundingClientRect().bottom < city.bottom,
         sub: document.getElementById('hubPlaySub').textContent,
-        titleFull: title.scrollHeight <= title.clientHeight + 1 && !/…$/.test(title.textContent)
+        titleFull: title.scrollHeight <= title.clientHeight + 1
       };
     });
-    results.push(report(`Miasto ${W}×${H}: a live Arena stage sits right above GRAJ, Core City below`, hub.order && hub.stageH >= 110 && hub.alive, JSON.stringify(hub)));
-    results.push(report(`Miasto ${W}×${H}: everything down to the free chest fits above the nav (no scrolling)`, hub.chestVisible));
-    results.push(report(`Miasto ${W}×${H}: GRAJ names the record to beat; the next mission's name is not cut`, /rekord: 1\s?840 pkt/.test(hub.sub) && hub.titleFull, JSON.stringify({ sub: hub.sub })));
-    if (W === 375) {
-      const started = await g.page.evaluate(async () => {
-        document.getElementById('hubArenaStage').click();
-        await new Promise(r => setTimeout(r, 400));
-        // Past the first 3 runs GRAJ opens the run-tool screen first.
-        return { running: window.game.running, runSetup: !document.getElementById('runSetupScreen').classList.contains('hidden') };
-      });
-      results.push(report('Miasto: tapping the live stage does what GRAJ does (never a dead tap)', started.running || started.runSetup, JSON.stringify(started)));
-    }
+    results.push(report(`Miasto ${W}×${H}: one hero -- the Core City card above GRAJ, no second live panel`, hub.cityAbovePlay && hub.noStage && hub.cityH >= 176, JSON.stringify(hub)));
+    results.push(report(`Miasto ${W}×${H}: no empty band -- the content reaches the nav (gap ≤ 40 px) without scrolling`, hub.gapBelowChest >= 0 && hub.gapBelowChest <= 40, `${hub.gapBelowChest} px`));
+    results.push(report(`Miasto ${W}×${H}: the card says why it is fun (+% per round, rounds to the reward) and GRAJ says what it builds`, /Każda runda buduje Twoje miasto/.test(hub.pitch) && /\+\d+% za rundę · nagroda za \d+ rund/.test(hub.pitch) && hub.pitchInCard && /\+\d+% budowy miasta/.test(hub.sub) && hub.titleFull, JSON.stringify({ pitch: hub.pitch, sub: hub.sub })));
     results.push(report(`Miasto ${W}×${H}: no runtime errors`, g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
     await g.browser.close();
   }

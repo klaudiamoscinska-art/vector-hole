@@ -5086,7 +5086,7 @@ const WELCOME_FOOD = [
 ];
 const WELCOME_TIERS = [[0, 'T1'], [30, 'T2'], [44, 'T3'], [60, 'T4']];
 
-function drawWelcomeScene(canvas, t, opts = {}) {
+function drawWelcomeScene(canvas, t) {
   const c = prepCanvas(canvas);
   if (!c) return;
   const { ctx, w, h } = c;
@@ -5124,10 +5124,8 @@ function drawWelcomeScene(canvas, t, opts = {}) {
   const speed = 120 * Math.pow(r / 22, 0.35);
   st.hx = clamp(st.hx + st.vx * speed * dt, 300, 2700); st.hy = clamp(st.hy + st.vy * speed * dt, 300, 2700);
   const hx = st.hx, hy = st.hy;
-  // `compact`: Miasto's short stage (no logo above, a bigger vortex).
-  const compact = !!opts.compact;
-  const sx = w / 2, sy = h * (compact ? 0.5 : 0.6);
-  const zoom = Math.min(w, h) * (compact ? 0.11 : 0.085) / 22 * Math.pow(22 / r, 0.55);
+  const sx = w / 2, sy = h * 0.6;
+  const zoom = Math.min(w, h) * 0.085 / 22 * Math.pow(22 / r, 0.55);
   const view = Math.hypot(w, h) / 2 / zoom;
 
   // Food: keep the screen full, fed from the ring ahead of the vortex.
@@ -5276,7 +5274,7 @@ function drawWelcomeScene(canvas, t, opts = {}) {
   const label = `WYNIK ${formatNum(Math.round(st.shown))}`;
   ctx.font = `15px ${FONT_DISPLAY}`;
   const lw = ctx.measureText(label).width;
-  const pw = lw + 66, ph = 30, px = compact ? w - pw - 10 : w / 2 - pw / 2, py = compact ? 8 : h - 64;
+  const pw = lw + 66, ph = 30, px = w / 2 - pw / 2, py = h - 64;
   roundRectPath(ctx, px, py, pw, ph, 15);
   ctx.fillStyle = 'rgba(7, 23, 37, 0.85)'; ctx.fill();
   ctx.strokeStyle = 'rgba(80, 240, 250, 0.45)'; ctx.lineWidth = 1; ctx.stroke();
@@ -5290,7 +5288,6 @@ function drawWelcomeScene(canvas, t, opts = {}) {
   ctx.fillText(WELCOME_TIERS[st.tier][1], px + pw - 26, py + ph / 2 + 1);
   if (st.flash > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${st.flash * 0.5})`; ctx.fillRect(0, 0, w, h); }
 
-  if (compact) return;
   const fade = ctx.createLinearGradient(0, h * 0.86, 0, h);
   fade.addColorStop(0, 'rgba(4, 16, 29, 0)'); fade.addColorStop(1, 'rgba(4, 16, 29, 0.9)');
   ctx.fillStyle = fade; ctx.fillRect(0, h * 0.86, w, h * 0.14);
@@ -5327,7 +5324,7 @@ const CITY_PALETTE = ['#50F0FA', '#9875FF', '#FF54AD', '#46D99A', '#EFCB63'];
 
 /** Draws the Core City skyline. `progress` is 0..1 of the full city (one
  *  sixth of the way per Core City level, LVL6 = every building standing). */
-function drawCityScene(canvas, progress, t) {
+function drawCityScene(canvas, progress, t, opts = {}) {
   const c = prepCanvas(canvas);
   if (!c) return;
   const { ctx, w, h } = c;
@@ -5378,6 +5375,7 @@ function drawCityScene(canvas, progress, t) {
   const slotW = w / CITY_SLOT_COUNT;
   // Draw back-to-front by height so tall towers don't hide behind houses.
   const sorted = slots.slice().sort((a, b) => b.h - a.h);
+  let site = null;
   sorted.forEach(s => {
     const bw = slotW * s.w * 1.25;
     const x = s.x * w - bw / 2;
@@ -5385,7 +5383,8 @@ function drawCityScene(canvas, progress, t) {
     const col = CITY_PALETTE[s.buildRank % CITY_PALETTE.length];
     const state = s.buildRank < Math.floor(built) ? 'built' : (s.buildRank === Math.floor(built) ? 'building' : 'ghost');
     if (state === 'ghost') {
-      if (s.buildRank > Math.floor(built) + 3) return; // only hint at the next few
+      // The next few buildings as outlines: the sky is the city to come.
+      if (s.buildRank > Math.floor(built) + (opts.siteLabel ? 6 : 3)) return;
       ctx.setLineDash([3, 3]);
       ctx.strokeStyle = 'rgba(160, 200, 230, 0.18)'; ctx.lineWidth = 1;
       ctx.strokeRect(x, ground - fullH, bw, fullH);
@@ -5424,6 +5423,7 @@ function drawCityScene(canvas, progress, t) {
       ctx.setLineDash([]);
       ctx.strokeStyle = '#EFCB63'; ctx.lineWidth = 1.5;
       const cx = x + bw / 2, cTop = ground - fullH - 10;
+      site = { x: cx, y: cTop };
       ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, cTop); ctx.lineTo(cx + bw * 1.1, cTop); ctx.moveTo(cx, cTop); ctx.lineTo(cx - bw * 0.4, cTop); ctx.stroke();
       const hookY = cTop + 6 + 4 * Math.sin(t * 2);
       ctx.beginPath(); ctx.moveTo(cx + bw, cTop); ctx.lineTo(cx + bw, hookY); ctx.stroke();
@@ -5443,6 +5443,20 @@ function drawCityScene(canvas, progress, t) {
   ctx.fillStyle = g2; ctx.fillRect(0, ground, w, h - ground);
   ctx.strokeStyle = 'rgba(80, 240, 250, 0.8)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, ground + 0.5); ctx.lineTo(w, ground + 0.5); ctx.stroke();
+  // v17.1: the building a round grows, called out -- the hook made visible.
+  if (site && opts.siteLabel) {
+    ctx.save();
+    ctx.font = `700 10px ${FONT_UI}`;
+    const label = opts.siteLabel, tw = ctx.measureText(label).width;
+    const bob = Math.sin(t * 2.4) * 2.5;
+    const pw = tw + 16, ph = 18, px = clamp(site.x - pw / 2, 6, w - pw - 6), py = site.y - ph - 12 + bob;
+    roundRectPath(ctx, px, py, pw, ph, 9);
+    ctx.fillStyle = 'rgba(239, 203, 99, 0.95)'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(site.x - 5, py + ph); ctx.lineTo(site.x + 5, py + ph); ctx.lineTo(site.x, py + ph + 6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#04101D'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, px + pw / 2, py + ph / 2 + 0.5);
+    ctx.restore();
+  }
   // A slow scan line sweeping the skyline -- "the city is alive".
   const sx = ((t * 40) % (w + 80)) - 40;
   const scan = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0);
@@ -7696,10 +7710,6 @@ class Game {
 
   bindUI() {
     document.getElementById('btnStart').addEventListener('click', () => this.startArenaRound());
-    // v17: the live Arena stage on Miasto plays too (never a dead tap).
-    const arenaStage = document.getElementById('hubArenaStage');
-    const playFromStage = () => { const b = document.getElementById('btnStart'); if (!b.disabled) b.click(); };
-    arenaStage.addEventListener('click', playFromStage);
     document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
     // Golden Shot v8 retention loop.
     document.getElementById('btnLoginClaim').addEventListener('click', () => this.claimLoginReward());
@@ -8348,10 +8358,7 @@ class Game {
       let any = false;
       if (visible('mainMenu')) {
         if (this.isFirstRun()) drawWelcomeScene(document.getElementById('hubWelcomeScene'), t);
-        else {
-          this.renderHubCity(t);
-          if (!document.getElementById('btnStart').disabled) drawWelcomeScene(document.getElementById('hubArenaScene'), t, { compact: true });
-        }
+        else this.renderHubCity(t);
         any = true;
       }
       if (visible('campaignScreen')) { this.renderDistrictTiles(t); any = true; }
@@ -8379,7 +8386,7 @@ class Game {
     this.hubCityLastT = t;
     // Ease toward the target (~1.5 s for any jump), never overshooting.
     if (this.hubCityShown < target) this.hubCityShown = Math.min(target, this.hubCityShown + Math.max(dt * 0.03, (target - this.hubCityShown) * dt * 2.2));
-    drawCityScene(document.getElementById('hubCityCanvas'), this.hubCityShown, t);
+    drawCityScene(document.getElementById('hubCityCanvas'), this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK' });
   }
 
   renderDistrictTiles(t) {
@@ -8885,10 +8892,14 @@ class Game {
     const nextRewardCoins = nextReward ? nextReward.coins : CONFIG.hub.milestoneFallbackCoins;
     document.getElementById('hubRewardChip1').textContent = nextReward ? `${nextRewardLabel} + ${nextRewardCoins} monet` : `+${nextRewardCoins} monet`;
     document.getElementById('hubRewardChip1Icon').innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(nextReward)];
+    // v17.1 (owner: "budowa miasta była hakiem, a teraz nie czuję, czemu to
+    // fajne"): say what one round adds and how close the next reward is.
+    const gain = this.coreGainPerRound();
+    const rounds = Math.max(1, Math.ceil((100 - pct) / gain));
+    document.getElementById('hubCityPitchSub').textContent = `+${gain}% za rundę · nagroda za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
 
     const arenaUnlocked = this.isArenaUnlocked();
     document.getElementById('btnStart').disabled = !arenaUnlocked;
-    document.getElementById('hubArenaStage').classList.toggle('hidden', !arenaUnlocked);
     document.getElementById('btnStart').classList.toggle('is-new', arenaUnlocked && this.isUnlockFresh('arena'));
     this.updateHubQuickTiles();
     // First-run welcome: until M00 clears, Miasto shows only a short pitch
@@ -8966,12 +8977,15 @@ class Game {
     document.getElementById('hubDailySub').textContent = !wyzwania
       ? 'Odblokujesz po misji M03'
       : (streak > 0 ? `Seria: ${streak} ${plural(streak, ['dzień', 'dni', 'dni'])} z rzędu` : `+${CONFIG.daily.completionBonusCoins} monet za ukończenie`);
-    // v17: GRAJ carries a reason to press it -- a record to beat once there
-    // is one, else what the round gives.
-    const best = this.save.stats.bestArenaScore || 0;
-    document.getElementById('hubPlaySub').textContent = best > 0
-      ? `Twój rekord: ${formatNum(best)} pkt · pobij go!`
-      : 'runda 2:00 · monety i odbudowa Core City';
+    // v17.1: GRAJ says what it builds (the city above it).
+    document.getElementById('hubPlaySub').textContent = `runda 2:00 · +${this.coreGainPerRound()}% budowy miasta`;
+  }
+
+  /** Core City % a plain finished Arena round adds at the current level
+   *  (podium, first place and a record add more -- see finalizeRun()). */
+  coreGainPerRound() {
+    const cc = CONFIG.hub.coreCity;
+    return Math.round(cc.arenaCompleteGain * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
   }
 
   /** The campaign mission to do next: the first uncleared mission (whose

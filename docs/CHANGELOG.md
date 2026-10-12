@@ -4,6 +4,11 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v17.1 „Miasto jako haczyk”
+| Uwaga | Zmiana |
+|---|---|
+| Na ekranie głównym nieporządek; wcześniej budowa miasta była haczykiem, teraz nie czuć, czemu to fajne | Jeden bohater: duża karta Core City nad GRAJ (scena Areny zeszła z Miasta). W niebie karty: „Każda runda buduje Twoje miasto · +16% za rundę · nagroda za 7 rund”, nad dźwigiem znacznik „NOWY BUDYNEK”, kontury kolejnych budynków; GRAJ: „runda 2:00 · +16% budowy miasta”. Bez pustych pasów i przewijania |
+
 ## v17 „Pierwsze wrażenie” — ekran startowy, który zaprasza do gry
 Uwagi właścicielki i co zmieniono:
 
