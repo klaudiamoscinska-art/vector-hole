@@ -14,7 +14,7 @@ Uwaga właścicielki i co zmieniono:
 
 Poza uwagą:
 - **Szafa grająca** w Profilu: lista utworów, dotknij = posłuchaj i ustaw
-  ulubiony do rund i misji, „Mieszanka” wraca do zmian. Motywy Rozdziału II
+  ulubiony na stałe, „Mieszanka” wraca do zmian. Motywy Rozdziału II
   odblokowuje dotarcie do ich dzielnicy (odprawa bossa: „nowa dzielnica
   i jej utwór”) — kolejny powód, by iść dalej w Kampanii.
 - **„TERAZ GRA”**: plakietka z nazwą nowego utworu w rundzie; w pauzie
@@ -25,6 +25,15 @@ Poza uwagą:
   fanfary i awanse w jego tonacji. Nowe sygnały: start rundy/misji,
   „za duże”, objęcie/utrata prowadzenia, tarcza, portal, WIELKI FINISZ,
   karty ewolucji, większy rywal w pobliżu.
+- **Runda recenzji (audio/design + kod, dwóch niezależnych recenzentów)**:
+  końcówka rundy bez „składanki” (utwór zostaje i krąży refren → drop),
+  różne progresje akordów w każdym utworze, nowe nazwy utworów Rozdziału II
+  (nie dublują nazw dzielnic), plansza „NOWY UTWÓR”, podgląd w szafie
+  z perkusją i melodią, tempo słowami zamiast „BPM”, fanfary we właściwej
+  tonacji w utworach durowych, stopa i bas słyszalne w głośniku telefonu,
+  mniej basu w efektach (nie ściskają muzyki), bicie serca słyszalne na
+  telefonie, boss uderza dropem na START, NASTĘPNY w trakcie przejścia,
+  zapis odporny na nazwy z prototypu, echo/pogłos wyłączone bez muzyki.
 - **Testy**: `qa/audio.mjs` (render offline każdego utworu, logika scen,
   drop, szafa grająca, stres, runda bota z dźwiękiem) w `run-all`.
 

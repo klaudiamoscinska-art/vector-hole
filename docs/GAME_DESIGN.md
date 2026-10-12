@@ -220,10 +220,12 @@ z melodią, forma):
   Deszcz na Szybie), zmieniają się co pełne przejście (~50 s).
 - **Każda dzielnica ma swój motyw** (12): Wir Neonów (Plac), Zielony Impuls
   (Park), Fala Syntez (Port), Glitch w Galerii, Wysokie Napięcie (Dachy),
-  Rdzeń Miasta, Tunele Metra, Nocny Bazar, Fabryka Pikseli, Zatoka
-  Hologramów, Wiszące Ogrody, Chmura Danych. Misja gra motyw swojej
-  dzielnicy (pod kartą startu cicho, perkusja wchodzi na START), boss
-  dzielnicy zaczyna od refrenu-dropu.
+  Rdzeń Miasta, Ostatni Kurs (Tunele Metra), Targ o Północy (Nocny Bazar),
+  Ośmiobitowa Taśma (Fabryka Pikseli), Mgła nad Zatoką (Zatoka
+  Hologramów), Pnącza (Wiszące Ogrody), Przesył Danych (Chmura Danych).
+  Każdy ma inną progresję akordów, tempo i brzmienie. Misja gra motyw
+  swojej dzielnicy (pod kartą startu cicho, perkusja wchodzi na START);
+  boss dzielnicy uderza dropem w chwili START.
 - **Arena**: każda runda to inny utwór (tasowanie, bez powtórki dwóch
   ostatnich), a po pełnym przejściu (~45–60 s) gra przechodzi do
   następnego — runda 2:00 to 2–3 utwory. Wyzwanie dnia i wyzwanie od
@@ -232,21 +234,27 @@ z melodią, forma):
   C (mostek, inne akordy) · D (drop), przejścia perkusji na końcu sekcji,
   talerz na wejściu, co drugie przejście inny arpeggiator i bas.
   Warstwy rosną z napięciem: 0 tło/wynik · 1 runda · 2 końcówka (szybciej,
-  szesnastki hi-hatu, jaśniej; **jeden takt narastania i skok do dropu**) ·
-  3 SZAŁ (melodia w oktawach, jeszcze szybciej). Pady „oddychają” ze stopą,
+  szesnastki hi-hatu, jaśniej; **jeden takt narastania i skok do dropu**,
+  potem utwór zostaje i krąży refren → drop, bez zmiany do końca rundy;
+  WIELKI FINISZ zrzuca drop od razu, bez drugiego narastania) ·
+  3 SZAŁ (melodia w oktawach, jeszcze szybciej). Drop to refren z melodią
+  zdublowaną oktawę niżej. Pady „oddychają” ze stopą,
   melodie i pady mają echo i pogłos.
 - **Pauza** — muzyka schodzi „pod wodę” (filtr dolnoprzepustowy); arkusz
   pauzy pokazuje „TERAZ GRA” i przycisk **NASTĘPNY**. W rundzie nowy utwór
   przedstawia się małą plakietką „TERAZ GRA” w lewym dolnym rogu.
-- **Szafa grająca** (Profil): lista utworów; dotknięcie odtwarza i ustawia
-  ulubiony do rund i misji, „Mieszanka” wraca do zmian. Motywy Rozdziału I
+- **Szafa grająca** (Profil): lista utworów (tempo opisane słowami);
+  dotknięcie odtwarza pełną aranżację od refrenu i ustawia ulubiony na
+  stałe (Miasto, rundy, misje), „Mieszanka” wraca do zmian. Motywy Rozdziału I
   i utwory menu są od początku; motywy Rozdziału II odblokowuje dojście do
-  ich dzielnicy (odprawa bossa mówi „nowa dzielnica i jej utwór”).
+  ich dzielnicy (odprawa bossa mówi „nowa dzielnica i jej utwór”, po
+  wygranej plansza „NOWY UTWÓR”, zablokowany wiersz podaje misję).
   Zapis: `save.settings.musicPick` (`'auto'` albo id utworu).
 
 **Efekty**: zjadanie wspina się po skali **bieżącego utworu** (combo gra
 razem z muzyką), fanfary, awans rozmiaru, gwiazdki itd. są transponowane
-do tonacji utworu. Osobne sygnały: start rundy/misji, „za duże” (głuche
+do tonacji utworu (durowe utwory mapują fanfary C-dur na swoją tonikę,
+molowe — a-moll). Osobne sygnały: start rundy/misji, „za duże” (głuche
 stuknięcie), objęcie i utrata prowadzenia, tarcza, portal, WIELKI FINISZ
 (narastanie + uderzenie), karty ewolucji i wybór karty, większy rywal
 w pobliżu (bicie serca, najwyżej co 4 s).
