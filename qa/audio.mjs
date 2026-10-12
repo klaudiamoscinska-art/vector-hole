@@ -373,9 +373,20 @@ export async function runAudioChecks(url) {
       gm.pauseGame();
       await new Promise(r => setTimeout(r, 200));
       const vis = id => { const r = document.getElementById(id).getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.bottom <= innerHeight; };
-      return { resume: vis('btnResume'), track: vis('pauseTrack'), next: vis('btnNextTrack'), leave: vis('btnLeaveRun') };
+      const out = { resume: vis('btnResume'), track: vis('pauseTrack'), next: vis('btnNextTrack'), leave: vis('btnLeaveRun') };
+      // The TERAZ GRA chip never overlaps the standings / CEL MISJI boxes.
+      const overlap = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+      const chipRect = () => { const el = document.getElementById('nowPlaying'); el.classList.remove('hidden'); el.classList.add('visible'); document.getElementById('nowPlayingName').textContent = 'Ośmiobitowa Taśma'; return el.getBoundingClientRect(); };
+      gm.resumeGame();
+      out.arenaClear = !overlap(chipRect(), document.getElementById('hud-topright').getBoundingClientRect());
+      gm.timeRemaining = 0; gm.endRound();
+      gm.startCampaignMission('M05'); gm.beginMissionPlay();
+      await new Promise(r => setTimeout(r, 200));
+      out.missionClear = !overlap(chipRect(), document.getElementById('hud-goal').getBoundingClientRect());
+      return out;
     });
     results.push(report('layout 375×667: pause sheet shows WRÓĆ, the track row and WYJDŹ without scrolling', lay.resume && lay.track && lay.next && lay.leave, JSON.stringify(lay)));
+    results.push(report('layout 375×667: the TERAZ GRA chip stays clear of the standings and CEL MISJI', lay.arenaClear && lay.missionClear, JSON.stringify(lay)));
     await g.browser.close();
   }
 

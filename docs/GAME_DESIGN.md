@@ -242,7 +242,7 @@ z melodią, forma):
   melodie i pady mają echo i pogłos.
 - **Pauza** — muzyka schodzi „pod wodę” (filtr dolnoprzepustowy); arkusz
   pauzy pokazuje „TERAZ GRA” i przycisk **NASTĘPNY**. W rundzie nowy utwór
-  przedstawia się małą plakietką „TERAZ GRA” w lewym dolnym rogu.
+  przedstawia się małą plakietką „TERAZ GRA” pod paskiem czasu.
 - **Szafa grająca** (Profil): lista utworów (tempo opisane słowami);
   dotknięcie odtwarza pełną aranżację od refrenu i ustawia ulubiony na
   stałe (Miasto, rundy, misje), „Mieszanka” wraca do zmian. Motywy Rozdziału I

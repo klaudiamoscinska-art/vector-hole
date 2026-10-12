@@ -12999,7 +12999,7 @@ class Game {
     if (this.running && !this.introPending && !song.menu) this.showNowPlaying();
   }
 
-  /** A small "TERAZ GRA" chip in the round's bottom-left corner for 3 s. */
+  /** A small "TERAZ GRA" chip under the round timer for 3 s. */
   showNowPlaying() {
     const el = document.getElementById('nowPlaying');
     const song = this.sound.currentSong;
