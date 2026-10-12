@@ -11,12 +11,13 @@ telefon ucięty taki mały” (a portale to głównie komputery).
 | Było | Jest |
 |---|---|
 | Runda w stałej skali: monitor widział kilka razy więcej mapy niż telefon, wir i obiekty malutkie | Obraz dopasowany do ekranu: tyle miasta co na telefonie, duży wir; gracz na monitorze nie widzi dalej |
-| Menu jako wąski pasek telefonu na środku monitora | Menu, arkusze i HUD rosną z ekranem (do 1,6×) i wypełniają wysokość okna, bez przewijania |
-| Pasek dzielnic ucięty w pół kafelka, bez przewijania myszą | Kółko myszy przewija, ucięta krawędź się rozmywa, wybrana dzielnica zawsze widoczna |
+| Menu jako wąski pasek telefonu na środku monitora | **Układ poziomy**: nawigacja po lewej, każdy ekran w dwóch kolumnach (Miasto, Dzielnice z 12 dzielnicami naraz, Warsztat, Wyzwania, wyniki), szeroki ekran startowy; wszystko bez przewijania, także 960×540 |
+| Pasek dzielnic ucięty w pół kafelka, bez przewijania myszą | Na komputerze siatka wszystkich dzielnic; w wąskim oknie kółko myszy przewija pasek, ucięta krawędź się rozmywa |
+| Samouczek: „Przeciągnij palcem” także przy myszy | Na komputerze: „Prowadź kursorem myszy (albo strzałki / WASD)” |
 
-- Telefony bez zmian (skala 1). Mapka w rogu i podglądy na kanwach rosną
-  i są ostre. Testy: `qa/v21.mjs` (telefony bez zmian; 1366×768,
-  1440×900, 1920×1080).
+- Telefony i tablety w pionie bez zmian. Mapka w rogu i podglądy na
+  kanwach rosną i są ostre. Testy: `qa/v21.mjs` (telefony bez zmian;
+  1366×768, 1440×900, 1920×1080, 960×540, 1180×820).
 
 ## v20 „Bramy impulsu” — bramy i portale jako pomocnicy, nie cel
 Zgłoszenie: „portale w misjach bez sensu” — np. M11 „Pierwszy impuls”:

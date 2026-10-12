@@ -3364,7 +3364,9 @@ const CAMPAIGN_MISSIONS = [
       steps: [
         {
           entityType: 'fragment', count: 6, label: 'Pochłoń 6 fragmentów energii', title: 'POCHŁANIAJ',
-          intro: 'Przeciągnij palcem po ekranie — dziura jedzie za nim. Najedź na niebieskie fragmenty energii: każdy Cię powiększa.'
+          intro: 'Przeciągnij palcem po ekranie — dziura jedzie za nim. Najedź na niebieskie fragmenty energii: każdy Cię powiększa.',
+          // v21: a mouse has no finger.
+          introDesktop: 'Prowadź kursorem myszy — dziura jedzie za nim (albo steruj strzałkami / WASD). Najedź na niebieskie fragmenty energii: każdy Cię powiększa.'
         },
         {
           entityType: 'prop', count: 6, label: 'Pochłoń 6 elementów ulicznych', title: 'ROŚNIJ',
@@ -7768,8 +7770,17 @@ class Game {
     // laptop/monitor instead of a phone-sized strip. Phones stay at 1;
     // the content was laid out for >= 667 px of height, so the scale keeps
     // at least ~700 px of layout height.
-    this.uiScale = clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
+    // v21: a wide landscape screen gets the two-column layout (body.wide),
+    // scaled to about 1100 x 620 logical px (a small portal frame like
+    // 960x540 shrinks it a little instead of cutting it off).
+    const wide = this.width >= 960 && this.width >= this.height * 1.25;
+    this.uiScale = wide ? clamp(Math.min(this.height / 620, this.width / 1100), 0.75, 1.6)
+      : clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
     document.documentElement.style.setProperty('--ui-scale', this.uiScale.toFixed(3));
+    if (document.body.classList.contains('wide') !== wide) {
+      document.body.classList.toggle('wide', wide);
+      if (this.save) requestAnimationFrame(() => this.updateStripEdges && this.updateStripEdges());
+    }
     // Minimap defaults to visible on every viewport — an earlier pass
     // auto-hid it below 700px, which is effectively every phone in
     // portrait and read as the minimap being missing entirely. Only an
@@ -12112,7 +12123,7 @@ class Game {
     const steps = this.mission.def.goal.steps;
     const st = steps[stepIndex];
     const icon = st.type === 'eatRival' ? { icon: CARD_ICONS.target, color: '#46D99A' } : this.campaignGoalIcon(st.entityType);
-    this.showTutorialIntro(st.intro, { step: `KROK ${stepIndex + 1} Z ${steps.length}`, title: st.title, icon,
+    this.showTutorialIntro((!this.isTouchDevice && st.introDesktop) || st.intro, { step: `KROK ${stepIndex + 1} Z ${steps.length}`, title: st.title, icon,
       button: stepIndex === 0 ? 'ZACZYNAM' : 'DALEJ' });
   }
 
@@ -15065,6 +15076,7 @@ class Game {
 
 /* ----------------------- v19: English (Polish -> English) ----------------------- */
 const I18N_EN = {
+  "Prowadź kursorem myszy — dziura jedzie za nim (albo steruj strzałkami / WASD). Najedź na niebieskie fragmenty energii: każdy Cię powiększa.": "Move the mouse cursor — the hole follows it (or steer with the arrow keys / WASD). Roll over the blue energy fragments: each one makes you bigger.",
   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down.",
   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down. 10 new missions await.",
   "Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.": "The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost.",

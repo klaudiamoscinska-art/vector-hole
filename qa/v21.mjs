@@ -8,6 +8,12 @@
 //    layer but the canvas); the minimap (canvas) grows with them.
 //  - The district strip scrolls with a mouse wheel and fades where it's
 //    cut off; the picked district is never hidden past its edge.
+//  - A wide landscape screen (body.wide) gets the desktop layout: the nav
+//    as a rail on the left and two columns on every hub screen (Miasto:
+//    Core City | GRAJ + tiles; Dzielnice: all 12 districts | the missions;
+//    Warsztat: preview | items; Wyzwania: the map | play + streak;
+//    results: what you got | what's next), nothing cut off or scrolling
+//    sideways, also in a small 960×540 portal frame.
 // Usage: node qa/v21.mjs
 import { serve, openGame, veteranSave, report } from './lib.mjs';
 
@@ -73,15 +79,6 @@ export async function runV21Checks(url) {
     results.push(report(`desktop ${vp.join('×')}: a mission shows about a phone's worth of city (0.75–2.2× its area), not the whole box`, ratio > 0.75 && ratio < 2.2, `${ratio.toFixed(2)}× · ${JSON.stringify(r.mission)}`));
     results.push(report(`desktop ${vp.join('×')}: the vortex is drawn ≥ 1.4× as big as on a phone`, r.mission.holePx >= phoneHole * 1.4, `${r.mission.holePx} px vs phone ${phoneHole} px`));
     results.push(report(`desktop ${vp.join('×')}: the cursor still steers the vortex where it points (zoomed projection)`, r.steersRight, JSON.stringify(r)));
-    // Miasto: bigger UI, GRAJ and the nav on screen without scrolling.
-    const hub = await g.page.evaluate(() => {
-      const play = document.getElementById('btnStart').getBoundingClientRect(), nav = document.getElementById('bottomNav').getBoundingClientRect();
-      const chest = document.getElementById('hubFreeChest').getBoundingClientRect();
-      return { playW: Math.round(play.width), playBottom: Math.round(play.bottom), chestBottom: Math.round(chest.bottom), navTop: Math.round(nav.top), navBottom: Math.round(nav.bottom), H: innerHeight, scroll: (() => { const m = document.getElementById('mainMenu'); m.scrollTop = 9999; const moved = m.scrollTop > 0; m.scrollTop = 0; return moved; })() };
-    });
-    const wantPlayW = vp[1] >= 900 ? 500 : 440;
-    results.push(report(`desktop ${vp.join('×')}: Miasto grows with the screen (GRAJ ≥ ${wantPlayW} px wide) and still fits without scrolling`,
-      hub.playW >= wantPlayW && hub.chestBottom <= hub.navTop + 1 && hub.navBottom <= hub.H + 1 && !hub.scroll, JSON.stringify(hub)));
     // In-round HUD: the pause button is hit where it is drawn; minimap on screen and scaled.
     const hud = await g.page.evaluate(() => {
       const gm = window.game;
@@ -99,9 +96,74 @@ export async function runV21Checks(url) {
     await g.browser.close();
   }
 
-  // --- District strip: wheel, edge fades, picked district in view ----------
+  // --- Desktop layout (body.wide): rail + two columns on every hub screen --
+  for (const vp of [...DESKTOPS, [960, 540], [1180, 820]]) {
+    const g = await seeded(url, vp, true);
+    const tag = `wide ${vp.join('×')}`;
+    const measure = () => {
+      const R = el => { const b = (typeof el === 'string' ? document.querySelector(el) : el).getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), b: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) }; };
+      const scr = [...document.querySelectorAll('.screen:not(.hidden)')].pop();
+      const inner = scr.querySelector('.screen-inner');
+      const sideways = inner.scrollWidth > inner.clientWidth + 2 || document.documentElement.scrollWidth > innerWidth + 1;
+      return { R, scr, sideways };
+    };
+    const hub = await g.page.evaluate((m) => {
+      const { R, sideways } = eval(`(${m})`)();
+      const nav = R('#bottomNav'), city = R('#hubHeroStage'), play = R('#btnStart'), chest = R('#hubFreeChest');
+      const mm = document.getElementById('mainMenu'); mm.scrollTop = 9999; const scrolls = mm.scrollTop > 0; mm.scrollTop = 0;
+      return { wide: document.body.classList.contains('wide'), rail: nav.w < 150 && nav.h > innerHeight * 0.9 && nav.l === 0, cityLeftOfPlay: city.r <= play.l, cityLeftOfRail: city.l >= nav.r, playInView: play.b <= innerHeight && play.t >= 0, chestInView: chest.b <= innerHeight, scrolls, sideways };
+    }, measure.toString());
+    results.push(report(`${tag}: desktop layout on (nav as a left rail)`, hub.wide && hub.rail, JSON.stringify(hub)));
+    results.push(report(`${tag}: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling`, hub.cityLeftOfPlay && hub.cityLeftOfRail && hub.playInView && hub.chestInView && !hub.scrolls && !hub.sideways, JSON.stringify(hub)));
+    await g.page.click('#btnNavDzielnice'); await g.page.waitForTimeout(500);
+    const dz = await g.page.evaluate((m) => {
+      const { R, sideways } = eval(`(${m})`)();
+      const map = document.getElementById('districtMap');
+      const tiles = [...map.querySelectorAll('.district-tile')].map(t => t.getBoundingClientRect());
+      const allIn = tiles.length === 12 && tiles.every(b => b.top >= 0 && b.bottom <= innerHeight && b.right <= map.getBoundingClientRect().right + 1 && b.left >= map.getBoundingClientRect().left - 1);
+      const next = R('#missionNextCard'), list = R('#missionList');
+      const play = document.querySelector('#missionNextCard [data-mc-play], #missionNextCard button'); // GRAJ, or „DO DZIELNICY…” when it's done
+      return { allIn, stripScroll: map.scrollWidth > map.clientWidth + 2, mapLeftOfMissions: R('#districtMap').r <= next.l, listRight: list.l >= R('#districtMap').r, nextPlayInView: !!play && play.getBoundingClientRect().bottom <= innerHeight, sideways };
+    }, measure.toString());
+    results.push(report(`${tag}: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right`, dz.allIn && !dz.stripScroll && dz.mapLeftOfMissions && dz.listRight && dz.nextPlayInView && !dz.sideways, JSON.stringify(dz)));
+    await g.page.click('#btnNavWarsztat'); await g.page.waitForTimeout(500);
+    const ws = await g.page.evaluate((m) => {
+      const { R, sideways } = eval(`(${m})`)();
+      const pv = R('.warsztat-preview'), grid = R('#skinGrid');
+      const cols = new Set([...document.querySelectorAll('#skinGrid > *')].map(n => Math.round(n.getBoundingClientRect().left))).size;
+      return { previewLeft: pv.r <= grid.l, cols, previewInView: pv.b <= innerHeight, sideways };
+    }, measure.toString());
+    results.push(report(`${tag}: Warsztat — the live preview on the left, the items in 2 columns on the right`, ws.previewLeft && ws.cols === 2 && ws.previewInView && !ws.sideways, JSON.stringify(ws)));
+    await g.page.click('#btnNavWyzwania'); await g.page.waitForTimeout(500);
+    const wy = await g.page.evaluate((m) => {
+      const { R, sideways } = eval(`(${m})`)();
+      const hero = R('.daily-hero-card'), play = R('#btnPlayDaily');
+      return { heroLeft: hero.r <= play.l, playInView: play.b <= innerHeight && play.t >= 0, sideways };
+    }, measure.toString());
+    results.push(report(`${tag}: Wyzwania — today's map on the left, ZAGRAJ on the right in view`, wy.heroLeft && wy.playInView && !wy.sideways, JSON.stringify(wy)));
+    await g.page.evaluate(() => { game.startRound(); game.endRound(); });
+    await g.page.waitForTimeout(3000);
+    const res = await g.page.evaluate((m) => {
+      const { R, sideways } = eval(`(${m})`)();
+      const score = R('#finalScore'), lb = R('#finalLeaderboard'), again = R('#btnPlayAgain'), menu = R('#btnMenu');
+      return { lbRight: lb.l >= score.r, againInView: again.b <= innerHeight && again.t >= 0, menuUnderActions: menu.t >= again.b, sideways };
+    }, measure.toString());
+    results.push(report(`${tag}: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view`, res.lbRight && res.againInView && res.menuUnderActions && !res.sideways, JSON.stringify(res)));
+    results.push(report(`${tag}: no runtime errors`, g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+    await g.browser.close();
+  }
+
+  // --- Phones / tablets in portrait never get the desktop layout ----------
+  for (const vp of [[402, 874], [820, 1180], [844, 390]]) {
+    const g = await seeded(url, vp, false);
+    const r = await g.page.evaluate(() => ({ wide: document.body.classList.contains('wide'), navBottom: Math.round(document.getElementById('bottomNav').getBoundingClientRect().bottom), H: innerHeight }));
+    results.push(report(`${vp.join('×')}: phone layout kept (no rail, the nav at the bottom)`, !r.wide && Math.abs(r.navBottom - r.H) <= 1, JSON.stringify(r)));
+    await g.browser.close();
+  }
+
+  // --- District strip (narrow windows): wheel, edge fades, picked district in view
   {
-    const g = await seeded(url, [1440, 900], true);
+    const g = await seeded(url, [1000, 1300], true);
     const r = await g.page.evaluate(async () => {
       const gm = window.game;
       gm.openCampaignScreen();
