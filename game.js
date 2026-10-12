@@ -744,10 +744,12 @@ const MUSIC_TRACKS = [
       D: { chords: 'Bbm Gb Db Ab', lead: 'B', lift: true }
     }, form: 'ABACBD', drop: 'D' }
 ];
-const MUSIC_TRACK_BY_ID = Object.fromEntries(MUSIC_TRACKS.map(t => [t.id, t]));
+// Prototype-free maps: a hand-edited save with musicPick "constructor"
+// must not resolve to Object.prototype members.
+const MUSIC_TRACK_BY_ID = Object.assign(Object.create(null), Object.fromEntries(MUSIC_TRACKS.map(t => [t.id, t])));
 const MENU_TRACK_IDS = MUSIC_TRACKS.filter(t => t.menu).map(t => t.id);
 const GAMEPLAY_TRACK_IDS = MUSIC_TRACKS.filter(t => !t.menu).map(t => t.id);
-const DISTRICT_THEME = Object.fromEntries(MUSIC_TRACKS.filter(t => t.district).map(t => [t.district, t.id]));
+const DISTRICT_THEME = Object.assign(Object.create(null), Object.fromEntries(MUSIC_TRACKS.filter(t => t.district).map(t => [t.district, t.id])));
 /** Rozdział I themes are free; the rest unlock with their district. */
 const FREE_TRACK_DISTRICTS = ['plac', 'park', 'port', 'galeria', 'dachy', 'rdzen'];
 
@@ -785,7 +787,7 @@ function parseLead(str) {
   return out;
 }
 
-const COMPILED_SONGS = {};
+const COMPILED_SONGS = Object.create(null);
 function compileSong(id) {
   if (COMPILED_SONGS[id]) return COMPILED_SONGS[id];
   const t = MUSIC_TRACK_BY_ID[id];
@@ -916,7 +918,7 @@ class SoundEngine {
     if (SoundEngine.isIOS()) parts.push(`tryb iOS: ${navigator.audioSession ? navigator.audioSession.type : (this.unmuteEl && !this.unmuteEl.paused ? 'odtwarzanie' : 'otoczenie')}`);
     if (this.settings.sfx === false) parts.push('efekty wyłączone');
     if (this.settings.music === false) parts.push('muzyka wyłączona');
-    else if (this.song) parts.push(`gra: ${this.song.name}`);
+    else if (this.currentSong) parts.push(`gra: ${this.currentSong.name}`);
     return parts.join(' · ');
   }
 
@@ -973,7 +975,7 @@ class SoundEngine {
     this.delay = ctx.createDelay(1.5);
     const fb = ctx.createGain(); fb.gain.value = 0.3;
     const fbTone = ctx.createBiquadFilter(); fbTone.type = 'lowpass'; fbTone.frequency.value = 2600;
-    this.fxSend.connect(this.delay); this.delay.connect(fbTone).connect(fb).connect(this.delay);
+    this.delay.connect(fbTone).connect(fb).connect(this.delay);
     fbTone.connect(fxReturn);
     // 1.1 s of decaying stereo noise = a small neon-alley room, built once.
     const sr = ctx.sampleRate, irLen = Math.floor(sr * 1.1);
@@ -982,9 +984,10 @@ class SoundEngine {
       const d = ir.getChannelData(ch);
       for (let i = 0; i < irLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 3.2);
     }
-    const verb = ctx.createConvolver();
-    verb.buffer = ir;
-    this.fxSend.connect(verb).connect(fxReturn);
+    this.verb = ctx.createConvolver();
+    this.verb.buffer = ir;
+    this.verb.connect(fxReturn);
+    this.fxOn = false;
     this.applySettings();
     const len = sr;
     this.noiseBuffer = ctx.createBuffer(1, len, len);
@@ -1016,6 +1019,12 @@ class SoundEngine {
     this.sfxBus.gain.setTargetAtTime(this.settings.sfx === false ? 0 : 0.8, t, 0.02);
     this.musicBus.gain.setTargetAtTime(this.settings.music === false ? 0 : (this.ducked ? 0.2 : 0.34), t, 0.15);
     this.musicFilter.frequency.setTargetAtTime(this.ducked ? 650 : 18000, t, 0.12);
+    // Echo + room only run while there is music to feed them (cheap phones).
+    const fx = this.settings.music !== false;
+    if (fx !== this.fxOn) {
+      this.fxOn = fx;
+      if (fx) { this.fxSend.connect(this.delay); this.fxSend.connect(this.verb); } else this.fxSend.disconnect();
+    }
     if (this.settings.music === false) this.stopMusic(); else if (this.ctx.state === 'running') this.startMusic();
   }
 
@@ -1070,13 +1079,13 @@ class SoundEngine {
     else { g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
     s.connect(f).connect(g).connect(bus || this.sfxBus);
     s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+    if (this.trace) this.trace.push(-freq);
   }
 
   /** Stingers are authored in A minor/C major; this shifts them into the
    *  current track's key so a fanfare never fights the music under it. */
   inKey(f) {
-    const next = this.queued && compileSong(this.queued.id);
-    const song = next || this.song;
+    const song = this.currentSong;
     return f * (song ? song.keyRatio : 1);
   }
 
@@ -1293,6 +1302,12 @@ class SoundEngine {
   /** What is playing: 'menu' (rotates the lo-fi menu tracks), 'arena'
    *  ({ seed, daily }) or 'campaign' ({ district, boss }). Results keep
    *  the round's track (setIntensity(0) turns it into a calm outro). */
+  /** Mission START (the clock starts): a boss drops right on the tap,
+   *  so its drop is never spent under the start card. */
+  missionStart() {
+    if (this.scene === 'campaign' && this.sceneOpts.boss && this.currentSong) this.playTrack(this.currentSong.id, { restart: true, drop: true });
+  }
+
   setScene(kind, opts = {}) {
     this.scene = kind; this.sceneOpts = opts;
     if (kind !== 'menu') this.previewing = false;
@@ -1311,8 +1326,16 @@ class SoundEngine {
         this.playTrack(free[Math.abs(Math.floor(opts.seed)) % free.length], { restart: true });
       } else this.playTrack(this.nextGameplayTrack(), { restart: true });
     } else if (kind === 'campaign') {
-      this.playTrack(pinned || DISTRICT_THEME[opts.district] || 'wir', { restart: true, drop: !!opts.boss });
+      // A boss waits under the start card on its intro; missionStart()
+      // drops on the START tap.
+      this.playTrack(pinned || DISTRICT_THEME[opts.district] || 'wir', { restart: true });
     }
+  }
+
+  /** The track that is (about to be) playing: the queued one during a
+   *  0.3 s fade, so UI and skips never act on the outgoing song. */
+  get currentSong() {
+    return (this.queued && compileSong(this.queued.id)) || this.song;
   }
 
   unlockedGameplayTracks() { return GAMEPLAY_TRACK_IDS.filter(id => this.library.isUnlocked(id)); }
@@ -1343,8 +1366,8 @@ class SoundEngine {
 
   /** Pause sheet "NASTĘPNY": the next unlocked track, right away. */
   skipTrack() {
-    const list = this.song && this.song.menu ? MENU_TRACK_IDS : this.unlockedGameplayTracks();
-    const id = this.song && this.song.menu ? this.nextFrom('menu', list) : this.nextGameplayTrack();
+    const cur = this.currentSong;
+    const id = cur && cur.menu ? this.nextFrom('menu', MENU_TRACK_IDS) : this.nextGameplayTrack();
     this.playTrack(id, { restart: true });
     return id;
   }
@@ -1355,7 +1378,7 @@ class SoundEngine {
     if (!MUSIC_TRACK_BY_ID[id]) id = MENU_TRACK_IDS[0];
     const current = this.queued ? this.queued.id : this.song && this.song.id;
     if (current === id && !opts.restart) return;
-    if (current === id && opts.restart && !this.queued && this.formIdx === 0 && this.barInSection === 0 && this.barCount === 0) return;
+    if (current === id && opts.restart && !opts.drop && !opts.section && !this.queued && this.formIdx === 0 && this.barInSection === 0 && this.barCount === 0) return;
     const q = { id, drop: !!opts.drop, section: opts.section };
     if (!this.ctx || !this.musicTimer) { this.queued = null; this.loadSong(q); return; }
     const t = this.ctx.currentTime;
@@ -1377,13 +1400,15 @@ class SoundEngine {
     if (!song.menu) { this.recent.push(song.id); if (this.recent.length > 4) this.recent.shift(); }
     // Already in the final stretch / SZAŁ: go straight for the drop.
     if (this.intensity >= 2) this.armDrop();
-    this.applySongFx();
+    this.applySongFx(q.at ? this.nextNoteTime : 0);
     if (this.onTrackChange) { try { this.onTrackChange(song); } catch (e) { /* UI only */ } }
   }
 
-  applySongFx() {
+  /** Echo time follows the tempo; set at the cut (`at`), not "now", so
+   *  the outgoing song's echo buffer doesn't chirp. */
+  applySongFx(at) {
     if (!this.ctx || !this.delay || !this.song) return;
-    this.delay.delayTime.setValueAtTime(Math.min(1.4, 60 / this.song.bpm * 0.75), this.ctx.currentTime);
+    this.delay.delayTime.setValueAtTime(Math.min(1.4, 60 / this.song.bpm * 0.75), Math.max(this.ctx.currentTime, at || 0));
   }
 
   dropNow() {
@@ -10186,6 +10211,7 @@ class Game {
     this.pointerScreen = null;
     this.lastTime = performance.now();
     this.showBanner('START!', this.mission ? this.mission.def.name : '', '#46D99A', 0.9, 3);
+    this.sound.missionStart();
     this.sound.go();
     this.showNowPlaying();
     this.analytics.track('mission_go', { missionId: this.mission && this.mission.def.id });
@@ -10754,8 +10780,8 @@ class Game {
     this.flashAlpha = 0;
     this.hitStopUntil = 0;
     this.prewarmFloor();
-    // v16: the district's own theme (a boss mission opens on its drop);
-    // it stays calm under the start card until START brings the drums in.
+    // v16: the district's own theme, calm under the start card until START
+    // brings the drums in (a boss mission drops right on START).
     const musicDistrict = DISTRICTS.find(d => d.id === def.district);
     this.sound.setScene('campaign', { district: def.district, boss: !!musicDistrict && musicDistrict.missions[musicDistrict.missions.length - 1] === def.id && def.id !== 'M00' });
 
@@ -12976,7 +13002,7 @@ class Game {
   /** A small "TERAZ GRA" chip in the round's bottom-left corner for 3 s. */
   showNowPlaying() {
     const el = document.getElementById('nowPlaying');
-    const song = this.sound.song;
+    const song = this.sound.currentSong;
     if (!el || !song || this.save.settings.music === false) return;
     document.getElementById('nowPlayingName').textContent = song.name;
     el.classList.remove('hidden');
@@ -12987,7 +13013,7 @@ class Game {
   }
 
   syncMusicUi() {
-    const song = this.sound && this.sound.song;
+    const song = this.sound && this.sound.currentSong;
     const name = document.getElementById('pauseTrackName');
     if (name) name.textContent = song ? song.name : '—';
     const row = document.getElementById('pauseTrack');

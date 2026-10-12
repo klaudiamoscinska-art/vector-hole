@@ -172,14 +172,17 @@ export async function runAudioChecks(url) {
       for (const id of ['M00', 'M05', 'M09', 'M04']) {
         gm.startCampaignMission(id);
         await new Promise(r => setTimeout(r, 420));
-        out[id] = { song: gm.sound.song.id, section: gm.sound.song.form[gm.sound.formIdx] };
+        const card = gm.sound.song.form[gm.sound.formIdx];
+        if (id !== 'M00') gm.beginMissionPlay();
+        await new Promise(r => setTimeout(r, 420));
+        out[id] = { song: gm.sound.song.id, card, section: gm.sound.song.form[gm.sound.formIdx] };
         gm.running = false; gm.showScreen('campaignScreen');
         await new Promise(r => setTimeout(r, 380));
       }
       return out;
     });
     results.push(report('music (live): each district plays its own theme (Plac → Wir Neonów, Park → Zielony Impuls, Port → Fala Syntez)', theme.M00.song === 'wir' && theme.M05.song === 'impuls' && theme.M09.song === 'fala', JSON.stringify(theme)));
-    results.push(report('music (live): the district boss (M04) starts on the drop', theme.M04.song === 'wir' && theme.M04.section === 'D', JSON.stringify(theme.M04)));
+    results.push(report('music (live): the district boss (M04) waits on its intro under the start card, then drops on START', theme.M04.song === 'wir' && theme.M04.card === 'A' && theme.M04.section === 'D' && theme.M05.section !== 'D', JSON.stringify(theme)));
 
     // Daily / challenge: the same seed plays the same track for everybody.
     const daily = await g.page.evaluate(async () => {
@@ -279,14 +282,30 @@ export async function runAudioChecks(url) {
       const timerOff = !s.musicTimer;
       gm.startRound({});
       const loaded = s.song.id;
-      const chipHidden = !document.getElementById('nowPlaying').classList.contains('visible') || true;
       gm.timeRemaining = 0; gm.endRound();
       gm.showScreen('mainMenu');
       document.querySelector('[data-setting="music"][data-value="1"]').click();
       await new Promise(r => setTimeout(r, 300));
-      return { timerOff, loadedGameplay: !MUSIC_TRACK_BY_ID[loaded].menu, back: !!s.musicTimer, menuNow: !!s.song.menu, chipHidden };
+      return { timerOff, loadedGameplay: !MUSIC_TRACK_BY_ID[loaded].menu, back: !!s.musicTimer, menuNow: !!s.song.menu };
     });
     results.push(report('music: switched off it schedules nothing, back on it resumes the right scene', off.timerOff && off.loadedGameplay && off.back && off.menuNow, JSON.stringify(off)));
+
+    // Review regressions: NASTĘPNY during the 0.3 s fade, prototype keys.
+    const rr = await g.page.evaluate(async () => {
+      const gm = window.game, s = gm.sound;
+      gm.showScreen('mainMenu');
+      await new Promise(r => setTimeout(r, 500));
+      gm.startRound({});
+      const id = s.skipTrack();
+      await new Promise(r => setTimeout(r, 450));
+      const out = { skipped: id, menu: !!MUSIC_TRACK_BY_ID[id].menu, playing: s.song.id };
+      gm.timeRemaining = 0; gm.endRound();
+      out.proto = ['constructor', 'toString', '__proto__'].map(k => sanitizeSave({ ...gm.save, settings: { ...gm.save.settings, musicPick: k } }).settings.musicPick);
+      out.unlockedProto = gm.isTrackUnlocked('constructor');
+      return out;
+    });
+    results.push(report('music: NASTĘPNY right at round start skips to another in-round track (not a menu one)', !rr.menu && rr.playing === rr.skipped, JSON.stringify(rr)));
+    results.push(report('save: prototype names as musicPick fall back to Mieszanka', rr.proto.every(p => p === 'auto') && rr.unlockedProto === false, JSON.stringify(rr.proto)));
 
     // Stress: rapid scene changes, skips and pauses -> one timer, no errors.
     const stress = await g.page.evaluate(async () => {
@@ -311,6 +330,7 @@ export async function runAudioChecks(url) {
     // Every v16 cue plays without errors.
     const cues = await g.page.evaluate(() => {
       const s = window.game.sound;
+      if (!s.sfxOn()) return false;
       ['bump', 'leadTaken', 'leadLost', 'shield', 'portal', 'overdrive', 'cards', 'pick', 'danger', 'go', 'eat', 'tierUp', 'fanfare', 'star', 'golden', 'frenzy'].forEach(k => s[k](20, 3));
       return true;
     });
@@ -332,7 +352,9 @@ export async function runAudioChecks(url) {
       }
       const setI = s.setIntensity.bind(s);
       let armed = false;
-      s.setIntensity = (l) => { levels.add(l); const r = setI(l); if (l >= 2 && (s.dropArmed || s.song.form[s.formIdx] === s.song.drop)) armed = true; return r; };
+      // The bot round is synchronous: load a queued switch first (the live
+      // 30 ms timer cannot run inside the loop).
+      s.setIntensity = (l) => { if (s.queued) { s.loadSong(s.queued); s.queued = null; } levels.add(l); const r = setI(l); if (l >= 2 && (s.dropArmed || s.song.form[s.formIdx] === s.song.drop)) armed = true; return r; };
       const res = window.__qaPlayArena({ style: 'greedy' });
       return { calls, levels: [...levels].sort(), armed, score: res && res.score };
     });
