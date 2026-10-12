@@ -57,11 +57,12 @@ export async function runEdgeCases(url) {
     await g.page.waitForFunction(() => window.game && window.game.state);
     await g.page.addScriptTag({ content: ARENA_BOT });
 
-    // Monkey: 400 random clicks on whatever is visible & enabled.
+    // Monkey: 400 random clicks on whatever is visible & enabled (minus reset
+    // and the language switch, which reloads the page by design).
     await g.page.evaluate(async () => {
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       for (let i = 0; i < 400; i++) {
-        const btns = [...document.querySelectorAll('button')].filter(b => !b.disabled && b.offsetParent !== null && !/Reset|reset/.test(b.id));
+        const btns = [...document.querySelectorAll('button')].filter(b => !b.disabled && b.offsetParent !== null && !/Reset|reset/.test(b.id) && !b.hasAttribute('data-lang'));
         if (!btns.length) { await sleep(20); continue; }
         btns[Math.floor(Math.random() * btns.length)].click();
         if (i % 10 === 0) await sleep(30);

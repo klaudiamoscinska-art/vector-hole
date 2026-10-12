@@ -605,6 +605,7 @@ function T(s) {
   r = translateUncached(s);
   if (I18N.cache.size > 6000) I18N.cache.clear();
   I18N.cache.set(s, r);
+  if (r !== s) I18N.cache.set(r, r); // the observer sees our own write next
   return r;
 }
 
@@ -1918,15 +1919,28 @@ class Monetization {
   attachCloudSave() {
     const data = this.sdk && this.sdk.data;
     if (!data || typeof data.getItem !== 'function' || typeof data.setItem !== 'function') return;
+    // A failing read must never lead to overwriting the account copy.
+    let raw;
+    try { raw = data.getItem(SAVE_KEY); } catch (e) { return; }
     let remote = null;
-    try { const raw = data.getItem(SAVE_KEY); if (raw) remote = parseSaveString(raw); } catch (e) { remote = null; }
-    const local = this.game.save;
-    if (remote && saveProgressScore(remote) > saveProgressScore(local)) {
-      this.game.adoptSave(remote, 'cloud');
-    }
-    SAVE_MIRROR = (sealed) => data.setItem(SAVE_KEY, sealed);
-    saveGame(this.game.save, { touch: false });
-    this.game.analytics.track('cloud_save', { restored: !!remote && this.game.save === remote });
+    if (raw) { try { remote = parseSaveString(raw); } catch (e) { remote = null; } }
+    this.cloudData = data;
+    // The mirror goes on only once the winner is in place -- a deferred
+    // adoption (mid-round) must not upload the losing local save meanwhile.
+    const install = () => {
+      SAVE_MIRROR = (sealed) => { try { data.setItem(SAVE_KEY, sealed); } catch (e) { /* quota / SDK hiccup */ } };
+      saveGame(this.game.save, { touch: false });
+    };
+    const restore = remote && saveIsAhead(remote, this.game.save);
+    if (restore) this.game.adoptSave(remote, 'cloud', install);
+    else install();
+    this.game.analytics.track('cloud_save', { restored: !!restore });
+  }
+
+  /** Profil reset: the account copy goes too (else it would come back). */
+  clearCloudSave() {
+    SAVE_MIRROR = null;
+    try { if (this.cloudData && this.cloudData.removeItem) this.cloudData.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
   }
 
   get canPurchase() { return this.provider === 'native' && !!(this.sdk && this.sdk.purchase); }
@@ -3967,7 +3981,15 @@ function saveProgressScore(s) {
   if (!s || typeof s !== 'object') return -1;
   const c = s.campaign || {};
   const done = Object.keys(c.completed || {}).filter(k => c.completed[k]).length;
-  return ((s.player && s.player.level) || 1) * 1000 + done * 20 + ((s.stats && s.stats.runsPlayed) || 0) + ((s.hub && s.hub.coreLevel) || 1) * 50;
+  const stars = Object.values(c.stars || {}).reduce((a, b) => a + ((b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1)), 0);
+  return ((s.player && s.player.level) || 1) * 1000 + done * 20 + stars * 3 + ((s.stats && s.stats.runsPlayed) || 0) + ((s.hub && s.hub.coreLevel) || 1) * 50 + ((s.hub && s.hub.coreCharge) || 0) / 10;
+}
+/** Is save `a` ahead of `b`? More progress wins; equal progress → the
+ *  more recently written one. */
+function saveIsAhead(a, b) {
+  const sa = saveProgressScore(a), sb = saveProgressScore(b);
+  if (sa !== sb) return sa > sb;
+  return ((a.meta && a.meta.savedAt) || 0) > ((b.meta && b.meta.savedAt) || 0);
 }
 
 /** v19: parses a stored/exported save string (sealed JSON). */
@@ -3992,7 +4014,10 @@ function encodeSaveCode(save) {
 function decodeSaveCode(code) {
   const m = /^VH1\.([A-Za-z0-9+/=\s]+)$/.exec(String(code || '').trim());
   if (!m) throw new Error('bad code');
-  return parseSaveString(decodeURIComponent(escape(atob(m[1].replace(/\s+/g, '')))));
+  const raw = decodeURIComponent(escape(atob(m[1].replace(/\s+/g, ''))));
+  // Only codes the game made: sealed, with a schema version.
+  if (!/"_sig":"/.test(raw) || !/"schemaVersion":\d/.test(raw)) throw new Error('not a game code');
+  return parseSaveString(raw);
 }
 
 /* ----------------------- Particle ----------------------- */
@@ -8822,6 +8847,7 @@ class Game {
    *  from the fresh save exactly like a real first launch would. */
   resetProfile() {
     this.analytics.track('profile_reset', {});
+    this.monetization.clearCloudSave();
     localStorage.removeItem(SAVE_KEY);
     location.reload();
   }
@@ -8906,7 +8932,7 @@ class Game {
     const blob = new Blob([JSON.stringify(this.save, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'vector-hole-moje-dane.json';
+    a.download = T('vector-hole-moje-dane.json');
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -8944,7 +8970,7 @@ class Game {
     card.classList.toggle('hidden', !valid || this.isFirstRun());
     note.classList.toggle('hidden', !valid || !this.isFirstRun());
     if (!valid) return;
-    document.getElementById('hubChallengeFrom').textContent = ch.from || 'Znajomy';
+    document.getElementById('hubChallengeFrom').textContent = ch.from || T('Znajomy');
     document.getElementById('hubChallengeScore').textContent = formatNum(ch.score);
     note.textContent = `${ch.from || 'Znajomy'} rzuca Ci wyzwanie: ${ch.score} pkt! Ukończ krótki samouczek, a potem je przyjmij.`;
   }
@@ -9054,7 +9080,7 @@ class Game {
     const score = this.player ? this.player.score : 0;
     const tier = this.player ? CONFIG.sizeTiers[getSizeTierIndex(this.player.radius)].shortId : 'T1';
     const url = await this.monetization.shareUrl(this.runSeed, score, this.save.displayName || '');
-    const text = `Vector Hole: ${formatNum(score)} pkt, ${place}. miejsce. Ta sama mapa czeka — dasz radę więcej?`;
+    const text = T(`Vector Hole: ${formatNum(score)} pkt, ${place}. miejsce. Ta sama mapa czeka — dasz radę więcej?`);
     this.analytics.track('share_click', { score, place });
     const btn = document.getElementById('btnShare');
     const label = btn.innerHTML;
@@ -9063,7 +9089,7 @@ class Game {
     try {
       const cv = this.buildShareCanvas({ score, headline: place === 1 ? 'ZWYCIĘSTWO W NEONOWYM MIEŚCIE' : 'MÓJ WYNIK W NEONOWYM MIEŚCIE', sub: `${place}. miejsce · ${tier} · ${this.isDailyRun ? 'Wyzwanie dnia' : 'Runda 2:00'}` });
       const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.9));
-      if (blob) file = new File([blob], 'vector-hole-wynik.jpg', { type: 'image/jpeg' });
+      if (blob) file = new File([blob], T('vector-hole-wynik.jpg'), { type: 'image/jpeg' });
     } catch (e) { file = null; }
     try {
       if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -9098,10 +9124,10 @@ class Game {
     if (lang !== I18N.lang) location.reload();
   }
 
-  copyBackupCode() {
+  async copyBackupCode() {
     const code = encodeSaveCode(this.save);
     let copied = false;
-    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).catch(() => {}); copied = true; } } catch (e) { /* no clipboard */ }
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(code); copied = true; } } catch (e) { /* no clipboard (portal iframe) */ }
     this.openInfoSheet({
       title: 'Kod kopii zapasowej',
       body: [
@@ -9127,10 +9153,23 @@ class Game {
     });
   }
 
-  importBackup() {
-    const el = document.getElementById('backupInput');
-    let save;
-    try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad('To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
+  importBackup(confirmed) {
+    let save = confirmed;
+    if (!save) {
+      const el = document.getElementById('backupInput');
+      try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad('To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
+      // An older code over a richer device: say what would be lost first.
+      if (saveIsAhead(this.save, save)) {
+        const sum = s => `${T('poziom')} ${s.player.level} · ${Object.keys(s.campaign.completed).filter(k => s.campaign.completed[k]).length} ${T('misji')}`;
+        this.openInfoSheet({
+          title: 'Ten kod ma mniej postępu',
+          body: [`${T('Na tym urządzeniu')}: <strong>${sum(this.save)}</strong>. ${T('W kodzie')}: <strong>${sum(save)}</strong>.`, 'Wczytanie zastąpi większy postęp mniejszym. Na pewno?'],
+          action: { label: 'WCZYTAJ MIMO TO', onClick: () => this.importBackup(save) },
+          closeLabel: 'ANULUJ'
+        });
+        return;
+      }
+    }
     this.adoptSave(save, 'backup');
     this.analytics.track('backup_load', {});
     this.openInfoSheet({ title: 'Postęp wczytany', body: ['Witaj z powrotem! Cały postęp z kodu jest na tym urządzeniu.'], closeLabel: 'GRAMY' });
@@ -9138,11 +9177,12 @@ class Game {
 
   /** v19: replace the whole save (cloud restore / backup code). Mid-round it
    *  waits for the next screen change, so a round is never yanked away. */
-  adoptSave(save, source) {
-    if (this.running) { this.pendingSave = { save, source }; return; }
+  adoptSave(save, source, after) {
+    if (this.running) { this.pendingSave = { save, source, after }; return; }
     this.pendingSave = null;
     this.save = save;
-    saveGame(save, { touch: false });
+    saveGame(save, { touch: false, mirror: false });
+    if (after) after();
     this.sound.settings = save.settings;
     this.sound.applySettings();
     this.analytics.track('save_adopted', { source });
@@ -9906,7 +9946,9 @@ class Game {
   }
 
   showScreen(id) {
-    if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source); if (id === 'mainMenu') return; }
+    // A restored save lands on Miasto -- never on a result screen of the
+    // save it replaced (whose buttons would then act on the new one).
+    if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
     ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
@@ -10437,8 +10479,9 @@ class Game {
     const next = this.energyNextInMs();
     const timer = inf ? '∞' : next ? formatClock(Math.ceil(next / 1000)) : 'PEŁNA';
     const html = inf ? '∞' : `${v}<small>/${E.max}</small>`;
-    document.querySelectorAll('.energy-count').forEach(el => { if (el.innerHTML !== html) el.innerHTML = html; });
-    document.querySelectorAll('.energy-timer').forEach(el => { if (el.textContent !== timer) el.textContent = timer; });
+    // Compared against what we last wrote (the DOM may hold the English text).
+    if (this._energyHtml !== html) { this._energyHtml = html; document.querySelectorAll('.energy-count').forEach(el => { el.innerHTML = html; }); }
+    if (this._energyTimer !== timer) { this._energyTimer = timer; document.querySelectorAll('.energy-timer').forEach(el => { el.textContent = timer; }); }
     document.querySelectorAll('.energy-chip').forEach(el => el.classList.toggle('empty', !inf && v < 1));
     const sheet = document.getElementById('energySheet');
     if (sheet && !sheet.classList.contains('hidden')) this.renderEnergySheet();
@@ -13341,7 +13384,7 @@ class Game {
     ranked.forEach((h, i) => {
       const li = document.createElement('li');
       if (h === this.player) li.classList.add('is-player');
-      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name">${escapeHtml(h.name)}</span><span class="fl-score">${formatNum(h.score)} pkt</span><span class="fl-size">${CONFIG.sizeTiers[getSizeTierIndex(h.radius)].shortId}</span>`;
+      li.innerHTML = `<span class="fl-rank">#${i + 1}</span><span class="fl-name"${h.isPlayer && !this.save.displayName ? '' : ' translate="no"'}>${escapeHtml(h.name)}</span><span class="fl-score">${formatNum(h.score)} pkt</span><span class="fl-size">${CONFIG.sizeTiers[getSizeTierIndex(h.radius)].shortId}</span>`;
       list.appendChild(li);
     });
 
@@ -14501,7 +14544,7 @@ class Game {
 
     // v12 compact standings: the podium plus your own row (with a gap
     // marker when you're below it) -- less of the play field covered.
-    const row = (h, i) => `<li class="${h.isPlayer ? 'is-player' : ''}${i === 0 ? ' lb-first' : ''}"><span class="lb-rank">${i === 0 ? '<svg class="lb-crown" viewBox="0 0 24 24" aria-label="#1"><path d="M3 19h18l-1.6-11-5.2 4.2L12 4.5l-2.2 7.7L4.6 8z" fill="currentColor"/></svg>' : '#' + (i + 1)}</span><span class="lb-name">${escapeHtml(h.name)}</span><span class="lb-size">${h.score}</span></li>`;
+    const row = (h, i) => `<li class="${h.isPlayer ? 'is-player' : ''}${i === 0 ? ' lb-first' : ''}"><span class="lb-rank">${i === 0 ? '<svg class="lb-crown" viewBox="0 0 24 24" aria-label="#1"><path d="M3 19h18l-1.6-11-5.2 4.2L12 4.5l-2.2 7.7L4.6 8z" fill="currentColor"/></svg>' : '#' + (i + 1)}</span><span class="lb-name"${h.isPlayer && !this.save.displayName ? '' : ' translate="no"'}>${escapeHtml(h.name)}</span><span class="lb-size">${h.score}</span></li>`;
     let html = ranked.slice(0, 3).map(row).join('');
     if (place > 3) html += (place > 4 ? '<li class="lb-gap" aria-hidden="true">···</li>' : '') + row(this.player, place - 1);
     this.hudSet('leaderboardList', 'html', html);
@@ -15257,8 +15300,7 @@ const I18N_EN = {
   "GOTOWE": "DONE",
   "GRAJ": "PLAY",
   "GRAJ 2:00": "PLAY 2:00",
-  "GRAJ {0}{1}": "PLAY {0}{1}",
-  "GRAJ{0}{1}": "PLAY{0}{1}",
+  "GRAJ {0}": "PLAY {0}",
   "GRAMY": "LET'S PLAY",
   "GWIAZDKI {0}/{1}": "STARS {0}/{1}",
   "Galeria Glitch": "Glitch Gallery",
@@ -15482,6 +15524,7 @@ const I18N_EN = {
   "NOWY TRYB": "NEW MODE",
   "NOWY UTWÓR": "NEW TRACK",
   "Na rogu placu stoją szklane pawilony — obiekty T4. Urośnij, a zmieścisz je w sobie.": "Glass pavilions stand at the corner of the square — T4 objects. Grow and they'll fit inside you.",
+  "Na tym urządzeniu": "On this device",
   "Na wodzie migoczą hologramy.": "Holograms shimmer on the water.",
   "Nad miastem": "Above the City",
   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Przeleć pasami i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Fly through the lanes and shut it down.",
@@ -16007,6 +16050,7 @@ const I18N_EN = {
   "Taśmy jadą, prasy biją, Glitch rośnie.": "Belts rolling, presses pounding, Glitch growing.",
   "Tego nie kupisz za monety — zdobędziesz {0}. Na podglądzie widać, jak wygląda.": "You can't buy this with coins — you earn it {0}. The preview shows how it looks.",
   "Tej operacji nie można cofnąć. Stracisz bezpowrotnie: cały postęp kampanii i odblokowane dzielnice, poziom Core City, monety i pryzmaty, kupione kosmetyki, statystyki i rekordy Areny.": "This can't be undone. You will permanently lose: all Campaign progress and unlocked districts, your Core City level, coins and prisms, purchased cosmetics, and your Arena stats and records.",
+  "Ten kod ma mniej postępu": "This code has less progress",
   "Teraz to Ty decydujesz, co wisi w galerii.": "Now you decide what hangs in the gallery.",
   "Teraz to Ty pilnujesz parku.": "Now you're the one guarding the park.",
   "Test dźwięku": "Sound test",
@@ -16109,10 +16153,12 @@ const I18N_EN = {
   "W Fabryce Pikseli Glitch produkuje sam siebie. Hale pełne są stref skażenia, a nadzorcy pilnują taśm. Zatrzymaj produkcję. Czeka 30 nowych misji.": "In the Pixel Factory, Glitch manufactures itself. The halls are full of corruption zones, and overseers guard the belts. Shut down production. 30 new missions await.",
   "W Parku Impulsów bramy zgubiły rytm, a fontanna pompuje szum zamiast wody. Wyczuj puls parku i odzyskaj fontannę.": "In Pulse Park, the gates have lost their rhythm and the fountain pumps static instead of water. Feel the park's pulse and reclaim the fountain.",
   "W Parku Impulsów bramy zgubiły rytm, a fontanna pompuje szum zamiast wody. Wyczuj puls parku i odzyskaj fontannę. Czeka 10 nowych misji.": "In Pulse Park, the gates have lost their rhythm and the fountain pumps static instead of water. Feel the park's pulse and reclaim the fountain. 10 new missions await.",
+  "W kodzie": "In the code",
   "W metrze liczy się każda sekunda.": "In the metro, every second counts.",
   "W ogrodach liczy się precyzja.": "In the gardens, precision is everything.",
   "WARSZTAT": "WORKSHOP",
   "WCZYTAJ": "LOAD",
+  "WCZYTAJ MIMO TO": "LOAD ANYWAY",
   "WIELKI": "HUGE",
   "WIELKI FINISZ": "GRAND FINALE",
   "WIELKI FINISZ!": "GRAND FINALE!",
@@ -16150,6 +16196,7 @@ const I18N_EN = {
   "Warsztacie": "Workshop",
   "Warsztat": "Workshop",
   "Wczytaj kopię zapasową": "Load a backup",
+  "Wczytanie zastąpi większy postęp mniejszym. Na pewno?": "Loading it replaces more progress with less. Are you sure?",
   "Wejście do ogrodów": "Garden Entrance",
   "Wersja demonstracyjna — na portalu lub w aplikacji w tym miejscu wyświetla się prawdziwa reklama.": "Demo version — on a game portal or in the app, a real ad appears here.",
   "Wiatr niesie pyłek Glitcha.": "The wind carries Glitch pollen.",
@@ -16374,6 +16421,7 @@ const I18N_EN = {
   "Zmieniaj wygląd swojej dziury: Wir, Smuga, Efekt pochłaniania i Finisz. Wydaj tu zebrane monety!": "Change your hole's look: Vortex, Trail, Swallow Effect and Finale. Spend your coins here!",
   "Zmień wzmocnienia": "Change boosters",
   "Znaczniki ogrodu leżą po obu stronach alei. Skrót kusi, obejście też prowadzi do celu.": "Garden markers lie on both sides of the avenue. The shortcut is tempting, but the long way gets there too.",
+  "Znajomy": "A friend",
   "Zorza Startu": "Starter Glow",
   "Zostało dziś: 3": "Left today: 3",
   "Zostało dziś: {0}": "Left today: {0}",
@@ -16541,6 +16589,7 @@ const I18N_EN = {
   "pojazdy konwoju": "convoy vehicles",
   "pojazdów konwoju": "convoy vehicles",
   "postęp gry, ustawienia i losowy identyfikator gościa — wyłącznie w pamięci Twojej przeglądarki (localStorage) na tym urządzeniu. Nie zakładasz konta, nie podajesz e-maila. Nazwa gracza jest opcjonalna.": "game progress, settings and a random guest ID — stored only in your browser's memory (localStorage) on this device. No account, no email. Player name is optional.",
+  "poziom": "level",
   "pylon": "pylon",
   "pylony": "pylons",
   "pylonów": "pylons",
@@ -16572,6 +16621,7 @@ const I18N_EN = {
   "tramwajów": "trams",
   "tylko po Twojej zgodzie": "only with your consent",
   "ukończ": "clear",
+  "vector-hole-moje-dane.json": "vector-hole-my-data.json",
   "vector-hole-wynik.jpg": "vector-hole-score.jpg",
   "w Pakiecie startowym": "in the Starter Pack",
   "wbudowane w grę — bez pobierania z Google.": "built into the game — nothing downloaded from Google.",

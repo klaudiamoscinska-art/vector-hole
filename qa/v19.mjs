@@ -19,7 +19,7 @@ const mockCrazy = (remote) => `
     init: async () => {},
     game: { gameplayStart() { __cgCalls.push('start'); }, gameplayStop() { __cgCalls.push('stop'); }, loadingStop() {}, happytime() {} },
     ad: { requestAd: (t, cb) => { cb && cb.adFinished && cb.adFinished(); } },
-    data: { getItem: k => (k in __cgStore ? __cgStore[k] : null), setItem: (k, v) => { __cgStore[k] = v; __cgCalls.push('set'); }, removeItem: k => { delete __cgStore[k]; } }
+    data: { getItem: k => (k in __cgStore ? __cgStore[k] : null), setItem: (k, v) => { __cgStore[k] = v; __cgCalls.push('set'); }, removeItem: k => { delete __cgStore[k]; __cgCalls.push('remove'); } }
   } };`;
 
 async function seededPage(url, opts, saveOpts, mutate) {
@@ -63,7 +63,7 @@ export async function runV19Checks(url) {
       gm.openProfileScreen(); await wait(100);
       gm.openJukebox(); await wait(50); gm.closeInfoSheet();
       gm.openPrivacyPolicy(); await wait(50); gm.closeInfoSheet();
-      gm.copyBackupCode(); gm.closeInfoSheet();
+      await gm.copyBackupCode(); gm.closeInfoSheet();
       // Live play: an Arena round and missions with twists, results.
       window.__qaPlayArena({ style: 'greedy' }); try { gm.endRound(); } catch (e) {} await wait(300);
       for (const id of ['M33', 'M38', 'M52', 'M95', 'M170']) { try { window.__qaPlayMission(id, { style: 'casual' }); } catch (e) {} await wait(120); }
@@ -147,12 +147,34 @@ export async function runV19Checks(url) {
     const c2 = await g2.page.evaluate(() => { const r = __cgStore.vectorHoleSave_v1; return { remote: !!r && Object.keys(JSON.parse(r).campaign.completed).length, local: Object.keys(window.game.save.campaign.completed).length }; });
     results.push(report('cloud save: a device with more progress uploads it (never loses it)', c2.remote === c2.local && c2.local >= 30, JSON.stringify(c2)));
     await g2.browser.close();
+    // Review fix: a restore that has to wait for the round to end must not
+    // upload the poorer local save meanwhile, and lands on Miasto.
+    const g3 = await seededPage(url, { query: '?portal=crazygames', initScript: mockCrazy({}) }, { missions: 1 });
+    await g3.page.waitForTimeout(600);
+    const c3 = await g3.page.evaluate((rs) => {
+      const gm = window.game;
+      SAVE_MIRROR = null;
+      __cgStore.vectorHoleSave_v1 = rs;
+      gm.running = true;
+      gm.monetization.attachCloudSave();
+      gm.save.coins += 5; saveGame(gm.save);
+      const keptDuringRound = Object.keys(JSON.parse(__cgStore.vectorHoleSave_v1).campaign.completed).length;
+      gm.running = false;
+      gm.showScreen('gameOverScreen');
+      const onMenu = !document.getElementById('mainMenu').classList.contains('hidden') && document.getElementById('gameOverScreen').classList.contains('hidden');
+      const adopted = Object.keys(gm.save.campaign.completed).length;
+      gm.monetization.clearCloudSave();
+      return { keptDuringRound, adopted, onMenu, cleared: !('vectorHoleSave_v1' in __cgStore), mirrorOff: SAVE_MIRROR === null };
+    }, richSealed);
+    results.push(report('cloud save: a restore deferred by a running round never uploads the poorer save; it lands on Miasto', c3.keptDuringRound === c3.adopted && c3.adopted > 1 && c3.onMenu, JSON.stringify(c3)));
+    results.push(report('cloud save: a profile reset clears the account copy too (it would come back otherwise)', c3.cleared && c3.mirrorOff, JSON.stringify(c3)));
+    await g3.browser.close();
   }
 
   // --- Backup code -------------------------------------------------------------
   {
     const g = await seededPage(url, {}, { missions: 25, runsPlayed: 8, coins: 777 });
-    const code = await g.page.evaluate(() => { window.game.openProfileScreen(); document.getElementById('btnBackupCopy').click(); return document.querySelector('#infoSheetBody .backup-code').value; });
+    const code = await g.page.evaluate(async () => { window.game.openProfileScreen(); document.getElementById('btnBackupCopy').click(); await new Promise(r => setTimeout(r, 300)); return document.querySelector('#infoSheetBody .backup-code').value; });
     await g.browser.close();
     const fresh = await openGame(url);
     const b = await fresh.page.evaluate(async (c) => {
@@ -170,6 +192,26 @@ export async function runV19Checks(url) {
     }, code);
     results.push(report('backup: a wrong code is refused with a clear message, the save untouched', b.errShown && b.coinsBefore === 0, JSON.stringify(b)));
     results.push(report('backup: the code restores the whole progress on another device', b.coins === 777 && b.done === 25 && b.stored === 777, JSON.stringify(b)));
+    // Review fix: an older code over a richer device asks first; a code the
+    // game did not make (unsealed) is refused.
+    const poorCode = await fresh.page.evaluate(() => { const s = defaultSave(); s.coins = 3; return encodeSaveCode(s); });
+    const b2 = await fresh.page.evaluate(async (pc) => {
+      const gm = window.game;
+      gm.openBackupLoad();
+      document.getElementById('backupInput').value = pc;
+      document.getElementById('btnInfoSheetAction').click();
+      const asked = /mniej postępu/.test(document.getElementById('infoSheetTitle').textContent);
+      const keptCoins = gm.save.coins;
+      document.getElementById('btnInfoSheetAction').click();
+      await new Promise(r => setTimeout(r, 150));
+      const afterConfirm = gm.save.coins;
+      gm.openBackupLoad();
+      document.getElementById('backupInput').value = 'VH1.' + btoa('{"coins":99999,"campaign":{}}');
+      document.getElementById('btnInfoSheetAction').click();
+      return { asked, keptCoins, afterConfirm, unsealedRefused: /prawidłowy/.test(document.getElementById('infoSheetBody').textContent) && gm.save.coins === 3 };
+    }, poorCode);
+    results.push(report('backup: a code with less progress asks first (and only then replaces)', b2.asked && b2.keptCoins === 777 && b2.afterConfirm === 3, JSON.stringify(b2)));
+    results.push(report('backup: a code the game did not make (unsealed) is refused', b2.unsealedRefused, JSON.stringify(b2)));
     results.push(report('backup: no runtime errors', fresh.errors.length === 0, fresh.errors.slice(0, 2).join(' | ')));
     await fresh.browser.close();
   }
