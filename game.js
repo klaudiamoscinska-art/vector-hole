@@ -10722,7 +10722,11 @@ class Game {
       `<div class="start-meta"><span><svg class="inline-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${this.starShortLabel(st)}`).join(' · ')}</span></div>` +
       `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></button>` +
       `<p class="start-tap">Zegar ruszy po dotknięciu</p>` +
-      `<button type="button" class="btn btn-link start-back" id="btnMissionBack">Zmień wzmocnienia</button>`;
+      // Boosters exist only after their unlock mission: before that the
+      // link just backs out to the map (the briefing would offer nothing).
+      `<button type="button" class="btn btn-link start-back" id="btnMissionBack">` +
+      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>` +
+      `${this.boostersUnlocked() && def.id !== 'M00' ? 'Zmień wzmocnienia' : 'Wróć do mapy'}</button>`;
     document.getElementById('missionStartOverlay').classList.remove('hidden');
     this.sound.nela();
   }
@@ -10748,7 +10752,9 @@ class Game {
     this.state = GameState.MENU;
     this.selectedDistrictId = m.def.district;
     this.openCampaignScreen();
-    this.openMissionBriefing(m.def.id);
+    // With boosters unlocked the briefing reopens with this attempt's picks
+    // still selected; before that there is nothing to change there.
+    if (this.boostersUnlocked() && m.def.id !== 'M00') this.openMissionBriefing(m.def.id, { preselect: m.boosters });
     this.analytics.track('mission_back', { missionId: m.def.id });
   }
 
@@ -16420,6 +16426,7 @@ const I18N_EN = {
   "Zmiana kierownika": "Shift Change",
   "Zmieniaj wygląd swojej dziury: Wir, Smuga, Efekt pochłaniania i Finisz. Wydaj tu zebrane monety!": "Change your hole's look: Vortex, Trail, Swallow Effect and Finale. Spend your coins here!",
   "Zmień wzmocnienia": "Change boosters",
+  "Wróć do mapy": "Back to the map",
   "Znaczniki ogrodu leżą po obu stronach alei. Skrót kusi, obejście też prowadzi do celu.": "Garden markers lie on both sides of the avenue. The shortcut is tempting, but the long way gets there too.",
   "Znajomy": "A friend",
   "Zorza Startu": "Starter Glow",

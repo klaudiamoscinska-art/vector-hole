@@ -4427,7 +4427,14 @@ body[data-gfx="0"] #hud::before { display: none; }
   #campaignScreen .prism-display, #campaignScreen .energy-timer { display: none; }
 }
 .mc-boost.off { opacity: 0.38; cursor: not-allowed; }
-.start-back { margin: -6px auto 0; font-size: 12.5px; padding: 6px 12px; }
+/* The back-out link under START: a quiet pill, not a second big button
+   (.start-card .btn would otherwise blow it up to 22 px with wide tracking). */
+.start-card .btn.start-back { width: fit-content; align-self: center; margin: -2px auto 0; display: flex; align-items: center; gap: 5px;
+  min-height: 34px; padding: 6px 14px 6px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04); font-family: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
+  text-transform: none; color: var(--nc-text-dim); }
+.start-card .btn.start-back svg { width: 14px; height: 14px; }
+.start-card .btn.start-back:hover { color: var(--nc-cyan); border-color: rgba(80, 240, 250, 0.4); }
 /* v15 review: the briefing's GRAJ stays in view however long the card. */
 .briefing-sheet .mc-play { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 18px rgba(7, 23, 37, 0.85); }
 
