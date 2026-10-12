@@ -7700,7 +7700,6 @@ class Game {
     const arenaStage = document.getElementById('hubArenaStage');
     const playFromStage = () => { const b = document.getElementById('btnStart'); if (!b.disabled) b.click(); };
     arenaStage.addEventListener('click', playFromStage);
-    arenaStage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playFromStage(); } });
     document.getElementById('btnStartTutorial').addEventListener('click', () => this.startCampaignMission('M00'));
     // Golden Shot v8 retention loop.
     document.getElementById('btnLoginClaim').addEventListener('click', () => this.claimLoginReward());

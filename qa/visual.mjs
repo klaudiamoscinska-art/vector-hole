@@ -162,8 +162,10 @@ export async function runVisualChecks(url) {
     const g = await openGame(url, { viewport: { width: 390, height: 844 }, deviceScaleFactor: dpr });
     await g.page.waitForTimeout(300);
     const welcome = await g.page.evaluate(() => new Promise((res) => {
-      // first-run welcome scene: let its RAF loop run, then count paints
-      setTimeout(() => { const a = SCREEN_FLOOR.renders; setTimeout(() => res({ paints: SCREEN_FLOOR.renders - a }), 1000); }, 1500);
+      // v17: the first-run demo's camera follows a moving vortex (and zooms
+      // out as it grows), so it streams new chunks in like a round does --
+      // a small budget instead of zero, but never thrashing.
+      setTimeout(() => { const a = SCREEN_FLOOR.renders; setTimeout(() => res({ paints: SCREEN_FLOOR.renders - a }), 3000); }, 1500);
     }));
     const save = await veteranSave(g.page, { coins: 0, runsPlayed: 6, missions: 40 });
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
@@ -181,8 +183,9 @@ export async function runVisualChecks(url) {
       out.campaign = still((k) => gm.renderCampaign(k / 60));
       return out;
     });
-    const total = Object.values(idle).reduce((a, b) => a + b, 0) + welcome.paints;
-    results.push(report(`floor: no chunk repaints while the camera is still (gfx 2, DPR ${dpr})`, total === 0, JSON.stringify({ ...idle, welcome: welcome.paints })));
+    const total = Object.values(idle).reduce((a, b) => a + b, 0);
+    results.push(report(`floor: no chunk repaints while the camera is still (gfx 2, DPR ${dpr})`, total === 0, JSON.stringify(idle)));
+    results.push(report(`floor: the moving first-run demo streams ≤ 3 chunks/s (DPR ${dpr})`, welcome.paints <= 9, `${welcome.paints} in 3 s`));
     await g.browser.close();
   }
 
