@@ -272,6 +272,11 @@ const CONFIG = {
   // Free: the tutorial, the first `freeArenaRuns` rounds, the first Daily
   // attempt of the day.
   energy: {
+    // v19: where the session limit is on. Portals pay for play time (ads)
+    // and rank games by it, so there the limit would cost both -- off. In
+    // the store apps (real purchases) and the plain web build -- on.
+    // ?energy=0 / ?energy=1 overrides it for testing.
+    platforms: { web: true, portal: false, native: true },
     max: 5,
     regenMinutes: 20,
     refillPrisms: 12,         // full refill before the timer does it
@@ -523,6 +528,131 @@ function fnv1a(str) {
   return (h >>> 0).toString(36);
 }
 const SEAL_SALT = 'vh-neon-core-v11';
+
+/* ----------------------- v19: languages (PL / EN) -----------------------
+   The game is written in Polish; English is a translation layer at the
+   OUTPUT, not 1000 call sites: every Polish string that reaches the screen
+   passes T() -- DOM text and attributes through one MutationObserver,
+   canvas text through fillText/strokeText/measureText. I18N_EN (bottom of
+   this file) maps Polish -> English: exact strings, plus patterns with
+   {0}, {1}… placeholders for composed text ("Brakuje {0} monet…"); a
+   placeholder's own text is translated recursively (names, plural words).
+   UPPERCASE variants come for free. Language: save.settings.lang
+   ('auto' = the browser's: Polish for pl-*, English for everything else).
+   ?i18n=log collects untranslated Polish in I18N.misses (qa/v19.mjs). */
+const I18N = { lang: 'pl', dict: Object.create(null), upper: Object.create(null), patterns: [], cache: new Map(), log: false, misses: new Set() };
+const PL_HINT = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(nie|się|jest|misj\w*|rund\w*|wir\w*|dzielnic\w*|monet\w*|pryzmat\w*|graj|dalej|wynik|czas|nagrod\w*|poziom|twój|twoja|twoje|zbierz|dotknij|wróć|anuluj|zamknij|kup|wyzwani\w*|miasto|sklep|reklam\w*|ustawieni\w*|muzyk\w*|energi\w*|za|na|do|od|po|bez|dla|albo|oraz|tak)\b/i;
+
+function detectLang(setting) {
+  if (setting === 'pl' || setting === 'en') return setting;
+  let l = 'pl';
+  try { l = (navigator.languages && navigator.languages[0]) || navigator.language || 'pl'; } catch (e) { /* no navigator */ }
+  return /^pl\b/i.test(l) ? 'pl' : 'en';
+}
+
+function i18nCompile(table) {
+  for (const [k, v] of Object.entries(table)) {
+    if (/\{\d+\}/.test(k)) {
+      const esc = k.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+      const lit = k.replace(/\{\d+\}/g, '').replace(/[\s\d.,:;·\-–—+×%/()!?]/g, '').length;
+      const mk = (key, val) => {
+        const order = [];
+        const src = key.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\\?\{(\d+)\\?\}/g, (_, d) => { order.push(+d); return '([\\s\\S]+?)'; });
+        I18N.patterns.push({ re: new RegExp('^' + src + '$'), out: val, order, lit });
+      };
+      mk(k, v);
+      if (k.toUpperCase() !== k) mk(k.toUpperCase(), v.toUpperCase());
+      void esc;
+    } else {
+      I18N.dict[k] = v;
+      I18N.upper[k.toUpperCase()] = v.toUpperCase();
+    }
+  }
+  // Most specific (longest literal) patterns first.
+  I18N.patterns.sort((a, b) => b.lit - a.lit);
+}
+
+function translateUncached(s) {
+  if (!/[A-Za-zÀ-ž]{2}/.test(s)) return s;
+  const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s);
+  const core = m[2];
+  let out = I18N.dict[core];
+  if (out === undefined && core === core.toUpperCase()) out = I18N.upper[core];
+  if (out === undefined) {
+    for (const p of I18N.patterns) {
+      const mm = p.re.exec(core);
+      if (!mm) continue;
+      const parts = {};
+      p.order.forEach((d, i) => { parts[d] = mm[i + 1]; });
+      out = p.out.replace(/\{(\d+)\}/g, (_, d) => (parts[d] == null ? '' : T(parts[d])));
+      break;
+    }
+  }
+  if (out === undefined) {
+    if (I18N.log && PL_HINT.test(core)) I18N.misses.add(core);
+    return s;
+  }
+  return m[1] + out + m[3];
+}
+
+/** Polish -> current language (identity in Polish). */
+function T(s) {
+  if (I18N.lang === 'pl' || typeof s !== 'string' || s.length < 2) return s;
+  let r = I18N.cache.get(s);
+  if (r !== undefined) return r;
+  r = translateUncached(s);
+  if (I18N.cache.size > 6000) I18N.cache.clear();
+  I18N.cache.set(s, r);
+  return r;
+}
+
+const I18N_ATTRS = ['aria-label', 'placeholder', 'title'];
+function i18nText(node) {
+  const p = node.parentNode;
+  if (!p || p.nodeName === 'SCRIPT' || p.nodeName === 'STYLE' || p.nodeName === 'TEXTAREA') return;
+  if (p.closest && p.closest('[translate="no"]')) return;
+  const v = node.data, t = T(v);
+  if (t !== v) node.data = t;
+}
+function i18nAttrs(el) {
+  for (const a of I18N_ATTRS) {
+    const v = el.getAttribute && el.getAttribute(a);
+    if (v) { const t = T(v); if (t !== v) el.setAttribute(a, t); }
+  }
+}
+function i18nTree(root) {
+  if (root.nodeType === 3) { i18nText(root); return; }
+  if (root.nodeType !== 1) return;
+  i18nAttrs(root);
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let n;
+  while ((n = w.nextNode())) { if (n.nodeType === 3) i18nText(n); else i18nAttrs(n); }
+}
+
+/** Turns the translation layer on for `lang` (call once, before the UI). */
+function i18nStart(lang) {
+  I18N.lang = lang;
+  try { I18N.log = /[?&]i18n=log\b/.test(location.search) || !!window.__i18nLog; } catch (e) { /* ignore */ }
+  document.documentElement.lang = lang;
+  if (lang === 'pl') return;
+  i18nCompile(I18N_EN);
+  document.title = T(document.title);
+  i18nTree(document.body);
+  new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type === 'characterData') i18nText(m.target);
+      else if (m.type === 'attributes') i18nAttrs(m.target);
+      else m.addedNodes.forEach(i18nTree);
+    }
+  }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: I18N_ATTRS });
+  // Canvas text (banners, float texts, labels, the share card).
+  const C = CanvasRenderingContext2D.prototype;
+  for (const fn of ['fillText', 'strokeText', 'measureText']) {
+    const orig = C[fn];
+    C[fn] = function (text, ...rest) { return orig.call(this, typeof text === 'string' ? T(text) : text, ...rest); };
+  }
+}
+
 function moderateName(name) {
   if (!name) return '';
   const lower = name.toLowerCase();
@@ -1710,6 +1840,10 @@ class Monetization {
     this.prices = {};
     this.busy = false;
     const portal = this.detectPortal();
+    // v19: which kind of build this is ('portal' | 'native' | 'web') --
+    // known at once (the portal SDK itself arrives later), so the energy
+    // switch never flickers.
+    this.platform = portal ? 'portal' : (window.VectorHoleNative ? 'native' : 'web');
     if (portal) this.ready = this.loadPortal(portal);
     else this.attachProvider();
   }
@@ -1754,6 +1888,7 @@ class Monetization {
       this.provider = 'crazygames';
       this.sdk = window.CrazyGames.SDK;
       await soft(async () => { if (this.sdk.init) await this.sdk.init(); });
+      await soft(() => this.attachCloudSave());
       await soft(async () => { if (this.sdk.game && this.sdk.game.loadingStop) this.sdk.game.loadingStop(); });
     } else if (window.PokiSDK) {
       // PokiSDK.init() rejects by design under an adblocker; the game must
@@ -1771,6 +1906,25 @@ class Monetization {
       this.sdk = null;
     }
     this.game.analytics.track('monetization_provider', { provider: this.provider });
+  }
+
+  /** v19: CrazyGames' data module keeps the save in the player's account
+   *  (synced across devices; plain LocalStorage for guests). The save with
+   *  more progress wins, so neither a fresh device nor a wiped browser
+   *  (Safari clears script storage after 7 days without a visit) can cost
+   *  a campaign. Every later saveGame() is mirrored there. */
+  attachCloudSave() {
+    const data = this.sdk && this.sdk.data;
+    if (!data || typeof data.getItem !== 'function' || typeof data.setItem !== 'function') return;
+    let remote = null;
+    try { const raw = data.getItem(SAVE_KEY); if (raw) remote = parseSaveString(raw); } catch (e) { remote = null; }
+    const local = this.game.save;
+    if (remote && saveProgressScore(remote) > saveProgressScore(local)) {
+      this.game.adoptSave(remote, 'cloud');
+    }
+    SAVE_MIRROR = (sealed) => data.setItem(SAVE_KEY, sealed);
+    saveGame(this.game.save, { touch: false });
+    this.game.analytics.track('cloud_save', { restored: !!remote && this.game.save === remote });
   }
 
   get canPurchase() { return this.provider === 'native' && !!(this.sdk && this.sdk.purchase); }
@@ -3459,7 +3613,7 @@ function defaultSave() {
     // Player feedback: default to legacy direct-drag (chase the pointer/
     // touch point) rather than the Floating Thumb Pad -- still switchable
     // in Ustawienia (syncControlsPanel()'s "Tryb sterowania" toggle).
-    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', sfx: true, music: true, gfxLevel: 2, musicPick: 'auto' },
+    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', sfx: true, music: true, gfxLevel: 2, musicPick: 'auto', lang: 'auto' },
     stats: { runsPlayed: 0, bestArenaScore: 0, recentArenaScores: [] },
     // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
     // coreCharge is the 0-100 progress toward the *next* level.
@@ -3499,7 +3653,9 @@ function defaultSave() {
     privacy: { decided: false, analytics: false, ads: false, ts: 0 },
     retention: { installDate: null, activeDays: [], sessions: 0 },
     challenge: null,
-    integrity: { tampered: false }
+    integrity: { tampered: false },
+    // v19: when the game last wrote this save (cloud-save conflict checks).
+    meta: { savedAt: 0 }
   };
 }
 
@@ -3778,18 +3934,63 @@ function loadSave() {
       }
       const migrated = sanitizeSave(migrateSave(parsed));
       if (tampered) migrated.integrity.tampered = true;
-      saveGame(migrated);
+      saveGame(migrated, { touch: false, mirror: false });
       return migrated;
     }
   } catch (e) { /* ignore corrupted save */ }
   return defaultSave();
 }
 
-function saveGame(save) {
+/** Seals and stores the save. v19: also stamps when it was written
+ *  (meta.savedAt -- not on a plain load, see loadSave()) and mirrors it to
+ *  the portal's cloud save when one is attached (SAVE_MIRROR). */
+let SAVE_MIRROR = null;
+function sealSave(save) {
+  const body = JSON.stringify(save);
+  return body.slice(0, -1) + `,"_sig":"${fnv1a(SEAL_SALT + body)}"}`;
+}
+function saveGame(save, opts = {}) {
+  if (opts.touch !== false && save.meta) save.meta.savedAt = Date.now();
+  let sealed = null;
   try {
-    const body = JSON.stringify(save);
-    localStorage.setItem(SAVE_KEY, body.slice(0, -1) + `,"_sig":"${fnv1a(SEAL_SALT + body)}"}`);
+    sealed = sealSave(save);
+    localStorage.setItem(SAVE_KEY, sealed);
   } catch (e) { /* storage unavailable */ }
+  if (SAVE_MIRROR && sealed && opts.mirror !== false) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
+}
+
+/** v19: how far a save got -- the safer of two saves is the one with more
+ *  progress (a fresh device must never overwrite a long campaign). */
+function saveProgressScore(s) {
+  if (!s || typeof s !== 'object') return -1;
+  const c = s.campaign || {};
+  const done = Object.keys(c.completed || {}).filter(k => c.completed[k]).length;
+  return ((s.player && s.player.level) || 1) * 1000 + done * 20 + ((s.stats && s.stats.runsPlayed) || 0) + ((s.hub && s.hub.coreLevel) || 1) * 50;
+}
+
+/** v19: parses a stored/exported save string (sealed JSON). */
+function parseSaveString(raw) {
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object') throw new Error('not a save');
+  let tampered = false;
+  if (parsed._sig !== undefined) {
+    const sig = parsed._sig;
+    delete parsed._sig;
+    tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
+  }
+  const migrated = sanitizeSave(migrateSave(parsed));
+  if (tampered) migrated.integrity.tampered = true;
+  return migrated;
+}
+
+/** v19 backup code: "VH1." + base64(UTF-8 sealed save). */
+function encodeSaveCode(save) {
+  return 'VH1.' + btoa(unescape(encodeURIComponent(sealSave(save))));
+}
+function decodeSaveCode(code) {
+  const m = /^VH1\.([A-Za-z0-9+/=\s]+)$/.exec(String(code || '').trim());
+  if (!m) throw new Error('bad code');
+  return parseSaveString(decodeURIComponent(escape(atob(m[1].replace(/\s+/g, '')))));
 }
 
 /* ----------------------- Particle ----------------------- */
@@ -7352,6 +7553,9 @@ class Game {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.save = loadSave();
+    // v19: ask the browser to keep this site's storage (Chrome/Safari decide
+    // silently; Firefox would show a prompt on load, so not there).
+    try { if (navigator.storage && navigator.storage.persist && !/Firefox/.test(navigator.userAgent)) navigator.storage.persist().catch(() => {}); } catch (e) { /* no StorageManager */ }
     // v15: saves that already beat Plac Neonów get the boosters gift.
     if (this.save.campaign.completed[CONFIG.boosters.unlockMission] && !this.save.boosters.gift) {
       this.save.boosters.gift = true;
@@ -7463,6 +7667,7 @@ class Game {
     this.sound.library = { isUnlocked: id => this.isTrackUnlocked(id) };
     this.sound.onTrackChange = song => this.onMusicTrackChange(song);
     this.monetization = new Monetization(this);
+    this.energyEnabled(); // v19: decides (and marks <body>) once per build
     const unlockAudio = () => this.sound.unlock();
     // pointerdown alone is not a user activation in Safari -- pointerup /
     // touchend / click are, so audio is (re)started on those too, on every
@@ -7741,6 +7946,10 @@ class Game {
     document.getElementById('btnConsentPolicy').addEventListener('click', () => this.openPrivacyPolicy());
     document.getElementById('btnPrivacyPolicy').addEventListener('click', () => this.openPrivacyPolicy());
     document.getElementById('btnExportData').addEventListener('click', () => this.exportMyData());
+    // v19: language + backup code (Profil).
+    document.querySelectorAll('[data-lang]').forEach(btn => btn.addEventListener('click', () => this.setLanguage(btn.dataset.lang)));
+    document.getElementById('btnBackupCopy').addEventListener('click', () => this.copyBackupCode());
+    document.getElementById('btnBackupLoad').addEventListener('click', () => this.openBackupLoad());
     document.querySelectorAll('[data-consent]').forEach(btn => btn.addEventListener('click', () => this.setConsent(btn.dataset.consent === '1')));
     document.getElementById('hubFreeChest').addEventListener('click', () => this.openFreeChest());
     document.getElementById('hubPlayerLevel').addEventListener('click', () => this.openPlayerLevelInfo());
@@ -8877,6 +9086,70 @@ class Game {
     }
   }
 
+  /** v19: switching language reloads the page (the UI is translated as it
+   *  renders, so a clean start is the reliable way back to Polish). */
+  setLanguage(lang) {
+    if (lang !== 'pl' && lang !== 'en') return;
+    this.save.settings.lang = lang;
+    saveGame(this.save);
+    this.analytics.track('language', { lang });
+    if (lang !== I18N.lang) location.reload();
+  }
+
+  copyBackupCode() {
+    const code = encodeSaveCode(this.save);
+    let copied = false;
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).catch(() => {}); copied = true; } } catch (e) { /* no clipboard */ }
+    this.openInfoSheet({
+      title: 'Kod kopii zapasowej',
+      body: [
+        copied ? 'Kod jest w schowku. Zachowaj go w notatkach albo wyślij sobie wiadomością.' : 'Zaznacz i skopiuj kod. Zachowaj go w notatkach albo wyślij sobie wiadomością.',
+        `<textarea class="backup-code" readonly translate="no" aria-label="Kod kopii zapasowej">${escapeHtml(code)}</textarea>`
+      ],
+      closeLabel: 'GOTOWE'
+    });
+    const ta = document.querySelector('#infoSheetBody .backup-code');
+    if (ta) ta.addEventListener('focus', () => ta.select());
+    this.analytics.track('backup_copy', {});
+  }
+
+  openBackupLoad(message) {
+    this.openInfoSheet({
+      title: 'Wczytaj kopię zapasową',
+      body: [
+        message || 'Wklej kod kopii. Postęp na tym urządzeniu zostanie zastąpiony postępem z kodu.',
+        '<textarea id="backupInput" class="backup-code" translate="no" placeholder="VH1.…" aria-label="Kod kopii zapasowej"></textarea>'
+      ],
+      action: { label: 'WCZYTAJ', onClick: () => this.importBackup() },
+      closeLabel: 'ANULUJ'
+    });
+  }
+
+  importBackup() {
+    const el = document.getElementById('backupInput');
+    let save;
+    try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad('To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
+    this.adoptSave(save, 'backup');
+    this.analytics.track('backup_load', {});
+    this.openInfoSheet({ title: 'Postęp wczytany', body: ['Witaj z powrotem! Cały postęp z kodu jest na tym urządzeniu.'], closeLabel: 'GRAMY' });
+  }
+
+  /** v19: replace the whole save (cloud restore / backup code). Mid-round it
+   *  waits for the next screen change, so a round is never yanked away. */
+  adoptSave(save, source) {
+    if (this.running) { this.pendingSave = { save, source }; return; }
+    this.pendingSave = null;
+    this.save = save;
+    saveGame(save, { touch: false });
+    this.sound.settings = save.settings;
+    this.sound.applySettings();
+    this.analytics.track('save_adopted', { source });
+    if (this.state !== GameState.BOOT) {
+      this.updateCoinDisplays();
+      this.showScreen('mainMenu');
+    }
+  }
+
   updateCoinDisplays() {
     // Golden Shot v8: currency pills "pop" whenever the balance grows.
     const total = this.save.coins + (this.save.prisms || 0) * 1000;
@@ -9631,6 +9904,7 @@ class Game {
   }
 
   showScreen(id) {
+    if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source); if (id === 'mainMenu') return; }
     ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
@@ -10090,6 +10364,16 @@ class Game {
 
   energyInfinite() { return Date.now() < (this.save.energy.infiniteUntil || 0); }
 
+  /** v19: is the session limit on for this build? (CONFIG.energy.platforms) */
+  energyEnabled() {
+    if (this._energyOn == null) {
+      const forced = new URLSearchParams(location.search).get('energy');
+      this._energyOn = forced === '0' ? false : forced === '1' ? true : CONFIG.energy.platforms[this.monetization.platform] !== false;
+      document.body.classList.toggle('no-energy', !this._energyOn);
+    }
+    return this._energyOn;
+  }
+
   /** ms until the next point (0 when full). */
   energyNextInMs() {
     const E = CONFIG.energy, en = this.save.energy;
@@ -10111,7 +10395,7 @@ class Game {
   /** Is this play free of charge? (tutorial, newbie rounds, first Daily
    *  attempt of the day, an active "no limit" hour). */
   energyFreeFor(kind) {
-    if (this.energyInfinite()) return true;
+    if (!this.energyEnabled() || this.energyInfinite()) return true;
     if (kind === 'tutorial') return true;
     if (kind === 'arena') return (this.save.stats.runsPlayed || 0) < CONFIG.energy.freeArenaRuns;
     if (kind === 'daily') return this.save.energy.freeDailyDate !== dailySeedForDate(new Date()).dateKey;
@@ -10122,6 +10406,7 @@ class Game {
    *  when there's none left, opens the energy sheet (refill, ad, wait),
    *  which continues into the play after a refill. */
   requireEnergy(kind, onPlay) {
+    if (!this.energyEnabled()) { onPlay(false); return true; }
     if (this.energyFreeFor(kind)) {
       if (kind === 'daily' && !this.energyInfinite()) { this.save.energy.freeDailyDate = dailySeedForDate(new Date()).dateKey; saveGame(this.save); }
       onPlay(false);
@@ -10158,6 +10443,7 @@ class Game {
   }
 
   openEnergySheet(opts = {}) {
+    if (!this.energyEnabled()) return;
     this.energySheetOpts = opts;
     this.renderEnergySheet();
     document.getElementById('energySheet').classList.remove('hidden');
@@ -13246,6 +13532,7 @@ class Game {
   }
 
   syncMusicUi() {
+    document.querySelectorAll('[data-lang]').forEach(b => b.classList.toggle('active', b.dataset.lang === I18N.lang));
     const song = this.sound && this.sound.currentSong;
     const name = document.getElementById('pauseTrackName');
     if (name) name.textContent = song ? song.name : '—';
@@ -14696,6 +14983,14 @@ class Game {
   }
 }
 
+/* ----------------------- v19: English (Polish -> English) ----------------------- */
+const I18N_EN = {
+};
+
 window.addEventListener('DOMContentLoaded', () => {
+  // The language is decided before the first screen renders.
+  let lang = 'pl';
+  try { const raw = localStorage.getItem(SAVE_KEY); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
+  i18nStart(lang);
   window.game = new Game();
 });

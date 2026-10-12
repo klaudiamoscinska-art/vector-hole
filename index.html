@@ -392,6 +392,13 @@
       <div class="settings-block">
         <div class="settings-title">USTAWIENIA</div>
         <div class="control-row">
+          <span class="control-label">Język</span>
+          <div class="control-toggle" translate="no">
+            <button class="toggle-btn" data-lang="pl">Polski</button>
+            <button class="toggle-btn" data-lang="en">English</button>
+          </div>
+        </div>
+        <div class="control-row">
           <span class="control-label">Dźwięki</span>
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="sfx" data-value="1">Wł.</button>
@@ -423,6 +430,20 @@
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="haptics" data-value="1">Wł.</button>
             <button class="toggle-btn" data-setting="haptics" data-value="0">Wył.</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- v19: progress lives in this browser only (no accounts) -- a backup
+           code carries it to another device or back after cleared data. -->
+      <div class="settings-block">
+        <div class="settings-title">KOPIA ZAPASOWA</div>
+        <p class="hint-text backup-hint">Postęp zapisuje się w tej przeglądarce. Kod kopii przeniesie go na inny telefon albo przywróci po wyczyszczeniu danych.</p>
+        <div class="control-row">
+          <span class="control-label">Kod postępu</span>
+          <div class="control-toggle">
+            <button id="btnBackupCopy" class="toggle-btn">SKOPIUJ</button>
+            <button id="btnBackupLoad" class="toggle-btn">WCZYTAJ</button>
           </div>
         </div>
       </div>

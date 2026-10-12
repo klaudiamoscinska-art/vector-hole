@@ -39,9 +39,11 @@ export function serve() {
 /** Launch Chromium + a page that records console errors and page errors.
  *  External requests (Google Fonts etc.) are blocked so runs are offline
  *  and deterministic; `allowExternal` lets the network test opt back in. */
-export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null, deviceScaleFactor = 2 } = {}) {
+export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null, deviceScaleFactor = 2, locale = 'pl-PL' } = {}) {
   const browser = await chromium.launch();
-  const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile, deviceScaleFactor });
+  // v19: the game picks its language from the browser -- the suites assert
+  // Polish copy, so they run as a Polish browser unless told otherwise.
+  const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile, deviceScaleFactor, locale });
   const errors = [];
   const external = [];
   if (!allowExternal) {
