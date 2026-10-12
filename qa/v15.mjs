@@ -82,7 +82,7 @@ export async function runV15Checks(url) {
       return { tiles, offOnSafe, label, spent: coins0 - game.save.coins, stockTime: game.save.boosters.time, boosters: m.boosters, bonus: m.bonusTime, limit: m.def.timeLimit,
         remaining: Math.round(m.timeRemaining), tier: game.campaignPlayerTier().id, shields: m.shields };
     });
-    const price = 80 + 70;
+    const price = 70 + 70;
     results.push(report('boosters: five booster tiles in the briefing (v18 Sprint); Tarcza is off where nothing can hit you', r.tiles === 5 && r.offOnSafe, `${r.tiles} ${r.offOnSafe}`));
     results.push(report('boosters: GRAJ shows the coin cost before anything is spent', r.label.includes(`−${price}`), r.label.replace(/\s+/g, ' ')));
     results.push(report('boosters: stock is used first, the rest is paid in coins', r.stockTime === 0 && r.spent === price, JSON.stringify({ spent: r.spent, stock: r.stockTime })));

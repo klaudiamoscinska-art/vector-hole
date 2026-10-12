@@ -130,7 +130,7 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   gwiazd** (120 monet, 3 pryzmaty, wzmocnienie). Trzy gwiazdki = tytuł
   „PERFEKCYJNIE!”.
 - **Wzmocnienia** (`MISSION_BOOSTERS`, po M04 + po jednym w prezencie):
-  Zegar +15 s (60), Turbo start od T2 (80), **Sprint +20% prędkości**
+  Zegar +15 s (60), Turbo start od T2 (70), **Sprint +15% prędkości**
   (70, v18), Magnes na całą misję (40), Tarcza na 2 zderzenia (70 monet;
   chroni też kruchy wir). Wybiera się je w odprawie (najpierw z zapasu,
   resztę za monety — koszt widać na GRAJ, nic nie znika jednym
@@ -143,11 +143,13 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   GRAJ, POWTÓRZ = bez wzmocnienia. NELA dopowiada, co da wzmocnienie.
 - **Brak monet w odprawie (v18)**: „▶ Zegar za reklamę” — jedno z wybranych
   wzmocnień za reklamę (3 dziennie), trafia do zapasu i zostaje wybrane.
-- **Balans wzmocnień (v18, `qa/v18.mjs`, bot „casual”, 16 misji TRUDNYCH
-  i EKSTREMALNYCH)**: bez wzmocnień 56% przejść, Zegar 73%, Turbo start 67%,
-  Sprint 75% (przy +25% za 50 monet był najmocniejszy i najtańszy — stąd
-  +20% i 70 monet), Magnes 60% (najtańszy). Żadne nie robi z EKSTREMALNEJ
-  pewniaka (≤ 71%).
+- **Balans wzmocnień (v18, `qa/v18.mjs 3`, bot „casual”, 24 misje TRUDNE
+  i EKSTREMALNE × 3 próby)**: bez wzmocnień 59% przejść, Zegar 79% (+20),
+  Sprint 76% (+17), Magnes 73% (+14), Turbo start 71% (+12). Sprint przy
+  +25% za 50 monet był najmocniejszy i najtańszy (+29), więc ma +15% za
+  70; Turbo start dawał najmniej przy najwyższej cenie, więc 80 → 70;
+  Magnes 50 → 40. Żadne nie robi z EKSTREMALNEJ pewniaka (≤ 77%). Szum
+  pomiaru przy ~50 próbach to ±7 pkt.
 - **Start na dotknięcie (v15)**: po GRAJ misja otwiera się zamrożona
   z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji
   z wyjaśnieniem, wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po

@@ -283,7 +283,7 @@ const CONFIG = {
   boosters: {
     unlockMission: 'M04',     // after Plac Neonów's boss (+1 of each as a gift)
     timeBonus: 15,            // "Zegar": seconds added to the limit
-    sprintMult: 1.2,          // v18 "Sprint": vortex speed for the whole mission (bot-balanced, qa/v18.mjs)
+    sprintMult: 1.15,         // v18 "Sprint": vortex speed for the whole mission (bot-balanced, qa/v18.mjs)
     shieldHits: 2,            // "Tarcza": hits absorbed (rivals, glitch zones, a fragile vortex)
     pityFails: 3              // after this many defeats in a row NELA lends a free Zegar (once per mission)
   },
@@ -2093,12 +2093,12 @@ const RUN_TOOLS = [
 // loan also hand them out.
 const MISSION_BOOSTERS = [
   { id: 'time', name: 'Zegar', short: '+15 s', price: 60, color: '#50F0FA', icon: 'clock', desc: '+15 s do limitu czasu misji.' },
-  { id: 'start', name: 'Turbo start', short: 'start od T2', price: 80, color: '#FF54AD', icon: 'bolt', desc: 'Wir startuje od razu z rozmiarem T2.' },
+  { id: 'start', name: 'Turbo start', short: 'start od T2', price: 70, color: '#FF54AD', icon: 'bolt', desc: 'Wir startuje od razu z rozmiarem T2.' },
   { id: 'magnet', name: 'Magnes', short: 'cała misja', price: 40, color: '#46D99A', icon: 'magnet', desc: 'Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.' },
   { id: 'shield', name: 'Tarcza', short: '2 zderzenia', price: 70, color: '#EFCB63', icon: 'shield', desc: 'Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.' },
   // v18 (owner: "kupię toola, aby dał mi szybkość"): the counter to the
   // Złodziej and to far-apart goals.
-  { id: 'sprint', name: 'Sprint', short: '+20% szybciej', price: 70, color: '#9875FF', icon: 'speed', desc: 'Przez całą misję wir jest o 20% szybszy — dogonisz Złodzieja i zdążysz do dalekich celów.' }
+  { id: 'sprint', name: 'Sprint', short: '+15% szybciej', price: 70, color: '#9875FF', icon: 'speed', desc: 'Przez całą misję wir jest o 15% szybszy — dogonisz Złodzieja i zdążysz do dalekich celów.' }
 ];
 
 // Simple neon-line-art glyphs for the evolution/power cards (SVG, inline —

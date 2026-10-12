@@ -7,12 +7,13 @@ są w historii gita (`git log -- docs/`).
 ## v18 „Złoty strzał: ekonomia” — wzmocnienia jako lejek monetyzacji
 | Uwaga | Zmiana |
 |---|---|
-| Przegląd monetyzacji i balansu | Monety tracą wartość (ekspert: ~9 700 niewydanych po 20 rundach) → wzmocnienia misji jako stałe ujście monet; sklep i reklamy dostały drogę do wzmocnień; ceny wzmocnień zbalansowane botem (Sprint 70, Magnes 40) |
-| Kupowanie tooli przed misją (szybkość, start od T2…) | Było od v15 (po M04): Zegar, Turbo start (T2), Magnes, Tarcza. Nowe: **Sprint** (+20% prędkości). Po porażce przycisk **„SPRÓBUJ Z: …”** z wzmocnieniem dobranym do przyczyny; brak monet → **wzmocnienie za reklamę** (3/dzień); **Pakiet wzmocnień** (7,99 zł, 5× każde) i 3× każde w Pakiecie Startowym |
+| Przegląd monetyzacji i balansu | Monety tracą wartość (ekspert: ~9 700 niewydanych po 20 rundach) → wzmocnienia misji jako stałe ujście monet; sklep i reklamy dostały drogę do wzmocnień; ceny wzmocnień zbalansowane botem (Sprint +15% za 70, Turbo start 80 → 70, Magnes 50 → 40) |
+| Kupowanie tooli przed misją (szybkość, start od T2…) | Było od v15 (po M04): Zegar, Turbo start (T2), Magnes, Tarcza. Nowe: **Sprint** (+15% prędkości). Po porażce przycisk **„SPRÓBUJ Z: …”** z wzmocnieniem dobranym do przyczyny; brak monet → **wzmocnienie za reklamę** (3/dzień); **Pakiet wzmocnień** (7,99 zł, 5× każde) i 3× każde w Pakiecie Startowym |
 
-- **Balans (bot „casual”, misje TRUDNE i EKSTREMALNE):** bez wzmocnień 56%,
-  Zegar 73%, Turbo start 67%, Sprint 75%, Magnes 60%; żadne nie robi
-  z EKSTREMALNEJ pewniaka.
+- **Balans (bot „casual”, 24 misje TRUDNE i EKSTREMALNE × 3):** bez
+  wzmocnień 59%, Zegar 79%, Sprint 76%, Magnes 73%, Turbo start 71%; żadne
+  nie robi z EKSTREMALNEJ pewniaka. Pierwsza wersja Sprintu (+25% za 50)
+  dawała +29 pkt — przycięta.
 - **Testy**: `qa/v18.mjs` (Sprint, prezent dla obecnych graczy, propozycja
   po porażce dla każdej przyczyny, odprawa z wybranym wzmocnieniem bez
   wydawania, reklama za wzmocnienie z limitem, pakiety sklepu, pomiar
