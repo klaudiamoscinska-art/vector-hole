@@ -4,6 +4,21 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v21 „Komputer” — gra na dużym ekranie
+Zgłoszenie: „na kompie w przeglądarce cały interface wygląda jak na
+telefon ucięty taki mały” (a portale to głównie komputery).
+
+| Było | Jest |
+|---|---|
+| Runda w stałej skali: monitor widział kilka razy więcej mapy niż telefon, wir i obiekty malutkie | Obraz dopasowany do ekranu: tyle miasta co na telefonie, duży wir; gracz na monitorze nie widzi dalej |
+| Menu jako wąski pasek telefonu na środku monitora | **Układ poziomy**: nawigacja po lewej, każdy ekran w dwóch kolumnach (Miasto, Dzielnice z 12 dzielnicami naraz, Warsztat, Wyzwania, wyniki), szeroki ekran startowy; wszystko bez przewijania, także 960×540 |
+| Pasek dzielnic ucięty w pół kafelka, bez przewijania myszą | Na komputerze siatka wszystkich dzielnic; w wąskim oknie kółko myszy przewija pasek, ucięta krawędź się rozmywa |
+| Samouczek: „Przeciągnij palcem” także przy myszy | Na komputerze: „Prowadź kursorem myszy (albo strzałki / WASD)” |
+
+- Telefony i tablety w pionie bez zmian. Mapka w rogu i podglądy na
+  kanwach rosną i są ostre. Testy: `qa/v21.mjs` (telefony bez zmian;
+  1366×768, 1440×900, 1920×1080, 960×540, 1180×820).
+
 ## v20 „Bramy impulsu” — bramy i portale jako pomocnicy, nie cel
 Zgłoszenie: „portale w misjach bez sensu” — np. M11 „Pierwszy impuls”:
 dotknij dwóch migających słupków na pustej mapie, nic do zjedzenia.

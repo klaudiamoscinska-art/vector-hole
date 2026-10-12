@@ -105,6 +105,12 @@ html, body {
    height is exact, so 100dvh is right in every mode. */
 html { background: #04101D; }
 
+/* v21: big screens -- every layer over the canvas scales by --ui-scale
+   (set in Game.resize(): 1 on phones, up to 1.6 on a large monitor).
+   Percent sizes (full-screen overlays) keep filling the app; px sizes
+   (cards, buttons, text) grow. */
+#app > :not(#gameCanvas) { zoom: var(--ui-scale, 1); }
+
 #gameCanvas {
   position: absolute;
   top: 0;
@@ -4087,6 +4093,10 @@ body[data-gfx="0"] #hud::before { display: none; }
 #campaignScreen .district-strip { display: flex; max-width: 440px; width: 100%; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 6px;
   scroll-snap-type: x proximity; scrollbar-width: none; touch-action: pan-x pan-y; }
 #campaignScreen .district-strip::-webkit-scrollbar { display: none; }
+/* v21: a cut-off edge fades out -- there are more districts that way. */
+#campaignScreen .district-strip.more-right { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
+#campaignScreen .district-strip.more-left { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px); mask-image: linear-gradient(90deg, transparent, #000 36px); }
+#campaignScreen .district-strip.more-left.more-right { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
 #campaignScreen .district-tile { flex: 0 0 124px; height: 72px; scroll-snap-align: start; }
 #campaignScreen .district-tile-info { padding: 10px 8px 6px; gap: 2px; }
 #campaignScreen .district-tile .district-node-name { font-size: 11.5px; }
@@ -4519,3 +4529,92 @@ body.no-energy .energy-chip { display: none !important; }
 
 /* v19: the nav "NOWE" badge is CSS content -- out of the translator's reach. */
 html[lang="en"] .nav-tab.is-new .nav-tab-icon::after { content: 'NEW'; }
+
+/* =====================================================================
+   v21 „Komputer” (układ poziomy) — the landscape layout for big screens.
+   Game.resize() sets body.wide (>= 960 px wide and landscape) and a
+   --ui-scale that keeps the layout at about 1100 x 620 logical px. The
+   .wide-col wrappers are invisible on a phone (display: contents, phone
+   order kept with `order`) and become the left/right columns here.
+   ===================================================================== */
+.wide-col { display: contents; }
+.wide-col > * { flex-shrink: 0; }
+#challengesScreen .wide-col > * { width: 100%; max-width: 440px; }
+#missionNextCard { order: 1; }
+#districtStory { order: 2; }
+#campaignScreen .mission-list-head, #missionList { order: 3; }
+
+/* The nav becomes a rail on the left. */
+body.wide .bottom-nav { top: 0; bottom: 0; right: auto; width: 92px; flex-direction: column; justify-content: center; gap: 8px;
+  padding: 16px 6px; border-top: 0; border-right: 1px solid var(--nc-border); }
+body.wide .nav-tab { flex: none; max-width: none; padding: 12px 4px; gap: 6px; border-radius: 12px; }
+body.wide .nav-tab:hover { background: rgba(80, 240, 250, 0.06); }
+body.wide .nav-tab-icon { width: 24px; height: 24px; }
+body.wide .nav-tab-label { font-size: 11.5px; }
+body.wide .nav-tab.active { background: rgba(80, 240, 250, 0.08); }
+body.wide .nav-tab.active::after { bottom: auto; top: 50%; left: -6px; transform: translateY(-50%); width: 3px; height: 30px; }
+body.wide #mainMenu:not(.first-run), body.wide #campaignScreen, body.wide #shopScreen, body.wide #challengesScreen { padding-left: 92px; }
+
+/* Nav screens: one wide content box, the header across the top. */
+body.wide .screen-inner.nav-screen { max-width: 1120px; width: 100%; height: 100%; padding: 18px 28px 20px; }
+body.wide .nav-screen > .app-header { max-width: none; width: 100%; }
+body.wide #campaignScreen .nav-screen, body.wide #shopScreen .nav-screen, body.wide #challengesScreen .nav-screen {
+  display: grid; grid-template-columns: minmax(0, 430px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 28px; row-gap: 16px; align-items: stretch; overflow: hidden; }
+body.wide .nav-screen > .app-header { grid-column: 1 / -1; }
+body.wide .nav-screen > .wide-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  padding: 2px 6px 8px 2px; scrollbar-width: thin; scrollbar-color: rgba(80, 240, 250, 0.3) transparent; }
+body.wide .nav-screen > .wide-col > * { max-width: none; width: 100%; }
+
+/* Miasto: Core City big on the left; GRAJ, the next mission, the daily
+   and the chest on the right, centred beside it. */
+body.wide #mainMenu:not(.first-run) .hub-inner { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto minmax(0, 1fr); column-gap: 28px; row-gap: 14px; align-items: start; }
+body.wide #mainMenu:not(.first-run) .hub-header { grid-column: 1 / -1; margin: 0; }
+body.wide #mainMenu .hub-challenge { grid-column: 1 / -1; max-width: none; }
+body.wide #mainMenu:not(.first-run) .hub-city { grid-column: 1; grid-row: 3 / 8; align-self: stretch; height: auto; min-height: 0; max-height: none; max-width: none; width: 100%; }
+body.wide #mainMenu .hub-play { grid-column: 2; grid-row: 4; max-width: none; padding: 28px 20px 24px !important; }
+body.wide #mainMenu .hub-play-main { font-size: 40px; }
+body.wide #mainMenu .hub-play-sub { font-size: 13px; }
+body.wide #mainMenu .hub-quick-row { grid-column: 2; grid-row: 5; max-width: none; grid-template-columns: 1fr; }
+body.wide #mainMenu .hub-quick-tile { padding: 14px; }
+body.wide #mainMenu .hub-chest-row { grid-column: 2; grid-row: 6; max-width: none; width: 100%; }
+/* First run: the live demo as a wide stage, GRAJ under it. */
+body.wide #mainMenu.first-run { align-items: center; }
+body.wide #mainMenu.first-run > .hub-inner { max-width: 1040px; height: auto; padding: 24px 28px; justify-content: center; }
+body.wide #mainMenu.first-run .hub-welcome { min-height: 0; flex: none; width: 100%; max-width: none; }
+body.wide #mainMenu.first-run .welcome-stage { width: 100%; height: 470px; min-height: 0; flex: none; border-radius: 22px; }
+body.wide #mainMenu.first-run .welcome-cta { max-width: 440px; }
+
+/* Dzielnice: every district at a glance (a 3-column grid, no strip to
+   scroll); the next mission and the list on the right. */
+body.wide #campaignScreen .district-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible;
+  max-width: none; padding: 2px; -webkit-mask-image: none; mask-image: none; scroll-snap-type: none; }
+body.wide #campaignScreen .district-tile { flex: none; width: auto; height: 66px; }
+body.wide #campaignScreen .district-tile:hover { filter: brightness(1.15); }
+body.wide #campaignScreen .mission-list { max-width: none; }
+
+/* Warsztat: a big live preview on the left, the items in two columns. */
+body.wide #shopScreen .warsztat-preview-top { flex-direction: column; align-items: stretch; }
+body.wide #shopScreen .warsztat-preview-stage { width: 100%; height: 250px; }
+body.wide #shopScreen .warsztat-preview-labels { align-items: flex-start; }
+body.wide #shopScreen .skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Wyzwania: today's map on the left, play + streak + the daily mission on the right. */
+body.wide #challengesScreen #btnPlayDaily { padding: 20px; font-size: 18px; }
+
+/* Round results / mission result: what you got on the left, what's next on the right. */
+body.wide #gameOverScreen .result-screen, body.wide #missionResultScreen .mission-result-inner {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 36px; max-width: 1060px; width: 100%;
+  align-items: center; padding: 24px 32px; }
+body.wide #gameOverScreen .wide-col, body.wide #missionResultScreen .wide-col { display: flex; flex-direction: column; gap: 12px; align-items: center; min-width: 0; }
+body.wide #gameOverScreen .wide-col > *, body.wide #missionResultScreen .wide-col > * { max-width: 480px; width: 100%; }
+body.wide #gameOverScreen .result-badges { justify-content: center; }
+body.wide #gameOverScreen #btnMenu { order: 100; }
+body.wide .result-actions { position: static; margin: 4px 0 0; padding: 0; background: none; box-shadow: none; border: 0; }
+
+/* Sheets (briefing, energy) are dialogs in the middle, not bottom sheets. */
+body.wide .briefing-overlay { align-items: center !important; }
+body.wide .briefing-overlay > .briefing-sheet { border-radius: 22px; max-height: calc(100% - 40px); padding-bottom: 14px; }
+/* The daily login reward is a modal over Miasto: it dims the rail too. */
+body.wide #loginRewardScreen { z-index: 112; }

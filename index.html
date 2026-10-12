@@ -598,6 +598,10 @@
       <!-- v14: districts as a compact horizontal strip (was a 2x3 grid of
            tall tiles that pushed the missions -- and the old play button at
            the very bottom -- below the fold). -->
+      <!-- v21: .wide-col wrappers are display: contents on a phone (no
+           effect) and the two columns of the landscape layout on a big
+           screen (body.wide). Phone order is kept with CSS order. -->
+      <div class="wide-col wide-col-a">
       <div id="districtMap" class="district-strip"></div>
 
       <div class="district-head">
@@ -605,19 +609,23 @@
         <span class="district-rebuild-line" id="districtRebuildLine">—</span>
       </div>
       <div class="district-head-bar"><span id="districtRebuildBar"></span></div>
-      <!-- The mission to do next, briefed in place with its own GRAJ: no
-           scrolling to the bottom of the list to start a level. -->
-      <div id="missionNextCard" class="mission-card mission-card-next"></div>
       <!-- The district's story, told by NELA (v14: the story lines were grey
-           italics nobody noticed). -->
+           italics nobody noticed). On a phone it shows under the next
+           mission (CSS order). -->
       <div class="nela-bubble district-story" id="districtStory">
         <span class="nela-avatar" aria-hidden="true"></span>
         <span class="nela-bubble-body"><span class="nela-name">NELA</span><span class="nela-line" id="districtStoryText">—</span></span>
       </div>
+      </div>
+      <div class="wide-col wide-col-b">
+      <!-- The mission to do next, briefed in place with its own GRAJ: no
+           scrolling to the bottom of the list to start a level. -->
+      <div id="missionNextCard" class="mission-card mission-card-next"></div>
 
 
       <div class="mission-list-head"><span>WSZYSTKIE MISJE</span><span id="missionMedalsFootnote">—</span></div>
       <div id="missionList" class="mission-list"></div>
+      </div>
     </div>
   </div>
 
@@ -635,6 +643,7 @@
   <div id="missionResultScreen" class="screen hidden">
     <div class="confetti-layer" id="missionConfetti" aria-hidden="true"></div>
     <div class="screen-inner result-anim mission-result-inner">
+<div class="wide-col wide-col-a">
       <div id="missionHero" class="mission-hero" aria-hidden="true"><svg viewBox="0 0 64 64"><circle class="mh-ring" cx="32" cy="32" r="27"/><path class="mh-check" d="M19 33l9 9 17-19"/><path class="mh-clock" d="M32 18v15l9 6"/></svg></div>
       <div class="result-eyebrow" id="missionResultEyebrow">—</div>
       <h2 class="section-title" id="missionResultTitle">MISJA UKOŃCZONA</h2>
@@ -664,6 +673,8 @@
 
       <!-- v14: where the next button leads -- the next mission's briefing
            (goals, time, reward) right above it. -->
+      </div>
+      <div class="wide-col wide-col-b">
       <div id="missionResultNextCard" class="mission-card mission-card-mini hidden"></div>
 
       <div class="mission-result-actions">
@@ -673,6 +684,7 @@
           <button id="btnMissionMap" class="btn btn-secondary">DZIELNICE</button>
           <button id="btnMissionMenu" class="btn btn-secondary">MIASTO</button>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -698,6 +710,7 @@
       <!-- "PODGLĄD NA ŻYWO" (GDD 4.0 §5.3) — drawn by the in-round Hole.draw()
            itself (Game.renderWarsztatCanvases()), so it's identical to the hole
            on the board: same ring, vortex, trail and eat effect. -->
+      <div class="wide-col wide-col-a">
       <div class="warsztat-preview">
         <div class="warsztat-preview-top">
           <div class="warsztat-preview-stage">
@@ -737,6 +750,8 @@
       </div>
 
       <p class="hint-text warsztat-hint">Dotknij, żeby założyć. Zablokowane obejrzysz na podglądzie.</p>
+      </div>
+      <div class="wide-col wide-col-b">
       <div class="skin-grid-header">
         <span class="skin-grid-header-title">ZESTAWY I KOSMETYKI</span>
         <span id="cosmeticUnlockedCount" class="skin-grid-header-count">0 / 0 ODBLOKOWANE</span>
@@ -759,6 +774,7 @@
           <div class="store-paid-title">SKLEP</div>
           <div id="storeProducts" class="store-products"></div>
         </div>
+      </div>
       </div>
 
     </div>
@@ -788,6 +804,7 @@
       <!-- v5: design/screens/wyzwania.svg -- Daily Seed Challenge gets the
            big hero treatment (icon, countdown, reward track); the rotating
            daily mission + streak stay as a secondary card below it. -->
+      <div class="wide-col wide-col-a">
       <div class="daily-hero-card">
         <div class="daily-hero-head">
           <div class="daily-hero-headings">
@@ -830,6 +847,8 @@
         </div>
       </div>
 
+      </div>
+      <div class="wide-col wide-col-b">
       <button id="btnPlayDaily" class="btn btn-primary">
         ZAGRAJ WYZWANIE
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
@@ -852,6 +871,7 @@
         <p id="hubMissionText" class="hub-mission-text">—</p>
         <p class="mission-day-hint">Liczy się w każdej rundzie GRAJ 2:00 i w Wyzwaniu dnia.</p>
       </div>
+      </div>
     </div>
   </div>
 
@@ -859,6 +879,7 @@
   <div id="gameOverScreen" class="screen hidden">
     <div class="confetti-layer" id="resultConfetti" aria-hidden="true"></div>
     <div class="screen-inner result-screen result-anim">
+<div class="wide-col wide-col-a">
       <div class="result-eyebrow" id="resultEyebrow">KONIEC RUNDY</div>
       <div id="resultTag" class="result-tag hidden"></div>
 
@@ -928,6 +949,8 @@
         <button id="btnUpsell" class="btn btn-gold btn-small">WZMOCNIJ SIĘ</button>
       </div>
 
+      </div>
+      <div class="wide-col wide-col-b">
       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
 
       <p id="dailyResultLine" class="hint-text daily-result hidden"></p>
@@ -945,6 +968,7 @@
         </div>
       </div>
       <button id="btnMenu" class="btn btn-link">Wróć do Miasta</button>
+      </div>
     </div>
   </div>
 
