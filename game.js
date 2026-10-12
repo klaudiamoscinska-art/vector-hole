@@ -568,16 +568,254 @@ class Analytics {
    allow an AudioContext to start inside a user gesture, so nothing plays
    until the first tap/key (unlock()); the page never autoplays. */
 
-// A-minor pentatonic ladder: consecutive eats in a combo climb it, so a
-// long chain literally sounds like it's building up (hole.io "pop" feel).
-const EAT_SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5];
-// i–VI–III–VII in A minor (Am–F–C–G), the classic synthwave loop.
-const MUSIC_CHORDS = [
-  { root: 110, notes: [220, 261.63, 329.63] },
-  { root: 87.31, notes: [174.61, 220, 261.63] },
-  { root: 130.81, notes: [261.63, 329.63, 392] },
-  { root: 98, notes: [196, 246.94, 293.66] }
+/* ---- v16 „Brzmienie”: the music bank ----
+   15 synthesized tracks instead of one 4-chord loop (owner: "więcej
+   muzyczek, aby się zmieniały i nie było monotonnie"). Every track is a
+   few lines of data -- key, scale, tempo, drum/bass strings, sections of
+   chords + a lead melody, and a form -- so a new song costs ~1 KB and no
+   audio file. Sections (A groove · B hook · C bridge · D drop) keep a
+   single track from looping the same 8 seconds; the scheduler adds
+   fills, crashes, a riser into the drop when a round enters its final
+   stretch, and a different arp/bass on every other pass of the form.
+
+   - MENU tracks (`menu: true`) rotate on Miasto and the other screens:
+     a lo-fi beat that never competes with reading.
+   - Each district has its own theme (`district`), heard in its missions;
+     Arena rounds rotate through every unlocked gameplay track (a new one
+     each round and after each full pass), the Daily/challenge seed picks
+     one track for everybody. Rozdział I themes are free from the start,
+     Rozdział II themes unlock with their district (Szafa grająca in
+     Profil lists them, and lets the player pin a favourite).
+
+   Lead notation: space-separated `Note+octave[:steps]` tokens (`r` =
+   rest, default 2 steps = an eighth), bars separated by `|`, each bar
+   exactly 16 steps (qa/audio.mjs checks). Chords: one per bar.
+   Drums/bass: 16-char step strings. Bass: R root · O octave · F fifth ·
+   T third · - hold · . rest. Drums: x hit · o ghost/soft · O open hat. */
+const MUSIC_TRACKS = [
+  // ----- Miasto / menus -----
+  { id: 'swit', name: 'Neonowy Świt', menu: true, key: 'F', scale: 'majorPent', bpm: 84, swing: 0.14, kit: 'lofi',
+    pad: 'saw', lead: 'bell', arp: 'tri', bass: 'sub',
+    drums: { kick: 'x.......x.x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+    bassLine: 'R-----R.R-------', arpLine: '0123',
+    sections: {
+      A: { chords: 'Fmaj7 Em7 Dm7 Cmaj7' },
+      B: { chords: 'Fmaj7 Em7 Dm7 Cmaj7', lead: 'A5:4 C6:4 E6:8 | D6:4 B5:4 G5:8 | F5:4 A5:4 C6:8 | E6:6 D6:2 C6:8' },
+      C: { chords: 'Bbmaj7 Am7 Gm7 C', lead: 'D6:8 F6:8 | E6:8 C6:8 | Bb5:8 D6:8 | G5:4 C6:4 E6:8' }
+    }, form: 'ABAC' },
+  { id: 'nocna', name: 'Nocna Linia', menu: true, key: 'A', scale: 'minorPent', bpm: 76, kit: 'lofi',
+    pad: 'saw', lead: 'bell', arp: 'sine', bass: 'sub',
+    drums: { kick: 'x...............', snare: '................', hat: 'o...o...o...o...' },
+    bassLine: 'R---------------', arpLine: '0213',
+    sections: {
+      A: { chords: 'Am9 Fmaj7 Cmaj7 G', lead: 'E6:4 r:4 C6:4 r:4 | A5:8 r:8 | G5:4 r:4 E6:4 r:4 | D6:8 B5:8' },
+      B: { chords: 'Dm9 Am9 Fmaj7 E', lead: 'F6:4 r:4 E6:4 r:4 | C6:8 r:8 | A5:4 C6:4 E6:8 | G#5:8 B5:8' }
+    }, form: 'AABB' },
+  { id: 'deszcz', name: 'Deszcz na Szybie', menu: true, key: 'D', scale: 'minor', bpm: 80, swing: 0.16, kit: 'lofi', crackle: true,
+    pad: 'organ', lead: 'tri', arp: 'tri', bass: 'sub',
+    drums: { kick: 'x......x..x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+    bassLine: 'R.....R...R.....', arpLine: '012',
+    sections: {
+      A: { chords: 'Dm7 Gm7 C7 Fmaj7' },
+      B: { chords: 'Bbmaj7 Gm7 A7 Dm7', lead: 'D6:2 F6:2 A6:4 F6:2 D6:2 r:4 | Bb5:2 D6:2 F6:4 D6:2 Bb5:2 r:4 | C#6:2 E6:2 G6:4 E6:2 C#6:2 r:4 | D6:4 A5:4 F5:8' }
+    }, form: 'AABA' },
+
+  // ----- Rozdział I: district themes (free from the start) -----
+  { id: 'wir', name: 'Wir Neonów', district: 'plac', key: 'A', scale: 'minorPent', bpm: 112,
+    pad: 'saw', lead: 'square', arp: 'square', bass: 'saw',
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.' },
+    bassLine: 'R.R.R.O.R.R.R.O.', bassAlt: 'R.RR.RO.R.RR.RO.', arpLine: '012',
+    sections: {
+      A: { chords: 'Am F C G' },
+      B: { chords: 'Am F C G', lead: 'E5:2 A5:2 C6:2 B5:2 A5:4 E5:4 | F5:2 A5:2 C6:4 A5:2 G5:2 F5:4 | G5:2 C6:2 E6:4 D6:2 C6:2 G5:4 | D6:4 B5:2 G5:2 A5:8' },
+      C: { chords: 'F G Em Am', lead: 'C6:6 A5:2 F5:8 | D6:6 B5:2 G5:8 | E6:4 D6:4 B5:4 G5:4 | A5:12 r:4' },
+      D: { chords: 'Am F C G', lead: 'B', lift: true }
+    }, form: 'AABCBD', drop: 'D' },
+  { id: 'impuls', name: 'Zielony Impuls', district: 'park', key: 'C', scale: 'majorPent', bpm: 118, kit: 'clap',
+    pad: 'organ', lead: 'pluck', arp: 'tri', bass: 'square',
+    drums: { kick: 'x...x...x...x.x.', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+    bassLine: 'R..R..R.R..R.OR.', arpLine: '0120',
+    sections: {
+      A: { chords: 'C G Am F' },
+      B: { chords: 'C G Am F', lead: 'E5:2 G5:2 C6:2 G5:2 E5:2 G5:2 A5:4 | G5:2 D5:2 G5:2 B5:2 D6:4 B5:4 | C6:2 A5:2 E5:2 A5:2 C6:2 D6:2 E6:4 | D6:2 C6:2 A5:4 C6:8' },
+      C: { chords: 'Dm7 G Em7 Am', lead: 'A5:4 F5:4 D5:4 F5:4 | G5:4 B5:4 D6:8 | E6:4 D6:2 B5:2 G5:8 | A5:4 C6:4 E6:8' },
+      D: { chords: 'C G Am F', lead: 'B', lift: true }
+    }, form: 'ABACBD', drop: 'D' },
+  { id: 'fala', name: 'Fala Syntez', district: 'port', key: 'G', scale: 'minor', bpm: 104,
+    pad: 'saw', lead: 'saw', arp: 'pluck', bass: 'sub',
+    drums: { kick: 'x.......x.x.....', snare: '........x.......', hat: 'x.x.x.x.x.x.x.x.' },
+    bassLine: 'R-----R.R-----O.', arpLine: '0122',
+    sections: {
+      A: { chords: 'Gm Eb Bb F' },
+      B: { chords: 'Gm Eb Bb F', lead: 'D5:3 G5:3 Bb5:2 A5:4 G5:4 | G5:3 Bb5:3 Eb6:2 D6:4 Bb5:4 | F5:3 Bb5:3 D6:2 C6:4 Bb5:4 | A5:3 C6:3 F6:2 D6:8' },
+      C: { chords: 'Cm Gm Eb D', lead: 'Eb6:8 D6:4 C6:4 | Bb5:8 A5:4 G5:4 | G5:4 Bb5:4 Eb6:4 F6:4 | F#5:8 A5:8' },
+      D: { chords: 'Gm Eb Bb F', lead: 'B', lift: true }
+    }, form: 'AABCBD', drop: 'D' },
+  { id: 'glitch', name: 'Glitch w Galerii', district: 'galeria', key: 'F#', scale: 'minorPent', bpm: 124, glitch: true,
+    pad: 'square', lead: 'square', arp: 'square', bass: 'saw',
+    drums: { kick: 'x..x...x..x.....', snare: '....x.......x..x', hat: 'x.xxx.x.x.xxx.x.' },
+    bassLine: 'R..R..O.R..R.FO.', arpLine: '0212',
+    sections: {
+      A: { chords: 'F#m D A E' },
+      B: { chords: 'F#m D A E', lead: 'C#6:1 C#6:1 r:2 A5:2 F#5:2 C#6:2 B5:2 A5:4 | A5:1 A5:1 r:2 F#5:2 D5:2 F#5:2 A5:2 B5:4 | E6:1 E6:1 r:2 C#6:2 A5:2 E5:2 A5:2 C#6:4 | B5:4 G#5:4 E5:8' },
+      C: { chords: 'Bm D F#m E', lead: 'D6:4 B5:4 F#5:8 | F#6:4 E6:4 D6:8 | C#6:4 A5:4 F#5:8 | E5:2 G#5:2 B5:2 E6:2 B5:8' },
+      D: { chords: 'F#m D A E', lead: 'B', lift: true }
+    }, form: 'ABACBD', drop: 'D' },
+  { id: 'napiecie', name: 'Wysokie Napięcie', district: 'dachy', key: 'E', scale: 'minor', bpm: 128, arpRate: 1,
+    pad: 'saw', lead: 'saw', arp: 'square', bass: 'saw',
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..O...O...O...O.' },
+    bassLine: 'RRO.RRO.RRO.RROR', arpLine: '0122',
+    sections: {
+      A: { chords: 'Em C G D' },
+      B: { chords: 'Em C G D', lead: 'B5:2 E6:2 G6:2 E6:2 B5:2 G5:2 E5:4 | C6:2 E6:2 G6:2 E6:2 C6:2 G5:2 E5:4 | D6:2 G6:2 B6:2 G6:2 D6:2 B5:2 G5:4 | F#6:4 E6:4 D6:4 A5:4' },
+      C: { chords: 'Am Em C B', lead: 'A5:8 C6:8 | B5:8 G5:8 | E6:8 G6:8 | F#6:8 D#6:8' },
+      D: { chords: 'Em C G D', lead: 'B', lift: true }
+    }, form: 'AABCBD', drop: 'D' },
+  { id: 'rdzen', name: 'Rdzeń Miasta', district: 'rdzen', key: 'C', scale: 'minor', bpm: 120,
+    pad: 'saw', lead: 'saw', arp: 'square', bass: 'saw',
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x.xx', hat: 'x.x.x.x.x.x.x.x.' },
+    bassLine: 'R.RRR.RRR.RRR.OF', arpLine: '0120',
+    sections: {
+      A: { chords: 'Cm Ab Eb Bb' },
+      B: { chords: 'Cm Ab Eb Bb', lead: 'G5:4 C6:4 Eb6:6 D6:2 | C6:4 Ab5:4 Eb5:4 C6:4 | Bb5:4 G5:4 Eb6:6 F6:2 | D6:8 Bb5:4 F5:4' },
+      C: { chords: 'Fm Cm Ab G', lead: 'Ab5:6 G5:2 F5:8 | G5:6 F5:2 Eb5:8 | C6:4 Eb6:4 Ab6:8 | G6:4 F6:4 D6:4 B5:4' },
+      D: { chords: 'Cm Ab Eb Bb', lead: 'B', lift: true }
+    }, form: 'ABCBAD', drop: 'D' },
+
+  // ----- Rozdział II: unlocked with their districts -----
+  { id: 'tunele', name: 'Tunele Metra', district: 'metro', key: 'D', scale: 'minor', bpm: 126,
+    pad: 'saw', lead: 'saw', arp: 'pluck', bass: 'saw',
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..x...x...x...x.' },
+    bassLine: 'RORORORORORORORO', arpLine: '012',
+    sections: {
+      A: { chords: 'Dm Bb C Am' },
+      B: { chords: 'Dm Bb C Am', lead: 'A5:6 F5:2 D5:4 F5:4 | D6:6 Bb5:2 F5:4 Bb5:4 | E6:6 C6:2 G5:4 C6:4 | C6:4 A5:4 E5:4 A5:4' },
+      C: { chords: 'Gm Dm Bb A', lead: 'Bb5:8 D6:8 | A5:8 F5:8 | D6:4 F6:4 D6:4 Bb5:4 | C#6:8 E6:8' },
+      D: { chords: 'Dm Bb C Am', lead: 'B', lift: true }
+    }, form: 'AABCBD', drop: 'D' },
+  { id: 'bazar', name: 'Nocny Bazar', district: 'bazar', key: 'A', scale: 'hijaz', bpm: 104, swing: 0.1,
+    pad: 'organ', lead: 'pluck', arp: 'tri', bass: 'sub',
+    drums: { kick: 'x..x..x...x.....', snare: '....x..x....x...', hat: 'x.xx.xx.x.xx.xx.' },
+    bassLine: 'R..R..R.R...F...', arpLine: '0102',
+    sections: {
+      A: { chords: 'A Bb Gm A' },
+      B: { chords: 'A Bb Gm A', lead: 'E5:2 F5:2 E5:2 D5:2 C#5:4 A4:4 | D5:2 F5:2 Bb5:4 A5:2 G5:2 F5:4 | G5:2 Bb5:2 D6:4 Bb5:2 A5:2 G5:4 | F5:2 E5:2 C#5:2 Bb4:2 A4:8' },
+      C: { chords: 'Dm C Bb A', lead: 'F5:4 A5:4 D6:8 | E5:4 G5:4 C6:8 | D6:4 Bb5:4 F5:8 | E5:2 F5:2 E5:2 C#5:2 A4:8' },
+      D: { chords: 'A Bb Gm A', lead: 'B', lift: true }
+    }, form: 'ABACBD', drop: 'D' },
+  { id: 'piksele', name: 'Fabryka Pikseli', district: 'fabryka', key: 'B', scale: 'minor', bpm: 132, kit: 'chip', arpRate: 1,
+    pad: 'square', lead: 'square', arp: 'square', bass: 'square',
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+    bassLine: 'R.O.R.O.R.O.F.O.', arpLine: '012',
+    sections: {
+      A: { chords: 'Bm G D A' },
+      B: { chords: 'Bm G D A', lead: 'F#5:2 B5:2 D6:2 F#6:2 E6:2 D6:2 B5:4 | G5:2 B5:2 D6:2 G6:2 F#6:2 D6:2 B5:4 | A5:2 D6:2 F#6:2 A6:2 F#6:2 D6:2 A5:4 | C#6:2 E6:2 A6:4 E6:2 C#6:2 A5:4' },
+      C: { chords: 'Em Bm G F#', lead: 'E6:4 G6:4 B6:8 | F#6:4 D6:4 B5:8 | B5:4 D6:4 G6:8 | A#5:4 C#6:4 F#6:8' },
+      D: { chords: 'Bm G D A', lead: 'B', lift: true }
+    }, form: 'AABCBD', drop: 'D' },
+  { id: 'hologramy', name: 'Zatoka Hologramów', district: 'zatoka', key: 'Eb', scale: 'majorPent', bpm: 98, swing: 0.12,
+    pad: 'saw', lead: 'bell', arp: 'tri', bass: 'sub',
+    drums: { kick: 'x.......x.x.....', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.' },
+    bassLine: 'R...R.F.R...O...', arpLine: '0213',
+    sections: {
+      A: { chords: 'Ebmaj7 Cm7 Abmaj7 Bb' },
+      B: { chords: 'Ebmaj7 Cm7 Abmaj7 Bb', lead: 'G5:4 Bb5:4 D6:4 Bb5:4 | C6:4 Eb6:4 G5:8 | C6:4 Eb6:4 G6:4 Eb6:4 | F6:8 D6:8' },
+      C: { chords: 'Fm7 Gm7 Abmaj7 Bb', lead: 'Ab5:8 C6:8 | Bb5:8 D6:8 | Eb6:8 C6:8 | D6:4 F6:4 Bb6:8' },
+      D: { chords: 'Ebmaj7 Cm7 Abmaj7 Bb', lead: 'B', lift: true }
+    }, form: 'AABCBD', drop: 'D' },
+  { id: 'ogrody', name: 'Wiszące Ogrody', district: 'ogrody', key: 'D', scale: 'dorian', bpm: 112,
+    pad: 'organ', lead: 'saw', arp: 'pluck', bass: 'pluck',
+    drums: { kick: 'x.....x...x.....', snare: '....x..o....x...', hat: 'x.xxx.xxx.xxx.xx' },
+    bassLine: 'R..O.RR.R..O.FR.', arpLine: '0120',
+    sections: {
+      A: { chords: 'Dm7 G Dm7 G' },
+      B: { chords: 'Dm7 G Dm7 G', lead: 'A5:2 C6:2 D6:2 r:2 F6:2 D6:2 C6:4 | B5:2 D6:2 G6:4 F6:2 D6:2 B5:4 | A5:2 C6:2 D6:2 r:2 E6:2 F6:2 A6:4 | G6:4 F6:2 E6:2 D6:8' },
+      C: { chords: 'Fmaj7 C Bb A', lead: 'A5:4 C6:4 E6:8 | G5:4 C6:4 E6:8 | F6:4 D6:4 Bb5:8 | C#6:4 E6:4 A6:8' },
+      D: { chords: 'Dm7 G Dm7 G', lead: 'B', lift: true }
+    }, form: 'ABACBD', drop: 'D' },
+  { id: 'chmura', name: 'Chmura Danych', district: 'chmura', key: 'Bb', scale: 'minor', bpm: 124, kit: 'clap', arpRate: 1,
+    pad: 'saw', lead: 'saw', arp: 'pluck', bass: 'saw',
+    drums: { kick: 'x...x...x...x...', snare: '....x.......x...', hat: '..O...O...O...O.' },
+    bassLine: '.RRR.RRR.RRR.RRR', arpLine: '0122',
+    sections: {
+      A: { chords: 'Bbm Gb Db Ab' },
+      B: { chords: 'Bbm Gb Db Ab', lead: 'F5:4 Bb5:4 Db6:4 C6:4 | Bb5:4 Db6:4 Gb6:4 F6:4 | Ab5:4 Db6:4 F6:4 Eb6:4 | C6:8 Eb6:4 Ab5:4' },
+      C: { chords: 'Ebm Bbm Gb F', lead: 'Gb6:8 F6:4 Eb6:4 | Db6:8 C6:4 Bb5:4 | Bb5:4 Db6:4 Gb6:8 | A5:4 C6:4 F6:8' },
+      D: { chords: 'Bbm Gb Db Ab', lead: 'B', lift: true }
+    }, form: 'AABCBD', drop: 'D' }
 ];
+const MUSIC_TRACK_BY_ID = Object.fromEntries(MUSIC_TRACKS.map(t => [t.id, t]));
+const MENU_TRACK_IDS = MUSIC_TRACKS.filter(t => t.menu).map(t => t.id);
+const GAMEPLAY_TRACK_IDS = MUSIC_TRACKS.filter(t => !t.menu).map(t => t.id);
+const DISTRICT_THEME = Object.fromEntries(MUSIC_TRACKS.filter(t => t.district).map(t => [t.district, t.id]));
+/** Rozdział I themes are free; the rest unlock with their district. */
+const FREE_TRACK_DISTRICTS = ['plac', 'park', 'port', 'galeria', 'dachy', 'rdzen'];
+
+const NOTE_SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const notePc = name => (NOTE_SEMI[name[0]] + (name[1] === '#' ? 1 : name[1] === 'b' ? -1 : 0) + 12) % 12;
+const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+const CHORD_SHAPES = { '': [0, 4, 7], m: [0, 3, 7], '7': [0, 4, 7, 10], m7: [0, 3, 7, 10], maj7: [0, 4, 7, 11], sus2: [0, 2, 7], sus4: [0, 5, 7], m9: [0, 3, 7, 10, 14], dim: [0, 3, 6] };
+const MUSIC_SCALES = { minorPent: [0, 3, 5, 7, 10], majorPent: [0, 2, 4, 7, 9], minor: [0, 2, 3, 5, 7, 8, 10], major: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], hijaz: [0, 1, 4, 5, 7, 8, 10] };
+
+/** "Am7" -> { pad: [midi…] around E3–E4, bass: root in E2–D#3 }. */
+function parseChord(sym) {
+  const m = /^([A-G][#b]?)(.*)$/.exec(sym);
+  const shape = m && CHORD_SHAPES[m[2]];
+  if (!shape) throw new Error(`music: unknown chord ${sym}`);
+  const root = 52 + ((notePc(m[1]) - 4 + 12) % 12);
+  return { sym, pad: shape.map(i => root + i), bass: root - 12 };
+}
+
+/** Lead string -> per-step array of { midi, steps } (null = nothing new). */
+function parseLead(str) {
+  const bars = str.split('|').map(b => b.trim());
+  const out = [];
+  for (const bar of bars) {
+    let n = 0;
+    for (const tok of bar.split(/\s+/)) {
+      const m = /^(r|([A-G][#b]?)(\d))(?::(\d+))?$/.exec(tok);
+      if (!m) throw new Error(`music: bad lead token ${tok}`);
+      const steps = m[4] ? +m[4] : 2;
+      out.push(m[1] === 'r' ? null : { midi: 12 * (+m[3] + 1) + notePc(m[2]), steps });
+      for (let i = 1; i < steps; i++) out.push(null);
+      n += steps;
+    }
+    if (n !== 16) throw new Error(`music: lead bar has ${n} steps (needs 16): ${bar}`);
+  }
+  return out;
+}
+
+const COMPILED_SONGS = {};
+function compileSong(id) {
+  if (COMPILED_SONGS[id]) return COMPILED_SONGS[id];
+  const t = MUSIC_TRACK_BY_ID[id];
+  if (!t) return null;
+  const sections = {};
+  for (const [k, s] of Object.entries(t.sections)) sections[k] = { id: k, lift: !!s.lift, chords: s.chords.split(/\s+/).map(parseChord) };
+  for (const [k, s] of Object.entries(t.sections)) {
+    const src = s.lead && s.lead.length === 1 ? t.sections[s.lead].lead : s.lead;
+    sections[k].lead = src ? parseLead(src) : null;
+    sections[k].bars = sections[k].chords.length;
+  }
+  const keyPc = notePc(t.key);
+  let tonic = 57 + ((keyPc - 9 + 12) % 12);
+  if (tonic > 62) tonic -= 12;
+  const scale = MUSIC_SCALES[t.scale];
+  const ladder = [];
+  for (let i = 0; ladder.length < 14; i++) ladder.push(midiHz(tonic + scale[i % scale.length] + 12 * Math.floor(i / scale.length)));
+  const song = COMPILED_SONGS[id] = {
+    ...t, sections, form: t.form.split(''), ladder,
+    // Stingers (fanfare, tier-up…) were written in A; shift them into the
+    // track's key (-6…+5 semitones) so they never clash with the music.
+    keyRatio: Math.pow(2, (((keyPc - 9 + 18) % 12) - 6) / 12),
+    arpRate: t.arpRate || 2,
+    hats16: t.drums.hat.replace(/\./g, 'o')
+  };
+  return song;
+}
+
+// Fallback ladder before any song is loaded (A minor pentatonic).
+const EAT_SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5];
 
 class SoundEngine {
   constructor(settings) {
@@ -586,10 +824,22 @@ class SoundEngine {
     this.intensity = 0;       // 0 menu · 1 round · 2 final stretch · 3 SZAŁ/frenzy
     this.lastEatAt = 0;
     this.musicTimer = null;
-    this.step = 0;
     this.nextNoteTime = 0;
     this.ducked = false;
     this.noiseBuffer = null;
+    // v16 music state: the loaded song, where we are in its form, and
+    // the scene that picks the next one.
+    this.song = null;
+    this.formIdx = 0; this.barInSection = 0; this.stepInBar = 0; this.barCount = 0; this.loopCount = 0;
+    this.queued = null;
+    this.dropArmed = false; this.dropRiserBar = -1; this.crashNext = false;
+    this.scene = 'menu'; this.sceneOpts = {};
+    this.playOrder = {};      // per-playlist rotation cursor
+    this.recent = [];         // last few gameplay tracks (no quick repeats)
+    this.library = { isUnlocked: () => true };
+    this.onTrackChange = null;
+    this.trace = null;        // QA: an array to log scheduled notes into
+    this.loadSong({ id: MENU_TRACK_IDS[0] });
   }
 
   get supported() { return !!(window.AudioContext || window.webkitAudioContext); }
@@ -664,6 +914,7 @@ class SoundEngine {
     if (SoundEngine.isIOS()) parts.push(`tryb iOS: ${navigator.audioSession ? navigator.audioSession.type : (this.unmuteEl && !this.unmuteEl.paused ? 'odtwarzanie' : 'otoczenie')}`);
     if (this.settings.sfx === false) parts.push('efekty wyłączone');
     if (this.settings.music === false) parts.push('muzyka wyłączona');
+    else if (this.song) parts.push(`gra: ${this.song.name}`);
     return parts.join(' · ');
   }
 
@@ -675,24 +926,7 @@ class SoundEngine {
 
   build() {
     const AC = window.AudioContext || window.webkitAudioContext;
-    this.ctx = new AC({ latencyHint: 'interactive' });
-    this.resumeFailedAt = 0;
-    this.master = this.ctx.createGain();
-    this.master.gain.value = 0.9;
-    // Gentle limiter so stacked eats never clip on phone speakers.
-    this.comp = this.ctx.createDynamicsCompressor();
-    this.comp.threshold.value = -14; this.comp.ratio.value = 6;
-    this.comp.attack.value = 0.003; this.comp.release.value = 0.2;
-    this.master.connect(this.comp).connect(this.ctx.destination);
-    this.sfxBus = this.ctx.createGain();
-    this.musicBus = this.ctx.createGain();
-    this.sfxBus.connect(this.master);
-    this.musicBus.connect(this.master);
-    this.applySettings();
-    const len = this.ctx.sampleRate;
-    this.noiseBuffer = this.ctx.createBuffer(1, len, len);
-    const data = this.noiseBuffer.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    this.buildGraph(new AC({ latencyHint: 'interactive' }));
     // Back to running (e.g. after an iOS interruption): restart the music clock.
     this.ctx.onstatechange = () => {
       if (!this.ctx || this.ctx.state !== 'running') return;
@@ -700,6 +934,61 @@ class SoundEngine {
       this.nextNoteTime = this.ctx.currentTime + 0.08;
       if (this.settings.music !== false) this.startMusic();
     };
+  }
+
+  /** The whole mixer on any context (a live AudioContext, or an
+   *  OfflineAudioContext in qa/audio.mjs). v16 music chain:
+   *  drums/bass → musicIn; pads → padBus (ducked by every kick, the
+   *  "sidechain pump") and leads/arps → wetBus, both also feed fxSend →
+   *  dotted-eighth echo + a short synthesized room → musicIn → musicFilter
+   *  (closes to a muffled "underwater" mix on the pause sheet) → musicBus. */
+  buildGraph(ctx) {
+    this.ctx = ctx;
+    this.resumeFailedAt = 0;
+    this.master = ctx.createGain();
+    this.master.gain.value = 0.9;
+    // Gentle limiter so stacked eats never clip on phone speakers.
+    this.comp = ctx.createDynamicsCompressor();
+    this.comp.threshold.value = -14; this.comp.ratio.value = 6;
+    this.comp.attack.value = 0.003; this.comp.release.value = 0.2;
+    this.master.connect(this.comp).connect(ctx.destination);
+    this.sfxBus = ctx.createGain();
+    this.musicBus = ctx.createGain();
+    this.sfxBus.connect(this.master);
+    this.musicBus.connect(this.master);
+    this.musicFilter = ctx.createBiquadFilter();
+    this.musicFilter.type = 'lowpass'; this.musicFilter.frequency.value = 18000; this.musicFilter.Q.value = 0.7;
+    this.musicFilter.connect(this.musicBus);
+    this.musicIn = ctx.createGain();
+    this.musicIn.connect(this.musicFilter);
+    this.padBus = ctx.createGain();
+    this.wetBus = ctx.createGain();
+    this.fxSend = ctx.createGain(); this.fxSend.gain.value = 0.32;
+    this.padBus.connect(this.musicIn); this.padBus.connect(this.fxSend);
+    this.wetBus.connect(this.musicIn); this.wetBus.connect(this.fxSend);
+    const fxReturn = ctx.createGain(); fxReturn.gain.value = 0.55;
+    fxReturn.connect(this.musicIn);
+    this.delay = ctx.createDelay(1.5);
+    const fb = ctx.createGain(); fb.gain.value = 0.3;
+    const fbTone = ctx.createBiquadFilter(); fbTone.type = 'lowpass'; fbTone.frequency.value = 2600;
+    this.fxSend.connect(this.delay); this.delay.connect(fbTone).connect(fb).connect(this.delay);
+    fbTone.connect(fxReturn);
+    // 1.1 s of decaying stereo noise = a small neon-alley room, built once.
+    const sr = ctx.sampleRate, irLen = Math.floor(sr * 1.1);
+    const ir = ctx.createBuffer(2, irLen, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      for (let i = 0; i < irLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 3.2);
+    }
+    const verb = ctx.createConvolver();
+    verb.buffer = ir;
+    this.fxSend.connect(verb).connect(fxReturn);
+    this.applySettings();
+    const len = sr;
+    this.noiseBuffer = ctx.createBuffer(1, len, len);
+    const data = this.noiseBuffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    this.applySongFx();
   }
 
   /** Drops a context WebKit won't resume and starts a fresh one. */
@@ -723,12 +1012,14 @@ class SoundEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.sfxBus.gain.setTargetAtTime(this.settings.sfx === false ? 0 : 0.8, t, 0.02);
-    this.musicBus.gain.setTargetAtTime(this.settings.music === false ? 0 : (this.ducked ? 0.12 : 0.34), t, 0.15);
+    this.musicBus.gain.setTargetAtTime(this.settings.music === false ? 0 : (this.ducked ? 0.2 : 0.34), t, 0.15);
+    this.musicFilter.frequency.setTargetAtTime(this.ducked ? 650 : 18000, t, 0.12);
     if (this.settings.music === false) this.stopMusic(); else if (this.ctx.state === 'running') this.startMusic();
   }
 
-  /** Background tab / pause sheet: duck the music, suspend fully when hidden. */
-  setDucked(on) { this.ducked = on; this.applySettings(); }
+  /** Pause sheet: the music drops "underwater" (low-passed and quieter)
+   *  instead of just getting quieter -- the round is clearly on hold. */
+  setDucked(on) { if (this.ducked === on) return; this.ducked = on; this.applySettings(); }
   /** `hold` = suspended on purpose (ad playing, page hidden) -- gestures
    *  must not wake the audio until resume() releases it. */
   suspend() {
@@ -748,8 +1039,8 @@ class SoundEngine {
   sfxOn() { return this.live && this.settings.sfx !== false; }
 
   /* ---- primitives ---- */
-  tone({ type = 'sine', freq = 440, freqEnd = null, dur = 0.15, vol = 0.3, attack = 0.005, when = 0, bus = null, filter = null, detune = 0 }) {
-    const c = this.ctx, t = c.currentTime + when;
+  tone({ type = 'sine', freq = 440, freqEnd = null, dur = 0.15, vol = 0.3, attack = 0.005, when = 0, bus = null, filter = null, filterEnd = null, q = 4, detune = 0 }) {
+    const c = this.ctx, t = Math.max(0, c.currentTime + when);
     const o = c.createOscillator(), g = c.createGain();
     o.type = type; o.frequency.setValueAtTime(freq, t); o.detune.value = detune;
     if (freqEnd) o.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t + dur);
@@ -758,34 +1049,44 @@ class SoundEngine {
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     let node = o;
     if (filter) {
-      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(filter, t); f.Q.value = 4;
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(filter, t); f.Q.value = q;
+      if (filterEnd) f.frequency.exponentialRampToValueAtTime(filterEnd, t + dur);
       o.connect(f); node = f;
     }
     node.connect(g).connect(bus || this.sfxBus);
     o.start(t); o.stop(t + dur + 0.02);
+    if (this.trace) this.trace.push(freq);
   }
 
-  noise({ dur = 0.2, vol = 0.2, freq = 2000, freqEnd = null, q = 1, type = 'bandpass', when = 0, bus = null }) {
-    const c = this.ctx, t = c.currentTime + when;
-    const s = c.createBufferSource(); s.buffer = this.noiseBuffer;
+  noise({ dur = 0.2, vol = 0.2, freq = 2000, freqEnd = null, q = 1, type = 'bandpass', when = 0, bus = null, attack = 0 }) {
+    const c = this.ctx, t = Math.max(0, c.currentTime + when);
+    const s = c.createBufferSource(); s.buffer = this.noiseBuffer; s.loop = true;
     const f = c.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(freq, t);
     if (freqEnd) f.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
     const g = c.createGain();
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    if (attack) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+    else { g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
     s.connect(f).connect(g).connect(bus || this.sfxBus);
     s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
   }
 
+  /** Stingers are authored in A minor/C major; this shifts them into the
+   *  current track's key so a fanfare never fights the music under it. */
+  inKey(f) { return f * (this.song ? this.song.keyRatio : 1); }
+
   /* ---- game events ---- */
   /** size: eaten radius in px; combo: current chain length. Rate-limited so a
-   *  magnet vacuuming 10 fragments reads as one rising flurry, not mush. */
+   *  magnet vacuuming 10 fragments reads as one rising flurry, not mush.
+   *  v16: the combo climbs the current track's own scale, so eating plays
+   *  along with the music instead of in a fixed A minor. */
   eat(size, combo) {
     if (!this.sfxOn()) return;
     const now = this.ctx.currentTime;
     if (now - this.lastEatAt < 0.045) return;
     this.lastEatAt = now;
-    const idx = Math.min(EAT_SCALE.length - 1, Math.max(0, (combo || 1) - 1));
-    const f = EAT_SCALE[idx] * (size > 40 ? 0.5 : 1);
+    const ladder = this.song ? this.song.ladder : EAT_SCALE;
+    const idx = Math.min(ladder.length - 1, Math.max(0, (combo || 1) - 1));
+    const f = ladder[idx] * (size > 40 ? 0.5 : 1);
     this.tone({ type: 'triangle', freq: f * 1.5, freqEnd: f * 2, dur: 0.09, vol: 0.22 });
     this.tone({ type: 'sine', freq: f, dur: 0.12, vol: 0.18, when: 0.01 });
     if (size > 30) {
@@ -798,7 +1099,7 @@ class SoundEngine {
   rivalEaten() {
     if (!this.sfxOn()) return;
     this.tone({ type: 'sine', freq: 180, freqEnd: 40, dur: 0.45, vol: 0.55 });
-    [329.63, 440, 659.25].forEach((f, i) => this.tone({ type: 'sawtooth', freq: f, dur: 0.35, vol: 0.09, when: 0.02 * i, filter: 2400 }));
+    [329.63, 440, 659.25].forEach((f, i) => this.tone({ type: 'sawtooth', freq: this.inKey(f), dur: 0.35, vol: 0.09, when: 0.02 * i, filter: 2400 }));
     this.noise({ dur: 0.35, vol: 0.18, freq: 3000, freqEnd: 200, type: 'lowpass' });
   }
 
@@ -810,19 +1111,20 @@ class SoundEngine {
 
   tierUp() {
     if (!this.sfxOn()) return;
-    [440, 554.37, 659.25, 880].forEach((f, i) => this.tone({ type: 'square', freq: f, dur: 0.16, vol: 0.08, when: i * 0.06, filter: 3500 }));
+    [440, 554.37, 659.25, 880].forEach((f, i) => this.tone({ type: 'square', freq: this.inKey(f), dur: 0.16, vol: 0.08, when: i * 0.06, filter: 3500 }));
     this.noise({ dur: 0.5, vol: 0.08, freq: 400, freqEnd: 6000, type: 'bandpass', q: 2 });
+    this.tone({ type: 'sine', freq: 110, freqEnd: 55, dur: 0.35, vol: 0.3, when: 0.24 });
   }
 
   golden() {
     if (!this.sfxOn()) return;
-    [1046.5, 1318.5, 1567.98, 2093].forEach((f, i) => this.tone({ type: 'sine', freq: f, dur: 0.4, vol: 0.09, when: i * 0.05 }));
+    [1046.5, 1318.5, 1567.98, 2093].forEach((f, i) => this.tone({ type: 'sine', freq: this.inKey(f), dur: 0.4, vol: 0.09, when: i * 0.05 }));
   }
 
   frenzy() {
     if (!this.sfxOn()) return;
     this.noise({ dur: 0.7, vol: 0.16, freq: 300, freqEnd: 8000, type: 'bandpass', q: 3 });
-    [220, 330, 440, 660, 880].forEach((f, i) => this.tone({ type: 'sawtooth', freq: f, dur: 0.25, vol: 0.07, when: i * 0.05, filter: 3000 }));
+    [220, 330, 440, 660, 880].forEach((f, i) => this.tone({ type: 'sawtooth', freq: this.inKey(f), dur: 0.25, vol: 0.07, when: i * 0.05, filter: 3000 }));
   }
 
   tick(urgent) {
@@ -859,16 +1161,17 @@ class SoundEngine {
     if (!this.sfxOn()) return;
     const seq = big ? [523.25, 659.25, 783.99, 1046.5, 1318.5] : [523.25, 659.25, 783.99, 1046.5];
     seq.forEach((f, i) => {
-      this.tone({ type: 'square', freq: f, dur: 0.22, vol: 0.07, when: i * 0.09, filter: 4200 });
-      this.tone({ type: 'triangle', freq: f / 2, dur: 0.25, vol: 0.08, when: i * 0.09 });
+      this.tone({ type: 'square', freq: this.inKey(f), dur: 0.22, vol: 0.07, when: i * 0.09, filter: 4200 });
+      this.tone({ type: 'triangle', freq: this.inKey(f) / 2, dur: 0.25, vol: 0.08, when: i * 0.09 });
     });
     this.noise({ dur: 0.9, vol: 0.05, freq: 7000, type: 'highpass', when: seq.length * 0.09 });
+    if (big) this.tone({ type: 'sine', freq: this.inKey(130.81), freqEnd: this.inKey(65.41), dur: 0.6, vol: 0.3, when: seq.length * 0.09 });
   }
 
   /** v15: one rising chime per star on the mission result. */
   star(i) {
     if (!this.sfxOn()) return;
-    const f = [1046.5, 1318.5, 1567.98][i] || 1046.5;
+    const f = this.inKey([1046.5, 1318.5, 1567.98][i] || 1046.5);
     this.tone({ type: 'triangle', freq: f, dur: 0.28, vol: 0.1 });
     this.tone({ type: 'sine', freq: f * 2, dur: 0.18, vol: 0.04, when: 0.04 });
     this.noise({ dur: 0.25, vol: 0.03, freq: 8000, type: 'highpass', when: 0.02 });
@@ -886,53 +1189,397 @@ class SoundEngine {
     [392, 349.23, 311.13, 261.63].forEach((f, i) => this.tone({ type: 'triangle', freq: f, dur: 0.3, vol: 0.12, when: i * 0.14 }));
   }
 
-  /* ---- adaptive music: a 16-step synthwave loop whose layers follow
-     this.intensity (menu pad → round groove → final-stretch hats → SZAŁ lead) ---- */
-  setIntensity(level) { this.intensity = level; }
+  /* ---- v16 event sounds: every moment that changes the race gets its
+     own short, readable cue (all in the track's key where pitched). ---- */
+  /** Rolling into something still too big: a dull "bonk". */
+  bump() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sine', freq: 170, freqEnd: 70, dur: 0.14, vol: 0.28 });
+    this.tone({ type: 'square', freq: 95, dur: 0.07, vol: 0.05, filter: 500 });
+  }
+
+  /** Taking 1st place: a bright two-step up. */
+  leadTaken() {
+    if (!this.sfxOn()) return;
+    [659.25, 987.77, 1318.5].forEach((f, i) => this.tone({ type: 'triangle', freq: this.inKey(f), dur: 0.22, vol: 0.11, when: i * 0.07 }));
+    this.noise({ dur: 0.4, vol: 0.04, freq: 9000, type: 'highpass', when: 0.12 });
+  }
+
+  /** Losing 1st place: a short falling minor step. */
+  leadLost() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'triangle', freq: this.inKey(493.88), dur: 0.18, vol: 0.12 });
+    this.tone({ type: 'triangle', freq: this.inKey(392), dur: 0.3, vol: 0.12, when: 0.13 });
+    this.tone({ type: 'sawtooth', freq: this.inKey(98), dur: 0.35, vol: 0.06, when: 0.13, filter: 600 });
+  }
+
+  /** A shield soaking a hit: a metallic clang. */
+  shield() {
+    if (!this.sfxOn()) return;
+    [1760, 2637, 3520].forEach((f, i) => this.tone({ type: 'sine', freq: f, dur: 0.35 - i * 0.08, vol: 0.07 }));
+    this.noise({ dur: 0.18, vol: 0.08, freq: 5000, type: 'highpass' });
+  }
+
+  /** Portal warp: an up-down sweep. */
+  portal() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sine', freq: 300, freqEnd: 1800, dur: 0.22, vol: 0.12 });
+    this.tone({ type: 'sine', freq: 1800, freqEnd: 400, dur: 0.25, vol: 0.08, when: 0.2 });
+    this.noise({ dur: 0.45, vol: 0.06, freq: 600, freqEnd: 6000, type: 'bandpass', q: 3 });
+  }
+
+  /** WIELKI FINISZ: a riser into a sub drop and a chord stab. */
+  overdrive() {
+    if (!this.sfxOn()) return;
+    this.noise({ dur: 0.6, vol: 0.14, freq: 300, freqEnd: 7000, type: 'bandpass', q: 2.5, attack: 0.45 });
+    this.tone({ type: 'sine', freq: 120, freqEnd: 38, dur: 0.7, vol: 0.5, when: 0.55 });
+    [220, 261.63, 329.63, 440].forEach(f => this.tone({ type: 'sawtooth', freq: this.inKey(f), dur: 0.5, vol: 0.06, when: 0.55, filter: 2600 }));
+  }
+
+  /** Evolution cards dealt: a sparkle up the track's scale. */
+  cards() {
+    if (!this.sfxOn()) return;
+    const l = this.song ? this.song.ladder : EAT_SCALE;
+    [5, 7, 9, 11].forEach((n, i) => this.tone({ type: 'sine', freq: l[n] * 2, dur: 0.25, vol: 0.06, when: i * 0.05 }));
+  }
+
+  /** A picked card / confirmed choice. */
+  pick() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'square', freq: this.inKey(659.25), dur: 0.08, vol: 0.06, filter: 3000 });
+    this.tone({ type: 'square', freq: this.inKey(987.77), dur: 0.22, vol: 0.06, when: 0.07, filter: 3000 });
+    this.tone({ type: 'sine', freq: 110, freqEnd: 55, dur: 0.25, vol: 0.25, when: 0.07 });
+  }
+
+  /** A bigger rival entering the danger halo: a low double heartbeat. */
+  danger() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sine', freq: 80, freqEnd: 50, dur: 0.14, vol: 0.4 });
+    this.tone({ type: 'sine', freq: 75, freqEnd: 45, dur: 0.16, vol: 0.32, when: 0.17 });
+  }
+
+  /** Round / mission start: kick + a stab on the downbeat. */
+  go() {
+    if (!this.sfxOn()) return;
+    this.tone({ type: 'sine', freq: 150, freqEnd: 40, dur: 0.3, vol: 0.5 });
+    [440, 659.25, 880].forEach(f => this.tone({ type: 'square', freq: this.inKey(f), dur: 0.25, vol: 0.05, filter: 3200 }));
+    this.noise({ dur: 0.5, vol: 0.06, freq: 8000, type: 'highpass' });
+  }
+
+  /* ---- v16 music: scenes pick a track, a sequencer plays its form ---- */
+  /** Layer level: 0 menu/result outro · 1 round · 2 final stretch · 3 SZAŁ.
+   *  Rising into 2+ arms the drop: one bar of riser + snare roll, then the
+   *  track jumps to its `drop` section. */
+  setIntensity(level) {
+    if (level === this.intensity) return;
+    const prev = this.intensity;
+    this.intensity = level;
+    if (level >= 2 && prev < 2) this.armDrop();
+    if (level >= 3 && prev < 3) this.crashNext = true;
+  }
+
+  /** What is playing: 'menu' (rotates the lo-fi menu tracks), 'arena'
+   *  ({ seed, daily }) or 'campaign' ({ district, boss }). Results keep
+   *  the round's track (setIntensity(0) turns it into a calm outro). */
+  setScene(kind, opts = {}) {
+    this.scene = kind; this.sceneOpts = opts;
+    const pick = this.settings.musicPick;
+    const pinned = pick && pick !== 'auto' && MUSIC_TRACK_BY_ID[pick] && this.library.isUnlocked(pick) ? pick : null;
+    if (kind === 'menu') {
+      if (this.song && this.song.menu && !this.queued) return;
+      this.playTrack(this.nextFrom('menu', MENU_TRACK_IDS));
+    } else if (kind === 'arena') {
+      if (pinned) this.playTrack(pinned, { restart: true });
+      else if (opts.seed != null && (opts.daily || opts.challenge)) {
+        // Same seed, same track for everybody (Rozdział I themes only).
+        const free = GAMEPLAY_TRACK_IDS.filter(id => FREE_TRACK_DISTRICTS.includes(MUSIC_TRACK_BY_ID[id].district));
+        this.playTrack(free[Math.abs(Math.floor(opts.seed)) % free.length], { restart: true });
+      } else this.playTrack(this.nextGameplayTrack(), { restart: true });
+    } else if (kind === 'campaign') {
+      this.playTrack(pinned || DISTRICT_THEME[opts.district] || 'wir', { restart: true, drop: !!opts.boss });
+    }
+  }
+
+  unlockedGameplayTracks() { return GAMEPLAY_TRACK_IDS.filter(id => this.library.isUnlocked(id)); }
+
+  /** Arena rotation: shuffled once per session, never one of the last
+   *  two tracks again (so 5 rounds = at least 3 different songs). */
+  nextGameplayTrack() {
+    const list = this.unlockedGameplayTracks();
+    if (!this.shuffled || this.shuffled.length !== list.length || this.shuffled.some(id => !list.includes(id))) {
+      this.shuffled = list.slice();
+      for (let i = this.shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [this.shuffled[i], this.shuffled[j]] = [this.shuffled[j], this.shuffled[i]]; }
+    }
+    return this.nextFrom('gameplay', this.shuffled);
+  }
+
+  nextFrom(key, list) {
+    if (!list.length) return MENU_TRACK_IDS[0];
+    let i = this.playOrder[key] || 0;
+    for (let tries = 0; tries < list.length; tries++) {
+      const id = list[i % list.length];
+      i++;
+      const avoid = key === 'gameplay' ? this.recent.slice(-Math.min(2, list.length - 1)) : [this.song && this.song.id];
+      if (!avoid.includes(id) || list.length === 1) { this.playOrder[key] = i; return id; }
+    }
+    this.playOrder[key] = i;
+    return list[i % list.length];
+  }
+
+  /** Pause sheet "NASTĘPNY": the next unlocked track, right away. */
+  skipTrack() {
+    const list = this.song && this.song.menu ? MENU_TRACK_IDS : this.unlockedGameplayTracks();
+    const id = this.song && this.song.menu ? this.nextFrom('menu', list) : this.nextGameplayTrack();
+    this.playTrack(id, { restart: true });
+    return id;
+  }
+
+  /** Switch tracks: a 0.3 s fade, then the new song starts on a downbeat
+   *  with a crash. Before the audio is unlocked it just loads silently. */
+  playTrack(id, opts = {}) {
+    if (!MUSIC_TRACK_BY_ID[id]) id = MENU_TRACK_IDS[0];
+    const current = this.queued ? this.queued.id : this.song && this.song.id;
+    if (current === id && !opts.restart) return;
+    if (current === id && opts.restart && !this.queued && this.formIdx === 0 && this.barInSection === 0 && this.barCount === 0) return;
+    const q = { id, drop: !!opts.drop };
+    if (!this.ctx || !this.musicTimer) { this.queued = null; this.loadSong(q); return; }
+    const t = this.ctx.currentTime;
+    this.musicIn.gain.cancelScheduledValues(t);
+    this.musicIn.gain.setTargetAtTime(0.0001, t, 0.07);
+    q.at = t + 0.3;
+    this.queued = q;
+  }
+
+  loadSong(q) {
+    let song = null;
+    try { song = compileSong(q.id); } catch (e) { /* authoring error: qa/audio.mjs catches these */ }
+    song = song || compileSong('wir');
+    this.song = song;
+    this.formIdx = q.drop && song.drop ? Math.max(0, song.form.indexOf(song.drop)) : 0;
+    this.barInSection = 0; this.stepInBar = 0; this.barCount = 0; this.loopCount = 0;
+    this.dropArmed = false; this.dropRiserBar = -1;
+    if (!song.menu) { this.recent.push(song.id); if (this.recent.length > 4) this.recent.shift(); }
+    // Already in the final stretch / SZAŁ: go straight for the drop.
+    if (this.intensity >= 2) this.armDrop();
+    this.applySongFx();
+    if (this.onTrackChange) { try { this.onTrackChange(song); } catch (e) { /* UI only */ } }
+  }
+
+  applySongFx() {
+    if (!this.ctx || !this.delay || !this.song) return;
+    this.delay.delayTime.setValueAtTime(Math.min(1.4, 60 / this.song.bpm * 0.75), this.ctx.currentTime);
+  }
+
+  armDrop() {
+    const s = this.song;
+    if (!s || !s.drop || s.form[this.formIdx] === s.drop) return;
+    this.dropArmed = true;
+  }
 
   startMusic() {
     if (!this.ctx || this.musicTimer || this.settings.music === false) return;
     this.nextNoteTime = this.ctx.currentTime + 0.08;
+    this.musicIn.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.musicIn.gain.setValueAtTime(1, this.ctx.currentTime);
+    if (this.queued) { this.loadSong(this.queued); this.queued = null; }
     this.musicTimer = setInterval(() => this.scheduleMusic(), 30);
   }
 
   stopMusic() {
     clearInterval(this.musicTimer);
     this.musicTimer = null;
+    if (this.queued) { this.loadSong(this.queued); this.queued = null; }
+  }
+
+  /** Tempo: menus/outros a touch slower, the final stretch and SZAŁ push. */
+  stepDur() {
+    const mult = [this.song.menu ? 1 : 0.94, 1, 1.05, 1.1][this.intensity] || 1;
+    return 60 / (this.song.bpm * mult) / 4;
   }
 
   scheduleMusic() {
     if (!this.live) return;
-    const bpm = [92, 112, 120, 128][this.intensity] || 112;
-    const stepDur = 60 / bpm / 4;
     // Clock jumped (context rebuilt or resumed after a long stop): resync
     // instead of going silent or firing a burst of stale notes.
     const now = this.ctx.currentTime;
     if (this.nextNoteTime < now - 0.25 || this.nextNoteTime > now + 1) this.nextNoteTime = now + 0.05;
-    while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
-      this.playStep(this.step, this.nextNoteTime - this.ctx.currentTime);
-      this.nextNoteTime += stepDur;
-      this.step = (this.step + 1) % 64;
+    this.scheduleUntil(now + 0.12);
+  }
+
+  /** Plays every step that starts before `horizon` (seconds on the
+   *  context clock). Shared by the live timer and offline QA renders. */
+  scheduleUntil(horizon) {
+    const c = this.ctx;
+    while (this.nextNoteTime < horizon) {
+      if (this.queued && this.queued.at != null && this.nextNoteTime >= this.queued.at) {
+        this.loadSong(this.queued);
+        this.queued = null;
+        const t = Math.max(c.currentTime, this.nextNoteTime);
+        this.musicIn.gain.cancelScheduledValues(t);
+        this.musicIn.gain.setValueAtTime(0.0001, t);
+        this.musicIn.gain.exponentialRampToValueAtTime(1, t + 0.06);
+        this.crashNext = true;
+      }
+      const sd = this.stepDur();
+      const swing = this.song.swing && this.stepInBar % 2 ? this.song.swing * sd : 0;
+      this.playStep(this.nextNoteTime + swing - c.currentTime, sd);
+      this.nextNoteTime += sd;
+      this.advance();
     }
   }
 
-  playStep(step, when) {
-    const L = this.intensity, bus = this.musicBus;
-    const chord = MUSIC_CHORDS[Math.floor(step / 16) % 4];
-    const s = step % 16;
-    if (s === 0) chord.notes.forEach(f => this.tone({ type: 'sawtooth', freq: f, dur: 1.9, vol: 0.035, attack: 0.4, when, bus, filter: L === 0 ? 900 : 1500, detune: 7 }));
-    if (L >= 1) {
-      if (s % 4 === 0) this.tone({ type: 'sine', freq: 120, freqEnd: 42, dur: 0.18, vol: 0.5, when, bus });
-      if (s % 2 === 0) this.tone({ type: 'sawtooth', freq: chord.root * (s % 8 === 6 ? 2 : 1), dur: 0.14, vol: 0.13, when, bus, filter: 300 + L * 250 });
-      if (s === 4 || s === 12) this.noise({ dur: 0.12, vol: 0.12, freq: 1800, when, bus });
+  advance() {
+    const s = this.song;
+    if (++this.stepInBar < 16) return;
+    this.stepInBar = 0;
+    this.barCount++;
+    const sec = s.sections[s.form[this.formIdx]];
+    if (++this.barInSection >= sec.bars) {
+      this.barInSection = 0;
+      this.formIdx++;
+      if (this.formIdx >= s.form.length) {
+        this.formIdx = 0;
+        this.loopCount++;
+        // A full pass done: menus and Arena move on to the next track (a
+        // DJ-style cut on the downbeat); missions loop their district theme.
+        const pinned = this.settings.musicPick && this.settings.musicPick !== 'auto';
+        if (!this.queued && (this.scene === 'menu' || (this.scene === 'arena' && !pinned && !this.sceneOpts.daily && !this.sceneOpts.challenge))) {
+          const next = this.scene === 'menu' ? this.nextFrom('menu', MENU_TRACK_IDS) : this.nextGameplayTrack();
+          if (next !== s.id) this.queued = { id: next, at: 0 };
+        }
+      }
     }
-    const arpEvery = L >= 2 ? 1 : 2;
-    if (s % arpEvery === 0) {
-      const n = chord.notes[(s / arpEvery) % chord.notes.length] * (L >= 2 && s % 4 === 3 ? 4 : 2);
-      this.tone({ type: L === 0 ? 'sine' : 'square', freq: n, dur: 0.12, vol: L === 0 ? 0.035 : 0.03, when, bus, filter: 2200 + L * 600 });
+    if (s.form[this.formIdx] === s.drop) { this.dropArmed = false; this.dropRiserBar = -1; }
+    if (this.dropArmed) {
+      if (this.dropRiserBar < 0) this.dropRiserBar = this.barCount;
+      else if (this.barCount > this.dropRiserBar) {
+        this.formIdx = s.form.indexOf(s.drop);
+        this.barInSection = 0;
+        this.dropArmed = false; this.dropRiserBar = -1;
+        this.crashNext = true;
+      }
     }
-    if (L >= 2) this.noise({ dur: 0.04, vol: s % 2 ? 0.035 : 0.06, freq: 9000, type: 'highpass', when, bus });
-    if (L >= 3 && s % 4 === 2) this.tone({ type: 'sawtooth', freq: chord.notes[2] * 4, dur: 0.2, vol: 0.03, when, bus, filter: 4000 });
+  }
+
+  /** One synth voice of a track's timbre. */
+  voice(kind, midi, dur, vol, when, bus, bright = 1) {
+    const f = midiHz(midi);
+    switch (kind) {
+      case 'saw': this.tone({ type: 'sawtooth', freq: f, dur, vol, when, bus, filter: 2000 * bright, q: 2 }); break;
+      case 'tri': this.tone({ type: 'triangle', freq: f, dur, vol: vol * 1.5, when, bus }); break;
+      case 'sine': this.tone({ type: 'sine', freq: f, dur, vol: vol * 1.5, when, bus }); break;
+      case 'pluck': this.tone({ type: 'sawtooth', freq: f, dur: Math.min(dur, 0.4), vol: vol * 1.2, when, bus, filter: 3400 * bright, filterEnd: 260, q: 3 }); break;
+      case 'bell':
+        this.tone({ type: 'sine', freq: f, dur: dur + 0.35, vol: vol * 1.4, when, bus, attack: 0.003 });
+        this.tone({ type: 'sine', freq: f * 2.76, dur: 0.22, vol: vol * 0.3, when, bus, attack: 0.002 });
+        break;
+      case 'organ':
+        this.tone({ type: 'square', freq: f, dur, vol: vol * 0.7, when, bus, filter: 1300 * bright, q: 1 });
+        this.tone({ type: 'sine', freq: f * 2, dur, vol: vol * 0.5, when, bus });
+        break;
+      default: this.tone({ type: 'square', freq: f, dur, vol, when, bus, filter: 2400 * bright, q: 2 });
+    }
+  }
+
+  kick(when, vol) {
+    const chip = this.song.kit === 'chip';
+    this.tone({ type: chip ? 'square' : 'sine', freq: chip ? 160 : 125, freqEnd: 42, dur: chip ? 0.1 : 0.2, vol: chip ? vol * 0.6 : vol, when, bus: this.musicIn, filter: chip ? 900 : null });
+    // Sidechain pump: pads breathe with the kick.
+    const t = Math.max(0, this.ctx.currentTime + when), g = this.padBus.gain;
+    g.setValueAtTime(1, t); g.linearRampToValueAtTime(0.4, t + 0.012); g.linearRampToValueAtTime(1, t + 0.2);
+  }
+
+  snare(when, vol) {
+    const kit = this.song.kit;
+    if (kit === 'clap') {
+      [0, 0.012, 0.024].forEach(d => this.noise({ dur: 0.09, vol: vol * 0.8, freq: 1500, q: 1.2, when: when + d, bus: this.musicIn }));
+      this.noise({ dur: 0.22, vol: vol * 0.5, freq: 1300, q: 0.8, when: when + 0.03, bus: this.wetBus });
+      return;
+    }
+    const lofi = kit === 'lofi';
+    this.noise({ dur: lofi ? 0.1 : 0.13, vol: lofi ? vol * 0.7 : vol, freq: lofi ? 1300 : 1900, q: lofi ? 0.8 : 1, when, bus: kit === 'chip' ? this.musicIn : this.wetBus });
+    this.tone({ type: 'triangle', freq: 210, freqEnd: 150, dur: 0.08, vol: vol * 0.6, when, bus: this.musicIn });
+  }
+
+  hat(when, vol, open) {
+    this.noise({ dur: open ? 0.16 : 0.035, vol, freq: this.song.kit === 'lofi' ? 7000 : 9000, type: 'highpass', when, bus: this.musicIn });
+  }
+
+  playStep(when, sd) {
+    const S = this.song, L = this.intensity, bus = this.wetBus;
+    const sec = S.sections[S.form[this.formIdx]];
+    const bar = this.barInSection, s = this.stepInBar;
+    const chord = sec.chords[bar % sec.chords.length];
+    // Effective layers: the drop section counts one level hotter in a round.
+    const lv = L >= 1 && sec.lift ? Math.min(3, L + 1) : L;
+    const menu = !!S.menu;
+    const full = lv >= 1 || menu;                 // drums + bass + lead
+    const dv = menu && L === 0 ? 0.6 : 1;          // lo-fi menu beat sits back
+    const odd = this.loopCount % 2 === 1;          // every other pass varies
+    const barDur = sd * 16;
+    const drop = S.drop && S.form[this.formIdx] === S.drop;
+
+    if (s === 0) {
+      const bright = menu ? 0.6 : (lv === 0 ? 0.45 : 0.7 + lv * 0.25);
+      chord.pad.forEach((m, i) => {
+        this.voice(S.pad, m, barDur + 0.15, menu ? 0.022 : 0.026, when, this.padBus, bright);
+        if (i === 0 || lv >= 2) this.tone({ type: 'sawtooth', freq: midiHz(m), dur: barDur + 0.15, vol: 0.012, attack: menu ? 0.6 : 0.3, when, bus: this.padBus, filter: 900 * bright, detune: 9 });
+      });
+      if (this.crashNext || (bar === 0 && lv >= 2 && this.barCount > 0) || (bar === 0 && drop && full)) {
+        this.crashNext = false;
+        if (full) this.noise({ dur: 1.4, vol: 0.07 * dv, freq: 6500, type: 'highpass', when, bus: this.wetBus });
+      }
+      // The bar before a drop: a riser under a snare roll.
+      if (this.barCount === this.dropRiserBar && L >= 1) this.noise({ dur: barDur, vol: 0.09, freq: 400, freqEnd: 7000, type: 'bandpass', q: 2.5, when, bus: this.wetBus, attack: barDur * 0.9 });
+    }
+
+    if (full) {
+      const k = S.drums.kick[s], sn = S.drums.snare[s], h = (lv >= 2 ? S.hats16 : S.drums.hat)[s];
+      const lastBar = bar === sec.bars - 1;
+      const roll = (lastBar && s >= 12 && lv >= 1 && !menu) || (this.barCount === this.dropRiserBar && s >= 8 && L >= 1);
+      if (k === 'x' || k === 'o') this.kick(when, (k === 'x' ? 0.5 : 0.3) * dv);
+      if (roll) this.snare(when, 0.05 + (s % 16) * 0.006);
+      else if (sn === 'x' || sn === 'o') this.snare(when, (sn === 'x' ? 0.12 : 0.05) * dv);
+      if (h === 'x' || h === 'o' || h === 'O') this.hat(when, (h === 'o' ? 0.025 : 0.05) * dv, h === 'O');
+      if (S.glitch && lv >= 1 && Math.random() < 0.06) [0, 1, 2].forEach(i => this.hat(when + i * sd / 3, 0.04, false));
+
+      const bl = (odd && S.bassAlt) || S.bassLine;
+      const b = bl[s];
+      if (b !== '.' && b !== '-') {
+        let hold = 1;
+        while (s + hold < 16 && bl[s + hold] === '-') hold++;
+        const m = chord.bass + (b === 'O' ? 12 : b === 'F' ? 7 : b === 'T' ? (chord.pad[1] - chord.pad[0]) : 0);
+        const bv = S.bass === 'sub' ? 0.2 : 0.13;
+        if (S.bass === 'sub') {
+          this.tone({ type: 'sine', freq: midiHz(m), dur: sd * hold * 0.95, vol: bv * dv, when, bus: this.musicIn, attack: 0.01 });
+          this.tone({ type: 'triangle', freq: midiHz(m + 12), dur: sd * hold * 0.8, vol: 0.05 * dv, when, bus: this.musicIn });
+        } else this.voice(S.bass === 'pluck' ? 'pluck' : S.bass, m, sd * hold * 0.9, bv * dv, when, this.musicIn, 0.18 + lv * 0.1);
+      }
+    }
+
+    // Arp: chord tones an octave up (reversed on odd passes), faster in
+    // the final stretch.
+    const rate = lv >= 2 ? 1 : S.arpRate;
+    if (s % rate === 0) {
+      const pat = S.arpLine;
+      const idx = +pat[(odd ? pat.length - 1 - (s / rate) % pat.length : (s / rate) % pat.length)];
+      const notes = chord.pad;
+      const m = notes[idx % notes.length] + 12 + (lv >= 3 && s % 4 === 3 ? 12 : 0);
+      this.voice(lv === 0 && !menu ? 'sine' : S.arp, m, sd * rate * 0.9, lv === 0 ? 0.022 : 0.02, when, bus, 0.9 + lv * 0.2);
+    }
+
+    // Lead (the hook): any round level, and the menu tracks' soft melody.
+    if (sec.lead && full) {
+      const ev = sec.lead[(bar * 16 + s) % sec.lead.length];
+      if (ev) {
+        const dur = sd * ev.steps * 0.92;
+        const lvol = menu ? 0.03 : 0.036 + (lv >= 2 ? 0.008 : 0);
+        this.voice(S.lead, ev.midi, dur, lvol, when, bus, 0.9 + lv * 0.25);
+        if (lv >= 3) this.voice('sine', ev.midi + 12, dur, 0.016, when, bus);
+      }
+    }
+
+    if (S.crackle && Math.random() < 0.3) this.noise({ dur: 0.012, vol: 0.012 + Math.random() * 0.012, freq: 3000, type: 'highpass', when: when + Math.random() * sd, bus: this.musicIn });
   }
 }
 
@@ -2749,7 +3396,7 @@ function defaultSave() {
     // Player feedback: default to legacy direct-drag (chase the pointer/
     // touch point) rather than the Floating Thumb Pad -- still switchable
     // in Ustawienia (syncControlsPanel()'s "Tryb sterowania" toggle).
-    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', sfx: true, music: true, gfxLevel: 2 },
+    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', sfx: true, music: true, gfxLevel: 2, musicPick: 'auto' },
     stats: { runsPlayed: 0, bestArenaScore: 0, recentArenaScores: [] },
     // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
     // coreCharge is the 0-100 progress toward the *next* level.
@@ -2828,6 +3475,8 @@ function sanitizeSave(save) {
   if (!out.owned.includes('rainbow')) out.owned.unshift('rainbow');
   if (!out.campaign.unlockedDistricts.includes('plac')) out.campaign.unlockedDistricts.unshift('plac');
   out.settings.sensitivity = out.settings.sensitivity || 1;
+  // v16: a pinned track that no longer exists falls back to the mix.
+  if (out.settings.musicPick !== 'auto' && !MUSIC_TRACK_BY_ID[out.settings.musicPick]) out.settings.musicPick = 'auto';
   out.player.level = Math.max(1, Math.floor(out.player.level));
   out.hub.coreLevel = Math.max(1, Math.floor(out.hub.coreLevel));
   return out;
@@ -6588,6 +7237,10 @@ class Game {
     this.sessionStartedAt = Date.now();
     // Golden Shot v11: synthesized SFX + adaptive music (see SoundEngine).
     this.sound = new SoundEngine(this.save.settings);
+    // v16: the music bank asks the save which tracks are unlocked and
+    // tells the HUD / pause sheet what is playing.
+    this.sound.library = { isUnlocked: id => this.isTrackUnlocked(id) };
+    this.sound.onTrackChange = song => this.onMusicTrackChange(song);
     this.monetization = new Monetization(this);
     const unlockAudio = () => this.sound.unlock();
     // pointerdown alone is not a user activation in Safari -- pointerup /
@@ -7016,6 +7669,16 @@ class Game {
     // ---- Pause / Controls / Leave Run ----
     document.getElementById('btnPause').addEventListener('click', () => this.pauseGame());
     document.getElementById('btnSoundTest').addEventListener('click', () => this.playSoundTest());
+    document.getElementById('btnJukebox').addEventListener('click', () => this.openJukebox());
+    document.getElementById('infoSheetBody').addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('[data-track]');
+      if (b) this.pickJukeboxTrack(b.dataset.track);
+    });
+    document.getElementById('btnNextTrack').addEventListener('click', () => {
+      this.sound.unlock();
+      const id = this.sound.skipTrack();
+      this.analytics.track('music_skip', { track: id, mode: this.mode });
+    });
     document.getElementById('btnResume').addEventListener('click', () => this.resumeGame());
     document.getElementById('btnRestart').addEventListener('click', () => this.restartFromPause());
     document.getElementById('btnControls').addEventListener('click', () => {
@@ -8751,7 +9414,12 @@ class Game {
     if (visitedFeature) this.markUnlockVisited(visitedFeature);
     this.renderBottomNav(id);
     this.startScreenAnim();
-    if (!this.running) { this.sound.setIntensity(0); this.sound.setDucked(false); }
+    if (!this.running) {
+      this.sound.setIntensity(0); this.sound.setDucked(false);
+      // v16: results keep the round's track as a calm outro; every other
+      // screen plays the lo-fi menu rotation.
+      if (id !== 'gameOverScreen' && id !== 'missionResultScreen') this.sound.setScene('menu');
+    }
     this.renderConsentBar();
   }
 
@@ -9116,7 +9784,7 @@ class Game {
       `<li class="mc-goal"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span></li>`).join('');
     const reward = done
       ? '✓ nagroda odebrana'
-      : `◇ +${def.reward.coins} monet${def.reward.unlockDistrict ? ' · nowa dzielnica' : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
+      : `◇ +${def.reward.coins} monet${def.reward.unlockDistrict ? (FREE_TRACK_DISTRICTS.includes(def.reward.unlockDistrict) ? ' · nowa dzielnica' : ' · nowa dzielnica i jej utwór') : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
     // v15: the three star conditions (earned ones lit).
     const starRows = (def.stars || []).map((st, i) => `<span class="mc-star${bits & (1 << i) ? ' earned' : ''}"><b>${'★'.repeat(i + 1)}</b>${i === 0 ? 'ukończ' : this.starShortLabel(st)}</span>`).join('');
     const meta = `<div class="mc-meta">` +
@@ -9489,7 +10157,8 @@ class Game {
     this.pointerScreen = null;
     this.lastTime = performance.now();
     this.showBanner('START!', this.mission ? this.mission.def.name : '', '#46D99A', 0.9, 3);
-    this.sound.energy();
+    this.sound.go();
+    this.showNowPlaying();
     this.analytics.track('mission_go', { missionId: this.mission && this.mission.def.id });
   }
 
@@ -10056,6 +10725,10 @@ class Game {
     this.flashAlpha = 0;
     this.hitStopUntil = 0;
     this.prewarmFloor();
+    // v16: the district's own theme (a boss mission opens on its drop);
+    // it stays calm under the start card until START brings the drums in.
+    const musicDistrict = DISTRICTS.find(d => d.id === def.district);
+    this.sound.setScene('campaign', { district: def.district, boss: !!musicDistrict && musicDistrict.missions[musicDistrict.missions.length - 1] === def.id && def.id !== 'M00' });
 
     this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
@@ -10260,7 +10933,7 @@ class Game {
       p.invulnerableUntil = performance.now() + 2200;
       this.ripples.push(new Ripple(p.x, p.y, '#EFCB63', p.radius, p.radius * 2.6, 0.5));
       this.showBanner('TARCZA!', m.shields ? `Zostało osłon: ${m.shields}` : 'Ostatnia osłona zużyta', '#EFCB63', 1.1, 3);
-      this.sound.coin();
+      this.sound.shield();
       this.vibrate(30);
       return;
     }
@@ -10445,6 +11118,7 @@ class Game {
     this.spawnParticles(dest.x, dest.y, '#9875FF', 18);
     this.ripples.push(new Ripple(dest.x, dest.y, '#9875FF', 10, e.radius * 3, 0.5));
     this.vibrate([30, 20, 30]);
+    this.sound.portal();
     this.analytics.track('mission_portal_use', { missionId: this.mission.def.id });
   }
 
@@ -10636,7 +11310,7 @@ class Game {
           `<span class="evolution-card-tag">${card.tag || ''}</span></span>` +
           `<span class="evolution-card-desc">${card.desc}</span>` +
         `</span>`;
-      btn.addEventListener('click', () => onPick(card.id));
+      btn.addEventListener('click', () => { this.sound.pick(); onPick(card.id); });
       grid.appendChild(btn);
     });
     document.getElementById('evolutionSub').textContent = subtitle;
@@ -10645,7 +11319,7 @@ class Game {
     void bar.offsetWidth;
     bar.style.animation = `evolution-timer ${CONFIG.evolution.autoPickMs}ms linear forwards`;
     document.getElementById('evolutionOverlay').classList.remove('hidden');
-    this.sound.whoosh();
+    this.sound.cards();
     this.vibrate(40);
     this.startScreenAnim();
   }
@@ -11732,6 +12406,10 @@ class Game {
     const runTool = this.selectedRunTool;
     this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
 
+    // v16: a new track every round (Daily / challenge: one per seed).
+    this.sound.setScene('arena', { seed: this.runSeed, daily: this.isDailyRun, challenge: !!this.challenge });
+    this.sound.go();
+
     this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
     this.monetization.gameplayStart();
@@ -12232,6 +12910,103 @@ class Game {
       const on = this.save.settings[btn.dataset.setting] !== false;
       btn.classList.toggle('active', on === (btn.dataset.value === '1'));
     });
+    this.syncMusicUi();
+  }
+
+  /* ---------- v16 music: unlocks, now playing, Szafa grająca ---------- */
+
+  /** Menu and Rozdział I themes are free; Rozdział II themes unlock with
+   *  their district. */
+  isTrackUnlocked(id) {
+    const t = MUSIC_TRACK_BY_ID[id];
+    if (!t) return false;
+    if (t.menu || !t.district || FREE_TRACK_DISTRICTS.includes(t.district)) return true;
+    return (this.save.campaign.unlockedDistricts || []).includes(t.district);
+  }
+
+  trackSource(t) {
+    if (t.menu) return 'Miasto i menu';
+    const d = DISTRICTS.find(x => x.id === t.district);
+    return d ? d.name : '';
+  }
+
+  onMusicTrackChange(song) {
+    this.syncMusicUi();
+    if (this.running && !this.introPending && !song.menu) this.showNowPlaying();
+  }
+
+  /** A small "TERAZ GRA" chip in the round's bottom-left corner for 3 s. */
+  showNowPlaying() {
+    const el = document.getElementById('nowPlaying');
+    const song = this.sound.song;
+    if (!el || !song || this.save.settings.music === false) return;
+    document.getElementById('nowPlayingName').textContent = song.name;
+    el.classList.remove('hidden');
+    void el.offsetWidth;
+    el.classList.add('visible');
+    clearTimeout(this.nowPlayingTimer);
+    this.nowPlayingTimer = setTimeout(() => el.classList.remove('visible'), 3200);
+  }
+
+  syncMusicUi() {
+    const song = this.sound && this.sound.song;
+    const name = document.getElementById('pauseTrackName');
+    if (name) name.textContent = song ? song.name : '—';
+    const row = document.getElementById('pauseTrack');
+    if (row) row.classList.toggle('hidden', this.save.settings.music === false);
+    const jb = document.getElementById('btnJukebox');
+    if (jb) {
+      const pick = MUSIC_TRACK_BY_ID[this.save.settings.musicPick];
+      jb.textContent = pick ? pick.name.toUpperCase() : 'MIESZANKA';
+    }
+  }
+
+  /** Profil → Szafa grająca: every track, where it comes from, and a pin.
+   *  Tapping a track plays it at once and keeps it for rounds and
+   *  missions; "Mieszanka" goes back to a new track every round. */
+  openJukebox() {
+    const note = '<svg class="np-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg>';
+    const pick = this.save.settings.musicPick || 'auto';
+    const item = (id, name, sub, locked) => `<li><button class="jukebox-item${pick === id ? ' is-active' : ''}${locked ? ' is-locked' : ''}" data-track="${id}"${locked ? ' aria-disabled="true"' : ''}>${note}<span class="jb-text"><span class="jb-name">${escapeHtml(name)}</span><span class="jb-sub">${escapeHtml(sub)}</span></span></button></li>`;
+    const unlocked = MUSIC_TRACKS.filter(t => this.isTrackUnlocked(t.id)).length;
+    let html = '<ul class="jukebox-list">' + item('auto', 'Mieszanka', 'co rundę inny utwór · w misjach motyw dzielnicy', false);
+    html += '<li class="jb-group">DZIELNICE</li>';
+    for (const t of MUSIC_TRACKS.filter(x => !x.menu)) {
+      const locked = !this.isTrackUnlocked(t.id);
+      html += item(t.id, locked ? 'Utwór zablokowany' : t.name, locked ? `Odblokuj dzielnicę: ${this.trackSource(t)}` : `${this.trackSource(t)} · ${t.bpm} BPM`, locked);
+    }
+    html += '<li class="jb-group">MIASTO</li>';
+    for (const t of MUSIC_TRACKS.filter(x => x.menu)) html += item(t.id, t.name, `spokojny bit · ${t.bpm} BPM`, false);
+    html += '</ul>';
+    this.openInfoSheet({
+      icon: note,
+      title: 'Szafa grająca',
+      body: [`Utwory: <strong>${unlocked}/${MUSIC_TRACKS.length}</strong>. Dotknij, aby posłuchać i ustawić do rund i misji.`, html],
+      closeLabel: 'GOTOWE'
+    });
+  }
+
+  pickJukeboxTrack(id) {
+    if (id !== 'auto' && !this.isTrackUnlocked(id)) {
+      // Never a silent tap: the row nudges and says how to get it.
+      const b = document.querySelector(`.jukebox-item[data-track="${id}"]`);
+      if (b) {
+        b.querySelector('.jb-sub').textContent = `Gra w dzielnicy ${this.trackSource(MUSIC_TRACK_BY_ID[id])} — dotrzyj tam w Kampanii`;
+        b.classList.remove('jb-nudge'); void b.offsetWidth; b.classList.add('jb-nudge');
+      }
+      this.sound.bump();
+      return;
+    }
+    this.save.settings.musicPick = id;
+    if (this.save.settings.music === false) this.save.settings.music = true;
+    saveGame(this.save);
+    this.sound.unlock();
+    this.sound.applySettings();
+    // Preview: the pinned track (or the next of the mix) starts right away.
+    this.sound.playTrack(id === 'auto' ? this.sound.nextGameplayTrack() : id, { restart: true });
+    document.querySelectorAll('.jukebox-item').forEach(b => b.classList.toggle('is-active', b.dataset.track === id));
+    this.syncControlsPanel();
+    this.analytics.track('music_pick', { track: id });
   }
 
   /* ---------- gameplay ---------- */
@@ -12613,6 +13388,7 @@ class Game {
     if ((this.lockHintAt != null && now - this.lockHintAt < 2500) || (obj.lockHintAt != null && now - obj.lockHintAt < 7000)) return;
     this.lockHintAt = obj.lockHintAt = now;
     this.addFloatText(obj.x, obj.y - obj.radius - 8, `ZA DUŻE · URÓŚNIJ DO ${tierLabel}`, color, 13, 1.1);
+    if (hole && hole.isPlayer) this.sound.bump();
   }
 
   handleHoleCollisions() {
@@ -12630,6 +13406,7 @@ class Game {
           if (b.isPlayer && this.shieldCharges > 0) {
             this.shieldCharges--;
             this.spawnParticles(b.x, b.y, '#50F0FA', 20);
+            this.sound.shield();
             this.vibrate(60);
             continue;
           }
@@ -12832,6 +13609,7 @@ class Game {
     // Golden Shot v9: shown through the shared canvas banner slot (was a
     // separate DOM banner that overlapped the canvas banners).
     this.showBanner('WIELKI FINISZ!', this.overdriveTag, (skin && skin.color) || '#9875FF', 1.6, 3);
+    this.sound.overdrive();
 
     if (this.overdriveVariant === 'portal_rain') this.spawnPortalRain();
   }
@@ -13070,6 +13848,9 @@ class Game {
       if (inRange && !this.dangerWarned.has(bot)) {
         this.dangerWarned.add(bot);
         this.vibrate(25);
+        // v16: a heartbeat when a bigger rival closes in (at most every 4 s).
+        const nowMs = performance.now();
+        if (nowMs - (this.dangerSoundAt || 0) > 4000) { this.dangerSoundAt = nowMs; this.sound.danger(); }
       } else if (!inRange && this.dangerWarned.has(bot)) {
         this.dangerWarned.delete(bot);
       }
@@ -13110,12 +13891,14 @@ class Game {
       && nowMs - (this.climbBannerAt || 0) > 8000) {
       this.climbBannerAt = nowMs;
       this.showBanner(place === 1 ? 'PROWADZISZ!' : `AWANS NA ${place}. MIEJSCE`, null, '#EFCB63', 0.9, 1);
+      if (place === 1) this.sound.leadTaken(); else this.sound.coin();
       this.vibrate(30);
     }
     // v13: losing the lead is the other half of the race -- name who did it.
     if (this.lastPlace === 1 && place > 1 && this.timeRemaining < ROUND_TIME - 5 && nowMs - (this.leadLostAt || 0) > 8000) {
       this.leadLostAt = nowMs;
       this.showBanner(`${ranked[0].name} PROWADZI`, 'Odbij pierwsze miejsce!', '#FF54AD', 1.0, 1);
+      this.sound.leadLost();
     }
     if (!this.finalChaseShown && place > 1 && this.timeRemaining <= CONFIG.rival.finalChaseSeconds) {
       this.finalChaseShown = true;

@@ -4430,3 +4430,36 @@ body[data-gfx="0"] #hud::before { display: none; }
 .start-back { margin: -6px auto 0; font-size: 12.5px; padding: 6px 12px; }
 /* v15 review: the briefing's GRAJ stays in view however long the card. */
 .briefing-sheet .mc-play { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 18px rgba(7, 23, 37, 0.85); }
+
+/* ---- v16 „Brzmienie”: now playing, pause track row, Szafa grająca ---- */
+.now-playing { position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 6px; max-width: min(62vw, 300px); padding: 6px 12px 6px 9px; border-radius: 999px;
+  background: rgba(7, 23, 37, 0.78); border: 1px solid rgba(152, 117, 255, 0.5); color: var(--nc-text); font-size: 11.5px;
+  pointer-events: none; opacity: 0; transform: translateY(8px); transition: opacity 0.35s ease, transform 0.35s ease; z-index: 6; }
+.now-playing.visible { opacity: 1; transform: translateY(0); }
+.now-playing .np-icon { width: 15px; height: 15px; flex: none; color: var(--nc-violet, #9875FF); }
+.now-playing.visible .np-icon { animation: np-bob 0.9s ease-in-out infinite alternate; }
+@keyframes np-bob { to { transform: translateY(-2px) rotate(-8deg); } }
+.np-label { font-size: 9.5px; letter-spacing: 0.14em; font-weight: 700; color: var(--nc-violet, #9875FF); flex: none; }
+.np-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pause-track { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px 8px 14px; border-radius: 10px;
+  background: rgba(152, 117, 255, 0.08); border: 1px solid rgba(152, 117, 255, 0.3); }
+.pause-track .np-icon { width: 18px; height: 18px; flex: none; color: var(--nc-violet, #9875FF); }
+.pause-track-text { display: flex; flex-direction: column; min-width: 0; flex: 1; text-align: left; }
+.pause-track-label { font-size: 9.5px; letter-spacing: 0.14em; font-weight: 700; color: var(--nc-violet, #9875FF); }
+.pause-track-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pause-track-next { flex: none; padding: 8px 12px; }
+.jukebox-btn { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jukebox-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
+.jukebox-item { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; text-align: left; font-family: inherit;
+  color: var(--nc-text); background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); cursor: pointer; }
+.jukebox-item .np-icon { width: 16px; height: 16px; flex: none; color: var(--nc-text-dim, #8fa3b8); }
+.jukebox-item.is-active { border-color: var(--nc-violet, #9875FF); background: rgba(152, 117, 255, 0.14); box-shadow: 0 0 12px rgba(152, 117, 255, 0.25); }
+.jukebox-item.is-active .np-icon { color: var(--nc-violet, #9875FF); }
+.jukebox-item.is-locked { opacity: 0.5; cursor: default; }
+.jb-text { display: flex; flex-direction: column; min-width: 0; }
+.jb-name { font-size: 13px; font-weight: 700; }
+.jb-sub { font-size: 11px; color: var(--nc-text-dim, #8fa3b8); }
+.jb-group { font-size: 10px; letter-spacing: 0.14em; font-weight: 700; color: var(--nc-text-dim, #8fa3b8); margin: 6px 0 0; }
+.jukebox-item.jb-nudge { animation: jb-nudge 0.35s ease; }
+@keyframes jb-nudge { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }

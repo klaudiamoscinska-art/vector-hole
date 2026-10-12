@@ -4,6 +4,30 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v16 „Brzmienie” — 15 utworów, muzyka, która się zmienia
+Uwaga właścicielki i co zmieniono:
+
+| Uwaga | Zmiana |
+|---|---|
+| Więcej muzyczek, aby się zmieniały i nie było monotonnie | Zamiast jednej 4-akordowej pętli — **15 syntezowanych utworów** (0 KB plików audio): 3 spokojne do Miasta i menu, **motyw każdej z 12 dzielnic**. Arena: inny utwór w każdej rundzie i kolejny po ~50 s (runda = 2–3 utwory); misja gra motyw swojej dzielnicy; menu rotują |
+| (w środku utworu) | Sekcje zwrotka / refren z melodią / mostek / drop, przejścia perkusji, talerze, co drugie przejście inny arpeggiator i bas; w końcówce rundy takt narastania i **skok do dropu**, w SZALE melodia w oktawach; boss dzielnicy zaczyna od dropu |
+
+Poza uwagą:
+- **Szafa grająca** w Profilu: lista utworów, dotknij = posłuchaj i ustaw
+  ulubiony do rund i misji, „Mieszanka” wraca do zmian. Motywy Rozdziału II
+  odblokowuje dotarcie do ich dzielnicy (odprawa bossa: „nowa dzielnica
+  i jej utwór”) — kolejny powód, by iść dalej w Kampanii.
+- **„TERAZ GRA”**: plakietka z nazwą nowego utworu w rundzie; w pauzie
+  nazwa utworu i przycisk **NASTĘPNY**; pauza ścisza muzykę „pod wodę”.
+- **Miks**: pady „oddychają” ze stopą, echo i pogłos na melodiach,
+  osobne brzmienia (lo-fi, chiptune, klaśnięcia, dzwonki, organy).
+- **Efekty grają z muzyką**: combo wspina się po skali bieżącego utworu,
+  fanfary i awanse w jego tonacji. Nowe sygnały: start rundy/misji,
+  „za duże”, objęcie/utrata prowadzenia, tarcza, portal, WIELKI FINISZ,
+  karty ewolucji, większy rywal w pobliżu.
+- **Testy**: `qa/audio.mjs` (render offline każdego utworu, logika scen,
+  drop, szafa grająca, stres, runda bota z dźwiękiem) w `run-all`.
+
 ## v15 „Wyzwanie” — 240 misji, rosnąca trudność, 3 gwiazdki, energia
 Uwagi właścicielki i co zmieniono:
 
