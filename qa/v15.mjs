@@ -1,7 +1,7 @@
 // v15 "Wyzwanie" system checks: the tap-to-start card, mission boosters
-// bought in the briefing, energy (spend, refund on a win, regen, empty
-// prompt, refill), three stars, star chests, fail reasons, NELA's pity
-// loan, the v11 -> v12 save migration, and the shape of all 240 missions.
+// bought in the briefing, three stars, star chests, fail reasons, NELA's
+// pity loan, the v11 -> v12 save migration, and the shape of all 240
+// missions. (v22: the energy limit is gone -- qa/v22.mjs checks that.)
 // Usage: node qa/v15.mjs
 import { serve, openGame, veteranSave, report, allDistrictsSave } from './lib.mjs';
 
@@ -27,7 +27,7 @@ export async function runV15Checks(url) {
   {
     const g = await openGame(url);
     const r = await g.page.evaluate(() => {
-      const ms = CAMPAIGN_MISSIONS.filter(m => m.id !== 'M00');
+      const ms = CAMPAIGN_MISSIONS;
       const ids = new Set(ms.map(m => m.id));
       const bad = ms.filter(m => !(m.diff >= 1 && m.diff <= 5) || !m.stars || m.stars.length !== 3 || !(m.timeLimit >= 30) || !m.nela.start || !m.nela.success || !m.name
         || m.stars[1].seconds >= m.timeLimit || (m.stars[2].type === 'timeUnder' && m.stars[2].seconds >= m.stars[1].seconds)).map(m => m.id);
@@ -41,7 +41,7 @@ export async function runV15Checks(url) {
       const labels = ms.flatMap(m => m.goal.steps.map(s => s.label)).filter(l => !l || /undefined|NaN/.test(l));
       return { n: ms.length, unique: ids.size, districts: DISTRICTS.length, bad, named, signs, unlockChain, calibrated, diffs, twists, labels };
     });
-    results.push(report('content: 12 districts, 240 missions (+ tutorial), unique ids', r.districts === 12 && r.n === 240 && r.unique === 240, `${r.districts} / ${r.n}`));
+    results.push(report('content: 12 districts, 240 missions, unique ids', r.districts === 12 && r.n === 240 && r.unique === 240, `${r.districts} / ${r.n}`));
     results.push(report('content: every mission has difficulty, 3 star conditions in order, a time limit, NELA lines', r.bad.length === 0, r.bad.slice(0, 8).join(' ')));
     results.push(report('content: every step label is real Polish text', r.labels.length === 0, r.labels.slice(0, 3).join(' | ')));
     results.push(report('content: every district has a name, story and color; every boss a name plate (owner: district 2 had no name)', r.named && r.signs));
@@ -107,81 +107,9 @@ export async function runV15Checks(url) {
     await done(g, 'boosters');
   }
 
-  // --- Energy: spend, refund on a win, empty prompt, refill, regen --------
-  {
-    const g = await seeded(url, s => { s.energy = { value: 2, lastTick: Date.now(), infiniteUntil: 0, freeDailyDate: null }; s.prisms = 20; });
-    const r = await g.page.evaluate(() => {
-      const out = {};
-      game.openMissionBriefing('M05'); document.querySelector('[data-mc-launch]').click();
-      out.afterStart = game.save.energy.value;
-      game.mission.elapsed = 5; game.endCampaignMission(true);
-      out.afterWin = game.save.energy.value;
-      game.openMissionBriefing('M06'); document.querySelector('[data-mc-launch]').click();
-      game.endCampaignMission(false);
-      out.afterLoss = game.save.energy.value;
-      game.openMissionBriefing('M06'); document.querySelector('[data-mc-launch]').click(); game.endCampaignMission(false);
-      out.empty = game.save.energy.value;
-      game.openMissionBriefing('M06'); document.querySelector('[data-mc-launch]').click();
-      out.sheet = !document.getElementById('energySheet').classList.contains('hidden');
-      out.title = document.getElementById('energySheetTitle').textContent;
-      out.noStart = game.mission.ended;
-      const p0 = game.save.prisms;
-      document.getElementById('btnEnergyRefill').click();
-      out.prismsSpent = p0 - game.save.prisms;
-      out.continued = !game.mission.ended && game.mission.def.id === 'M06';
-      out.afterRefill = game.save.energy.value;
-      game.leaveCampaignMission();
-      // Regeneration: 1 point per 20 min, never above max; a clock moved back pays nothing.
-      const E = CONFIG.energy;
-      game.save.energy.value = 1; game.save.energy.lastTick = Date.now() - E.regenMinutes * 60000 * 2 - 1000;
-      out.regen = game.energyNow();
-      game.save.energy.value = 1; game.save.energy.lastTick = Date.now() + 3600000;
-      out.rollback = game.energyNow();
-      game.save.energy.value = 0; game.save.energy.lastTick = Date.now() - E.regenMinutes * 60000 * 50;
-      out.capped = game.energyNow();
-      return out;
-    });
-    results.push(report('energy: a mission attempt costs 1, a win gives it back', r.afterStart === 1 && r.afterWin === 2, JSON.stringify(r)));
-    results.push(report('energy: a defeat keeps it spent', r.afterLoss === 1 && r.empty === 0));
-    results.push(report('energy: at 0 GRAJ opens "BRAK ENERGII" instead of starting', r.sheet && r.title === 'BRAK ENERGII' && r.noStart));
-    results.push(report('energy: a prism refill fills it and goes straight into the mission', r.prismsSpent === 12 && r.continued && r.afterRefill === 4, JSON.stringify({ spent: r.prismsSpent, cont: r.continued, e: r.afterRefill })));
-    results.push(report('energy: regenerates 1 per 20 min up to the max; a clock set back pays nothing', r.regen === 3 && r.rollback === 1 && r.capped === 5, JSON.stringify({ regen: r.regen, rollback: r.rollback, capped: r.capped })));
-    const free = await g.page.evaluate(() => {
-      const out = {};
-      game.save.energy.value = 0; game.save.energy.lastTick = Date.now();
-      game.save.stats.runsPlayed = 0;
-      out.newbieArena = game.energyFreeFor('arena');
-      game.save.stats.runsPlayed = 9;
-      out.vetArena = game.energyFreeFor('arena');
-      out.daily = game.energyFreeFor('daily');
-      game.requireEnergy('daily', () => {});
-      out.dailyAgain = game.energyFreeFor('daily');
-      out.tutorial = game.energyFreeFor('tutorial');
-      game.closeEnergySheet();
-      game.grantProduct(IAP_PRODUCTS.find(p => p.sku === 'energy_hour'));
-      out.infinite = game.energyInfinite() && game.energyFreeFor('mission');
-      return out;
-    });
-    results.push(report('energy: free plays -- tutorial, newbie rounds, the first Daily attempt of the day, the "no limit" hour', free.newbieArena && !free.vetArena && free.daily && !free.dailyAgain && free.tutorial && free.infinite, JSON.stringify(free)));
-    await done(g, 'energy');
-  }
-
-  // --- Arena honors energy too ---------------------------------------------
-  {
-    const g = await seeded(url, s => { s.energy = { value: 1, lastTick: Date.now(), infiniteUntil: 0, freeDailyDate: null }; });
-    const r = await g.page.evaluate(() => {
-      game.startArenaRound(); document.getElementById('btnConfirmStart').click();
-      const playing = game.state === GameState.PLAYING, e1 = game.save.energy.value;
-      game.leaveRun(); game.startArenaRound();
-      return { playing, e1, sheet: !document.getElementById('energySheet').classList.contains('hidden'), notPlaying: game.state !== GameState.PLAYING };
-    });
-    results.push(report('energy: an Arena round costs 1; with none left GRAJ opens the energy sheet', r.playing && r.e1 === 0 && r.sheet && r.notPlaying, JSON.stringify(r)));
-    await done(g, 'arena energy');
-  }
-
   // --- Stars, star chests, fail reasons, pity -----------------------------
   {
-    const g = await seeded(url, s => { s.energy.infiniteUntil = 4e12; });
+    const g = await seeded(url);
     const r = await g.page.evaluate(() => {
       const out = {};
       const def = campaignMissionById('M31');
@@ -234,17 +162,17 @@ export async function runV15Checks(url) {
     const r = await g.page.evaluate(() => {
       const v11 = defaultSave();
       v11.schemaVersion = 11;
-      delete v11.energy; delete v11.boosters;
+      delete v11.boosters;
       delete v11.campaign.stars; delete v11.campaign.attempts; delete v11.campaign.fails; delete v11.campaign.pity; delete v11.campaign.starChests;
       DISTRICTS.slice(0, 6).flatMap(d => d.missions).forEach(id => { v11.campaign.completed[id] = true; });
       v11.campaign.unlockedDistricts = ['plac', 'park', 'port', 'galeria', 'dachy', 'rdzen'];
       v11.campaign.medals = { M01: true, M04: true };
       const s = sanitizeSave(migrateSave(JSON.parse(JSON.stringify(v11))));
       return { v: s.schemaVersion, m01: s.campaign.stars.M01, m04: s.campaign.stars.M04, m02: s.campaign.stars.M02, metro: s.campaign.unlockedDistricts.includes('metro'),
-        energy: s.energy.value, chests: s.campaign.starChests, boosters: s.boosters };
+        energy: 'energy' in s, chests: s.campaign.starChests, boosters: s.boosters };
     });
-    results.push(report('save: v11 -> v12 keeps progress as stars (time medal -> 2nd star, special -> 3rd)', r.v === 12 && r.m01 === 3 && r.m04 === 5 && r.m02 === 1, JSON.stringify(r)));
-    results.push(report('save: a save past the finale gets Rozdział II, full energy, no chest burst', r.metro && r.energy === 5 && r.chests > 0, JSON.stringify({ metro: r.metro, energy: r.energy, chests: r.chests })));
+    results.push(report('save: v11 -> v12 (-> v13) keeps progress as stars (time medal -> 2nd star, special -> 3rd)', r.v === 13 && r.m01 === 3 && r.m04 === 5 && r.m02 === 1, JSON.stringify(r)));
+    results.push(report('save: a save past the finale gets Rozdział II, no chest burst (and no energy field, v22)', r.metro && !r.energy && r.chests > 0, JSON.stringify({ metro: r.metro, energy: r.energy, chests: r.chests })));
     await done(g, 'migration');
   }
 

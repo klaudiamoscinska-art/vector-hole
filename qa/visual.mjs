@@ -117,7 +117,7 @@ export async function runVisualChecks(url) {
     const out = await g.page.evaluate((LIT) => {
       const gm = window.game, rows = [];
       for (const id of ['M02', 'M05', 'M09', 'M13', 'M17', 'M21']) {
-        gm.startCampaignMission(id); if (gm.introPending) gm.dismissTutorialIntro();
+        gm.startCampaignMission(id); if (gm.introPending) gm.beginMissionPlay();
         cancelAnimationFrame(gm.rafId); gm.running = false;
         gm.updateCampaign(0.016); gm.renderCampaign(1);
         rows.push({ id, theme: gm.campaignTheme(), lit: eval(LIT) });
@@ -178,7 +178,7 @@ export async function runVisualChecks(url) {
       gm.startRound({ seed: 77 }); cancelAnimationFrame(gm.rafId); gm.running = false;
       gm.update(1 / 60);
       for (const z of [1.08, 0.8, 0.58, 0.3]) { gm.zoom = z; out['arena@' + z] = still((k) => gm.render(k / 60)); }
-      gm.startCampaignMission('M05'); if (gm.introPending) gm.dismissTutorialIntro(); cancelAnimationFrame(gm.rafId); gm.running = false;
+      gm.startCampaignMission('M05'); if (gm.introPending) gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false;
       gm.updateCampaign(1 / 60);
       out.campaign = still((k) => gm.renderCampaign(k / 60));
       return out;

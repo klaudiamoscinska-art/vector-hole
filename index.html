@@ -83,7 +83,9 @@
 
     <div id="nowPlaying" class="now-playing hidden" role="status"><svg class="np-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg><span class="np-label">TERAZ GRA</span><span id="nowPlayingName" class="np-name"></span></div>
 
-    <div id="mobile-hint" class="hud-panel-bottom">Dotknij i przeciągaj, aby sterować dziurą</div>
+    <!-- v22: the in-round hint line -- first-round coaching only for a player
+         who hesitates (Game.updateArenaCoach()), plus the Rush Hour note. -->
+    <div id="mobile-hint" class="hud-panel-bottom hidden" role="status"></div>
 
     <div id="overdriveBanner" class="overdrive-banner hidden">WIELKI FINISZ</div>
 
@@ -248,7 +250,6 @@
         </button>
         <div class="hub-header-right">
           <div class="currency-row">
-            <button class="energy-chip" type="button" aria-label="Energia — szczegóły"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span class="energy-chip-text"><span class="energy-count">5/5</span><span class="energy-timer">PEŁNA</span></span></button>
             <div class="coin-display">
               <span class="coin-icon">◇</span>
               <span id="coinCountMenu">0</span>
@@ -265,10 +266,10 @@
       </div>
 
       <!-- First-run attract screen (shown instead of everything marked
-           .hub-full-only while Arena is still locked, i.e. before M00
-           clears). v14: logo, the live demo of the game and ONE button --
-           the three feature cards and the premise paragraph went (nobody
-           reads them before playing; NELA tells the story in the tutorial). -->
+           .hub-full-only until the first finished play). v14: logo, the live
+           demo of the game and ONE button. v22: GRAJ starts an Arena round
+           right away -- no tutorial; the round itself coaches a player who
+           hesitates (Game.updateArenaCoach()). -->
       <div id="hubWelcome" class="hub-welcome hidden">
         <div class="welcome-stage">
           <canvas id="hubWelcomeScene" class="welcome-scene" aria-hidden="true"></canvas>
@@ -278,12 +279,12 @@
             <span class="welcome-logo-sub">POCHŁOŃ NEONOWE MIASTO</span>
           </div>
         </div>
-        <button id="btnStartTutorial" class="btn btn-primary btn-mega welcome-cta">
+        <button id="btnWelcomePlay" class="btn btn-primary btn-mega welcome-cta">
           GRAJ
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>
         </button>
         <p id="welcomeChallengeNote" class="welcome-challenge-note hidden"></p>
-        <p class="welcome-note">Pierwsza misja · ok. 1 min</p>
+        <p class="welcome-note">Runda na Arenie · 2:00</p>
       </div>
 
       <!-- Golden Shot v11: a friend's challenge link ("Pobij mój wynik!"). -->
@@ -302,7 +303,7 @@
         <canvas id="hubCityCanvas" class="hub-city-canvas"></canvas>
         <div class="hub-city-badge"><span class="hub-city-sub">CORE CITY</span><span id="hubLevelLabel" class="hub-city-lvl">LVL 1</span></div>
         <!-- v17.1: the hook in words, in the sky above the skyline. -->
-        <div class="hub-city-pitch"><strong>Każda runda buduje Twoje miasto</strong><span id="hubCityPitchSub">Nowa nagroda za kilka rund</span></div>
+        <div class="hub-city-pitch"><strong>Każda runda Areny buduje Twoje miasto</strong><span id="hubCityPitchSub">Nowa nagroda za kilka rund</span></div>
         <div class="hub-city-foot">
           <div class="hub-city-next">
             <span id="hubRewardChip1Icon" class="hub-city-next-icon" aria-hidden="true"></span>
@@ -317,7 +318,7 @@
            no more sticky plate floating over the content. -->
       <button id="btnStart" class="btn btn-primary btn-mega hub-play hub-full-only">
         <span class="hub-play-main">GRAJ<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></span>
-        <span id="hubPlaySub" class="hub-play-sub">runda 2:00 · monety i odbudowa Core City</span>
+        <span id="hubPlaySub" class="hub-play-sub">Arena · runda 2:00 · monety i odbudowa Core City</span>
       </button>
 
       <div class="hub-quick-row hub-full-only">
@@ -480,29 +481,6 @@
     </div>
   </div>
 
-  <!-- ===================== TUTORIAL INTRO (M00 only) =====================
-       Blocking overlay shown at the tutorial mission's start -- unlike
-       every other mission's opening NELA toast (which auto-fades), this
-       one only closes on tap and freezes the round (Game.introPending,
-       same freeze mechanism as the evolution offer) until then, so the
-       player reads it at their own pace and decides when the clock
-       starts (player feedback). -->
-  <!-- v13: a coach card at the bottom over a light scrim, so the hole and
-       the food around it stay visible while the step is explained. -->
-  <div id="tutorialIntroOverlay" class="screen overlay-screen coach-overlay hidden">
-    <div class="screen-inner pause-panel coach-card">
-      <div class="coach-head">
-        <span class="coach-icon" id="tutorialIntroIcon" aria-hidden="true"></span>
-        <div>
-          <div class="coach-step" id="tutorialIntroStep">KROK 1 Z 4</div>
-          <h2 class="section-title" id="tutorialIntroTitle">ZANIM ZACZNIESZ</h2>
-        </div>
-      </div>
-      <p class="hint-text" id="tutorialIntroText">—</p>
-      <button id="btnTutorialIntroStart" class="btn btn-primary">ZACZYNAM</button>
-    </div>
-  </div>
-
   <!-- ===================== CONSENT BAR (Golden Shot v11) =====================
        Non-blocking: the game is fully playable without answering. Local
        save = strictly necessary (no consent needed); statistics = opt-in. -->
@@ -538,20 +516,6 @@
     <div id="missionStartCard" class="mission-card start-card"></div>
   </div>
 
-  <!-- ===================== ENERGY (v15 session limit) ===================== -->
-  <div id="energySheet" class="screen overlay-screen briefing-overlay energy-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="energySheetTitle">
-    <div class="screen-inner briefing-sheet energy-sheet">
-      <div class="energy-bolt" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <h2 class="section-title" id="energySheetTitle">ENERGIA</h2>
-      <div class="energy-big"><span id="energySheetValue">5/5</span></div>
-      <div class="energy-pips" id="energySheetPips"></div>
-      <p class="energy-timer-line" id="energySheetTimer">—</p>
-      <p class="hint-text">Każda runda i każda próba misji kosztuje 1 energię. <strong>Wygrana misja ją zwraca.</strong> Energia odnawia się sama: 1 co 20 minut.</p>
-      <button id="btnEnergyRefill" class="btn btn-gold btn-mega">PEŁNA ENERGIA · 12 ◆</button>
-      <button id="btnEnergyAd" class="btn btn-secondary">+1 ENERGIA · OBEJRZYJ REKLAMĘ</button>
-      <button id="btnEnergyClose" class="btn btn-link">Zamknij</button>
-    </div>
-  </div>
 
   <!-- ===================== RUN SETUP (casual run tools) ===================== -->
   <div id="runSetupScreen" class="screen hidden">
@@ -585,7 +549,6 @@
         </div>
         <div class="hub-header-right">
           <div class="currency-row">
-            <button class="energy-chip" type="button" aria-label="Energia — szczegóły"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg><span class="energy-chip-text"><span class="energy-count">5/5</span><span class="energy-timer">PEŁNA</span></span></button>
             <div class="coin-display"><span class="coin-icon">◇</span><span id="coinCountDistricts">0</span></div>
             <div class="coin-display prism-display"><span class="coin-icon">◆</span><span id="prismCountDistricts">0</span></div>
           </div>

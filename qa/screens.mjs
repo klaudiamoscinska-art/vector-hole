@@ -40,7 +40,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(dir, name + '.png
   await shot(g.page, '06-results-hook');
   await g.page.evaluate(() => {
     const gm = window.game;
-    gm.startCampaignMission('M02'); if (gm.introPending) gm.dismissTutorialIntro();
+    gm.startCampaignMission('M02'); if (gm.introPending) gm.beginMissionPlay();
     const m = gm.mission; const st = m.def.goal.steps || [];
     if (st[0] && st[0].eat) m.eatenByType[st[0].eat] = Math.ceil(gm.campaignGoalItems()[0].target * 0.7);
     m.elapsed = m.def.timeLimit; gm.updateCampaign(0.016);
@@ -70,7 +70,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(dir, name + '.png
   await g.page.evaluate(() => { const gm = window.game; gm.resumeGame(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.evolutionOffersTriggered = new Set(); gm.offerEvolution(); gm.render(performance.now() / 1000); });
   await g.page.waitForTimeout(500);
   await shot(g.page, '12-evolution-cards');
-  await g.page.evaluate(() => { const gm = window.game; gm.skipEvolutionOffer(); gm.startCampaignMission('M05'); if (gm.introPending) gm.dismissTutorialIntro(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.hideNelaToast(); gm.updateCampaign(0.016); gm.renderCampaign(1); });
+  await g.page.evaluate(() => { const gm = window.game; gm.skipEvolutionOffer(); gm.startCampaignMission('M05'); if (gm.introPending) gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.hideNelaToast(); gm.updateCampaign(0.016); gm.renderCampaign(1); });
   await g.page.waitForTimeout(200);
   await shot(g.page, '13-campaign-park');
   await g.page.evaluate(() => { const gm = window.game; gm.endCampaignMission(true); });
@@ -141,7 +141,7 @@ for (const vp of [{ width: 375, height: 667 }]) { // SE-class phone
   if (g.errors.length) console.log('errors', g.errors);
   await g.browser.close();
 }
-// v15: briefing with boosters, tap-to-start card, twists, stars, energy.
+// v15: briefing with boosters, tap-to-start card, twists, stars.
 {
   const g = await openGame(url, { viewport: { width: 402, height: 874 } });
   const save = await veteranSave(g.page, { coins: 600, runsPlayed: 6, missions: 75 });
@@ -172,9 +172,17 @@ for (const vp of [{ width: 375, height: 667 }]) { // SE-class phone
   await g.page.waitForTimeout(1600);
   await g.page.evaluate(() => { window.game.unlockQueue = []; document.getElementById('unlockOverlay').classList.add('hidden'); document.getElementById('missionConfetti').innerHTML = ''; });
   await shot(g.page, '34-v15-result-stars');
-  await g.page.evaluate(() => { const gm = window.game; gm.save.energy.value = 0; gm.save.energy.lastTick = Date.now(); gm.openEnergySheet({ empty: true }); });
+  if (g.errors.length) console.log('errors', g.errors);
+  await g.browser.close();
+}
+// v22: the first play is an Arena round; a player who does not steer gets
+// the steering hint (nothing for one who just plays).
+{
+  const g = await openGame(url, { viewport: { width: 402, height: 874 } });
   await g.page.waitForTimeout(400);
-  await shot(g.page, '35-v15-energy-empty');
+  await g.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
+  await g.page.waitForTimeout(2400);
+  await shot(g.page, '35-v22-first-round-hint');
   if (g.errors.length) console.log('errors', g.errors);
   await g.browser.close();
 }

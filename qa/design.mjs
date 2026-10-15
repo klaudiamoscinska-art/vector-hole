@@ -1,5 +1,5 @@
 // v13 design/gameplay bot checks: the first seconds of a round, the race
-// against the pacer rival, direct-drag steering, the tutorial, the newbie
+// against the pacer rival, direct-drag steering, the newbie
 // path into the first round, the shared Daily layout, locked-object
 // feedback and gender-neutral copy. Usage: node qa/design.mjs
 import fs from 'node:fs';
@@ -78,15 +78,16 @@ export async function runDesignChecks(url) {
   }
 
   // --- Tapping a DOM button must not leave a phantom steering point (touch) --
+  // (v22: the mission start card is the only card left in front of a round.)
   {
-    const g = await openGame(url, { viewport: { width: 390, height: 844 } });
-    await g.page.evaluate(() => window.game.startCampaignMission('M00'));
+    const g = await seeded(url, { missions: 3 }, null, { viewport: { width: 390, height: 844 } });
+    await g.page.evaluate(() => window.game.startCampaignMission('M01'));
     await g.page.waitForTimeout(300);
-    await g.page.tap('#btnTutorialIntroStart');
+    await g.page.tap('#btnMissionGo', { force: true });
     const p0 = await g.page.evaluate(() => ({ x: window.game.player.x, y: window.game.player.y }));
     await g.page.waitForTimeout(1500);
     const moved = await g.page.evaluate((p) => Math.hypot(window.game.player.x - p.x, window.game.player.y - p.y), p0);
-    results.push(report('input: tapping the coach card button does not steer the hole', moved < 1, `moved ${moved.toFixed(1)} px`));
+    results.push(report('input: tapping START on the mission card does not steer the hole', moved < 1, `moved ${moved.toFixed(1)} px`));
     await g.browser.close();
   }
   // --- Desktop: a cursor resting on the hole parks it -----------------------
@@ -103,44 +104,13 @@ export async function runDesignChecks(url) {
     await g.browser.close();
   }
 
-  // --- Tutorial: untimed, one step at a time, early later-step = no freeze --
-  {
-    const g = await openGame(url);
-    const t = await g.page.evaluate(() => {
-      const gm = window.game;
-      gm.startCampaignMission('M00');
-      const res = { introAtStart: gm.introPending, rows: gm.campaignGoalItems().length, timer: document.getElementById('missionTimerValue').textContent };
-      gm.dismissTutorialIntro();
-      cancelAnimationFrame(gm.rafId); gm.running = false;
-      const ring = gm.campaignEntities.filter(e => e.type === 'fragment' && Math.hypot(e.x - gm.player.x, e.y - gm.player.y) < 200).length;
-      // A vehicle eaten before the 6 fragments (out of order).
-      gm.mission.eatenByType.vehicle = 1;
-      gm.updateTutorialGuidance();
-      res.freezeOnEarlyStep = gm.introPending;
-      // Way past the 90 s "limit".
-      gm.mission.elapsed = 400;
-      gm.updateCampaign(0.016);
-      res.ended = gm.mission.ended; res.revive = !document.getElementById('reviveOverlay').classList.contains('hidden');
-      res.ring = ring;
-      // Current step done -> the next step's window.
-      gm.mission.eatenByType.fragment = 6; gm.updateTutorialGuidance();
-      res.nextIntro = gm.introPending; res.rowsAfter = gm.campaignGoalItems().length;
-      return res;
-    });
-    results.push(report('tutorial: opens on step 1 only (one goal row)', t.introAtStart && t.rows === 1, JSON.stringify(t)));
-    results.push(report('tutorial: food around the start (>= 5 fragments within 200 px)', t.ring >= 5, `${t.ring}`));
-    results.push(report('tutorial: untimed — no fail and no revive ad past 90 s', !t.ended && !t.revive && t.timer === '∞'));
-    results.push(report('tutorial: an early later step does not freeze the game', !t.freezeOnEarlyStep));
-    results.push(report('tutorial: finishing the current step opens the next one', t.nextIntro && t.rowsAfter === 2));
-    await g.browser.close();
-  }
-
   // --- Newbie path: GRAJ 2:00 starts at once, no login calendar yet; no Rush Hour at t=0
   {
-    const g = await seeded(url, { runsPlayed: 0 }, (s) => { s.login.lastClaimDate = null; });
+    // v22: a brand-new player (nothing finished in either mode).
+    const g = await seeded(url, { runsPlayed: 0 }, (s) => { s.login.lastClaimDate = null; s.campaign.completed = {}; s.unlocks.announced = []; s.coach = { moved: false, ate: false, rival: false, danger: false }; });
     await g.page.waitForTimeout(1200);
     const loginShown = await g.page.evaluate(() => !document.getElementById('loginRewardScreen').classList.contains('hidden'));
-    await g.page.evaluate(() => document.getElementById('btnStart').click());
+    await g.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
     const st = await g.page.evaluate(() => ({ state: window.game.state, setup: !document.getElementById('runSetupScreen').classList.contains('hidden') }));
     const rush = await g.page.evaluate(() => {
       const gm = window.game; let n = 0;
@@ -149,7 +119,7 @@ export async function runDesignChecks(url) {
       return n;
     });
     results.push(report('newbie: no login calendar before the first finished round', !loginShown));
-    results.push(report('newbie: GRAJ 2:00 starts the round straight away', st.state === 'PLAYING' && !st.setup, JSON.stringify(st)));
+    results.push(report('newbie: the welcome GRAJ starts an Arena round straight away', st.state === 'PLAYING' && !st.setup, JSON.stringify(st)));
     results.push(report('newbie: no Rush Hour modifier in the easy ramp', rush === 0, `${rush}/40 seeds`));
     await g.browser.close();
   }

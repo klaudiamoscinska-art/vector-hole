@@ -22,17 +22,15 @@ export async function runEdgeCases(url) {
   {
     const g = await openGame(url);
     const ttiMs = await g.page.evaluate(() => performance.now());
-    const welcome = await g.page.isVisible('#btnStartTutorial');
+    const welcome = await g.page.isVisible('#btnWelcomePlay');
     results.push(report('boot: fresh save shows the one-tap start CTA', welcome, `ready in ${Math.round(ttiMs)} ms`));
     await g.page.screenshot({ path: path.join(OUT, 'first-screen.png') });
-    // First-session funnel: a single tap must reach live gameplay.
-    await g.page.click('#btnStartTutorial', { force: true });
+    // First-session funnel: a single tap must reach live gameplay
+    // (v22: an Arena round, no tutorial card in between).
+    await g.page.click('#btnWelcomePlay', { force: true });
     await g.page.waitForTimeout(300);
-    const intro = await g.page.isVisible('#btnTutorialIntroStart');
-    if (intro) await g.page.click('#btnTutorialIntroStart', { force: true });
-    await g.page.waitForTimeout(300);
-    const playing = await g.page.evaluate(() => window.game.state === GameState.PLAYING);
-    results.push(report('ftue: ≤2 taps from first screen to gameplay', playing, intro ? '2 taps (intro card)' : '1 tap'));
+    const playing = await g.page.evaluate(() => window.game.state === GameState.PLAYING && window.game.mode === 'arena');
+    results.push(report('ftue: 1 tap from first screen to a live Arena round', playing));
     results.push(report('boot: no external network requests', g.external.length === 0, g.external.slice(0, 3).join(', ')));
     await g.browser.close();
   }

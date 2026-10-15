@@ -14,7 +14,7 @@ export async function runDifficultyChecks(url, runs = 2, workers = 4) {
   const all = [];
   let pageErrors = [];
   const { browser: b0, page: p0 } = await openGame(url);
-  const ids = await p0.evaluate(() => CAMPAIGN_MISSIONS.filter(m => m.id !== 'M00').map(m => ({ id: m.id, diff: m.diff, district: m.district })));
+  const ids = await p0.evaluate(() => CAMPAIGN_MISSIONS.map(m => ({ id: m.id, diff: m.diff, district: m.district })));
   await b0.close();
   const chunks = Array.from({ length: workers }, (_, i) => ids.filter((_, k) => k % workers === i));
   await Promise.all(chunks.map(async (chunk) => {

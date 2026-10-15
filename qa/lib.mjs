@@ -66,8 +66,9 @@ export async function openGame(baseUrl, { save = null, viewport = { width: 420, 
   return { browser, context, page, errors, external };
 }
 
-/** A save that has finished the tutorial and the first districts' worth of
- *  missions, so every hub feature (Arena, Warsztat, Wyzwania) is unlocked. */
+/** A save that has played both modes (the first districts' worth of
+ *  missions), so every hub feature (Warsztat, Wyzwania) is unlocked and the
+ *  first-round coach hints are already learned. */
 export async function veteranSave(page, overrides = {}) {
   return page.evaluate((o) => {
     const s = defaultSave();
@@ -77,11 +78,11 @@ export async function veteranSave(page, overrides = {}) {
     const ids = DISTRICTS.flatMap(d => d.missions).slice(0, o.missions || 6);
     ids.forEach(id => { s.campaign.completed[id] = true; });
     DISTRICTS.forEach((d, i) => { if (i > 0 && s.campaign.completed[DISTRICTS[i - 1].missions[DISTRICTS[i - 1].missions.length - 1]] && !s.campaign.unlockedDistricts.includes(d.id)) s.campaign.unlockedDistricts.push(d.id); });
-    s.campaign.discoveredTypes = Object.keys(TIERS).filter(k => k !== 'portal' && k !== 'golden');
-    s.campaign.discoveredHoleEating = true;
-    s.unlocks.announced = unlockedFeatureIds(s);
-    s.login.lastClaimDate = new Date().toISOString().slice(0, 10);
     s.stats.runsPlayed = o.runsPlayed || 0;
+    // v22: Wyzwania opens after Arena rounds -- a veteran has it either way.
+    s.unlocks.announced = Array.from(new Set([...unlockedFeatureIds(s), 'warsztat', 'wyzwania', 'kampania']));
+    s.coach = { moved: true, ate: true, rival: true, danger: true };
+    s.login.lastClaimDate = new Date().toISOString().slice(0, 10);
     s.coins = o.coins || 0;
     // QA saves are pre-consented so the consent sheet doesn't block flows.
     s.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
@@ -278,7 +279,7 @@ window.__qaPlayMission = function (id, opts) {
   if (opts.openLimit) def.timeLimit = 900;
   g.missionBoosters = opts.boosters || [];
   g.startCampaignMission(id);
-  if (g.introPending) g.dismissTutorialIntro();
+  if (g.introPending) g.beginMissionPlay();
   if (g.rafId) cancelAnimationFrame(g.rafId);
   g.running = false;
   const dt = 1 / 30;
@@ -289,7 +290,7 @@ window.__qaPlayMission = function (id, opts) {
   const vw = (opts.viewW || 390) / 2, vh = (opts.viewH || 844) / 2;
   while (!m.ended && !m.finishing && frames < 30 * (opts.openLimit ? 900 : 420)) {
     if (g.evolutionPending) { const c = document.querySelector('#evolutionCards .evolution-card'); if (c) c.click(); else g.skipEvolutionOffer(); continue; }
-    if (g.introPending) g.dismissTutorialIntro();
+    if (g.introPending) g.beginMissionPlay();
     if (g.revivePending) { g.declineRevive(); break; }
     const p = g.player;
     const casual = style === 'casual';
@@ -384,7 +385,6 @@ window.__qaPlayMission = function (id, opts) {
 export async function allDistrictsSave(page) {
   const save = await veteranSave(page, { missions: 0 });
   save.campaign.unlockedDistricts = DISTRICT_IDS_ALL;
-  save.energy = { value: 5, lastTick: 0, infiniteUntil: 4e12, freeDailyDate: null };
   return save;
 }
 export const DISTRICT_IDS_ALL = ['plac', 'park', 'port', 'galeria', 'dachy', 'rdzen', 'metro', 'bazar', 'fabryka', 'zatoka', 'ogrody', 'chmura'];

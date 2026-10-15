@@ -37,7 +37,7 @@ export async function runV20Checks(url) {
   {
     const g = await seeded(url);
     const r = await g.page.evaluate(() => {
-      const ms = CAMPAIGN_MISSIONS.filter(m => m.id !== 'M00');
+      const ms = CAMPAIGN_MISSIONS;
       const gateSteps = ms.filter(m => m.goal.steps.some(st => st.gates)).map(m => m.id);
       // (boss buildings like „Brama Bazaru” are eaten -- that's fine)
       const gateWords = ms.filter(m => /Przejdź przez|Przeleć przez|portal/i.test(m.goal.label)).map(m => m.id + ': ' + m.goal.label);

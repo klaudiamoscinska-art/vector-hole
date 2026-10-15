@@ -35,7 +35,7 @@ export async function runFlowChecks(url) {
     const r = await g.page.evaluate(() => {
       const welcome = document.getElementById('hubWelcome');
       const buttons = [...welcome.querySelectorAll('button')].filter(b => b.offsetParent !== null);
-      const cta = document.getElementById('btnStartTutorial').getBoundingClientRect();
+      const cta = document.getElementById('btnWelcomePlay').getBoundingClientRect();
       const words = welcome.innerText.split(/\s+/).filter(Boolean).length;
       return { buttons: buttons.length, ctaBottom: cta.bottom, H: window.innerHeight, words };
     });
@@ -59,7 +59,7 @@ export async function runFlowChecks(url) {
     }, NAV_TOP);
     results.push(report(`flow ${vp.width}x${vp.height}: Miasto has no sticky/floating element`, r.sticky.length === 0, r.sticky.join(', ')));
     results.push(report(`flow ${vp.width}x${vp.height}: GRAJ and the whole hub fit above the nav (no scrolling)`, r.playBottom <= r.navTop && r.chestBottom <= r.navTop + 1 && r.overflow <= 1, JSON.stringify(r)));
-    results.push(report(`flow ${vp.width}x${vp.height}: Miasto keeps to a handful of tappable things (<= 10, v15 energy chip included)`, r.visibleButtons <= 10, `${r.visibleButtons}`));
+    results.push(report(`flow ${vp.width}x${vp.height}: Miasto keeps to a handful of tappable things (<= 10)`, r.visibleButtons <= 10, `${r.visibleButtons}`));
     results.push(report(`flow ${vp.width}x${vp.height}: hub campaign tile names the next mission`, /^M\d\d · /.test(r.campaign), r.campaign));
     await done(g, `Miasto ${vp.width}x${vp.height}`);
   }
@@ -142,7 +142,7 @@ export async function runFlowChecks(url) {
         goals: card.querySelectorAll('.mc-goal').length, btn: btn.textContent.trim(), cardAbove: card.getBoundingClientRect().bottom <= btn.getBoundingClientRect().top,
         nela: document.getElementById('missionResultNela').textContent === campaignMissionById(id).nela.success };
       btn.click();
-      // v15: the button opens the next mission's briefing (boosters, energy).
+      // v15: the button opens the next mission's briefing (boosters).
       res.briefed = !document.getElementById('missionBriefing').classList.contains('hidden') && !!document.querySelector(`#briefingCard [data-mc-launch="${next}"]`);
       document.querySelector('#briefingCard [data-mc-launch]').click();
       res.startedNext = gm.mission && gm.mission.def.id === next && res.briefed;
@@ -168,10 +168,6 @@ export async function runFlowChecks(url) {
     const r = await g.page.evaluate(async () => {
       const gm = window.game;
       const c = gm.save.campaign;
-      // a save from before M00 existed: M01-M03 done, M00 not
-      delete c.completed.M00;
-      const legacyNext = gm.nextCampaignMissionId();
-      c.completed.M00 = true;
       // replaying a mission whose stars were won earlier (v15: 2 of 3)
       c.stars.M02 = 3;
       gm.startCampaignMission('M02'); cancelAnimationFrame(gm.rafId); gm.running = false;
@@ -190,9 +186,8 @@ export async function runFlowChecks(url) {
       m.eatenByType.capsule = 0; gm.updateCampaignHUD();
       m.eatenByType.capsule = 3; gm.updateCampaignHUD();
       gm.showBanner = orig;
-      return { legacyNext, star, eyebrow, banners };
+      return { star, eyebrow, banners };
     });
-    results.push(report('flow: a pre-tutorial save (M01 done, no M00) is not sent back to the tutorial', r.legacyNext && r.legacyNext !== 'M00', JSON.stringify(r)));
     results.push(report('flow: a replay keeps showing stars won earlier; no false "NOWA DZIELNICA"', r.star === '★' && !/NOWA DZIELNICA/.test(r.eyebrow || ''), JSON.stringify(r)));
     results.push(report('flow: "CEL ZALICZONY" fires once per step', r.banners === 1, JSON.stringify(r)));
     await done(g, 'regressions');

@@ -62,7 +62,7 @@ export async function runV18Checks(url, runs = 3) {
     const cases = await g.page.evaluate(async () => {
       const gm = window.game, out = {};
       const lose = (id, reason, progress) => {
-        gm.startCampaignMission(id); gm.dismissTutorialIntro();
+        gm.startCampaignMission(id); gm.beginMissionPlay();
         gm.campaignGoalFraction = () => progress;
         if (reason === 'time') { gm.mission.failReason = 'time'; gm.endCampaignMission(false); }
         else gm.failCampaignMission(reason);
@@ -96,7 +96,7 @@ export async function runV18Checks(url, runs = 3) {
     results.push(report('defeat: before boosters unlock the plain SPRÓBUJ PONOWNIE stays', /SPRÓBUJ PONOWNIE/.test(cases.locked.text), cases.locked.text));
     const lay = await g.page.evaluate(() => {
       const gm = window.game;
-      gm.startCampaignMission('M33'); gm.dismissTutorialIntro(); gm.failCampaignMission('hit');
+      gm.startCampaignMission('M33'); gm.beginMissionPlay(); gm.failCampaignMission('hit');
       const r = document.getElementById('btnMissionNext').getBoundingClientRect();
       return { bottom: Math.round(r.bottom), h: innerHeight, lines: Math.round(r.height) };
     });
