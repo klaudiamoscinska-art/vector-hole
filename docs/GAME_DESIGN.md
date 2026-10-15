@@ -457,6 +457,15 @@ sprawdza też, że reguła `100dvh` jest w arkuszu.
 Progi wydajności w `qa/` mierzą renderowanie programowe (SwiftShader);
 czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.
 
+## 6a. Panel testowy (v23, tylko dla twórców)
+Nie jest częścią gry dla gracza: bez kodu dewelopera nie ma go w DOM.
+Otwieranie: Profil → 7 szybkich stuknięć w „ID gościa” (albo `?dev`
+w adresie) → kod → boczny przycisk DEV. Każda akcja działa tylko
+w **trybie testowym** — osobny zapis; prawdziwy postęp nie jest ruszany
+i wraca po „ZAKOŃCZ TESTY”. Panel nie zmienia balansu ani zasad: używa
+funkcji gry, a jedyne haki w rdzeniu są nieaktywne poza trybem testowym.
+Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
+
 ## 7. Świadomie niezbudowane / decyzje dla właściciela
 
 - Brak backendu: rankingi, zapis w chmurze i konta są lokalne.
