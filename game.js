@@ -3376,7 +3376,8 @@ const FEATURE_GATES = {
   // Daily seed, daily task and friend challenges are all Arena rounds.
   wyzwania: s => wasAnnounced(s, 'wyzwania') || arenaRunsOf(s) >= CONFIG.unlockGates.wyzwaniaRuns,
   // v15: mission boosters after Plac Neonów's boss.
-  boosters: s => wasAnnounced(s, 'boosters') || !!s.campaign.completed[CONFIG.boosters.unlockMission]
+  // (v23: the dev panel's test mode can also open them by announcing.)
+  boosters: s => !!s.campaign.completed[CONFIG.boosters.unlockMission] || (DEV.sandbox && wasAnnounced(s, 'boosters'))
 };
 
 const UNLOCK_ICONS = {

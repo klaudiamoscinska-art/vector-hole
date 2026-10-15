@@ -40,7 +40,7 @@ go nie widzą; balans i zasady gry bez zmian.
 - Zmiany w rdzeniu tylko jako haki nieaktywne bez trybu testowego
   (`SAVE_SLOT`, strażniki `DEV.sandbox`, `isMissionPlayable`); bramka
   wzmocnień czyta też `unlocks.announced` (ogłoszone odblokowanie się nie
-  cofa — dla graczy bez zmian, bo ogłasza je tylko M04).
+  cofa) — tylko w trybie testowym; dla graczy bez zmian.
 - Testy: nowy `qa/dev-panel.mjs` (dostęp, symulowany host produkcyjny,
   izolacja, każda kategoria i jej realny skutek w grze, telefony
   w pionie/poziomie, komputer).
