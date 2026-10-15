@@ -695,6 +695,8 @@ class Analytics {
     // host page/app provides -- the game itself has no backend and sends
     // nothing. Supported sinks: Google Tag Manager's window.dataLayer and a
     // native wrapper's window.VectorHoleNative.track(name, props).
+    // v23: dev panel test mode never reaches a host sink.
+    if (DEV.sandbox) { event.sandbox = true; return; }
     if (!this.consent()) return;
     try {
       if (Array.isArray(window.dataLayer)) window.dataLayer.push({ event: 'vh_' + name, ...event.props });
@@ -1917,6 +1919,8 @@ class Monetization {
    *  (Safari clears script storage after 7 days without a visit) can cost
    *  a campaign. Every later saveGame() is mirrored there. */
   attachCloudSave() {
+    // v23: the dev panel's test save never meets the account copy.
+    if (DEV.sandbox) return;
     const data = this.sdk && this.sdk.data;
     if (!data || typeof data.getItem !== 'function' || typeof data.setItem !== 'function') return;
     // A failing read must never lead to overwriting the account copy.
@@ -1952,6 +1956,7 @@ class Monetization {
   gameplayStart() {
     if (this.inGameplay) return;
     this.inGameplay = true;
+    if (DEV.sandbox) return; // v23: test play is not portal engagement
     try {
       if (this.provider === 'crazygames') this.sdk.game.gameplayStart();
       else if (this.provider === 'poki') this.sdk.gameplayStart();
@@ -1961,6 +1966,7 @@ class Monetization {
   gameplayStop() {
     if (!this.inGameplay) return;
     this.inGameplay = false;
+    if (DEV.sandbox) return;
     try {
       if (this.provider === 'crazygames') this.sdk.game.gameplayStop();
       else if (this.provider === 'poki') this.sdk.gameplayStop();
@@ -1997,6 +2003,7 @@ class Monetization {
 
   /** A celebratory moment (new PB, first win) -- CrazyGames' happytime. */
   happyTime() {
+    if (DEV.sandbox) return;
     try { if (this.provider === 'crazygames' && this.sdk.game.happytime) this.sdk.game.happytime(); } catch (e) { /* ignore */ }
   }
 
@@ -2028,7 +2035,9 @@ class Monetization {
     let ok = false;
     try {
       await this.ready;
-      if (this.provider === 'native') ok = !!(await this.sdk.rewarded(placement));
+      // v23: dev panel test mode only ever shows the labelled demo ad.
+      if (DEV.sandbox) ok = await this.demoAd(true);
+      else if (this.provider === 'native') ok = !!(await this.sdk.rewarded(placement));
       else if (this.provider === 'poki') ok = !!(await this.sdk.rewardedBreak());
       else if (this.provider === 'crazygames') ok = await new Promise((res) => this.sdk.ad.requestAd('rewarded', { adFinished: () => res(true), adError: () => res(false) }));
       else if (this.provider === 'none') ok = false;
@@ -2056,6 +2065,7 @@ class Monetization {
   async interstitial(placement) {
     const A = CONFIG.ads;
     const save = this.game.save;
+    if (DEV.sandbox) return; // v23: no real ad breaks in test mode
     if (save.entitlements && save.entitlements.noAds) return;
     if ((save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns) return;
     if (Date.now() - this.lastInterstitialAt < A.interstitialMinGapMs) return;
@@ -2100,7 +2110,9 @@ class Monetization {
 
   async purchase(sku) {
     const product = IAP_PRODUCTS.find(p => p.sku === sku);
-    if (!product || !this.canPurchase) return false;
+    // v23: never a real payment in the dev panel's test mode (the panel
+    // simulates purchases through Game.grantProduct()).
+    if (!product || !this.canPurchase || DEV.sandbox) return false;
     this.game.analytics.track('iap_intent', { sku });
     try {
       const res = await this.sdk.purchase(sku);
@@ -3364,7 +3376,7 @@ const FEATURE_GATES = {
   // Daily seed, daily task and friend challenges are all Arena rounds.
   wyzwania: s => wasAnnounced(s, 'wyzwania') || arenaRunsOf(s) >= CONFIG.unlockGates.wyzwaniaRuns,
   // v15: mission boosters after Plac Neonów's boss.
-  boosters: s => !!s.campaign.completed[CONFIG.boosters.unlockMission]
+  boosters: s => wasAnnounced(s, 'boosters') || !!s.campaign.completed[CONFIG.boosters.unlockMission]
 };
 
 const UNLOCK_ICONS = {
@@ -3420,6 +3432,94 @@ function campaignDistrictOf(missionId) {
 
 const SAVE_KEY = 'vectorHoleSave_v1'; // storage key kept stable; schema is versioned inside the payload
 const SAVE_SCHEMA_VERSION = 13;
+// v23: where loadSave()/saveGame() read and write. Always SAVE_KEY for
+// players; only the dev panel's test mode (DEV.sandbox, devBoot()) points it
+// at a separate key, so test progress never touches the real save.
+let SAVE_SLOT = SAVE_KEY;
+
+/* ----------------------- v23 dev / QA panel: access + test mode -----------------------
+   The panel (DevPanel, near the end of this file) exists only for someone
+   who knows the dev code: 7 quick taps on the guest ID line in Profil (or
+   ?dev in the URL) ask for it, and only its salted, iterated SHA-256 lives
+   here -- a player never sees the panel, its button or its DOM. Every panel
+   action runs in test mode: a separate save slot (DEV_SANDBOX_SAVE_KEY),
+   no cloud mirror, no analytics sink, no real ads or payments, so the real
+   save is restored untouched when test mode ends. On loopback hosts
+   (localhost / 127.0.0.1 / file://, never the deployed game) the local
+   code DEV_LOCAL_CODE also works, for QA. */
+const DEV_ACCESS_KEY = 'vectorHoleDevAccess_v1';
+const DEV_STATE_KEY = 'vectorHoleDevState_v1';
+const DEV_SANDBOX_SAVE_KEY = 'vectorHoleSave_devSandbox_v1';
+const DEV_SNAPSHOTS_KEY = 'vectorHoleDevSnapshots_v1';
+const DEV_CODE_SALT = 'vh-dev-panel-v1|';
+const DEV_CODE_ROUNDS = 20000;
+const DEV_CODE_HASH = 'dc81eaf9faec715d7091ee9e7b674840fd6dde9be20b028004953e12fbb98de0';
+const DEV_LOCAL_CODE = 'dev';
+const DEV = { access: false, sandbox: false, openMissions: false };
+
+/** Plain SHA-256 (hex) of a UTF-8 string -- sync and dependency-free, so
+ *  the code check also works where crypto.subtle doesn't (plain-http LAN). */
+function sha256Hex(str) {
+  const K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+  const bytes = Array.from(unescape(encodeURIComponent(str)), c => c.charCodeAt(0));
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  for (let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bitLen >>> (i * 8)) & 0xff);
+  const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  const W = new Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let o = 0; o < bytes.length; o += 64) {
+    for (let i = 0; i < 16; i++) W[i] = (bytes[o + i * 4] << 24) | (bytes[o + i * 4 + 1] << 16) | (bytes[o + i * 4 + 2] << 8) | bytes[o + i * 4 + 3];
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(W[i - 15], 7) ^ rotr(W[i - 15], 18) ^ (W[i - 15] >>> 3);
+      const s1 = rotr(W[i - 2], 17) ^ rotr(W[i - 2], 19) ^ (W[i - 2] >>> 10);
+      W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + W[i]) | 0;
+      const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+    H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+  }
+  return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+}
+/** The stored form of a dev code: DEV_CODE_ROUNDS of salted SHA-256 (slow
+ *  on purpose, so the hash in this file can't be brute-forced cheaply). */
+function devCodeHash(code) {
+  let h = DEV_CODE_SALT + String(code || '').trim().toLowerCase();
+  for (let i = 0; i < DEV_CODE_ROUNDS; i++) h = sha256Hex(DEV_CODE_SALT + h);
+  return h;
+}
+function devIsLoopback() {
+  return location.protocol === 'file:' || /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(location.hostname);
+}
+/** Is this code's hash a valid dev access token here? */
+function devTokenValid(token) {
+  if (!token) return false;
+  if (token === DEV_CODE_HASH) return true;
+  return devIsLoopback() && token === devCodeHash(DEV_LOCAL_CODE);
+}
+function devReadJson(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v && typeof v === 'object' ? v : fallback; } catch (e) { return fallback; }
+}
+/** Runs before the save loads: dev access + test mode (which save slot). */
+function devBoot() {
+  try { DEV.access = devTokenValid(localStorage.getItem(DEV_ACCESS_KEY)); } catch (e) { DEV.access = false; }
+  const st = DEV.access ? devReadJson(DEV_STATE_KEY, {}) : {};
+  DEV.sandbox = !!st.sandbox;
+  DEV.openMissions = DEV.sandbox && !!st.openMissions;
+  SAVE_SLOT = DEV.sandbox ? DEV_SANDBOX_SAVE_KEY : SAVE_KEY;
+}
+function devWriteState() {
+  try { localStorage.setItem(DEV_STATE_KEY, JSON.stringify({ sandbox: DEV.sandbox, openMissions: DEV.openMissions })); } catch (e) { /* storage unavailable */ }
+}
 
 /* ----------------------- Utilities ----------------------- */
 
@@ -3852,7 +3952,7 @@ function migrateSave(data) {
 
 function loadSave() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(SAVE_SLOT);
     if (raw) {
       const parsed = JSON.parse(raw);
       // v11 tamper seal: a save edited by hand (devtools) no longer matches
@@ -3886,9 +3986,9 @@ function saveGame(save, opts = {}) {
   let sealed = null;
   try {
     sealed = sealSave(save);
-    localStorage.setItem(SAVE_KEY, sealed);
+    localStorage.setItem(SAVE_SLOT, sealed);
   } catch (e) { /* storage unavailable */ }
-  if (SAVE_MIRROR && sealed && opts.mirror !== false) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
+  if (SAVE_MIRROR && sealed && opts.mirror !== false && !DEV.sandbox) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
 }
 
 /** v19: how far a save got -- the safer of two saves is the one with more
@@ -8757,8 +8857,9 @@ class Game {
    *  from the fresh save exactly like a real first launch would. */
   resetProfile() {
     this.analytics.track('profile_reset', {});
-    this.monetization.clearCloudSave();
-    localStorage.removeItem(SAVE_KEY);
+    // v23: in the dev panel's test mode only the test save goes.
+    if (!DEV.sandbox) this.monetization.clearCloudSave();
+    localStorage.removeItem(SAVE_SLOT);
     location.reload();
   }
 
@@ -9246,6 +9347,8 @@ class Game {
    *  mission before it (in that district) is cleared. */
   isMissionPlayable(id) {
     const def = campaignMissionById(id);
+    // v23: dev panel test mode can open every mission.
+    if (def && DEV.sandbox && DEV.openMissions) return true;
     const d = def && DISTRICTS.find(x => x.id === def.district);
     if (!d || !this.save.campaign.unlockedDistricts.includes(d.id)) return false;
     const i = d.missions.indexOf(id);
@@ -10256,7 +10359,7 @@ class Game {
 
   /* ---------- v15: mission boosters ---------- */
 
-  boostersUnlocked() { return !!this.save.campaign.completed[CONFIG.boosters.unlockMission]; }
+  boostersUnlocked() { return FEATURE_GATES.boosters(this.save); }
 
   /** The welcome gift when boosters unlock: one of each. */
   checkBoosterGift() {
@@ -14701,6 +14804,1145 @@ class Game {
 }
 
 /* ----------------------- v19: English (Polish -> English) ----------------------- */
+/* ----------------------- v23: Dev / QA panel -----------------------
+   A test panel for the owner (access: see DEV_* near SAVE_KEY). Everything
+   it lists comes from the game's own data (DISTRICTS, CAMPAIGN_MISSIONS,
+   SKINS/AURAS/EAT_EFFECTS/OVERDRIVE_SKINS, MISSION_BOOSTERS, RUN_TOOLS,
+   MUTATIONS, CAMPAIGN_POWERS, IAP_PRODUCTS, CORE_CITY_LEVEL_REWARDS), and
+   every change goes through the game's own paths (grantXp(),
+   grantCoreCityLevelReward(), grantProduct(), onEquipClick(),
+   openFreeChest(), endCampaignMission(), the round's own timeout, ...).
+   It only acts in test mode (DEV.sandbox): a separate save slot, so the
+   real save is never written while testing and comes back untouched.
+   The panel is Polish-only dev UI ([translate="no"]). */
+const DEV_TABS = [
+  { id: 'data', label: 'Dane' },
+  { id: 'progress', label: 'Postęp' },
+  { id: 'gear', label: 'Warsztat' },
+  { id: 'economy', label: 'Ekonomia' },
+  { id: 'play', label: 'Rozgrywka' },
+  { id: 'screens', label: 'Ekrany' }
+];
+const DEV_COSMETICS = [
+  { cat: 'skin', name: 'Wir', items: SKINS, tab: 'tabSkins', owned: s => s.owned, selected: s => s.selected, base: 'rainbow' },
+  { cat: 'aura', name: 'Smuga', items: AURAS, tab: 'tabAuras', owned: s => s.auras.owned, selected: s => s.auras.selected, base: 'none' },
+  { cat: 'effect', name: 'Efekt pochłaniania', items: EAT_EFFECTS, tab: 'tabEffects', owned: s => s.effects.owned, selected: s => s.effects.selected, base: 'classic' },
+  { cat: 'overdriveSkin', name: 'Finisz', items: OVERDRIVE_SKINS, tab: 'tabOverdrive', owned: s => s.overdriveSkins.owned, selected: s => s.overdriveSkins.selected, base: 'classic' }
+];
+const DEV_FEATURES = [
+  { id: 'kampania', name: 'Kampania (wstęp „DRUGI TRYB”)' },
+  { id: 'warsztat', name: 'Warsztat' },
+  { id: 'wyzwania', name: 'Wyzwania' },
+  { id: 'boosters', name: 'Wzmocnienia misji' }
+];
+const DEV_SNAPSHOT_MAX = 12;
+/** Every mission in play order (district by district). */
+const DEV_MISSION_ORDER = DISTRICTS.flatMap(d => d.missions);
+
+class DevPanel {
+  constructor(game) {
+    this.game = game;
+    this.tab = 'data';
+    this.isOpen = false;
+    this.pausedByPanel = false;
+    this.celebrate = false;
+    this.missionId = this.game.save && nextCampaignMissionIdSafe(this.game) || 'M01';
+    this.taps = [];
+    this.failedCodes = 0;
+    this.lockedUntil = 0;
+    // Hidden gesture: 7 quick taps on the guest ID line in Profil.
+    const idRow = document.getElementById('guestIdLabel');
+    if (idRow && idRow.parentElement) idRow.parentElement.addEventListener('click', () => this.onSecretTap());
+    window.addEventListener('keydown', (e) => {
+      if (!DEV.access) return;
+      if (e.key === 'F2' || (e.code === 'Backquote' && !e.target.closest('input, textarea'))) { e.preventDefault(); this.toggle(); }
+      else if (e.key === 'Escape' && this.isOpen) { e.stopPropagation(); this.close(); }
+    }, true);
+    if (DEV.access) this.mountFab();
+    const params = new URLSearchParams(location.search);
+    if (params.has('dev')) setTimeout(() => { if (DEV.access) this.open(); else this.askCode(); }, 300);
+  }
+
+  /* ---------- access ---------- */
+
+  onSecretTap() {
+    const now = Date.now();
+    this.taps = this.taps.filter(t => now - t < 4000).concat(now);
+    if (this.taps.length >= 7) {
+      this.taps = [];
+      if (DEV.access) this.open(); else this.askCode();
+    }
+  }
+
+  askCode() {
+    let box = document.getElementById('devCodeBox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'devCodeBox';
+      box.className = 'dev-code-box';
+      box.setAttribute('translate', 'no');
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+      box.setAttribute('aria-label', 'Kod dewelopera');
+      box.innerHTML = '<form class="dev-code-card"><div class="dev-code-title">KOD DEWELOPERA</div>' +
+        '<input id="devCodeInput" class="dev-input" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="kod">' +
+        '<p id="devCodeMsg" class="dev-code-msg">Panel testowy jest tylko dla twórców gry.</p>' +
+        '<div class="dev-row"><button type="button" class="dev-btn" data-code="cancel">ANULUJ</button><button type="submit" class="dev-btn dev-btn-main">OTWÓRZ</button></div></form>';
+      document.getElementById('app').appendChild(box);
+      box.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); this.submitCode(); });
+      box.querySelector('[data-code="cancel"]').addEventListener('click', () => box.classList.add('hidden'));
+    }
+    box.classList.remove('hidden');
+    document.getElementById('devCodeMsg').textContent = 'Panel testowy jest tylko dla twórców gry.';
+    const input = document.getElementById('devCodeInput');
+    input.value = '';
+    setTimeout(() => input.focus(), 50);
+  }
+
+  submitCode() {
+    const msg = document.getElementById('devCodeMsg');
+    if (Date.now() < this.lockedUntil) { msg.textContent = 'Za dużo prób — odczekaj chwilę.'; return; }
+    const code = document.getElementById('devCodeInput').value;
+    msg.textContent = 'Sprawdzam…';
+    // Let "Sprawdzam…" paint before the deliberately slow hash.
+    setTimeout(() => {
+      const token = devCodeHash(code);
+      if (!devTokenValid(token)) {
+        this.failedCodes++;
+        if (this.failedCodes >= 5) { this.lockedUntil = Date.now() + 30000; this.failedCodes = 0; }
+        msg.textContent = 'Nieprawidłowy kod.';
+        return;
+      }
+      try { localStorage.setItem(DEV_ACCESS_KEY, token); } catch (e) { /* private mode: access lasts this session */ }
+      DEV.access = true;
+      document.getElementById('devCodeBox').classList.add('hidden');
+      this.mountFab();
+      this.open();
+    }, 30);
+  }
+
+  revokeAccess() {
+    try {
+      localStorage.removeItem(DEV_ACCESS_KEY);
+      localStorage.removeItem(DEV_STATE_KEY);
+    } catch (e) { /* ignore */ }
+    location.reload();
+  }
+
+  /* ---------- shell ---------- */
+
+  mountFab() {
+    if (document.getElementById('devFab')) { this.syncFab(); return; }
+    const fab = document.createElement('button');
+    fab.id = 'devFab';
+    fab.type = 'button';
+    fab.className = 'dev-fab';
+    fab.setAttribute('translate', 'no');
+    fab.setAttribute('aria-label', 'Panel testowy');
+    fab.addEventListener('click', (e) => { e.stopPropagation(); this.toggle(); });
+    document.getElementById('app').appendChild(fab);
+    this.syncFab();
+  }
+
+  syncFab() {
+    const fab = document.getElementById('devFab');
+    if (!fab) return;
+    fab.textContent = DEV.sandbox ? 'TEST' : 'DEV';
+    fab.classList.toggle('sandbox', DEV.sandbox);
+  }
+
+  mountPanel() {
+    if (document.getElementById('devPanel')) return;
+    const el = document.createElement('div');
+    el.id = 'devPanel';
+    el.className = 'dev-panel hidden';
+    el.setAttribute('translate', 'no');
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-label', 'Panel testowy');
+    el.innerHTML = '<div class="dev-sheet">' +
+      '<header class="dev-head"><span class="dev-title">PANEL TESTOWY</span><span id="devModeChip" class="dev-mode-chip"></span>' +
+      '<button type="button" class="dev-close" data-act="close" aria-label="Zamknij panel">×</button></header>' +
+      `<nav class="dev-tabs">${DEV_TABS.map(t => `<button type="button" class="dev-tab" data-tab="${t.id}">${t.label}</button>`).join('')}</nav>` +
+      '<div id="devStatus" class="dev-status"></div>' +
+      '<div id="devBody" class="dev-body"></div>' +
+      '<div id="devToast" class="dev-toast hidden" role="status"></div></div>';
+    document.getElementById('app').appendChild(el);
+    el.addEventListener('click', (e) => {
+      if (e.target === el) { this.close(); return; }
+      const tab = e.target.closest('[data-tab]');
+      if (tab) { this.tab = tab.dataset.tab; this.render(); return; }
+      const btn = e.target.closest('[data-act]');
+      if (btn && !btn.disabled) this.onAction(btn);
+    });
+    el.addEventListener('change', (e) => {
+      if (e.target.id === 'devMissionSelect') { this.missionId = e.target.value; this.render(); }
+      if (e.target.id === 'devCelebrate') this.celebrate = e.target.checked;
+    });
+  }
+
+  toggle() { if (this.isOpen) this.close(); else this.open(); }
+
+  open() {
+    if (!DEV.access) return;
+    this.mountPanel();
+    const g = this.game;
+    // A running round pauses (without the pause sheet) while the panel is up.
+    if (g.running && !g.paused) {
+      g.pauseGame();
+      document.getElementById('pauseSheet').classList.add('hidden');
+      this.pausedByPanel = true;
+    }
+    this.isOpen = true;
+    document.getElementById('devPanel').classList.remove('hidden');
+    this.render();
+  }
+
+  close(resume = true) {
+    this.isOpen = false;
+    const el = document.getElementById('devPanel');
+    if (el) el.classList.add('hidden');
+    const g = this.game;
+    if (resume && this.pausedByPanel && g.running && g.paused) g.resumeGame();
+    this.pausedByPanel = false;
+  }
+
+  toast(text, bad) {
+    const t = document.getElementById('devToast');
+    if (!t) return;
+    t.textContent = text;
+    t.classList.toggle('bad', !!bad);
+    t.classList.remove('hidden');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => t.classList.add('hidden'), 2600);
+  }
+
+  /* ---------- rendering ---------- */
+
+  render() {
+    if (!this.isOpen) return;
+    const g = this.game, s = g.save;
+    document.querySelectorAll('#devPanel .dev-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === this.tab));
+    const chip = document.getElementById('devModeChip');
+    chip.textContent = DEV.sandbox ? 'TRYB TESTOWY' : 'PRAWDZIWY ZAPIS';
+    chip.classList.toggle('sandbox', DEV.sandbox);
+    const where = g.running ? (g.mode === 'campaign' && g.mission ? `misja ${missionCode(g.mission.def)}` : (g.isDailyRun ? 'Wyzwanie dnia' : 'runda Areny')) : 'menu';
+    document.getElementById('devStatus').textContent = `◇ ${s.coins} · ◆ ${s.prisms || 0} · poziom ${s.player.level} · Core City LVL ${s.hub.coreLevel} · ${where}`;
+    const body = document.getElementById('devBody');
+    if (this.tab !== 'data' && !DEV.sandbox) {
+      body.innerHTML = this.sandboxGateHtml();
+      return;
+    }
+    const fn = { data: 'tabData', progress: 'tabProgress', gear: 'tabGear', economy: 'tabEconomy', play: 'tabPlay', screens: 'tabScreens' }[this.tab];
+    body.innerHTML = this[fn]();
+  }
+
+  sandboxGateHtml() {
+    return this.section('Najpierw włącz tryb testowy',
+      '<p class="dev-note">Panel zmienia stan gry tylko w trybie testowym: osobny zapis, bez chmury, analityki, prawdziwych reklam i płatności. Twój prawdziwy postęp zostaje nietknięty i wraca po wyjściu z testów.</p>' +
+      this.btns([['sandbox-copy', 'TESTUJ NA KOPII MOJEGO POSTĘPU', 'main'], ['sandbox-fresh', 'TESTUJ OD ZERA']]));
+  }
+
+  section(title, inner) { return `<section class="dev-sec"><h3 class="dev-h">${title}</h3>${inner}</section>`; }
+
+  /** [[act, label, kind?, arg?, confirmLabel?], ...] -> a row of buttons. */
+  btns(list) {
+    return `<div class="dev-row">${list.map(([act, label, kind, arg, confirm]) =>
+      `<button type="button" class="dev-btn${kind === 'main' ? ' dev-btn-main' : kind === 'danger' ? ' dev-btn-danger' : ''}" data-act="${act}"` +
+      `${arg !== undefined ? ` data-arg="${escapeHtml(String(arg))}"` : ''}${confirm ? ` data-confirm="${escapeHtml(confirm)}"` : ''}>${label}</button>`).join('')}</div>`;
+  }
+
+  numRow(id, label, value, act, extra = []) {
+    return `<div class="dev-field"><label for="${id}">${label}</label><input id="${id}" class="dev-input dev-num" type="number" inputmode="numeric" value="${value}">` +
+      `<button type="button" class="dev-btn" data-act="${act}">USTAW</button>${extra.map(([a, l, arg]) => `<button type="button" class="dev-btn" data-act="${a}" data-arg="${arg}">${l}</button>`).join('')}</div>`;
+  }
+
+  missionSelectHtml() {
+    const opts = DISTRICTS.map(d => `<optgroup label="${d.order}. ${escapeHtml(d.name)}">` + d.missions.map(id => {
+      const def = campaignMissionById(id);
+      const st = this.game.save.campaign.stars[id] || 0;
+      return `<option value="${id}"${id === this.missionId ? ' selected' : ''}>${missionCode(def)} · ${escapeHtml(def.name)} · ${'●'.repeat(def.diff || 1)}${this.game.isMissionDone(id) ? ` · ✓${'★'.repeat(Game.starCount(st))}` : ''}</option>`;
+    }).join('') + '</optgroup>').join('');
+    return `<div class="dev-field"><label for="devMissionSelect">Misja</label><select id="devMissionSelect" class="dev-input">${opts}</select>` +
+      `<input id="devMissionCode" class="dev-input dev-code" type="text" placeholder="np. M32" autocapitalize="characters"><button type="button" class="dev-btn" data-act="mission-pick">WYBIERZ</button></div>`;
+  }
+
+  tabData() {
+    const snaps = this.snapshots();
+    const hasSandbox = this.sandboxSaveExists();
+    if (!DEV.sandbox) {
+      return this.section('Tryb',
+        '<p class="dev-note">Teraz gra działa na <b>prawdziwym zapisie</b>. Tryb testowy przełącza grę na osobny zapis (strona się przeładuje); prawdziwy postęp nie jest wtedy ani czytany, ani nadpisywany, a po wyjściu z testów wraca dokładnie taki, jak był.</p>' +
+        this.btns([['sandbox-copy', 'TESTUJ NA KOPII MOJEGO POSTĘPU', 'main'], ['sandbox-fresh', 'TESTUJ OD ZERA']]) +
+        (hasSandbox ? this.btns([['sandbox-resume', 'WRÓĆ DO POPRZEDNICH TESTÓW']]) : '')) +
+        this.section('Dostęp', this.btns([['revoke', 'ZABIERZ DOSTĘP DO PANELU NA TYM URZĄDZENIU', 'danger', '', 'Na pewno? Dotknij jeszcze raz']]));
+    }
+    const list = snaps.length ? `<ul class="dev-list">${snaps.map((sn, i) =>
+      `<li><span class="dev-li-main">${escapeHtml(sn.name)}<small>${new Date(sn.ts).toLocaleString('pl-PL')}</small></span>` +
+      `<button type="button" class="dev-btn" data-act="snap-load" data-arg="${i}" data-confirm="Wczytać? Dotknij ponownie">WCZYTAJ</button>` +
+      `${sn.auto ? '' : `<button type="button" class="dev-btn dev-btn-danger" data-act="snap-del" data-arg="${i}" data-confirm="Usunąć?">USUŃ</button>`}</li>`).join('')}</ul>` : '<p class="dev-note">Brak zapisanych stanów.</p>';
+    return this.section('Tryb testowy',
+      '<p class="dev-note">Grasz na <b>zapisie testowym</b>. Prawdziwy postęp czeka nietknięty — wróci po zakończeniu testów.</p>' +
+      this.btns([['sandbox-exit', 'ZAKOŃCZ TESTY · PRZYWRÓĆ MÓJ POSTĘP', 'main', '', 'Zakończyć testy? Dotknij ponownie']])) +
+      this.section('Stany testowe',
+        `<div class="dev-field"><label for="devSnapName">Nazwa</label><input id="devSnapName" class="dev-input" type="text" maxlength="40" placeholder="np. przed bossem Portu"><button type="button" class="dev-btn dev-btn-main" data-act="snap-save">ZAPISZ STAN</button></div>` +
+        list) +
+      this.section('Reset',
+        this.btns([
+          ['mission-reset', 'RESTART BIEŻĄCEJ MISJI'],
+          ['mission-clear', `WYCZYŚĆ POSTĘP MISJI ${missionCode(campaignMissionById(this.missionId))}`, '', '', 'Wyczyścić? Dotknij ponownie'],
+          ['sandbox-wipe', 'RESET CAŁEGO POSTĘPU TESTOWEGO', 'danger', '', 'Na pewno wszystko od zera? Dotknij ponownie']
+        ]) +
+        '<p class="dev-note">Reset dotyczy tylko zapisu testowego. „Stan z początku testów” na liście wyżej przywraca to, od czego testy się zaczęły.</p>') +
+      this.section('Eksport', this.btns([['export', 'KOPIUJ KOD ZAPISU TESTOWEGO']]));
+  }
+
+  tabProgress() {
+    const s = this.game.save, c = s.campaign;
+    const def = campaignMissionById(this.missionId);
+    const districts = DISTRICTS.map(d => {
+      const open = c.unlockedDistricts.includes(d.id);
+      const done = d.missions.filter(id => c.completed[id]).length;
+      return `<li><span class="dev-li-main">${d.order}. ${escapeHtml(d.name)}<small>${open ? 'odblokowana' : 'zablokowana'} · ${done}/${d.missions.length} misji</small></span>` +
+        (open ? '' : `<button type="button" class="dev-btn" data-act="district-unlock" data-arg="${d.id}">ODBLOKUJ</button>`) +
+        `<button type="button" class="dev-btn" data-act="district-complete" data-arg="${d.id}">UKOŃCZ</button></li>`;
+    }).join('');
+    return this.section('Misje',
+      `<label class="dev-check"><input type="checkbox" data-act="open-missions"${DEV.openMissions ? ' checked' : ''}> wszystkie misje grywalne (bez ukończenia poprzednich)</label>` +
+      this.missionSelectHtml() +
+      `<p class="dev-note">${missionCode(def)} „${escapeHtml(def.name)}” · ${escapeHtml(DISTRICTS.find(d => d.id === def.district).name)} · trudność ${def.diff} · ${this.game.isMissionPlayable(def.id) ? 'grywalna' : 'zablokowana w normalnej grze'}</p>` +
+      this.btns([['mission-brief', 'ODPRAWA'], ['mission-start', 'START (POMIŃ WYMAGANIA)', 'main']]) +
+      this.btns([['progress-to', 'POSTĘP DO TEJ MISJI (★)', '', 1], ['progress-to', 'POSTĘP DO TEJ MISJI (★★★)', '', 7], ['mission-done', 'UKOŃCZ TYLKO TĘ (★★★)']]) +
+      this.btns([['progress-all', 'UKOŃCZ CAŁĄ KAMPANIĘ (★★★)', '', '', 'Ukończyć 240 misji? Dotknij ponownie'], ['progress-clear', 'WYCZYŚĆ CAŁĄ KAMPANIĘ', 'danger', '', 'Wyczyścić kampanię? Dotknij ponownie']]) +
+      '<p class="dev-note">„Postęp do tej misji” zalicza wszystkie wcześniejsze misje (w kolejności gry) i czyści późniejsze; dzielnice otwierają się tak jak w grze — nagrodą za bossa poprzedniej. Bez monet za misje (skrzynie gwiazd zostają uznane za odebrane).</p>') +
+      this.section('Dzielnice',
+        `<label class="dev-check"><input id="devCelebrate" type="checkbox"${this.celebrate ? ' checked' : ''}> pokazuj ekrany „ODBLOKOWANO!” jak w grze</label>` +
+        this.btns([['district-unlock-all', 'ODBLOKUJ WSZYSTKIE DZIELNICE', 'main']]) + `<ul class="dev-list">${districts}</ul>`) +
+      this.section('Gracz',
+        this.numRow('devLevel', 'Poziom gracza', s.player.level, 'set-level') +
+        this.numRow('devXp', 'Dodaj XP (z awansami)', 100, 'add-xp') +
+        this.numRow('devCore', 'Core City LVL', s.hub.coreLevel, 'set-core') +
+        this.numRow('devCoreCharge', 'Core City % do następnego', Math.round(s.hub.coreCharge || 0), 'set-core-charge') +
+        this.numRow('devRuns', 'Rozegrane rundy Areny', s.stats.runsPlayed || 0, 'set-runs') +
+        '<p class="dev-note">Core City w górę przyznaje nagrody poziomów (jak w grze). Liczba rund Areny steruje odblokowaniem Warsztatu/Wyzwań i trudnością rywali.</p>') +
+      this.section('Funkcje',
+        `<ul class="dev-list">${DEV_FEATURES.map(f => {
+          const on = f.id === 'kampania' ? s.unlocks.announced.includes('kampania') : FEATURE_UNLOCKS.find(x => x.id === f.id).isUnlocked(s);
+          return `<li><span class="dev-li-main">${f.name}<small>${on ? 'odblokowane' : 'zablokowane'}</small></span>${on ? '' : `<button type="button" class="dev-btn" data-act="feature-unlock" data-arg="${f.id}">ODBLOKUJ</button>`}</li>`;
+        }).join('')}</ul>` + this.btns([['feature-unlock-all', 'ODBLOKUJ WSZYSTKIE FUNKCJE', 'main']]));
+  }
+
+  tabGear() {
+    const s = this.game.save;
+    const source = (it) => it.priceType === 'prisms' || it.pricePrisms ? `${it.pricePrisms} ◆` : (it.price > 0 || it.priceCoins > 0) ? `${it.price || it.priceCoins} ◇`
+      : it.unlockSource ? ({ coreCity: `Core City LVL ${it.unlockSource.level}`, mission: `misja ${it.unlockSource.id}`, iap: `zakup ${it.unlockSource.sku}` }[it.unlockSource.type] || 'nagroda') : 'start';
+    const cats = DEV_COSMETICS.map(cd => {
+      const owned = cd.owned(s), sel = cd.selected(s);
+      const rows = cd.items.map(it => {
+        const has = owned.includes(it.id), worn = sel === it.id;
+        return `<li><span class="dev-li-main">${escapeHtml(it.name)}<small>${source(it)}${it.perkLabel ? ' · ' + escapeHtml(it.perkLabel) : ''}</small></span>` +
+          `<span class="dev-chip${worn ? ' on' : has ? ' own' : ''}">${worn ? 'ZAŁOŻONE' : has ? 'POSIADANE' : 'BRAK'}</span>` +
+          (has ? (worn ? '' : `<button type="button" class="dev-btn" data-act="cos-wear" data-arg="${cd.cat}|${it.id}">ZAŁÓŻ</button>`) +
+            (it.id === cd.base ? '' : `<button type="button" class="dev-btn dev-btn-danger" data-act="cos-take" data-arg="${cd.cat}|${it.id}">ZABIERZ</button>`)
+            : `<button type="button" class="dev-btn" data-act="cos-give" data-arg="${cd.cat}|${it.id}">ODBLOKUJ</button>`) + '</li>';
+      }).join('');
+      return this.section(`${cd.name} <small>${owned.filter(id => cd.items.some(x => x.id === id)).length}/${cd.items.length}</small>`,
+        this.btns([['cos-give-all', 'ODBLOKUJ WSZYSTKIE', '', cd.cat], ['cos-show', 'POKAŻ W WARSZTACIE', '', cd.cat]]) + `<ul class="dev-list">${rows}</ul>`);
+    }).join('');
+    const boosters = MISSION_BOOSTERS.map(b => `<div class="dev-field"><label for="devBoost-${b.id}">${b.name} <small>${escapeHtml(b.short)}</small></label>` +
+      `<input id="devBoost-${b.id}" class="dev-input dev-num" type="number" inputmode="numeric" value="${s.boosters[b.id] || 0}">` +
+      `<button type="button" class="dev-btn" data-act="booster-set" data-arg="${b.id}">USTAW</button><button type="button" class="dev-btn" data-act="booster-add" data-arg="${b.id}|1">+1</button><button type="button" class="dev-btn" data-act="booster-add" data-arg="${b.id}|-1">−1</button></div>`).join('');
+    const tools = RUN_TOOLS.filter(t => t.id !== 'none').map(t => [`arena-tool`, `RUNDA Z: ${t.name.toUpperCase()}`, '', t.id]);
+    return this.section('Wszystko naraz', this.btns([['cos-give-all', 'ODBLOKUJ WSZYSTKIE KOSMETYKI', 'main', '*'], ['feature-unlock', 'ODBLOKUJ WARSZTAT', '', 'warsztat']])) +
+      cats +
+      this.section('Wzmocnienia misji (zapas)',
+        `<p class="dev-note">Gra nie ma poziomów ulepszeń — narzędzia to jednorazowe wzmocnienia misji (liczy się zapas) i dodatki do rundy Areny. Wzmocnienia: ${this.game.boostersUnlocked() ? 'odblokowane' : 'jeszcze zablokowane'}.</p>` +
+        this.btns([['feature-unlock', 'ODBLOKUJ WZMOCNIENIA', '', 'boosters'], ['booster-all', '+5 KAŻDEGO']]) + boosters) +
+      this.section('Dodatki do rundy Areny',
+        '<p class="dev-note">Start rundy z wybranym dodatkiem, bez opłaty (normalnie kosztuje monety w ekranie przed rundą).</p>' + this.btns(tools)) +
+      this.section('Odznaki', `<p class="dev-note">Posiadane: ${s.badges.length ? s.badges.map(escapeHtml).join(', ') : 'brak'} (jedyna odznaka w grze to „pryzmat” za Core City LVL 6).</p>` +
+        this.btns([['badge-toggle', s.badges.includes('pryzmat') ? 'ZABIERZ ODZNAKĘ PRYZMAT' : 'DAJ ODZNAKĘ PRYZMAT', '', 'pryzmat']]));
+  }
+
+  tabEconomy() {
+    const s = this.game.save;
+    const iap = IAP_PRODUCTS.map(p => {
+      const bought = s.entitlements.purchased.includes(p.sku);
+      return `<li><span class="dev-li-main">${escapeHtml(p.name)}<small>${escapeHtml(p.desc)}</small></span>` +
+        `${bought ? '<span class="dev-chip own">KUPIONO</span>' : ''}` +
+        (p.oneTime && bought ? `<button type="button" class="dev-btn" data-act="iap-undo" data-arg="${p.sku}">COFNIJ</button>`
+          : `<button type="button" class="dev-btn" data-act="iap-sim" data-arg="${p.sku}">SYMULUJ ZAKUP</button>`) + '</li>';
+    }).join('');
+    const core = Object.keys(CORE_CITY_LEVEL_REWARDS).map(lvl => ['reward-core', `CORE CITY LVL ${lvl}: ${CORE_CITY_LEVEL_REWARDS[lvl].label}`, '', lvl]);
+    return this.section('Waluty',
+      this.numRow('devCoins', 'Monety ◇', s.coins, 'set-coins', [['add-coins', '+100', 100], ['add-coins', '+1000', 1000], ['add-coins', '+10 000', 10000], ['add-coins', '−100', -100]]) +
+      this.numRow('devPrisms', 'Pryzmaty ◆', s.prisms || 0, 'set-prisms', [['add-prisms', '+10', 10], ['add-prisms', '+100', 100], ['add-prisms', '+1000', 1000], ['add-prisms', '−10', -10]]) +
+      '<p class="dev-note">Pozostałe „waluty” gry: wzmocnienia misji (zapas — zakładka Warsztat) i XP (zakładka Postęp). Wydawanie sprawdzisz w grze: Warsztat → KUP I ZAŁÓŻ, odprawa misji → wzmocnienie za monety lub ◆.</p>') +
+      this.section('Zakupy (symulacja, bez płatności)',
+        '<p class="dev-note">Przyznaje dokładnie to, co prawdziwy zakup (Game.grantProduct) — z ekranem podziękowania. Żadna płatność nie rusza.</p>' + `<ul class="dev-list">${iap}</ul>`) +
+      this.section('Nagrody',
+        this.btns(core) +
+        this.btns([['reward-chest', 'DARMOWA SKRZYNIA TERAZ'], ['reward-star-chest', 'SKRZYNIA GWIAZD'], ['reward-login', 'NAGRODA DNIA (KALENDARZ)'], ['reward-aurora', 'WIR „AURORA FINAŁU” (NAGRODA M24)']]) +
+        this.btns([['reset-ads', 'ZERUJ DZIENNE LIMITY REKLAM'], ['chest-ready', 'SKRZYNIA GOTOWA (BEZ OTWIERANIA)']]) +
+        '<p class="dev-note">Nagrody pokazują ekran „ODBLOKOWANO!”, a przycisk „ZAŁÓŻ W WARSZTACIE” prowadzi tam, gdzie gracz je znajdzie.</p>');
+  }
+
+  tabPlay() {
+    const g = this.game, s = g.save;
+    const inMission = g.running && g.mode === 'campaign' && g.mission && !g.mission.ended;
+    const inArena = g.running && g.mode === 'arena';
+    const def = campaignMissionById(this.missionId);
+    let live = '<p class="dev-note">Teraz nic się nie toczy — wystartuj misję albo rundę.</p>';
+    if (g.running && g.player) {
+      const tier = g.mode === 'campaign' ? g.campaignPlayerTier().id : CONFIG.sizeTiers[getSizeTierIndex(g.player.radius)].shortId;
+      const time = g.mode === 'campaign' ? g.mission.timeRemaining : g.timeRemaining;
+      live = `<p class="dev-note">${g.mode === 'campaign' ? `Misja ${missionCode(g.mission.def)}` : 'Runda Areny'} · ${tier} · promień ${Math.round(g.player.radius)} · czas ${formatClock(Math.max(0, time))} · wynik ${g.player.score}</p>`;
+    }
+    const tiers = CONFIG.sizeTiers.map((t, i) => ['set-tier', t.shortId, '', i + 1]);
+    const sizeSec = this.section('Rozmiar dziury',
+      (g.running ? '' : '<p class="dev-note">Działa w trakcie misji albo rundy.</p>') +
+      this.btns(tiers) +
+      this.numRow('devRadius', 'Promień (px)', g.player && g.running ? Math.round(g.player.radius) : BASE_RADIUS, 'set-radius', [['grow', '+10 jedn.', 10], ['grow', '−10 jedn.', -10]]) +
+      '<p class="dev-note">Rozmiar zmienia się po prawdziwej krzywej wzrostu, więc próg T1–T6 decyduje, co dziura może zjeść — tak samo jak w grze.</p>');
+    const boosterBtns = MISSION_BOOSTERS.map(b => ['live-booster', b.name.toUpperCase(), '', b.id]);
+    const missionSec = this.section('Misja',
+      this.missionSelectHtml() +
+      `<div class="dev-row dev-checks">${MISSION_BOOSTERS.map(b => `<label class="dev-check"><input type="checkbox" class="dev-start-boost" value="${b.id}"> ${b.name}</label>`).join('')}</div>` +
+      this.btns([['mission-start', `START ${missionCode(def)} (POMIŃ WYMAGANIA)`, 'main'], ['mission-start-go', 'START BEZ KARTY STARTU']]) +
+      (inMission ? '<h4 class="dev-h4">Trwa misja</h4>' +
+        this.btns([['m-success', 'SUKCES', 'main'], ['m-success3', 'SUKCES ★★★'], ['m-fail', 'PORAŻKA: CZAS', 'danger', 'time'], ['m-fail', 'PORAŻKA: ZDERZENIE', 'danger', 'hit'], ['m-fail', 'PORAŻKA: ZŁODZIEJ', 'danger', 'racer']]) +
+        this.btns([['m-time', '+30 S', '', 30], ['m-time', 'CZAS → 3 S', '', -1], ['mission-reset', 'RESTART MISJI']]) +
+        '<h4 class="dev-h4">Wzmocnienie teraz (bez zużycia zapasu)</h4>' + this.btns(boosterBtns) +
+        '<h4 class="dev-h4">Moce misji</h4>' + this.btns(CAMPAIGN_POWERS.map(p => ['power', p.name.toUpperCase(), '', p.id]).concat([['cards', 'KARTY MOCY']])) : ''));
+    const arenaSec = this.section('Arena',
+      this.btns([['arena-start', 'NOWA RUNDA', 'main'], ['daily-start', 'WYZWANIE DNIA']]) +
+      (inArena ? '<h4 class="dev-h4">Trwa runda</h4>' +
+        this.btns([['a-end', 'KONIEC: WYGRANA', 'main', 'win'], ['a-end', 'KONIEC: OSTATNIE MIEJSCE', 'danger', 'lose'], ['a-end', 'KONIEC TERAZ', '', 'now']]) +
+        this.btns([['a-event', 'ZŁOTY RDZEŃ', '', 'golden'], ['a-event', 'SZAŁ', '', 'frenzy'], ['a-event', 'WIELKI FINISZ', '', 'overdrive'], ['cards', 'KARTY EWOLUCJI']]) +
+        '<h4 class="dev-h4">Mutacje (od razu)</h4>' + this.btns(MUTATIONS.map(m => ['mutation', m.name.toUpperCase(), '', m.id])) +
+        '<h4 class="dev-h4">Dodatki (od razu)</h4>' + this.btns(RUN_TOOLS.filter(t => t.id !== 'none').map(t => ['live-tool', t.name.toUpperCase(), '', t.id])) : ''));
+    const order = !g.running ? [missionSec, arenaSec, sizeSec] : g.mode === 'campaign' ? [missionSec, sizeSec, arenaSec] : [arenaSec, sizeSec, missionSec];
+    return this.section('Teraz', live) + order.join('');
+  }
+
+  tabScreens() {
+    const def = campaignMissionById(this.missionId);
+    return this.section('Wyniki',
+      this.btns([['scr-arena', 'WYNIK ARENY: WYGRANA', 'main', 'win'], ['scr-arena', 'WYNIK ARENY: PRZEGRANA', '', 'lose']]) +
+      this.missionSelectHtml() +
+      this.btns([['scr-mission', `WYNIK ${missionCode(def)}: SUKCES`, 'main', 'win'], ['scr-mission', 'PORAŻKA: CZAS', '', 'time'], ['scr-mission', 'PORAŻKA: ZDERZENIE', '', 'hit'], ['scr-mission', 'PORAŻKA: ZŁODZIEJ', '', 'racer']]) +
+      '<p class="dev-note">Prawdziwe ekrany z prawdziwego końca rundy/misji — zapisują się do zapisu testowego jak normalna gra.</p>') +
+      this.section('Misja',
+        this.btns([['scr-brief', 'ODPRAWA'], ['scr-start-card', 'KARTA STARTU'], ['scr-revive', 'OFERTA +20 S'], ['scr-pause', 'PAUZA']])) +
+      this.section('Nagrody i nakładki',
+        this.btns([['scr-unlock', 'CELEBRACJA „ODBLOKOWANO!”'], ['scr-levelup', 'AWANS POZIOMU (WYNIK)'], ['reward-login', 'KALENDARZ LOGOWANIA'], ['reward-chest', 'DARMOWA SKRZYNIA']]) +
+        this.btns([['scr-ad', 'REKLAMA DEMO'], ['scr-cards', 'KARTY EWOLUCJI'], ['scr-consent', 'ZGODA NA STATYSTYKI'], ['scr-welcome', 'EKRAN POWITALNY (1. URUCHOMIENIE)']]));
+  }
+
+  /* ---------- actions ---------- */
+
+  onAction(btn) {
+    // Two-tap confirm for anything destructive.
+    if (btn.dataset.confirm && !btn.classList.contains('armed')) {
+      btn.dataset.label = btn.textContent;
+      btn.textContent = btn.dataset.confirm;
+      btn.classList.add('armed');
+      setTimeout(() => { if (btn.isConnected && btn.classList.contains('armed')) { btn.classList.remove('armed'); btn.textContent = btn.dataset.label; } }, 4000);
+      return;
+    }
+    const act = btn.dataset.act, arg = btn.dataset.arg;
+    if (act === 'close') { this.close(); return; }
+    const free = ['sandbox-copy', 'sandbox-fresh', 'sandbox-resume', 'revoke'];
+    if (!DEV.sandbox && !free.includes(act)) { this.toast('Najpierw włącz tryb testowy.', true); return; }
+    try {
+      const msg = this.run(act, arg, btn);
+      if (msg) this.toast(msg);
+    } catch (e) {
+      console.error('[dev panel]', act, e);
+      this.toast('Błąd: ' + (e && e.message || e), true);
+    }
+    if (this.isOpen) this.render();
+  }
+
+  val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+  num(id) { const n = Math.floor(Number(this.val(id))); return Number.isFinite(n) ? n : 0; }
+
+  /** Saves, refreshes every number on screen and the open hub screen. */
+  commit() {
+    const g = this.game;
+    saveGame(g.save);
+    g.updateCoinDisplays();
+    if (g.running) return;
+    const visible = ['mainMenu', 'shopScreen', 'campaignScreen', 'challengesScreen', 'profileScreen'].find(id => !document.getElementById(id).classList.contains('hidden'));
+    if (visible === 'shopScreen') g.openWarsztatScreen();
+    else if (visible === 'campaignScreen') g.openCampaignScreen();
+    else if (visible === 'challengesScreen' && g.isWyzwaniaUnlocked()) g.openChallengesScreen();
+    else if (visible === 'profileScreen') g.openProfileScreen();
+    else if (visible === 'mainMenu') g.showScreen('mainMenu');
+    else g.renderBottomNav(visible);
+  }
+
+  /** Feature/district unlocks: either quietly (marked announced, NOWE
+   *  badge on) or with the game's own "ODBLOKOWANO!" celebration. */
+  announce() {
+    const g = this.game, u = g.save.unlocks;
+    if (this.celebrate) { g.queueUnlockCelebrations(); return; }
+    FEATURE_UNLOCKS.filter(f => f.isUnlocked(g.save) && !u.announced.includes(f.id)).forEach(f => {
+      u.announced.push(f.id);
+      if (!u.fresh.includes(f.id)) u.fresh.push(f.id);
+    });
+  }
+
+  /** Stops whatever round runs (without results), so a new one can start. */
+  stopPlay() {
+    const g = this.game;
+    this.pausedByPanel = false;
+    if (!g.running && !g.paused) return;
+    if (g.mode === 'campaign') {
+      // Not a defeat: the attempt simply goes away.
+      const m = g.mission;
+      if (m && !m.ended) {
+        m.ended = true;
+        g.running = false;
+        g.paused = false;
+        g.introPending = false;
+        if (g.rafId) cancelAnimationFrame(g.rafId);
+        g.monetization.gameplayStop();
+        g.hideReviveOffer();
+        g.hideNelaToast();
+        document.getElementById('missionStartOverlay').classList.add('hidden');
+      }
+    } else {
+      g.running = false;
+      g.paused = false;
+      if (g.rafId) cancelAnimationFrame(g.rafId);
+      g.monetization.gameplayStop();
+    }
+    clearTimeout(g.evolutionAutoPickTimer);
+    g.evolutionPending = false;
+    document.getElementById('evolutionOverlay').classList.add('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('pauseSheet').classList.add('hidden');
+    g.state = GameState.MENU;
+  }
+
+  startMission(id, opts = {}) {
+    const g = this.game;
+    const def = campaignMissionById(id);
+    if (!def) throw new Error('nie ma misji ' + id);
+    this.stopPlay();
+    this.close(false);
+    g.missionBoosters = opts.boosters || [];
+    g.startCampaignMission(id);
+    if (opts.go) g.beginMissionPlay();
+  }
+
+  startArena(opts = {}) {
+    const g = this.game;
+    this.stopPlay();
+    this.close(false);
+    g.selectedRunTool = opts.tool || 'none';
+    if (opts.daily) g.startDailyChallenge(); else g.startRound();
+  }
+
+  /** Resumes a paused round so its own update() reacts to a change. */
+  resumeLive() {
+    const g = this.game;
+    this.close(false);
+    if (g.paused) g.resumeGame();
+    if (g.introPending) g.beginMissionPlay();
+  }
+
+  needLive(mode) {
+    const g = this.game;
+    const ok = g.running && (!mode || g.mode === mode) && (g.mode !== 'campaign' || (g.mission && !g.mission.ended && !g.mission.finishing));
+    if (!ok) throw new Error(mode === 'campaign' ? 'najpierw wystartuj misję' : mode === 'arena' ? 'najpierw wystartuj rundę Areny' : 'najpierw wystartuj misję albo rundę');
+  }
+
+  /** Marks missions cleared the way endCampaignMission() does (completion,
+   *  stars, the boss's district + skin reward), without coins. */
+  completeMissions(ids, stars) {
+    const s = this.game.save, c = s.campaign;
+    ids.forEach(id => {
+      const def = campaignMissionById(id);
+      c.completed[id] = true;
+      c.stars[id] = (c.stars[id] || 0) | stars;
+      if (stars & 4) c.medals[id] = true;
+      c.fails[id] = 0;
+      if (def.reward.unlockDistrict && !c.unlockedDistricts.includes(def.reward.unlockDistrict)) c.unlockedDistricts.push(def.reward.unlockDistrict);
+      if (def.reward.unlockSkin && !s.owned.includes(def.reward.unlockSkin)) s.owned.push(def.reward.unlockSkin);
+    });
+    c.starChests = Math.max(c.starChests, Math.floor(this.game.totalStars() / CONFIG.stars.chestEvery));
+    this.game.checkBoosterGift();
+    this.announce();
+  }
+
+  clearCampaign() {
+    const c = this.game.save.campaign;
+    Object.assign(c, { unlockedDistricts: ['plac'], completed: {}, medals: {}, stars: {}, attempts: {}, fails: {}, pity: {}, starChests: 0 });
+  }
+
+  cosmetic(cat) { return DEV_COSMETICS.find(x => x.cat === cat); }
+
+  setTier(k) {
+    const g = this.game;
+    this.needLive();
+    const units = CONFIG.growth.unitAnchors[k - 1];
+    if (g.mode === 'campaign') {
+      const m = g.mission;
+      m.growthUnits = units;
+      g.syncCampaignRadius();
+      const t = g.campaignPlayerTier();
+      if (t.id !== m.tierId) {
+        m.tierId = t.id;
+        g.showBanner(`${t.id} · ${t.name.toUpperCase()}`, 'NOWY ROZMIAR!', t.color, 1.3, 2);
+      }
+    } else {
+      // A hair past the threshold: checkSizeTier() celebrates it next frame.
+      g.player.radius = 0;
+      g.player.setRadius(radiusForUnits(units + (k > 1 ? 0.5 : 0)));
+    }
+    return `Rozmiar ${CONFIG.sizeTiers[k - 1].shortId} (promień ${Math.round(g.player.radius)})`;
+  }
+
+  setUnits(units) {
+    const g = this.game;
+    units = Math.max(0, units);
+    if (g.mode === 'campaign') {
+      g.mission.growthUnits = units;
+      g.syncCampaignRadius();
+      g.mission.tierId = g.campaignPlayerTier().id;
+    } else {
+      g.player.radius = 0;
+      g.player.setRadius(Math.max(MIN_RADIUS, radiusForUnits(units)));
+    }
+  }
+
+  run(act, arg, btn) {
+    const g = this.game, s = g.save, c = s.campaign;
+    switch (act) {
+      /* ---- test mode ---- */
+      case 'sandbox-copy': case 'sandbox-fresh': case 'sandbox-resume': {
+        if (g.running) this.stopPlay();
+        if (act !== 'sandbox-resume' || !this.sandboxSaveExists()) {
+          const start = act === 'sandbox-fresh' ? defaultSave() : (() => { try { return parseSaveString(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return defaultSave(); } })();
+          if (act === 'sandbox-fresh') start.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
+          localStorage.setItem(DEV_SANDBOX_SAVE_KEY, sealSave(start));
+          this.writeSnapshots([{ name: 'Stan z początku testów', ts: Date.now(), auto: true, sealed: sealSave(start) }]);
+        }
+        DEV.sandbox = true;
+        DEV.openMissions = false;
+        devWriteState();
+        location.reload();
+        return 'Przełączam na zapis testowy…';
+      }
+      case 'sandbox-exit':
+        if (g.running) this.stopPlay();
+        DEV.sandbox = false;
+        DEV.openMissions = false;
+        devWriteState();
+        location.reload();
+        return 'Wracam do prawdziwego zapisu…';
+      case 'revoke':
+        this.revokeAccess();
+        return '';
+      case 'snap-save': {
+        const name = (this.val('devSnapName') || '').trim() || `Stan ${new Date().toLocaleTimeString('pl-PL')}`;
+        const list = this.snapshots();
+        const manual = list.filter(x => !x.auto);
+        if (manual.length >= DEV_SNAPSHOT_MAX) throw new Error(`maksymalnie ${DEV_SNAPSHOT_MAX} stanów — usuń któryś`);
+        list.push({ name: name.slice(0, 40), ts: Date.now(), sealed: sealSave(s) });
+        this.writeSnapshots(list);
+        return `Zapisano „${name}”.`;
+      }
+      case 'snap-load': {
+        const sn = this.snapshots()[Number(arg)];
+        if (!sn) throw new Error('brak stanu');
+        const loaded = parseSaveString(sn.sealed);
+        this.stopPlay();
+        this.clearCelebrations();
+        g.adoptSave(loaded, 'dev');
+        g.pendingLoadout = { skin: loaded.selected, aura: loaded.auras.selected, effect: loaded.effects.selected, overdriveSkin: loaded.overdriveSkins.selected };
+        g.updateCoinDisplays();
+        return `Wczytano „${sn.name}”.`;
+      }
+      case 'snap-del': {
+        const list = this.snapshots();
+        const [gone] = list.splice(Number(arg), 1);
+        this.writeSnapshots(list);
+        return gone ? `Usunięto „${gone.name}”.` : '';
+      }
+      case 'sandbox-wipe': {
+        this.stopPlay();
+        this.clearCelebrations();
+        const fresh = defaultSave();
+        fresh.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
+        g.adoptSave(fresh, 'dev');
+        g.pendingLoadout = { skin: fresh.selected, aura: 'none', effect: 'classic', overdriveSkin: 'classic' };
+        return 'Postęp testowy wyzerowany.';
+      }
+      case 'export': {
+        const code = encodeSaveCode(s);
+        try { navigator.clipboard.writeText(code); } catch (e) { /* no clipboard */ }
+        return 'Kod zapisu testowego skopiowany (Profil → Kopia zapasowa → WCZYTAJ).';
+      }
+
+      /* ---- progress ---- */
+      case 'district-unlock': case 'district-unlock-all': {
+        const ids = act === 'district-unlock' ? [arg] : DISTRICTS.map(d => d.id);
+        ids.forEach(id => { if (!c.unlockedDistricts.includes(id)) c.unlockedDistricts.push(id); });
+        this.announce();
+        this.commit();
+        return act === 'district-unlock' ? `Odblokowano: ${DISTRICTS.find(d => d.id === arg).name}` : 'Wszystkie dzielnice odblokowane.';
+      }
+      case 'district-complete': {
+        const d = DISTRICTS.find(x => x.id === arg);
+        if (!c.unlockedDistricts.includes(d.id)) c.unlockedDistricts.push(d.id);
+        this.completeMissions(d.missions, 7);
+        this.commit();
+        return `${d.name}: 10/10 misji ★★★`;
+      }
+      case 'open-missions':
+        DEV.openMissions = !!btn.checked;
+        devWriteState();
+        this.commit();
+        return DEV.openMissions ? 'Każda misja jest grywalna.' : 'Misje znów wymagają poprzednich.';
+      case 'mission-pick': {
+        const raw = (this.val('devMissionCode') || '').trim().toUpperCase().replace(/^M?0*(\d+)$/, 'M$1');
+        if (!campaignMissionById(raw)) throw new Error(`nie ma misji „${this.val('devMissionCode')}” (M01–M240)`);
+        this.missionId = raw;
+        return `Wybrano ${missionCode(campaignMissionById(raw))}.`;
+      }
+      case 'mission-brief': case 'scr-brief': {
+        this.stopPlay();
+        this.close(false);
+        const def = campaignMissionById(this.missionId);
+        // A briefing's GRAJ only starts a playable mission -- open them all
+        // rather than leave a button that silently does nothing.
+        const opened = !g.isMissionPlayable(def.id);
+        if (opened) { DEV.openMissions = true; devWriteState(); }
+        g.selectedDistrictId = def.district;
+        g.openCampaignScreen();
+        g.openMissionBriefing(this.missionId);
+        return opened ? 'Włączono „wszystkie misje grywalne”, żeby GRAJ działał.' : '';
+      }
+      case 'mission-start': case 'mission-start-go': {
+        const boosters = Array.from(document.querySelectorAll('.dev-start-boost:checked')).map(x => x.value);
+        this.startMission(this.missionId, { boosters, go: act === 'mission-start-go' });
+        return '';
+      }
+      case 'mission-reset': {
+        const m = g.mission;
+        if (!m || g.mode !== 'campaign' || (!g.running && !m.ended)) throw new Error('żadna misja nie trwa');
+        this.startMission(m.def.id, { boosters: m.boosters.slice() });
+        return '';
+      }
+      case 'mission-clear': {
+        const id = this.missionId;
+        for (const k of ['completed', 'medals', 'stars', 'attempts', 'fails', 'pity']) delete c[k][id];
+        this.commit();
+        return `${id}: postęp wyczyszczony.`;
+      }
+      case 'progress-to': {
+        const i = DEV_MISSION_ORDER.indexOf(this.missionId);
+        this.clearCampaign();
+        this.completeMissions(DEV_MISSION_ORDER.slice(0, i + 1), Number(arg));
+        this.commit();
+        return `Ukończone: ${i + 1} misji (do ${missionCode(campaignMissionById(this.missionId))}).`;
+      }
+      case 'mission-done':
+        this.completeMissions([this.missionId], 7);
+        this.commit();
+        return `${this.missionId} ukończona ★★★.`;
+      case 'progress-all':
+        this.completeMissions(DEV_MISSION_ORDER, 7);
+        this.commit();
+        return 'Cała kampania ukończona.';
+      case 'progress-clear':
+        this.clearCampaign();
+        this.commit();
+        return 'Kampania wyczyszczona.';
+      case 'set-level': {
+        s.player.level = clamp(this.num('devLevel'), 1, 999);
+        s.player.xp = 0;
+        this.commit();
+        return `Poziom gracza: ${s.player.level}`;
+      }
+      case 'add-xp': {
+        const res = g.grantXp(Math.max(0, this.num('devXp')));
+        this.commit();
+        return `+${res.gained} XP${res.levelsUp.length ? ` · awans na ${res.after.level}` : ''}`;
+      }
+      case 'set-core': {
+        const to = clamp(this.num('devCore'), 1, 50);
+        const from = s.hub.coreLevel || 1;
+        for (let l = from + 1; l <= to; l++) g.grantCoreCityLevelReward(l);
+        s.hub.coreLevel = to;
+        if (to > from) g.queueUnlockCelebrations();
+        this.commit();
+        return `Core City LVL ${to}${to > from ? ' (z nagrodami)' : ''}`;
+      }
+      case 'set-core-charge':
+        s.hub.coreCharge = clamp(this.num('devCoreCharge'), 0, 99);
+        this.commit();
+        return `Core City: ${s.hub.coreCharge}%`;
+      case 'set-runs':
+        s.stats.runsPlayed = clamp(this.num('devRuns'), 0, 100000);
+        this.announce();
+        this.commit();
+        return `Rundy Areny: ${s.stats.runsPlayed}`;
+      case 'feature-unlock': case 'feature-unlock-all': {
+        const ids = act === 'feature-unlock' ? [arg] : DEV_FEATURES.map(f => f.id);
+        const u = s.unlocks;
+        ids.forEach(id => {
+          if (u.announced.includes(id)) return;
+          u.announced.push(id);
+          if (!u.fresh.includes(id)) u.fresh.push(id);
+          // With celebrations on: the game's own "ODBLOKOWANO!" card for it.
+          if (this.celebrate) (g.pendingRewardCelebrations = g.pendingRewardCelebrations || []).push({ ...FEATURE_UNLOCKS.find(f => f.id === id), kind: 'feature' });
+        });
+        g.checkBoosterGift();
+        this.commit();
+        if (this.celebrate) { this.close(false); g.queueUnlockCelebrations(); }
+        return `Odblokowano: ${ids.map(id => DEV_FEATURES.find(f => f.id === id).name).join(', ')}`;
+      }
+
+      /* ---- Warsztat ---- */
+      case 'cos-give': case 'cos-take': case 'cos-wear': {
+        const [cat, id] = arg.split('|');
+        const cd = this.cosmetic(cat), owned = cd.owned(s);
+        const item = cd.items.find(x => x.id === id);
+        if (act === 'cos-give') { if (!owned.includes(id)) owned.push(id); }
+        else if (act === 'cos-take') {
+          const i = owned.indexOf(id);
+          if (i >= 0) owned.splice(i, 1);
+          // Never leave a look worn that isn't owned any more.
+          if (cd.selected(s) === id) this.wear(cat, cd.base);
+        } else this.wear(cat, id);
+        this.announce();
+        this.commit();
+        return `${cd.name} „${item.name}”: ${act === 'cos-give' ? 'odblokowane' : act === 'cos-take' ? 'zabrane' : 'założone'}`;
+      }
+      case 'cos-give-all': {
+        DEV_COSMETICS.filter(cd => arg === '*' || cd.cat === arg).forEach(cd => {
+          const owned = cd.owned(s);
+          cd.items.forEach(it => { if (!owned.includes(it.id)) owned.push(it.id); });
+        });
+        this.announce();
+        this.commit();
+        return arg === '*' ? 'Wszystkie kosmetyki odblokowane.' : `${this.cosmetic(arg).name}: wszystko odblokowane.`;
+      }
+      case 'cos-show': {
+        this.stopPlay();
+        this.close(false);
+        g.openWarsztatScreen();
+        const tab = document.getElementById(this.cosmetic(arg).tab);
+        if (tab) tab.click();
+        return '';
+      }
+      case 'booster-set':
+        s.boosters[arg] = clamp(this.num('devBoost-' + arg), 0, 9999);
+        this.commit();
+        return `${MISSION_BOOSTERS.find(b => b.id === arg).name}: ${s.boosters[arg]}`;
+      case 'booster-add': {
+        const [id, n] = arg.split('|');
+        s.boosters[id] = clamp((s.boosters[id] || 0) + Number(n), 0, 9999);
+        this.commit();
+        return `${MISSION_BOOSTERS.find(b => b.id === id).name}: ${s.boosters[id]}`;
+      }
+      case 'booster-all':
+        MISSION_BOOSTERS.forEach(b => { s.boosters[b.id] = (s.boosters[b.id] || 0) + 5; });
+        this.commit();
+        return '+5 każdego wzmocnienia.';
+      case 'badge-toggle': {
+        const i = s.badges.indexOf(arg);
+        if (i >= 0) s.badges.splice(i, 1); else s.badges.push(arg);
+        this.commit();
+        return i >= 0 ? 'Odznaka zabrana.' : 'Odznaka przyznana.';
+      }
+
+      /* ---- economy ---- */
+      case 'set-coins': s.coins = clamp(this.num('devCoins'), 0, SAVE_CURRENCY_CAP); this.commit(); return `Monety: ${s.coins}`;
+      case 'set-prisms': s.prisms = clamp(this.num('devPrisms'), 0, SAVE_CURRENCY_CAP); this.commit(); return `Pryzmaty: ${s.prisms}`;
+      case 'add-coins': s.coins = clamp(s.coins + Number(arg), 0, SAVE_CURRENCY_CAP); this.commit(); return `Monety: ${s.coins}`;
+      case 'add-prisms': s.prisms = clamp((s.prisms || 0) + Number(arg), 0, SAVE_CURRENCY_CAP); this.commit(); return `Pryzmaty: ${s.prisms}`;
+      case 'iap-sim': {
+        const prod = IAP_PRODUCTS.find(p => p.sku === arg);
+        if (g.running) this.stopPlay();
+        g.grantProduct(prod);
+        this.close(false);
+        this.commit();
+        return '';
+      }
+      case 'iap-undo': {
+        const ent = s.entitlements;
+        ent.purchased = ent.purchased.filter(x => x !== arg);
+        if (arg === 'no_ads') ent.noAds = false;
+        this.commit();
+        return `Zakup ${arg} cofnięty (można kupić ponownie).`;
+      }
+      case 'reward-core': {
+        if (g.running) this.stopPlay();
+        const r = g.grantCoreCityLevelReward(Number(arg));
+        this.close(false);
+        this.commit();
+        g.queueUnlockCelebrations();
+        return `Nagroda: ${r.label}`;
+      }
+      case 'reward-aurora': {
+        if (!s.owned.includes('aurora')) s.owned.push('aurora');
+        g.queueRewardCelebration({ eyebrow: 'NAGRODA ZA KAMPANIĘ', title: 'Wir „Aurora Finału”', color: '#EFCB63', icon: REWARD_CATEGORY_ICONS.skin, desc: 'Wyjątkowy wygląd dziury za ukończenie całej kampanii. Załóż go w Warsztacie.' });
+        if (g.running) this.stopPlay();
+        this.close(false);
+        this.commit();
+        g.queueUnlockCelebrations();
+        return '';
+      }
+      case 'reward-chest':
+        if (g.running) this.stopPlay();
+        this.close(false);
+        if (document.getElementById('mainMenu').classList.contains('hidden')) g.showScreen('mainMenu');
+        g.openFreeChest({ skip: true });
+        return '';
+      case 'reward-star-chest': {
+        const due = Math.floor(g.totalStars() / CONFIG.stars.chestEvery);
+        if (due < 1) throw new Error(`potrzeba ${CONFIG.stars.chestEvery} gwiazdek — zalicz misje w zakładce Postęp`);
+        c.starChests = due - 1;
+        if (g.running) this.stopPlay();
+        this.close(false);
+        g.checkStarChests();
+        this.commit();
+        g.queueUnlockCelebrations();
+        return '';
+      }
+      case 'reward-login': {
+        s.login.lastClaimDate = previousDateKey(dailySeedForDate(new Date()).dateKey);
+        if (g.running) this.stopPlay();
+        this.close(false);
+        saveGame(s);
+        g.showScreen('mainMenu');
+        clearTimeout(g.loginPopupTimer);
+        g.maybeShowLoginReward();
+        return document.getElementById('loginRewardScreen').classList.contains('hidden') ? 'Kalendarz pokazuje się dopiero po pierwszej rozegranej rundzie albo misji.' : '';
+      }
+      case 'reset-ads': s.ads.used = {}; this.commit(); return 'Dzienne limity reklam wyzerowane.';
+      case 'chest-ready': s.freeChest.nextAt = 0; this.commit(); return 'Darmowa skrzynia czeka na Mieście.';
+
+      /* ---- gameplay ---- */
+      case 'arena-start': this.startArena(); return '';
+      case 'daily-start': this.startArena({ daily: true }); return '';
+      case 'arena-tool': this.startArena({ tool: arg }); return '';
+      case 'set-tier': return this.setTier(Number(arg));
+      case 'set-radius': {
+        this.needLive();
+        this.setUnits(unitsForRadius(Math.max(MIN_RADIUS, this.num('devRadius'))));
+        return `Promień ${Math.round(g.player.radius)}`;
+      }
+      case 'grow': {
+        this.needLive();
+        const cur = g.mode === 'campaign' ? g.mission.growthUnits : unitsForRadius(g.player.radius);
+        this.setUnits(cur + Number(arg));
+        return `Promień ${Math.round(g.player.radius)}`;
+      }
+      case 'm-success': case 'm-success3': {
+        this.needLive('campaign');
+        const m = g.mission;
+        if (act === 'm-success3') {
+          // Meet every star condition the way a perfect run would.
+          m.elapsed = 0; m.botHitCount = 0; m.comboBroken = false; m.pylonComboBroken = false;
+          m.bestCombo = Math.max(m.bestCombo, 99); m.maxComboDuringCapsule = 99;
+          ['A', 'B'].forEach(k => { m.clustersVisited.add(k); m.markersRoutes.add(k); });
+        }
+        this.resumeLive();
+        g.beginMissionSuccess();
+        return '';
+      }
+      case 'm-fail':
+        this.needLive('campaign');
+        this.resumeLive();
+        if (arg === 'time') { g.mission.reviveDeclined = true; this.missionTimeLeft(0); }
+        else g.failCampaignMission(arg);
+        return '';
+      case 'm-time':
+        this.needLive('campaign');
+        if (Number(arg) < 0) { this.missionTimeLeft(3); this.resumeLive(); return ''; }
+        this.addMissionTime(Number(arg));
+        return `Czas: ${formatClock(g.mission.timeRemaining)}`;
+      case 'live-booster': {
+        this.needLive('campaign');
+        const m = g.mission;
+        // Same effects as startCampaignMission() applies to picked boosters.
+        if (arg === 'time') this.addMissionTime(CONFIG.boosters.timeBonus);
+        if (arg === 'shield') m.shields += CONFIG.boosters.shieldHits;
+        if (arg === 'magnet') g.activeMutations.add('magnes');
+        if (arg === 'sprint') g.player.perkSpeedMult = CONFIG.boosters.sprintMult;
+        if (arg === 'start' && m.growthUnits < tierUnits(2)) this.setTier(2);
+        if (!m.boosters.includes(arg)) m.boosters.push(arg);
+        return `Wzmocnienie: ${MISSION_BOOSTERS.find(b => b.id === arg).name}`;
+      }
+      case 'power':
+        this.needLive('campaign');
+        g.evolutionPending = true;
+        g.pickCampaignPower(arg);
+        return `Moc: ${CAMPAIGN_POWERS.find(p => p.id === arg).name}`;
+      case 'cards':
+        this.needLive();
+        this.resumeLive();
+        if (g.introPending) g.beginMissionPlay();
+        if (g.mode === 'campaign') g.offerCampaignPowers(2); else g.offerEvolution();
+        return '';
+      case 'mutation':
+        this.needLive('arena');
+        g.evolutionPending = true;
+        g.pickMutation(arg);
+        return `Mutacja: ${MUTATIONS.find(m => m.id === arg).name}`;
+      case 'live-tool':
+        this.needLive('arena');
+        if (arg === 'shield') g.shieldCharges = (g.shieldCharges || 0) + 1;
+        if (arg === 'magnet') g.toolMagnetUntil = performance.now() + 12000;
+        if (arg === 'boost' && getSizeTierIndex(g.player.radius) < 1) this.setTier(2);
+        return `Dodatek: ${RUN_TOOLS.find(t => t.id === arg).name}`;
+      case 'a-event':
+        this.needLive('arena');
+        if (arg === 'golden') { if (g.goldenObj) g.objects = g.objects.filter(o => o !== g.goldenObj); g.goldenObj = null; g.spawnGoldenCore(); }
+        if (arg === 'frenzy') g.startFrenzy();
+        if (arg === 'overdrive') g.timeRemaining = Math.min(g.timeRemaining, CONFIG.overdrive.triggerSecondsRemaining);
+        this.resumeLive();
+        return '';
+      case 'a-end':
+        this.needLive('arena');
+        this.rigArenaEnd(arg);
+        this.resumeLive();
+        return '';
+
+      /* ---- screens ---- */
+      case 'scr-arena':
+        this.startArena();
+        this.rigArenaEnd(arg);
+        return '';
+      case 'scr-mission': {
+        this.startMission(this.missionId, { go: true });
+        if (arg === 'win') g.beginMissionSuccess();
+        else if (arg === 'time') { g.mission.reviveDeclined = true; this.missionTimeLeft(0); }
+        else g.failCampaignMission(arg);
+        return '';
+      }
+      case 'scr-start-card': this.startMission(this.missionId); return '';
+      case 'scr-revive': {
+        this.startMission(this.missionId, { go: true });
+        const orig = g.campaignGoalFraction;
+        g.campaignGoalFraction = () => Math.max(orig.call(g), CONFIG.ads.reviveMinProgress);
+        try { this.missionTimeLeft(0); g.onCampaignTimeout(); } finally { g.campaignGoalFraction = orig; }
+        return '';
+      }
+      case 'scr-pause':
+        if (!g.running) this.startArena();
+        this.close(false);
+        if (g.paused) document.getElementById('pauseSheet').classList.remove('hidden'); else g.pauseGame();
+        return '';
+      case 'scr-unlock':
+        if (g.running) this.stopPlay();
+        this.close(false);
+        g.queueRewardCelebration({ eyebrow: 'PODGLĄD (PANEL)', title: 'Przykładowa nagroda', color: '#46D99A', icon: REWARD_CATEGORY_ICONS.bundle, noCta: true, desc: 'Tak wygląda ekran nagrody — wszystkie nagrody gry używają tego samego.' });
+        g.queueUnlockCelebrations();
+        return '';
+      case 'scr-levelup': {
+        s.player.xp = Math.max(0, CONFIG.progression.xpForLevel(s.player.level) - 1);
+        saveGame(s);
+        this.startArena();
+        this.rigArenaEnd('win');
+        return '';
+      }
+      case 'scr-ad':
+        this.close(false);
+        g.monetization.demoAd(true);
+        return '';
+      case 'scr-cards':
+        if (!g.running || g.mode !== 'arena') this.startArena();
+        this.resumeLive();
+        g.offerEvolution();
+        return '';
+      case 'scr-consent':
+        s.privacy.decided = false;
+        saveGame(s);
+        if (g.running) this.stopPlay();
+        this.close(false);
+        g.showScreen('mainMenu');
+        g.renderConsentBar();
+        return '';
+      case 'scr-welcome': {
+        this.stopPlay();
+        this.clearCelebrations();
+        this.close(false);
+        const fresh = defaultSave();
+        g.adoptSave(fresh, 'dev');
+        return '';
+      }
+    }
+    return '';
+  }
+
+  /** A mission's clock is limit + bonusTime - elapsed (updateCampaign()),
+   *  so time is moved through those, like the Zegar booster and revive do. */
+  addMissionTime(sec) {
+    const m = this.game.mission;
+    m.bonusTime = (m.bonusTime || 0) + sec;
+    m.timeRemaining += sec;
+  }
+
+  missionTimeLeft(sec) {
+    const m = this.game.mission;
+    m.elapsed = Math.max(0, m.def.timeLimit + (m.bonusTime || 0) - sec);
+    m.timeRemaining = sec;
+  }
+
+  /** Drops celebrations queued for a save that is being replaced. */
+  clearCelebrations() {
+    const g = this.game;
+    g.unlockQueue = [];
+    g.pendingRewardCelebrations = [];
+    clearTimeout(g.unlockShowTimer);
+    document.getElementById('unlockOverlay').classList.add('hidden');
+  }
+
+  wear(cat, id) {
+    const g = this.game;
+    g.pendingLoadout = { skin: g.save.selected, aura: g.save.auras.selected, effect: g.save.effects.selected, overdriveSkin: g.save.overdriveSkins.selected };
+    g.pendingLoadout[cat] = id;
+    g.onEquipClick();
+    if (g.player && g.running) {
+      if (cat === 'skin') g.player.skin = id;
+      if (cat === 'aura') g.player.auraId = id;
+    }
+  }
+
+  /** Ends the running Arena round through its own timeout: a win puts the
+   *  player's score above every rival, a loss below all of them. */
+  rigArenaEnd(kind) {
+    const g = this.game;
+    if (kind === 'win') g.player.score = Math.max(g.player.score, ...g.bots.map(b => b.score)) + 100;
+    if (kind === 'lose') {
+      g.player.score = 0;
+      g.bots.forEach((b, i) => { b.score = Math.max(b.score, 10 + i); });
+    }
+    g.timeRemaining = 0;
+    if (g.paused) g.resumeGame();
+  }
+
+  /* ---------- storage ---------- */
+
+  sandboxSaveExists() { try { return !!localStorage.getItem(DEV_SANDBOX_SAVE_KEY); } catch (e) { return false; } }
+  snapshots() { const v = devReadJson(DEV_SNAPSHOTS_KEY, []); return Array.isArray(v) ? v.filter(x => x && typeof x.sealed === 'string') : []; }
+  writeSnapshots(list) {
+    try { localStorage.setItem(DEV_SNAPSHOTS_KEY, JSON.stringify(list)); } catch (e) { throw new Error('brak miejsca w pamięci przeglądarki'); }
+  }
+}
+
+/** The next mission to play, or M01 (nextCampaignMissionId() needs a save). */
+function nextCampaignMissionIdSafe(game) {
+  try { return (game.nextCampaignMissionId && game.nextCampaignMissionId()) || 'M01'; } catch (e) { return 'M01'; }
+}
+
 const I18N_EN = {
   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down.",
   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down. 10 new missions await.",
@@ -16497,7 +17739,9 @@ const I18N_EN = {
 window.addEventListener('DOMContentLoaded', () => {
   // The language is decided before the first screen renders.
   let lang = 'pl';
-  try { const raw = localStorage.getItem(SAVE_KEY); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
+  devBoot();
+  try { const raw = localStorage.getItem(SAVE_SLOT); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
   i18nStart(lang);
   window.game = new Game();
+  window.game.devPanel = new DevPanel(window.game);
 });

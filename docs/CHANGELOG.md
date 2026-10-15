@@ -4,6 +4,47 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v23 „Panel testowy” — narzędzie QA dla twórców
+Panel do błyskawicznego testowania mechanik bez przechodzenia misji. Gracze
+go nie widzą; balans i zasady gry bez zmian.
+
+- **Dostęp:** 7 szybkich stuknięć w linię „ID gościa” w Profilu albo `?dev`
+  w adresie → pole kodu dewelopera. W kodzie gry jest tylko solony,
+  iterowany SHA-256 kodu (`DEV_CODE_HASH`, zmiana: `node qa/dev-code.mjs
+  "<nowy kod>"`); 5 błędnych prób blokuje pole na 30 s. Na localhost /
+  127.0.0.1 / file:// działa też kod `dev` (QA), nigdy na wdrożonej grze.
+  Po wpisaniu kodu na urządzeniu pojawia się boczny przycisk DEV/TEST
+  (też F2 albo ` na komputerze).
+- **Tryb testowy:** wszystkie akcje panelu działają wyłącznie na osobnym
+  zapisie (`vectorHoleSave_devSandbox_v1`, kopia postępu albo czysty
+  start). Prawdziwy zapis nie jest wtedy czytany ani nadpisywany, a po
+  „ZAKOŃCZ TESTY” wraca nietknięty. W trybie testowym: brak lustra
+  w chmurze portalu, brak ujścia analityki (zdarzenia oznaczone
+  `sandbox`), tylko reklama demo, żadnych płatności i sygnałów
+  rozgrywki do portalu.
+- **Zakładki:** Dane (tryb, zapisane stany testowe, reset misji/postępu
+  z potwierdzeniem, eksport kodu), Postęp (dzielnice, misje po ID,
+  „wszystkie misje grywalne”, postęp do misji, poziom gracza, XP,
+  Core City, rundy Areny, funkcje), Warsztat (każdy kosmetyk: odblokuj /
+  załóż / zabierz, zapas wzmocnień, dodatki Areny, odznaka), Ekonomia
+  (monety, pryzmaty, symulacja zakupów przez `grantProduct()`, nagrody),
+  Rozgrywka (start dowolnej misji z darmowymi wzmocnieniami, sukces ★/★★★,
+  porażki, czas, rozmiar T1–T6/promień, wzmocnienia i moce na żywo,
+  mutacje, Złoty Rdzeń, SZAŁ, Wielki finisz, wymuszona wygrana/przegrana),
+  Ekrany (wyniki, odprawa, karta startu, oferta +20 s, pauza, celebracje,
+  kalendarz, skrzynia, reklama, karty, zgoda, ekran powitalny).
+- Listy generowane z danych gry; zmiany idą przez funkcje gry
+  (`grantXp()`, `grantCoreCityLevelReward()`, `grantProduct()`,
+  `onEquipClick()`, `openFreeChest()`, koniec misji/rundy przez ich
+  własną ścieżkę).
+- Zmiany w rdzeniu tylko jako haki nieaktywne bez trybu testowego
+  (`SAVE_SLOT`, strażniki `DEV.sandbox`, `isMissionPlayable`); bramka
+  wzmocnień czyta też `unlocks.announced` (ogłoszone odblokowanie się nie
+  cofa — dla graczy bez zmian, bo ogłasza je tylko M04).
+- Testy: nowy `qa/dev-panel.mjs` (dostęp, symulowany host produkcyjny,
+  izolacja, każda kategoria i jej realny skutek w grze, telefony
+  w pionie/poziomie, komputer).
+
 ## v22 „Dwa tryby” — bez energii, Arena i Dzielnice niezależne
 Runda 1 przygotowań komercyjnych: uprościć start, nie ograniczać grania,
 rozdzielić tryby.
