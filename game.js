@@ -3490,21 +3490,25 @@ function sha256Hex(str) {
   }
   return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
 }
-/** The stored form of a dev code: DEV_CODE_ROUNDS of salted SHA-256 (slow
- *  on purpose, so the hash in this file can't be brute-forced cheaply). */
-function devCodeHash(code) {
+/** What the device stores after a right code: DEV_CODE_ROUNDS - 1 rounds
+ *  of salted SHA-256 (slow on purpose). The source only holds one round
+ *  more (DEV_CODE_HASH = devCodeHash()), so it never contains a valid token. */
+function devCodeToken(code) {
   let h = DEV_CODE_SALT + String(code || '').trim().toLowerCase();
-  for (let i = 0; i < DEV_CODE_ROUNDS; i++) h = sha256Hex(DEV_CODE_SALT + h);
+  for (let i = 1; i < DEV_CODE_ROUNDS; i++) h = sha256Hex(DEV_CODE_SALT + h);
   return h;
 }
+function devCodeHash(code) { return sha256Hex(DEV_CODE_SALT + devCodeToken(code)); }
+/** A local dev server (QA) -- plain http(s) on a loopback host, never a
+ *  native wrapper (Capacitor/Cordova serve players from localhost/file://). */
 function devIsLoopback() {
-  return location.protocol === 'file:' || /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(location.hostname);
+  return /^https?:$/.test(location.protocol) && !window.VectorHoleNative && /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(location.hostname);
 }
-/** Is this code's hash a valid dev access token here? */
+/** Is this stored token valid here? */
 function devTokenValid(token) {
-  if (!token) return false;
-  if (token === DEV_CODE_HASH) return true;
-  return devIsLoopback() && token === devCodeHash(DEV_LOCAL_CODE);
+  if (!token || typeof token !== 'string') return false;
+  if (sha256Hex(DEV_CODE_SALT + token) === DEV_CODE_HASH) return true;
+  return devIsLoopback() && token === devCodeToken(DEV_LOCAL_CODE);
 }
 function devReadJson(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v && typeof v === 'object' ? v : fallback; } catch (e) { return fallback; }
@@ -3720,7 +3724,7 @@ function defaultSave() {
     challenge: null,
     integrity: { tampered: false },
     // v19: when the game last wrote this save (cloud-save conflict checks).
-    meta: { savedAt: 0 }
+    meta: { savedAt: 0, devSandbox: false }
   };
 }
 
@@ -9165,6 +9169,8 @@ class Game {
     if (!save) {
       const el = document.getElementById('backupInput');
       try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad('To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
+      // v23: a dev panel test save never becomes real progress.
+      if (save.meta.devSandbox && !DEV.sandbox) { this.openBackupLoad('To kod zapisu testowego z panelu deweloperskiego — wczytasz go tylko w trybie testowym.'); return; }
       // An older code over a richer device: say what would be lost first.
       if (saveIsAhead(this.save, save)) {
         const sum = s => `${T('poziom')} ${s.player.level} · ${Object.keys(s.campaign.completed).filter(k => s.campaign.completed[k]).length} ${T('misji')}`;
@@ -14891,6 +14897,7 @@ class DevPanel {
       document.getElementById('app').appendChild(box);
       box.querySelector('form').addEventListener('submit', (e) => { e.preventDefault(); this.submitCode(); });
       box.querySelector('[data-code="cancel"]').addEventListener('click', () => box.classList.add('hidden'));
+      box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); box.classList.add('hidden'); } });
     }
     box.classList.remove('hidden');
     document.getElementById('devCodeMsg').textContent = 'Panel testowy jest tylko dla twórców gry.';
@@ -14906,7 +14913,7 @@ class DevPanel {
     msg.textContent = 'Sprawdzam…';
     // Let "Sprawdzam…" paint before the deliberately slow hash.
     setTimeout(() => {
-      const token = devCodeHash(code);
+      const token = devCodeToken(code);
       if (!devTokenValid(token)) {
         this.failedCodes++;
         if (this.failedCodes >= 5) { this.lockedUntil = Date.now() + 30000; this.failedCodes = 0; }
@@ -14923,8 +14930,7 @@ class DevPanel {
 
   revokeAccess() {
     try {
-      localStorage.removeItem(DEV_ACCESS_KEY);
-      localStorage.removeItem(DEV_STATE_KEY);
+      [DEV_ACCESS_KEY, DEV_STATE_KEY, DEV_SANDBOX_SAVE_KEY, DEV_SNAPSHOTS_KEY].forEach(k => localStorage.removeItem(k));
     } catch (e) { /* ignore */ }
     location.reload();
   }
@@ -14978,6 +14984,7 @@ class DevPanel {
     el.addEventListener('change', (e) => {
       if (e.target.id === 'devMissionSelect') { this.missionId = e.target.value; this.render(); }
       if (e.target.id === 'devCelebrate') this.celebrate = e.target.checked;
+      if (e.target.classList.contains('dev-start-boost')) this.startBoosts = Array.from(document.querySelectorAll('.dev-start-boost:checked')).map(x => x.value);
     });
   }
 
@@ -14994,14 +15001,20 @@ class DevPanel {
       this.pausedByPanel = true;
     }
     this.isOpen = true;
+    // Mid-round the round's own controls come first.
+    if (g.running && DEV.sandbox) this.tab = 'play';
     document.getElementById('devPanel').classList.remove('hidden');
     this.render();
+    const active = document.querySelector('#devPanel .dev-tab.active');
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   close(resume = true) {
     this.isOpen = false;
     const el = document.getElementById('devPanel');
     if (el) el.classList.add('hidden');
+    const t = document.getElementById('devToast');
+    if (t) t.classList.add('hidden');
     const g = this.game;
     if (resume && this.pausedByPanel && g.running && g.paused) g.resumeGame();
     this.pausedByPanel = false;
@@ -15038,6 +15051,9 @@ class DevPanel {
   }
 
   sandboxGateHtml() {
+    if (this.sandboxSaveExists()) return this.section('Najpierw włącz tryb testowy',
+      '<p class="dev-note">Panel zmienia stan gry tylko w trybie testowym. Twój prawdziwy postęp zostaje nietknięty.</p>' +
+      this.btns([['sandbox-resume', 'WRÓĆ DO POPRZEDNICH TESTÓW', 'main']]) + '<p class="dev-note">Nowe testy (kopia albo od zera) — w zakładce Dane.</p>');
     return this.section('Najpierw włącz tryb testowy',
       '<p class="dev-note">Panel zmienia stan gry tylko w trybie testowym: osobny zapis, bez chmury, analityki, prawdziwych reklam i płatności. Twój prawdziwy postęp zostaje nietknięty i wraca po wyjściu z testów.</p>' +
       this.btns([['sandbox-copy', 'TESTUJ NA KOPII MOJEGO POSTĘPU', 'main'], ['sandbox-fresh', 'TESTUJ OD ZERA']]));
@@ -15073,14 +15089,16 @@ class DevPanel {
     if (!DEV.sandbox) {
       return this.section('Tryb',
         '<p class="dev-note">Teraz gra działa na <b>prawdziwym zapisie</b>. Tryb testowy przełącza grę na osobny zapis (strona się przeładuje); prawdziwy postęp nie jest wtedy ani czytany, ani nadpisywany, a po wyjściu z testów wraca dokładnie taki, jak był.</p>' +
-        this.btns([['sandbox-copy', 'TESTUJ NA KOPII MOJEGO POSTĘPU', 'main'], ['sandbox-fresh', 'TESTUJ OD ZERA']]) +
-        (hasSandbox ? this.btns([['sandbox-resume', 'WRÓĆ DO POPRZEDNICH TESTÓW']]) : '')) +
-        this.section('Dostęp', this.btns([['revoke', 'ZABIERZ DOSTĘP DO PANELU NA TYM URZĄDZENIU', 'danger', '', 'Na pewno? Dotknij jeszcze raz']]));
+        (hasSandbox ? this.btns([['sandbox-resume', 'WRÓĆ DO POPRZEDNICH TESTÓW', 'main']]) +
+          this.btns([['sandbox-copy', 'NOWE TESTY NA KOPII MOJEGO POSTĘPU', '', '', 'Nadpisze poprzedni zapis testowy — dotknij ponownie'], ['sandbox-fresh', 'NOWE TESTY OD ZERA', '', '', 'Nadpisze poprzedni zapis testowy — dotknij ponownie']]) +
+          '<p class="dev-note">Nowe testy zastępują poprzedni zapis testowy; zapisane stany testowe zostają.</p>'
+          : this.btns([['sandbox-copy', 'TESTUJ NA KOPII MOJEGO POSTĘPU', 'main'], ['sandbox-fresh', 'TESTUJ OD ZERA']]))) +
+        this.section('Dostęp', this.btns([['revoke', 'ZABIERZ DOSTĘP DO PANELU (I USUŃ DANE TESTOWE)', 'danger', '', 'Na pewno? Dotknij jeszcze raz']]));
     }
     const list = snaps.length ? `<ul class="dev-list">${snaps.map((sn, i) =>
       `<li><span class="dev-li-main">${escapeHtml(sn.name)}<small>${new Date(sn.ts).toLocaleString('pl-PL')}</small></span>` +
       `<button type="button" class="dev-btn" data-act="snap-load" data-arg="${i}" data-confirm="Wczytać? Dotknij ponownie">WCZYTAJ</button>` +
-      `${sn.auto ? '' : `<button type="button" class="dev-btn dev-btn-danger" data-act="snap-del" data-arg="${i}" data-confirm="Usunąć?">USUŃ</button>`}</li>`).join('')}</ul>` : '<p class="dev-note">Brak zapisanych stanów.</p>';
+      `${sn.auto ? '' : `<button type="button" class="dev-btn dev-btn-danger" data-act="snap-del" data-arg="${i}" data-confirm="Usunąć? Dotknij ponownie">USUŃ</button>`}</li>`).join('')}</ul>` : '<p class="dev-note">Brak zapisanych stanów.</p>';
     return this.section('Tryb testowy',
       '<p class="dev-note">Grasz na <b>zapisie testowym</b>. Prawdziwy postęp czeka nietknięty — wróci po zakończeniu testów.</p>' +
       this.btns([['sandbox-exit', 'ZAKOŃCZ TESTY · PRZYWRÓĆ MÓJ POSTĘP', 'main', '', 'Zakończyć testy? Dotknij ponownie']])) +
@@ -15088,12 +15106,11 @@ class DevPanel {
         `<div class="dev-field"><label for="devSnapName">Nazwa</label><input id="devSnapName" class="dev-input" type="text" maxlength="40" placeholder="np. przed bossem Portu"><button type="button" class="dev-btn dev-btn-main" data-act="snap-save">ZAPISZ STAN</button></div>` +
         list) +
       this.section('Reset',
+        (this.game.running && this.game.mode === 'campaign' ? this.btns([['mission-reset', `RESTART MISJI ${missionCode(this.game.mission.def)}`]]) : '') +
         this.btns([
-          ['mission-reset', 'RESTART BIEŻĄCEJ MISJI'],
-          ['mission-clear', `WYCZYŚĆ POSTĘP MISJI ${missionCode(campaignMissionById(this.missionId))}`, '', '', 'Wyczyścić? Dotknij ponownie'],
           ['sandbox-wipe', 'RESET CAŁEGO POSTĘPU TESTOWEGO', 'danger', '', 'Na pewno wszystko od zera? Dotknij ponownie']
         ]) +
-        '<p class="dev-note">Reset dotyczy tylko zapisu testowego. „Stan z początku testów” na liście wyżej przywraca to, od czego testy się zaczęły.</p>') +
+        '<p class="dev-note">Reset (i „Ekran powitalny” w zakładce Ekrany) dotyczy tylko zapisu testowego. „Stan z początku testów” na liście wyżej przywraca to, od czego testy się zaczęły.</p>') +
       this.section('Eksport', this.btns([['export', 'KOPIUJ KOD ZAPISU TESTOWEGO']]));
   }
 
@@ -15112,9 +15129,9 @@ class DevPanel {
       this.missionSelectHtml() +
       `<p class="dev-note">${missionCode(def)} „${escapeHtml(def.name)}” · ${escapeHtml(DISTRICTS.find(d => d.id === def.district).name)} · trudność ${def.diff} · ${this.game.isMissionPlayable(def.id) ? 'grywalna' : 'zablokowana w normalnej grze'}</p>` +
       this.btns([['mission-brief', 'ODPRAWA'], ['mission-start', 'START (POMIŃ WYMAGANIA)', 'main']]) +
-      this.btns([['progress-to', 'POSTĘP DO TEJ MISJI (★)', '', 1], ['progress-to', 'POSTĘP DO TEJ MISJI (★★★)', '', 7], ['mission-done', 'UKOŃCZ TYLKO TĘ (★★★)']]) +
+      this.btns([['progress-to', 'POSTĘP DO TEJ MISJI (★)', '', 1], ['progress-to', 'POSTĘP DO TEJ MISJI (★★★)', '', 7], ['mission-done', 'UKOŃCZ TYLKO TĘ (★★★)'], ['mission-clear', 'WYCZYŚĆ TĘ MISJĘ', '', '', 'Wyczyścić? Dotknij ponownie']]) +
       this.btns([['progress-all', 'UKOŃCZ CAŁĄ KAMPANIĘ (★★★)', '', '', 'Ukończyć 240 misji? Dotknij ponownie'], ['progress-clear', 'WYCZYŚĆ CAŁĄ KAMPANIĘ', 'danger', '', 'Wyczyścić kampanię? Dotknij ponownie']]) +
-      '<p class="dev-note">„Postęp do tej misji” zalicza wszystkie wcześniejsze misje (w kolejności gry) i czyści późniejsze; dzielnice otwierają się tak jak w grze — nagrodą za bossa poprzedniej. Bez monet za misje (skrzynie gwiazd zostają uznane za odebrane).</p>') +
+      '<p class="dev-note">„Postęp do tej misji” zalicza ją i wszystkie wcześniejsze (w kolejności gry) i czyści późniejsze; dzielnice otwierają się tak jak w grze — nagrodą za bossa poprzedniej. Bez monet za misje (skrzynie gwiazd zostają uznane za odebrane).</p>') +
       this.section('Dzielnice',
         `<label class="dev-check"><input id="devCelebrate" type="checkbox"${this.celebrate ? ' checked' : ''}> pokazuj ekrany „ODBLOKOWANO!” jak w grze</label>` +
         this.btns([['district-unlock-all', 'ODBLOKUJ WSZYSTKIE DZIELNICE', 'main']]) + `<ul class="dev-list">${districts}</ul>`) +
@@ -15205,23 +15222,26 @@ class DevPanel {
       this.numRow('devRadius', 'Promień (px)', g.player && g.running ? Math.round(g.player.radius) : BASE_RADIUS, 'set-radius', [['grow', '+10 jedn.', 10], ['grow', '−10 jedn.', -10]]) +
       '<p class="dev-note">Rozmiar zmienia się po prawdziwej krzywej wzrostu, więc próg T1–T6 decyduje, co dziura może zjeść — tak samo jak w grze.</p>');
     const boosterBtns = MISSION_BOOSTERS.map(b => ['live-booster', b.name.toUpperCase(), '', b.id]);
-    const missionSec = this.section('Misja',
+    const picked = this.startBoosts || [];
+    const missionLive = inMission ? this.section(`Trwa misja ${missionCode(g.mission.def)}`,
+      this.btns([['m-success', 'SUKCES', 'main'], ['m-success3', 'SUKCES ★★★'], ['m-fail', 'PORAŻKA: CZAS', 'danger', 'time'], ['m-fail', 'PORAŻKA: ZDERZENIE', 'danger', 'hit'], ['m-fail', 'PORAŻKA: ZŁODZIEJ', 'danger', 'racer']]) +
+      this.btns([['m-time', '+30 S', '', 30], ['m-time', 'CZAS → 3 S', '', -1], ['mission-reset', 'RESTART MISJI']]) +
+      '<h4 class="dev-h4">Wzmocnienie teraz (bez zużycia zapasu)</h4>' + this.btns(boosterBtns) +
+      '<h4 class="dev-h4">Moce misji</h4>' + this.btns(CAMPAIGN_POWERS.map(p => ['power', p.name.toUpperCase(), '', p.id]).concat([['cards', 'KARTY MOCY']]))) : '';
+    const arenaLive = inArena ? this.section('Trwa runda Areny',
+      this.btns([['a-end', 'KONIEC: WYGRANA', 'main', 'win'], ['a-end', 'KONIEC: OSTATNIE MIEJSCE', 'danger', 'lose'], ['a-end', 'KONIEC TERAZ', '', 'now']]) +
+      this.btns([['a-event', 'ZŁOTY RDZEŃ', '', 'golden'], ['a-event', 'SZAŁ', '', 'frenzy'], ['a-event', 'WIELKI FINISZ', '', 'overdrive'], ['cards', 'KARTY EWOLUCJI']]) +
+      '<h4 class="dev-h4">Mutacje (od razu)</h4>' + this.btns(MUTATIONS.map(m => ['mutation', m.name.toUpperCase(), '', m.id])) +
+      '<h4 class="dev-h4">Dodatki (od razu)</h4>' + this.btns(RUN_TOOLS.filter(t => t.id !== 'none').map(t => ['live-tool', t.name.toUpperCase(), '', t.id]))) : '';
+    // Starting something new ends what runs -- so it asks twice then.
+    const replace = g.running ? 'Przerwie obecną grę — dotknij ponownie' : undefined;
+    const missionSec = this.section(g.running ? 'Nowa misja' : 'Misja',
       this.missionSelectHtml() +
-      `<div class="dev-row dev-checks">${MISSION_BOOSTERS.map(b => `<label class="dev-check"><input type="checkbox" class="dev-start-boost" value="${b.id}"> ${b.name}</label>`).join('')}</div>` +
-      this.btns([['mission-start', `START ${missionCode(def)} (POMIŃ WYMAGANIA)`, 'main'], ['mission-start-go', 'START BEZ KARTY STARTU']]) +
-      (inMission ? '<h4 class="dev-h4">Trwa misja</h4>' +
-        this.btns([['m-success', 'SUKCES', 'main'], ['m-success3', 'SUKCES ★★★'], ['m-fail', 'PORAŻKA: CZAS', 'danger', 'time'], ['m-fail', 'PORAŻKA: ZDERZENIE', 'danger', 'hit'], ['m-fail', 'PORAŻKA: ZŁODZIEJ', 'danger', 'racer']]) +
-        this.btns([['m-time', '+30 S', '', 30], ['m-time', 'CZAS → 3 S', '', -1], ['mission-reset', 'RESTART MISJI']]) +
-        '<h4 class="dev-h4">Wzmocnienie teraz (bez zużycia zapasu)</h4>' + this.btns(boosterBtns) +
-        '<h4 class="dev-h4">Moce misji</h4>' + this.btns(CAMPAIGN_POWERS.map(p => ['power', p.name.toUpperCase(), '', p.id]).concat([['cards', 'KARTY MOCY']])) : ''));
-    const arenaSec = this.section('Arena',
-      this.btns([['arena-start', 'NOWA RUNDA', 'main'], ['daily-start', 'WYZWANIE DNIA']]) +
-      (inArena ? '<h4 class="dev-h4">Trwa runda</h4>' +
-        this.btns([['a-end', 'KONIEC: WYGRANA', 'main', 'win'], ['a-end', 'KONIEC: OSTATNIE MIEJSCE', 'danger', 'lose'], ['a-end', 'KONIEC TERAZ', '', 'now']]) +
-        this.btns([['a-event', 'ZŁOTY RDZEŃ', '', 'golden'], ['a-event', 'SZAŁ', '', 'frenzy'], ['a-event', 'WIELKI FINISZ', '', 'overdrive'], ['cards', 'KARTY EWOLUCJI']]) +
-        '<h4 class="dev-h4">Mutacje (od razu)</h4>' + this.btns(MUTATIONS.map(m => ['mutation', m.name.toUpperCase(), '', m.id])) +
-        '<h4 class="dev-h4">Dodatki (od razu)</h4>' + this.btns(RUN_TOOLS.filter(t => t.id !== 'none').map(t => ['live-tool', t.name.toUpperCase(), '', t.id])) : ''));
-    const order = !g.running ? [missionSec, arenaSec, sizeSec] : g.mode === 'campaign' ? [missionSec, sizeSec, arenaSec] : [arenaSec, sizeSec, missionSec];
+      `<div class="dev-row dev-checks">${MISSION_BOOSTERS.map(b => `<label class="dev-check"><input type="checkbox" class="dev-start-boost" value="${b.id}"${picked.includes(b.id) ? ' checked' : ''}> ${b.name}</label>`).join('')}</div>` +
+      this.btns([['mission-start', `START ${missionCode(def)} (POMIŃ WYMAGANIA)`, g.running ? '' : 'main', undefined, replace], ['mission-start-go', `START ${missionCode(def)} BEZ KARTY STARTU`, '', undefined, replace]]));
+    const arenaSec = this.section(g.running ? 'Nowa runda Areny' : 'Arena',
+      this.btns([['arena-start', 'NOWA RUNDA', g.running ? '' : 'main', undefined, replace], ['daily-start', 'WYZWANIE DNIA', '', undefined, replace]]));
+    const order = !g.running ? [missionSec, arenaSec, sizeSec] : [missionLive, arenaLive, sizeSec, missionSec, arenaSec];
     return this.section('Teraz', live) + order.join('');
   }
 
@@ -15236,7 +15256,7 @@ class DevPanel {
         this.btns([['scr-brief', 'ODPRAWA'], ['scr-start-card', 'KARTA STARTU'], ['scr-revive', 'OFERTA +20 S'], ['scr-pause', 'PAUZA']])) +
       this.section('Nagrody i nakładki',
         this.btns([['scr-unlock', 'CELEBRACJA „ODBLOKOWANO!”'], ['scr-levelup', 'AWANS POZIOMU (WYNIK)'], ['reward-login', 'KALENDARZ LOGOWANIA'], ['reward-chest', 'DARMOWA SKRZYNIA']]) +
-        this.btns([['scr-ad', 'REKLAMA DEMO'], ['scr-cards', 'KARTY EWOLUCJI'], ['scr-consent', 'ZGODA NA STATYSTYKI'], ['scr-welcome', 'EKRAN POWITALNY (1. URUCHOMIENIE)']]));
+        this.btns([['scr-ad', 'REKLAMA DEMO'], ['scr-cards', 'KARTY EWOLUCJI'], ['scr-consent', 'ZGODA NA STATYSTYKI'], ['scr-welcome', 'EKRAN POWITALNY (1. URUCHOMIENIE)', 'danger', '', 'Wyzeruje zapis testowy — dotknij ponownie']]));
   }
 
   /* ---------- actions ---------- */
@@ -15323,7 +15343,11 @@ class DevPanel {
     document.getElementById('evolutionOverlay').classList.add('hidden');
     document.getElementById('hud').classList.add('hidden');
     document.getElementById('pauseSheet').classList.add('hidden');
+    document.getElementById('mobile-hint').classList.add('hidden');
+    g.sound.setDucked(false);
     g.state = GameState.MENU;
+    // Never leave a frozen board with no screen behind a celebration.
+    g.showScreen('mainMenu');
   }
 
   startMission(id, opts = {}) {
@@ -15427,8 +15451,10 @@ class DevPanel {
         if (act !== 'sandbox-resume' || !this.sandboxSaveExists()) {
           const start = act === 'sandbox-fresh' ? defaultSave() : (() => { try { return parseSaveString(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return defaultSave(); } })();
           if (act === 'sandbox-fresh') start.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
+          start.meta.devSandbox = true;
           localStorage.setItem(DEV_SANDBOX_SAVE_KEY, sealSave(start));
-          this.writeSnapshots([{ name: 'Stan z początku testów', ts: Date.now(), auto: true, sealed: sealSave(start) }]);
+          // A new start state; saved test states stay.
+          this.writeSnapshots([{ name: 'Stan z początku testów', ts: Date.now(), auto: true, sealed: sealSave(start) }, ...this.snapshots().filter(x => !x.auto)]);
         }
         DEV.sandbox = true;
         DEV.openMissions = false;
@@ -15477,14 +15503,17 @@ class DevPanel {
         this.clearCelebrations();
         const fresh = defaultSave();
         fresh.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
+        fresh.meta.devSandbox = true;
         g.adoptSave(fresh, 'dev');
         g.pendingLoadout = { skin: fresh.selected, aura: 'none', effect: 'classic', overdriveSkin: 'classic' };
         return 'Postęp testowy wyzerowany.';
       }
       case 'export': {
         const code = encodeSaveCode(s);
-        try { navigator.clipboard.writeText(code); } catch (e) { /* no clipboard */ }
-        return 'Kod zapisu testowego skopiowany (Profil → Kopia zapasowa → WCZYTAJ).';
+        const done = () => this.toast('Kod skopiowany. Wczytasz go tylko w trybie testowym (Profil → Kopia zapasowa).');
+        const fail = () => { window.prompt('Kod zapisu testowego:', code); };
+        try { navigator.clipboard.writeText(code).then(done, fail); } catch (e) { fail(); }
+        return '';
       }
 
       /* ---- progress ---- */
@@ -15747,12 +15776,14 @@ class DevPanel {
       case 'm-success': case 'm-success3': {
         this.needLive('campaign');
         const m = g.mission;
-        if (act === 'm-success3') {
-          // Meet every star condition the way a perfect run would.
+        // Meet every star condition the way a perfect run would -- again
+        // just before the result (beginMissionSuccess() waits 0.9 s).
+        const rig = () => {
           m.elapsed = 0; m.botHitCount = 0; m.comboBroken = false; m.pylonComboBroken = false;
           m.bestCombo = Math.max(m.bestCombo, 99); m.maxComboDuringCapsule = 99;
           ['A', 'B'].forEach(k => { m.clustersVisited.add(k); m.markersRoutes.add(k); });
-        }
+        };
+        if (act === 'm-success3') { rig(); setTimeout(() => { if (g.mission === m && !m.ended) rig(); }, 850); }
         this.resumeLive();
         g.beginMissionSuccess();
         return '';
@@ -15830,9 +15861,10 @@ class DevPanel {
       case 'scr-start-card': this.startMission(this.missionId); return '';
       case 'scr-revive': {
         this.startMission(this.missionId, { go: true });
-        const orig = g.campaignGoalFraction;
-        g.campaignGoalFraction = () => Math.max(orig.call(g), CONFIG.ads.reviveMinProgress);
-        try { this.missionTimeLeft(0); g.onCampaignTimeout(); } finally { g.campaignGoalFraction = orig; }
+        // The offer needs progress and a way to pay (ad left or prisms).
+        if (g.monetization.placementLeft('mission_revive') <= 0) s.prisms = Math.max(s.prisms || 0, CONFIG.ads.revivePrisms);
+        g.campaignGoalFraction = () => Math.max(Game.prototype.campaignGoalFraction.call(g), CONFIG.ads.reviveMinProgress);
+        try { this.missionTimeLeft(0); g.onCampaignTimeout(); } finally { delete g.campaignGoalFraction; }
         return '';
       }
       case 'scr-pause':
@@ -15853,10 +15885,12 @@ class DevPanel {
         this.rigArenaEnd('win');
         return '';
       }
-      case 'scr-ad':
+      case 'scr-ad': {
+        const resume = this.pausedByPanel;
         this.close(false);
-        g.monetization.demoAd(true);
+        g.monetization.demoAd(true).then(() => { if (resume && g.running && g.paused) g.resumeGame(); });
         return '';
+      }
       case 'scr-cards':
         if (!g.running || g.mode !== 'arena') this.startArena();
         this.resumeLive();
@@ -15875,6 +15909,7 @@ class DevPanel {
         this.clearCelebrations();
         this.close(false);
         const fresh = defaultSave();
+        fresh.meta.devSandbox = true;
         g.adoptSave(fresh, 'dev');
         return '';
       }

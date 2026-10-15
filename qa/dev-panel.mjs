@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve, openGame, veteranSave, report, chromium, ROOT, OUT } from './lib.mjs';
-import { devCodeHash } from './dev-code.mjs';
+import { devCodeHash, devCodeToken } from './dev-code.mjs';
 
 const SHOTS = path.join(OUT, 'dev-panel');
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -52,7 +52,7 @@ window.__devSet = function (tab, id, value) {
 window.__visible = (id) => { const el = document.getElementById(id); return !!el && !el.classList.contains('hidden'); };
 `;
 
-const LOCAL_TOKEN = devCodeHash('dev');
+const LOCAL_TOKEN = devCodeToken('dev');
 
 /** A game with dev access (local code) -- and, with `sandbox`, already in
  *  test mode on a copy of `realSave` (or a fresh test save). */
@@ -134,6 +134,11 @@ export async function runDevPanelChecks(url) {
     await wait(g2.page, 700);
     const viaUrl = await g2.page.evaluate(() => ({ box: !!document.getElementById('devCodeBox') && !document.getElementById('devCodeBox').classList.contains('hidden'), panel: !!document.getElementById('devPanel') }));
     push('access: ?dev in the URL asks for the code, never opens the panel by itself', viaUrl.box && !viaUrl.panel, JSON.stringify(viaUrl));
+    const g3 = await openGame(url, { initScript: `localStorage.setItem('vectorHoleDevAccess_v1', ${JSON.stringify(LOCAL_TOKEN)}); window.VectorHoleNative = { track() {} };` });
+    await g3.page.evaluate(() => 0);
+    const native = await g3.page.evaluate(() => ({ access: DEV.access, loop: devIsLoopback() }));
+    push('access: a native wrapper served from localhost does not count as a dev server', !native.access && !native.loop, JSON.stringify(native));
+    await g3.browser.close();
     push('access: no runtime errors', g.errors.length + g2.errors.length === 0, [...g.errors, ...g2.errors].slice(0, 2).join(' | '));
     await g2.browser.close();
   }
@@ -168,6 +173,12 @@ export async function runDevPanelChecks(url) {
     await page.waitForFunction(() => window.game && window.game.devPanel);
     const forged = await page.evaluate(() => ({ access: DEV.access, fab: !!document.getElementById('devFab') }));
     push('production host: a planted local-code token gives no access', !forged.access && !forged.fab, JSON.stringify(forged));
+    // The hash in the source is not a token either.
+    await page.evaluate(() => localStorage.setItem('vectorHoleDevAccess_v1', DEV_CODE_HASH));
+    await page.goto(PROD + 'index.html');
+    await page.waitForFunction(() => window.game && window.game.devPanel);
+    const planted = await page.evaluate(() => ({ access: DEV.access, fab: !!document.getElementById('devFab') }));
+    push('production host: planting DEV_CODE_HASH from the source gives no access', !planted.access && !planted.fab, JSON.stringify(planted));
     const real = process.env.VH_DEV_CODE;
     if (real) {
       const hashMatches = await page.evaluate(() => DEV_CODE_HASH) === devCodeHash(real);
@@ -280,6 +291,7 @@ export async function runDevPanelChecks(url) {
       await new Promise(r => setTimeout(r, 1300));
     });
     const realMid = await page.evaluate(() => localStorage.getItem('vectorHoleSave_v1'));
+    const testCode = await page.evaluate(() => encodeSaveCode(window.game.save));
     await page.evaluate(() => window.__devClick('data', 'sandbox-exit'));
     await page.waitForFunction(() => window.game && window.game.devPanel && !DEV.sandbox, null, { timeout: 15000 });
     // Opening the game on the real save counts a session (retention) and
@@ -288,6 +300,16 @@ export async function runDevPanelChecks(url) {
     const strip = (raw) => { const o = JSON.parse(raw); delete o._sig; delete o.retention; delete o.meta; return JSON.stringify(o); };
     back.same = strip(back.raw) === strip(realBefore);
     push('isolation: after an Arena round, a mission and resets in test mode the real save is byte-identical during the tests and comes back unchanged', realMid === realBefore && back.same && back.coins === 123 && back.slot === 'vectorHoleSave_v1' && back.fab === 'DEV' && back.runs === 4 && !back.m05, JSON.stringify({ duringTests: realMid === realBefore, same: back.same, coins: back.coins, runs: back.runs, m05: back.m05 }));
+    // A test save's backup code can't be loaded into the real save.
+    const imp = await page.evaluate((code) => {
+      const gm = window.game;
+      gm.openBackupLoad();
+      document.getElementById('backupInput').value = code;
+      gm.importBackup();
+      return { coins: gm.save.coins, msg: document.getElementById('infoSheet').textContent.includes('zapisu testowego'), raw: localStorage.getItem('vectorHoleSave_v1') };
+    }, testCode);
+    push('isolation: a test save backup code is refused on the real save', imp.coins === 123 && imp.msg && imp.raw === back.raw, JSON.stringify({ coins: imp.coins, msg: imp.msg }));
+    await page.evaluate(() => window.game.closeInfoSheet());
     // And with consent outside test mode the sink does get events (control).
     const control = await page.evaluate(() => { window.game.save.privacy.analytics = true; window.dataLayer = []; window.game.analytics.track('qa_probe', {}); return window.dataLayer.length; });
     push('isolation (control): outside test mode a consented sink still receives events', control === 1, String(control));
@@ -391,7 +413,7 @@ export async function runDevPanelChecks(url) {
     const clr = await page.evaluate(() => {
       const gm = window.game;
       gm.devPanel.missionId = 'M12';
-      window.__devClick('data', 'mission-clear');
+      window.__devClick('progress', 'mission-clear');
       const m12 = !!gm.save.campaign.completed.M12;
       window.__devClick('progress', 'progress-clear');
       return { m12, total: Object.keys(gm.save.campaign.completed).length, d: gm.save.campaign.unlockedDistricts.join() };
@@ -645,6 +667,34 @@ export async function runDevPanelChecks(url) {
       await new Promise(r => setTimeout(r, 300));
       return { open, frozen, resumed: !gm.paused && gm.mission.elapsed > t };
     });
+    // Review fixes: mid-round the panel opens on Rozgrywka with the round's
+    // controls first; starting something new asks twice; the demo ad hands
+    // the round back; a toast never outlives the panel.
+    const ux = await page.evaluate(async () => {
+      const gm = window.game;
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      gm.devPanel.tab = 'data';
+      gm.devPanel.close();
+      document.getElementById('devFab').click();
+      const tab = document.querySelector('#devPanel .dev-tab.active').dataset.tab;
+      const firstSec = document.querySelectorAll('#devBody .dev-h')[1].textContent; // after the 'Teraz' status line
+      const start = document.querySelector('#devPanel [data-act="arena-start"]');
+      start.click();
+      const armed = start.classList.contains('armed') && gm.mode === 'campaign' && gm.running;
+      gm.devPanel.close();
+      await sleep(100);
+      CONFIG.ads.demoSeconds = 0.3;
+      window.__devClick('screens', 'scr-ad');
+      await sleep(800);
+      const t = gm.mission.elapsed;
+      await sleep(250);
+      const afterAd = { paused: gm.paused, ticking: gm.mission.elapsed > t };
+      window.__devOpen();
+      const toast = !document.getElementById('devToast').classList.contains('hidden');
+      gm.devPanel.close();
+      return { tab, firstSec, armed, afterAd, toast };
+    });
+    push('ux: mid-mission the panel opens on Rozgrywka with the live mission first; NOWA RUNDA asks twice; the demo ad hands the mission back; no stale toast', ux.tab === 'play' && /^Trwa misja/.test(ux.firstSec) && ux.armed && !ux.afterAd.paused && ux.afterAd.ticking && !ux.toast, JSON.stringify(ux));
     push('gameplay: the DEV button mid-mission pauses the clock (no pause sheet), closing resumes', pause.open.paused && !pause.open.sheet && pause.open.panel && pause.frozen && pause.resumed, JSON.stringify(pause));
     push('gameplay: no runtime errors', g.errors.length === 0, g.errors.slice(0, 3).join(' | '));
     await g.browser.close();
@@ -683,6 +733,8 @@ export async function runDevPanelChecks(url) {
       window.__devClick('screens', 'scr-cards'); out.cards = window.__visible('evolutionOverlay');
       gm.skipEvolutionOffer();
       window.__devClick('screens', 'scr-consent'); out.consent = window.__visible('consentBar');
+      window.__devClick('screens', 'scr-welcome', undefined, { confirm: false });
+      out.welcomeAsks = !gm.isFirstRun();
       window.__devClick('screens', 'scr-welcome'); out.welcome = window.__visible('hubWelcome') && gm.isFirstRun();
       return out;
     });
