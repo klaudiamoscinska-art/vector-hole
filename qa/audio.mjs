@@ -169,11 +169,11 @@ export async function runAudioChecks(url) {
     // Campaign: district themes + boss drop.
     const theme = await g.page.evaluate(async () => {
       const gm = window.game, out = {};
-      for (const id of ['M00', 'M05', 'M09', 'M04']) {
+      for (const id of ['M01', 'M05', 'M09', 'M04']) {
         gm.startCampaignMission(id);
         await new Promise(r => setTimeout(r, 420));
         const card = gm.sound.song.form[gm.sound.formIdx];
-        if (id !== 'M00') gm.beginMissionPlay();
+        gm.beginMissionPlay();
         await new Promise(r => setTimeout(r, 420));
         out[id] = { song: gm.sound.song.id, card, section: gm.sound.song.form[gm.sound.formIdx] };
         gm.running = false; gm.showScreen('campaignScreen');
@@ -181,7 +181,7 @@ export async function runAudioChecks(url) {
       }
       return out;
     });
-    results.push(report('music (live): each district plays its own theme (Plac → Wir Neonów, Park → Zielony Impuls, Port → Fala Syntez)', theme.M00.song === 'wir' && theme.M05.song === 'impuls' && theme.M09.song === 'fala', JSON.stringify(theme)));
+    results.push(report('music (live): each district plays its own theme (Plac → Wir Neonów, Park → Zielony Impuls, Port → Fala Syntez)', theme.M01.song === 'wir' && theme.M05.song === 'impuls' && theme.M09.song === 'fala', JSON.stringify(theme)));
     results.push(report('music (live): the district boss (M04) waits on its intro under the start card, then drops on START', theme.M04.song === 'wir' && theme.M04.card === 'A' && theme.M04.section === 'D' && theme.M05.section !== 'D', JSON.stringify(theme)));
 
     // Daily / challenge: the same seed plays the same track for everybody.

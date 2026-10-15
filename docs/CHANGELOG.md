@@ -4,6 +4,29 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## v22 „Dwa tryby” — bez energii, Arena i Dzielnice niezależne
+Runda 1 przygotowań komercyjnych: uprościć start, nie ograniczać grania,
+rozdzielić tryby.
+
+| Było | Jest |
+|---|---|
+| Energia: 5 punktów, +1 co 20 min, każda runda i próba misji kosztuje 1; arkusz „BRAK ENERGII”, chip w nagłówkach, reklama „+1 energia”, IAP „Godzina bez limitu”, przełącznik per platforma | **Bez limitu**: wszystko usunięte (logika, UI, CSS, sklep, reklama, teksty EN); kolejne rundy i próby startują od razu |
+| Pierwsze uruchomienie: samouczek M00 (4 kroki z kartą trenera), Arena dopiero po nim | **GRAJ → od razu runda Areny**; podpowiedzi tylko dla wahającego się gracza (brak sterowania 1,6 s, brak kęsa 4 s, mniejszy rywal, pierwsze pochłonięcie) i nigdy dla tego, kto po prostu gra; nauczona umiejętność nie wraca (`save.coach`) |
+| Arena pokazywała tylko obiekty „odkryte” w misjach | Cały bestiariusz Areny od 1. rundy; rozmiary T1–T6 tylko z wielkości wiru |
+| Warsztat po M02, Wyzwania po M03 (kampania blokowała Arenę) | Wyzwania po **3 rundach Areny**, Warsztat po **2 rundach albo M02**; wzmocnienia nadal po M04; odblokowanie nigdy się nie cofa |
+| Wir „Aurora Finału” (nagroda kampanii) dawał +20% punktów w Arenie | Trofeum bez bonusu — kampania nie zmienia balansu Areny |
+| Pryzmaty szły głównie na energię | Wzmocnienie misji za **4 ◆** przy braku monet, nowe Efekty i Finisze za 20–40 ◆ (wcześniej nic do kupienia w tych kategoriach), lista źródeł z obu trybów |
+
+- Po pierwszej rundzie kampania przedstawia się raz („DRUGI TRYB ·
+  KAMPANIA”); Core City opisane jako postęp Areny („Każda runda Areny
+  buduje Twoje miasto”, GRAJ „Arena · runda 2:00”). NELA przedstawia się
+  w M01. Zablokowane zakładki mówią, ile rund Areny zostało.
+- Zapis: schemat 13 (`migrateSave()`): usuwa energię, odkryte typy
+  i M00, zachowuje misje, gwiazdki, waluty, Core City i otwarte zakładki;
+  gracz z postępem nie dostaje podpowiedzi ani prezentacji kampanii.
+- Testy: nowy `qa/v22.mjs`; zaktualizowane `edge-cases`, `features`,
+  `design`, `flow`, `v15`, `v17`, `v19`, `audio`, `screens`.
+
 ## v21 „Komputer” — gra na dużym ekranie
 Zgłoszenie: „na kompie w przeglądarce cały interface wygląda jak na
 telefon ucięty taki mały” (a portale to głównie komputery).

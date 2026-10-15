@@ -34,7 +34,7 @@ async function worker(ids, results) {
 }
 
 const { browser: b0, page: p0 } = await openGame(url);
-let ids = await p0.evaluate(() => CAMPAIGN_MISSIONS.filter(m => m.id !== 'M00').map(m => m.id));
+let ids = await p0.evaluate(() => CAMPAIGN_MISSIONS.map(m => m.id));
 await b0.close();
 if (process.argv[4] && process.argv[4].includes(',')) ids = process.argv[4].split(',');
 else if (process.argv[4]) { const a = ids.indexOf(process.argv[4]), z = process.argv[5] ? ids.indexOf(process.argv[5]) : ids.length - 1; ids = ids.slice(a, z + 1); }

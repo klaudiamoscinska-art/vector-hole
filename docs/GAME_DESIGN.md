@@ -1,4 +1,4 @@
-# Vector Hole — jak działa gra (stan v15)
+# Vector Hole — jak działa gra (stan v22)
 
 Jedyny aktualny opis projektowy gry. Liczby pochodzą z `CONFIG` i tabel w
 `game.js` — przy zmianie balansu poprawiaj **ten** plik razem z kodem.
@@ -12,8 +12,8 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
 > centrum (Core City).
 
 - Pochłanianie = oczyszczanie; energia z rund Areny odbudowuje Core City,
-  misje kampanii odzyskują dzielnice. NELA przedstawia się w wyniku
-  samouczka i w M01.
+  misje kampanii odzyskują dzielnice. NELA przedstawia się w M01
+  (v22: samouczka już nie ma).
 - **NELA jest postacią (v14)**: awatar (soczewka SI w heksagonie,
   `NELA_AVATAR`), różowy dymek z podpisem „NELA” i krótki sygnał dźwiękowy
   (`SoundEngine.nela()`). Mówi: w odprawie misji, na starcie misji (dymek
@@ -29,6 +29,45 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   (kolor wielkiego finału). Marki zostają: Vector Hole, Core City, COMBO,
   GRAJ 2:00, LVL (tylko dla Core City — poziom gracza to „POZIOM”).
 - Miejsca w zdaniach: „2. miejsce”, nie „#2” (wyjątek: zwarte tabele HUD).
+
+## 1a. Dwa niezależne tryby (v22 „Dwa tryby”)
+
+Arena (GRAJ 2:00, Wyzwanie dnia, wyzwania znajomych) i Dzielnice
+(kampania, 240 misji) to **dwa osobne tryby**, oba dostępne od pierwszego
+uruchomienia, bez wzajemnych blokad i **bez limitu grania** (energii nie
+ma od v22 — kolejne rundy i próby misji startują od razu).
+
+| | Arena | Dzielnice |
+|---|---|---|
+| Progresja | Core City LVL 1–6 (+%) i nagrody kosmetyczne, rosnąca trudność rywali (od liczby rund), pacer | 12 dzielnic, gwiazdki, Skrzynie gwiazd, nowe dzielnice i ich utwory |
+| Rozmiary T1–T6 | tylko z wielkości wiru w rundzie; cały bestiariusz od 1. rundy | tylko z jednostek wzrostu w misji |
+| Odblokowania | **Wyzwania** po 3 rundach Areny | **wzmocnienia** po M04 (+ po jednym w prezencie) |
+| Ulepszenia | Wiry z bonusem (tylko w Arenie), dodatki na rundę | wzmocnienia misji, pożyczka NELI |
+| Nagrody | monety, XP, Core City, co 3. runda +2 pryzmaty, rekord dnia | monety za misję, XP, Skrzynie gwiazd (monety, pryzmaty, wzmocnienie) |
+
+- Wspólne są tylko: **portfel** (monety, pryzmaty — oba tryby je
+  zarabiają i wydają; żaden nie wymaga waluty zdobywanej tylko w drugim —
+  sprawdza bot: 6 misji opłaca wzmocnienie, 3 rundy Areny pierwszy Wir),
+  **wygląd wiru** (Warsztat), poziom konta (XP z obu trybów, nic nie
+  blokuje) i ustawienia.
+- **Warsztat** otwiera się po 2 rundach Areny **albo** po misji M02 — co
+  pierwsze; odblokowanie nigdy się nie cofa (`CONFIG.unlockGates`).
+- Postęp kampanii nie zmienia Areny (mapa, rywale, trudność, obiekty —
+  wcześniej Arena pokazywała tylko typy „odkryte” w misjach), a postęp
+  Areny nie zmienia misji (limity, start, plansza). Wir „Aurora Finału”
+  (nagroda za M24) jest trofeum bez bonusu w Arenie.
+- **Pierwsze uruchomienie:** ekran powitalny z jednym GRAJ → od razu runda
+  Areny (z linkiem wyzwania — ta runda). Po niej kampania przedstawia się
+  raz („DRUGI TRYB · KAMPANIA” → Dzielnice) i pojawia się nawigacja.
+- **Pierwsza runda uczy, nie samouczek (`CONFIG.coach`,
+  `updateArenaCoach()`):** podpowiedź pojawia się tylko wtedy, gdy gracz
+  się waha, i znika na zawsze, gdy pokaże umiejętność (`save.coach`):
+  brak sterowania przez 1,6 s → „Przeciągnij palcem…” (mysz / kciuk —
+  własny tekst; zostaje, dopóki wir nie ruszy); 4 s sterowania bez kęsa →
+  „Najeżdżaj na świecące fragmenty…”; mniejszy rywal na ekranie przez 2 s
+  (po 12 s rundy) → „Ten rywal jest mniejszy…”; pierwsze pochłonięcie
+  przez większy wir → zasada o większych rywalach (raz). Kto gra od razu,
+  nie widzi nic. Za duży obiekt objaśnia „ZA DUŻE · URÓŚNIJ DO Tn”.
 
 ## 2. Pętla rdzenia (Arena, GRAJ 2:00)
 
@@ -85,7 +124,7 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
 
 ## 4. Kampania (Dzielnice) — v15 „Wyzwanie”
 
-- **12 dzielnic, 240 misji + samouczek M00.** Rozdział I (6 × 10:
+- **12 dzielnic, 240 misji** (v22: bez samouczka M00). Rozdział I (6 × 10:
   Plac Neonów, Park Impulsów, Port Syntez, Galeria Glitch, Dachy Prądu,
   Rdzeń Miasta, M01–M60) i Rozdział II „Głęboki Glitch” (6 × 30: Tunele
   Metra, Nocny Bazar, Fabryka Pikseli, Zatoka Hologramów, Wiszące Ogrody,
@@ -97,8 +136,7 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   (`[nazwa, cele, zwroty akcji, trudność]`, parser `chapterTwoSpecs()`),
   wszystko kompiluje `compileMission()`.
 - Rozgrywka na miesiąc: 240 misji × 3 gwiazdki, misje bardzo trudne
-  wymagające kilku podejść, energia ograniczająca porażki w sesji,
-  Arena i Wyzwanie dnia obok.
+  wymagające kilku podejść (bez limitu prób), Arena i Wyzwanie dnia obok.
 - **Trudność 1–5** (`DIFFICULTY`): ŁATWA, ŚREDNIA, TRUDNA, BARDZO TRUDNA,
   EKSTREMALNA — chip z paskami na każdej karcie i wierszu misji. Limit
   czasu = mediana czasu bota-eksperta (`MISSION_BOT_TIME`, mierzona
@@ -143,6 +181,8 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   GRAJ, POWTÓRZ = bez wzmocnienia. NELA dopowiada, co da wzmocnienie.
 - **Brak monet w odprawie (v18)**: „▶ Zegar za reklamę” — jedno z wybranych
   wzmocnień za reklamę (3 dziennie), trafia do zapasu i zostaje wybrane.
+  v22: obok „Zegar za 4 ◆” — to samo za pryzmaty (bez reklamy; drożej niż
+  w Pakiecie wzmocnień, więc monety zostają codzienną drogą).
 - **Balans wzmocnień (v18, `qa/v18.mjs 3`, bot „casual”, 24 misje TRUDNE
   i EKSTREMALNE × 3 próby)**: bez wzmocnień 59% przejść, Zegar 79% (+20),
   Sprint 76% (+17), Magnes 73% (+14), Turbo start 71% (+12). Sprint przy
@@ -153,7 +193,7 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
 - **Start na dotknięcie (v15)**: po GRAJ misja otwiera się zamrożona
   z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji
   z wyjaśnieniem, wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po
-  dotknięciu; mały przycisk pod START oddaje energię oraz wzmocnienia:
+  dotknięciu; mały przycisk pod START oddaje wzmocnienia:
   „Zmień wzmocnienia” wraca do odprawy z dotychczasowym wyborem, a zanim
   wzmocnienia się odblokują (przed ukończeniem M04) — „Wróć do mapy”.
 - Najwyżej 3–10 misji EKSTREMALNYCH na dzielnicę Rozdziału II
@@ -163,7 +203,7 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   (`openMissionBriefing()`): z Dzielnic, z kafla na Mieście, z wyniku
   („GRAJ Mxx”, „SPRÓBUJ PONOWNIE”, „POWTÓRZ”) i z pauzy („zacznij od
   nowa” = nowa próba). Tam: cele, zwroty, czas, gwiazdki, nagroda,
-  wzmocnienia, koszt energii.
+  wzmocnienia (przy braku monet: jedno za reklamę albo za 4 pryzmaty).
 - **Bramy impulsu i portale (v20) to pomocnicy, nigdy cel misji.**
   Świecąca brama na jezdni daje wirowi impuls (+50% prędkości na 2,5 s),
   potem się ładuje (5 s, łuk pokazuje ładowanie). Portale są połączone
@@ -176,15 +216,10 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
   starcie; nic nie chowa się w rogu poza zasięgiem wiru.
 - **Misje nigdy nie napełniają Core City** — tylko Arena i Wyzwanie dnia.
 
-### Samouczek M00 (v13)
-Bez limitu czasu (zegar „∞”, brak porażki i brak reklamy), 7 fragmentów
-wokół startu, 4 kroki (fragmenty → elementy uliczne → pojazd → mniejszy
-rywal) pokazywane **po jednym** w karcie trenera na dole ekranu
-(„KROK n Z 4”, ikona celu, tekst o sterowaniu w kroku 1). Zaliczenie
-późniejszego kroku przed bieżącym daje tylko krótki komunikat. Po M00
-przycisk „ZAGRAJ TERAZ” w świętowaniu odblokowania od razu startuje
-pierwszą rundę Areny; nowicjusz (< 3 rundy) nie widzi ekranu wsparcia ani
-kalendarza logowania przed pierwszą ukończoną rundą.
+### Pierwsza misja (v22)
+Samouczka M00 już nie ma (grę poznaje się w pierwszej rundzie Areny —
+§1a). Kampania zaczyna się od M01 „Pierwszy apetyt”, w której NELA się
+przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
 
 ## 5. Meta i ekonomia
 
@@ -202,32 +237,35 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   niewydanych monet):** Wiry Cyjan 100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800,
   Neonowe Złoto 1300, Biała Plazma 2000 monet (każdy z bonusem
   rozgrywki, tylko Arena/Dzienne), Smuga „Iskra” 500 monet, „Żar” 15 i
-  „Zawirowanie” 30 pryzmatów. Dodatki na rundę: Tarcza 45, Magnes 25,
-  Turbo start 70 monet.
+  „Zawirowanie” 30 pryzmatów; v22: Efekty „Neonowa Róża” 20 i „Fioletowa
+  Szczelina” 35, Finisze „Złoty Szczyt” 25 i „Zielona Burza” 40 pryzmatów
+  (wcześniej w tych kategoriach nie było nic do kupienia). Dodatki na
+  rundę: Tarcza 45, Magnes 25, Turbo start 70 monet.
 - **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go
   zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a arkusz
   pyta „KUP I ZAŁÓŻ · cena” (zamknięcie = powrót do założonego, nic nie
   wydane); przedmiot z nagrody mówi, skąd go zdobyć (`onCosmeticPick()`).
-- **Energia (v15, limit sesji):** 5 punktów, +1 co 20 min. Każda runda
-  Areny i każda próba misji kosztuje 1; **wygrana misja zwraca punkt**,
-  więc energię zjadają porażki i rundy. Za darmo: samouczek, 3 pierwsze
-  rundy, pierwsza próba Wyzwania dnia danego dnia. Przy 0 — arkusz „BRAK
-  ENERGII” z licznikiem i dokupieniem przed odnowieniem: pełna energia za
-  12 pryzmatów, +1 za reklamę (5 dziennie), w sklepie natywnym „Godzina
-  bez limitu”; po dokupieniu gra od razu startuje to, co było wybrane.
-  Chip energii (błyskawica, n/5 i licznik) w nagłówku Miasta i Dzielnic.
+- **Bez limitu grania (v22):** energia z v15 (5 punktów, +1 co 20 min,
+  koszt rundy/próby) usunięta w całości — chip, arkusz „BRAK ENERGII”,
+  odnawianie, reklama „+1 energia”, IAP „Godzina bez limitu”; zapisy
+  tracą pole przy migracji v12 → v13. Gra nie każe czekać.
+- **Pryzmaty po v22** (rzadka waluta, oba tryby): źródła — Arena (co 3.
+  runda +2, rekord Wyzwania dnia +3), Dzielnice (Skrzynia gwiazd +3),
+  awanse poziomu, kalendarz, skrzynia, reklama, sklep. Wydatki — rzadkie
+  Smugi, Efekty i Finisze (20–40 ◆), wzmocnienie misji przy braku monet
+  (4 ◆), +20 s w misji (8 ◆). Same kosmetyki i skróty, nigdy czas gry.
 - **Retencja:** 7-dniowy kalendarz logowania, darmowa skrzynia co 4 h,
   Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
 - **Monetyzacja (`Monetization`):** tylko reklamy z nagrodą (×2 monety,
-  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, darmowe Turbo, +1
-  energia, wzmocnienie misji przy braku monet) i
+  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, darmowe Turbo,
+  wzmocnienie misji przy braku monet) i
   reklamy między rundami co 3. powtórka (nie w rundach nowicjusza, min.
   2,5 min odstępu). Sklep IAP pojawia się tylko z natywnym opakowaniem;
   w przeglądarce działa oznaczony dostawca demo. Sklep: Pakiet Startowy
   (9,99 zł: 1500 monet, 60 pryzmatów, **3× każde wzmocnienie**, Smuga),
   **Pakiet wzmocnień** (7,99 zł: 5× każde z pięciu, v18), pryzmaty 4,99 /
-  19,99 / 44,99 zł, Godzina bez limitu 7,99 zł, Bez reklam 14,99 zł.
+  19,99 / 44,99 zł, Bez reklam 14,99 zł.
   Zasady: każdy pakiet mówi dokładnie, co zawiera (bez losowych nagród
   za pieniądze), nic nie kupuje się jednym dotknięciem.
 - **Przegląd ekonomii v18 (wnioski):** monety szybko tracą wartość
@@ -237,7 +275,7 @@ kalendarza logowania przed pierwszą ukończoną rundą.
   Wzmocnienia płaci się monetami, nie pryzmatami, celowo: kampania ma
   pozostać do przejścia bez płacenia (sklep tylko przyspiesza).
 - **Prywatność:** zapis tylko lokalny; statystyki wyłącznie po zgodzie.
-  Pasek zgody pojawia się po samouczku (na ekranie powitalnym zasłaniał
+  Pasek zgody pojawia się po pierwszej rundzie (na ekranie powitalnym zasłaniał
   przycisk startu); do decyzji nic nie jest wysyłane.
 
 ## 5a. Dźwięk
@@ -361,10 +399,7 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   (`I18N_EN`), więc nowy polski tekst wymaga wpisu w słowniku (pilnuje
   `qa/v19.mjs`). Nazwy dzielnic, utworów i misji mają angielskie odpowiedniki
   (Plac Neonów → Neon Square, Wir Neonów → Neon Vortex…).
-- **Energia per platforma** (`CONFIG.energy.platforms`): na portalach
-  wyłączona (portal płaci za czas gry i reklamy, a energia go ucina), w wersji
-  przeglądarkowej z GitHuba i w aplikacji natywnej włączona (tam ma sens dzięki
-  zakupom). Zmiana to jedna wartość w `CONFIG`; `?energy=0/1` do testów.
+- ~~Energia per platforma~~ — v22: energii nie ma nigdzie (§5).
 - **Zapis:** lokalnie w przeglądarce (jak dotąd) + na CrazyGames w module
   danych portalu (konto gracza, synchronizacja urządzeń; przy różnicy wygrywa
   zapis z większym postępem) + **kopia zapasowa** w Profilu: kod `VH1.…` do
@@ -375,7 +410,7 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 
 `node qa/run-all.mjs` — przypadki brzegowe, funkcje v11, grafika v12,
 **design v13** (`qa/design.mjs`: pierwsze sekundy, wyścig, sterowanie,
-samouczek, ścieżka nowicjusza, mapa dnia, podpowiedź za dużego obiektu,
+ścieżka nowicjusza, mapa dnia, podpowiedź za dużego obiektu,
 teksty, układ na telefonach 402×874 / 402×740 / 375×667 i aplikacja
 z ekranu głównego iPhone'a 13 Pro), **przepływ v14** (`qa/flow.mjs`: ekran
 startu, Miasto bez przewijania i bez przyklejonych elementów, GRAJ następnej
@@ -383,8 +418,7 @@ misji w Dzielnicach bez przewijania, odprawa, podgląd następnej misji
 w wyniku, dymki NELA, Warsztat: dotknij = załóż, zakup wymaga
 potwierdzenia), kariera 20 rund Areny, 30 pierwszych misji,
 **systemy v15** (`qa/v15.mjs`: 240 misji kompletnych i skalibrowanych,
-start na dotknięcie, wzmocnienia, energia — wydanie, zwrot, odnowienie,
-cofnięty zegar, dokupienie, darmowe gry —, gwiazdki, skrzynie gwiazd,
+start na dotknięcie, wzmocnienia, gwiazdki, skrzynie gwiazd,
 przyczyny porażki, pożyczka NELA, migracja zapisu v11→v12, odprawa na
 375×667) i **trudność v15** (`qa/difficulty.mjs`: każda z 240 misji
 grana przez bota-eksperta i bota „casual” w prawdziwym limicie; krzywa
@@ -395,7 +429,14 @@ prawdziwy mikser — bez przesterów i ciszy, utwory rundy w paśmie 8 dB,
 menu cichsze, warstwy rosną z napięciem, limit głosów; drop w końcówce,
 rotacja Areny, Daily = jeden utwór na ziarno, boss od dropu, pauza „pod
 wodą”, NASTĘPNY, plakietka TERAZ GRA, Szafa grająca z zablokowanymi
-utworami, stres 60 zmian scen, runda bota z włączonym dźwiękiem).
+utworami, stres 60 zmian scen, runda bota z włączonym dźwiękiem),
+**dwa tryby v22** (`qa/v22.mjs`: zero śladów energii w kodzie i DOM,
+15 rund Areny / 6 Wyzwań dnia / 15 prób misji pod rząd przy 0 monet,
+pierwsze uruchomienie = runda Areny z całym bestiariuszem, postęp kampanii
+nie zmienia rundy Areny i odwrotnie, ta sama kolejność odblokowań przy obu
+kolejnościach gry, każdy tryb sam opłaca swoje zakupy (boty), podpowiedzi
+pierwszej rundy tylko przy wahaniu i po angielsku, migracja v12 → v13
+i ponowne wczytanie, pryzmaty: wzmocnienie za 4 ◆, kosmetyki).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 odkleja się, gdy utknie (bram impulsu i portali nie używa celowo —
@@ -435,9 +476,10 @@ czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.
 - Pliki w `design/` to oryginalne makiety (paleta, układ ekranów, katalog
   obiektów, plansze finałowe). Paleta z `design/reference/asset_bible.svg`
   obowiązuje; układy ekranów od tamtej pory ewoluowały (v12/v13).
-- **v15 — do decyzji właścicielki:** parametry energii (5 punktów, 20 min,
-  12 pryzmatów za pełną, Arena kosztuje 1) to propozycja — warto je
-  dostroić po pierwszych danych D1/D7 (`energy_empty`, `energy_refill`).
+- **v22 — do obserwacji po premierze:** progi odblokowań (Warsztat po
+  2 rundach / M02, Wyzwania po 3 rundach) i czasy podpowiedzi pierwszej
+  rundy (`CONFIG.unlockGates`, `CONFIG.coach`) to propozycja — warto je
+  dostroić po danych D1/D7 (`coach_hint`, `coach_learned`, `booster_prisms`).
   Rozdział II używa malarzy podłóg z Rozdziału I w nowych kolorach
   (`DISTRICT_FLOOR`), nie osobnej grafiki dzielnic. Bot „casual” jest
   przybliżeniem człowieka — prawdziwe testy z graczami mogą przesunąć

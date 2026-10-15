@@ -3,8 +3,8 @@
 //    sweeps every screen, sheet, all 241 mission briefings, start cards,
 //    results and live rounds (banners, float texts) with ?i18n=log and
 //    asserts no Polish reaches the screen; Profil switches languages.
-//  - Energy is off on portals (play time is the business), on in the web
-//    and native builds; ?energy= overrides.
+//  (v22: the energy limit -- once off on portals, on on the web -- is gone
+//  everywhere; qa/v22.mjs checks that.)
 //  - Safe progress: CrazyGames' data module (mocked here) restores the
 //    save with more progress and mirrors every save; a backup code moves
 //    progress between devices; a plain load never re-stamps savedAt.
@@ -50,7 +50,9 @@ export async function runV19Checks(url) {
       out.play = document.getElementById('btnStart').innerText.replace(/\s+/g, ' ');
       for (const fn of ['openCoreCityRoadmap', 'openPlayerLevelInfo', 'openFreeChest']) { try { gm[fn](); } catch (e) {} await wait(80); gm.closeInfoSheet(); }
       gm.openCurrencyInfo(true); gm.closeInfoSheet(); gm.openCurrencyInfo(false); gm.closeInfoSheet();
-      gm.openEnergySheet({ empty: true }); await wait(50); gm.closeEnergySheet();
+      // v22: the locked-tab sheets (each names its own mode's unlock).
+      gm.openLockedTabInfo('warsztat'); await wait(40); gm.closeInfoSheet();
+      gm.openLockedTabInfo('wyzwania'); await wait(40); gm.closeInfoSheet();
       gm.openCampaignScreen(); await wait(150);
       for (const d of DISTRICTS) { try { gm.selectCampaignDistrict(d.id); } catch (e) {} await wait(30); }
       for (const m of CAMPAIGN_MISSIONS) { gm.openMissionBriefing(m.id); }
@@ -67,7 +69,7 @@ export async function runV19Checks(url) {
       // Live play: an Arena round and missions with twists, results.
       window.__qaPlayArena({ style: 'greedy' }); try { gm.endRound(); } catch (e) {} await wait(300);
       for (const id of ['M33', 'M38', 'M52', 'M95', 'M170']) { try { window.__qaPlayMission(id, { style: 'casual' }); } catch (e) {} await wait(120); }
-      for (const reason of ['time', 'racer', 'hit']) { gm.startCampaignMission('M33'); gm.dismissTutorialIntro(); if (reason === 'time') { gm.mission.failReason = 'time'; gm.endCampaignMission(false); } else gm.failCampaignMission(reason); await wait(80); }
+      for (const reason of ['time', 'racer', 'hit']) { gm.startCampaignMission('M33'); gm.beginMissionPlay(); if (reason === 'time') { gm.mission.failReason = 'time'; gm.endCampaignMission(false); } else gm.failCampaignMission(reason); await wait(80); }
       out.fail = document.getElementById('btnMissionNext').innerText.replace(/\s+/g, ' ');
       await wait(200);
       out.misses = [...I18N.misses];
@@ -95,34 +97,9 @@ export async function runV19Checks(url) {
     await g.browser.close();
   }
 
-  // --- Energy: off on portals, on on the web build ---------------------------
-  {
-    const portal = await seededPage(url, { query: '?portal=crazygames', initScript: mockCrazy() }, { missions: 12, runsPlayed: 10 }, s => { s.energy = { value: 0, lastTick: Date.now(), infiniteUntil: 0, freeDailyDate: null }; });
-    await portal.page.waitForTimeout(600);
-    const p = await portal.page.evaluate(() => {
-      const gm = window.game;
-      const chip = document.querySelector('.energy-chip');
-      let played = false;
-      gm.requireEnergy('arena', () => { played = true; });
-      gm.openMissionBriefing('M06');
-      const grajs = document.querySelector('[data-mc-launch]').innerHTML;
-      return { platform: gm.monetization.platform, provider: gm.monetization.provider, enabled: gm.energyEnabled(), chipHidden: !chip || getComputedStyle(chip).display === 'none', played, bolt: /inline-bolt/.test(grajs), sheet: !document.getElementById('energySheet').classList.contains('hidden') };
-    });
-    results.push(report('energy: on a portal it is off -- no chip, plays at 0 energy, no energy cost on GRAJ', p.platform === 'portal' && !p.enabled && p.chipHidden && p.played && !p.bolt && !p.sheet, JSON.stringify(p)));
-    await portal.browser.close();
-    const web = await seededPage(url, {}, { missions: 12, runsPlayed: 10 }, s => { s.energy = { value: 0, lastTick: Date.now(), infiniteUntil: 0, freeDailyDate: null }; });
-    const w = await web.page.evaluate(() => { const gm = window.game; let played = false; gm.requireEnergy('arena', () => { played = true; }); return { platform: gm.monetization.platform, enabled: gm.energyEnabled(), played, sheet: !document.getElementById('energySheet').classList.contains('hidden') }; });
-    results.push(report('energy: the web build keeps it (0 energy opens "BRAK ENERGII")', w.platform === 'web' && w.enabled && !w.played && w.sheet, JSON.stringify(w)));
-    await web.browser.close();
-    const forced = await seededPage(url, { query: '?portal=crazygames&energy=1', initScript: mockCrazy() }, { missions: 12, runsPlayed: 10 });
-    const f = await forced.page.evaluate(() => window.game.energyEnabled());
-    results.push(report('energy: ?energy=1 turns it back on anywhere (the switch for later)', f === true));
-    await forced.browser.close();
-  }
-
   // --- Cloud save (CrazyGames data module) ------------------------------------
   {
-    // A device with only the tutorial done meets an account save with Park done.
+    // A device with one mission done meets an account save with Park done.
     const g0 = await openGame(url);
     const rich = await veteranSave(g0.page, { missions: 40, runsPlayed: 20 });
     const richSealed = await g0.page.evaluate((s) => sealSave(sanitizeSave(s)), rich);

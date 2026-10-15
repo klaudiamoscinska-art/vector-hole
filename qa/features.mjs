@@ -79,16 +79,15 @@ export async function runFeatureChecks(url) {
     await tap();
     const held = await g.page.evaluate(async () => { const s = window.game.sound; const st = s.ctx.state; s.resume(); await new Promise(r => setTimeout(r, 200)); return { held: st, after: s.ctx.state }; });
     // Whole first session: music still playing in the first Arena round.
-    await g.page.evaluate(() => { const gm = window.game; gm.startCampaignMission('M00'); gm.dismissTutorialIntro(); const m = gm.mission; m.eatenByType.fragment = 6; m.eatenByType.prop = 6; m.eatenByType.vehicle = 1; m.rivalsEaten = 1; });
-    await g.page.waitForTimeout(3500);
-    await g.page.tap('#btnUnlockGo', { force: true }).catch(() => {});
+    // v22: the welcome card's GRAJ goes straight into the first Arena round.
+    await g.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
     await g.page.waitForTimeout(1500);
     const arena = await g.page.evaluate(() => ({ mode: window.game.mode, state: window.game.sound.ctx.state, music: !!window.game.sound.musicTimer, gain: +window.game.sound.musicBus.gain.value.toFixed(2) }));
     results.push(report('audio (iOS): asks for the "playback" session so the silent switch does not mute the game', session === 'playback', session));
     results.push(report('audio (iOS): a tap recovers from the "interrupted" state', interrupted && afterInterrupt === 'running', afterInterrupt));
     results.push(report('audio (iOS): a context that will not resume is rebuilt on the next tap', rebuilt.fresh && rebuilt.state === 'running' && rebuilt.music, JSON.stringify(rebuilt)));
     results.push(report('audio: taps do not wake audio held for an ad / hidden page', hold && held.held === 'suspended' && held.after === 'running', JSON.stringify(held)));
-    results.push(report('audio: music still plays in the first round after the tutorial', arena.mode === 'arena' && arena.state === 'running' && arena.music && arena.gain > 0, JSON.stringify(arena)));
+    results.push(report('audio: music plays in the very first round (welcome GRAJ → Arena)', arena.mode === 'arena' && arena.state === 'running' && arena.music && arena.gain > 0, JSON.stringify(arena)));
     results.push(report('audio: no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
     await g.browser.close();
   }
@@ -175,7 +174,7 @@ export async function runFeatureChecks(url) {
     const r = await g.page.evaluate(async () => {
       const gm = window.game;
       gm.startCampaignMission('M01');
-      if (gm.introPending) gm.dismissTutorialIntro();
+      if (gm.introPending) gm.beginMissionPlay();
       const m = gm.mission;
       // Fake 60% progress, then run the clock out.
       const items = gm.campaignGoalItems();
@@ -271,10 +270,10 @@ export async function runFeatureChecks(url) {
     const g = await openGame(url, { initScript: () => { window.dataLayer = []; } });
     const a = await g.page.evaluate(() => {
       const gm = window.game;
-      // v13: the bar waits until the tutorial is done (it covered the
+      // v13: the bar waits until the first finished play (it covered the
       // welcome CTA on small phones); nothing is sent before a decision.
       const barOnWelcome = !document.getElementById('consentBar').classList.contains('hidden');
-      gm.save.campaign.completed.M00 = true;
+      gm.save.stats.runsPlayed = 1;
       gm.showScreen('mainMenu');
       const barShown = !barOnWelcome && !document.getElementById('consentBar').classList.contains('hidden');
       const before = window.dataLayer.length;
@@ -289,7 +288,7 @@ export async function runFeatureChecks(url) {
       const policy = document.getElementById('infoSheetBody').textContent.includes('RODO');
       return { barShown, leakedBefore, sentAfter, retention, barHidden, policy, install: gm.save.retention.installDate };
     });
-    results.push(report('gdpr: consent bar after the tutorial (not over the welcome CTA), nothing leaves the device before consent', a.barShown && a.leakedBefore === 0, JSON.stringify(a)));
+    results.push(report('gdpr: consent bar after the first round (not over the welcome CTA), nothing leaves the device before consent', a.barShown && a.leakedBefore === 0, JSON.stringify(a)));
     results.push(report('gdpr: after consent events reach the host sink (dataLayer)', a.sentAfter === 1 && a.barHidden));
     results.push(report('gdpr: privacy policy + data export available', a.policy));
     results.push(report('analytics: retention_day (D1/D7) tracked with install date', a.retention && !!a.install));
@@ -316,7 +315,7 @@ export async function runFeatureChecks(url) {
     await g.page.waitForTimeout(200);
     const r = await g.page.evaluate(async () => {
       const gm = window.game;
-      gm.startCampaignMission('M01'); if (gm.introPending) gm.dismissTutorialIntro();
+      gm.startCampaignMission('M01'); if (gm.introPending) gm.beginMissionPlay();
       const m = gm.mission;
       const it = gm.campaignGoalItems()[0];
       const st = m.def.goal.steps && m.def.goal.steps[0];
@@ -339,10 +338,11 @@ export async function runFeatureChecks(url) {
       const gm = window.game;
       const layout = () => { gm.createObjects(new SeededRNG(123456789)); const o = gm.objects.find(x => x.tier === 'fragment'); return [Math.round(o.x), Math.round(o.y)].join(','); };
       const full = layout();
-      const saved = gm.save.campaign.discoveredTypes;
-      gm.save.campaign.discoveredTypes = ['fragment', 'capsule', 'prop'];
+      // v22: Arena's map never depends on the player's campaign progress.
+      const saved = gm.save.campaign.completed;
+      gm.save.campaign.completed = {};
       const partial = layout();
-      gm.save.campaign.discoveredTypes = saved;
+      gm.save.campaign.completed = saved;
       return { full, partial };
     });
     results.push(report('review: a challenge seed lays out the same map for every player', same.full === same.partial, JSON.stringify(same)));
