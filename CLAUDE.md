@@ -124,3 +124,17 @@ Palette in `--nc-*`/`--neon-*` custom properties, lifted from `design/reference/
 ## Deliberately not built
 
 No backend (leaderboards, cloud save, accounts are local; challenges are seed+score links). No bundled ad/IAP SDK. No procedural district generator. No PWA/service worker or `og:image` (extra files — owner decision). No Core City prestige loop past LVL6. Details and open owner decisions: `docs/GAME_DESIGN.md` §7.
+
+## Skills pack „Vertical Hole” (`.claude/skills/vh-*`, v1.0)
+
+22 skills on demand (`/vh-director`, `/vh-arena-gameplay`, `/vh-test-console`, … — full table in `.claude/vertical-hole/PACK_README.md`), shared references in `.claude/vertical-hole/` (`PROJECT_CHARTER.md`, `WORKFLOW.md`, `QUALITY_GATES.md`, `EVENT_TAXONOMY.md`, `PLATFORM_RULES.md`, `TECHNICAL_PATTERNS.md`, `TEST_MATRIX.md`, `EXPERIMENT_PLAYBOOK.md`, `REPORT_TEMPLATE.md`), a starter prompt in `START_PROMPT.md`, and `python3 scripts/validate.py` (checks the pack's structure; `scripts/install.py` is the pack's installer and isn't needed in this repo). The pack calls the game „Vertical Hole” — it is this game, Vector Hole.
+
+Before changing code, read `.claude/vertical-hole/PROJECT_CHARTER.md`; for bigger tasks also `WORKFLOW.md` and `QUALITY_GATES.md`. Use the matching skill on request or when its description fits — don't run them all by routine. Skills are on-demand instructions, not agents running in the background.
+
+Hard rules (from the pack, consistent with v22): Arena First; Arena independent of the district campaign; no energy mechanic gating play on any platform (growth fragments/„ścieżki energii” are growth pickups, not an entry limit); speed and mobile first; honest monetization within each portal's rules. Discover the game's technical state in the current repo — don't assume paths or functions. Make small changes, run tests, report evidence (`PASS / FAIL / NOT RUN`). Don't publish, sign agreements, spend money or perform destructive operations without explicit consent. When tools or tests are missing, say clearly what wasn't verified.
+
+**Precedence:** the pack is generic (written without auditing this repo). Where its patterns conflict with the sections above, this file wins unless the owner decides otherwise. Known conflicts:
+- `TECHNICAL_PATTERNS.md` §3 and `vh-test-console` suggest a separate dev build / `index.dev.html` and no debug code in production JS — here the rules are three runtime files, no build step, and the v23 `DevPanel` (code-hash gate + sandboxed save slot) living in `game.js`. Changing that is an owner decision; flag it, don't do it silently.
+- `vh-mission-content` mentions M00–M240 — `M00` was removed in v22; the campaign is M01–M240.
+- Generic advice on tests (Playwright, unit runners) maps to the existing `qa/*.mjs` bots; extend those instead of adding a test framework or dependency.
+- Platform/monetization facts in `PLATFORM_RULES.md` are dated 2026-10-16 — re-verify against official docs before a release.
