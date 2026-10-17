@@ -1,0 +1,12 @@
+# SAVE-07 dev sandbox isolation (round 2)
+=== v23 dev panel (access, test-mode isolation, every category, phones) ===
+PASS  access: the local code on localhost opens the panel; it starts on the real save and offers test mode first  — {"access":true,"fab":"DEV","sandbox":false,"gate":true}
+PASS  access: outside test mode every other tab shows only "włącz tryb testowy" and actions are refused  — {"hasCoins":false,"same":true,"gate":true}
+PASS  test mode: starts on a copy of the real save, in its own slot, marked TEST  — {"coins":123,"slot":"vectorHoleSave_devSandbox_v1","fab":"TEST","chip":null}
+PASS  test mode: no analytics sink, no cloud mirror, no real ads or payments (demo ad only)  — {"sink":0,"mirrored":0,"nativeAd":0,"nativeBuy":0,"bought":false,"adOk":true,"tagged":true}
+PASS  data: test mode and the test save survive a reload  — {"sandbox":true,"coins":10123,"districts":12}
+PASS  data: "reset całego postępu testowego" asks twice and wipes only the test save  — {"afterOne":10123,"after":0,"campaign":0,"slot":"vectorHoleSave_devSandbox_v1","realUntouched":true}
+PASS  isolation: after an Arena round, a mission and resets in test mode the real save is byte-identical during the tests and comes back unchanged  — {"duringTests":true,"same":true,"coins":123,"runs":4,"m05":false}
+PASS  isolation: a test save backup code is refused on the real save  — {"coins":123,"msg":true}
+PASS  isolation (control): outside test mode a consented sink still receives events  — 1
+PASS  isolation + data: no runtime errors

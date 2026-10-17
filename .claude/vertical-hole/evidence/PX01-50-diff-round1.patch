@@ -1,0 +1,976 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 3232e18..e6bd4e5 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -27,7 +27,8 @@ python3 -m http.server 8000   # http://localhost:8000/index.html (file:// works
+ QA bots (dev-only, plain Node ES modules using the machine's global Playwright, outputs in git-ignored `qa/out/`):
+ 
+ ```bash
+-node qa/run-all.mjs     # edge cases, features, visual, design, flow, 20-round Arena career, 30 campaign missions, v15 systems, v16 audio, v17 first impression, v18 economy, v19 launch, v20 gates, v21 big screens, v22 two modes, v23 dev panel, difficulty (all 240 missions)
++node qa/run-all.mjs     # PX01 save safety, edge cases, features, visual, design, flow, 20-round Arena career, 30 campaign missions, v15 systems, v16 audio, v17 first impression, v18 economy, v19 launch, v20 gates, v21 big screens, v22 two modes, v23 dev panel, difficulty (all 240 missions)
++node qa/save-safety.mjs  # PX01 save guard: future/broken/partly broken saves never overwritten (load + every autosave), explicit repair keeps .rescue, verified migration after .bak, two tabs, quota, cloud copy
+ node qa/dev-panel.mjs    # v23 dev panel: access gate, test-mode isolation, every category really works in-game, phones + desktop (VH_DEV_CODE=... also checks the real code)
+ node qa/v22.mjs         # v22 two modes: no energy anywhere + unlimited back-to-back play, first launch = Arena round, Arena/campaign independence (either order), each mode self-funding (bots), first-round coach, v12 -> v13 migration, prisms
+ node qa/v21.mjs         # v21 big screens: phones unchanged, desktops see a phone's worth of city, bigger UI/HUD/minimap, desktop layout (rail + two columns on every hub screen, 960×540 to 1920×1080), district strip wheel + fades
+@@ -58,7 +59,7 @@ Bots tick `game.update()` in virtual time (RAF detached, `performance.now` advan
+ - **`CONFIG.flags`** gates major systems; `proceduralDistricts` stays `false` (no authored chunk generator was built).
+ - **`GameState`** (`BOOT/MENU/MATCH_SETUP/PLAYING/PAUSED/RESULTS`) on `Game.state`.
+ - **`SeededRNG`** (mulberry32) seeds only a round's *initial* layout (objects, street trails, spawn feasts, spawns) so Daily and friend-challenge maps are identical for everyone; mid-round randomness stays on `Math.random()`. Any new layout step must consume the seeded stream the same way for every player, and `computeDailyLayout()` must replay it exactly (`qa/design.mjs` asserts preview == real round).
+-- **Save**: `localStorage` key `vectorHoleSave_v1` (never changes), `SAVE_SCHEMA_VERSION` 13 (v22 dropped `energy`, `campaign.discoveredTypes`/`discoveredHoleEating` and every `M00` key) with a `migrateSave()` chain (add an `if (data.schemaVersion < N)` branch per breaking change). Every load runs `sanitizeSave()` against `defaultSave()`, so **a new save field must be added to `defaultSave()`** to survive. `saveGame()` seals the payload (`_sig`).
++- **Save**: `localStorage` key `vectorHoleSave_v1` (never changes), `SAVE_SCHEMA_VERSION` 13 (v22 dropped `energy`, `campaign.discoveredTypes`/`discoveredHoleEating` and every `M00` key) with a `migrateSave()` chain (add an `if (data.schemaVersion < N)` branch per breaking change). Every load runs `sanitizeSave()` against `defaultSave()`, so **a new save field must be added to `defaultSave()`** to survive. `saveGame()` seals the payload (`_sig`). **PX01 save guard:** `loadSave()` never writes on a plain read; a save it can't fully read (`readSave()` → `SAVE_GUARD.state` 'future' / 'corrupt' / 'invalid' (a field `sanitizeSave(save, issues)` had to repair, or `verifyMigration()` failed) / 'unavailable' / 'stale' (another tab wrote)) is played from memory and `saveGame()` — the only write path, cloud mirror included — writes nothing until the player's explicit choice (`releaseSaveGuard()` keeps the original under `SAVE_SLOT + '.rescue'`); a migration commits only after `verifyMigration()` and a copy of the original under `SAVE_SLOT + '.bak'`. Never write `SAVE_SLOT` around `saveGame()`; `qa/save-safety.mjs` checks it.
+ - **Ranking is always by score** (`rankHoles()`; radius/name are tiebreakers). Don't reintroduce a radius sort.
+ - `Analytics` keeps an in-memory buffer and forwards to a host sink only with consent (`save.privacy.analytics`). No backend; the game sends nothing itself.
+ - `escapeHtml()` for every player-controlled string that reaches `innerHTML`.
+diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
+index 4229a11..212357a 100644
+--- a/docs/CHANGELOG.md
++++ b/docs/CHANGELOG.md
+@@ -4,6 +4,29 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
+ Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
+ są w historii gita (`git log -- docs/`).
+ 
++## PX01 „Bezpieczny zapis” — naprawa VH-03 (bez zmiany schematu, nadal v13)
++Zapis gracza nie może już zniknąć przez zapis z nowszej wersji gry,
++obcięty JSON, jedno pole w złym formacie ani drugą kartę.
++
++- `loadSave()` niczego nie zapisuje przy zwykłym odczycie. Zapis, którego
++  gra nie odczyta w całości, trzyma `SAVE_GUARD` (`future` / `corrupt` /
++  `invalid` / `unavailable` / `stale`): gra działa z pamięci, `saveGame()`
++  (jedyna droga zapisu, w tym lustro chmury) nic nie pisze, a gracz widzi
++  komunikat z bezpiecznym wyjściem. Odblokowanie tylko jego decyzją
++  (NAPRAW ZAPIS, ZACZNIJ OD NOWA, kod kopii, reset w Profilu) — oryginał
++  najpierw pod `vectorHoleSave_v1.rescue`.
++- Migracja: wynik sprawdzany (aktualna wersja, idempotencja, nic z sald,
++  przedmiotów, zakupów, misji i boosterów nie ginie), oryginał najpierw pod
++  `vectorHoleSave_v1.bak`; bez udanej kopii nie ma zapisu.
++- Dwie karty: zdarzenie `storage` + porównanie przed zapisem — starsza karta
++  nie nadpisze nowszego postępu.
++- `migrateSave()` nie zamienia już zapisu ze złym `coins`/`owned` na
++  `defaultSave()`; `sanitizeSave(save, issues)` zbiera naprawione pola.
++- Chmura (CrazyGames): kopia konta, której ta wersja nie odczyta, nie jest
++  nadpisywana; uszkodzony zapis lokalny może zostać zastąpiony czytelną
++  kopią z konta.
++- QA: `qa/save-safety.mjs` (SAVE-01…09 i warianty) w `qa/run-all.mjs`.
++
+ ## v23 „Panel testowy” — narzędzie QA dla twórców
+ Panel do błyskawicznego testowania mechanik bez przechodzenia misji. Gracze
+ go nie widzą; balans i zasady gry bez zmian.
+diff --git a/docs/GAME_DESIGN.md b/docs/GAME_DESIGN.md
+index e81cd28..1540bf6 100644
+--- a/docs/GAME_DESIGN.md
++++ b/docs/GAME_DESIGN.md
+@@ -405,6 +405,18 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
+   zapis z większym postępem) + **kopia zapasowa** w Profilu: kod `VH1.…` do
+   skopiowania i wczytania na innym urządzeniu. Gra prosi przeglądarkę
+   o trwałe przechowywanie danych.
++- **Ochrona zapisu (PX01):** gra nigdy po cichu nie nadpisuje zapisu, którego
++  nie umie w pełni odczytać — ani przy wczytaniu, ani żadnym późniejszym
++  autozapisem. Zapis z nowszej wersji gry („Zapis z nowszej wersji gry” →
++  ODŚWIEŻ), uszkodzony („Zapis jest uszkodzony” → ZACZNIJ OD NOWA albo kod
++  kopii) albo z częścią danych w złym formacie („Część zapisu jest
++  uszkodzona” → NAPRAW ZAPIS) gra pokazuje z pamięci i nic nie zapisuje,
++  dopóki gracz sam nie wybierze wyjścia; wtedy oryginał trafia pod klucz
++  `vectorHoleSave_v1.rescue`. Migracja starszego zapisu zapisuje się dopiero
++  po sprawdzeniu wyniku i po kopii oryginału pod `vectorHoleSave_v1.bak`.
++  Gdy gra jest otwarta w dwóch kartach, karta ze starszym stanem przestaje
++  zapisywać i prosi o odświeżenie („Gra jest otwarta w innej karcie”).
++  Kopia w chmurze portalu, której ta wersja nie odczyta, zostaje nietknięta.
+ 
+ ## 6. QA (boty)
+ 
+diff --git a/game.js b/game.js
+index 993a837..c3771e8 100644
+--- a/game.js
++++ b/game.js
+@@ -1927,7 +1927,13 @@ class Monetization {
+     let raw;
+     try { raw = data.getItem(SAVE_KEY); } catch (e) { return; }
+     let remote = null;
+-    if (raw) { try { remote = parseSaveString(raw); } catch (e) { remote = null; } }
++    // PX01: an account copy this version can't read in full (newer game,
++    // broken) is left exactly as it is -- no mirror is installed over it.
++    if (raw) { try { remote = parseSaveString(raw); } catch (e) { this.game.analytics.track('cloud_save', { restored: false, unreadable: e.code || 'corrupt' }); return; } }
++    // A local save the guard holds back is never mirrored up either; a
++    // broken one may be replaced by a readable account copy (its bytes are
++    // kept under the rescue key).
++    if (!saveWritable() && !(SAVE_GUARD.state === 'corrupt' && remote && releaseSaveGuard())) return;
+     this.cloudData = data;
+     // The mirror goes on only once the winner is in place -- a deferred
+     // adoption (mid-round) must not upload the losing local save meanwhile.
+@@ -3735,29 +3741,52 @@ function defaultSave() {
+  *  no longer crash the game or turn `coins += 30` into string concat.
+  *  Numbers are clamped to finite, non-negative, sane caps. */
+ const SAVE_CURRENCY_CAP = 1e7;
+-function sanitizeSave(save) {
++// PX01: `issues` (optional array) collects every value that had to be
++// changed rather than kept -- a wrong type, an out-of-range number, an
++// object inside a list. loadSave() never writes such a repair on its own
++// (SAVE_GUARD 'invalid'). A missing field or a null (a NaN the game itself
++// once stored) carries no data and is just filled in.
++function sanitizeSave(save, issues) {
+   const def = defaultSave();
+-  const fix = (val, ref) => {
+-    if (Array.isArray(ref)) return Array.isArray(val) ? val.filter(v => v !== null && typeof v !== 'object') : ref;
++  const bad = (path) => { if (issues) issues.push(path); };
++  const fix = (val, ref, path) => {
++    const missing = val === undefined || val === null;
++    if (Array.isArray(ref)) {
++      if (!Array.isArray(val)) { if (!missing) bad(path); return ref; }
++      if (val.some(v => v !== null && typeof v === 'object')) bad(path);
++      return val.filter(v => v !== null && typeof v !== 'object');
++    }
+     if (ref === null) return val === undefined ? null : val;
+     if (typeof ref === 'object') {
+-      const out = (val && typeof val === 'object' && !Array.isArray(val)) ? { ...val } : {};
+-      for (const k of Object.keys(ref)) out[k] = fix(out[k], ref[k]);
++      const ok = val && typeof val === 'object' && !Array.isArray(val);
++      if (!ok && !missing) bad(path);
++      const out = ok ? { ...val } : {};
++      for (const k of Object.keys(ref)) out[k] = fix(out[k], ref[k], path + '.' + k);
+       return out;
+     }
+     // Upper bound fits epoch-ms timestamps (freeChest.nextAt etc.).
+-    if (typeof ref === 'number') { const n = Number(val); return Number.isFinite(n) ? clamp(n, 0, 1e14) : ref; }
+-    if (typeof ref === 'boolean') return typeof val === 'boolean' ? val : ref;
+-    if (typeof ref === 'string') return typeof val === 'string' ? val : ref;
++    if (typeof ref === 'number') {
++      const n = Number(val);
++      if (!missing && !(typeof val === 'number' && n >= 0 && n <= 1e14)) bad(path);
++      return Number.isFinite(n) ? clamp(n, 0, 1e14) : ref;
++    }
++    if (typeof ref === 'boolean') { if (!missing && typeof val !== 'boolean') bad(path); return typeof val === 'boolean' ? val : ref; }
++    if (typeof ref === 'string') { if (!missing && typeof val !== 'string') bad(path); return typeof val === 'string' ? val : ref; }
+     return val === undefined ? ref : val;
+   };
+-  const out = fix(save, def);
++  const out = fix(save, def, 'save');
+   // Free-form maps keep their own keys (fix() only knows defaultSave's keys).
+   for (const k of ['completed', 'medals', 'stars', 'attempts', 'fails', 'pity']) out.campaign[k] = (save.campaign && typeof save.campaign[k] === 'object' && save.campaign[k]) || {};
+   for (const k of ['stars', 'attempts', 'fails']) {
+-    for (const id of Object.keys(out.campaign[k])) { const v = Number(out.campaign[k][id]); out.campaign[k][id] = Number.isFinite(v) ? clamp(Math.floor(v), 0, k === 'stars' ? 7 : 1e6) : 0; }
++    for (const id of Object.keys(out.campaign[k])) {
++      const raw = out.campaign[k][id], v = Number(raw);
++      if (raw !== null && typeof raw !== 'number') bad(`save.campaign.${k}.${id}`);
++      out.campaign[k][id] = Number.isFinite(v) ? clamp(Math.floor(v), 0, k === 'stars' ? 7 : 1e6) : 0;
++    }
+   }
+   out.ads.used = (save.ads && typeof save.ads.used === 'object' && save.ads.used) || {};
++  if (out.coins > SAVE_CURRENCY_CAP) bad('save.coins');
++  if (out.prisms > SAVE_CURRENCY_CAP) bad('save.prisms');
+   out.coins = Math.min(out.coins, SAVE_CURRENCY_CAP);
+   out.prisms = Math.min(out.prisms, SAVE_CURRENCY_CAP);
+   if (!out.owned.includes('rainbow')) out.owned.unshift('rainbow');
+@@ -3775,7 +3804,11 @@ function sanitizeSave(save) {
+  *  schema change instead of replacing this function. */
+ function migrateSave(data) {
+   if (!data || typeof data !== 'object') return defaultSave();
+-  if (!Array.isArray(data.owned) || typeof data.coins !== 'number') return defaultSave();
++  // PX01: a v1 save (no schemaVersion) is only its coins and skins -- if
++  // those aren't readable it isn't a save this game knows, and it is
++  // reported as unreadable (never swapped for a blank one). Versioned saves
++  // are repaired field by field in sanitizeSave() instead.
++  if (!data.schemaVersion && (!Array.isArray(data.owned) || typeof data.coins !== 'number')) throw new Error('unreadable save');
+ 
+   if (!data.schemaVersion) {
+     // v1 (no schemaVersion field) -> v2: add currencies/settings/profile stubs
+@@ -3955,45 +3988,168 @@ function migrateSave(data) {
+   return data;
+ }
+ 
++/* ----------------------- PX01: save guard -----------------------
++   A save this version can't fully read is never written over -- not when
++   it loads, and not by any later autosave (login reward, chest, rounds,
++   missions, cloud mirror), since every write goes through saveGame():
++   - 'future'      written by a newer game (schemaVersion > ours): played
++                   from memory, a reload is offered (a rolled-back game
++                   never downgrades a newer save);
++   - 'corrupt'     not JSON / not a save: a fresh profile in memory;
++   - 'invalid'     readable, but some fields had to be repaired (or the
++                   migration didn't verify): the repaired progress in memory;
++   - 'unavailable' storage refused the read;
++   - 'stale'       another tab (or window) wrote newer progress since this
++                   tab read it: this one stops saving and asks for a reload.
++   Saving resumes only on the player's explicit choice (repair, start over,
++   backup code, Profil reset), after the original bytes are kept under
++   SAVE_SLOT + '.rescue'. A migration commits only after a verified result
++   and after the original bytes are stored under SAVE_SLOT + '.bak'. */
++const SAVE_GUARD = { state: 'ok', issues: [], seen: null, backupPending: false, notify: null };
++const saveBackupKey = () => SAVE_SLOT + '.bak';
++const saveRescueKey = () => SAVE_SLOT + '.rescue';
++function saveWritable() { return SAVE_GUARD.state === 'ok'; }
++
++/** Stores `raw` under `key` and reads it back -- true only if it's there. */
++function storeCopy(key, raw) {
++  try { localStorage.setItem(key, raw); return localStorage.getItem(key) === raw; } catch (e) { return false; }
++}
++
++/** Classifies a parsed save: { save, status, issues }. Never writes. */
++function readSave(parsed) {
++  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { save: defaultSave(), status: 'corrupt', issues: ['not a save'] };
++  // v11 tamper seal: a save edited by hand (devtools) no longer matches its
++  // _sig. It still loads -- the player keeps their progress -- but is
++  // flagged (integrity.tampered, reported once as save_tampered).
++  let tampered = false;
++  if (parsed._sig !== undefined) {
++    const sig = parsed._sig;
++    delete parsed._sig;
++    tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
++  }
++  const v = parsed.schemaVersion;
++  if (v !== undefined && !(Number.isInteger(v) && v >= 2)) return { save: defaultSave(), status: 'corrupt', issues: ['schemaVersion'] };
++  if (v > SAVE_SCHEMA_VERSION) {
++    // Shown from a copy; the stored bytes stay exactly as the newer game wrote them.
++    const save = sanitizeSave(JSON.parse(JSON.stringify(parsed)));
++    return { save, status: 'future', issues: ['schemaVersion ' + v] };
++  }
++  const before = JSON.parse(JSON.stringify(parsed));
++  let save;
++  const issues = [];
++  try { save = sanitizeSave(migrateSave(parsed), issues); } catch (e) { return { save: defaultSave(), status: 'corrupt', issues: ['migration: ' + e.message] }; }
++  if (tampered) save.integrity.tampered = true;
++  if (!issues.length) issues.push(...verifyMigration(before, save));
++  return { save, status: issues.length ? 'invalid' : 'ok', issues };
++}
++
++/** PX01: a migrated save is committed only if it is current, stable (a
++ *  second pass changes nothing) and kept everything the player had. Returns
++ *  the problems found (empty = verified). */
++function verifyMigration(before, after) {
++  const out = [];
++  if (after.schemaVersion !== SAVE_SCHEMA_VERSION) out.push('version');
++  const again = [];
++  let twice = null;
++  try { twice = sanitizeSave(migrateSave(JSON.parse(JSON.stringify(after))), again); } catch (e) { out.push('second pass'); }
++  if (twice && (again.length || JSON.stringify(twice) !== JSON.stringify(after))) out.push('not idempotent');
++  const num = (o, ...p) => p.reduce((x, k) => (x && typeof x === 'object' ? x[k] : undefined), o);
++  for (const p of [['coins'], ['prisms'], ['player', 'level'], ['player', 'xp'], ['stats', 'runsPlayed'], ['stats', 'bestArenaScore'], ['hub', 'coreLevel'], ['login', 'totalClaims'], ['freeChest', 'opened'], ['campaign', 'starChests']]) {
++    const b = num(before, ...p);
++    if (typeof b === 'number' && Number.isFinite(b) && b <= SAVE_CURRENCY_CAP && !(num(after, ...p) >= b)) out.push('lost ' + p.join('.'));
++  }
++  const keepsAll = (b, a, label) => { if (Array.isArray(b) && b.some(x => typeof x !== 'object' && x !== 'arena' && !(a || []).includes(x))) out.push('lost ' + label); };
++  keepsAll(before.owned, after.owned, 'owned');
++  for (const k of ['auras', 'effects', 'overdriveSkins']) keepsAll(before[k] && before[k].owned, after[k] && after[k].owned, k);
++  keepsAll(before.entitlements && before.entitlements.purchased, after.entitlements.purchased, 'purchases');
++  keepsAll(before.campaign && before.campaign.unlockedDistricts, after.campaign.unlockedDistricts, 'districts');
++  if (before.entitlements && before.entitlements.noAds === true && !after.entitlements.noAds) out.push('lost noAds');
++  const done = before.campaign && before.campaign.completed;
++  if (done && typeof done === 'object') Object.keys(done).forEach(id => { if (done[id] && id !== 'M00' && !after.campaign.completed[id]) out.push('lost mission ' + id); });
++  const boosters = before.boosters;
++  if (boosters && typeof boosters === 'object') MISSION_BOOSTERS.forEach(x => { if (typeof boosters[x.id] === 'number' && !(after.boosters[x.id] >= boosters[x.id])) out.push('lost booster ' + x.id); });
++  return out;
++}
++
+ function loadSave() {
+-  try {
+-    const raw = localStorage.getItem(SAVE_SLOT);
+-    if (raw) {
+-      const parsed = JSON.parse(raw);
+-      // v11 tamper seal: a save edited by hand (devtools) no longer matches
+-      // its _sig. It still loads -- the player keeps their progress -- but
+-      // is flagged (integrity.tampered, reported once as save_tampered).
+-      let tampered = false;
+-      if (parsed && typeof parsed === 'object' && parsed._sig !== undefined) {
+-        const sig = parsed._sig;
+-        delete parsed._sig;
+-        tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
+-      }
+-      const migrated = sanitizeSave(migrateSave(parsed));
+-      if (tampered) migrated.integrity.tampered = true;
+-      saveGame(migrated, { touch: false, mirror: false });
+-      return migrated;
+-    }
+-  } catch (e) { /* ignore corrupted save */ }
+-  return defaultSave();
++  SAVE_GUARD.state = 'ok'; SAVE_GUARD.issues = []; SAVE_GUARD.seen = null; SAVE_GUARD.backupPending = false;
++  let raw;
++  try { raw = localStorage.getItem(SAVE_SLOT); } catch (e) {
++    // Can't see what is stored, so nothing may be written over it.
++    SAVE_GUARD.state = 'unavailable';
++    return defaultSave();
++  }
++  SAVE_GUARD.seen = raw;
++  if (!raw) return defaultSave();
++  let parsed;
++  try { parsed = JSON.parse(raw); } catch (e) { parsed = undefined; }
++  const res = parsed === undefined ? { save: defaultSave(), status: 'corrupt', issues: ['JSON'] } : readSave(parsed);
++  if (res.status !== 'ok') {
++    SAVE_GUARD.state = res.status;
++    SAVE_GUARD.issues = res.issues;
++    return res.save;
++  }
++  // A verified save: written back only if the migration changed it, and
++  // only after the original bytes are safe under the backup key (the
++  // commit itself is one setItem -- a close in between just redoes it).
++  if (sealSave(res.save) !== raw) {
++    SAVE_GUARD.backupPending = true;
++    saveGame(res.save, { touch: false, mirror: false });
++  }
++  return res.save;
+ }
+ 
+ /** Seals and stores the save. v19: also stamps when it was written
+  *  (meta.savedAt -- not on a plain load, see loadSave()) and mirrors it to
+- *  the portal's cloud save when one is attached (SAVE_MIRROR). */
++ *  the portal's cloud save when one is attached (SAVE_MIRROR). PX01: writes
++ *  nothing while SAVE_GUARD holds a save it can't read, and nothing over
++ *  progress another tab stored since this tab read it. Returns true when
++ *  the save reached storage. */
+ let SAVE_MIRROR = null;
+ function sealSave(save) {
+   const body = JSON.stringify(save);
+   return body.slice(0, -1) + `,"_sig":"${fnv1a(SEAL_SALT + body)}"}`;
+ }
+ function saveGame(save, opts = {}) {
++  if (!saveWritable()) return false;
++  let current;
++  try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
++  if (current !== SAVE_GUARD.seen) { markSaveStale(); return false; }
++  if (SAVE_GUARD.backupPending) {
++    if (current && !storeCopy(saveBackupKey(), current)) return false;
++    SAVE_GUARD.backupPending = false;
++  }
+   if (opts.touch !== false && save.meta) save.meta.savedAt = Date.now();
+-  let sealed = null;
++  let sealed = null, stored = false;
+   try {
+     sealed = sealSave(save);
+     localStorage.setItem(SAVE_SLOT, sealed);
+-  } catch (e) { /* storage unavailable */ }
++    SAVE_GUARD.seen = sealed;
++    stored = true;
++  } catch (e) { /* storage unavailable / full: the old bytes stay */ }
+   if (SAVE_MIRROR && sealed && opts.mirror !== false && !DEV.sandbox) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
++  return stored;
++}
++
++/** Another tab wrote the save: stop writing from this one. */
++function markSaveStale() {
++  if (SAVE_GUARD.state !== 'ok') return;
++  SAVE_GUARD.state = 'stale';
++  if (SAVE_GUARD.notify) SAVE_GUARD.notify();
++}
++
++/** PX01: the player's explicit choice to save again over a save the guard
++ *  held back -- the stored bytes go to the rescue key first (and must be
++ *  readable there). False (nothing changed) if they can't be kept. */
++function releaseSaveGuard() {
++  if (SAVE_GUARD.state === 'ok') return true;
++  let current;
++  try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
++  if (current && !storeCopy(saveRescueKey(), current)) return false;
++  SAVE_GUARD.state = 'ok';
++  SAVE_GUARD.issues = [];
++  SAVE_GUARD.seen = current;
++  return true;
+ }
+ 
+ /** v19: how far a save got -- the safer of two saves is the one with more
+@@ -4013,19 +4169,15 @@ function saveIsAhead(a, b) {
+   return ((a.meta && a.meta.savedAt) || 0) > ((b.meta && b.meta.savedAt) || 0);
+ }
+ 
+-/** v19: parses a stored/exported save string (sealed JSON). */
++/** v19: parses a stored/exported save string (sealed JSON). PX01: only a
++ *  save this version reads in full -- a newer, broken or repaired one throws
++ *  (err.code 'future' / 'corrupt' / 'invalid'), so it never replaces a save. */
+ function parseSaveString(raw) {
+   const parsed = JSON.parse(raw);
+   if (!parsed || typeof parsed !== 'object') throw new Error('not a save');
+-  let tampered = false;
+-  if (parsed._sig !== undefined) {
+-    const sig = parsed._sig;
+-    delete parsed._sig;
+-    tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
+-  }
+-  const migrated = sanitizeSave(migrateSave(parsed));
+-  if (tampered) migrated.integrity.tampered = true;
+-  return migrated;
++  const res = readSave(parsed);
++  if (res.status !== 'ok') { const err = new Error('save not readable: ' + res.status); err.code = res.status; throw err; }
++  return res.save;
+ }
+ 
+ /** v19 backup code: "VH1." + base64(UTF-8 sealed save). */
+@@ -7584,6 +7736,11 @@ class Game {
+     this.canvas = document.getElementById('gameCanvas');
+     this.ctx = this.canvas.getContext('2d');
+     this.save = loadSave();
++    // PX01: another tab saving newer progress stops this one from saving.
++    SAVE_GUARD.notify = () => { if (!this.running && this.state !== GameState.BOOT) this.showSaveGuardNotice(); };
++    window.addEventListener('storage', (e) => {
++      if ((e.key === SAVE_SLOT || e.key === null) && e.storageArea === localStorage && e.newValue !== SAVE_GUARD.seen) markSaveStale();
++    });
+     // v19: ask the browser to keep this site's storage (Chrome/Safari decide
+     // silently; Firefox would show a prompt on load, so not there).
+     try { if (navigator.storage && navigator.storage.persist && !/Firefox/.test(navigator.userAgent)) navigator.storage.persist().catch(() => {}); } catch (e) { /* no StorageManager */ }
+@@ -7736,6 +7893,7 @@ class Game {
+     this.analytics.track('session_start', { sessionId: this.sessionId, configVersion: CONFIG.version });
+     this.trackRetention();
+     this.renderConsentBar();
++    this.showSaveGuardNotice();
+     if (this.save.integrity.tampered && !this.save.integrity.reported) {
+       this.analytics.track('save_tampered', {});
+       this.save.integrity.reported = true;
+@@ -8864,6 +9022,9 @@ class Game {
+     this.analytics.track('profile_reset', {});
+     // v23: in the dev panel's test mode only the test save goes.
+     if (!DEV.sandbox) this.monetization.clearCloudSave();
++    // PX01: a save the guard held back (newer version, broken, other tab)
++    // is kept under the rescue key even on an explicit reset.
++    if (!saveWritable()) releaseSaveGuard();
+     localStorage.removeItem(SAVE_SLOT);
+     location.reload();
+   }
+@@ -9169,7 +9330,7 @@ class Game {
+     let save = confirmed;
+     if (!save) {
+       const el = document.getElementById('backupInput');
+-      try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad('To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
++      try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad(e.code === 'future' ? 'Ten kod pochodzi z nowszej wersji gry. Odśwież stronę, aby wczytać aktualną wersję, i spróbuj ponownie.' : 'To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
+       // v23: a dev panel test save never becomes real progress.
+       if (save.meta.devSandbox && !DEV.sandbox) { this.openBackupLoad('To kod zapisu testowego z panelu deweloperskiego — wczytasz go tylko w trybie testowym.'); return; }
+       // An older code over a richer device: say what would be lost first.
+@@ -9194,6 +9355,13 @@ class Game {
+   adoptSave(save, source, after) {
+     if (this.running) { this.pendingSave = { save, source, after }; return; }
+     this.pendingSave = null;
++    // PX01: a backup code / test state is the player's explicit choice, so
++    // it may replace a held-back save -- whose bytes go to the rescue key first.
++    // A cloud copy is not a choice: it never lifts the guard by itself.
++    if (!saveWritable()) {
++      if (source === 'cloud') return;
++      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
++    }
+     this.save = save;
+     saveGame(save, { touch: false, mirror: false });
+     if (after) after();
+@@ -9206,6 +9374,33 @@ class Game {
+     }
+   }
+ 
++  /** PX01: tells the player why progress isn't being saved and offers the
++   *  only safe ways out (each shown once per session). */
++  showSaveGuardNotice(kind = SAVE_GUARD.state) {
++    if (kind === 'ok' || kind === 'unavailable') return;
++    if (kind !== 'rescueFailed') {
++      if (this.saveGuardShown === kind) return;
++      this.saveGuardShown = kind;
++      this.analytics.track('save_guard', { state: kind, issues: SAVE_GUARD.issues.length });
++    }
++    const keep = 'Do tego czasu możesz grać, ale nowy postęp nie jest zapisywany.';
++    const repair = () => {
++      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
++      saveGame(this.save);
++    };
++    const reload = () => location.reload();
++    const sheets = {
++      future: { title: 'Zapis z nowszej wersji gry', body: ['Twój postęp zapisała nowsza wersja Vector Hole. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.', keep], action: { label: 'ODŚWIEŻ', onClick: reload } },
++      corrupt: { title: 'Zapis jest uszkodzony', body: ['Nie udało się odczytać zapisanego postępu. Gra go nie usunęła i nic na nim nie zapisze bez Twojej decyzji.', 'Możesz wczytać kod kopii zapasowej (Profil → Kopia zapasowa) albo zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.', keep], action: { label: 'ZACZNIJ OD NOWA', onClick: repair } },
++      invalid: { title: 'Część zapisu jest uszkodzona', body: ['Postęp jest wczytany, ale część danych zapisu ma zły format. Gra niczego nie nadpisze bez Twojej decyzji.', 'NAPRAW ZAPIS zachowa wczytany postęp, a oryginał odłoży jako kopię.', keep], action: { label: 'NAPRAW ZAPIS', onClick: repair } },
++      stale: { title: 'Gra jest otwarta w innej karcie', body: ['Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.', 'Odśwież stronę, aby grać dalej z aktualnym postępem.'], action: { label: 'ODŚWIEŻ', onClick: reload } },
++      rescueFailed: { title: 'Brak miejsca na kopię', body: ['Przeglądarka nie pozwoliła odłożyć kopii obecnego zapisu, więc nic nie zostało zmienione. Zwolnij miejsce i spróbuj ponownie.'] }
++    };
++    const sh = sheets[kind];
++    if (!sh) return;
++    this.openInfoSheet({ title: sh.title, body: sh.body, action: sh.action || null, closeLabel: sh.action && kind !== 'stale' ? 'GRAJ BEZ ZAPISU' : 'ROZUMIEM' });
++  }
++
+   updateCoinDisplays() {
+     // Golden Shot v8: currency pills "pop" whenever the balance grows.
+     const total = this.save.coins + (this.save.prisms || 0) * 1000;
+@@ -9956,6 +10151,7 @@ class Game {
+     // A restored save lands on Miasto -- never on a result screen of the
+     // save it replaced (whose buttons would then act on the new one).
+     if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
++    if (SAVE_GUARD.state === 'stale' && !this.saveGuardShown) setTimeout(() => this.showSaveGuardNotice(), 0);
+     ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+       document.getElementById(s).classList.toggle('hidden', s !== id);
+     });
+@@ -17173,6 +17369,24 @@ const I18N_EN = {
+   "ZACIEMNIENIE": "BLACKOUT",
+   "ZACZNIJ MISJĘ OD NOWA": "RESTART MISSION",
+   "ZACZNIJ OD NOWA": "START OVER",
++  "Odśwież": "Reload",
++  "Napraw zapis": "Repair save",
++  "Graj bez zapisu": "Play without saving",
++  "Do tego czasu możesz grać, ale nowy postęp nie jest zapisywany.": "Until then you can play, but new progress is not saved.",
++  "Zapis z nowszej wersji gry": "Save from a newer version of the game",
++  "Twój postęp zapisała nowsza wersja Vector Hole. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.": "Your progress was saved by a newer version of Vector Hole. This version won't change it — reload the page to load the current game.",
++  "Zapis jest uszkodzony": "The save is damaged",
++  "Nie udało się odczytać zapisanego postępu. Gra go nie usunęła i nic na nim nie zapisze bez Twojej decyzji.": "The saved progress couldn't be read. The game hasn't deleted it and won't write over it without your decision.",
++  "Możesz wczytać kod kopii zapasowej (Profil → Kopia zapasowa) albo zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.": "You can load a backup code (Profile → Backup) or start over — the damaged save is then set aside as a copy.",
++  "Część zapisu jest uszkodzona": "Part of the save is damaged",
++  "Postęp jest wczytany, ale część danych zapisu ma zły format. Gra niczego nie nadpisze bez Twojej decyzji.": "Your progress is loaded, but some of the save data has the wrong format. The game won't write over anything without your decision.",
++  "NAPRAW ZAPIS zachowa wczytany postęp, a oryginał odłoży jako kopię.": "REPAIR SAVE keeps the loaded progress and sets the original aside as a copy.",
++  "Gra jest otwarta w innej karcie": "The game is open in another tab",
++  "Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.": "Progress changed in another tab or window. This tab won't save anything, so the newer progress isn't overwritten.",
++  "Odśwież stronę, aby grać dalej z aktualnym postępem.": "Reload the page to keep playing with your current progress.",
++  "Brak miejsca na kopię": "No room for a copy",
++  "Przeglądarka nie pozwoliła odłożyć kopii obecnego zapisu, więc nic nie zostało zmienione. Zwolnij miejsce i spróbuj ponownie.": "The browser didn't allow a copy of the current save to be set aside, so nothing was changed. Free up some space and try again.",
++  "Ten kod pochodzi z nowszej wersji gry. Odśwież stronę, aby wczytać aktualną wersję, i spróbuj ponownie.": "This code comes from a newer version of the game. Reload the page to load the current version, then try again.",
+   "ZACZNIJ RUNDĘ OD NOWA": "RESTART ROUND",
+   "ZAGRAJ": "PLAY",
+   "ZAGRAJ JESZCZE RAZ": "PLAY AGAIN",
+diff --git a/qa/README.md b/qa/README.md
+index 6e26d0a..87b45ce 100644
+--- a/qa/README.md
++++ b/qa/README.md
+@@ -13,6 +13,7 @@ node qa/design.mjs         # v13: first seconds (first bite, bites/10 s), close
+ node qa/flow.mjs          # v14: start screen = logo + GRAJ, Miasto without a floating GRAJ and without scrolling, Dzielnice starts the next mission without scrolling, briefing on every mission tap, result previews the next mission, NELA bubbles, Warsztat tap-to-wear / confirm-to-buy, review regressions (legacy saves, replays, step banners)
+ node qa/dev-panel.mjs      # v23: dev panel -- access (hidden gesture, code, lockout, ?dev, simulated production host; VH_DEV_CODE=... also checks the real code), test-mode isolation (real save untouched, no analytics sink/cloud mirror/real ads/payments), every tab and what it unlocks really working in the game, phones portrait/landscape + desktop
+ node qa/dev-code.mjs "<code>"  # v23: prints DEV_CODE_HASH for a new dev code
++node qa/save-safety.mjs    # PX01: a newer (schema > current), broken (truncated JSON) or partly broken (wrong field type) save is never written over -- not on load and not by any later autosave (login, chest, Arena round, mission, tab switch, reload); the player's explicit repair / start over / reset keeps the original under `.rescue`; migrations commit only after a verified result and a `.bak` of the original; two tabs (storage event + read-before-write); QuotaExceededError / refused backup / interrupted commit / unreadable storage; cloud copy from a newer version or broken is never overwritten. Fixtures -> qa/out/save-fixtures/
+ node qa/v22.mjs            # v22: no energy anywhere (source, DOM, store, ads) + 15 rounds / 6 Dailies / 15 mission attempts in a row at 0 coins; first launch = an Arena round with the whole bestiary; campaign progress changes nothing in Arena and vice versa; same unlocks in either order; each mode pays for what it sells (bots); first-round coach only for a hesitating player (EN too); v12 -> v13 migration + reload; prisms (booster for 4 ◆, prism looks)
+ node qa/v21.mjs            # v21: big screens -- phones keep their framing; 1366×768/1440×900/1920×1080 see about a phone's worth of city with a bigger vortex, cursor steering through the zoom, bigger HUD/minimap; desktop layout (body.wide): nav rail + two columns on Miasto/Dzielnice/Warsztat/Wyzwania/results at 960×540…1920×1080 and 1180×820, all 12 districts in view, nothing sideways; portrait phones/tablets keep the phone layout; district strip mouse wheel + edge fades
+ node qa/v20.mjs            # v20: gates are helpers -- no mission asks to go through a gate/portal, impulse pad (+50% speed, recharge), two-way portal pair, M11 „Pierwszy impuls” shows a pad + food on its first frame, EN chips
+diff --git a/qa/run-all.mjs b/qa/run-all.mjs
+index 31f204c..c8614ec 100644
+--- a/qa/run-all.mjs
++++ b/qa/run-all.mjs
+@@ -20,10 +20,11 @@ import { runV20Checks } from './v20.mjs';
+ import { runV21Checks } from './v21.mjs';
+ import { runV22Checks } from './v22.mjs';
+ import { runDevPanelChecks } from './dev-panel.mjs';
++import { runSaveSafetyChecks } from './save-safety.mjs';
+ 
+ const { server, url } = await serve();
+ const all = [];
+-for (const [name, fn] of [['edge cases', () => runEdgeCases(url)], ['features', () => runFeatureChecks(url)], ['visual', () => runVisualChecks(url)], ['design', () => runDesignChecks(url)], ['flow', () => runFlowChecks(url)], ['arena bots', () => runArenaBots(url, 20)], ['campaign bots', () => runCampaignBots(url, 30)], ['v15 systems', () => runV15Checks(url)], ['audio (v16)', () => runAudioChecks(url)], ['v17 first impression', () => runV17Checks(url)], ['v18 economy', () => runV18Checks(url, 2)], ['v19 launch (English, saves)', () => runV19Checks(url)], ['v20 gates (impulse pads, portals)', () => runV20Checks(url)], ['v21 big screens', () => runV21Checks(url)], ['v22 two modes (no energy, independent Arena/Dzielnice, first-round coach, prisms)', () => runV22Checks(url)], ['v23 dev panel (access, test-mode isolation, every category, phones)', () => runDevPanelChecks(url)], ['difficulty (all 240 missions, expert + casual)', () => runDifficultyChecks(url, 2, 4)]]) {
++for (const [name, fn] of [['edge cases', () => runEdgeCases(url)], ['features', () => runFeatureChecks(url)], ['visual', () => runVisualChecks(url)], ['design', () => runDesignChecks(url)], ['flow', () => runFlowChecks(url)], ['arena bots', () => runArenaBots(url, 20)], ['campaign bots', () => runCampaignBots(url, 30)], ['v15 systems', () => runV15Checks(url)], ['audio (v16)', () => runAudioChecks(url)], ['v17 first impression', () => runV17Checks(url)], ['v18 economy', () => runV18Checks(url, 2)], ['v19 launch (English, saves)', () => runV19Checks(url)], ['v20 gates (impulse pads, portals)', () => runV20Checks(url)], ['v21 big screens', () => runV21Checks(url)], ['v22 two modes (no energy, independent Arena/Dzielnice, first-round coach, prisms)', () => runV22Checks(url)], ['v23 dev panel (access, test-mode isolation, every category, phones)', () => runDevPanelChecks(url)], ['PX01 save safety (future/broken saves, two tabs, quota, cloud copy)', () => runSaveSafetyChecks(url)], ['difficulty (all 240 missions, expert + casual)', () => runDifficultyChecks(url, 2, 4)]]) {
+   console.log(`\n=== ${name} ===`);
+   try { all.push(...await fn()); } catch (e) { all.push({ name: `${name} crashed`, ok: false, details: String(e && e.stack || e) }); console.log('CRASH', e); }
+ }
+diff --git a/qa/save-safety.mjs b/qa/save-safety.mjs
+new file mode 100644
+index 0000000..8a23521
+--- /dev/null
++++ b/qa/save-safety.mjs
+@@ -0,0 +1,428 @@
++// PX01 (VH-03) save safety: a save the game can't fully read -- a newer
++// schema, broken JSON, a field of the wrong type, a second tab with newer
++// progress, a full or refusing storage -- is never silently replaced. The
++// original bytes stay on the save key through loading AND every later
++// automatic save (login reward, free chest, Arena round, mission, tab
++// switch, reload); migrations commit only after a backup of the original
++// bytes; an unlock happens only on the player's explicit choice, and keeps
++// the original under a rescue key. Usage: node qa/save-safety.mjs
++// Synthetic fixtures only (no player data); each case runs in a fresh
++// browser context, i.e. its own isolated localStorage.
++import fs from 'node:fs';
++import path from 'node:path';
++import { serve, openGame, report, ARENA_BOT, CAMPAIGN_BOT, OUT } from './lib.mjs';
++
++const KEY = 'vectorHoleSave_v1';
++const FIXTURES = path.join(OUT, 'save-fixtures');
++
++/** Builds every fixture in a page of the game itself (defaultSave() /
++ *  sealSave() of the code under test), returned as raw storage strings. */
++async function buildFixtures(url) {
++  const g = await openGame(url);
++  const fx = await g.page.evaluate(() => {
++    const today = new Date().toISOString().slice(0, 10);
++    const rich = () => {
++      const s = defaultSave();
++      s.coins = 4321; s.prisms = 77;
++      s.owned = ['rainbow', 'cyan', 'green']; s.selected = 'cyan';
++      s.auras = { owned: ['none', 'spark'], selected: 'spark' };
++      s.effects = { owned: ['classic', 'pixel_burst'], selected: 'pixel_burst' };
++      s.overdriveSkins = { owned: ['classic', 'fala'], selected: 'fala' };
++      s.player = { level: 12, xp: 345 };
++      s.stats = { runsPlayed: 21, bestArenaScore: 987, recentArenaScores: [400, 520, 610] };
++      s.hub = { coreCharge: 40, coreLevel: 3 };
++      ['M01', 'M02', 'M03'].forEach(id => { s.campaign.completed[id] = true; s.campaign.stars[id] = 3; });
++      s.campaign.starChests = 1;
++      s.boosters = { time: 2, start: 1, magnet: 3, shield: 0, sprint: 1, gift: true, sprintGift: true };
++      s.entitlements = { noAds: true, purchased: ['starter_pack', 'energy_hour'] };
++      s.login = { lastClaimDate: today, day: 3, totalClaims: 3 };
++      s.freeChest = { nextAt: Date.now() + 3600e3, opened: 5 };
++      s.badges = ['plac'];
++      s.unlocks.announced = Array.from(new Set([...unlockedFeatureIds(s), 'warsztat', 'wyzwania', 'kampania']));
++      s.coach = { moved: true, ate: true, rival: true, danger: true };
++      s.privacy = { decided: true, analytics: false, ads: false, ts: 1 };
++      s.retention = { installDate: '2026-09-01', activeDays: ['2026-09-01'], sessions: 9 };
++      return s;
++    };
++    const out = {};
++    out.current = sealSave(rich());
++    // SAVE-01/02: a v12 save (energy era) with everything a player can own.
++    const v12 = rich();
++    v12.schemaVersion = 12; delete v12.coach;
++    v12.energy = { value: 2, lastTick: Date.now() - 60000, infiniteUntil: 0, freeDailyDate: null };
++    v12.campaign.discoveredTypes = ['fragment', 'prop'];
++    v12.campaign.completed.M00 = true;
++    v12.unlocks.announced = ['arena', 'warsztat', 'wyzwania'];
++    out.v12 = sealSave(v12);
++    // Older supported shapes (no false "broken save" on a real old player).
++    out.v1 = JSON.stringify({ coins: 50, owned: ['rainbow', 'cyan'], selected: 'cyan' });
++    out.v5 = JSON.stringify({ schemaVersion: 5, coins: 120, prisms: 3, owned: ['rainbow'], selected: 'rainbow', guestId: 'guest_old5',
++      settings: { inputMode: 'thumbpad', sensitivity: 1, haptics: true, minimap: 'auto' }, stats: { runsPlayed: 4 },
++      auras: { owned: ['none'], selected: 'none' }, displayName: null, hub: { coreCharge: 10 }, daily: { lastSeedDate: null, lastSeedScore: 0 }, mission: { dateKey: null, completed: false } });
++    const v10 = rich(); v10.schemaVersion = 10;
++    ['entitlements', 'ads', 'privacy', 'retention', 'challenge', 'integrity', 'boosters', 'coach', 'meta'].forEach(k => delete v10[k]);
++    v10.campaign = { unlockedDistricts: ['plac'], completed: { M01: true }, medals: { M01: true } };
++    out.v10 = JSON.stringify(v10);
++    // SAVE-08: written by a newer game (schema 99), with fields and an owned
++    // item shape this version doesn't know.
++    const fut = rich();
++    fut.schemaVersion = 99;
++    fut.owned = ['rainbow', 'cyan', { id: 'future_skin', tier: 2 }];
++    fut.seasonPass = { tier: 4, claimed: ['s1', 's2'] };
++    fut.campaign.chapterIII = { unlocked: true };
++    out.future = sealSave(fut);
++    // SAVE-09a/b: one field of the wrong type, the rest valid.
++    const a = rich(); a.coins = '500'; out.badCoins = sealSave(a);
++    const b = rich(); b.owned = { rainbow: true, cyan: true }; out.badOwned = sealSave(b);
++    // SAVE-09c: truncated JSON (a write cut off half-way).
++    out.truncated = out.current.slice(0, Math.floor(out.current.length * 0.6));
++    // SAVE-05: one mode's data broken, the other intact.
++    const c = rich(); c.campaign = 'garbage'; out.badCampaign = sealSave(c);
++    const d = rich(); d.stats = 'garbage'; out.badStats = sealSave(d);
++    // Partly valid: a current-schema save missing most fields.
++    out.partial = JSON.stringify({ schemaVersion: 13, coins: 50, player: { level: 4, xp: 10 } });
++    return out;
++  });
++  await g.browser.close();
++  fs.mkdirSync(FIXTURES, { recursive: true });
++  for (const [k, v] of Object.entries(fx)) fs.writeFileSync(path.join(FIXTURES, `${k}.txt`), v);
++  return fx;
++}
++
++async function boot(url, raw, opts = {}) {
++  const g = await openGame(url, { ...opts, save: raw == null ? null : raw });
++  await g.page.addScriptTag({ content: ARENA_BOT });
++  await g.page.addScriptTag({ content: CAMPAIGN_BOT });
++  await g.page.waitForTimeout(250);
++  return g;
++}
++const rawOf = (g, key = KEY) => g.page.evaluate((k) => localStorage.getItem(k), key);
++const guard = (g) => g.page.evaluate(() => (typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none'));
++const sheet = (g) => g.page.evaluate(() => {
++  const el = document.getElementById('infoSheet');
++  return el && !el.classList.contains('hidden') ? document.getElementById('infoSheetTitle').textContent : null;
++});
++
++/** Every automatic save path a session hits: the login calendar, the free
++ *  chest, a whole Arena round (finalizeRun), a mission, screen changes, a
++ *  tab switch, the tamper report and a direct saveGame(). */
++async function autoOps(g) {
++  return g.page.evaluate(() => {
++    const gm = window.game, log = [];
++    const step = (n, f) => { try { f(); log.push(n); } catch (e) { log.push(n + ':' + e.message); } };
++    step('login', () => { gm.save.login.lastClaimDate = null; gm.claimLoginReward(); });
++    step('chest', () => { gm.save.freeChest.nextAt = 0; gm.openFreeChest(); });
++    step('closeSheet', () => gm.closeInfoSheet());
++    step('arena', () => window.__qaPlayArena({ style: 'greedy' }));
++    step('menu', () => gm.showScreen('mainMenu'));
++    step('mission', () => window.__qaPlayMission('M01'));
++    step('hidden', () => document.dispatchEvent(new Event('visibilitychange')));
++    step('direct', () => saveGame(gm.save));
++    return log;
++  });
++}
++
++export async function runSaveSafetyChecks(url) {
++  const results = [];
++  const push = (name, ok, details) => results.push(report(name, ok, details));
++  const fx = await buildFixtures(url);
++  const noErr = (g, label) => push(`save-safety: no runtime errors (${label})`, g.errors.length === 0, g.errors.slice(0, 3).join(' | '));
++
++  // --- SAVE-01: v12 (energy) -> v13, backup of the original, reload ---------
++  {
++    const g = await boot(url, fx.v12);
++    const r = await g.page.evaluate((k) => {
++      const s = window.game.save;
++      return { v: s.schemaVersion, energy: 'energy' in s, m00: 'M00' in s.campaign.completed, done: Object.keys(s.campaign.completed).sort().join(','),
++        wyz: window.game.isWyzwaniaUnlocked(), warsztat: window.game.isWarsztatUnlocked(), bak: localStorage.getItem(k + '.bak'), stored: JSON.parse(localStorage.getItem(k)).schemaVersion };
++    }, KEY);
++    push('SAVE-01 v12 with energy -> v13: no energy, unlocks and missions kept, migration committed', r.v === 13 && !r.energy && !r.m00 && r.done === 'M01,M02,M03' && r.wyz && r.warsztat && r.stored === 13, JSON.stringify({ ...r, bak: !!r.bak }));
++    push('SAVE-01 the original v12 bytes are kept under the backup key before the migration commit', r.bak === fx.v12, r.bak ? `bak ${r.bak.length} B` : 'no backup');
++    // loadSave() of an already-migrated save performs no write at all.
++    const w = await g.page.evaluate((k) => {
++      const before = localStorage.getItem(k);
++      let writes = 0;
++      const set = Storage.prototype.setItem;
++      Storage.prototype.setItem = function (key, v) { writes++; return set.call(this, key, v); };
++      try { loadSave(); loadSave(); } finally { Storage.prototype.setItem = set; }
++      return { writes, same: localStorage.getItem(k) === before };
++    }, KEY);
++    push('SAVE-01 reading an already-migrated save writes nothing (no write on read)', w.writes === 0 && w.same, JSON.stringify(w));
++    noErr(g, 'SAVE-01');
++    await g.browser.close();
++  }
++
++  // --- SAVE-02: balances, items, rewards survive; nothing granted twice ----
++  {
++    const g = await boot(url, fx.v12);
++    const pick = () => g.page.evaluate(() => { const s = window.game.save; return JSON.stringify({ c: s.coins, p: s.prisms, o: s.owned, a: s.auras, e: s.effects, od: s.overdriveSkins, b: s.boosters, ent: s.entitlements, l: s.login, ch: s.freeChest, sc: s.campaign.starChests, st: s.campaign.stars, lv: s.player, badges: s.badges, best: s.stats.bestArenaScore }); });
++    const first = await pick();
++    const snaps = [first];
++    for (let i = 0; i < 3; i++) { await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(150); snaps.push(await pick()); }
++    const f = JSON.parse(first);
++    const kept = f.c === 4321 && f.p === 77 && f.o.join() === 'rainbow,cyan,green' && f.a.owned.includes('spark') && f.e.owned.includes('pixel_burst') && f.od.owned.includes('fala')
++      && f.b.time === 2 && f.b.magnet === 3 && f.b.sprint === 1 && f.ent.noAds && f.ent.purchased.includes('starter_pack') && f.l.totalClaims === 3 && f.ch.opened === 5 && f.sc === 1 && f.lv.level === 12 && f.best === 987;
++    push('SAVE-02 coins, prisms, skins, trails, effects, finishes, boosters, purchases, login/chest claims, star chests, level kept', kept, first.slice(0, 300));
++    push('SAVE-02 three reloads: identical balances and items (no reward granted twice)', snaps.every(s => s === first), snaps.map(s => s.length).join(','));
++    noErr(g, 'SAVE-02');
++    await g.browser.close();
++  }
++
++  // --- SAVE-03: double migration, repeated loadSave -------------------------
++  {
++    const g = await boot(url, null);
++    const r = await g.page.evaluate((raws) => {
++      const res = {};
++      for (const [k, raw] of Object.entries(raws)) {
++        const once = sanitizeSave(migrateSave(JSON.parse(raw)));
++        const twice = sanitizeSave(migrateSave(JSON.parse(JSON.stringify(once))));
++        res[k] = JSON.stringify(once) === JSON.stringify(twice);
++      }
++      return res;
++    }, { v12: fx.v12, v10: fx.v10, v5: fx.v5, current: fx.current });
++    push('SAVE-03 migrate(migrate(x)) == migrate(x) for v5, v10, v12 and current saves', Object.values(r).every(Boolean), JSON.stringify(r));
++    noErr(g, 'SAVE-03');
++    await g.browser.close();
++  }
++
++  // --- Older supported saves load as normal saves (no false lock) -----------
++  for (const k of ['v1', 'v5', 'v10', 'current', 'partial']) {
++    const g = await boot(url, fx[k]);
++    const r = await g.page.evaluate(() => ({ state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', coins: window.game.save.coins, v: window.game.save.schemaVersion, level: window.game.save.player.level }));
++    const want = { v1: 50, v5: 120, v10: 4321, current: 4321, partial: 50 }[k];
++    push(`legacy/partial ${k}: loads as a normal writable save with its coins (${want})`, r.state === 'ok' && r.coins === want && r.v === 13, JSON.stringify(r));
++    noErr(g, k);
++    await g.browser.close();
++  }
++  // No save at all: a fresh profile that saves normally.
++  {
++    const g = await boot(url, null);
++    await g.page.evaluate(() => { window.game.save.coins = 9; saveGame(window.game.save); });
++    const raw = await rawOf(g);
++    push('no save: fresh profile, first save is written', !!raw && JSON.parse(raw).coins === 9, raw ? 'written' : 'nothing stored');
++    noErr(g, 'no save');
++    await g.browser.close();
++  }
++
++  // --- SAVE-08 / SAVE-09a-c: the original never changes ------------------------
++  const lockCases = [
++    ['SAVE-08 future schema 99 (unknown fields, unknown item shape)', 'future', 'future', s => s.coins === 4321 && s.player.level === 12],
++    ['SAVE-09a coins "500" (rest valid)', 'badCoins', 'invalid', s => s.coins === 500 && s.player.level === 12 && Object.keys(s.campaign.completed).length === 3],
++    ['SAVE-09b owned not an array', 'badOwned', 'invalid', s => s.coins === 4321 && s.player.level === 12 && Object.keys(s.campaign.completed).length === 3],
++    ['SAVE-09c truncated JSON', 'truncated', 'corrupt', () => true],
++    ['SAVE-05 broken campaign, intact Arena data', 'badCampaign', 'invalid', s => s.stats.runsPlayed >= 21 && s.stats.bestArenaScore >= 987 && s.coins >= 4321],
++    ['SAVE-05 broken Arena stats, intact campaign', 'badStats', 'invalid', s => Object.keys(s.campaign.completed).length >= 3 && s.coins >= 4321]
++  ];
++  for (const [label, k, state, progressOk] of lockCases) {
++    const g = await boot(url, fx[k]);
++    const raw0 = await rawOf(g);
++    const st = await guard(g);
++    const title = await sheet(g);
++    const prog = await g.page.evaluate(() => JSON.parse(JSON.stringify(window.game.save)));
++    push(`${label}: original bytes unchanged after loading`, raw0 === fx[k], raw0 === fx[k] ? 'identical' : `changed (${(raw0 || '').length} B)`);
++    push(`${label}: read-only "${state}" state with a notice instead of a silent reset`, st === state && !!title, `state ${st}, sheet ${JSON.stringify(title)}`);
++    push(`${label}: the readable progress is playable in memory`, progressOk(prog), JSON.stringify({ coins: prog.coins, level: prog.player.level, done: Object.keys(prog.campaign.completed).length }));
++    const ops = await autoOps(g);
++    const raw1 = await rawOf(g);
++    push(`${label}: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)`, raw1 === fx[k], `${ops.join(' ')} -> ${raw1 === fx[k] ? 'identical' : 'CHANGED'}`);
++    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(200);
++    await g.page.addScriptTag({ content: ARENA_BOT }); await g.page.addScriptTag({ content: CAMPAIGN_BOT });
++    await autoOps(g);
++    const raw2 = await rawOf(g);
++    push(`${label}: still unchanged after a reload and a second session`, raw2 === fx[k], raw2 === fx[k] ? 'identical' : 'CHANGED');
++    noErr(g, label);
++    await g.browser.close();
++  }
++
++  // --- Explicit player choice: repair / start over keep a rescue copy ----------
++  for (const [label, k, expect] of [['SAVE-09a repair', 'badCoins', s => s.coins >= 500 && s.player.level === 12], ['SAVE-09b repair', 'badOwned', s => s.player.level === 12 && Object.keys(s.campaign.completed).length === 3], ['SAVE-09c start over', 'truncated', s => s.schemaVersion === 13]]) {
++    const g = await boot(url, fx[k]);
++    const r = await g.page.evaluate((key) => {
++      const btn = document.getElementById('btnInfoSheetAction');
++      const label = btn && !btn.classList.contains('hidden') ? btn.textContent : null;
++      if (label) btn.click();
++      return { label, state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', rescue: localStorage.getItem(key + '.rescue'), stored: localStorage.getItem(key) };
++    }, KEY);
++    let stored = null; try { stored = JSON.parse(r.stored); } catch (e) { /* not JSON */ }
++    push(`${label}: the player's choice (${r.label}) keeps the original bytes under the rescue key, then saves`, r.rescue === fx[k] && r.state === 'ok' && !!stored && expect(stored), JSON.stringify({ label: r.label, state: r.state, rescue: r.rescue === fx[k], stored: stored && { coins: stored.coins, level: stored.player && stored.player.level } }));
++    noErr(g, label);
++    await g.browser.close();
++  }
++  // Future save: the notice only offers a reload, never an overwrite.
++  {
++    const g = await boot(url, fx.future);
++    const action = await g.page.evaluate(() => { const btn = document.getElementById('btnInfoSheetAction'); return btn.classList.contains('hidden') ? null : btn.textContent; });
++    push('SAVE-08 future save: the notice offers a reload, not an overwrite', !!action && /ODŚWIEŻ/.test(action), JSON.stringify({ action }));
++    noErr(g, 'SAVE-08 notice');
++    await g.browser.close();
++  }
++
++  // --- SAVE-09d: two tabs -------------------------------------------------------
++  {
++    const g = await boot(url, fx.current);
++    const b = await g.context.newPage();
++    await b.goto(url); await b.waitForFunction(() => window.game && window.game.state); await b.waitForTimeout(250);
++    await g.page.waitForTimeout(200);
++    // Tab B earns 500 coins and saves; tab A (opened first, stale) then saves its own change.
++    await b.evaluate(() => { window.game.save.coins += 500; saveGame(window.game.save); });
++    await g.page.waitForTimeout(200);
++    const a = await g.page.evaluate(() => { window.game.save.coins += 7; saveGame(window.game.save); return { state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none' }; });
++    await g.page.waitForTimeout(100);
++    const coins = JSON.parse(await rawOf(g)).coins;
++    const title = await sheet(g);
++    push('SAVE-09d two tabs: the stale tab does not overwrite the newer progress from the other tab', coins === 4821, `stored coins ${coins} (B wrote 4821, stale A had 4328)`);
++    push('SAVE-09d two tabs: the stale tab stops saving and tells the player to reload', a.state === 'stale' && !!title, JSON.stringify({ ...a, title }));
++    // A writer this tab never heard about (no storage event): read-before-write.
++    const r = await b.evaluate((k) => {
++      const other = JSON.parse(localStorage.getItem(k)); other.coins = 1; localStorage.setItem(k, JSON.stringify(other));
++      window.game.save.coins += 3; saveGame(window.game.save);
++      return { stored: JSON.parse(localStorage.getItem(k)).coins, state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none' };
++    }, KEY);
++    push('SAVE-09d a change made behind the tab\'s back (no storage event) is detected before writing', r.stored === 1 && r.state === 'stale', JSON.stringify(r));
++    noErr(g, 'SAVE-09d');
++    await g.browser.close();
++  }
++
++  // --- SAVE-04 / SAVE-09e: storage full or refusing -----------------------------
++  {
++    const quotaAll = () => { Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; };
++    const g = await boot(url, fx.v12, { initScript: quotaAll });
++    const ops = await autoOps(g);
++    const raw = await rawOf(g);
++    const s = await g.page.evaluate(() => ({ v: window.game.save.schemaVersion, coins: window.game.save.coins, state: window.game.state }));
++    push('SAVE-04 QuotaExceededError on every write: original bytes intact, game keeps running from memory', raw === fx.v12 && s.v === 13 && s.coins >= 4321 && !!s.state, `${ops.join(' ')} -> ${raw === fx.v12 ? 'identical' : 'CHANGED'}`);
++    noErr(g, 'SAVE-04 quota');
++    await g.browser.close();
++  }
++  {
++    // The backup can't be written (but the save key could): the migration must not commit.
++    const bakFails = () => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (/\.bak$/.test(k) && !window.__allowBak) throw new DOMException('full', 'QuotaExceededError'); return set.call(this, k, v); }; };
++    const g = await boot(url, fx.v12, { initScript: bakFails });
++    await autoOps(g);
++    const raw = await rawOf(g);
++    push('SAVE-09e backup write refused: the migration is not committed over the original (every later save waits for the backup)', raw === fx.v12, raw === fx.v12 ? 'identical' : 'CHANGED without a backup');
++    const r = await g.page.evaluate((k) => { window.__allowBak = true; saveGame(window.game.save); return { bak: localStorage.getItem(k + '.bak'), v: JSON.parse(localStorage.getItem(k)).schemaVersion }; }, KEY);
++    push('SAVE-09e once the backup succeeds, the original is backed up first, then the migrated save is written', r.bak === fx.v12 && r.v === 13, JSON.stringify({ bak: r.bak === fx.v12, v: r.v }));
++    noErr(g, 'SAVE-09e');
++    await g.browser.close();
++  }
++  {
++    // Closed between the backup and the commit: the next start redoes the same migration.
++    const mainFails = () => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === 'vectorHoleSave_v1' && !sessionStorage.getItem('__qaLift')) throw new DOMException('aborted', 'QuotaExceededError'); return set.call(this, k, v); }; };
++    const g = await boot(url, fx.v12, { initScript: mainFails });
++    const raw = await rawOf(g);
++    const bak = await rawOf(g, KEY + '.bak');
++    await g.page.evaluate(() => sessionStorage.setItem('__qaLift', '1'));
++    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(200);
++    const r = await g.page.evaluate((k) => ({ stored: JSON.parse(localStorage.getItem(k)), bak: localStorage.getItem(k + '.bak') }), KEY);
++    const ref = await g.page.evaluate((raw) => { const p = JSON.parse(raw); delete p._sig; const m = sanitizeSave(migrateSave(p)); return { coins: m.coins, done: Object.keys(m.campaign.completed).sort().join(), v: m.schemaVersion }; }, fx.v12);
++    const st = r.stored;
++    push('SAVE-09f interrupted commit (closed after the backup): original intact, the next start migrates the same way', raw === fx.v12 && st.schemaVersion === 13 && st.coins === ref.coins && Object.keys(st.campaign.completed).sort().join() === ref.done && r.bak === fx.v12, JSON.stringify({ firstRaw: raw === fx.v12, bakAfterFirst: bak === fx.v12, v: st.schemaVersion, coins: st.coins }));
++    noErr(g, 'SAVE-09f');
++    await g.browser.close();
++  }
++  {
++    // Storage unreadable: boots, never writes.
++    const denied = () => { Storage.prototype.getItem = () => { throw new Error('denied'); }; window.__writes = 0; const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === 'vectorHoleSave_v1') window.__writes++; return set.call(this, k, v); }; };
++    const g = await boot(url, null, { initScript: denied });
++    await autoOps(g);
++    const r = await g.page.evaluate(() => ({ writes: window.__writes, state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', game: window.game.state }));
++    push('SAVE-04 storage that refuses reads: boots, and never writes a blank save over what it could not read', r.writes === 0 && !!r.game, JSON.stringify(r));
++    noErr(g, 'storage denied');
++    await g.browser.close();
++  }
++
++  // --- SAVE-06: cloud copy (mocked CrazyGames data module) ----------------------
++  const mockCrazy = (remote) => `
++    window.__cgStore = ${JSON.stringify(remote || {})};
++    window.CrazyGames = { SDK: { init: async () => {},
++      game: { gameplayStart() {}, gameplayStop() {}, loadingStop() {}, happytime() {} },
++      ad: { requestAd: (t, cb) => { cb && cb.adFinished && cb.adFinished(); } },
++      data: { getItem: k => (k in __cgStore ? __cgStore[k] : null), setItem: (k, v) => { __cgStore[k] = v; }, removeItem: k => { delete __cgStore[k]; } } } };`;
++  for (const [label, remote, local] of [['SAVE-06 account copy from a newer game version', fx.future, fx.current], ['SAVE-06 unreadable account copy', fx.truncated, fx.current]]) {
++    const g = await boot(url, local, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: remote }) });
++    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
++    await g.page.waitForTimeout(500);
++    await autoOps(g);
++    const r = await g.page.evaluate((k) => ({ remote: __cgStore[k], local: JSON.parse(localStorage.getItem(k)).coins }), KEY);
++    push(`${label}: never overwritten by this device (local saves still work)`, r.remote === remote && r.local >= 4321, JSON.stringify({ remoteSame: r.remote === remote, localCoins: r.local }));
++    noErr(g, label);
++    await g.browser.close();
++  }
++  {
++    const g = await boot(url, fx.truncated, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: fx.current }) });
++    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
++    await g.page.waitForTimeout(600);
++    const r = await g.page.evaluate((k) => ({ coins: window.game.save.coins, level: window.game.save.player.level, rescue: localStorage.getItem(k + '.rescue'), state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none' }), KEY);
++    push('SAVE-06 broken local save + good account copy: restored from the account, broken bytes kept under the rescue key', r.coins === 4321 && r.level === 12 && r.rescue === fx.truncated && r.state === 'ok', JSON.stringify({ ...r, rescue: r.rescue === fx.truncated }));
++    noErr(g, 'SAVE-06 restore');
++    await g.browser.close();
++  }
++
++  // --- Backup code over a held-back save (explicit choice) / cloud never lifts it ---
++  {
++    const g = await boot(url, fx.badOwned);
++    const r = await g.page.evaluate((k) => {
++      const gm = window.game;
++      gm.closeInfoSheet();
++      const code = encodeSaveCode(sanitizeSave(JSON.parse(JSON.stringify({ ...defaultSave(), coins: 2468 }))));
++      // A cloud copy arriving later is not the player's choice.
++      gm.adoptSave(decodeSaveCode(code), 'cloud');
++      const afterCloud = { state: (typeof SAVE_GUARD === "object" ? SAVE_GUARD.state : "none"), raw: localStorage.getItem(k) };
++      gm.openBackupLoad();
++      document.getElementById('backupInput').value = code;
++      gm.importBackup();
++      // The code has less progress than the device: confirm "WCZYTAJ MIMO TO".
++      const confirm = document.getElementById('btnInfoSheetAction');
++      const asked = document.getElementById('infoSheetTitle').textContent;
++      if (!confirm.classList.contains('hidden')) confirm.click();
++      return { asked, afterCloud, state: (typeof SAVE_GUARD === "object" ? SAVE_GUARD.state : "none"), coins: JSON.parse(localStorage.getItem(k)).coins, rescue: localStorage.getItem(k + '.rescue') };
++    }, KEY);
++    push('a cloud adoption never lifts the guard (bytes unchanged)', r.afterCloud.state === 'invalid' && r.afterCloud.raw === fx.badOwned, JSON.stringify({ state: r.afterCloud.state, same: r.afterCloud.raw === fx.badOwned }));
++    push('backup code over a held-back save (explicit): original kept under the rescue key, code\'s save stored', r.state === 'ok' && r.coins === 2468 && r.rescue === fx.badOwned, JSON.stringify({ ...r, afterCloud: undefined, rescue: r.rescue === fx.badOwned }));
++    noErr(g, 'backup code');
++    await g.browser.close();
++  }
++  // --- English: every notice is translated --------------------------------------
++  for (const k of ['future', 'truncated', 'badCoins']) {
++    const g = await boot(url, fx[k], { locale: 'en-US', query: '?i18n=log' });
++    const r = await g.page.evaluate(() => ({ title: document.getElementById('infoSheetTitle').textContent, body: document.getElementById('infoSheetBody').textContent, btn: document.getElementById('btnInfoSheetAction').textContent, close: document.getElementById('btnInfoSheetClose').textContent }));
++    const polish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|zapis|Gra |ODŚWIEŻ|NAPRAW|GRAJ/.test(r.title + r.body + r.btn + r.close);
++    push(`EN: the "${k}" notice is fully in English`, !polish && !!r.title, JSON.stringify(r).slice(0, 220));
++    await g.browser.close();
++  }
++  {
++    // Stale tab: a deferred cloud restore must not write over the other tab's save.
++    const g = await boot(url, fx.current);
++    const r = await g.page.evaluate((k) => {
++      const other = JSON.parse(localStorage.getItem(k)); other.coins = 11; localStorage.setItem(k, JSON.stringify(other));
++      saveGame(window.game.save);
++      const before = localStorage.getItem(k);
++      window.game.adoptSave(sanitizeSave(defaultSave()), 'cloud');
++      return { state: (typeof SAVE_GUARD === "object" ? SAVE_GUARD.state : "none"), same: localStorage.getItem(k) === before };
++    }, KEY);
++    push('stale tab: a (deferred) cloud adoption does not write over the other tab\'s save', r.state === 'stale' && r.same, JSON.stringify(r));
++    await g.browser.close();
++  }
++
++  // --- Profil reset (explicit, confirmed) of a locked save keeps a rescue copy ---
++  {
++    const g = await boot(url, fx.future);
++    await Promise.all([g.page.waitForNavigation(), g.page.evaluate(() => { window.game.closeInfoSheet(); window.game.resetProfile(); })]);
++    await g.page.waitForFunction(() => window.game && window.game.state);
++    const r = await g.page.evaluate((k) => ({ main: localStorage.getItem(k), rescue: localStorage.getItem(k + '.rescue') }), KEY);
++    push('locked save + explicit Profil reset: the original is kept under the rescue key', r.rescue === fx.future && r.main !== fx.future, JSON.stringify({ rescue: r.rescue === fx.future, mainReplaced: r.main !== fx.future }));
++    await g.browser.close();
++  }
++
++  return results;
++}
++
++if (import.meta.url === `file://${process.argv[1]}`) {
++  const { server, url } = await serve();
++  const results = await runSaveSafetyChecks(url);
++  server.close();
++  const failed = results.filter(r => !r.ok);
++  console.log(`\n${results.length - failed.length}/${results.length} save-safety checks passed`);
++  process.exit(failed.length ? 1 : 0);
++}

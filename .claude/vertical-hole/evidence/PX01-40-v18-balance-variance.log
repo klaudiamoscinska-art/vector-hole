@@ -1,0 +1,22 @@
+=== fixed ===
+  booster   hard (d4+d5)   EKSTREMALNA (d5)   — casual bot, 22 missions × 2
+  none       55%           60%
+  time       82%           85%
+  start      68%           70%
+  sprint     68%           60%
+  magnet     68%           70%
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":55,"d5":60},"time":{"all":82,"d5":85},"start":{"all":68,"d5":70},"sprint":{"all":68,"d5":60},"magnet":{"all":68,"d5":70}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":55,"d5":60},"time":{"all":82,"d5":85},"start":{"all":68,"d5":70},"sprint":{"all":68,"d5":60},"magnet":{"all":68,"d5":70}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":68,"d5":60},"time":{"all":82,"d5":85}}
+PASS  v18: no runtime errors (balance)
+=== base ===
+  booster   hard (d4+d5)   EKSTREMALNA (d5)   — casual bot, 22 missions × 2
+  none       61%           65%
+  time       84%           75%
+  start      66%           60%
+  sprint     75%           75%
+  magnet     64%           75%
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":61,"d5":65},"time":{"all":84,"d5":75},"start":{"all":66,"d5":60},"sprint":{"all":75,"d5":75},"magnet":{"all":64,"d5":75}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":61,"d5":65},"time":{"all":84,"d5":75},"start":{"all":66,"d5":60},"sprint":{"all":75,"d5":75},"magnet":{"all":64,"d5":75}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":75,"d5":75},"time":{"all":84,"d5":75}}
+PASS  v18: no runtime errors (balance)

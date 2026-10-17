@@ -1,0 +1,9 @@
+source_snapshot_sha256: 8f7ec1cd49e035fee7ce8b47f269011029abd6ae7654bd8111a98d98f6fed8bf
+source_snapshot_file_count: 136
+git_revision: ed9c729c3ef865f0e01c761d86de18ff58e4b70b
+NOTE: this fingerprints git-visible source files, NOT ignored build output or executed tests
+d9e33be8fff29c8aa41eb82a7b3be7c4e7ccbc7154a1f842fdf56a61df56d07d  index.html
+69aee005e9b8f96dca0989a53f515c1279b87f3e1afdd311f57ee7766181ca0a  style.css
+ff23d2ee261bb2e0ecb26cd00cb44021f3d6d1454615c8f62983610f0edec291  game.js
+8f82f6119cf9ad984a08f4dbab4365eae3064b09e4dd15c95b2ddd0bc3ffb780  qa/save-safety.mjs
+257e6f448e7e2da274d1664e665b2c548056eaf6fb9e9af33c81726232cf8878  qa/run-all.mjs

@@ -1,0 +1,6 @@
+# PX01 git state BEFORE work (2026-10-17)
+HEAD: ed9c729c3ef865f0e01c761d86de18ff58e4b70b (detached, = origin/main after git fetch origin main)
+git status --short: (empty — clean worktree)
+local main: 9716068 (behind origin/main by 8, untouched)
+P00 evidence dir .claude/vertical-hole/evidence/: did not exist in this session
+work branch created locally: px01-save-safety (from ed9c729, not pushed)

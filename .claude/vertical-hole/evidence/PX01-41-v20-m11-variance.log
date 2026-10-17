@@ -1,0 +1,16 @@
+fixed run 1
+PASS  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":7}
+fixed run 2
+PASS  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":5}
+fixed run 3
+FAIL  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":2}
+fixed run 4
+FAIL  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":2}
+base run 1
+FAIL  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":2}
+base run 2
+FAIL  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":2}
+base run 3
+FAIL  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":2}
+base run 4
+FAIL  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":1}

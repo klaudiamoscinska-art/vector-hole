@@ -1,0 +1,41 @@
+# CORE-ISOLATION — PX01 regression check only (from PX01-30-qa-run-all.log)
+PASS  floor: no chunk repaints while the camera is still (gfx 2, DPR 2)  — {"arena@1.08":0,"arena@0.8":0,"arena@0.58":0,"arena@0.3":0,"campaign":0}
+PASS  floor: no chunk repaints while the camera is still (gfx 2, DPR 3)  — {"arena@1.08":0,"arena@0.8":0,"arena@0.58":0,"arena@0.3":0,"campaign":0}
+PASS  boosters: five booster tiles in the briefing (v18 Sprint); Tarcza is off where nothing can hit you  — 5 true
+PASS  boosters: GRAJ shows the coin cost before anything is spent  — GRAJ −140 ◇
+PASS  boosters: stock is used first, the rest is paid in coins  — {"spent":140,"stock":0}
+PASS  boosters: Zegar +15 s, Turbo start at T2, Tarcza 2 hits  — {"tiles":5,"offOnSafe":true,"label":"GRAJ\n−140 ◇","spent":140,"stockTime":0,"boosters":["time","start","shield"],"bonus":15,"limit":60,"remaining":75,"tier":"T2","shields":2}
+PASS  boosters: Tarcza absorbs two hits, the third costs growth  — {"u0":6,"afterShield":{"units":6,"shields":1},"final":4.5,"shields":0}
+PASS  boosters: without the coins nothing starts and nothing is spent (the note says why)  — {"open":true,"coins":10,"attempts":true,"note":"Brakuje 60 monet na wybrane wzmocnienia. ▶ Turbo start za reklamę"}
+PASS  v15: no runtime errors (boosters)
+PASS  save: v11 -> v12 (-> v13) keeps progress as stars (time medal -> 2nd star, special -> 3rd)  — {"v":13,"m01":3,"m04":5,"m02":1,"metro":true,"energy":false,"chests":4,"boosters":{"time":0,"start":0,"magnet":0,"shield":0,"sprint":0,"gift":false,"sprintGift":false}}
+PASS  layout 375x667: briefing GRAJ is reachable inside the sheet (boosters + hints)  — {"inView":true,"scrollable":false,"h":667,"H":667}
+PASS  layout 402x874: briefing GRAJ is reachable inside the sheet (boosters + hints)  — {"inView":true,"scrollable":false,"h":874,"H":874}
+PASS  sfx: the combo ladder and stingers follow the track key  — {"finalWrap":{"queued":false,"section":"B"},"riserBar":3,"inDrop":true,"arenaNext":"glitch","arenaFrom":"fala","campaignQueued":false,"campaignLoop":1,"dailyQueued":false,"bossSection":"D","ladder0":164.8,"keyRatio":0.749,"majorRatio":1}
+PASS  Miasto 375×667: one hero -- the Core City card above GRAJ, no second live panel  — {"cityAbovePlay":true,"cityH":281,"noStage":true,"gapBelowChest":16,"pitch":"Każda runda Areny buduje Twoje miasto | +16% za rundę · nagroda za 7 rund","pitchInCard":true,"sub":"Arena · runda 2:00 · +16% budowy miasta","titleFull":true}
+PASS  Miasto 402×874: one hero -- the Core City card above GRAJ, no second live panel  — {"cityAbovePlay":true,"cityH":480,"noStage":true,"gapBelowChest":16,"pitch":"Każda runda Areny buduje Twoje miasto | +16% za rundę · nagroda za 7 rund","pitchInCard":true,"sub":"Arena · runda 2:00 · +16% budowy miasta","titleFull":true}
+PASS  Sprint: a 5th booster tile; existing booster owners get one Sprint as a gift (once)  — {"giftOnce":true,"tiles":5,"sprintTile":true,"ratio":1.15,"used":0}
+PASS  defeat: the retry opens the briefing with the booster picked and its price on GRAJ -- nothing spent yet  — {"open":true,"picked":["time"],"grajs":"GRAJ","coinsSame":true,"stock":1}
+PASS  defeat: before boosters unlock the plain SPRÓBUJ PONOWNIE stays  — SPRÓBUJ PONOWNIE
+PASS  briefing: the booster ad is capped (3 a day)  — 2
+PASS  v18: no runtime errors (booster ad)
+PASS  store: Pakiet wzmocnień gives 5 of every booster; Pakiet Startowy adds 3 of each (and says so)  — {"afterPack":{"time":5,"start":5,"magnet":5,"shield":5,"sprint":5,"gift":true,"sprintGift":true},"afterStarter":{"time":8,"start":8,"magnet":8,"shield":8,"sprint":8,"gift":true,"sprintGift":true},"starterDesc":"1500 monet · 60 pryzmatów · 3× każde wzmocnienie misji · ekskluzywna Smuga „Zorza Startu”"}
+PASS  start card before the unlock: no boosters yet -- "Wróć do mapy" goes back to the map  — {"unlocked":false,"text":"Wróć do mapy","font":13,"spacing":0.13,"w":134,"goW":342,"h":34,"briefing":false,"tiles":0,"kept":false,"stock":2,"screen":true}
+PASS  start card after the unlock: "Zmień wzmocnienia" reopens the briefing with the boosters (picks kept, stock refunded)  — {"unlocked":true,"text":"Zmień wzmocnienia","font":13,"spacing":0.13,"w":169,"goW":342,"h":34,"briefing":true,"tiles":5,"kept":true,"stock":2,"screen":true}
+  booster   hard (d4+d5)   EKSTREMALNA (d5)   — casual bot, 22 missions × 2
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":55,"d5":60},"time":{"all":75,"d5":75},"start":{"all":80,"d5":70},"sprint":{"all":80,"d5":85},"magnet":{"all":64,"d5":65}}
+PASS  English: the impulse / portal chips and lines are translated  — M11 PULSE PARK EASY ★ ★ ★ First Pulse NELA The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost. MISSION GOAL 1 Swallow 14 energy fragments IMPULSE GATES A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Th
+PASS  wide 1366×768: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1440×900: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1920×1080: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 960×540: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1180×820: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+=== v22 two modes (no energy, independent Arena/Dzielnice, first-round coach, prisms) ===
+PASS  tutorial: the M00 mission, its coach card and Arena's campaign discovery gate are gone
+PASS  first launch: welcome card, GRAJ = an Arena round at once (no tutorial, no setup screen)  — {"first":true,"welcome":true,"mode":"arena","playing":true,"setup":false,"types":["capsule","fragment","heavy","landmark","marker","node","prop","pylon","structure","tower","vehicle"],"kampaniaIntro":"KAMPANIA","onCampaign":true,"m01":true,"navShown":true,"firstAfter":false,"dzNew":false}
+PASS  first launch: after the round the campaign introduces itself once ("KAMPANIA" → Dzielnice), M01 playable  — {"first":true,"welcome":true,"mode":"arena","playing":true,"setup":false,"types":["capsule","fragment","heavy","landmark","marker","node","prop","pylon","structure","tower","vehicle"],"kampaniaIntro":"KAMPANIA","onCampaign":true,"m01":true,"navShown":true,"firstAfter":false,"dzNew":false}
+PASS  independence: 30 missions done change nothing in an Arena round (same map, rivals, difficulty)  — {"fresh":{"objects":"5161:299","tiers":11,"t":0,"bots":"14,14,15,16,17","perks":0,"core":"1:0","vehicleAt18":false,"vehicleAt46":true,"wyz":false},"campaign":{"objects":"5161:299","tiers":11,"t":0,"bots":"14,14,15,16,17","perks":0,"core":"1:0","vehicleAt18":false,"vehicleAt46":true,"wyz":false}}
+PASS  independence: Arena size gates (Tx) come from the hole size only
+PASS  independence: a mission win never charges Core City; Wyzwania wait for Arena rounds, not missions  — {"c0":"1:24","c1":"1:24"}
+PASS  independence: the campaign's trophy skin (Aurora) gives no Arena perk  — 0 perks
+PASS  v22: no runtime errors (arena probe campaign)

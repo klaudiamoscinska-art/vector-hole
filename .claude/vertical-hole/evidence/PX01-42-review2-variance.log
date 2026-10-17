@@ -1,0 +1,74 @@
+# Round 2 variance: checks that failed in PX01-30 but are not touched by PX01 (base = ed9c729, final = game.js dc94d8d9)
+## perf (visual.mjs + arena-bots.mjs, alternating base/final, same machine)
+== base visual run 1
+PASS  perf: low-end level renders a full frame (rasterized) under 12 ms median  — {"gfx0":{"median":8.13,"max":14.17},"gfx2":{"median":31,"max":41.9}}
+== final visual run 1
+PASS  perf: low-end level renders a full frame (rasterized) under 12 ms median  — {"gfx0":{"median":8.67,"max":12.9},"gfx2":{"median":25.8,"max":40.7}}
+== base visual run 2
+PASS  perf: low-end level renders a full frame (rasterized) under 12 ms median  — {"gfx0":{"median":7.23,"max":11.63},"gfx2":{"median":28.2,"max":36.5}}
+== final visual run 2
+PASS  perf: low-end level renders a full frame (rasterized) under 12 ms median  — {"gfx0":{"median":7.13,"max":14.2},"gfx2":{"median":24.33,"max":37.23}}
+== base arena-bots run 1
+FAIL  perf: low-end quality level renders under 12 ms (software GPU)  — gfx0 avg 12.11 ms · gfx2 avg 33.73 ms
+== final arena-bots run 1
+PASS  perf: low-end quality level renders under 12 ms (software GPU)  — gfx0 avg 11.3 ms · gfx2 avg 35.90 ms
+== base arena-bots run 2
+FAIL  perf: low-end quality level renders under 12 ms (software GPU)  — gfx0 avg 14.48 ms · gfx2 avg 33.87 ms
+== final arena-bots run 2
+FAIL  perf: low-end quality level renders under 12 ms (software GPU)  — gfx0 avg 12.59 ms · gfx2 avg 31.68 ms
+== base arena-bots run 3
+FAIL  perf: low-end quality level renders under 12 ms (software GPU)  — gfx0 avg 12.26 ms · gfx2 avg 31.71 ms
+== final arena-bots run 3
+PASS  perf: low-end quality level renders under 12 ms (software GPU)  — gfx0 avg 11.25 ms · gfx2 avg 32.60 ms
+
+## v18 booster balance (casual bot, 2 runs x 22 missions per config)
+--- v18-base-1
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":66,"d5":60},"time":{"all":75,"d5":75},"start":{"all":66,"d5":50},"sprint":{"all":70,"d5":75},"magnet":{"all":70,"d5":75}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":66,"d5":60},"time":{"all":75,"d5":75},"start":{"all":66,"d5":50},"sprint":{"all":70,"d5":75},"magnet":{"all":70,"d5":75}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":70,"d5":75},"time":{"all":75,"d5":75}}
+--- v18-final-1
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":55,"d5":55},"time":{"all":68,"d5":50},"start":{"all":64,"d5":65},"sprint":{"all":68,"d5":80},"magnet":{"all":64,"d5":65}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":55,"d5":55},"time":{"all":68,"d5":50},"start":{"all":64,"d5":65},"sprint":{"all":68,"d5":80},"magnet":{"all":64,"d5":65}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":68,"d5":80},"time":{"all":68,"d5":50}}
+--- v18-base-2
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":55,"d5":60},"time":{"all":82,"d5":85},"start":{"all":80,"d5":80},"sprint":{"all":73,"d5":85},"magnet":{"all":57,"d5":55}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":55,"d5":60},"time":{"all":82,"d5":85},"start":{"all":80,"d5":80},"sprint":{"all":73,"d5":85},"magnet":{"all":57,"d5":55}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":73,"d5":85},"time":{"all":82,"d5":85}}
+--- v18-final-2
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":57,"d5":55},"time":{"all":84,"d5":85},"start":{"all":77,"d5":60},"sprint":{"all":80,"d5":75},"magnet":{"all":64,"d5":75}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":57,"d5":55},"time":{"all":84,"d5":85},"start":{"all":77,"d5":60},"sprint":{"all":80,"d5":75},"magnet":{"all":64,"d5":75}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":80,"d5":75},"time":{"all":84,"d5":85}}
+--- v18-base-3
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":59,"d5":65},"time":{"all":82,"d5":85},"start":{"all":86,"d5":85},"sprint":{"all":75,"d5":75},"magnet":{"all":59,"d5":70}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":59,"d5":65},"time":{"all":82,"d5":85},"start":{"all":86,"d5":85},"sprint":{"all":75,"d5":75},"magnet":{"all":59,"d5":70}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":75,"d5":75},"time":{"all":82,"d5":85}}
+--- v18-final-3
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":50,"d5":60},"time":{"all":77,"d5":70},"start":{"all":64,"d5":60},"sprint":{"all":75,"d5":70},"magnet":{"all":55,"d5":60}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":50,"d5":60},"time":{"all":77,"d5":70},"start":{"all":64,"d5":60},"sprint":{"all":75,"d5":70},"magnet":{"all":55,"d5":60}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":75,"d5":70},"time":{"all":77,"d5":70}}
+--- v18 base / final extra pair (first attempt)
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":59,"d5":65},"time":{"all":80,"d5":85},"start":{"all":77,"d5":60},"sprint":{"all":70,"d5":80},"magnet":{"all":70,"d5":75}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":59,"d5":65},"time":{"all":80,"d5":85},"start":{"all":77,"d5":60},"sprint":{"all":70,"d5":80},"magnet":{"all":70,"d5":75}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":70,"d5":80},"time":{"all":80,"d5":85}}
+(final extra pair: 1 FAIL each-lift, start lift -4; file was written outside the evidence dir by mistake: /v18-final.txt)
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":59,"d5":55},"time":{"all":84,"d5":80},"start":{"all":55,"d5":55},"sprint":{"all":73,"d5":65},"magnet":{"all":57,"d5":55}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":59,"d5":55},"time":{"all":84,"d5":80},"start":{"all":55,"d5":55},"sprint":{"all":73,"d5":65},"magnet":{"all":57,"d5":55}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":73,"d5":65},"time":{"all":84,"d5":80}}
+
+## difficulty (expert + casual, 2 runs x 4)
+--- base
+PASS  difficulty: every mission is beatable (the expert bot clears almost every one in 2 tries)  — never cleared: M140 M146 M215 M218 M223 M232 M240
+PASS  difficulty: the expert bot clears ≥ 85% of all attempts  — 91%
+PASS  difficulty: easy missions are friendly (casual ≥ 80% at ŁATWA)  — 100%
+PASS  difficulty: the ladder rises (casual pass rate falls level by level)  — 100% → 98% → 89% → 56% → 47%
+PASS  difficulty: the hardest missions stop a casual player about half the time (casual ≤ 55% at EKSTREMALNA)  — 47%
+PASS  difficulty: not everything clears on the first try (casual fails ≥ 25% of Rozdział II)  — 66%
+PASS  difficulty: no runtime errors
+--- final (written to /diff-final.txt by mistake)
+PASS  difficulty: every mission is beatable (the expert bot clears almost every one in 2 tries)  — never cleared: M120 M167 M171 M226
+PASS  difficulty: the expert bot clears ≥ 85% of all attempts  — 92%
+PASS  difficulty: easy missions are friendly (casual ≥ 80% at ŁATWA)  — 100%
+PASS  difficulty: the ladder rises (casual pass rate falls level by level)  — 100% → 100% → 91% → 62% → 43%
+PASS  difficulty: the hardest missions stop a casual player about half the time (casual ≤ 55% at EKSTREMALNA)  — 43%
+PASS  difficulty: not everything clears on the first try (casual fails ≥ 25% of Rozdział II)  — 68%
+PASS  difficulty: no runtime errors

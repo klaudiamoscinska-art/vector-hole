@@ -1,0 +1,93 @@
+--- game.js	2026-10-17 16:45:26.654947142 +0000
++++ game.js	2026-10-17 15:58:25.430514637 +0000
+@@ -1929,7 +1929,7 @@
+     let remote = null;
+     // PX01: an account copy this version can't read in full (newer game,
+     // broken) is left exactly as it is -- no mirror is installed over it.
+-    if (raw) { try { remote = parseSaveString(raw); } catch (e) { this.game.analytics.track('cloud_save', { restored: false, unreadable: e.code || 'corrupt' }); return; } }
++    if (raw != null) { try { remote = parseSaveString(raw); } catch (e) { this.game.analytics.track('cloud_save', { restored: false, unreadable: e.code || 'corrupt' }); return; } }
+     // A local save the guard holds back is never mirrored up either; a
+     // broken one may be replaced by a readable account copy (its bytes are
+     // kept under the rescue key).
+@@ -4080,7 +4080,8 @@
+     return defaultSave();
+   }
+   SAVE_GUARD.seen = raw;
+-  if (!raw) return defaultSave();
++  // No key at all is a new player; an existing key, even an empty one, is a save.
++  if (raw === null) return defaultSave();
+   let parsed;
+   try { parsed = JSON.parse(raw); } catch (e) { parsed = undefined; }
+   const res = parsed === undefined ? { save: defaultSave(), status: 'corrupt', issues: ['JSON'] } : readSave(parsed);
+@@ -4116,7 +4117,7 @@
+   try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
+   if (current !== SAVE_GUARD.seen) { markSaveStale(); return false; }
+   if (SAVE_GUARD.backupPending) {
+-    if (current && !storeCopy(saveBackupKey(), current)) return false;
++    if (current !== null && !storeCopy(saveBackupKey(), current)) return false;
+     SAVE_GUARD.backupPending = false;
+   }
+   if (opts.touch !== false && save.meta) save.meta.savedAt = Date.now();
+@@ -4127,7 +4128,8 @@
+     SAVE_GUARD.seen = sealed;
+     stored = true;
+   } catch (e) { /* storage unavailable / full: the old bytes stay */ }
+-  if (SAVE_MIRROR && sealed && opts.mirror !== false && !DEV.sandbox) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
++  // Only what reached local storage goes to the cloud copy.
++  if (SAVE_MIRROR && stored && opts.mirror !== false && !DEV.sandbox) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
+   return stored;
+ }
+ 
+@@ -4145,7 +4147,7 @@
+   if (SAVE_GUARD.state === 'ok') return true;
+   let current;
+   try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
+-  if (current && !storeCopy(saveRescueKey(), current)) return false;
++  if (current !== null && !storeCopy(saveRescueKey(), current)) return false;
+   SAVE_GUARD.state = 'ok';
+   SAVE_GUARD.issues = [];
+   SAVE_GUARD.seen = current;
+@@ -9019,12 +9021,13 @@
+    *  state (active screens, cached campaign progress, etc.) re-initializes
+    *  from the fresh save exactly like a real first launch would. */
+   resetProfile() {
++    // PX01: a save the guard held back (newer version, broken, other tab)
++    // is kept under the rescue key even on an explicit reset -- and if that
++    // copy can't be made, nothing is deleted (local, cloud) and nothing reloads.
++    if (!saveWritable() && !releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
+     this.analytics.track('profile_reset', {});
+     // v23: in the dev panel's test mode only the test save goes.
+     if (!DEV.sandbox) this.monetization.clearCloudSave();
+-    // PX01: a save the guard held back (newer version, broken, other tab)
+-    // is kept under the rescue key even on an explicit reset.
+-    if (!saveWritable()) releaseSaveGuard();
+     localStorage.removeItem(SAVE_SLOT);
+     location.reload();
+   }
+@@ -9377,7 +9380,7 @@
+   /** PX01: tells the player why progress isn't being saved and offers the
+    *  only safe ways out (each shown once per session). */
+   showSaveGuardNotice(kind = SAVE_GUARD.state) {
+-    if (kind === 'ok' || kind === 'unavailable') return;
++    if (kind === 'ok') return;
+     if (kind !== 'rescueFailed') {
+       if (this.saveGuardShown === kind) return;
+       this.saveGuardShown = kind;
+@@ -9393,6 +9396,7 @@
+       future: { title: 'Zapis z nowszej wersji gry', body: ['Twój postęp zapisała nowsza wersja Vector Hole. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.', keep], action: { label: 'ODŚWIEŻ', onClick: reload } },
+       corrupt: { title: 'Zapis jest uszkodzony', body: ['Nie udało się odczytać zapisanego postępu. Gra go nie usunęła i nic na nim nie zapisze bez Twojej decyzji.', 'Możesz wczytać kod kopii zapasowej (Profil → Kopia zapasowa) albo zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.', keep], action: { label: 'ZACZNIJ OD NOWA', onClick: repair } },
+       invalid: { title: 'Część zapisu jest uszkodzona', body: ['Postęp jest wczytany, ale część danych zapisu ma zły format. Gra niczego nie nadpisze bez Twojej decyzji.', 'NAPRAW ZAPIS zachowa wczytany postęp, a oryginał odłoży jako kopię.', keep], action: { label: 'NAPRAW ZAPIS', onClick: repair } },
++      unavailable: { title: 'Zapis nie działa', body: ['Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie usunie ani nie nadpisze.', keep, 'Zezwól tej stronie na przechowywanie danych w ustawieniach przeglądarki i odśwież stronę.'], action: { label: 'ODŚWIEŻ', onClick: reload } },
+       stale: { title: 'Gra jest otwarta w innej karcie', body: ['Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.', 'Odśwież stronę, aby grać dalej z aktualnym postępem.'], action: { label: 'ODŚWIEŻ', onClick: reload } },
+       rescueFailed: { title: 'Brak miejsca na kopię', body: ['Przeglądarka nie pozwoliła odłożyć kopii obecnego zapisu, więc nic nie zostało zmienione. Zwolnij miejsce i spróbuj ponownie.'] }
+     };
+@@ -17385,6 +17389,9 @@
+   "Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.": "Progress changed in another tab or window. This tab won't save anything, so the newer progress isn't overwritten.",
+   "Odśwież stronę, aby grać dalej z aktualnym postępem.": "Reload the page to keep playing with your current progress.",
+   "Brak miejsca na kopię": "No room for a copy",
++  "Zapis nie działa": "Saving doesn't work",
++  "Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie usunie ani nie nadpisze.": "The browser doesn't allow the saved progress to be read (e.g. private mode or blocked site data). The game won't delete or overwrite anything.",
++  "Zezwól tej stronie na przechowywanie danych w ustawieniach przeglądarki i odśwież stronę.": "Allow this site to store data in your browser settings and reload the page.",
+   "Przeglądarka nie pozwoliła odłożyć kopii obecnego zapisu, więc nic nie zostało zmienione. Zwolnij miejsce i spróbuj ponownie.": "The browser didn't allow a copy of the current save to be set aside, so nothing was changed. Free up some space and try again.",
+   "Ten kod pochodzi z nowszej wersji gry. Odśwież stronę, aby wczytać aktualną wersję, i spróbuj ponownie.": "This code comes from a newer version of the game. Reload the page to load the current version, then try again.",
+   "ZACZNIJ RUNDĘ OD NOWA": "RESTART ROUND",

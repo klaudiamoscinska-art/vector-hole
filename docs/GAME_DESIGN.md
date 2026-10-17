@@ -405,6 +405,22 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   zapis z większym postępem) + **kopia zapasowa** w Profilu: kod `VH1.…` do
   skopiowania i wczytania na innym urządzeniu. Gra prosi przeglądarkę
   o trwałe przechowywanie danych.
+- **Ochrona zapisu (PX01):** gra nigdy po cichu nie nadpisuje zapisu, którego
+  nie umie w pełni odczytać — ani przy wczytaniu, ani żadnym późniejszym
+  autozapisem. Zapis z nowszej wersji gry („Zapis z nowszej wersji gry” →
+  ODŚWIEŻ), uszkodzony („Zapis jest uszkodzony” → ZACZNIJ OD NOWA albo kod
+  kopii) albo z częścią danych w złym formacie („Część zapisu jest
+  uszkodzona” → NAPRAW ZAPIS) gra pokazuje z pamięci i nic nie zapisuje,
+  dopóki gracz sam nie wybierze wyjścia; wtedy oryginał trafia pod klucz
+  `vectorHoleSave_v1.rescue`. Migracja starszego zapisu zapisuje się dopiero
+  po sprawdzeniu wyniku i po kopii oryginału pod `vectorHoleSave_v1.bak`.
+  Gdy gra jest otwarta w dwóch kartach, karta ze starszym stanem przestaje
+  zapisywać i prosi o odświeżenie („Gra jest otwarta w innej karcie”).
+  Kopia w chmurze portalu, której ta wersja nie odczyta, zostaje nietknięta,
+  a do chmury trafia tylko zapis, który udało się zapisać lokalnie. Gdy
+  przeglądarka nie pozwala odczytać danych, gra mówi „Zapis nie działa” i nic
+  nie zapisuje. Reset w Profilu zablokowanego zapisu wymaga udanej kopii
+  `.rescue` — inaczej nic nie jest usuwane.
 
 ## 6. QA (boty)
 

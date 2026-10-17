@@ -1,0 +1,56 @@
+# PX01 git state AFTER work (2026-10-17)
+branch: px01-save-safety (local only, not pushed); HEAD: ed9c729c3ef865f0e01c761d86de18ff58e4b70b (no commit made)
+git status --short:
+ M CLAUDE.md
+ M docs/CHANGELOG.md
+ M docs/GAME_DESIGN.md
+ M game.js
+ M qa/README.md
+ M qa/run-all.mjs
+?? .claude/vertical-hole/evidence/
+?? VH_PREFLIGHT_MANIFEST.json
+?? VH_PREFLIGHT_REPORT.md
+?? qa/save-safety.mjs
+
+untracked evidence files:
+?? .claude/vertical-hole/evidence/PX01-00-git-before.log
+?? .claude/vertical-hole/evidence/PX01-10-repro-base-early.log
+?? .claude/vertical-hole/evidence/PX01-11-repro-base-final-suite.log
+?? .claude/vertical-hole/evidence/PX01-20-snapshot-before-tests.log
+?? .claude/vertical-hole/evidence/PX01-21-code-hashes-before-tests.txt
+?? .claude/vertical-hole/evidence/PX01-22-code-hashes-after-tests.txt
+?? .claude/vertical-hole/evidence/PX01-30-qa-run-all.log
+?? .claude/vertical-hole/evidence/PX01-30a-qa-run-all-superseded.log
+?? .claude/vertical-hole/evidence/PX01-31-save-safety-final.log
+?? .claude/vertical-hole/evidence/PX01-31a-save-safety-superseded.log
+?? .claude/vertical-hole/evidence/PX01-40-v18-balance-variance.log
+?? .claude/vertical-hole/evidence/PX01-41-v20-m11-variance.log
+?? .claude/vertical-hole/evidence/PX01-50-diff.patch
+?? .claude/vertical-hole/evidence/PX01-51-diffstat.log
+?? .claude/vertical-hole/evidence/PX01-60-CORE-ENERGY.log
+?? .claude/vertical-hole/evidence/PX01-61-CORE-LOOP.log
+?? .claude/vertical-hole/evidence/PX01-62-CORE-ISOLATION.log
+?? .claude/vertical-hole/evidence/PX01-63-SAVE-07-dev-isolation.log
+?? .claude/vertical-hole/evidence/PX01-64-CORE-ISOLATION-static.log
+?? .claude/vertical-hole/evidence/PX01-90-git-after.log
+?? .claude/vertical-hole/evidence/PX01-fixtures/badCampaign.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/badCoins.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/badOwned.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/badStats.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/current.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/future.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/partial.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/truncated.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/v1.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/v10.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/v12.txt
+?? .claude/vertical-hole/evidence/PX01-fixtures/v5.txt
+?? .claude/vertical-hole/evidence/PX01-save-safety.mjs.txt
+
+ CLAUDE.md           |   5 +-
+ docs/CHANGELOG.md   |  23 ++++
+ docs/GAME_DESIGN.md |  12 +++
+ game.js             | 306 ++++++++++++++++++++++++++++++++++++++++++++--------
+ qa/README.md        |   1 +
+ qa/run-all.mjs      |   3 +-
+ 6 files changed, 301 insertions(+), 49 deletions(-)
