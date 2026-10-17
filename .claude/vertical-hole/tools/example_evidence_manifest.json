@@ -1,0 +1,14 @@
+{
+  "revision": "REPLACE_WITH_ACTUAL_GIT_HEAD",
+  "git_status_before": "REPLACE_WITH_ACTUAL_GIT_STATUS_BEFORE",
+  "git_status_after": "REPLACE_WITH_ACTUAL_GIT_STATUS_AFTER",
+  "source_snapshot_sha256": "REPLACE_WITH_ACTUAL_SNAPSHOT_SHA256",
+  "source_snapshot_file_count": 0,
+  "checks": {
+    "CORE-ENERGY": {"status": "NOT RUN", "reason": "Wykonaj testy aktualnej gry; przy PASS/FAIL dodaj command/environment/evidence/snapshot_sha256"},
+    "CORE-ISOLATION": {"status": "NOT RUN", "reason": "Wykonaj testy aktualnej gry"},
+    "CORE-LOOP": {"status": "NOT RUN", "reason": "Wykonaj testy aktualnej gry"},
+    "CORE-SAVE": {"status": "NOT RUN", "reason": "Wykonaj testy aktualnej gry"},
+    "TOOLS-DEV": {"status": "NOT RUN", "reason": "Przetestuj osobne dev i release artefakty, izolację zapisu oraz fizyczny telefon"}
+  }
+}

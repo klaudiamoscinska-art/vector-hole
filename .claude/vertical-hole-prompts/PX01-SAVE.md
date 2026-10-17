@@ -1,0 +1,17 @@
+/vh-save-security W aktualnym repo Vertical Hole wykonaj WYŁĄCZNIE naprawę VH-03 — bezpieczne odczyty i migracje zapisów, pod warunkiem potwierdzenia przez P00. Nie wykonuj kolejnych promptów w tej sesji.
+
+# PX01 — Ochrona zapisów przed przypadkowym nadpisaniem (VH-03, P1 CORE)
+**Skille pomocnicze:** `vh-game-engineer`, `vh-progression-economy`, `vh-qa-automation`.
+
+1. Przeczytaj aktualny `VH_PREFLIGHT_REPORT.md` z P00, `CLAUDE.md`, `.claude/vertical-hole/{SAVE_MIGRATION_CONTRACT,CHANGE_SAFETY,EVIDENCE_FRESHNESS,PREFLIGHT_GATES}.md`; sprawdź `git status --short`, snapshot, `loadSave()`, `saveGame()`, localStorage, obecne wersje schematów. **Najpierw zweryfikuj VH-03 na aktualnym kodzie; jeśli nie ma błędu → PASS/NO CHANGE, nie refaktoruj na zapas.** Jeśli dowodu nie ma → `NOT RUN` i diagnostyka, nie pozorny PASS.
+2. Zanim zmienisz kod, przygotuj odseparowane fixture'y zapisów: prawidłowy bieżący; dawne wspierane; brak danych; uszkodzony JSON; błędny kształt; wersja przyszła/nieobsługiwana; częściowo zmigrowany; zapis z historycznymi monetami, XP, nagrodami, unlockami, zakupami i pryzmatami. Testy na kopii, **bez czyszczenia realnych zapisów użytkowników**, bez używania prywatnych danych.
+3. Jeśli zidentyfikowano zagrożenie: zrób najmniejszą odwracalną zmianę w odczycie/migracji. Dla nieznanego/future/malformed schematu: nie zapisuj defaultów na oryginalnym kluczu ani nie usuwaj wejścia. Oddziel walidację od commit; utrzymuj oryginalne bajty do bezpiecznej migracji, plan przywrócenia i atomowość na tyle, na ile pozwala storage. Nowy zapis może być wykonany dopiero po potwierdzonym, prawidłowym upgrade; operacja ma być idempotentna i chronić uprawnienia oraz salda. Dla nieobsługiwanego zapisu czytelny stan błędu, nie automatyczny reset.
+4. Weryfikacja SAVE-01..09, szczególnie SAVE-08 (future schema nie ulega nadpisaniu) i SAVE-09 (malformed/schema mismatch nie ulega nadpisaniu), ponowny odczyt po migracji, kilkukrotny reload oraz scenariusz błędu/zamknięcia między odczytem a zapisem. Sprawdź zachowanie istniejących własności Areny/Dzielnic; nie wprowadzaj nowej ekonomii ani energii.
+5. Zapisz dokładny diff, wyniki `PASS/FAIL/NOT RUN`, fixture'y i logi w `.claude/vertical-hole/evidence/`, fingerprint finalnych źródeł zgodnie z EVIDENCE_FRESHNESS. Jeśli poprawka wymaga destrukcyjnego resetu/downgrade → **STOP i propozycja decyzji właścicielki**, nie realizuj go.
+
+**Kryterium zamknięcia:** `CORE-SAVE=PASS` tylko na finalnym snapshotcie przy udokumentowanych testach zapisu i braku utraty danych. **Nie publikuj, nie pushuj, nie przerabiaj niezwiązanych systemów.** Po zmianie ponów adekwatną część P00.
+
+**Raport końcowy (obowiązkowy):** podaj dla każdego testu `PASS/FAIL/NOT RUN` z dowodem lub brakiem dowodu, zaktualizowane pliki, polecenia, ewentualny rollback oraz stan odpowiedniej bramki. Jeśli coś nadal jest `FAIL` albo `NOT RUN`, nie deklaruj ukończenia. **Nie publikuj ani nie pushuj bez zgody właścicielki.**
+
+**Bezpieczny fail-closed w całej ścieżce startowej:**
+Testuj nie tylko `loadSave`, ale wszystkie późniejsze automatyczne `saveGame`, onboarding, reward, profile, autosave i reinitializację po błędzie. Przy nieznanej wersji albo zniekształconym zapisie żaden z tych kroków nie może cicho nadpisać surowych bajtów na oryginalnym kluczu. Sprawdź dwa równoległe okna, konflikty local/cloud (jeśli występują) i rollback starego klienta. `CORE-SAVE=PASS` tylko po takich testach, bez przyjmowania samej poprawki `loadSave()` za rozwiązanie.
