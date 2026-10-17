@@ -1,10 +1,19 @@
 name: Deploy to GitHub Pages
 
+# Production comes only from main. The site is a generated release/ folder
+# built from an allowlist of the game's runtime files, never the repo root
+# (.claude/, docs/, qa/, design/ and other dev files are not published).
+# Changes outside the published files don't redeploy; workflow_dispatch on
+# main redeploys by hand.
 on:
   push:
     branches:
       - main
-      - "claude/**"
+    paths:
+      - index.html
+      - style.css
+      - game.js
+      - .github/workflows/deploy-pages.yml
   workflow_dispatch:
 
 permissions:
@@ -18,6 +27,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -25,14 +35,43 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Build release folder from the allowlist
+        run: |
+          set -euo pipefail
+          # The game runs from exactly these files (icon and fonts are inline data: URIs).
+          RELEASE_FILES="index.html style.css game.js"
+          rm -rf release
+          mkdir release
+          for f in $RELEASE_FILES; do
+            test -f "$f" || { echo "::error::missing release file $f"; exit 1; }
+            cp "$f" "release/$f"
+          done
+          grep -q 'href="style.css"' release/index.html || { echo "::error::index.html no longer loads style.css"; exit 1; }
+          grep -q 'src="game.js"' release/index.html || { echo "::error::index.html no longer loads game.js"; exit 1; }
+          actual="$(cd release && find . -mindepth 1 -printf '%P\n' | sort)"
+          expected="$(printf '%s\n' $RELEASE_FILES | sort)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::release/ holds files outside the allowlist"
+            echo "$actual"
+            exit 1
+          fi
+          {
+            echo "### Release manifest"
+            echo '```'
+            (cd release && sha256sum $RELEASE_FILES)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: release
 
       - name: Deploy to GitHub Pages
         id: deployment

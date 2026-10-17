@@ -48,7 +48,7 @@ Bots tick `game.update()` in virtual time (RAF detached, `performance.now` advan
 
 ## Deployment
 
-Pushing to `main` runs `.github/workflows/deploy-pages.yml`, which uploads the repo root as-is to GitHub Pages. The workflow also runs on `claude/**` branches, but the `github-pages` environment only accepts deploys from `main`. `.nojekyll` stops Jekyll processing.
+`.github/workflows/deploy-pages.yml` deploys GitHub Pages from `main` only: on a push to `main` that touches `index.html`, `style.css`, `game.js` or the workflow itself (or by hand via `workflow_dispatch` on `main`), it copies an allowlist of exactly those three runtime files into a generated `release/` folder and publishes that folder — never the repo root, so `.claude/`, `docs/`, `qa/`, `design/` and other dev files are not served. A new runtime file must be added to `RELEASE_FILES` and to `paths`. Other branches never run it; the `github-pages` environment also only accepts `main`. `.nojekyll` is a leftover from branch-based Pages and isn't published.
 
 ## Architecture
 

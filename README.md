@@ -35,7 +35,7 @@ Trzy pliki, zero zależności, bez kroku budowania:
 python3 -m http.server 8000   # potem http://localhost:8000/index.html
 ```
 
-Push na `main` publikuje grę na GitHub Pages (`.github/workflows/deploy-pages.yml`).
+Push na `main` zmieniający `index.html`, `style.css`, `game.js` lub workflow publikuje grę na GitHub Pages (`.github/workflows/deploy-pages.yml`). Publikowany jest wyłącznie wygenerowany katalog z tymi trzema plikami, nie całe repo.
 
 ## Testy (boty QA)
 
