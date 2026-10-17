@@ -1,0 +1,21 @@
+# PX01 git state AFTER review round 2 (2026-10-17)
+branch: px01-save-safety (local only, not pushed); HEAD: ed9c729c3ef865f0e01c761d86de18ff58e4b70b (no commit made)
+git status --short:
+ M CLAUDE.md
+ M docs/CHANGELOG.md
+ M docs/GAME_DESIGN.md
+ M game.js
+ M qa/README.md
+ M qa/run-all.mjs
+?? .claude/vertical-hole/evidence/
+?? VH_PREFLIGHT_MANIFEST.json
+?? VH_PREFLIGHT_REPORT.md
+?? qa/save-safety.mjs
+
+ CLAUDE.md           |   5 +-
+ docs/CHANGELOG.md   |  29 +++++
+ docs/GAME_DESIGN.md |  16 +++
+ game.js             | 315 ++++++++++++++++++++++++++++++++++++++++++++--------
+ qa/README.md        |   1 +
+ qa/run-all.mjs      |   3 +-
+ 6 files changed, 319 insertions(+), 50 deletions(-)

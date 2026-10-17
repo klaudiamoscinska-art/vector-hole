@@ -1,0 +1,95 @@
+PASS  SAVE-01 v12 with energy -> v13: no energy, unlocks and missions kept, migration committed  — {"v":13,"energy":false,"m00":false,"done":"M01,M02,M03","wyz":true,"warsztat":true,"bak":true,"stored":13}
+PASS  SAVE-01 the original v12 bytes are kept under the backup key before the migration commit  — bak 1747 B
+PASS  SAVE-01 reading an already-migrated save writes nothing (no write on read)  — {"writes":0,"same":true}
+PASS  save-safety: no runtime errors (SAVE-01)
+PASS  SAVE-02 coins, prisms, skins, trails, effects, finishes, boosters, purchases, login/chest claims, star chests, level kept  — {"c":4321,"p":77,"o":["rainbow","cyan","green"],"a":{"owned":["none","spark"],"selected":"spark"},"e":{"owned":["classic","pixel_burst"],"selected":"pixel_burst"},"od":{"owned":["classic","fala"],"selected":"fala"},"b":{"time":2,"start":1,"magnet":3,"shield":0,"sprint":1,"gift":true,"sprintGift":tru
+PASS  SAVE-02 three reloads: identical balances and items (no reward granted twice)  — 561,561,561,561
+PASS  save-safety: no runtime errors (SAVE-02)
+PASS  SAVE-03 migrate(migrate(x)) == migrate(x) for v5, v10, v12 and current saves  — {"v12":true,"v10":true,"v5":true,"current":true}
+PASS  save-safety: no runtime errors (SAVE-03)
+PASS  legacy/partial v1: loads as a normal writable save with its coins (50)  — {"state":"ok","coins":50,"v":13,"level":1}
+PASS  save-safety: no runtime errors (v1)
+PASS  legacy/partial v5: loads as a normal writable save with its coins (120)  — {"state":"ok","coins":120,"v":13,"level":1}
+PASS  save-safety: no runtime errors (v5)
+PASS  legacy/partial v10: loads as a normal writable save with its coins (4321)  — {"state":"ok","coins":4321,"v":13,"level":12}
+PASS  save-safety: no runtime errors (v10)
+PASS  legacy/partial current: loads as a normal writable save with its coins (4321)  — {"state":"ok","coins":4321,"v":13,"level":12}
+PASS  save-safety: no runtime errors (current)
+PASS  legacy/partial partial: loads as a normal writable save with its coins (50)  — {"state":"ok","coins":50,"v":13,"level":4}
+PASS  save-safety: no runtime errors (partial)
+PASS  no save: fresh profile, first save is written  — written
+PASS  save-safety: no runtime errors (no save)
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): original bytes unchanged after loading  — identical
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): read-only "future" state with a notice instead of a silent reset  — state future, sheet "Zapis z nowszej wersji gry"
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): the readable progress is playable in memory  — {"coins":4321,"level":12,"done":3}
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-08 future schema 99 (unknown fields, unknown item shape))
+PASS  SAVE-09a coins "500" (rest valid): original bytes unchanged after loading  — identical
+PASS  SAVE-09a coins "500" (rest valid): read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-09a coins "500" (rest valid): the readable progress is playable in memory  — {"coins":500,"level":12,"done":3}
+PASS  SAVE-09a coins "500" (rest valid): original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-09a coins "500" (rest valid): still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-09a coins "500" (rest valid))
+PASS  SAVE-09b owned not an array: original bytes unchanged after loading  — identical
+PASS  SAVE-09b owned not an array: read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-09b owned not an array: the readable progress is playable in memory  — {"coins":4321,"level":12,"done":3}
+PASS  SAVE-09b owned not an array: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-09b owned not an array: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-09b owned not an array)
+PASS  SAVE-09c truncated JSON: original bytes unchanged after loading  — identical
+PASS  SAVE-09c truncated JSON: read-only "corrupt" state with a notice instead of a silent reset  — state corrupt, sheet "Zapis jest uszkodzony"
+PASS  SAVE-09c truncated JSON: the readable progress is playable in memory  — {"coins":0,"level":1,"done":0}
+PASS  SAVE-09c truncated JSON: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-09c truncated JSON: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-09c truncated JSON)
+PASS  SAVE-05 broken campaign, intact Arena data: original bytes unchanged after loading  — identical
+PASS  SAVE-05 broken campaign, intact Arena data: read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-05 broken campaign, intact Arena data: the readable progress is playable in memory  — {"coins":4321,"level":12,"done":0}
+PASS  SAVE-05 broken campaign, intact Arena data: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-05 broken campaign, intact Arena data: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-05 broken campaign, intact Arena data)
+PASS  SAVE-05 broken Arena stats, intact campaign: original bytes unchanged after loading  — identical
+PASS  SAVE-05 broken Arena stats, intact campaign: read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-05 broken Arena stats, intact campaign: the readable progress is playable in memory  — {"coins":4321,"level":12,"done":3}
+PASS  SAVE-05 broken Arena stats, intact campaign: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-05 broken Arena stats, intact campaign: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-05 broken Arena stats, intact campaign)
+PASS  SAVE-09a repair: the player's choice (NAPRAW ZAPIS) keeps the original bytes under the rescue key, then saves  — {"label":"NAPRAW ZAPIS","state":"ok","rescue":true,"stored":{"coins":500,"level":12}}
+PASS  save-safety: no runtime errors (SAVE-09a repair)
+PASS  SAVE-09b repair: the player's choice (NAPRAW ZAPIS) keeps the original bytes under the rescue key, then saves  — {"label":"NAPRAW ZAPIS","state":"ok","rescue":true,"stored":{"coins":4321,"level":12}}
+PASS  save-safety: no runtime errors (SAVE-09b repair)
+PASS  SAVE-09c start over: the player's choice (ZACZNIJ OD NOWA) keeps the original bytes under the rescue key, then saves  — {"label":"ZACZNIJ OD NOWA","state":"ok","rescue":true,"stored":{"coins":0,"level":1}}
+PASS  save-safety: no runtime errors (SAVE-09c start over)
+PASS  SAVE-08 future save: the notice offers a reload, not an overwrite  — {"action":"ODŚWIEŻ"}
+PASS  save-safety: no runtime errors (SAVE-08 notice)
+PASS  SAVE-09d two tabs: the stale tab does not overwrite the newer progress from the other tab  — stored coins 4821 (B wrote 4821, stale A had 4328)
+PASS  SAVE-09d two tabs: the stale tab stops saving and tells the player to reload  — {"state":"stale","title":"Gra jest otwarta w innej karcie"}
+PASS  SAVE-09d a change made behind the tab's back (no storage event) is detected before writing  — {"stored":1,"state":"stale"}
+PASS  save-safety: no runtime errors (SAVE-09d)
+PASS  SAVE-04 QuotaExceededError on every write: original bytes intact, game keeps running from memory  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  save-safety: no runtime errors (SAVE-04 quota)
+PASS  SAVE-09e backup write refused: the migration is not committed over the original (every later save waits for the backup)  — identical
+PASS  SAVE-09e once the backup succeeds, the original is backed up first, then the migrated save is written  — {"bak":true,"v":13}
+PASS  save-safety: no runtime errors (SAVE-09e)
+PASS  SAVE-09f interrupted commit (closed after the backup): original intact, the next start migrates the same way  — {"firstRaw":true,"bakAfterFirst":true,"v":13,"coins":4321}
+PASS  save-safety: no runtime errors (SAVE-09f)
+PASS  SAVE-04 storage that refuses reads: boots, and never writes a blank save over what it could not read  — {"writes":0,"state":"unavailable","game":"PLAYING"}
+PASS  save-safety: no runtime errors (storage denied)
+PASS  SAVE-06 account copy from a newer game version: never overwritten by this device (local saves still work)  — {"remoteSame":true,"localCoins":5147}
+PASS  save-safety: no runtime errors (SAVE-06 account copy from a newer game version)
+PASS  SAVE-06 unreadable account copy: never overwritten by this device (local saves still work)  — {"remoteSame":true,"localCoins":5014}
+PASS  save-safety: no runtime errors (SAVE-06 unreadable account copy)
+PASS  SAVE-06 broken local save + good account copy: restored from the account, broken bytes kept under the rescue key  — {"coins":4321,"level":12,"rescue":true,"state":"ok"}
+PASS  save-safety: no runtime errors (SAVE-06 restore)
+PASS  a cloud adoption never lifts the guard (bytes unchanged)  — {"state":"invalid","same":true}
+PASS  backup code over a held-back save (explicit): original kept under the rescue key, code's save stored  — {"asked":"Ten kod ma mniej postępu","state":"ok","coins":2468,"rescue":true}
+PASS  save-safety: no runtime errors (backup code)
+PASS  EN: the "future" notice is fully in English  — {"title":"Save from a newer version of the game","body":"Your progress was saved by a newer version of Vector Hole. This version won't change it — reload the page to load the current game.Until then you can play, but new
+PASS  EN: the "truncated" notice is fully in English  — {"title":"The save is damaged","body":"The saved progress couldn't be read. The game hasn't deleted it and won't write over it without your decision.You can load a backup code (Profile → Backup) or start over — the damag
+PASS  EN: the "badCoins" notice is fully in English  — {"title":"Part of the save is damaged","body":"Your progress is loaded, but some of the save data has the wrong format. The game won't write over anything without your decision.REPAIR SAVE keeps the loaded progress and s
+PASS  stale tab: a (deferred) cloud adoption does not write over the other tab's save  — {"state":"stale","same":true}
+PASS  locked save + explicit Profil reset: the original is kept under the rescue key  — {"rescue":true,"mainReplaced":true}
+
+92/92 save-safety checks passed
+exit 0

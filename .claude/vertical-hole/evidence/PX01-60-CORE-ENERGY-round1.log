@@ -1,0 +1,17 @@
+# CORE-ENERGY (from PX01-30-qa-run-all.log)
+PASS  pity: after 3 defeats in a row NELA lends one Zegar, once per mission  — {"pity":1,"once":1,"line":"Ta misja daje w kość. Masz ode mnie Zegar (+15 s) — wybierz go w odprawie."}
+PASS  save: v11 -> v12 (-> v13) keeps progress as stars (time medal -> 2nd star, special -> 3rd)  — {"v":13,"m01":3,"m04":5,"m02":1,"metro":true,"energy":false,"chests":4,"boosters":{"time":0,"start":0,"magnet":0,"shield":0,"sprint":0,"gift":false,"sprintGift":false}}
+PASS  save: a save past the finale gets Rozdział II, no chest burst (and no energy field, v22)  — {"metro":true,"energy":false,"chests":4}
+PASS  content: the 16 helper missions all have an eating goal and a helper chip  — {"n":16,"gateSteps":[],"gateWords":[],"noEat":[],"chips":[],"m11":"Pierwszy impuls · Pochłoń 14 fragmentów energii"}
+PASS  content: M11 „Pierwszy impuls” is about eating (owner: "bez sensu")  — Pierwszy impuls · Pochłoń 14 fragmentów energii
+PASS  English: the impulse / portal chips and lines are translated  — M11 PULSE PARK EASY ★ ★ ★ First Pulse NELA The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost. MISSION GOAL 1 Swallow 14 energy fragments IMPULSE GATES A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Th
+=== v22 two modes (no energy, independent Arena/Dzielnice, first-round coach, prisms) ===
+PASS  energy: nothing left in game.js / index.html / style.css (logic, sheet, chip, costs, timer, IAP, ad)
+PASS  unlimited: 15 Arena rounds in a row from GRAJ, no wait, with 0 coins / 0 prisms  — {"arena":15,"daily":6,"missions":15,"chips":0,"coins":1465,"prisms":19,"store":[],"ads":[],"saveKey":false}
+PASS  unlimited: 15 lost mission attempts in a row all start from the briefing GRAJ
+PASS  unlimited: no energy chip/sheet in the DOM, no energy in the save, store or ad placements  — {"chips":0,"store":[],"ads":[],"save":false}
+PASS  save v12 -> v13: energy, discovered types and the M00 tutorial are gone; missions, stars, coins, prisms, Core City kept  — {"v":13,"energy":false,"disc":false,"anyM00":false,"done":"M01,M02,M03","stars":3,"coins":777,"prisms":42,"core":3,"announced":"warsztat,wyzwania,kampania","fresh":"","coach":{"moved":true,"ate":true,"rival":true,"danger":true},"next":"M25","first":false,"wyz":true,"warsztat":true}
+PASS  save v12 -> v13: Wyzwania opened by the old M03 gate stay open; no "arena" unlock left; known player gets no hints / no second-mode intro  — {"v":13,"energy":false,"disc":false,"anyM00":false,"done":"M01,M02,M03","stars":3,"coins":777,"prisms":42,"core":3,"announced":"warsztat,wyzwania,kampania","fresh":"","coach":{"moved":true,"ate":true,"rival":true,"danger":true},"next":"M25","first":false,"wyz":true,"warsztat":true}
+PASS  save: a reload after migrating keeps everything (idempotent)  — {"v":13,"done":"M01,M02,M03","coins":777,"energy":false,"wyz":true}
+PASS  prisms: the prism sheet lists both modes as sources and no energy as a use  — Rzadsza waluta premium. Masz teraz: 10 ◆.Arena: +2 za co 3. rundę, +3 za rekord w Wyzwaniu dniaDzielnice: +3 w każdej Skrzyni gwiazdAwans poziomu, kalendarz logowania, darmowa skrzyniaWydajesz je w Warsztacie na rzadsze Smugi, Efekty i Finisze, na wzmocnienie misji, gdy brakuje monet (4 ◆), i na dodatkowe sekundy w misji.
+PASS  SAVE-01 v12 with energy -> v13: no energy, unlocks and missions kept, migration committed  — {"v":13,"energy":false,"m00":false,"done":"M01,M02,M03","wyz":true,"warsztat":true,"bak":true,"stored":13}

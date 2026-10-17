@@ -1,0 +1,36 @@
+# CORE-ISOLATION static check (round 2): PX01 diff vs the P00 economic channel
+@@ -1930 +1930,7 @@ class Monetization {
+@@ -3738 +3744,6 @@ const SAVE_CURRENCY_CAP = 1e7;
+@@ -3740,2 +3751,8 @@ function sanitizeSave(save) {
+@@ -3744,2 +3761,4 @@ function sanitizeSave(save) {
+@@ -3749,3 +3768,7 @@ function sanitizeSave(save) {
+@@ -3754 +3777 @@ function sanitizeSave(save) {
+@@ -3758 +3781,5 @@ function sanitizeSave(save) {
+@@ -3760,0 +3788,2 @@ function sanitizeSave(save) {
+@@ -3778 +3807,5 @@ function migrateSave(data) {
+@@ -3957,0 +3991,83 @@ function migrateSave(data) {
+@@ -3959,20 +4075,26 @@ function loadSave() {
+@@ -3983 +4105,4 @@ function loadSave() {
+@@ -3989,0 +4115,8 @@ function saveGame(save, opts = {}) {
+@@ -3991 +4124 @@ function saveGame(save, opts = {}) {
+@@ -3995,2 +4128,27 @@ function saveGame(save, opts = {}) {
+@@ -4016 +4174,3 @@ function saveIsAhead(a, b) {
+@@ -4020,9 +4180,3 @@ function parseSaveString(raw) {
+@@ -7586,0 +7741,5 @@ class Game {
+@@ -7738,0 +7898 @@ class Game {
+@@ -8863,0 +9024,4 @@ class Game {
+@@ -9172 +9336 @@ class Game {
+@@ -9196,0 +9361,7 @@ class Game {
+@@ -9208,0 +9380,28 @@ class Game {
+@@ -9958,0 +10158 @@ class Game {
+@@ -17175,0 +17376,21 @@ const I18N_EN = {
+
+NONE — no changed line touches the economy chain
+
+2275:const RUN_TOOLS = [
+7227:    return clamp(s, 45, BASE_SPEED) * (this.tempSpeedMult || 1) * (this.perkSpeedMult || 1) * (this.impulseMult || 1);
+8975:  confirmRunSetup() {
+9849:  grantXp(amount) {
+11337:    if (boosters.includes('sprint')) this.player.perkSpeedMult = CONFIG.boosters.sprintMult;
+12891:    this.player.perkSpeedMult = 1 + this.perk('speed');
+16010:        if (arg === 'sprint') g.player.perkSpeedMult = CONFIG.boosters.sprintMult;

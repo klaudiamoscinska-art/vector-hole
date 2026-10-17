@@ -1,0 +1,8 @@
+ CLAUDE.md           |   5 +-
+ docs/CHANGELOG.md   |  29 +++++
+ docs/GAME_DESIGN.md |  16 +++
+ game.js             | 315 ++++++++++++++++++++++++++++++++++++++++++++--------
+ qa/README.md        |   1 +
+ qa/run-all.mjs      |   3 +-
+ 6 files changed, 319 insertions(+), 50 deletions(-)
+536 qa/save-safety.mjs

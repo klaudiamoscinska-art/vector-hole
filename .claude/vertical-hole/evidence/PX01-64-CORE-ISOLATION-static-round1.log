@@ -1,0 +1,40 @@
+# CORE-ISOLATION static check: PX01 diff vs the P00 economic channel
+## game.js hunks touched by PX01 (function context of every @@ header):
+@@ -1930 +1930,7 @@ class Monetization {
+@@ -3738 +3744,6 @@ const SAVE_CURRENCY_CAP = 1e7;
+@@ -3740,2 +3751,8 @@ function sanitizeSave(save) {
+@@ -3744,2 +3761,4 @@ function sanitizeSave(save) {
+@@ -3749,3 +3768,7 @@ function sanitizeSave(save) {
+@@ -3754 +3777 @@ function sanitizeSave(save) {
+@@ -3758 +3781,5 @@ function sanitizeSave(save) {
+@@ -3760,0 +3788,2 @@ function sanitizeSave(save) {
+@@ -3778 +3807,5 @@ function migrateSave(data) {
+@@ -3957,0 +3991,83 @@ function migrateSave(data) {
+@@ -3959,20 +4075,25 @@ function loadSave() {
+@@ -3983 +4104,4 @@ function loadSave() {
+@@ -3989,0 +4114,8 @@ function saveGame(save, opts = {}) {
+@@ -3991 +4123 @@ function saveGame(save, opts = {}) {
+@@ -3995 +4127,3 @@ function saveGame(save, opts = {}) {
+@@ -3996,0 +4131,22 @@ function saveGame(save, opts = {}) {
+@@ -4016 +4172,3 @@ function saveIsAhead(a, b) {
+@@ -4020,9 +4178,3 @@ function parseSaveString(raw) {
+@@ -7586,0 +7739,5 @@ class Game {
+@@ -7738,0 +7896 @@ class Game {
+@@ -8866,0 +9025,3 @@ class Game {
+@@ -9172 +9333 @@ class Game {
+@@ -9196,0 +9358,7 @@ class Game {
+@@ -9208,0 +9377,27 @@ class Game {
+@@ -9958,0 +10154 @@ class Game {
+@@ -17175,0 +17372,18 @@ const I18N_EN = {
+
+## Do any changed lines mention the P00 channel (perks, RUN_TOOLS, confirmRunSetup, perkSpeedMult, grantXp, coins +=/-=)?
+NONE — no changed line touches the economy chain
+
+## The channel itself is still present (unchanged) in the final game.js:
+2275:const RUN_TOOLS = [
+7225:    return clamp(s, 45, BASE_SPEED) * (this.tempSpeedMult || 1) * (this.perkSpeedMult || 1) * (this.impulseMult || 1);
+8973:  confirmRunSetup() {
+9845:  grantXp(amount) {
+11333:    if (boosters.includes('sprint')) this.player.perkSpeedMult = CONFIG.boosters.sprintMult;
+12887:    this.player.perkSpeedMult = 1 + this.perk('speed');
+16006:        if (arg === 'sprint') g.player.perkSpeedMult = CONFIG.boosters.sprintMult;

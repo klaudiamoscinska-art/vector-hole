@@ -1927,7 +1927,13 @@ class Monetization {
     let raw;
     try { raw = data.getItem(SAVE_KEY); } catch (e) { return; }
     let remote = null;
-    if (raw) { try { remote = parseSaveString(raw); } catch (e) { remote = null; } }
+    // PX01: an account copy this version can't read in full (newer game,
+    // broken) is left exactly as it is -- no mirror is installed over it.
+    if (raw != null) { try { remote = parseSaveString(raw); } catch (e) { this.game.analytics.track('cloud_save', { restored: false, unreadable: e.code || 'corrupt' }); return; } }
+    // A local save the guard holds back is never mirrored up either; a
+    // broken one may be replaced by a readable account copy (its bytes are
+    // kept under the rescue key).
+    if (!saveWritable() && !(SAVE_GUARD.state === 'corrupt' && remote && releaseSaveGuard())) return;
     this.cloudData = data;
     // The mirror goes on only once the winner is in place -- a deferred
     // adoption (mid-round) must not upload the losing local save meanwhile.
@@ -3735,29 +3741,52 @@ function defaultSave() {
  *  no longer crash the game or turn `coins += 30` into string concat.
  *  Numbers are clamped to finite, non-negative, sane caps. */
 const SAVE_CURRENCY_CAP = 1e7;
-function sanitizeSave(save) {
+// PX01: `issues` (optional array) collects every value that had to be
+// changed rather than kept -- a wrong type, an out-of-range number, an
+// object inside a list. loadSave() never writes such a repair on its own
+// (SAVE_GUARD 'invalid'). A missing field or a null (a NaN the game itself
+// once stored) carries no data and is just filled in.
+function sanitizeSave(save, issues) {
   const def = defaultSave();
-  const fix = (val, ref) => {
-    if (Array.isArray(ref)) return Array.isArray(val) ? val.filter(v => v !== null && typeof v !== 'object') : ref;
+  const bad = (path) => { if (issues) issues.push(path); };
+  const fix = (val, ref, path) => {
+    const missing = val === undefined || val === null;
+    if (Array.isArray(ref)) {
+      if (!Array.isArray(val)) { if (!missing) bad(path); return ref; }
+      if (val.some(v => v !== null && typeof v === 'object')) bad(path);
+      return val.filter(v => v !== null && typeof v !== 'object');
+    }
     if (ref === null) return val === undefined ? null : val;
     if (typeof ref === 'object') {
-      const out = (val && typeof val === 'object' && !Array.isArray(val)) ? { ...val } : {};
-      for (const k of Object.keys(ref)) out[k] = fix(out[k], ref[k]);
+      const ok = val && typeof val === 'object' && !Array.isArray(val);
+      if (!ok && !missing) bad(path);
+      const out = ok ? { ...val } : {};
+      for (const k of Object.keys(ref)) out[k] = fix(out[k], ref[k], path + '.' + k);
       return out;
     }
     // Upper bound fits epoch-ms timestamps (freeChest.nextAt etc.).
-    if (typeof ref === 'number') { const n = Number(val); return Number.isFinite(n) ? clamp(n, 0, 1e14) : ref; }
-    if (typeof ref === 'boolean') return typeof val === 'boolean' ? val : ref;
-    if (typeof ref === 'string') return typeof val === 'string' ? val : ref;
+    if (typeof ref === 'number') {
+      const n = Number(val);
+      if (!missing && !(typeof val === 'number' && n >= 0 && n <= 1e14)) bad(path);
+      return Number.isFinite(n) ? clamp(n, 0, 1e14) : ref;
+    }
+    if (typeof ref === 'boolean') { if (!missing && typeof val !== 'boolean') bad(path); return typeof val === 'boolean' ? val : ref; }
+    if (typeof ref === 'string') { if (!missing && typeof val !== 'string') bad(path); return typeof val === 'string' ? val : ref; }
     return val === undefined ? ref : val;
   };
-  const out = fix(save, def);
+  const out = fix(save, def, 'save');
   // Free-form maps keep their own keys (fix() only knows defaultSave's keys).
   for (const k of ['completed', 'medals', 'stars', 'attempts', 'fails', 'pity']) out.campaign[k] = (save.campaign && typeof save.campaign[k] === 'object' && save.campaign[k]) || {};
   for (const k of ['stars', 'attempts', 'fails']) {
-    for (const id of Object.keys(out.campaign[k])) { const v = Number(out.campaign[k][id]); out.campaign[k][id] = Number.isFinite(v) ? clamp(Math.floor(v), 0, k === 'stars' ? 7 : 1e6) : 0; }
+    for (const id of Object.keys(out.campaign[k])) {
+      const raw = out.campaign[k][id], v = Number(raw);
+      if (raw !== null && typeof raw !== 'number') bad(`save.campaign.${k}.${id}`);
+      out.campaign[k][id] = Number.isFinite(v) ? clamp(Math.floor(v), 0, k === 'stars' ? 7 : 1e6) : 0;
+    }
   }
   out.ads.used = (save.ads && typeof save.ads.used === 'object' && save.ads.used) || {};
+  if (out.coins > SAVE_CURRENCY_CAP) bad('save.coins');
+  if (out.prisms > SAVE_CURRENCY_CAP) bad('save.prisms');
   out.coins = Math.min(out.coins, SAVE_CURRENCY_CAP);
   out.prisms = Math.min(out.prisms, SAVE_CURRENCY_CAP);
   if (!out.owned.includes('rainbow')) out.owned.unshift('rainbow');
@@ -3775,7 +3804,11 @@ function sanitizeSave(save) {
  *  schema change instead of replacing this function. */
 function migrateSave(data) {
   if (!data || typeof data !== 'object') return defaultSave();
-  if (!Array.isArray(data.owned) || typeof data.coins !== 'number') return defaultSave();
+  // PX01: a v1 save (no schemaVersion) is only its coins and skins -- if
+  // those aren't readable it isn't a save this game knows, and it is
+  // reported as unreadable (never swapped for a blank one). Versioned saves
+  // are repaired field by field in sanitizeSave() instead.
+  if (!data.schemaVersion && (!Array.isArray(data.owned) || typeof data.coins !== 'number')) throw new Error('unreadable save');
 
   if (!data.schemaVersion) {
     // v1 (no schemaVersion field) -> v2: add currencies/settings/profile stubs
@@ -3955,45 +3988,170 @@ function migrateSave(data) {
   return data;
 }
 
+/* ----------------------- PX01: save guard -----------------------
+   A save this version can't fully read is never written over -- not when
+   it loads, and not by any later autosave (login reward, chest, rounds,
+   missions, cloud mirror), since every write goes through saveGame():
+   - 'future'      written by a newer game (schemaVersion > ours): played
+                   from memory, a reload is offered (a rolled-back game
+                   never downgrades a newer save);
+   - 'corrupt'     not JSON / not a save: a fresh profile in memory;
+   - 'invalid'     readable, but some fields had to be repaired (or the
+                   migration didn't verify): the repaired progress in memory;
+   - 'unavailable' storage refused the read;
+   - 'stale'       another tab (or window) wrote newer progress since this
+                   tab read it: this one stops saving and asks for a reload.
+   Saving resumes only on the player's explicit choice (repair, start over,
+   backup code, Profil reset), after the original bytes are kept under
+   SAVE_SLOT + '.rescue'. A migration commits only after a verified result
+   and after the original bytes are stored under SAVE_SLOT + '.bak'. */
+const SAVE_GUARD = { state: 'ok', issues: [], seen: null, backupPending: false, notify: null };
+const saveBackupKey = () => SAVE_SLOT + '.bak';
+const saveRescueKey = () => SAVE_SLOT + '.rescue';
+function saveWritable() { return SAVE_GUARD.state === 'ok'; }
+
+/** Stores `raw` under `key` and reads it back -- true only if it's there. */
+function storeCopy(key, raw) {
+  try { localStorage.setItem(key, raw); return localStorage.getItem(key) === raw; } catch (e) { return false; }
+}
+
+/** Classifies a parsed save: { save, status, issues }. Never writes. */
+function readSave(parsed) {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { save: defaultSave(), status: 'corrupt', issues: ['not a save'] };
+  // v11 tamper seal: a save edited by hand (devtools) no longer matches its
+  // _sig. It still loads -- the player keeps their progress -- but is
+  // flagged (integrity.tampered, reported once as save_tampered).
+  let tampered = false;
+  if (parsed._sig !== undefined) {
+    const sig = parsed._sig;
+    delete parsed._sig;
+    tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
+  }
+  const v = parsed.schemaVersion;
+  if (v !== undefined && !(Number.isInteger(v) && v >= 2)) return { save: defaultSave(), status: 'corrupt', issues: ['schemaVersion'] };
+  if (v > SAVE_SCHEMA_VERSION) {
+    // Shown from a copy; the stored bytes stay exactly as the newer game wrote them.
+    const save = sanitizeSave(JSON.parse(JSON.stringify(parsed)));
+    return { save, status: 'future', issues: ['schemaVersion ' + v] };
+  }
+  const before = JSON.parse(JSON.stringify(parsed));
+  let save;
+  const issues = [];
+  try { save = sanitizeSave(migrateSave(parsed), issues); } catch (e) { return { save: defaultSave(), status: 'corrupt', issues: ['migration: ' + e.message] }; }
+  if (tampered) save.integrity.tampered = true;
+  if (!issues.length) issues.push(...verifyMigration(before, save));
+  return { save, status: issues.length ? 'invalid' : 'ok', issues };
+}
+
+/** PX01: a migrated save is committed only if it is current, stable (a
+ *  second pass changes nothing) and kept everything the player had. Returns
+ *  the problems found (empty = verified). */
+function verifyMigration(before, after) {
+  const out = [];
+  if (after.schemaVersion !== SAVE_SCHEMA_VERSION) out.push('version');
+  const again = [];
+  let twice = null;
+  try { twice = sanitizeSave(migrateSave(JSON.parse(JSON.stringify(after))), again); } catch (e) { out.push('second pass'); }
+  if (twice && (again.length || JSON.stringify(twice) !== JSON.stringify(after))) out.push('not idempotent');
+  const num = (o, ...p) => p.reduce((x, k) => (x && typeof x === 'object' ? x[k] : undefined), o);
+  for (const p of [['coins'], ['prisms'], ['player', 'level'], ['player', 'xp'], ['stats', 'runsPlayed'], ['stats', 'bestArenaScore'], ['hub', 'coreLevel'], ['login', 'totalClaims'], ['freeChest', 'opened'], ['campaign', 'starChests']]) {
+    const b = num(before, ...p);
+    if (typeof b === 'number' && Number.isFinite(b) && b <= SAVE_CURRENCY_CAP && !(num(after, ...p) >= b)) out.push('lost ' + p.join('.'));
+  }
+  const keepsAll = (b, a, label) => { if (Array.isArray(b) && b.some(x => typeof x !== 'object' && x !== 'arena' && !(a || []).includes(x))) out.push('lost ' + label); };
+  keepsAll(before.owned, after.owned, 'owned');
+  for (const k of ['auras', 'effects', 'overdriveSkins']) keepsAll(before[k] && before[k].owned, after[k] && after[k].owned, k);
+  keepsAll(before.entitlements && before.entitlements.purchased, after.entitlements.purchased, 'purchases');
+  keepsAll(before.campaign && before.campaign.unlockedDistricts, after.campaign.unlockedDistricts, 'districts');
+  if (before.entitlements && before.entitlements.noAds === true && !after.entitlements.noAds) out.push('lost noAds');
+  const done = before.campaign && before.campaign.completed;
+  if (done && typeof done === 'object') Object.keys(done).forEach(id => { if (done[id] && id !== 'M00' && !after.campaign.completed[id]) out.push('lost mission ' + id); });
+  const boosters = before.boosters;
+  if (boosters && typeof boosters === 'object') MISSION_BOOSTERS.forEach(x => { if (typeof boosters[x.id] === 'number' && !(after.boosters[x.id] >= boosters[x.id])) out.push('lost booster ' + x.id); });
+  return out;
+}
+
 function loadSave() {
-  try {
-    const raw = localStorage.getItem(SAVE_SLOT);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // v11 tamper seal: a save edited by hand (devtools) no longer matches
-      // its _sig. It still loads -- the player keeps their progress -- but
-      // is flagged (integrity.tampered, reported once as save_tampered).
-      let tampered = false;
-      if (parsed && typeof parsed === 'object' && parsed._sig !== undefined) {
-        const sig = parsed._sig;
-        delete parsed._sig;
-        tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
-      }
-      const migrated = sanitizeSave(migrateSave(parsed));
-      if (tampered) migrated.integrity.tampered = true;
-      saveGame(migrated, { touch: false, mirror: false });
-      return migrated;
-    }
-  } catch (e) { /* ignore corrupted save */ }
-  return defaultSave();
+  SAVE_GUARD.state = 'ok'; SAVE_GUARD.issues = []; SAVE_GUARD.seen = null; SAVE_GUARD.backupPending = false;
+  let raw;
+  try { raw = localStorage.getItem(SAVE_SLOT); } catch (e) {
+    // Can't see what is stored, so nothing may be written over it.
+    SAVE_GUARD.state = 'unavailable';
+    return defaultSave();
+  }
+  SAVE_GUARD.seen = raw;
+  // No key at all is a new player; an existing key, even an empty one, is a save.
+  if (raw === null) return defaultSave();
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (e) { parsed = undefined; }
+  const res = parsed === undefined ? { save: defaultSave(), status: 'corrupt', issues: ['JSON'] } : readSave(parsed);
+  if (res.status !== 'ok') {
+    SAVE_GUARD.state = res.status;
+    SAVE_GUARD.issues = res.issues;
+    return res.save;
+  }
+  // A verified save: written back only if the migration changed it, and
+  // only after the original bytes are safe under the backup key (the
+  // commit itself is one setItem -- a close in between just redoes it).
+  if (sealSave(res.save) !== raw) {
+    SAVE_GUARD.backupPending = true;
+    saveGame(res.save, { touch: false, mirror: false });
+  }
+  return res.save;
 }
 
 /** Seals and stores the save. v19: also stamps when it was written
  *  (meta.savedAt -- not on a plain load, see loadSave()) and mirrors it to
- *  the portal's cloud save when one is attached (SAVE_MIRROR). */
+ *  the portal's cloud save when one is attached (SAVE_MIRROR). PX01: writes
+ *  nothing while SAVE_GUARD holds a save it can't read, and nothing over
+ *  progress another tab stored since this tab read it. Returns true when
+ *  the save reached storage. */
 let SAVE_MIRROR = null;
 function sealSave(save) {
   const body = JSON.stringify(save);
   return body.slice(0, -1) + `,"_sig":"${fnv1a(SEAL_SALT + body)}"}`;
 }
 function saveGame(save, opts = {}) {
+  if (!saveWritable()) return false;
+  let current;
+  try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
+  if (current !== SAVE_GUARD.seen) { markSaveStale(); return false; }
+  if (SAVE_GUARD.backupPending) {
+    if (current !== null && !storeCopy(saveBackupKey(), current)) return false;
+    SAVE_GUARD.backupPending = false;
+  }
   if (opts.touch !== false && save.meta) save.meta.savedAt = Date.now();
-  let sealed = null;
+  let sealed = null, stored = false;
   try {
     sealed = sealSave(save);
     localStorage.setItem(SAVE_SLOT, sealed);
-  } catch (e) { /* storage unavailable */ }
-  if (SAVE_MIRROR && sealed && opts.mirror !== false && !DEV.sandbox) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
+    SAVE_GUARD.seen = sealed;
+    stored = true;
+  } catch (e) { /* storage unavailable / full: the old bytes stay */ }
+  // Only what reached local storage goes to the cloud copy.
+  if (SAVE_MIRROR && stored && opts.mirror !== false && !DEV.sandbox) { try { SAVE_MIRROR(sealed); } catch (e) { /* portal storage hiccup */ } }
+  return stored;
+}
+
+/** Another tab wrote the save: stop writing from this one. */
+function markSaveStale() {
+  if (SAVE_GUARD.state !== 'ok') return;
+  SAVE_GUARD.state = 'stale';
+  if (SAVE_GUARD.notify) SAVE_GUARD.notify();
+}
+
+/** PX01: the player's explicit choice to save again over a save the guard
+ *  held back -- the stored bytes go to the rescue key first (and must be
+ *  readable there). False (nothing changed) if they can't be kept. */
+function releaseSaveGuard() {
+  if (SAVE_GUARD.state === 'ok') return true;
+  let current;
+  try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
+  if (current !== null && !storeCopy(saveRescueKey(), current)) return false;
+  SAVE_GUARD.state = 'ok';
+  SAVE_GUARD.issues = [];
+  SAVE_GUARD.seen = current;
+  return true;
 }
 
 /** v19: how far a save got -- the safer of two saves is the one with more
@@ -4013,19 +4171,15 @@ function saveIsAhead(a, b) {
   return ((a.meta && a.meta.savedAt) || 0) > ((b.meta && b.meta.savedAt) || 0);
 }
 
-/** v19: parses a stored/exported save string (sealed JSON). */
+/** v19: parses a stored/exported save string (sealed JSON). PX01: only a
+ *  save this version reads in full -- a newer, broken or repaired one throws
+ *  (err.code 'future' / 'corrupt' / 'invalid'), so it never replaces a save. */
 function parseSaveString(raw) {
   const parsed = JSON.parse(raw);
   if (!parsed || typeof parsed !== 'object') throw new Error('not a save');
-  let tampered = false;
-  if (parsed._sig !== undefined) {
-    const sig = parsed._sig;
-    delete parsed._sig;
-    tampered = sig !== fnv1a(SEAL_SALT + JSON.stringify(parsed));
-  }
-  const migrated = sanitizeSave(migrateSave(parsed));
-  if (tampered) migrated.integrity.tampered = true;
-  return migrated;
+  const res = readSave(parsed);
+  if (res.status !== 'ok') { const err = new Error('save not readable: ' + res.status); err.code = res.status; throw err; }
+  return res.save;
 }
 
 /** v19 backup code: "VH1." + base64(UTF-8 sealed save). */
@@ -7584,6 +7738,11 @@ class Game {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.save = loadSave();
+    // PX01: another tab saving newer progress stops this one from saving.
+    SAVE_GUARD.notify = () => { if (!this.running && this.state !== GameState.BOOT) this.showSaveGuardNotice(); };
+    window.addEventListener('storage', (e) => {
+      if ((e.key === SAVE_SLOT || e.key === null) && e.storageArea === localStorage && e.newValue !== SAVE_GUARD.seen) markSaveStale();
+    });
     // v19: ask the browser to keep this site's storage (Chrome/Safari decide
     // silently; Firefox would show a prompt on load, so not there).
     try { if (navigator.storage && navigator.storage.persist && !/Firefox/.test(navigator.userAgent)) navigator.storage.persist().catch(() => {}); } catch (e) { /* no StorageManager */ }
@@ -7736,6 +7895,7 @@ class Game {
     this.analytics.track('session_start', { sessionId: this.sessionId, configVersion: CONFIG.version });
     this.trackRetention();
     this.renderConsentBar();
+    this.showSaveGuardNotice();
     if (this.save.integrity.tampered && !this.save.integrity.reported) {
       this.analytics.track('save_tampered', {});
       this.save.integrity.reported = true;
@@ -8861,6 +9021,10 @@ class Game {
    *  state (active screens, cached campaign progress, etc.) re-initializes
    *  from the fresh save exactly like a real first launch would. */
   resetProfile() {
+    // PX01: a save the guard held back (newer version, broken, other tab)
+    // is kept under the rescue key even on an explicit reset -- and if that
+    // copy can't be made, nothing is deleted (local, cloud) and nothing reloads.
+    if (!saveWritable() && !releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
     this.analytics.track('profile_reset', {});
     // v23: in the dev panel's test mode only the test save goes.
     if (!DEV.sandbox) this.monetization.clearCloudSave();
@@ -9169,7 +9333,7 @@ class Game {
     let save = confirmed;
     if (!save) {
       const el = document.getElementById('backupInput');
-      try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad('To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
+      try { save = decodeSaveCode(el ? el.value : ''); } catch (e) { this.openBackupLoad(e.code === 'future' ? 'Ten kod pochodzi z nowszej wersji gry. Odśwież stronę, aby wczytać aktualną wersję, i spróbuj ponownie.' : 'To nie jest prawidłowy kod kopii. Wklej cały kod, razem z „VH1.” na początku.'); return; }
       // v23: a dev panel test save never becomes real progress.
       if (save.meta.devSandbox && !DEV.sandbox) { this.openBackupLoad('To kod zapisu testowego z panelu deweloperskiego — wczytasz go tylko w trybie testowym.'); return; }
       // An older code over a richer device: say what would be lost first.
@@ -9194,6 +9358,13 @@ class Game {
   adoptSave(save, source, after) {
     if (this.running) { this.pendingSave = { save, source, after }; return; }
     this.pendingSave = null;
+    // PX01: a backup code / test state is the player's explicit choice, so
+    // it may replace a held-back save -- whose bytes go to the rescue key first.
+    // A cloud copy is not a choice: it never lifts the guard by itself.
+    if (!saveWritable()) {
+      if (source === 'cloud') return;
+      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
+    }
     this.save = save;
     saveGame(save, { touch: false, mirror: false });
     if (after) after();
@@ -9204,6 +9375,34 @@ class Game {
       this.updateCoinDisplays();
       this.showScreen('mainMenu');
     }
+  }
+
+  /** PX01: tells the player why progress isn't being saved and offers the
+   *  only safe ways out (each shown once per session). */
+  showSaveGuardNotice(kind = SAVE_GUARD.state) {
+    if (kind === 'ok') return;
+    if (kind !== 'rescueFailed') {
+      if (this.saveGuardShown === kind) return;
+      this.saveGuardShown = kind;
+      this.analytics.track('save_guard', { state: kind, issues: SAVE_GUARD.issues.length });
+    }
+    const keep = 'Do tego czasu możesz grać, ale nowy postęp nie jest zapisywany.';
+    const repair = () => {
+      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
+      saveGame(this.save);
+    };
+    const reload = () => location.reload();
+    const sheets = {
+      future: { title: 'Zapis z nowszej wersji gry', body: ['Twój postęp zapisała nowsza wersja Vector Hole. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.', keep], action: { label: 'ODŚWIEŻ', onClick: reload } },
+      corrupt: { title: 'Zapis jest uszkodzony', body: ['Nie udało się odczytać zapisanego postępu. Gra go nie usunęła i nic na nim nie zapisze bez Twojej decyzji.', 'Możesz wczytać kod kopii zapasowej (Profil → Kopia zapasowa) albo zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.', keep], action: { label: 'ZACZNIJ OD NOWA', onClick: repair } },
+      invalid: { title: 'Część zapisu jest uszkodzona', body: ['Postęp jest wczytany, ale część danych zapisu ma zły format. Gra niczego nie nadpisze bez Twojej decyzji.', 'NAPRAW ZAPIS zachowa wczytany postęp, a oryginał odłoży jako kopię.', keep], action: { label: 'NAPRAW ZAPIS', onClick: repair } },
+      unavailable: { title: 'Zapis nie działa', body: ['Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie usunie ani nie nadpisze.', keep, 'Zezwól tej stronie na przechowywanie danych w ustawieniach przeglądarki i odśwież stronę.'], action: { label: 'ODŚWIEŻ', onClick: reload } },
+      stale: { title: 'Gra jest otwarta w innej karcie', body: ['Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.', 'Odśwież stronę, aby grać dalej z aktualnym postępem.'], action: { label: 'ODŚWIEŻ', onClick: reload } },
+      rescueFailed: { title: 'Brak miejsca na kopię', body: ['Przeglądarka nie pozwoliła odłożyć kopii obecnego zapisu, więc nic nie zostało zmienione. Zwolnij miejsce i spróbuj ponownie.'] }
+    };
+    const sh = sheets[kind];
+    if (!sh) return;
+    this.openInfoSheet({ title: sh.title, body: sh.body, action: sh.action || null, closeLabel: sh.action && kind !== 'stale' ? 'GRAJ BEZ ZAPISU' : 'ROZUMIEM' });
   }
 
   updateCoinDisplays() {
@@ -9956,6 +10155,7 @@ class Game {
     // A restored save lands on Miasto -- never on a result screen of the
     // save it replaced (whose buttons would then act on the new one).
     if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
+    if (SAVE_GUARD.state === 'stale' && !this.saveGuardShown) setTimeout(() => this.showSaveGuardNotice(), 0);
     ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
@@ -17173,6 +17373,27 @@ const I18N_EN = {
   "ZACIEMNIENIE": "BLACKOUT",
   "ZACZNIJ MISJĘ OD NOWA": "RESTART MISSION",
   "ZACZNIJ OD NOWA": "START OVER",
+  "Odśwież": "Reload",
+  "Napraw zapis": "Repair save",
+  "Graj bez zapisu": "Play without saving",
+  "Do tego czasu możesz grać, ale nowy postęp nie jest zapisywany.": "Until then you can play, but new progress is not saved.",
+  "Zapis z nowszej wersji gry": "Save from a newer version of the game",
+  "Twój postęp zapisała nowsza wersja Vector Hole. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.": "Your progress was saved by a newer version of Vector Hole. This version won't change it — reload the page to load the current game.",
+  "Zapis jest uszkodzony": "The save is damaged",
+  "Nie udało się odczytać zapisanego postępu. Gra go nie usunęła i nic na nim nie zapisze bez Twojej decyzji.": "The saved progress couldn't be read. The game hasn't deleted it and won't write over it without your decision.",
+  "Możesz wczytać kod kopii zapasowej (Profil → Kopia zapasowa) albo zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.": "You can load a backup code (Profile → Backup) or start over — the damaged save is then set aside as a copy.",
+  "Część zapisu jest uszkodzona": "Part of the save is damaged",
+  "Postęp jest wczytany, ale część danych zapisu ma zły format. Gra niczego nie nadpisze bez Twojej decyzji.": "Your progress is loaded, but some of the save data has the wrong format. The game won't write over anything without your decision.",
+  "NAPRAW ZAPIS zachowa wczytany postęp, a oryginał odłoży jako kopię.": "REPAIR SAVE keeps the loaded progress and sets the original aside as a copy.",
+  "Gra jest otwarta w innej karcie": "The game is open in another tab",
+  "Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.": "Progress changed in another tab or window. This tab won't save anything, so the newer progress isn't overwritten.",
+  "Odśwież stronę, aby grać dalej z aktualnym postępem.": "Reload the page to keep playing with your current progress.",
+  "Brak miejsca na kopię": "No room for a copy",
+  "Zapis nie działa": "Saving doesn't work",
+  "Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie usunie ani nie nadpisze.": "The browser doesn't allow the saved progress to be read (e.g. private mode or blocked site data). The game won't delete or overwrite anything.",
+  "Zezwól tej stronie na przechowywanie danych w ustawieniach przeglądarki i odśwież stronę.": "Allow this site to store data in your browser settings and reload the page.",
+  "Przeglądarka nie pozwoliła odłożyć kopii obecnego zapisu, więc nic nie zostało zmienione. Zwolnij miejsce i spróbuj ponownie.": "The browser didn't allow a copy of the current save to be set aside, so nothing was changed. Free up some space and try again.",
+  "Ten kod pochodzi z nowszej wersji gry. Odśwież stronę, aby wczytać aktualną wersję, i spróbuj ponownie.": "This code comes from a newer version of the game. Reload the page to load the current version, then try again.",
   "ZACZNIJ RUNDĘ OD NOWA": "RESTART ROUND",
   "ZAGRAJ": "PLAY",
   "ZAGRAJ JESZCZE RAZ": "PLAY AGAIN",

@@ -4,6 +4,35 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## PX01 „Bezpieczny zapis” — naprawa VH-03 (bez zmiany schematu, nadal v13)
+Zapis gracza nie może już zniknąć przez zapis z nowszej wersji gry,
+obcięty JSON, jedno pole w złym formacie ani drugą kartę.
+
+- `loadSave()` niczego nie zapisuje przy zwykłym odczycie. Zapis, którego
+  gra nie odczyta w całości, trzyma `SAVE_GUARD` (`future` / `corrupt` /
+  `invalid` / `unavailable` / `stale`): gra działa z pamięci, `saveGame()`
+  (jedyna droga zapisu, w tym lustro chmury) nic nie pisze, a gracz widzi
+  komunikat z bezpiecznym wyjściem. Odblokowanie tylko jego decyzją
+  (NAPRAW ZAPIS, ZACZNIJ OD NOWA, kod kopii, reset w Profilu) — oryginał
+  najpierw pod `vectorHoleSave_v1.rescue`.
+- Migracja: wynik sprawdzany (aktualna wersja, idempotencja, nic z sald,
+  przedmiotów, zakupów, misji i boosterów nie ginie), oryginał najpierw pod
+  `vectorHoleSave_v1.bak`; bez udanej kopii nie ma zapisu.
+- Dwie karty: zdarzenie `storage` + porównanie przed zapisem — starsza karta
+  nie nadpisze nowszego postępu.
+- `migrateSave()` nie zamienia już zapisu ze złym `coins`/`owned` na
+  `defaultSave()`; `sanitizeSave(save, issues)` zbiera naprawione pola.
+- Chmura (CrazyGames): kopia konta, której ta wersja nie odczyta, nie jest
+  nadpisywana; uszkodzony zapis lokalny może zostać zastąpiony czytelną
+  kopią z konta.
+- Poprawki po przeglądzie: reset w Profilu przy zablokowanym zapisie bez
+  udanej kopii `.rescue` nic nie usuwa (ani lokalnie, ani w chmurze) i nie
+  przeładowuje strony; lustro chmury dostaje tylko to, co naprawdę trafiło do
+  `localStorage`; istniejący klucz z pustym tekstem (lokalnie i w chmurze) to
+  uszkodzony zapis, nie „brak zapisu”; nieczytelny `localStorage` pokazuje
+  komunikat „Zapis nie działa”.
+- QA: `qa/save-safety.mjs` (SAVE-01…09, warianty i regresje R1–R4) w `qa/run-all.mjs`.
+
 ## v23 „Panel testowy” — narzędzie QA dla twórców
 Panel do błyskawicznego testowania mechanik bez przechodzenia misji. Gracze
 go nie widzą; balans i zasady gry bez zmian.

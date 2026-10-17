@@ -1,0 +1,32 @@
+# CORE-LOOP (emulation, from PX01-30-qa-run-all.log, round 2)
+PASS  boot: fresh save shows the one-tap start CTA  — ready in 382 ms
+PASS  ftue: 1 tap from first screen to a live Arena round
+PASS  boot: no external network requests
+PASS  pause/resize spam: round still running cleanly
+PASS  audio (iOS WebKit, no audioSession): silent media loop unmutes Web Audio after a tap  — {"ios":true,"hasSession":false,"el":true,"loop":true,"playing":true,"ctx":"running","pausedOnHold":true,"playingAgain":true,"status":"Silnik: działa · 44.1 kHz · tryb iOS: odtwarzanie · gra: Neonowy Świt — nic nie słychać? Podgłośnij telefon przyciskami z boku."}
+PASS  audio: the silent loop pauses with the audio hold and comes back
+PASS  results: play again / x2 coins / challenge visible without scrolling  — {"state":"RESULTS","again":true,"ad":true,"share":true,"score":"13 698"}
+PASS  music (live): pause drops the music "underwater" (low-pass) and resume opens it again  — 650 Hz → 17999 Hz
+PASS  music (live): the pause sheet names the track and NASTĘPNY switches it  — {"label":"Rdzeń Miasta","label2":"Glitch w Galerii"}
+PASS  music stress: 60 rapid scene changes/skips/pauses settle on the right track, one timer, audible  — {"sameTimer":true,"menu":true,"queued":false,"gain":1}
+PASS  layout 375×667: pause sheet shows WRÓĆ, the track row and WYJDŹ without scrolling  — {"resume":true,"track":true,"next":true,"leave":true,"arenaClear":true,"missionClear":true}
+PASS  impulse pad: touching a lit pad gives +50% speed ("IMPULS!")  — {"used":true,"ratio":1.5,"text":true,"after":1,"impulses":1,"again":2}
+PASS  impulse pad: the burst ends after 2.5 s; the pad recharges, then works again  — {"used":true,"ratio":1.5,"text":true,"after":1,"impulses":1,"again":2}
+PASS  English: the impulse / portal chips and lines are translated  — M11 PULSE PARK EASY ★ ★ ★ First Pulse NELA The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost. MISSION GOAL 1 Swallow 14 energy fragments IMPULSE GATES A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Th
+PASS  desktop 1366×768: HUD scales with the UI (pause hit-tests where drawn, minimap grows and stays on screen)  — {"pauseHit":true,"pauseW":45,"mini":161,"miniFits":true}
+PASS  desktop 1440×900: HUD scales with the UI (pause hit-tests where drawn, minimap grows and stays on screen)  — {"pauseHit":true,"pauseW":47,"mini":170,"miniFits":true}
+PASS  desktop 1920×1080: HUD scales with the UI (pause hit-tests where drawn, minimap grows and stays on screen)  — {"pauseHit":true,"pauseW":58,"mini":208,"miniFits":true}
+PASS  wide 1366×768: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1366×768: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 1440×900: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1440×900: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 1920×1080: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1920×1080: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 960×540: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 960×540: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 1180×820: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1180×820: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  order: a locked Wyzwania tile/tab counts down Arena rounds and offers a round (no mission named)  — {"t1":"Zagraj jeszcze 2 rundy Areny","t2":"Zagraj jeszcze 1 rundę Areny","sheet":"Codzienne rundy Areny: Misja dnia z nagrodą w monetach i Wyzwanie dnia — ta sama mapa dla wszystkich, walka o rekord i serię dni z rzędu.Zagraj jeszcze 1 rundę Areny, żeby je odblokować.","action":"ZAGRAJ RUNDĘ"}
+PASS  ux: mid-mission the panel opens on Rozgrywka with the live mission first; NOWA RUNDA asks twice; the demo ad hands the mission back; no stale toast  — {"tab":"play","firstSec":"Trwa misja M40","armed":true,"afterAd":{"paused":false,"ticking":true},"toast":false}
+PASS  gameplay: the DEV button mid-mission pauses the clock (no pause sheet), closing resumes  — {"open":{"paused":true,"sheet":false,"panel":true},"frozen":true,"resumed":true}
+PASS  screens: mission win/defeat, Arena defeat, level-up, briefing, start card, +20 s offer, pause, unlock card, ad, evolution cards, consent, welcome  — {"missionWin":true,"missionRacer":true,"arenaLose":true,"levelUp":true,"brief":true,"startCard":true,"revive":true,"pause":true,"unlock":true,"ad":true,"cards":true,"consent":true,"welcomeAsks":true,"welcome":true}
