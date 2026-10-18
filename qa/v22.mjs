@@ -19,7 +19,7 @@
 // Usage: node qa/v22.mjs
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, ARENA_BOT, CAMPAIGN_BOT, ROOT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, expectAll, is, truthy, falsy, matches, notMatches, ARENA_BOT, CAMPAIGN_BOT, ROOT, readRuntimeSources } from './lib.mjs';
 
 /** Opens the game on `save` (an object, or a function building one from defaultSave()). */
 async function withSave(url, build, opts = {}) {
@@ -65,19 +65,36 @@ export async function runV22Checks(url) {
 
   // --- No energy anywhere: source, DOM, store, ads ---------------------------
   {
-    const js = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8');
-    // (migrateSave() may still name what it deletes from old saves.)
-    const code = js.slice(0, js.indexOf('function migrateSave(')) + js.slice(js.indexOf('function loadSave('), js.indexOf('const I18N_EN = {'));
-    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    const css = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+    // E1: every runtime file index.html loads (game.js today, ES modules
+    // later -- readRuntimeSources()). Left out, in whichever file holds
+    // them: migrateSave() .. loadSave() (may still name what it deletes
+    // from old saves) and the I18N_EN dictionary (translates old copy).
+    const src = readRuntimeSources();
+    const cut = { migrate: 0, i18n: 0 };
+    const code = src.js.map(f => {
+      let t = f.text;
+      const a = t.indexOf('function migrateSave('), b = t.indexOf('function loadSave(');
+      if (a >= 0 && b > a) { t = t.slice(0, a) + t.slice(b); cut.migrate++; }
+      const e = t.indexOf('const I18N_EN = {');
+      if (e >= 0) { const end = t.indexOf('\n};', e); t = t.slice(0, e) + (end >= 0 ? t.slice(end + 3) : ''); cut.i18n++; }
+      return t;
+    }).join('\n');
+    // A scan that lost its markers or part of the game would pass on
+    // nothing: both cuts happen exactly once, and the scanned code still
+    // holds both modes, the save, the audio, the ads and the dev panel.
+    const missing = ['class SoundEngine', 'startRound(', 'startCampaignMission(', 'function loadSave(', 'class Monetization', 'class DevPanel'].filter(k => !code.includes(k));
+    const scanOk = cut.migrate === 1 && cut.i18n === 1 && missing.length === 0 && src.missing.length === 0;
+    const scanNote = scanOk ? [] : [`scan broken ${JSON.stringify({ files: src.js.map(f => f.path), notOnDisk: src.missing, cut, missing })}`];
+    const html = src.html.text;
+    const css = src.cssText;
     const leftovers = [
       ...(code.match(/requireEnergy|energySheet|energyNow|energyFreeFor|CONFIG\.energy|save\.energy|energy_ad|energy_hour|infiniteEnergy|sound\.energy|no-energy/g) || []),
       ...(html.match(/energy|BRAK ENERGII|1 energię/gi) || []),
       ...(css.match(/energy/gi) || [])
     ];
-    results.push(report('energy: nothing left in game.js / index.html / style.css (logic, sheet, chip, costs, timer, IAP, ad)', leftovers.length === 0, leftovers.slice(0, 6).join(', ')));
+    results.push(report('energy: nothing left in game.js / index.html / style.css (logic, sheet, chip, costs, timer, IAP, ad)', leftovers.length === 0 && scanOk, [...scanNote, ...leftovers.slice(0, 6)].join(', ')));
     const tut = [...(code.match(/tutorialChecklist|dismissTutorialIntro|showTutorialIntro|updateTutorialGuidance|'M00'|discoveredTypes|discoveredHoleEating|isArenaUnlocked/g) || []), ...(html.match(/tutorialIntro|btnStartTutorial/g) || [])];
-    results.push(report('tutorial: the M00 mission, its coach card and Arena\'s campaign discovery gate are gone', tut.length === 0, tut.slice(0, 6).join(', ')));
+    results.push(report('tutorial: the M00 mission, its coach card and Arena\'s campaign discovery gate are gone', tut.length === 0 && scanOk, [...scanNote, ...tut.slice(0, 6)].join(', ')));
   }
 
   // --- Unlimited play, back to back -------------------------------------------
@@ -374,11 +391,20 @@ export async function runV22Checks(url) {
         coins: s.coins, prisms: s.prisms, core: s.hub.coreLevel, announced: s.unlocks.announced.join(','), fresh: s.unlocks.fresh.join(','), coach: s.coach, next: gm.nextCampaignMissionId(),
         first: gm.isFirstRun(), wyz: gm.isWyzwaniaUnlocked(), warsztat: gm.isWarsztatUnlocked() };
     });
-    results.push(report('save v12 -> v13: energy, discovered types and the M00 tutorial are gone; missions, stars, coins, prisms, Core City kept', r.v === 13 && !r.energy && !r.disc && !r.anyM00 && r.done === 'M01,M02,M03' && r.stars === 3 && r.coins === 777 && r.prisms === 42 && r.core === 3, JSON.stringify(r)));
-    results.push(report('save v12 -> v13: Wyzwania opened by the old M03 gate stay open; no "arena" unlock left; known player gets no hints / no second-mode intro', r.wyz && r.warsztat && !/\barena\b/.test(r.announced + r.fresh) && /kampania/.test(r.announced) && r.coach.moved && r.coach.ate && r.next === 'M25' && !r.first, JSON.stringify(r)));
+    // E1 pilot: expectAll() names each failed field (same terms as the old && chains).
+    results.push(expectAll('save v12 -> v13: energy, discovered types and the M00 tutorial are gone; missions, stars, coins, prisms, Core City kept', {
+      schemaVersion: is(r.v, 13), energy: falsy(r.energy), discoveredTypes: falsy(r.disc), M00: falsy(r.anyM00),
+      completed: is(r.done, 'M01,M02,M03'), stars: is(r.stars, 3), coins: is(r.coins, 777), prisms: is(r.prisms, 42), coreLevel: is(r.core, 3)
+    }, JSON.stringify(r)));
+    results.push(expectAll('save v12 -> v13: Wyzwania opened by the old M03 gate stay open; no "arena" unlock left; known player gets no hints / no second-mode intro', {
+      wyzwania: truthy(r.wyz), warsztat: truthy(r.warsztat), noArenaUnlock: notMatches(/\barena\b/, r.announced + r.fresh), kampaniaAnnounced: matches(/kampania/, r.announced),
+      coachMoved: truthy(r.coach.moved), coachAte: truthy(r.coach.ate), nextMission: is(r.next, 'M25'), firstRun: falsy(r.first)
+    }, JSON.stringify(r)));
     await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state);
     const again = await g.page.evaluate(() => { const s = window.game.save; return { v: s.schemaVersion, done: Object.keys(s.campaign.completed).sort().join(','), coins: s.coins, energy: 'energy' in s, wyz: window.game.isWyzwaniaUnlocked() }; });
-    results.push(report('save: a reload after migrating keeps everything (idempotent)', again.v === 13 && again.done === 'M01,M02,M03' && again.coins === 777 && !again.energy && again.wyz, JSON.stringify(again)));
+    results.push(expectAll('save: a reload after migrating keeps everything (idempotent)', {
+      schemaVersion: is(again.v, 13), completed: is(again.done, 'M01,M02,M03'), coins: is(again.coins, 777), energy: falsy(again.energy), wyzwania: truthy(again.wyz)
+    }, JSON.stringify(again)));
     await done(g, 'migration');
     // Only the old tutorial done: back to the welcome card (Arena first).
     const t = await withSave(url, () => { const s = defaultSave(); s.schemaVersion = 12; delete s.coach; s.energy = { value: 5, lastTick: 0, infiniteUntil: 0, freeDailyDate: null }; s.campaign.completed.M00 = true; s.unlocks.announced = ['arena']; s.privacy.decided = true; return s; });

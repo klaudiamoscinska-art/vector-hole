@@ -9,8 +9,72 @@
 //  - balance: the casual bot on hard missions with and without each
 //    booster -- every booster must clearly help, none may make EKSTREMALNA
 //    trivial.
-// Usage: node qa/v18.mjs [runs=3]
-import { serve, openGame, CAMPAIGN_BOT, allDistrictsSave, veteranSave, report } from './lib.mjs';
+// Usage: node qa/v18.mjs [runs=3] [--seed=N]
+//   E1: every balance attempt plays from its own seeded Math.random stream
+//   (audio off in the bot profile -- see balancePage())
+//   (seedFor(base, config, mission, k)); the base seed is new each run
+//   (the suite samples fresh layouts as before) and is printed and written
+//   to qa/out/v18-balance.json -- `--seed=N` / VH_QA_SEED=N replays a run.
+//   Diagnostics (not the PASS criteria, which are unchanged):
+//   node qa/v18.mjs --calibrate=K [runs]    the balance on K base seeds: how often each check passes
+//   add --paired                            the same layouts for every booster (common random numbers)
+import fs from 'node:fs';
+import path from 'node:path';
+import { serve, openGame, CAMPAIGN_BOT, QA_RANDOM, allDistrictsSave, veteranSave, report, seedFor, baseSeed, environmentInfo, OUT } from './lib.mjs';
+
+const BALANCE_CONFIGS = { none: [], time: ['time'], start: ['start'], sprint: ['sprint'], magnet: ['magnet'] };
+
+/** The casual bot on the hard missions with each booster config. Each
+ *  attempt reseeds Math.random inside its own page.evaluate. `paired`
+ *  gives the same seed to the same (mission, k) under every config. */
+async function playBalance(page, ids, runs, base, paired = false) {
+  const table = {}, attempts = [];
+  for (const [name, boosters] of Object.entries(BALANCE_CONFIGS)) {
+    let wins = 0, n = 0, d5w = 0, d5n = 0;
+    for (const id of ids) {
+      for (let k = 0; k < runs; k++) {
+        const seed = paired ? seedFor(base, 'v18', id, k) : seedFor(base, 'v18', name, id, k);
+        const r = await page.evaluate(([mid, b, sd]) => {
+          window.__qaSeedRandom(sd);
+          try { return window.__qaPlayMission(mid, { style: 'casual', boosters: b, clock0: 1000000 }); } finally { window.__qaRestoreRandom(); }
+        }, [id, boosters, seed]);
+        attempts.push({ config: name, id, k, seed, success: r.success, elapsed: r.elapsed, fail: r.fail });
+        n++; wins += r.success ? 1 : 0;
+        if (r.diff === 5) { d5n++; d5w += r.success ? 1 : 0; }
+      }
+    }
+    table[name] = { all: Math.round(wins / n * 100), d5: Math.round(d5w / d5n * 100) };
+  }
+  return { table, attempts };
+}
+const balanceVerdicts = (table) => {
+  const lift = k => table[k].all - table.none.all;
+  return {
+    lift: { time: lift('time'), start: lift('start'), sprint: lift('sprint'), magnet: lift('magnet') },
+    lifts: lift('time') >= 5 && lift('start') >= 5 && lift('sprint') >= 5 && (lift('time') + lift('start') + lift('sprint')) / 3 >= 8,
+    d5: Object.entries(table).every(([, v]) => v.d5 <= 85),
+    sprint: table.sprint.all <= table.time.all + 8
+  };
+};
+async function balancePage(url) {
+  const g = await openGame(url);
+  const save = await allDistrictsSave(g.page);
+  // E1: audio off for the bot profile. The music/SFX engine draws from the
+  // same Math.random as the game, paced by the real-time AudioContext clock,
+  // so with audio on a seeded attempt doesn't repeat (measured: 30/40
+  // identical with audio, 40/40 without). Audio never touches the rules.
+  save.settings.music = false; save.settings.sfx = false;
+  await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
+  await g.page.reload();
+  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.addScriptTag({ content: CAMPAIGN_BOT });
+  await g.page.addScriptTag({ content: QA_RANDOM });
+  const ids = await g.page.evaluate(() => {
+    const pick = d => CAMPAIGN_MISSIONS.filter(m => m.diff === d && !m.setup.fragile).filter((m, i) => i % 3 === 0).slice(0, 12).map(m => m.id);
+    return [...pick(4), ...pick(5)];
+  });
+  return { ...g, ids };
+}
 
 async function seeded(url, mutate, opts = {}) {
   const g = await openGame(url, opts);
@@ -23,7 +87,7 @@ async function seeded(url, mutate, opts = {}) {
   return g;
 }
 
-export async function runV18Checks(url, runs = 3) {
+export async function runV18Checks(url, runs = 3, { seed: base = baseSeed().seed, paired = false } = {}) {
   const results = [];
 
   // --- Sprint + five tiles + the gift for existing players -------------------
@@ -183,37 +247,19 @@ export async function runV18Checks(url, runs = 3) {
 
   // --- Balance: does each booster earn its price on hard missions? ----------
   {
-    const { browser, page, errors } = await openGame(url);
-    const save = await allDistrictsSave(page);
-    await page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
-    await page.reload();
-    await page.waitForFunction(() => window.game && window.game.state);
-    await page.addScriptTag({ content: CAMPAIGN_BOT });
-    const ids = await page.evaluate(() => {
-      const pick = d => CAMPAIGN_MISSIONS.filter(m => m.diff === d && !m.setup.fragile).filter((m, i) => i % 3 === 0).slice(0, 12).map(m => m.id);
-      return [...pick(4), ...pick(5)];
-    });
-    const configs = { none: [], time: ['time'], start: ['start'], sprint: ['sprint'], magnet: ['magnet'] };
-    const table = {};
-    for (const [name, boosters] of Object.entries(configs)) {
-      let wins = 0, n = 0, d5w = 0, d5n = 0;
-      for (const id of ids) {
-        for (let k = 0; k < runs; k++) {
-          const r = await page.evaluate(([mid, b]) => window.__qaPlayMission(mid, { style: 'casual', boosters: b }), [id, boosters]);
-          n++; wins += r.success ? 1 : 0;
-          if (r.diff === 5) { d5n++; d5w += r.success ? 1 : 0; }
-        }
-      }
-      table[name] = { all: Math.round(wins / n * 100), d5: Math.round(d5w / d5n * 100) };
-    }
+    const { browser, page, errors, ids } = await balancePage(url);
+    const { table, attempts } = await playBalance(page, ids, runs, base, paired);
+    const seedNote = ` · seed ${base}${paired ? ' (paired diagnostic)' : ''}`;
+    fs.writeFileSync(path.join(OUT, 'v18-balance.json'), JSON.stringify({ seed: base, paired, runs, ids, table, attempts }, null, 1));
+    console.log(`\n  v18 balance seed ${base}${paired ? ' (paired)' : ''} -- replay: VH_QA_SEED=${base} node qa/v18.mjs ${runs}`);
     console.log('\n  booster   hard (d4+d5)   EKSTREMALNA (d5)   — casual bot, ' + ids.length + ' missions × ' + runs);
     for (const [k, v] of Object.entries(table)) console.log(`  ${k.padEnd(8)}  ${String(v.all).padStart(3)}%          ${String(v.d5).padStart(3)}%`);
     const lift = k => table[k].all - table.none.all;
     // ~50 attempts per booster: ±7 points of noise, so each must clearly
     // help (≥ 5) and the three main ones together by ≥ 8 on average.
-    results.push(report('balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)', lift('time') >= 5 && lift('start') >= 5 && lift('sprint') >= 5 && (lift('time') + lift('start') + lift('sprint')) / 3 >= 8, JSON.stringify(table)));
-    results.push(report('balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)', Object.entries(table).every(([, v]) => v.d5 <= 85), JSON.stringify(table)));
-    results.push(report('balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)', table.sprint.all <= table.time.all + 8, JSON.stringify({ sprint: table.sprint, time: table.time })));
+    results.push(report('balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)', lift('time') >= 5 && lift('start') >= 5 && lift('sprint') >= 5 && (lift('time') + lift('start') + lift('sprint')) / 3 >= 8, JSON.stringify(table) + seedNote));
+    results.push(report('balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)', Object.entries(table).every(([, v]) => v.d5 <= 85), JSON.stringify(table) + seedNote));
+    results.push(report('balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)', table.sprint.all <= table.time.all + 8, JSON.stringify({ sprint: table.sprint, time: table.time }) + seedNote));
     results.push(report('v18: no runtime errors (balance)', errors.length === 0, errors.slice(0, 2).join(' | ')));
     await browser.close();
   }
@@ -221,9 +267,37 @@ export async function runV18Checks(url, runs = 3) {
   return results;
 }
 
+/** Diagnostic, not a gate: the balance block on `k` base seeds, how often
+ *  each check would pass, and the lift per booster per seed. */
+export async function calibrateV18Balance(url, k, runs = 3, { first = baseSeed().seed, paired = false } = {}) {
+  const { browser, ids, page } = await balancePage(url);
+  const rows = [];
+  for (let i = 0; i < k; i++) {
+    const base = (first + i) >>> 0;
+    const { table } = await playBalance(page, ids, runs, base, paired);
+    const v = balanceVerdicts(table);
+    rows.push({ seed: base, table, ...v });
+    console.log(`  seed ${base}: none ${table.none.all}% · lift time ${v.lift.time} start ${v.lift.start} sprint ${v.lift.sprint} magnet ${v.lift.magnet} · lifts ${v.lifts ? 'PASS' : 'FAIL'} · d5 ${v.d5 ? 'PASS' : 'FAIL'} · sprint ${v.sprint ? 'PASS' : 'FAIL'}`);
+  }
+  await browser.close();
+  const rate = key => rows.filter(r => r[key]).length + '/' + rows.length;
+  const mean = key => +(rows.reduce((a, r) => a + r.lift[key], 0) / rows.length).toFixed(1);
+  const out = { first, k, runs, paired, ids, rows, passRate: { lifts: rate('lifts'), d5: rate('d5'), sprint: rate('sprint') }, meanLift: { time: mean('time'), start: mean('start'), sprint: mean('sprint'), magnet: mean('magnet') } };
+  fs.writeFileSync(path.join(OUT, `v18-calibration${paired ? '-paired' : ''}.json`), JSON.stringify(out, null, 1));
+  console.log(`\n  pass rate over ${k} seeds${paired ? ' (paired)' : ''}: lifts ${out.passRate.lifts} · d5 ${out.passRate.d5} · sprint ${out.passRate.sprint} · mean lift ${JSON.stringify(out.meanLift)}`);
+  return out;
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { server, url } = await serve();
-  const res = await runV18Checks(url, +(process.argv[2] || 3));
+  const env = await environmentInfo();
+  const num = process.argv.slice(2).find(a => /^\d+$/.test(a));
+  const cal = process.argv.find(a => /^--calibrate=\d+$/.test(a));
+  const paired = process.argv.includes('--paired');
+  const { seed, fixed } = baseSeed();
+  console.log(`env: node ${env.node} · playwright ${env.playwright} · chromium ${env.chromium} · HEAD ${env.head} (${env.worktreeChanges} changed paths) · base seed ${seed}${fixed ? ' (given)' : ' (new)'}`);
+  if (cal) { await calibrateV18Balance(url, Number(cal.slice(12)), +(num || 3), { first: seed, paired }); server.close(); process.exit(0); }
+  const res = await runV18Checks(url, +(num || 3), { seed, paired });
   server.close();
   const failed = res.filter(r => !r.ok);
   console.log(`\n${res.length - failed.length}/${res.length} v18 checks passed`);
