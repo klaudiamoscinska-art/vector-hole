@@ -4,12 +4,17 @@
 // Asserts the curve the owner asked for: early missions are friendly, the
 // ladder rises, the hardest ones genuinely beat a casual player, and every
 // mission stays beatable (the expert clears it).
-// Usage: node qa/difficulty.mjs [runs=2] [workers=4]
+// Usage: node qa/difficulty.mjs [runs=2] [workers=4] [--seed=N]
+// E1: each attempt plays from its own seeded Math.random stream
+// (seedFor(base, mission, style, k)), so the split across workers doesn't
+// matter; the base seed is new each run (fresh layouts, as before), printed
+// and written to qa/out/difficulty.json -- `--seed=N` / VH_QA_SEED=N replays it.
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, CAMPAIGN_BOT, allDistrictsSave, report, OUT } from './lib.mjs';
+import { serve, openGame, CAMPAIGN_BOT, QA_RANDOM, allDistrictsSave, report, seedFor, baseSeed, OUT } from './lib.mjs';
 
-export async function runDifficultyChecks(url, runs = 2, workers = 4) {
+export async function runDifficultyChecks(url, runs = 2, workers = 4, { seed: base = baseSeed().seed } = {}) {
+  console.log(`  difficulty seed ${base} -- replay: VH_QA_SEED=${base} node qa/difficulty.mjs ${runs} ${workers}`);
   const results = [];
   const all = [];
   let pageErrors = [];
@@ -20,15 +25,24 @@ export async function runDifficultyChecks(url, runs = 2, workers = 4) {
   await Promise.all(chunks.map(async (chunk) => {
     const { browser, page, errors } = await openGame(url);
     const save = await allDistrictsSave(page);
+    // E1: audio off -- the music/SFX engine draws from the game's Math.random
+    // on the real-time AudioContext clock, so a seeded attempt would not
+    // repeat with it on (see qa/v18.mjs balancePage()). Rules are untouched.
+    save.settings.music = false; save.settings.sfx = false;
     await page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await page.reload();
     await page.waitForFunction(() => window.game && window.game.state);
     await page.addScriptTag({ content: CAMPAIGN_BOT });
+    await page.addScriptTag({ content: QA_RANDOM });
     for (const m of chunk) {
       for (const style of ['expert', 'casual']) {
         for (let k = 0; k < runs; k++) {
-          const r = await page.evaluate(([id, st]) => window.__qaPlayMission(id, { style: st }), [m.id, style]);
-          all.push({ ...r, style, district: m.district });
+          const seed = seedFor(base, 'difficulty', m.id, style, k);
+          const r = await page.evaluate(([id, st, sd]) => {
+            window.__qaSeedRandom(sd);
+            try { return window.__qaPlayMission(id, { style: st, clock0: 1000000 }); } finally { window.__qaRestoreRandom(); }
+          }, [m.id, style, seed]);
+          all.push({ ...r, style, district: m.district, seed });
         }
       }
     }
@@ -44,7 +58,7 @@ export async function runDifficultyChecks(url, runs = 2, workers = 4) {
   console.log('\n  district   expert  casual');
   districts.forEach(d => console.log(`  ${d.padEnd(9)}  ${pct(rate(r => r.style === 'expert' && r.district === d)).padEnd(6)}  ${pct(rate(r => r.style === 'casual' && r.district === d))}`));
   const expertFails = ids.filter(m => all.filter(r => r.id === m.id && r.style === 'expert').every(r => !r.success)).map(m => m.id);
-  fs.writeFileSync(path.join(OUT, 'difficulty.json'), JSON.stringify({ byDiff, runs: all }, null, 1));
+  fs.writeFileSync(path.join(OUT, 'difficulty.json'), JSON.stringify({ seed: base, byDiff, runs: all }, null, 1));
 
   const c = d => byDiff[d - 1].casual;
   // With 2 runs a mission the expert clears 70% of the time still shows
@@ -58,13 +72,14 @@ export async function runDifficultyChecks(url, runs = 2, workers = 4) {
   // EKSTREMALNA stops a casual player about every second try, not always.)
   results.push(report('difficulty: the hardest missions stop a casual player about half the time (casual ≤ 55% at EKSTREMALNA)', c(5) <= 0.55, pct(c(5))));
   results.push(report('difficulty: not everything clears on the first try (casual fails ≥ 25% of Rozdział II)', rate(r => r.style === 'casual' && +r.id.slice(1) > 60) <= 0.75, pct(rate(r => r.style === 'casual' && +r.id.slice(1) > 60))));
-  results.push(report('difficulty: no runtime errors', pageErrors.length === 0, pageErrors.slice(0, 2).join(' | ')));
+  results.push(report('difficulty: no runtime errors', pageErrors.length === 0, pageErrors.slice(0, 2).join(' | ') || `seed ${base}`));
   return results;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { server, url } = await serve();
-  const res = await runDifficultyChecks(url, Number(process.argv[2]) || 2, Number(process.argv[3]) || 4);
+  const nums = process.argv.slice(2).filter(a => /^\d+$/.test(a));
+  const res = await runDifficultyChecks(url, Number(nums[0]) || 2, Number(nums[1]) || 4, { seed: baseSeed().seed });
   server.close();
   process.exit(res.every(r => r.ok) ? 0 : 1);
 }

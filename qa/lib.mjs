@@ -1,17 +1,20 @@
 // Shared helpers for the Vector Hole QA bots (dev-only, not shipped by the
-// game -- the runtime is still exactly index.html/style.css/game.js).
+// game; which files the game runs from is read from index.html by
+// readRuntimeSources() -- today index.html/style.css/game.js).
 // Uses the Playwright install already on the machine (no package.json):
 //   node qa/run-all.mjs
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
+const PLAYWRIGHT_TRIES = ['playwright', '/opt/node22/lib/node_modules/playwright'];
 function loadPlaywright() {
-  const tries = ['playwright', '/opt/node22/lib/node_modules/playwright'];
-  for (const t of tries) { try { return require(t); } catch (e) { /* next */ } }
+  for (const t of PLAYWRIGHT_TRIES) { try { return require(t); } catch (e) { /* next */ } }
   throw new Error('Playwright not found: install it globally (npm i -g playwright).');
 }
 export const { chromium } = loadPlaywright();
@@ -39,7 +42,7 @@ export function serve() {
 /** Launch Chromium + a page that records console errors and page errors.
  *  External requests (Google Fonts etc.) are blocked so runs are offline
  *  and deterministic; `allowExternal` lets the network test opt back in. */
-export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null, deviceScaleFactor = 2, locale = 'pl-PL' } = {}) {
+export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null, deviceScaleFactor = 2, locale = 'pl-PL', trackRequests = false } = {}) {
   const browser = await chromium.launch();
   // v19: the game picks its language from the browser -- the suites assert
   // Polish copy, so they run as a Polish browser unless told otherwise.
@@ -61,9 +64,16 @@ export async function openGame(baseUrl, { save = null, viewport = { width: 420, 
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + (e.stack || e.message)));
   page.on('console', (m) => { if (m.type() === 'error' && !/net::ERR_FAILED|Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
+  // E1 (qa/boot.mjs): every request the page made, with its HTTP status or
+  // failure -- the "Failed to load resource" console lines filtered above.
+  const requests = [];
+  if (trackRequests) {
+    page.on('requestfinished', async (r) => { const res = await r.response().catch(() => null); requests.push({ url: r.url(), status: res ? res.status() : 0 }); });
+    page.on('requestfailed', (r) => requests.push({ url: r.url(), status: 0, failed: (r.failure() || {}).errorText || 'failed' }));
+  }
   await page.goto(baseUrl + query);
   await page.waitForFunction(() => window.game && window.game.state !== undefined, null, { timeout: 15000 });
-  return { browser, context, page, errors, external };
+  return { browser, context, page, errors, external, requests };
 }
 
 /** A save that has played both modes (the first districts' worth of
@@ -96,6 +106,150 @@ export function report(name, ok, details) {
   return { name, ok, details };
 }
 
+/* ---------- E1: per-field assertions (expectAll) ----------
+   One report() line per check, exactly like report(), but every condition
+   is named, and a FAIL lists each one that did not hold with what it got
+   (and what it wanted), ahead of the usual JSON context:
+     results.push(expectAll('save v12 -> v13 ...', {
+       schemaVersion: is(r.v, 13),     // strict ===, like the old `r.v === 13`
+       wyzwania: truthy(r.wyz),        // like the old `r.wyz &&`
+       energy: falsy(r.energy),        // like the old `!r.energy`
+       announced: matches(/kampania/, r.announced),
+     }, JSON.stringify(r)));
+   PASS is still "all of them hold" -- the conditions are the old && terms,
+   one per field, so a converted check passes and fails exactly as before. */
+const fmt = (v) => { if (typeof v === 'string') return JSON.stringify(v.length > 80 ? v.slice(0, 77) + '...' : v); try { const j = JSON.stringify(v); return j === undefined ? String(v) : (j.length > 80 ? j.slice(0, 77) + '...' : j); } catch (e) { return String(v); } };
+export const is = (actual, expected) => ({ ok: actual === expected, actual, want: fmt(expected) });
+export const truthy = (actual) => ({ ok: !!actual, actual, want: 'truthy' });
+export const falsy = (actual) => ({ ok: !actual, actual, want: 'falsy' });
+export const matches = (re, actual) => ({ ok: re.test(actual), actual, want: String(re) });
+export const notMatches = (re, actual) => ({ ok: !re.test(actual), actual, want: 'not ' + String(re) });
+export const holds = (ok, actual, want) => ({ ok: !!ok, actual, want: want || 'condition' });
+export function expectAll(name, checks, context) {
+  const entries = Object.entries(checks);
+  const failures = entries.filter(([, c]) => !c.ok).map(([field, c]) => ({ field, actual: c.actual, want: c.want }));
+  const ok = failures.length === 0;
+  const why = failures.map(f => `${f.field}: got ${fmt(f.actual)}, want ${f.want}`).join('; ');
+  const details = ok ? context : `${failures.length}/${entries.length} failed [${why}]${context ? ' | ' + context : ''}`;
+  const r = report(name, ok, details);
+  if (!ok) r.failures = failures;
+  return r;
+}
+
+/* ---------- E1: reproducible randomness (opt-in, per scenario) ----------
+   The game draws everything mid-round from Math.random() (and a mission's
+   layout too); the bots add their own draws. QA_RANDOM installs, in the
+   page, __qaSeedRandom(seed): Math.random becomes a mulberry32 stream from
+   that seed (and counts its draws in __qaRandomCalls), __qaRestoreRandom()
+   puts the browser's back. Nothing changes until a test calls it, and a
+   test that wants a reproducible attempt reseeds right before it, inside
+   the same page.evaluate (menu animations keep drawing between calls). */
+export const QA_RANDOM = `
+(function () {
+  if (window.__qaSeedRandom) return;
+  const native = Math.random;
+  window.__qaSeedRandom = function (seed) {
+    let a = seed >>> 0;
+    window.__qaRandomSeed = a;
+    window.__qaRandomCalls = 0;
+    Math.random = function () {
+      window.__qaRandomCalls++;
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+  window.__qaRestoreRandom = function () { Math.random = native; window.__qaRandomSeed = null; };
+})();
+`;
+/** A frozen wall clock for the page (Date.now() and new Date() without
+ *  arguments always return `iso`); only for scenarios that need the save's
+ *  dates, ids and timestamps to repeat (qa/trace.mjs). */
+export function frozenDateScript(iso) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) throw new Error('frozenDateScript: bad date ' + iso);
+  return `(function () { const FIX = ${t}; const D = Date; class QADate extends D { constructor(...a) { if (a.length) super(...a); else super(FIX); } static now() { return FIX; } } window.Date = QADate; })();`;
+}
+/** Derives a 32-bit seed from a base seed and the scenario's parts
+ *  (FNV-1a), so every attempt has its own reproducible stream. */
+export function seedFor(base, ...parts) {
+  let h = 0x811c9dc5;
+  for (const ch of [base, ...parts].join('|')) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+/** The base seed of a seeded suite: `--seed=N` or VH_QA_SEED=N replays a
+ *  run; otherwise a fresh random one (and the suite prints it), so a normal
+ *  run still samples new layouts every time. */
+export function baseSeed(argv = process.argv) {
+  const arg = argv.find(a => /^--seed=\d+$/.test(a));
+  const raw = arg ? arg.slice(7) : process.env.VH_QA_SEED;
+  if (raw != null && raw !== '') return { seed: Number(raw) >>> 0, fixed: true };
+  return { seed: crypto.randomInt(1, 2 ** 31), fixed: false };
+}
+
+/* ---------- E1: runtime sources and environment ----------
+   readRuntimeSources(): the files the game really runs from, discovered
+   from index.html (local <script src> / <link rel="stylesheet" href>) and,
+   for JS, the relative static/dynamic imports they reach -- so a source
+   scan keeps covering all of the game when game.js is split into ES
+   modules, and never picks up qa/, docs/, design/ or .claude/ files (only
+   what index.html loads). Absolute or external URLs are listed in
+   `skipped`, not read; a referenced file that isn't on disk is listed in
+   `missing` (qa/boot.mjs and the v22 scan fail on it) instead of throwing. */
+export function readRuntimeSources(root = ROOT) {
+  const htmlPath = path.join(root, 'index.html');
+  const html = { path: 'index.html', kind: 'html', text: fs.readFileSync(htmlPath, 'utf8') };
+  const files = [], skipped = [], missing = [], seen = new Set();
+  const local = (ref) => !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(ref) && !ref.startsWith('/');
+  const add = (rel, kind) => {
+    const clean = rel.split(/[?#]/)[0];
+    const norm = path.posix.normalize(clean).replace(/^\.\//, '');
+    if (seen.has(norm)) return;
+    seen.add(norm);
+    const abs = path.join(root, norm);
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) { missing.push(norm); return; }
+    const text = fs.readFileSync(abs, 'utf8');
+    files.push({ path: norm, kind, text });
+    if (kind !== 'js') return;
+    const re = /(?:\bimport\s*(?:[\w*{}\s,$]+\s*from\s*)?|\bexport\s*[\w*{}\s,$]+\s*from\s*|\bimport\s*\(\s*)['"]([^'"]+)['"]/g;
+    let m;
+    while ((m = re.exec(text))) {
+      if (!m[1].startsWith('.')) { skipped.push(m[1]); continue; }
+      add(path.posix.join(path.posix.dirname(norm), m[1]), 'js');
+    }
+  };
+  for (const m of html.text.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)) { if (local(m[1])) add(m[1], 'js'); else skipped.push(m[1]); }
+  for (const m of html.text.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*>/g)) {
+    const href = (/\bhref="([^"]+)"/.exec(m[0]) || [])[1];
+    if (href && local(href)) add(href, 'css'); else if (href) skipped.push(href);
+  }
+  const js = files.filter(f => f.kind === 'js'), css = files.filter(f => f.kind === 'css');
+  return { html, files, js, css, skipped, missing, jsText: js.map(f => f.text).join('\n'), cssText: css.map(f => f.text).join('\n') };
+}
+const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+/** Where and on what a QA run happened: Node, Playwright, Chromium (needs
+ *  a browser), git HEAD + whether the worktree has changes, and the SHA-256
+ *  of every runtime file (readRuntimeSources()). */
+export async function environmentInfo(browser = null, root = ROOT) {
+  const git = (cmd) => { try { return execSync(`git -C "${root}" ${cmd}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return null; } };
+  let playwright = null;
+  for (const t of PLAYWRIGHT_TRIES) { try { playwright = require(t + '/package.json').version; break; } catch (e) { /* next */ } }
+  let chromiumVersion = null;
+  if (browser) chromiumVersion = browser.version();
+  else { const b = await chromium.launch(); chromiumVersion = b.version(); await b.close(); }
+  const src = readRuntimeSources(root);
+  const status = git('status --porcelain');
+  return {
+    node: process.version, playwright, chromium: chromiumVersion,
+    head: git('rev-parse HEAD'), worktreeChanges: status == null ? null : status.split('\n').filter(Boolean).length,
+    runtime: Object.fromEntries([src.html, ...src.files].map(f => [f.path, sha256(fs.readFileSync(path.join(root, f.path)))])),
+    missingRuntimeFiles: src.missing,
+    platform: `${process.platform} ${process.arch}`, at: new Date().toISOString()
+  };
+}
+
 /** In-page greedy bot for Arena: flees bigger rivals, hunts smaller ones,
  *  otherwise heads for the best-value eatable object. Drives game.update()
  *  in virtual time (the RAF loop is stopped) so a 2-minute round runs in
@@ -109,7 +263,9 @@ window.__qaPlayArena = function (opts) {
   // Virtual clock: wall-time timers (invulnerability, run tools, hit-stop)
   // advance with the simulated frames, not with real time.
   const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
-  let vnow = realNow();
+  // E1: opts.clock0 pins where the virtual clock starts (reproducible runs,
+  // qa/trace.mjs); without it the clock starts at the real time as before.
+  let vnow = opts.clock0 != null ? opts.clock0 : realNow();
   performance.now = () => vnow;
   if (opts.gfx != null) g.applyGfx(opts.gfx);
   g.startRound(opts.round || {});
@@ -191,6 +347,7 @@ window.__qaPlayArena = function (opts) {
       const r0 = realNow(); g.render(frames * dt); renderMs += realNow() - r0; renders++;
     }
     frames++;
+    if (opts.onFrame) opts.onFrame(frames, g); // E1: observer only (qa/trace.mjs)
   }
   g.keyDir = { x: 0, y: 0 };
   performance.now = realNow;
@@ -272,7 +429,7 @@ window.__qaPlayMission = function (id, opts) {
   const style = opts.style || 'expert';
   const g = window.game;
   const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
-  let vnow = realNow();
+  let vnow = opts.clock0 != null ? opts.clock0 : realNow(); // E1: see __qaPlayArena
   performance.now = () => vnow;
   const def = campaignMissionById(id);
   const limit0 = def.timeLimit;
@@ -368,6 +525,7 @@ window.__qaPlayMission = function (id, opts) {
     g.updateCampaign(dt);
     if (opts.render && frames % 30 === 0 && !m.ended) g.renderCampaign(frames * dt);
     frames++;
+    if (opts.onFrame) opts.onFrame(frames, g); // E1: observer only (qa/trace.mjs)
   }
   // Success has a short celebration delay (beginMissionSuccess uses a
   // real setTimeout) -- commit it directly instead of waiting on it.

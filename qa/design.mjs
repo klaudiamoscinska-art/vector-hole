@@ -4,7 +4,7 @@
 // feedback and gender-neutral copy. Usage: node qa/design.mjs
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, ARENA_BOT, ROOT, OUT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, ARENA_BOT, ROOT, OUT, readRuntimeSources } from './lib.mjs';
 
 async function seeded(url, saveOpts = {}, mutate = null, opts = {}) {
   const g = await openGame(url, opts);
@@ -210,7 +210,9 @@ export async function runDesignChecks(url) {
 
   // --- Copy: the player is never addressed as female/male -----------------
   {
-    const src = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8') + fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    // E1: every runtime JS file index.html loads (game.js today, ES modules later) + the HTML.
+    const runtime = readRuntimeSources();
+    const src = runtime.jsText + runtime.html.text;
     const strings = (src.match(/'[^'\n]*'|`[^`\n]*`|>[^<\n]+</g) || []).join('\n');
     const bad = ['Urosłaś', 'urosłaś', 'większa od', 'Gotowa.', 'nietykalna', 'strażniczk', 'kuratork', 'Najszybsza', 'uruchomiłaś', 'będziesz gotowa', 'Złap go pierwsza', 'naprawdę duża', 'Bądź szybszy', 'Bądź szybsza', 'zgarniesz pierwszy']
       .filter(w => strings.includes(w));

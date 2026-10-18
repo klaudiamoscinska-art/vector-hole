@@ -15,7 +15,7 @@
 //    results: what you got | what's next), nothing cut off or scrolling
 //    sideways, also in a small 960×540 portal frame.
 // Usage: node qa/v21.mjs
-import { serve, openGame, veteranSave, report } from './lib.mjs';
+import { serve, openGame, veteranSave, report, expectAll, truthy, falsy } from './lib.mjs';
 
 const PHONES = [[375, 667], [402, 874], [430, 932]];
 const DESKTOPS = [[1366, 768], [1440, 900], [1920, 1080]];
@@ -114,7 +114,10 @@ export async function runV21Checks(url) {
       return { wide: document.body.classList.contains('wide'), rail: nav.w < 150 && nav.h > innerHeight * 0.9 && nav.l === 0, cityLeftOfPlay: city.r <= play.l, cityLeftOfRail: city.l >= nav.r, playInView: play.b <= innerHeight && play.t >= 0, chestInView: chest.b <= innerHeight, scrolls, sideways };
     }, measure.toString());
     results.push(report(`${tag}: desktop layout on (nav as a left rail)`, hub.wide && hub.rail, JSON.stringify(hub)));
-    results.push(report(`${tag}: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling`, hub.cityLeftOfPlay && hub.cityLeftOfRail && hub.playInView && hub.chestInView && !hub.scrolls && !hub.sideways, JSON.stringify(hub)));
+    // E1 pilot: expectAll() names each failed field per viewport (same terms as the old && chain).
+    results.push(expectAll(`${tag}: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling`, {
+      cityLeftOfPlay: truthy(hub.cityLeftOfPlay), cityLeftOfRail: truthy(hub.cityLeftOfRail), playInView: truthy(hub.playInView), chestInView: truthy(hub.chestInView), scrolls: falsy(hub.scrolls), sideways: falsy(hub.sideways)
+    }, JSON.stringify(hub)));
     await g.page.click('#btnNavDzielnice'); await g.page.waitForTimeout(500);
     const dz = await g.page.evaluate((m) => {
       const { R, sideways } = eval(`(${m})`)();
@@ -125,7 +128,9 @@ export async function runV21Checks(url) {
       const play = document.querySelector('#missionNextCard [data-mc-play], #missionNextCard button'); // GRAJ, or „DO DZIELNICY…” when it's done
       return { allIn, stripScroll: map.scrollWidth > map.clientWidth + 2, mapLeftOfMissions: R('#districtMap').r <= next.l, listRight: list.l >= R('#districtMap').r, nextPlayInView: !!play && play.getBoundingClientRect().bottom <= innerHeight, sideways };
     }, measure.toString());
-    results.push(report(`${tag}: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right`, dz.allIn && !dz.stripScroll && dz.mapLeftOfMissions && dz.listRight && dz.nextPlayInView && !dz.sideways, JSON.stringify(dz)));
+    results.push(expectAll(`${tag}: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right`, {
+      allIn: truthy(dz.allIn), stripScroll: falsy(dz.stripScroll), mapLeftOfMissions: truthy(dz.mapLeftOfMissions), listRight: truthy(dz.listRight), nextPlayInView: truthy(dz.nextPlayInView), sideways: falsy(dz.sideways)
+    }, JSON.stringify(dz)));
     await g.page.click('#btnNavWarsztat'); await g.page.waitForTimeout(500);
     const ws = await g.page.evaluate((m) => {
       const { R, sideways } = eval(`(${m})`)();
