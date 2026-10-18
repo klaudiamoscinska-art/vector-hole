@@ -1,0 +1,14 @@
+# Warsztat header before the CSS fix (style.css from snapshot 9a953d31), node hdr.mjs <worktree>, 375x667 portrait
+375px coins 2587: title CUT (24px), gear on screen true
+375px coins 4870: title CUT (24px), gear on screen true
+375px coins 10000: title CUT (24px), gear on screen true
+375px coins 99999: title CUT (24px), gear on screen true
+360px coins 2587: title ok (20px), gear on screen true
+360px coins 4870: title ok (20px), gear on screen true
+360px coins 10000: title ok (20px), gear on screen true
+360px coins 99999: title ok (20px), gear on screen true
+320px coins 2587: title CUT (20px), gear on screen true
+320px coins 4870: title CUT (20px), gear on screen true
+320px coins 10000: title CUT (20px), gear on screen true
+320px coins 99999: title CUT (20px), gear on screen true
+# After the fix (same script, final style.css): 375/360 all ok (21px); 320: 2587/4870/10000 ok (17px), 99999 coins + 999 prisms still CUT (accepted edge, reported).

@@ -1,0 +1,19 @@
+{
+  "state": "PLAYING",
+  "chargedOnStart": false,
+  "startRadius": 18,
+  "speed": 165,
+  "shield": 0,
+  "toolMagnet": 0,
+  "difficultyT": 0.3333333333333333,
+  "modifier": "none",
+  "roundTime": 120,
+  "bots": "16,17,18,19,20",
+  "board": "299:159",
+  "magnetPull": 0,
+  "bitePoints": 5,
+  "biteGrowth": 1,
+  "comboWindow": 1.77,
+  "coinsEarned": 79,
+  "xpGained": 146
+}

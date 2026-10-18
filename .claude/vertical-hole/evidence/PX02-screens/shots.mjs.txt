@@ -1,0 +1,83 @@
+// PX02 UX screenshots at 375x667 (iPhone SE class), for the code under the
+// given root (new worktree or the extracted base). Usage:
+//   node shots.mjs <repoRoot> <outDir> <label>
+import fs from 'node:fs';
+import path from 'node:path';
+const [root, outDir, label] = process.argv.slice(2);
+const lib = await import(path.join(root, 'qa', 'lib.mjs'));
+const { serve, openGame, ARENA_BOT } = lib;
+fs.mkdirSync(outDir, { recursive: true });
+const { server, url } = await serve();
+const vp = { viewport: { width: 375, height: 667 }, deviceScaleFactor: 2 };
+const shot = (page, name) => page.screenshot({ path: path.join(outDir, `${label}-${name}.png`) });
+const out = {};
+
+// Veteran profile: owns 3 paid vortices (legacy save -> refund on the new code), 12 rounds played.
+async function veteran(page, legacy) {
+  return page.evaluate((legacy) => {
+    const s = defaultSave();
+    if (legacy) delete s.economy;
+    ['M01', 'M02', 'M03', 'M25'].forEach(id => { s.campaign.completed[id] = true; s.campaign.stars[id] = 1; });
+    s.stats.runsPlayed = 12; s.stats.recentArenaScores = [500, 600, 700, 650, 640];
+    s.coins = 37; s.owned = ['rainbow', 'cyan', 'green', 'white']; s.selected = 'white';
+    s.unlocks.announced = Array.from(new Set([...unlockedFeatureIds(s), 'warsztat', 'wyzwania', 'kampania']));
+    s.coach = { moved: true, ate: true, rival: true, danger: true };
+    s.login.lastClaimDate = new Date().toISOString().slice(0, 10);
+    s.freeChest = { nextAt: Date.now() + 3600e3, opened: 1 };
+    s.privacy = { decided: true, analytics: false, ads: false, ts: 1 };
+    return sealSave(s);
+  }, legacy);
+}
+
+{
+  const g0 = await openGame(url, vp);
+  const raw = await veteran(g0.page, true);
+  await g0.browser.close();
+  const g = await openGame(url, { ...vp, save: raw });
+  await g.page.addScriptTag({ content: ARENA_BOT });
+  await g.page.waitForTimeout(800);
+  await shot(g.page, '01-boot-hub');
+  out.bootSheet = await g.page.evaluate(() => { const el = document.getElementById('infoSheet'); return el && !el.classList.contains('hidden') ? document.getElementById('infoSheetTitle').textContent : null; });
+  await g.page.evaluate(() => window.game.closeInfoSheet());
+  // Warsztat
+  await g.page.evaluate(() => window.game.openWarsztatScreen());
+  await g.page.waitForTimeout(400);
+  await shot(g.page, '02-warsztat');
+  await g.page.evaluate(() => { const gm = window.game; gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'gold')); });
+  await g.page.waitForTimeout(300);
+  await shot(g.page, '03-warsztat-sheet');
+  await g.page.evaluate(() => window.game.closeInfoSheet());
+  // GRAJ from Miasto
+  await g.page.evaluate(() => { window.game.showScreen('mainMenu'); });
+  await g.page.waitForTimeout(300);
+  await g.page.evaluate(() => document.getElementById('btnStart').click());
+  await g.page.waitForTimeout(500);
+  out.afterGraj = await g.page.evaluate(() => ({ state: window.game.state, setup: !!document.getElementById('runSetupScreen') && !document.getElementById('runSetupScreen').classList.contains('hidden') }));
+  await shot(g.page, '04-after-graj');
+  // A lost round -> results (where the Turbo offer used to be)
+  await g.page.evaluate(() => { const gm = window.game; gm.running = false; if (gm.rafId) cancelAnimationFrame(gm.rafId); gm.state = GameState.MENU; window.__qaPlayArena({ style: 'afk' }); });
+  await g.page.waitForTimeout(1600);
+  await shot(g.page, '05-result-lost');
+  out.result = await g.page.evaluate(() => ({ upsell: !!document.getElementById('resultUpsell') && !document.getElementById('resultUpsell').classList.contains('hidden'), text: document.getElementById('gameOverScreen').innerText.replace(/\s+/g, ' ').slice(0, 400) }));
+  await g.page.evaluate(() => document.getElementById('btnPlayAgain').click());
+  await g.page.waitForTimeout(600);
+  out.replay = await g.page.evaluate(() => window.game.state);
+  await shot(g.page, '06-replay');
+  out.errors = g.errors;
+  await g.browser.close();
+}
+{
+  // First Arena of a brand-new player.
+  const g = await openGame(url, vp);
+  await g.page.waitForTimeout(600);
+  await shot(g.page, '07-first-launch');
+  await g.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
+  await g.page.waitForTimeout(700);
+  out.first = await g.page.evaluate(() => window.game.state);
+  await shot(g.page, '08-first-arena');
+  out.errors2 = g.errors;
+  await g.browser.close();
+}
+server.close();
+fs.writeFileSync(path.join(outDir, `${label}-shots.json`), JSON.stringify(out, null, 2));
+console.log(JSON.stringify(out, null, 2));

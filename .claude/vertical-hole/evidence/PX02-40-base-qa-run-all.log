@@ -1,0 +1,683 @@
+
+=== edge cases ===
+PASS  boot: fresh save shows the one-tap start CTA  — ready in 603 ms
+PASS  ftue: 1 tap from first screen to a live Arena round
+PASS  boot: no external network requests
+PASS  save: corrupted JSON boots with a fresh profile  — state MENU
+PASS  save: empty object {} boots  — state MENU
+PASS  save: legacy v1 save migrates  — state MENU
+PASS  save: wrong types (strings/negatives) boot  — state MENU
+PASS  storage: localStorage throwing (private mode) boots  — state MENU
+PASS  monkey: 400 random taps across every screen, no errors
+PASS  pause/resize spam: round still running cleanly
+PASS  security: display name cannot inject HTML
+PASS  anti-cheat: clock rollback cannot re-farm login rewards  — claims: true,true,true,false,false
+PASS  security: malformed challenge link is ignored safely
+edge cases done in 32.9 s
+
+=== features ===
+PASS  audio: context unlocks on first tap and all SFX play  — {"before":"running","musicOff":true,"musicOn":true,"saved":true}
+PASS  audio: music toggle stops/starts the sequencer and persists
+PASS  audio (iOS): asks for the "playback" session so the silent switch does not mute the game  — playback
+PASS  audio (iOS): a tap recovers from the "interrupted" state  — running
+PASS  audio (iOS): a context that will not resume is rebuilt on the next tap  — {"fresh":true,"state":"running","music":true}
+PASS  audio: taps do not wake audio held for an ad / hidden page  — {"held":"suspended","after":"running"}
+PASS  audio: music plays in the very first round (welcome GRAJ → Arena)  — {"mode":"arena","state":"running","music":true,"gain":0.34}
+PASS  audio: no runtime errors
+PASS  audio (iOS WebKit, no audioSession): silent media loop unmutes Web Audio after a tap  — {"ios":true,"hasSession":false,"el":true,"loop":true,"playing":true,"ctx":"running","pausedOnHold":true,"playingAgain":true,"status":"Silnik: działa · 44.1 kHz · tryb iOS: odtwarzanie · gra: Neonowy Świt — nic nie słychać? Podgłośnij telefon przyciskami z boku."}
+PASS  audio: the silent loop pauses with the audio hold and comes back
+PASS  audio: profile sound test plays and shows a status line  — Silnik: działa · 44.1 kHz · tryb iOS: odtwarzanie · gra: Neonowy Świt — nic nie słychać? Podgłośnij telefon przyciskami z boku.
+PASS  audio (iOS): no runtime errors
+PASS  ads: demo provider when no SDK is present
+PASS  ads: result ×2 coins pays exactly once
+PASS  ads: free prisms capped at 3 per day  — +15
+PASS  ads: chest can be opened early for an ad
+PASS  iap: paid store + IAP-only cosmetics hidden without a payment provider
+PASS  ads: interstitial plays, then is time-capped  — 380 ms then 0 ms
+PASS  ads: no runtime errors
+PASS  ads: near-miss mission offers +20 s revive  — {"offered":true,"revived":true,"endedAfter":true,"offeredTwice":false}
+PASS  ads: revive grants time once, then the mission can end
+PASS  iap: native wrapper shows the store with localized prices  — {"provider":"native","shown":true,"rows":6,"price":"€2.99","coins":1500,"aura":true,"noAds":true}
+PASS  iap: one-time packs grant once (starter pack + exclusive Trail)
+PASS  iap: "Bez reklam" entitlement recorded
+PASS  viral: share card renders as a JPEG under 600 KB  — 124 KB
+PASS  viral: challenge link shows the hub card (name escaped) and cleans the URL  — {"card":true,"from":"Ania&lt;b&gt;","urlClean":true,"seedOk":true,"hook":"WYZWANIE WYGRANE! 12 669 vs 1 234 (Ania). Odeślij swój wynik!","beaten":true,"cleared":true,"score":12669}
+PASS  viral: accepting replays the same seed with a live target
+PASS  viral: result screen reports the challenge outcome  — WYZWANIE WYGRANE! 12 669 vs 1 234 (Ania). Odeślij swój wynik!
+PASS  anti-cheat: edited challenge score is rejected
+PASS  viral: no runtime errors
+PASS  gdpr: consent bar after the first round (not over the welcome CTA), nothing leaves the device before consent  — {"barShown":true,"leakedBefore":0,"sentAfter":1,"retention":true,"barHidden":true,"policy":true,"install":"2026-10-17"}
+PASS  gdpr: after consent events reach the host sink (dataLayer)
+PASS  gdpr: privacy policy + data export available
+PASS  analytics: retention_day (D1/D7) tracked with install date
+PASS  anti-cheat: saves are sealed; edited saves are flagged  — {"sealed":true,"tampered":true,"coinsType":"number","prisms":0,"settingsOk":true,"chestKept":true}
+PASS  save: wrong field types are repaired (no string coins, settings restored, timestamps kept)
+PASS  legal: no errors
+PASS  review: double-tapping revive does not waste the ad  — {"ended":false,"revived":true}
+PASS  review: emoji names survive the challenge seal  — {"seed":42,"score":777,"from":"abcdefghijklmno😀"}
+PASS  review: a challenge seed lays out the same map for every player  — {"full":"2308,2639","partial":"2308,2639"}
+PASS  review: Poki under an adblocker stays "poki" (never the paying demo ad)  — {"provider":"poki","calls":["loaded"]}
+
+=== visual ===
+PASS  floor: Arena is played on a lit Neon City floor (not a black void)  — {"lit":0.946,"chunks":14,"renders":14}
+PASS  crown: exactly one hole wears the leader crown, and it is the #1 by score  — {"leaders":1,"leaderIsTop":true,"rows":3,"clock":"1:40","idleMutations":0,"playerRow":true}
+PASS  hud: compact standings (podium + you) and an m:ss clock  — 3 rows · 1:40
+PASS  hud: unchanged standings cause zero DOM writes  — 0 mutations over 20 HUD updates
+PASS  camera: a capped late-round hole never swallows the screen  — {"r":480,"bot":480,"maxR":480,"zoom":0.287,"holeShare":0.66,"viewInWorld":true,"pixels":3898800,"chunks":48,"renders":84}
+PASS  floor: chunk cache stays within its pixel budget  — 3.9 Mpx in 48 chunks, 84 paints
+PASS  swallow: eaten objects and a rival are drawn falling into the vortex  — {"eating":7,"ghosts":1,"swallowDraws":8}
+PASS  results: play again / x2 coins / challenge visible without scrolling  — {"state":"RESULTS","again":true,"ad":true,"share":true,"score":"16 316"}
+PASS  results: score count-up finishes (not stuck at 0)  — score shown 16 316
+PASS  visual: no runtime errors in Arena
+PASS  floor: every Campaign district has its own lit floor theme  — M02:plac:0.88 M05:park:0.902 M09:port:0.88 M13:galeria:0.872 M17:dachy:0.882 M21:rdzen:0.883
+PASS  mission result: hero emblem shown in the district color
+PASS  visual: no runtime errors in Campaign
+PASS  menu: first-run welcome scene shows the Neon City  — {"paints":20,"first":true}
+PASS  menu: settings are label/switch rows; daily map draws the city districts  — {"dir":"row","minimaps":1}
+PASS  floor: no chunk repaints while the camera is still (gfx 2, DPR 2)  — {"arena@1.08":0,"arena@0.8":0,"arena@0.58":0,"arena@0.3":0,"campaign":0}
+PASS  floor: the moving first-run demo streams ≤ 3 chunks/s (DPR 2)  — 0 in 3 s
+PASS  floor: no chunk repaints while the camera is still (gfx 2, DPR 3)  — {"arena@1.08":0,"arena@0.8":0,"arena@0.58":0,"arena@0.3":0,"campaign":0}
+PASS  floor: the moving first-run demo streams ≤ 3 chunks/s (DPR 3)  — 1 in 3 s
+FAIL  perf: low-end level renders a full frame (rasterized) under 12 ms median  — {"gfx0":{"median":13.87,"max":21},"gfx2":{"median":35.4,"max":60.5}}
+
+=== design ===
+PASS  design: first bite in under 1 s (casual player, avg)  — avg 0.47 s
+PASS  design: at least 12 bites in the first 10 s (casual, avg)  — avg 16.8
+PASS  design: most casual rounds are a close race (gap < 50% of the winning score)  — 12/12 close · places 1 1 1 1 2 1 1 1 2 1 2 1
+PASS  design: a casual newbie wins most of the first 3 rounds  — #1 #1 #1
+PASS  design: pacer par comes from the last finished rounds  — {"par":7761,"recent":5}
+PASS  design: no runtime errors in the casual career
+PASS  input: the hole does not drive itself before the first touch  — moved 0.0 px
+PASS  input: a finger held still keeps the hole moving  — moved 253 px in 1.5 s
+PASS  input: lifting the finger stops the hole  — drift 0.0 px
+PASS  input: tapping START on the mission card does not steer the hole  — moved 0.0 px
+PASS  input: a mouse cursor resting on the hole parks it (desktop)  — moved 0.0 px
+PASS  newbie: no login calendar before the first finished round
+PASS  newbie: the welcome GRAJ starts an Arena round straight away  — {"state":"PLAYING","setup":false}
+PASS  newbie: no Rush Hour modifier in the easy ramp  — 0/40 seeds
+PASS  daily: map preview is exactly the round layout  — {"same":true,"n":299,"spawn":true,"trails":80}
+PASS  arena: street trails are laid  — 80 trail fragments
+PASS  feedback: a too-big object says which size it needs  — ZA DUŻE · URÓŚNIJ DO T3
+PASS  layout 402x874: app fits the visible viewport, nav labels on screen  — {"H":874,"appH":874,"navMax":860,"btnBottom":833.5,"tappable":true}
+PASS  layout 402x874: profile reset button reachable and tappable
+PASS  layout 402x740: app fits the visible viewport, nav labels on screen  — {"H":740,"appH":740,"navMax":726,"btnBottom":699.5,"tappable":true}
+PASS  layout 402x740: profile reset button reachable and tappable
+PASS  layout 375x667: app fits the visible viewport, nav labels on screen  — {"H":667,"appH":667,"navMax":653,"btnBottom":626.5,"tappable":true}
+PASS  layout 375x667: profile reset button reachable and tappable
+PASS  layout: home-screen app on a notched iPhone — game, canvas and minimap inside the visible viewport  — {"H":797,"app":797,"gameH":797,"canvas":797}
+PASS  layout: status bar style is "black" (black-translucent triggers the WebKit short-viewport bug)  — black
+PASS  layout: menu screens keep content below the status bar / notch
+PASS  layout: #app height uses the dynamic viewport (100dvh)
+PASS  copy: gender-neutral player address
+PASS  copy: no leftover English jargon in player-facing strings
+
+=== flow ===
+PASS  flow: start screen has exactly one button, on screen (375x667)  — {"buttons":1,"ctaBottom":615.6517333984375,"H":667,"words":11}
+PASS  flow: start screen copy is short (<= 12 words)  — 11 words
+PASS  flow: no runtime errors (start screen)
+PASS  flow 402x874: Miasto has no sticky/floating element
+PASS  flow 402x874: GRAJ and the whole hub fit above the nav (no scrolling)  — {"sticky":[],"playBottom":637,"chestBottom":796,"navTop":812,"overflow":0,"visibleButtons":9,"campaign":"M06 · Wyłącznik"}
+PASS  flow 402x874: Miasto keeps to a handful of tappable things (<= 10)  — 9
+PASS  flow 402x874: hub campaign tile names the next mission  — M06 · Wyłącznik
+PASS  flow: no runtime errors (Miasto 402x874)
+PASS  flow 375x667: Miasto has no sticky/floating element
+PASS  flow 375x667: GRAJ and the whole hub fit above the nav (no scrolling)  — {"sticky":[],"playBottom":434,"chestBottom":589,"navTop":605,"overflow":0,"visibleButtons":9,"campaign":"M06 · Wyłącznik"}
+PASS  flow 375x667: Miasto keeps to a handful of tappable things (<= 10)  — 9
+PASS  flow 375x667: hub campaign tile names the next mission  — M06 · Wyłącznik
+PASS  flow: no runtime errors (Miasto 375x667)
+PASS  flow: hub campaign tile opens the next mission's briefing  — {"next":"M25","open":true,"goals":1,"steps":1,"nelaOk":true,"avatar":true,"metaOk":true,"started":true,"closed":true,"toastOk":true}
+PASS  flow: briefing lists every goal as its own row + NELA (with avatar) + time and the 3 star conditions  — {"next":"M25","open":true,"goals":1,"steps":1,"nelaOk":true,"avatar":true,"metaOk":true,"started":true,"closed":true,"toastOk":true}
+PASS  flow: briefing GRAJ starts exactly that mission and closes the sheet
+PASS  flow: mission opens on the start card with NELA's bubble (avatar + the mission's line)
+PASS  flow: no runtime errors (briefing)
+PASS  flow 402x874: Dzielnice — next mission's GRAJ on screen without scrolling  — {"id":"M27","next":"M27","btnBottom":483,"navTop":812,"tappable":true,"story":128,"lockedSheet":true,"rows":10}
+PASS  flow 402x874: Dzielnice — district story by NELA, locked rows explain themselves  — {"id":"M27","next":"M27","btnBottom":483,"navTop":812,"tappable":true,"story":128,"lockedSheet":true,"rows":10}
+PASS  flow: no runtime errors (Dzielnice 402x874)
+PASS  flow 375x667: Dzielnice — next mission's GRAJ on screen without scrolling  — {"id":"M27","next":"M27","btnBottom":483,"navTop":605,"tappable":true,"story":128,"lockedSheet":true,"rows":10}
+PASS  flow 375x667: Dzielnice — district story by NELA, locked rows explain themselves  — {"id":"M27","next":"M27","btnBottom":483,"navTop":605,"tappable":true,"story":128,"lockedSheet":true,"rows":10}
+PASS  flow: no runtime errors (Dzielnice 375x667)
+PASS  flow: result screen previews the next mission (code, goals) above its button  — {"played":"M25","next":"M26","cardShown":true,"cardCode":"M05","goals":1,"btn":"GRAJ M05","cardAbove":true,"nela":true,"briefed":true,"startedNext":true,"failBtn":"SPRÓBUJ PONOWNIE","failMissing":true,"failNoNext":true}
+PASS  flow: result button briefs and starts that next mission; NELA reacts in her bubble
+PASS  flow: a failed mission offers SPRÓBUJ PONOWNIE and lists what is missing  — {"played":"M25","next":"M26","cardShown":true,"cardCode":"M05","goals":1,"btn":"GRAJ M05","cardAbove":true,"nela":true,"briefed":true,"startedNext":true,"failBtn":"SPRÓBUJ PONOWNIE","failMissing":true,"failNoNext":true}
+PASS  flow: no runtime errors (result)
+PASS  flow: a replay keeps showing stars won earlier; no false "NOWA DZIELNICA"  — {"star":"★","eyebrow":"NASTĘPNA MISJA","banners":1}
+PASS  flow: "CEL ZALICZONY" fires once per step  — {"star":"★","eyebrow":"NASTĘPNA MISJA","banners":1}
+PASS  flow: no runtime errors (regressions)
+PASS  flow: Warsztat — a tap on an item for sale previews it and asks, spends nothing  — {"price":100,"coins0":5000,"afterTap":{"coins":5000,"owned":false,"sheet":true,"preview":true},"reverted":true,"bought":{"coins":4900,"owned":true,"equipped":true},"worn":true,"equipBtn":false}
+PASS  flow: Warsztat — KUP I ZAŁÓŻ buys and wears it  — {"coins":4900,"owned":true,"equipped":true}
+PASS  flow: Warsztat — an owned item is worn with one tap (no ZAŁÓŻ button at the bottom)
+PASS  flow: no runtime errors (Warsztat)
+
+=== arena bots ===
+PASS  arena: greedy bot wins its first 3 runs on podium (easy start)  — #1 #1 #1
+PASS  arena: difficulty wall exists (late avg place worse than early)  — late avg #1.0
+PASS  arena: afk player never crashes and finishes a round  — afk place #6 score 0
+PASS  perf: update() under 4 ms average  — avg 0.493 ms, max 26.8 ms
+FAIL  perf: low-end quality level renders under 12 ms (software GPU)  — gfx0 avg 18.19 ms · gfx2 avg 50.49 ms
+PASS  economy: first cosmetic affordable within 3 runs  — 1545 coins after 3 runs, cheapest 100
+PASS  economy: currency stays finite and non-negative
+PASS  arena: no runtime errors during career
+career places: 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 | scores: 12334 17502 21290 46693 19660 11867 24734 16726 20197 21254 26644 12256 21820 20034 27842 18691 14183 47432 20023 41301
+coins after career: 9254 | player level: 15 | core level: 4
+
+=== campaign bots ===
+  M01: clear 5.2s / 45s
+  M02: clear 20.6s / 65s
+  M03: clear 12s / 55s
+  M25: clear 40.4s / 95s
+  M26: clear 40s / 60s
+  M27: clear 31s / 100s
+  M28: clear 30.1s / 55s
+  M29: clear 25.7s / 80s
+  M30: clear 42.1s / 90s
+  M04: clear 40.4s / 80s
+  M05: clear 22.1s / 70s
+  M06: clear 22.2s / 50s
+  M07: clear 14.1s / 60s
+  M31: clear 29.6s / 60s
+  M32: clear 39s / 80s
+  M33: clear 21.2s / 45s
+  M34: clear 33.5s / 80s
+  M35: clear 34.2s / 85s
+  M36: clear 19.8s / 45s
+  M08: clear 29.9s / 60s
+  M09: clear 19.6s / 50s
+  M10: clear 18.5s / 50s
+  M11: clear 40.3s / 80s
+  M37: clear 43.3s / 75s
+  M38: clear 38.8s / 70s
+  M39: clear 30.5s / 45s
+  M40: clear 63.4s / 100s
+  M41: clear 42s / 75s
+  M42: clear 33s / 75s
+  M12: clear 35.6s / 65s
+PASS  campaign: expert bot clears the first 30 missions (play order)  — 30/30
+PASS  campaign: no runtime errors
+
+=== v15 systems ===
+PASS  content: 12 districts, 240 missions, unique ids  — 12 / 240
+PASS  content: every mission has difficulty, 3 star conditions in order, a time limit, NELA lines
+PASS  content: every step label is real Polish text
+PASS  content: every district has a name, story and color; every boss a name plate (owner: district 2 had no name)
+PASS  content: each district is unlocked by the previous boss
+PASS  content: every mission time is calibrated by the bot (MISSION_BOT_TIME)
+PASS  content: all five difficulty levels and all six twists are used  — diff 7/27/59/112/35 · twists 56/13/38/60/22/29
+PASS  v15: no runtime errors (content)
+PASS  start: a mission opens frozen on the start card (clock at 0 until a tap)  — {"pending":true,"elapsed":0,"card":true}
+PASS  start: a tap anywhere starts the clock  — {"pending":false,"elapsed":0.703199999999814,"card":false}
+PASS  v15: no runtime errors (tap to start)
+PASS  boosters: five booster tiles in the briefing (v18 Sprint); Tarcza is off where nothing can hit you  — 5 true
+PASS  boosters: GRAJ shows the coin cost before anything is spent  — GRAJ −140 ◇
+PASS  boosters: stock is used first, the rest is paid in coins  — {"spent":140,"stock":0}
+PASS  boosters: Zegar +15 s, Turbo start at T2, Tarcza 2 hits  — {"tiles":5,"offOnSafe":true,"label":"GRAJ\n−140 ◇","spent":140,"stockTime":0,"boosters":["time","start","shield"],"bonus":15,"limit":60,"remaining":75,"tier":"T2","shields":2}
+PASS  boosters: Tarcza absorbs two hits, the third costs growth  — {"u0":6,"afterShield":{"units":6,"shields":1},"final":4.5,"shields":0}
+PASS  boosters: without the coins nothing starts and nothing is spent (the note says why)  — {"open":true,"coins":10,"attempts":true,"note":"Brakuje 60 monet na wybrane wzmocnienia. ▶ Turbo start za reklamę"}
+PASS  v15: no runtime errors (boosters)
+PASS  stars: a slow clear earns 1 star, a fast one all 3 (kept per mission)  — {"slow":1,"slowShown":1,"fast":7,"title":"PERFEKCYJNIE!","newShown":2,"chests":1,"chestCoins":120,"racerTitle":"ZŁODZIEJ BYŁ SZYBSZY","fragileTitle":"WIR ROZBITY","fragileEnded":true,"pity":1,"pityLine":"Ta misja daje w kość. Masz ode mnie Zegar (+15 s) — wybierz go w odprawie.","pityOnce":1}
+PASS  stars: three stars read "PERFEKCYJNIE!"  — PERFEKCYJNIE!
+PASS  stars: every 15 stars opens a star chest  — {"chests":1,"coins":120}
+PASS  fail: the thief winning ends the mission as "ZŁODZIEJ BYŁ SZYBSZY"  — ZŁODZIEJ BYŁ SZYBSZY
+PASS  fail: a hit on a fragile vortex ends it as "WIR ROZBITY"  — WIR ROZBITY
+PASS  pity: after 3 defeats in a row NELA lends one Zegar, once per mission  — {"pity":1,"once":1,"line":"Ta misja daje w kość. Masz ode mnie Zegar (+15 s) — wybierz go w odprawie."}
+PASS  v15: no runtime errors (stars)
+PASS  save: v11 -> v12 (-> v13) keeps progress as stars (time medal -> 2nd star, special -> 3rd)  — {"v":13,"m01":3,"m04":5,"m02":1,"metro":true,"energy":false,"chests":4,"boosters":{"time":0,"start":0,"magnet":0,"shield":0,"sprint":0,"gift":false,"sprintGift":false}}
+PASS  save: a save past the finale gets Rozdział II, no chest burst (and no energy field, v22)  — {"metro":true,"energy":false,"chests":4}
+PASS  v15: no runtime errors (migration)
+PASS  layout 375x667: briefing GRAJ is reachable inside the sheet (boosters + hints)  — {"inView":true,"scrollable":false,"h":667,"H":667}
+PASS  v15: no runtime errors (layout 375)
+PASS  layout 402x874: briefing GRAJ is reachable inside the sheet (boosters + hints)  — {"inView":true,"scrollable":false,"h":874,"H":874}
+PASS  v15: no runtime errors (layout 402)
+
+=== audio (v16) ===
+PASS  music bank: ≥15 tracks (≥3 menu, ≥12 in-game), all compile cleanly  — {"n":15,"menu":3,"gameplay":12,"problems":[]}
+PASS  music bank: every district (both chapters) has its own theme
+PASS  music bank: every track is a different song (tempo/key/chords/hook) with real variety  — {"unique":15,"tempos":12,"keysScales":12}
+PASS  music render: every track/level is audible, never clips, no NaN  — peaks 0.032–0.308
+PASS  music render: in-round tracks sit within 8 dB of each other (no track jumps out)  — spread 4.0 dB · wir -35, impuls -33.7, fala -33.7, glitch -34.2, napiecie -34.4, rdzen -34.7, tunele -33.9, bazar -35, piksele -37.7, hologramy -35.5, ogrody -35.4, chmura -34.2
+PASS  music render: menu tracks are calmer than in-round music  — menu max -38 dB · round avg -34.8 dB
+PASS  music render: layers build up with intensity (outro < round ≤ SZAŁ voices)  — all 12 in-game tracks
+PASS  music perf: ≤ 140 synth voices per second at the busiest level  — max 41/s
+PASS  music: final stretch arms a one-bar riser, then jumps to the drop  — {"riserBar":3,"inDrop":true}
+PASS  music: Arena moves on to another track after a full pass  — impuls
+PASS  music: in the final stretch the track stays and loops hook → drop (no medley)  — {"queued":false,"section":"B"}
+PASS  music: missions loop their district theme (with a varied 2nd pass), Daily stays on its track
+PASS  music: a district boss opens on the drop  — D
+PASS  sfx: the combo ladder and stingers follow the track key  — {"finalWrap":{"queued":false,"section":"B"},"riserBar":3,"inDrop":true,"arenaNext":"impuls","arenaFrom":"fala","campaignQueued":false,"campaignLoop":1,"dailyQueued":false,"bossSection":"D","ladder0":164.8,"keyRatio":0.749,"majorRatio":1}
+PASS  audio bank: no runtime errors
+PASS  music (live): the hub plays a lo-fi menu track after the first tap  — {"id":"swit","menu":true,"queued":null,"section":"A","timer":true,"state":"running"}
+PASS  music (live): 5 Arena rounds = ≥3 different tracks, no back-to-back repeat  — rdzen → fala → impuls → wir → napiecie
+PASS  music (live): the result screen keeps the round track as a calm outro  — {"id":"napiecie","menu":false,"queued":null,"section":"A","timer":true,"state":"running"}
+PASS  music (live): back on Miasto the menu rotation returns  — swit
+PASS  music (live): each district plays its own theme (Plac → Wir Neonów, Park → Zielony Impuls, Port → Fala Syntez)  — {"M01":{"song":"wir","card":"A","section":"A"},"M05":{"song":"impuls","card":"A","section":"A"},"M09":{"song":"fala","card":"A","section":"A"},"M04":{"song":"wir","card":"A","section":"D"}}
+PASS  music (live): the district boss (M04) waits on its intro under the start card, then drops on START  — {"M01":{"song":"wir","card":"A","section":"A"},"M05":{"song":"impuls","card":"A","section":"A"},"M09":{"song":"fala","card":"A","section":"A"},"M04":{"song":"wir","card":"A","section":"D"}}
+PASS  music (live): a Daily seed always plays the same (free) track  — wir = wir
+PASS  music (live): pause drops the music "underwater" (low-pass) and resume opens it again  — 650 Hz → 17999 Hz
+PASS  music (live): the pause sheet names the track and NASTĘPNY switches it  — {"label":"Glitch w Galerii","label2":"Rdzeń Miasta"}
+PASS  music (live): a "TERAZ GRA" chip names the new track in the round (never blocks taps)
+PASS  jukebox: lists every track + Mieszanka; Rozdział II tracks are locked on a Rozdział I save  — {"n":16,"locked":["tunele","bazar","piksele","hologramy","ogrody","chmura"]}
+PASS  jukebox: a locked track cannot be pinned (the row explains why)
+PASS  jukebox: tapping a track previews it, pins it and saves it  — {"preview":"fala","saved":"fala","label":"FALA SYNTEZ ›"}
+PASS  jukebox: the preview plays the full arrangement from the hook, and stops previewing on close
+PASS  jukebox: a pinned track plays in Arena and in missions  — {"arena":"fala","mission":"fala"}
+PASS  jukebox: Mieszanka restores rotation; an unknown saved pick falls back to it
+PASS  music: unlocking Tunele Metra adds its theme to the Arena rotation  — {"before":6,"after":7,"has":true}
+PASS  music: switched off it schedules nothing, back on it resumes the right scene  — {"timerOff":true,"loadedGameplay":true,"back":true,"menuNow":true}
+PASS  music: NASTĘPNY right at round start skips to another in-round track (not a menu one)  — {"skipped":"glitch","menu":false,"playing":"glitch","proto":["auto","auto","auto"],"unlockedProto":false}
+PASS  save: prototype names as musicPick fall back to Mieszanka  — ["auto","auto","auto"]
+PASS  music stress: 60 rapid scene changes/skips/pauses settle on the right track, one timer, audible  — {"sameTimer":true,"menu":true,"queued":false,"gain":1}
+PASS  sfx: every new event cue plays (bump, lead taken/lost, shield, portal, finale, cards, pick, danger, start)
+PASS  bot round: start, eating, tier-ups, the finale and the countdown all sound  — {"go":1,"eat":297,"tierUp":5,"cards":2,"overdrive":1,"tick":5}
+PASS  bot round: music climbs 1 → 2 (final stretch) and heads for the drop  — {"levels":[0,1,2],"armed":true}
+PASS  bot round: no runtime errors
+PASS  layout 375×667: pause sheet shows WRÓĆ, the track row and WYJDŹ without scrolling  — {"resume":true,"track":true,"next":true,"leave":true,"arenaClear":true,"missionClear":true}
+PASS  layout 375×667: the TERAZ GRA chip stays clear of the standings and CEL MISJI  — {"resume":true,"track":true,"next":true,"leave":true,"arenaClear":true,"missionClear":true}
+
+=== v17 first impression ===
+PASS  first screen: the live demo has food on screen from the first second  — {"objs":43,"first":true}
+PASS  first screen: the demo eats, scores, grows to T3+, eats a rival and loops  — {"maxTier":3,"maxScore":700,"rival":true,"loops":1}
+PASS  first screen: no runtime errors
+PASS  Miasto 375×667: one hero -- the Core City card above GRAJ, no second live panel  — {"cityAbovePlay":true,"cityH":281,"noStage":true,"gapBelowChest":16,"pitch":"Każda runda Areny buduje Twoje miasto | +16% za rundę · nagroda za 7 rund","pitchInCard":true,"sub":"Arena · runda 2:00 · +16% budowy miasta","titleFull":true}
+PASS  Miasto 375×667: no empty band -- the content reaches the nav (gap ≤ 40 px) without scrolling  — 16 px
+PASS  Miasto 375×667: the card says why it is fun (+% per round, rounds to the reward) and GRAJ says what it builds  — {"pitch":"Każda runda Areny buduje Twoje miasto | +16% za rundę · nagroda za 7 rund","sub":"Arena · runda 2:00 · +16% budowy miasta"}
+PASS  Miasto 375×667: no runtime errors
+PASS  Miasto 402×874: one hero -- the Core City card above GRAJ, no second live panel  — {"cityAbovePlay":true,"cityH":480,"noStage":true,"gapBelowChest":16,"pitch":"Każda runda Areny buduje Twoje miasto | +16% za rundę · nagroda za 7 rund","pitchInCard":true,"sub":"Arena · runda 2:00 · +16% budowy miasta","titleFull":true}
+PASS  Miasto 402×874: no empty band -- the content reaches the nav (gap ≤ 40 px) without scrolling  — 16 px
+PASS  Miasto 402×874: the card says why it is fun (+% per round, rounds to the reward) and GRAJ says what it builds  — {"pitch":"Każda runda Areny buduje Twoje miasto | +16% za rundę · nagroda za 7 rund","sub":"Arena · runda 2:00 · +16% budowy miasta"}
+PASS  Miasto 402×874: no runtime errors
+PASS  Dzielnice: every tile label (name + status) sits on its own layer above the animated skyline  — [{"name":"Plac Neonów","layered":true,"visible":true},{"name":"Park Impulsów","layered":true,"visible":true},{"name":"Port Syntez","layered":true,"visible":true},{"name":"Galeria Glitch","layered":true,"visible":true}]
+
+=== v18 economy ===
+PASS  Sprint: a 5th booster tile; existing booster owners get one Sprint as a gift (once)  — {"giftOnce":true,"tiles":5,"sprintTile":true,"ratio":1.15,"used":0}
+PASS  Sprint: the vortex is 15% faster for the whole mission (stock used first)  — {"giftOnce":true,"tiles":5,"sprintTile":true,"ratio":1.15,"used":0}
+PASS  Sprint: the gift is not repeated on the next load  — 0
+PASS  v18: no runtime errors (Sprint)
+PASS  defeat: out of time close to the goal → "SPRÓBUJ Z: ZEGAR" (+ price), POWTÓRZ stays  — {"text":"SPRÓBUJ Z: ZEGAR +15 s · 60 ◇","retry":true,"nela":"Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej. Zegar da Ci +15 s."}
+PASS  defeat: out of time far from the goal → Turbo start  — SPRÓBUJ Z: TURBO START start od T2 · 70 ◇
+PASS  defeat: lost the race → Sprint; cracked vortex → Tarcza  — {"racer":"SPRÓBUJ Z: SPRINT +15% szybciej · 70 ◇","hit":"SPRÓBUJ Z: TARCZA 2 zderzenia · 70 ◇"}
+PASS  defeat: the retry opens the briefing with the booster picked and its price on GRAJ -- nothing spent yet  — {"open":true,"picked":["time"],"grajs":"GRAJ","coinsSame":true,"stock":1}
+PASS  defeat: before boosters unlock the plain SPRÓBUJ PONOWNIE stays  — SPRÓBUJ PONOWNIE
+PASS  layout 375×667: the "SPRÓBUJ Z" button is on screen  — {"bottom":533,"h":667,"lines":75}
+PASS  v18: no runtime errors (defeat)
+PASS  briefing: short on coins → "▶ Zegar za reklamę"; the ad puts it in stock, still picked, GRAJ now free of coins  — {"label":"▶ Zegar za reklamę","stock":1,"grajs":"GRAJ","picked":["time"],"left":2,"coins":10}
+PASS  briefing: the booster ad is capped (3 a day)  — 2
+PASS  v18: no runtime errors (booster ad)
+PASS  store: Pakiet wzmocnień gives 5 of every booster; Pakiet Startowy adds 3 of each (and says so)  — {"afterPack":{"time":5,"start":5,"magnet":5,"shield":5,"sprint":5,"gift":true,"sprintGift":true},"afterStarter":{"time":8,"start":8,"magnet":8,"shield":8,"sprint":8,"gift":true,"sprintGift":true},"starterDesc":"1500 monet · 60 pryzmatów · 3× każde wzmocnienie misji · ekskluzywna Smuga „Zorza Startu”"}
+PASS  start card before the unlock: the back link is a small pill under START, not a second big button  — {"unlocked":false,"text":"Wróć do mapy","font":13,"spacing":0.13,"w":134,"goW":342,"h":34,"briefing":false,"tiles":0,"kept":false,"stock":2,"screen":true}
+PASS  start card before the unlock: no boosters yet -- "Wróć do mapy" goes back to the map  — {"unlocked":false,"text":"Wróć do mapy","font":13,"spacing":0.13,"w":134,"goW":342,"h":34,"briefing":false,"tiles":0,"kept":false,"stock":2,"screen":true}
+PASS  start card after the unlock: the back link is a small pill under START, not a second big button  — {"unlocked":true,"text":"Zmień wzmocnienia","font":13,"spacing":0.13,"w":169,"goW":341,"h":34,"briefing":true,"tiles":5,"kept":true,"stock":2,"screen":true}
+PASS  start card after the unlock: "Zmień wzmocnienia" reopens the briefing with the boosters (picks kept, stock refunded)  — {"unlocked":true,"text":"Zmień wzmocnienia","font":13,"spacing":0.13,"w":169,"goW":341,"h":34,"briefing":true,"tiles":5,"kept":true,"stock":2,"screen":true}
+
+  booster   hard (d4+d5)   EKSTREMALNA (d5)   — casual bot, 22 missions × 2
+  none       61%           45%
+  time       82%           75%
+  start      73%           70%
+  sprint     66%           80%
+  magnet     66%           65%
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":61,"d5":45},"time":{"all":82,"d5":75},"start":{"all":73,"d5":70},"sprint":{"all":66,"d5":80},"magnet":{"all":66,"d5":65}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":61,"d5":45},"time":{"all":82,"d5":75},"start":{"all":73,"d5":70},"sprint":{"all":66,"d5":80},"magnet":{"all":66,"d5":65}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":66,"d5":80},"time":{"all":82,"d5":75}}
+PASS  v18: no runtime errors (balance)
+
+=== v19 launch (English, saves) ===
+PASS  English: a non-Polish browser gets the game in English (PLAY, briefings, defeat button)  — {"lang":"en","play":"PLAY Arena · round 2:00 · +16% city build","fail":"TRY AGAIN","briefing":"M240 DATA CLOUD EXTREME LOCKED Main Server NELA This is where Glitch was born. In the dark, between zones and hunters, collect four power cells and swallow the "}
+FAIL  English: no untranslated Polish reached the screen in a full sweep (all screens, 241 briefings, rounds, results)  — 1 misses: "17 PAŹDZIERNIKA"
+PASS  English: no Polish letters visible on the final screen
+PASS  English: no runtime errors
+PASS  language: a Polish browser plays in Polish; Profil → English switches and is remembered  — {"pl":{"lang":"pl","play":"GRAJ\nArena · runda 2:00 · +16% budowy miasta"},"en":{"lang":"en","play":"PLAY\nArena · round 2:00 · +16% city build","saved":"en"}}
+PASS  language: no runtime errors
+PASS  cloud save: the account save with more progress is restored on a fresh device  — {"done":40,"remoteDone":40,"localDone":40,"mirrored":true}
+PASS  cloud save: every later save is mirrored to the portal
+PASS  cloud save: a device with more progress uploads it (never loses it)  — {"remote":30,"local":30}
+PASS  cloud save: a restore deferred by a running round never uploads the poorer save; it lands on Miasto  — {"keptDuringRound":40,"adopted":40,"onMenu":true,"cleared":true,"mirrorOff":true}
+PASS  cloud save: a profile reset clears the account copy too (it would come back otherwise)  — {"keptDuringRound":40,"adopted":40,"onMenu":true,"cleared":true,"mirrorOff":true}
+PASS  backup: a wrong code is refused with a clear message, the save untouched  — {"errShown":true,"coinsBefore":0,"coins":777,"done":25,"stored":777}
+PASS  backup: the code restores the whole progress on another device  — {"errShown":true,"coinsBefore":0,"coins":777,"done":25,"stored":777}
+PASS  backup: a code with less progress asks first (and only then replaces)  — {"asked":true,"keptCoins":777,"afterConfirm":3,"unsealedRefused":true}
+PASS  backup: a code the game did not make (unsealed) is refused  — {"asked":true,"keptCoins":777,"afterConfirm":3,"unsealedRefused":true}
+PASS  backup: no runtime errors
+
+=== v20 gates (impulse pads, portals) ===
+PASS  content: no mission asks to go through a gate / portal any more  — {"steps":[],"words":[]}
+PASS  content: the 16 helper missions all have an eating goal and a helper chip  — {"n":16,"gateSteps":[],"gateWords":[],"noEat":[],"chips":[],"m11":"Pierwszy impuls · Pochłoń 14 fragmentów energii"}
+PASS  content: M11 „Pierwszy impuls” is about eating (owner: "bez sensu")  — Pierwszy impuls · Pochłoń 14 fragmentów energii
+PASS  M11 briefing: the "BRAMY IMPULSU" chip + a line saying what a pad does  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":3}
+PASS  M11 first frame: an impulse pad and food are on the phone screen  — {"chip":["BRAMY IMPULSU"],"hint":"Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.","pads":2,"padInView":true,"food":3}
+PASS  M11: no runtime errors
+PASS  impulse pad: touching a lit pad gives +50% speed ("IMPULS!")  — {"used":true,"ratio":1.5,"text":true,"after":1,"impulses":1,"again":2}
+PASS  impulse pad: the burst ends after 2.5 s; the pad recharges, then works again  — {"used":true,"ratio":1.5,"text":true,"after":1,"impulses":1,"again":2}
+PASS  portal: in at one end, out beside the other (inner side), no bounce back  — {"there":true,"stayed":true,"back":true,"used":2,"crystalsFar":true}
+PASS  portal: it works both ways (a shortcut to the crystals and back)  — {"there":true,"stayed":true,"back":true,"used":2,"crystalsFar":true}
+PASS  portal: no runtime errors
+PASS  English: the impulse / portal chips and lines are translated  — M11 PULSE PARK EASY ★ ★ ★ First Pulse NELA The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost. MISSION GOAL 1 Swallow 14 energy fragments IMPULSE GATES A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Th
+
+=== v21 big screens ===
+PASS  phone 375×667: framing unchanged (view scale 1, UI scale 1, mission zoom 1, Arena start zoom 1.08)  — {"mission":{"zoom":1,"area":250125,"holePx":18},"steersRight":true,"arena":{"zoom":1.08,"area":214442,"holePx":19.4},"viewScale":1,"uiScale":1}
+PASS  phone 402×874: framing unchanged (view scale 1, UI scale 1, mission zoom 1, Arena start zoom 1.08)  — {"mission":{"zoom":1,"area":351348,"holePx":18},"steersRight":true,"arena":{"zoom":1.08,"area":301224,"holePx":19.4},"viewScale":1,"uiScale":1}
+PASS  phone 430×932: framing unchanged (view scale 1, UI scale 1, mission zoom 1, Arena start zoom 1.08)  — {"mission":{"zoom":1,"area":400760,"holePx":18},"steersRight":true,"arena":{"zoom":1.08,"area":343587,"holePx":19.4},"viewScale":1,"uiScale":1}
+PASS  desktop 1366×768: a mission shows about a phone's worth of city (0.75–2.2× its area), not the whole box  — 1.42× · {"zoom":1.45,"area":500000,"holePx":26.1}
+PASS  desktop 1366×768: the vortex is drawn ≥ 1.4× as big as on a phone  — 26.1 px vs phone 18 px
+PASS  desktop 1366×768: the cursor still steers the vortex where it points (zoomed projection)  — {"mission":{"zoom":1.45,"area":500000,"holePx":26.1},"steersRight":true,"arena":{"zoom":1.56,"area":428669,"holePx":28.2},"viewScale":1.45,"uiScale":1.24}
+PASS  desktop 1366×768: HUD scales with the UI (pause hit-tests where drawn, minimap grows and stays on screen)  — {"pauseHit":true,"pauseW":45,"mini":161,"miniFits":true}
+PASS  desktop 1366×768: no runtime errors
+PASS  desktop 1440×900: a mission shows about a phone's worth of city (0.75–2.2× its area), not the whole box  — 1.42× · {"zoom":1.61,"area":500000,"holePx":29}
+PASS  desktop 1440×900: the vortex is drawn ≥ 1.4× as big as on a phone  — 29 px vs phone 18 px
+PASS  desktop 1440×900: the cursor still steers the vortex where it points (zoomed projection)  — {"mission":{"zoom":1.61,"area":500000,"holePx":29},"steersRight":true,"arena":{"zoom":1.74,"area":428669,"holePx":31.3},"viewScale":1.61,"uiScale":1.31}
+PASS  desktop 1440×900: HUD scales with the UI (pause hit-tests where drawn, minimap grows and stays on screen)  — {"pauseHit":true,"pauseW":47,"mini":170,"miniFits":true}
+PASS  desktop 1440×900: no runtime errors
+PASS  desktop 1920×1080: a mission shows about a phone's worth of city (0.75–2.2× its area), not the whole box  — 1.42× · {"zoom":2.04,"area":500000,"holePx":36.7}
+PASS  desktop 1920×1080: the vortex is drawn ≥ 1.4× as big as on a phone  — 36.7 px vs phone 18 px
+PASS  desktop 1920×1080: the cursor still steers the vortex where it points (zoomed projection)  — {"mission":{"zoom":2.04,"area":500000,"holePx":36.7},"steersRight":true,"arena":{"zoom":2.2,"area":428669,"holePx":39.6},"viewScale":2.04,"uiScale":1.6}
+PASS  desktop 1920×1080: HUD scales with the UI (pause hit-tests where drawn, minimap grows and stays on screen)  — {"pauseHit":true,"pauseW":58,"mini":208,"miniFits":true}
+PASS  desktop 1920×1080: no runtime errors
+PASS  wide 1366×768: desktop layout on (nav as a left rail)  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1366×768: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1366×768: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right  — {"allIn":true,"stripScroll":false,"mapLeftOfMissions":true,"listRight":true,"nextPlayInView":true,"sideways":false}
+PASS  wide 1366×768: Warsztat — the live preview on the left, the items in 2 columns on the right  — {"previewLeft":true,"cols":2,"previewInView":true,"sideways":false}
+PASS  wide 1366×768: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1366×768: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 1366×768: no runtime errors
+PASS  wide 1440×900: desktop layout on (nav as a left rail)  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1440×900: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1440×900: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right  — {"allIn":true,"stripScroll":false,"mapLeftOfMissions":true,"listRight":true,"nextPlayInView":true,"sideways":false}
+PASS  wide 1440×900: Warsztat — the live preview on the left, the items in 2 columns on the right  — {"previewLeft":true,"cols":2,"previewInView":true,"sideways":false}
+PASS  wide 1440×900: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1440×900: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 1440×900: no runtime errors
+PASS  wide 1920×1080: desktop layout on (nav as a left rail)  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1920×1080: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1920×1080: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right  — {"allIn":true,"stripScroll":false,"mapLeftOfMissions":true,"listRight":true,"nextPlayInView":true,"sideways":false}
+PASS  wide 1920×1080: Warsztat — the live preview on the left, the items in 2 columns on the right  — {"previewLeft":true,"cols":2,"previewInView":true,"sideways":false}
+PASS  wide 1920×1080: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1920×1080: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 1920×1080: no runtime errors
+PASS  wide 960×540: desktop layout on (nav as a left rail)  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 960×540: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 960×540: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right  — {"allIn":true,"stripScroll":false,"mapLeftOfMissions":true,"listRight":true,"nextPlayInView":true,"sideways":false}
+PASS  wide 960×540: Warsztat — the live preview on the left, the items in 2 columns on the right  — {"previewLeft":true,"cols":2,"previewInView":true,"sideways":false}
+PASS  wide 960×540: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 960×540: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 960×540: no runtime errors
+PASS  wide 1180×820: desktop layout on (nav as a left rail)  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1180×820: Miasto — Core City on the left, GRAJ + tiles + chest on the right, all in view, no scrolling  — {"wide":true,"rail":true,"cityLeftOfPlay":true,"cityLeftOfRail":true,"playInView":true,"chestInView":true,"scrolls":false,"sideways":false}
+PASS  wide 1180×820: Dzielnice — all 12 districts in view (no strip to scroll), the next mission and the list on the right  — {"allIn":true,"stripScroll":false,"mapLeftOfMissions":true,"listRight":true,"nextPlayInView":true,"sideways":false}
+PASS  wide 1180×820: Warsztat — the live preview on the left, the items in 2 columns on the right  — {"previewLeft":true,"cols":2,"previewInView":true,"sideways":false}
+PASS  wide 1180×820: Wyzwania — today's map on the left, ZAGRAJ on the right in view  — {"heroLeft":true,"playInView":true,"sideways":false}
+PASS  wide 1180×820: round results — score + rewards on the left, ranking + ZAGRAJ JESZCZE RAZ on the right, in view  — {"lbRight":true,"againInView":true,"menuUnderActions":true,"sideways":false}
+PASS  wide 1180×820: no runtime errors
+PASS  402×874: phone layout kept (no rail, the nav at the bottom)  — {"wide":false,"navBottom":874,"H":874}
+PASS  820×1180: phone layout kept (no rail, the nav at the bottom)  — {"wide":false,"navBottom":1180,"H":1180}
+PASS  844×390: phone layout kept (no rail, the nav at the bottom)  — {"wide":false,"navBottom":390,"H":390}
+PASS  district strip: cut off on the right → it fades there (more districts that way)  — {"left":false,"right":true,"x":2}
+PASS  district strip: a mouse wheel scrolls it sideways (no swipe on a desktop)  — {"x":398,"left":true,"activeInView":true}
+PASS  district strip: the picked district is scrolled into view  — {"x":398,"left":true,"activeInView":true}
+PASS  district strip: no runtime errors
+PASS  thumb pad (iPad landscape, UI scaled): the pad appears under the finger  — {"ui":1.07,"off":0}
+PASS  thumb pad: no runtime errors
+
+=== v22 two modes (no energy, independent Arena/Dzielnice, first-round coach, prisms) ===
+PASS  energy: nothing left in game.js / index.html / style.css (logic, sheet, chip, costs, timer, IAP, ad)
+PASS  tutorial: the M00 mission, its coach card and Arena's campaign discovery gate are gone
+PASS  unlimited: 15 Arena rounds in a row from GRAJ, no wait, with 0 coins / 0 prisms  — {"arena":15,"daily":6,"missions":15,"chips":0,"coins":1465,"prisms":19,"store":[],"ads":[],"saveKey":false}
+PASS  unlimited: 6 Daily rounds on the same day all start
+PASS  unlimited: 15 lost mission attempts in a row all start from the briefing GRAJ
+PASS  unlimited: no energy chip/sheet in the DOM, no energy in the save, store or ad placements  — {"chips":0,"store":[],"ads":[],"save":false}
+PASS  v22: no runtime errors (unlimited)
+PASS  first launch: welcome card, GRAJ = an Arena round at once (no tutorial, no setup screen)  — {"first":true,"welcome":true,"mode":"arena","playing":true,"setup":false,"types":["capsule","fragment","heavy","landmark","marker","node","prop","pylon","structure","tower","vehicle"],"kampaniaIntro":"KAMPANIA","onCampaign":true,"m01":true,"navShown":true,"firstAfter":false,"dzNew":false}
+PASS  first launch: the first Arena round already has the whole bestiary (T1-T6, nothing learned in missions needed)  — capsule,fragment,heavy,landmark,marker,node,prop,pylon,structure,tower,vehicle
+PASS  first launch: after the round the campaign introduces itself once ("KAMPANIA" → Dzielnice), M01 playable  — {"first":true,"welcome":true,"mode":"arena","playing":true,"setup":false,"types":["capsule","fragment","heavy","landmark","marker","node","prop","pylon","structure","tower","vehicle"],"kampaniaIntro":"KAMPANIA","onCampaign":true,"m01":true,"navShown":true,"firstAfter":false,"dzNew":false}
+PASS  v22: no runtime errors (first launch)
+PASS  independence: 30 missions done change nothing in an Arena round (same map, rivals, difficulty)  — {"fresh":{"objects":"5161:299","tiers":11,"t":0,"bots":"14,14,15,16,17","perks":0,"core":"1:0","vehicleAt18":false,"vehicleAt46":true,"wyz":false},"campaign":{"objects":"5161:299","tiers":11,"t":0,"bots":"14,14,15,16,17","perks":0,"core":"1:0","vehicleAt18":false,"vehicleAt46":true,"wyz":false}}
+PASS  independence: Arena size gates (Tx) come from the hole size only
+PASS  independence: a mission win never charges Core City; Wyzwania wait for Arena rounds, not missions  — {"c0":"1:24","c1":"1:24"}
+PASS  independence: the campaign's trophy skin (Aurora) gives no Arena perk  — 0 perks
+PASS  v22: no runtime errors (arena probe fresh)
+PASS  v22: no runtime errors (arena probe campaign)
+PASS  independence: 30 Arena rounds + Core City LVL5 change nothing in a mission (limit, start size, tier, board, no perks)  — {"fresh":{"next":"M01","playable":true,"boosters":false,"districts":"plac","limit":45,"radius":18,"tier":"T1","entities":17,"perks":0},"arena":{"next":"M01","playable":true,"boosters":false,"districts":"plac","limit":45,"radius":18,"tier":"T1","entities":17,"perks":0}}
+PASS  independence: an Arena-only player starts the campaign at M01 with Plac open; boosters stay a campaign unlock  — {"next":"M01","playable":true,"boosters":false,"districts":"plac","limit":45,"radius":18,"tier":"T1","entities":17,"perks":0}
+PASS  v22: no runtime errors (campaign probe fresh)
+PASS  v22: no runtime errors (campaign probe arena)
+PASS  order: Arena first or campaign first ends in the same unlocks  — {"a":{"warsztat":true,"wyzwania":true,"boosters":true},"b":{"warsztat":true,"wyzwania":true,"boosters":true},"afterArenaOnly":{"warsztat":true,"wyzwania":true,"boosters":false},"afterCampaignOnly":{"warsztat":true,"wyzwania":false,"boosters":true},"warsztatAfterM02":true,"warsztatAfter2Runs":true}
+PASS  order: Arena alone opens Warsztat + Wyzwania, never boosters; the campaign alone opens Warsztat + boosters, never Wyzwania  — {"a":{"warsztat":true,"wyzwania":true,"boosters":true},"b":{"warsztat":true,"wyzwania":true,"boosters":true},"afterArenaOnly":{"warsztat":true,"wyzwania":true,"boosters":false},"afterCampaignOnly":{"warsztat":true,"wyzwania":false,"boosters":true},"warsztatAfterM02":true,"warsztatAfter2Runs":true}
+PASS  order: a locked Wyzwania tile/tab counts down Arena rounds and offers a round (no mission named)  — {"t1":"Zagraj jeszcze 2 rundy Areny","t2":"Zagraj jeszcze 1 rundę Areny","sheet":"Codzienne rundy Areny: Misja dnia z nagrodą w monetach i Wyzwanie dnia — ta sama mapa dla wszystkich, walka o rekord i serię dni z rzędu.Zagraj jeszcze 1 rundę Areny, żeby je odblokować.","action":"ZAGRAJ RUNDĘ"}
+PASS  v22: no runtime errors (order)
+PASS  economy: campaign-only coins (6 Plac missions, expert bot) buy a mission booster — no Arena needed  — {"won":6,"coins":525,"prisms":8,"booster":40}
+PASS  v22: no runtime errors (economy campaign)
+PASS  economy: Arena-only coins (3 casual rounds) buy the first Warsztat item, and Warsztat is open — no mission needed  — {"coins":1781,"cheapest":100,"warsztat":true}
+PASS  v22: no runtime errors (economy arena)
+PASS  coach: a player who does not steer gets the steering hint after ~1.6 s, it stays until they steer  — {"at":1.57,"text":"Przeciągnij palcem po ekranie — wir jedzie za nim","visible":true,"gone":true,"learned":true,"seen":["moved"]}
+PASS  coach: a learned skill survives a reload and its hint never comes back  — {"seen":[],"moved":true}
+PASS  coach: steering without a single bite for 4 s brings the "eat the glowing fragments" hint  — {"seen":["eat"]}
+PASS  coach: being swallowed explains bigger rivals once, never twice  — {"seen":1,"learned":true}
+PASS  v22: no runtime errors (coach)
+PASS  coach: a player who steers and eats from the first second sees no steering/eating hint, and both skills are learned  — {"seen":["rival"],"coach":{"moved":true,"ate":true,"rival":true,"danger":false},"place":1}
+PASS  v22: no runtime errors (coach (player who just plays))
+PASS  coach + locked tabs: English, nothing Polish on screen  — {"texts":["Drag your finger across the screen — the vortex follows it","A bigger vortex swallowed you — your score stays. Avoid bigger rivals until you outgrow them.","Roll over the glowing fragments — each one grows your vortex","This rival is smaller than you — roll over it and swallow it!","Change your hole's look here: Vortex, Trail, Swallow Effect and Finale. You buy them with coins and prisms, and Core City rewards land here automatically.Play 2 more Arena rounds or clear mission M02 “Good Route” in Districts — either one will do."],"misses":["17 PAŹDZIERNIKA"]}
+PASS  v22: no runtime errors (english)
+PASS  save v12 -> v13: energy, discovered types and the M00 tutorial are gone; missions, stars, coins, prisms, Core City kept  — {"v":13,"energy":false,"disc":false,"anyM00":false,"done":"M01,M02,M03","stars":3,"coins":777,"prisms":42,"core":3,"announced":"warsztat,wyzwania,kampania","fresh":"","coach":{"moved":true,"ate":true,"rival":true,"danger":true},"next":"M25","first":false,"wyz":true,"warsztat":true}
+PASS  save v12 -> v13: Wyzwania opened by the old M03 gate stay open; no "arena" unlock left; known player gets no hints / no second-mode intro  — {"v":13,"energy":false,"disc":false,"anyM00":false,"done":"M01,M02,M03","stars":3,"coins":777,"prisms":42,"core":3,"announced":"warsztat,wyzwania,kampania","fresh":"","coach":{"moved":true,"ate":true,"rival":true,"danger":true},"next":"M25","first":false,"wyz":true,"warsztat":true}
+PASS  save: a reload after migrating keeps everything (idempotent)  — {"v":13,"done":"M01,M02,M03","coins":777,"energy":false,"wyz":true}
+PASS  v22: no runtime errors (migration)
+PASS  save: a v12 save with only the old tutorial done opens on the welcome card (first play = Arena), campaign at M01  — {"first":true,"welcome":true,"coach":{"moved":false,"ate":false,"rival":false,"danger":false},"next":"M01"}
+PASS  v22: no runtime errors (migration (tutorial only))
+PASS  prisms: short on coins, the briefing sells the picked booster for 4 ◆; it goes into stock and the mission starts without coins  — {"offer":"Zegar za 4 ◆","spent":4,"stock":1,"selected":true,"started":true,"coinsSpent":0,"stockAfter":0,"noOfferWhenPoor":true,"looks":["neon_rose:20","violet_rift:35","zloty_szczyt:25","zielona_burza:40"],"buyLabel":"KUP I ZAŁÓŻ · 20 ◆","bought":true,"info":"Rzadsza waluta premium. Masz teraz: 10 ◆.Arena: +2 za co 3. rundę, +3 za rekord w Wyzwaniu dniaDzielnice: +3 w każdej Skrzyni gwiazdAwans poziomu, kalendarz logowania, darmowa skrzyniaWydajesz je w Warsztacie na rzadsze Smugi, Efekty i Finisze, na wzmocnienie misji, gdy brakuje monet (4 ◆), i na dodatkowe sekundy w misji."}
+PASS  prisms: no prism offer when there are not enough prisms
+PASS  prisms: Efekt pochłaniania and Finisz have prism looks; buying one asks first, then spends and wears it  — {"looks":["neon_rose:20","violet_rift:35","zloty_szczyt:25","zielona_burza:40"],"label":"KUP I ZAŁÓŻ · 20 ◆","bought":true}
+PASS  prisms: the prism sheet lists both modes as sources and no energy as a use  — Rzadsza waluta premium. Masz teraz: 10 ◆.Arena: +2 za co 3. rundę, +3 za rekord w Wyzwaniu dniaDzielnice: +3 w każdej Skrzyni gwiazdAwans poziomu, kalendarz logowania, darmowa skrzyniaWydajesz je w Warsztacie na rzadsze Smugi, Efekty i Finisze, na wzmocnienie misji, gdy brakuje monet (4 ◆), i na dodatkowe sekundy w misji.
+PASS  v22: no runtime errors (prisms)
+
+=== v23 dev panel (access, test-mode isolation, every category, phones) ===
+PASS  access: a player has no dev button, panel or code box in the DOM  — {"access":false,"fab":false,"panel":false,"code":false,"panelObj":true}
+PASS  access: 7 quick taps on the guest ID in Profil ask for the dev code (6 do not)  — after 6 taps: false
+PASS  access: a wrong code is rejected (no access, nothing stored)  — {"msg":"Nieprawidłowy kod.","access":false,"panel":false,"stored":null}
+PASS  access: repeated wrong codes lock the code box (even the right code waits)  — {"msg":"Za dużo prób — odczekaj chwilę.","access":false}
+PASS  access: the local code on localhost opens the panel; it starts on the real save and offers test mode first  — {"access":true,"fab":"DEV","sandbox":false,"gate":true}
+PASS  access: outside test mode every other tab shows only "włącz tryb testowy" and actions are refused  — {"hasCoins":false,"same":true,"gate":true}
+PASS  access: ?dev in the URL asks for the code, never opens the panel by itself  — {"box":true,"panel":false}
+PASS  access: a native wrapper served from localhost does not count as a dev server  — {"access":false,"loop":false}
+PASS  access: no runtime errors
+PASS  production host: the local QA code does not work on the deployed game  — {"access":false,"panel":false,"loop":false}
+PASS  production host: a planted local-code token gives no access  — {"access":false,"fab":false}
+PASS  production host: planting DEV_CODE_HASH from the source gives no access  — {"access":false,"fab":false}
+PASS  production host: real dev code check skipped (set VH_DEV_CODE to run it)  — skipped
+PASS  production host: no runtime errors
+PASS  test mode: starts on a copy of the real save, in its own slot, marked TEST  — {"coins":123,"slot":"vectorHoleSave_devSandbox_v1","fab":"TEST","chip":null}
+PASS  test mode: no analytics sink, no cloud mirror, no real ads or payments (demo ad only)  — {"sink":0,"mirrored":0,"nativeAd":0,"nativeBuy":0,"bought":false,"adOk":true,"tagged":true}
+PASS  data: a test state is saved and restored (two-tap confirm, names escaped), and deleted  — {"coinsAtSnap":10123,"changed":7,"restored":10123,"armedOnly":true,"escaped":true,"left":0}
+PASS  data: test mode and the test save survive a reload  — {"sandbox":true,"coins":10123,"districts":12}
+PASS  data: "reset całego postępu testowego" asks twice and wipes only the test save  — {"afterOne":10123,"after":0,"campaign":0,"slot":"vectorHoleSave_devSandbox_v1","realUntouched":true}
+PASS  data: the test save exports as a backup code the game reads back  — 1000
+PASS  isolation: after an Arena round, a mission and resets in test mode the real save is byte-identical during the tests and comes back unchanged  — {"duringTests":true,"same":true,"coins":123,"runs":4,"m05":false}
+PASS  isolation: a test save backup code is refused on the real save  — {"coins":123,"msg":true}
+PASS  isolation (control): outside test mode a consented sink still receives events  — 1
+PASS  isolation + data: no runtime errors
+PASS  progress: unlocking one district (Port Syntez) lets its first mission launch from the real briefing  — {"before":false,"after":true,"running":true,"id":"M09","announced":true}
+PASS  progress: "odblokuj wszystkie dzielnice" opens all 12 (each first mission playable, later ones still need the previous)  — {"n":12,"firsts":true,"deep":false}
+PASS  progress: "wszystkie misje grywalne" + jump to M59 by typed ID -> its briefing GRAJ starts M59  — {"t":"Wybrano M58.","brief":true,"openFlag":true,"running":true,"id":"M59"}
+PASS  progress: start any mission (M32) without its requirements; "sukces" ends it through the real result screen  — {"screen":true,"done":true,"stars":7}
+PASS  progress: "sukces ★★★" earns all three stars; "porażka" (hit / time) shows the real defeat with its reason  — {"win3":7,"fail":{"screen":true,"reason":"hit","done":false,"fails":1},"timeFail":{"screen":true,"reason":"time"}}
+PASS  progress: "postęp do M12 ★★★" clears 30 missions in play order, opens Park/Port/Galeria, next = M13, boosters + gift unlocked  — {"done":30,"d":["plac","park","port","galeria"],"next":"M13","boosters":true,"gift":true,"stock":1,"stars":90,"m33":true}
+PASS  progress: player level/XP (official level-ups), Core City LVL 6 grants its real rewards, Arena runs open Wyzwania/Warsztat  — {"hubLevel":"7","afterXp":10,"core":6,"krysztal":true,"pryzmat":true,"badge":true,"wyzwania":true,"warsztat":true,"lvlLabel":"LVL 6"}
+PASS  progress: clearing one mission / the whole campaign  — {"m12":false,"total":0,"d":"plac"}
+PASS  progress: unlocking a feature (Wzmocnienia) plays the real "ODBLOKOWANO!" card and the briefing offers boosters (+ gift)  — {"overlay":"WZMOCNIENIA","unlocked":true,"gift":1,"tiles":5}
+PASS  progress: no runtime errors
+PASS  warsztat: a skin unlocked in the panel shows as owned in the real Warsztat, is worn by a tap and its perk acts in a round  — {"shop":true,"ownedCard":true,"worn":"gold","inRound":"gold","perkCoins":0.3}
+PASS  warsztat: unlock all cosmetics; a worn Smuga is on the vortex in a round, Finisz in its overdrive; taking a worn item puts the default back  — {"counts":[10,7,5,5],"expected":[10,7,5,5],"aura":"vortex","od":true,"auraAfterTake":"none","ownedAfterTake":false}
+PASS  warsztat: booster stock set in the panel shows in the briefing, is used on launch, and the Magnes really pulls objects  — {"badge":"×3","stock":2,"has":true,"d0":22,"d1":17}
+PASS  economy: coins set in the panel show in the hub and buy a Wir via the real "KUP I ZAŁÓŻ" (coins and ◆ spent, item worn)  — {"shown":"5000","sheet1":"KUP I ZAŁÓŻ · 2000 ◇","coins":3000,"prisms":85,"white":true,"ember":true}
+PASS  economy: a simulated purchase grants exactly the pack (1500 ◇, 60 ◆, 3× boosters, Zorza Startu in the Warsztat grid), once  — {"thanks":true,"after":{"coins":1500,"prisms":60,"boosters":3,"aura":true},"twice":1500,"inGrid":true,"undone":true,"noAds":true}
+PASS  economy: rewards (Core City LVL 2 Smuga + "ZAŁÓŻ W WARSZTACIE", free chest, login calendar) appear where the game shows them  — {"coreCard":"Smuga „Impuls”","go":true,"inShop":true,"aura":true,"chest":true,"ready":true,"login":true,"ads":0}
+PASS  warsztat + economy: no runtime errors
+PASS  gameplay (Arena): size tier T3 unlocks T3 objects (and swallows one), back to T1, exact radius  — {"before":{"tier":0,"canEat":false},"after":{"tier":2,"canEat":true},"eaten":true,"down":0,"r70":70}
+PASS  gameplay (Arena): mutation, run tool, Złoty Rdzeń, SZAŁ and evolution cards on demand  — {"before":{"tier":0,"canEat":false},"after":{"tier":2,"canEat":true},"eaten":true,"down":0,"r70":70,"golden":true,"frenzy":true,"mag":true,"shield":1,"cards":true,"win":{"screen":true,"eyebrow":"ZWYCIĘSTWO!","place":"1."},"lose":{"screen":true,"place":"6."}}
+PASS  gameplay (Arena): forced win shows ZWYCIĘSTWO 1., forced loss the last place — the real result screen  — {"win":{"screen":true,"eyebrow":"ZWYCIĘSTWO!","place":"1."},"lose":{"screen":true,"place":"6."}}
+PASS  gameplay (mission): start with a free booster, size T4 eats a T4 object, live boosters (Zegar/Magnes/Sprint), +30 s, a power  — {"startBoost":2,"tier":"T4","entType":"structure","eaten":true,"live":{"magnet":true,"sprint":1.15,"plus30":30},"power":true,"reset":{"id":"M16","elapsed":0,"intro":true,"shields":2}}
+PASS  data: "restart bieżącej misji" starts the same mission from scratch (same boosters)  — {"id":"M16","elapsed":0,"intro":true,"shields":2}
+PASS  ux: mid-mission the panel opens on Rozgrywka with the live mission first; NOWA RUNDA asks twice; the demo ad hands the mission back; no stale toast  — {"tab":"play","firstSec":"Trwa misja M40","armed":true,"afterAd":{"paused":false,"ticking":true},"toast":false}
+PASS  gameplay: the DEV button mid-mission pauses the clock (no pause sheet), closing resumes  — {"open":{"paused":true,"sheet":false,"panel":true},"frozen":true,"resumed":true}
+PASS  gameplay: no runtime errors
+PASS  screens: mission win/defeat, Arena defeat, level-up, briefing, start card, +20 s offer, pause, unlock card, ad, evolution cards, consent, welcome  — {"missionWin":true,"missionRacer":true,"arenaLose":true,"levelUp":true,"brief":true,"startCard":true,"revive":true,"pause":true,"unlock":true,"ad":true,"cards":true,"consent":true,"welcomeAsks":true,"welcome":true}
+PASS  screens: no runtime errors
+PASS  phone/desktop layout iPhone SE 375x667: panel fits, no sideways scroll, close button reachable, buttons ≥ 30 px  — fab ok, tabs scroll: true
+PASS  phone/desktop layout iPhone SE 375x667: the DEV button stays tappable over the round HUD  — {"fabOnTop":true}
+PASS  phone/desktop layout iPhone SE 375x667: no runtime errors
+PASS  phone/desktop layout iPhone 16 Pro 402x874: panel fits, no sideways scroll, close button reachable, buttons ≥ 30 px  — fab ok, tabs scroll: true
+PASS  phone/desktop layout iPhone 16 Pro 402x874: the DEV button stays tappable over the round HUD  — {"fabOnTop":true}
+PASS  phone/desktop layout iPhone 16 Pro 402x874: no runtime errors
+PASS  phone/desktop layout phone landscape 844x390: panel fits, no sideways scroll, close button reachable, buttons ≥ 30 px  — fab ok, tabs scroll: false
+PASS  phone/desktop layout phone landscape 844x390: the DEV button stays tappable over the round HUD  — {"fabOnTop":true}
+PASS  phone/desktop layout phone landscape 844x390: no runtime errors
+PASS  phone/desktop layout phone landscape 667x375: panel fits, no sideways scroll, close button reachable, buttons ≥ 30 px  — fab ok, tabs scroll: false
+PASS  phone/desktop layout phone landscape 667x375: the DEV button stays tappable over the round HUD  — {"fabOnTop":true}
+PASS  phone/desktop layout phone landscape 667x375: no runtime errors
+PASS  phone/desktop layout desktop 1440x900: panel fits, no sideways scroll, close button reachable, buttons ≥ 30 px  — fab ok, tabs scroll: false
+PASS  phone/desktop layout desktop 1440x900: the DEV button stays tappable over the round HUD  — {"fabOnTop":true}
+PASS  phone/desktop layout desktop 1440x900: no runtime errors
+
+=== PX01 save safety (future/broken saves, two tabs, quota, cloud copy) ===
+PASS  SAVE-01 v12 with energy -> v13: no energy, unlocks and missions kept, migration committed  — {"v":13,"energy":false,"m00":false,"done":"M01,M02,M03","wyz":true,"warsztat":true,"bak":true,"stored":13}
+PASS  SAVE-01 the original v12 bytes are kept under the backup key before the migration commit  — bak 1746 B
+PASS  SAVE-01 reading an already-migrated save writes nothing (no write on read)  — {"writes":0,"same":true}
+PASS  save-safety: no runtime errors (SAVE-01)
+PASS  SAVE-02 coins, prisms, skins, trails, effects, finishes, boosters, purchases, login/chest claims, star chests, level kept  — {"c":4321,"p":77,"o":["rainbow","cyan","green"],"a":{"owned":["none","spark"],"selected":"spark"},"e":{"owned":["classic","pixel_burst"],"selected":"pixel_burst"},"od":{"owned":["classic","fala"],"selected":"fala"},"b":{"time":2,"start":1,"magnet":3,"shield":0,"sprint":1,"gift":true,"sprintGift":tru
+PASS  SAVE-02 three reloads: identical balances and items (no reward granted twice)  — 561,561,561,561
+PASS  save-safety: no runtime errors (SAVE-02)
+PASS  SAVE-03 migrate(migrate(x)) == migrate(x) for v5, v10, v12 and current saves  — {"v12":true,"v10":true,"v5":true,"current":true}
+PASS  save-safety: no runtime errors (SAVE-03)
+PASS  legacy/partial v1: loads as a normal writable save with its coins (50)  — {"state":"ok","coins":50,"v":13,"level":1}
+PASS  save-safety: no runtime errors (v1)
+PASS  legacy/partial v5: loads as a normal writable save with its coins (120)  — {"state":"ok","coins":120,"v":13,"level":1}
+PASS  save-safety: no runtime errors (v5)
+PASS  legacy/partial v10: loads as a normal writable save with its coins (4321)  — {"state":"ok","coins":4321,"v":13,"level":12}
+PASS  save-safety: no runtime errors (v10)
+PASS  legacy/partial current: loads as a normal writable save with its coins (4321)  — {"state":"ok","coins":4321,"v":13,"level":12}
+PASS  save-safety: no runtime errors (current)
+PASS  legacy/partial partial: loads as a normal writable save with its coins (50)  — {"state":"ok","coins":50,"v":13,"level":4}
+PASS  save-safety: no runtime errors (partial)
+PASS  no save: fresh profile, first save is written  — written
+PASS  save-safety: no runtime errors (no save)
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): original bytes unchanged after loading  — identical
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): read-only "future" state with a notice instead of a silent reset  — state future, sheet "Zapis z nowszej wersji gry"
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): the readable progress is playable in memory  — {"coins":4321,"level":12,"done":3}
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-08 future schema 99 (unknown fields, unknown item shape): still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-08 future schema 99 (unknown fields, unknown item shape))
+PASS  SAVE-09a coins "500" (rest valid): original bytes unchanged after loading  — identical
+PASS  SAVE-09a coins "500" (rest valid): read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-09a coins "500" (rest valid): the readable progress is playable in memory  — {"coins":500,"level":12,"done":3}
+PASS  SAVE-09a coins "500" (rest valid): original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-09a coins "500" (rest valid): still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-09a coins "500" (rest valid))
+PASS  SAVE-09b owned not an array: original bytes unchanged after loading  — identical
+PASS  SAVE-09b owned not an array: read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-09b owned not an array: the readable progress is playable in memory  — {"coins":4321,"level":12,"done":3}
+PASS  SAVE-09b owned not an array: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-09b owned not an array: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-09b owned not an array)
+PASS  SAVE-09c truncated JSON: original bytes unchanged after loading  — identical
+PASS  SAVE-09c truncated JSON: read-only "corrupt" state with a notice instead of a silent reset  — state corrupt, sheet "Zapis jest uszkodzony"
+PASS  SAVE-09c truncated JSON: the readable progress is playable in memory  — {"coins":0,"level":1,"done":0}
+PASS  SAVE-09c truncated JSON: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-09c truncated JSON: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-09c truncated JSON)
+PASS  SAVE-05 broken campaign, intact Arena data: original bytes unchanged after loading  — identical
+PASS  SAVE-05 broken campaign, intact Arena data: read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-05 broken campaign, intact Arena data: the readable progress is playable in memory  — {"coins":4321,"level":12,"done":0}
+PASS  SAVE-05 broken campaign, intact Arena data: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-05 broken campaign, intact Arena data: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-05 broken campaign, intact Arena data)
+PASS  SAVE-05 broken Arena stats, intact campaign: original bytes unchanged after loading  — identical
+PASS  SAVE-05 broken Arena stats, intact campaign: read-only "invalid" state with a notice instead of a silent reset  — state invalid, sheet "Część zapisu jest uszkodzona"
+PASS  SAVE-05 broken Arena stats, intact campaign: the readable progress is playable in memory  — {"coins":4321,"level":12,"done":3}
+PASS  SAVE-05 broken Arena stats, intact campaign: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  SAVE-05 broken Arena stats, intact campaign: still unchanged after a reload and a second session  — identical
+PASS  save-safety: no runtime errors (SAVE-05 broken Arena stats, intact campaign)
+PASS  SAVE-09a repair: the player's choice (NAPRAW ZAPIS) keeps the original bytes under the rescue key, then saves  — {"label":"NAPRAW ZAPIS","state":"ok","rescue":true,"stored":{"coins":500,"level":12}}
+PASS  save-safety: no runtime errors (SAVE-09a repair)
+PASS  SAVE-09b repair: the player's choice (NAPRAW ZAPIS) keeps the original bytes under the rescue key, then saves  — {"label":"NAPRAW ZAPIS","state":"ok","rescue":true,"stored":{"coins":4321,"level":12}}
+PASS  save-safety: no runtime errors (SAVE-09b repair)
+PASS  SAVE-09c start over: the player's choice (ZACZNIJ OD NOWA) keeps the original bytes under the rescue key, then saves  — {"label":"ZACZNIJ OD NOWA","state":"ok","rescue":true,"stored":{"coins":0,"level":1}}
+PASS  save-safety: no runtime errors (SAVE-09c start over)
+PASS  SAVE-08 future save: the notice offers a reload, not an overwrite  — {"action":"ODŚWIEŻ"}
+PASS  save-safety: no runtime errors (SAVE-08 notice)
+PASS  SAVE-09d two tabs: the stale tab does not overwrite the newer progress from the other tab  — stored coins 4821 (B wrote 4821, stale A had 4328)
+PASS  SAVE-09d two tabs: the stale tab stops saving and tells the player to reload  — {"state":"stale","title":"Gra jest otwarta w innej karcie"}
+PASS  SAVE-09d a change made behind the tab's back (no storage event) is detected before writing  — {"stored":1,"state":"stale"}
+PASS  save-safety: no runtime errors (SAVE-09d)
+PASS  SAVE-04 QuotaExceededError on every write: original bytes intact, game keeps running from memory  — login chest closeSheet arena menu mission hidden direct -> identical
+PASS  save-safety: no runtime errors (SAVE-04 quota)
+PASS  SAVE-09e backup write refused: the migration is not committed over the original (every later save waits for the backup)  — identical
+PASS  SAVE-09e once the backup succeeds, the original is backed up first, then the migrated save is written  — {"bak":true,"v":13}
+PASS  save-safety: no runtime errors (SAVE-09e)
+PASS  SAVE-09f interrupted commit (closed after the backup): original intact, the next start migrates the same way  — {"firstRaw":true,"bakAfterFirst":true,"v":13,"coins":4321}
+PASS  save-safety: no runtime errors (SAVE-09f)
+PASS  SAVE-04 storage that refuses reads: boots, and never writes a blank save over what it could not read  — {"writes":0,"state":"unavailable","game":"PLAYING"}
+PASS  save-safety: no runtime errors (storage denied)
+PASS  SAVE-06 account copy from a newer game version: never overwritten by this device (local saves still work)  — {"remoteSame":true,"localCoins":5166}
+PASS  save-safety: no runtime errors (SAVE-06 account copy from a newer game version)
+PASS  SAVE-06 unreadable account copy: never overwritten by this device (local saves still work)  — {"remoteSame":true,"localCoins":5107}
+PASS  save-safety: no runtime errors (SAVE-06 unreadable account copy)
+PASS  SAVE-06 broken local save + good account copy: restored from the account, broken bytes kept under the rescue key  — {"coins":4321,"level":12,"rescue":true,"state":"ok"}
+PASS  save-safety: no runtime errors (SAVE-06 restore)
+PASS  a cloud adoption never lifts the guard (bytes unchanged)  — {"state":"invalid","same":true}
+PASS  backup code over a held-back save (explicit): original kept under the rescue key, code's save stored  — {"asked":"Ten kod ma mniej postępu","state":"ok","coins":2468,"rescue":true}
+PASS  save-safety: no runtime errors (backup code)
+PASS  EN: the "future" notice is fully in English  — {"title":"Save from a newer version of the game","body":"Your progress was saved by a newer version of Vector Hole. This version won't change it — reload the page to load the current game.Until then you can play, but new
+PASS  EN: the "truncated" notice is fully in English  — {"title":"The save is damaged","body":"The saved progress couldn't be read. The game hasn't deleted it and won't write over it without your decision.You can load a backup code (Profile → Backup) or start over — the damag
+PASS  EN: the "badCoins" notice is fully in English  — {"title":"Part of the save is damaged","body":"Your progress is loaded, but some of the save data has the wrong format. The game won't write over anything without your decision.REPAIR SAVE keeps the loaded progress and s
+PASS  stale tab: a (deferred) cloud adoption does not write over the other tab's save  — {"state":"stale","same":true}
+PASS  locked save + explicit Profil reset: the original is kept under the rescue key  — {"rescue":true,"mainReplaced":true}
+PASS  R1 reset of a held-back save with the rescue copy refused: the save stays, no reload, a notice  — {"same":true,"rescue":null,"noReload":true,"title":"Brak miejsca na kopię"}
+PASS  R1 reset with the rescue copy refused and the cloud attached: local save and account copy untouched, no reload  — {"state":"stale","cloudSet":true,"cloudSame":true,"localSame":true,"noReload":true}
+PASS  save-safety: no runtime errors (R1 cloud)
+PASS  R2 local setItem fails with the cloud mirror on: the unsaved state is not uploaded  — {"mirrored":true,"ok1":false,"failedSent":false,"ok2":true,"synced":true}
+PASS  R2 the next successful local save is mirrored as before (sync works)  — {"mirrored":true,"ok1":false,"failedSent":false,"ok2":true,"synced":true}
+PASS  save-safety: no runtime errors (R2)
+PASS  R3 existing empty save key: read-only "corrupt" state with a notice  — {"st":"corrupt","title":"Zapis jest uszkodzony"}
+PASS  R3 existing empty save key: not overwritten by any automatic save  — {"raw":0}
+PASS  R3 start over keeps the empty original under the rescue key, then saves  — {"title":"Zapis jest uszkodzony","label":"ZACZNIJ OD NOWA","rescue":"","stored":1579,"state":"ok"}
+PASS  save-safety: no runtime errors (R3)
+PASS  R3 empty account copy: never overwritten by this device (local saves still work)  — {"remote":"\"\"","local":5091}
+PASS  save-safety: no runtime errors (R3 cloud)
+PASS  R4 unreadable storage: writes blocked and a notice says saving does not work  — {"writes":0,"state":"unavailable","body":"Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie ","title":"Zapis nie działa"}
+PASS  save-safety: no runtime errors (R4)
+PASS  R4 EN: the "unavailable" notice is fully in English  — 
+    
+      
+      Saving doesn't work
+      The browser doesn't allow the saved progress to be read (e.g. private mode or blocked site data). The game won't de
+
+=== difficulty (all 240 missions, expert + casual) ===
+
+  diff   missions  expert  casual
+  1      7         100%    100%
+  2      27        100%    93%
+  3      59        99%     89%
+  4      112       88%     62%
+  5      35        76%     50%
+
+  district   expert  casual
+  plac       100%    100%
+  park       100%    95%
+  port       100%    75%
+  galeria    95%     90%
+  dachy      100%    85%
+  rdzen      100%    65%
+  metro      90%     77%
+  bazar      97%     65%
+  fabryka    87%     58%
+  zatoka     90%     88%
+  ogrody     93%     60%
+  chmura     72%     53%
+PASS  difficulty: every mission is beatable (the expert bot clears almost every one in 2 tries)  — never cleared: M89 M179 M180 M218 M226 M233 M240
+PASS  difficulty: the expert bot clears ≥ 85% of all attempts  — 91%
+PASS  difficulty: easy missions are friendly (casual ≥ 80% at ŁATWA)  — 100%
+PASS  difficulty: the ladder rises (casual pass rate falls level by level)  — 100% → 93% → 89% → 62% → 50%
+PASS  difficulty: the hardest missions stop a casual player about half the time (casual ≤ 55% at EKSTREMALNA)  — 50%
+PASS  difficulty: not everything clears on the first try (casual fails ≥ 25% of Rozdział II)  — 67%
+PASS  difficulty: no runtime errors
+
+573/576 checks passed
+  FAIL perf: low-end level renders a full frame (rasterized) under 12 ms median {"gfx0":{"median":13.87,"max":21},"gfx2":{"median":35.4,"max":60.5}}
+  FAIL perf: low-end quality level renders under 12 ms (software GPU) gfx0 avg 18.19 ms · gfx2 avg 50.49 ms
+  FAIL English: no untranslated Polish reached the screen in a full sweep (all screens, 241 briefings, rounds, results) 1 misses: "17 PAŹDZIERNIKA"
+exit 1

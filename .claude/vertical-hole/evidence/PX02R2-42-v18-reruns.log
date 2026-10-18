@@ -1,0 +1,21 @@
+=== run 1: final code
+  none       64%           65%
+  time       80%           75%
+  start      66%           65%
+  sprint     64%           65%
+  magnet     73%           75%
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":64,"d5":65},"time":{"all":80,"d5":75},"start":{"all":66,"d5":65},"sprint":{"all":64,"d5":65},"magnet":{"all":73,"d5":75}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":64,"d5":65},"time":{"all":80,"d5":75},"start":{"all":66,"d5":65},"sprint":{"all":64,"d5":65},"magnet":{"all":73,"d5":75}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":64,"d5":65},"time":{"all":80,"d5":75}}
+PASS  v18: no runtime errors (balance)
+=== run 2: final code
+  none       61%           45%
+  time       64%           65%
+  start      73%           65%
+  sprint     84%           80%
+  magnet     59%           65%
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":61,"d5":45},"time":{"all":64,"d5":65},"start":{"all":73,"d5":65},"sprint":{"all":84,"d5":80},"magnet":{"all":59,"d5":65}}
+PASS  balance: no single booster makes EKSTREMALNA a sure thing (casual ≤ 85% at d5)  — {"none":{"all":61,"d5":45},"time":{"all":64,"d5":65},"start":{"all":73,"d5":65},"sprint":{"all":84,"d5":80},"magnet":{"all":59,"d5":65}}
+FAIL  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":84,"d5":80},"time":{"all":64,"d5":65}}
+PASS  v18: no runtime errors (balance)
+exit 0

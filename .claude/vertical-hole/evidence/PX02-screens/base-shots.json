@@ -1,0 +1,15 @@
+{
+  "bootSheet": null,
+  "afterGraj": {
+    "state": "MENU",
+    "setup": true
+  },
+  "result": {
+    "upsell": true,
+    "text": "KONIEC RUNDY BURZA PORTALI WYNIK 0 ROZMIAR T1 · MAŁY MIEJSCE 6. NAGRODY ◇ ZDOBYTE MONETY +15 monet POZIOM 1 +25 XP 25 / 120 XP POSTĘP CORE CITY 0% → 16% +16% ZAGROŻENIE: ŚREDNIE Rywale rosną w siłę. Obejrzyj krótką reklamę i zacznij rewanż od T2 z Turbo startem! TURBO GRATIS · REKLAMA #1 VoidRunner 3 515 pkt T6 #2 HexShadow 2 859 pkt T6 #3 NightHawk 2 267 pkt T6 #4 ChromaCat 1 185 pkt T1 #5 ByteVi"
+  },
+  "replay": "PLAYING",
+  "errors": [],
+  "first": "PLAYING",
+  "errors2": []
+}

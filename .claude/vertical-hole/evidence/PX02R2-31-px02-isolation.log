@@ -1,0 +1,98 @@
+PASS  ISO-A fresh: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":true,"setupShown":false,"tools":0,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A fresh)
+PASS  ISO-A 10 missions, 1010 coins, LVL 8: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":true,"setupShown":false,"tools":0,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A 10 missions, 1010 coins, LVL 8)
+PASS  ISO-A 30 missions, 5000 coins, 300 prisms, LVL 20: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":true,"setupShown":false,"tools":0,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A 30 missions, 5000 coins, 300 prisms, LVL 20)
+PASS  ISO-A 240 missions, 99999 coins, LVL 40: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":true,"setupShown":false,"tools":0,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A 240 missions, 99999 coins, LVL 40)
+PASS  ISO-A 10 missions, 1010 coins, LVL 8: same Arena parameters on seed 4242 as a fresh profile (size, speed, magnet, shield, bots, board, points, growth, combo, coins/XP for a fixed result)  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.3333333333333333,"modifier":"none","roundTime":120,"bots":"16,17,18,19,20","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-A 30 missions, 5000 coins, 300 prisms, LVL 20: same Arena parameters on seed 4242 as a fresh profile (size, speed, magnet, shield, bots, board, points, growth, combo, coins/XP for a fixed result)  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.3333333333333333,"modifier":"none","roundTime":120,"bots":"16,17,18,19,20","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-A 240 missions, 99999 coins, LVL 40: same Arena parameters on seed 4242 as a fresh profile (size, speed, magnet, shield, bots, board, points, growth, combo, coins/XP for a fixed result)  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.3333333333333333,"modifier":"none","roundTime":120,"bots":"16,17,18,19,20","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-A no way to buy an Arena advantage: no RUN_TOOLS, run-tool screen, result upsell, turbo_free ad, confirmRunSetup or onUpsellClick  — {"runTools":false,"setupScreen":false,"upsell":false,"turboAd":false,"confirm":false,"upsellFn":false}
+PASS  ISO-B the real Warsztat purchase works for every coin vortex (bought and worn)  — cyan:true pink:true green:true purple:true gold:true white:true
+PASS  ISO-B no vortex carries a perk list any more
+PASS  ISO-B arena: all 16 vortex states (10 vortices + 6 Warsztat purchases) give the neutral vortex's parameters  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.3333333333333333,"modifier":"none","roundTime":120,"bots":"16,17,18,19,20","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-B daily: all 16 vortex states (10 vortices + 6 Warsztat purchases) give the neutral vortex's parameters  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.5,"modifier":"none","roundTime":120,"bots":"18,19,20,20,21","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-B challenge: all 16 vortex states (10 vortices + 6 Warsztat purchases) give the neutral vortex's parameters  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.5,"modifier":"none","roundTime":120,"bots":"18,19,20,20,21","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-B Warsztat copy: no vortex promises a bonus (grid, preview label, every info sheet)  — Tęcza Tęczowy pryzmat — wir startowy ZAŁÓŻ Cyjan Cyjanowe obwody ZAŁÓŻ Gorący Róż Różowa plazma ZAŁÓŻ Toksyczna Zieleń Toksyczne bąble ZAŁÓŻ Ultrafiolet Fioletowa galaktyka ZAŁÓŻ Neonowe Złoto Złote słońce ZAŁÓŻ Biała Plazma Biała burza z wyładowaniami ZAŁÓŻ Aurora Finału Zorza — trofeum kampanii ZAŁÓŻ Kryształ Kryształowe ściany ZAŁÓŻ Pryzmat Tęczowy pryzmat — nagroda Core City ZAŁOŻONE ## Pryzma
+PASS  px02: no runtime errors (ISO-B)
+PASS  ISO-C campaign new: GRAJ, a full round, replay and the round's parameters don't depend on campaign progress  — {"start":true,"ended":true,"replay":true,"same":true}
+PASS  px02: no runtime errors (ISO-C new)
+PASS  ISO-C campaign partly completed: GRAJ, a full round, replay and the round's parameters don't depend on campaign progress  — {"start":true,"ended":true,"replay":true,"same":true}
+PASS  px02: no runtime errors (ISO-C partly completed)
+PASS  ISO-C campaign finished (240): GRAJ, a full round, replay and the round's parameters don't depend on campaign progress  — {"start":true,"ended":true,"replay":true,"same":true}
+PASS  px02: no runtime errors (ISO-C finished (240))
+PASS  ISO-C campaign missing: Arena starts and plays with the neutral parameters  — {"start":true,"ended":true,"guard":"ok","same":true,"bytesKept":false}
+PASS  px02: no runtime errors (ISO-C missing)
+PASS  ISO-C campaign broken (wrong type): Arena starts and plays with the neutral parameters; the held-back save stays byte-identical (no forced reset)  — {"start":true,"ended":true,"guard":"invalid","same":true,"bytesKept":true}
+PASS  px02: no runtime errors (ISO-C broken (wrong type))
+PASS  ISO-D 3 Arena rounds change nothing in the campaign (missions, stars, unlocks, boosters)  — {"campaignSame":true,"boostersSame":true,"coins":3158,"chip":true,"paid":40,"used":true}
+PASS  ISO-D shared coins reach the campaign only through a deliberate purchase (Magnes picked in the briefing: -40 coins, used in the mission)  — {"campaignSame":true,"boostersSame":true,"coins":3158,"chip":true,"paid":40,"used":true}
+PASS  BOOST-01 mission boosters bought, used in a mission (all five) and reset never change Arena parameters  — {"ref":"165/18","stocked":"165/18","afterMission":"165/18/0","reset":165}
+PASS  BOOST-02 in a mission: Sprint (+15% for the whole mission), Magnes (pull), Turbo start (T2), Zegar (+time), Tarcza (shields) each act  — {"none":{"speed":165,"mult":1,"time":70,"shields":0,"radius":18,"magnet":false,"pull":0},"sprint":{"speed":189.75,"mult":1.15,"time":70,"shields":0,"radius":18,"magnet":false,"pull":0},"sprintAfter60s":1.15,"magnet":{"speed":165,"mult":1,"time":70,"shields":0,"radius":18,"magnet":true,"pull":24.13},"start":{"speed":147.461,"mult":1,"time":70,"shields":0,"radius":30,"magnet":false,"pull":0},"time":{"speed":165,"mult":1,"time":85,"shields":0,"radius":18,"magnet":false,"pull":0},"shield":{"speed":165,"mult":1,"time":70,"shields":2,"radius":18,"magnet":false,"pull":0},"sprintMult":1.15}
+PASS  BOOST-03 Arena / Daily / friend challenge results: no Turbo offer (coins or ad), no rewarded ad fired; the rematch starts plain  — {"rewarded":[],"interstitial":0,"arena":{"place":6,"state":"RESULTS","upsell":false,"turboText":false},"daily":{"place":6,"state":"RESULTS","upsell":false,"turboText":false},"challenge":{"place":6,"state":"RESULTS","upsell":false,"turboText":false},"rematch":{"playing":true,"challenge":true,"radius":18,"shield":0,"coinsSame":true},"placements":"result_double_coins,mission_revive,chest_skip,login_double,free_prisms,booster_ad"}
+PASS  BOOST-03 campaign Turbo start is still a mission booster
+PASS  px02: no runtime errors (ISO-D/BOOST)
+PASS  LEGACY-01 6 paid vortices + 37 coins -> 4907 coins in memory and on disk, marker committed in the same write  — {"mem":4907,"disk":4907,"eco":{"looksOnly":1,"refund":4870,"notice":false,"boughtAfter":[]},"guard":"ok"}
+PASS  LEGACY-01 everything else kept (vortices owned + white worn, prisms, XP, boosters, purchases, Smuga, missions, Core City, stats, unlocks)
+PASS  LEGACY-01 the original pre-D+ bytes are kept under .bak before the commit  — bak ok
+PASS  LEGACY-01 one card explains the change with the amount  — Wiry są teraz tylko wyglądem | W Arenie liczy się to, jak grasz: żaden wir nie daje już bonusu w rundzie i przed rundą nie ma płatnych dodatków. Zwrot za Twoje wiry z bonusem: +4870 monet. Wszystkie wiry zostają Twoje i wyglądają t
+PASS  LEGACY-02 two reloads + a second tab: still 4907, the refund and its card come once  — {"reload":4907,"tab2":4907,"disk":4907,"t2":null,"t3":null}
+PASS  px02: no runtime errors (LEGACY-01/02)
+PASS  LEGACY-02 stale writer: a tab that read the old save before another tab committed gets no refund in memory, writes nothing, shows no refund card  — {"tabB":{"coins":37,"guard":"stale","eco":{"looksOnly":0,"refund":0,"notice":false,"boughtAfter":[]}},"disk":4907,"tb":"Gra jest otwarta w innej karcie"}
+PASS  LEGACY-02 that tab after a reload: 4907 (exactly one refund)  — 4907
+PASS  px02: no runtime errors (LEGACY-02 race)
+PASS  LEGACY-03 future (schema 99): bytes untouched after load + a round + autosaves, no refund, no refund card  — {"coins":37,"guard":"future","looksOnly":1,"same":true,"title":null}
+PASS  px02: no runtime errors (LEGACY-03 future (schema 99))
+PASS  LEGACY-03 corrupt (truncated): bytes untouched after load + a round + autosaves, no refund, no refund card  — {"coins":0,"guard":"corrupt","looksOnly":1,"same":true,"title":null}
+PASS  px02: no runtime errors (LEGACY-03 corrupt (truncated))
+PASS  LEGACY-03 invalid (coins "500"): bytes untouched after load + a round + autosaves, no refund, no refund card  — {"coins":500,"guard":"invalid","looksOnly":0,"same":true,"title":null}
+PASS  LEGACY-03 invalid -> NAPRAW ZAPIS -> reload: original under .rescue, then exactly one refund on the repaired save  — {"repairedCoins":819,"repairedMarker":{"looksOnly":0,"refund":0,"notice":false,"boughtAfter":[]},"final":5689}
+PASS  px02: no runtime errors (LEGACY-03 invalid (coins "500"))
+PASS  LEGACY-03 unavailable storage: no refund, no write, no refund card  — {"coins":0,"guard":"unavailable","title":null}
+PASS  LEGACY-04 quota (every write fails): the refund is rolled back in memory (37 coins, marker 0), disk keeps the original bytes, no card, nothing to spend  — {"coins":37,"looksOnly":0,"guard":"ok","diskSame":true,"title":null,"spend":false}
+PASS  LEGACY-04 quota (every write fails) lifted: the unsettled save is written (marker 0), the next load pays exactly one refund (+card), a further reload nothing  — {"mid":{"coins":311,"earned":224},"diskMarker":{"looksOnly":0,"refund":0,"notice":false,"boughtAfter":[]},"after":5181,"after2":5181,"t2":"Wiry są teraz tylko wyglądem"}
+PASS  px02: no runtime errors (LEGACY-04 every write fails)
+PASS  LEGACY-04 quota (.bak ok, the save write fails): the refund is rolled back in memory (37 coins, marker 0), disk keeps the original bytes, no card, nothing to spend  — {"coins":37,"looksOnly":0,"guard":"ok","diskSame":true,"title":null,"spend":false}
+PASS  LEGACY-04 quota (.bak ok, the save write fails) lifted: the unsettled save is written (marker 0), the next load pays exactly one refund (+card), a further reload nothing  — {"mid":{"coins":316,"earned":229},"diskMarker":{"looksOnly":0,"refund":0,"notice":false,"boughtAfter":[]},"after":5186,"after2":5186,"t2":"Wiry są teraz tylko wyglądem"}
+PASS  px02: no runtime errors (LEGACY-04 .bak ok, the save write fails)
+PASS  LEGACY-05 v1 -> v13 -> refund: 150 coins, original under .bak, history kept  — {"coins":150,"mem":150,"bak":true,"eco":{"looksOnly":1,"refund":100,"notice":false,"boughtAfter":[]}}
+PASS  px02: no runtime errors (LEGACY-05 v1)
+PASS  LEGACY-05 v5 -> v13 -> refund: 1520 coins, original under .bak, history kept  — {"coins":1520,"mem":1520,"bak":true,"eco":{"looksOnly":1,"refund":1400,"notice":false,"boughtAfter":[]}}
+PASS  px02: no runtime errors (LEGACY-05 v5)
+PASS  LEGACY-05 v12 (energy era) -> v13 -> refund: 4907 coins, original under .bak, history kept  — {"coins":4907,"mem":4907,"bak":true,"eco":{"looksOnly":1,"refund":4870,"notice":false,"boughtAfter":[]}}
+PASS  px02: no runtime errors (LEGACY-05 v12 (energy era))
+PASS  LEGACY-06 the settled save (870 coins) is read by 5db3b02 without a guard block and the marker survives its rewrite  — {"first":870,"old":{"guard":"ok","eco":{"looksOnly":1,"refund":770,"notice":false,"boughtAfter":[]},"coins":870,"after":368,"owned":"rainbow,cyan,pink,green,purple"},"oldDisk":{"looksOnly":1,"refund":770,"notice":false,"boughtAfter":[]}}
+PASS  LEGACY-06 back on the new code: no second refund (also none for the vortex bought on the old release), no card  — {"oldDisk":368,"now":368,"t3":null}
+PASS  px02: no runtime errors (LEGACY-06)
+PASS  LEGACY-07 new profile: born settled; a vortex bought after D+ (cyan, 100) is never refunded  — {"fresh":{"eco":"{\"looksOnly\":1,\"refund\":0,\"notice\":false,\"boughtAfter\":[]}","coins":200},"reload":{"coins":200,"owned":"rainbow,cyan"}}
+PASS  LEGACY-07 some paid vortices (cyan + green): 560 coins, vortices kept, card once  — {"coins":560,"owned":"rainbow,cyan,green","selected":"cyan","disk":560,"title":"Wiry są teraz tylko wyglądem"}
+PASS  px02: no runtime errors (LEGACY-07 some paid vortices (cyan + green))
+PASS  LEGACY-07 reward vortices only (Aurora, Kryształ, Pryzmat: kept, no money): 10 coins, vortices kept, card none  — {"coins":10,"owned":"rainbow,aurora,krysztal,pryzmat","selected":"pryzmat","disk":10,"title":null}
+PASS  px02: no runtime errors (LEGACY-07 reward vortices only (Aurora, Kryształ, Pryzmat: kept, no money))
+PASS  LEGACY-07 an unknown / removed vortex id: 110 coins, vortices kept, card once  — {"coins":110,"owned":"rainbow,legacy_blue,cyan","selected":"cyan","disk":110,"title":"Wiry są teraz tylko wyglądem"}
+PASS  px02: no runtime errors (LEGACY-07 an unknown / removed vortex id)
+PASS  LEGACY-07 a paid vortex bought on a not-yet-settled line (held-back save, then NAPRAW ZAPIS) is never refunded; the historical one is (900 - 100 + 450)  — {"guard":"invalid","coins0":900,"bought":true,"after":"cyan","repaired":800,"final":1250,"eco":{"looksOnly":1,"refund":450,"notice":false,"boughtAfter":["cyan"]}}
+PASS  px02: no runtime errors (LEGACY-07 bought while unsettled)
+PASS  LEGACY-07 dev test mode: the real save is settled once on the real slot; the sandbox copy carries that state (no second refund), the real bytes are untouched by test mode  — {"sandbox":true,"realCoins":110,"sbCoins":110,"mem":110,"realSame":true}
+PASS  px02: no runtime errors (LEGACY-07 dev)
+PASS  LEGACY-08a delayed cloud copy (same pre-D+ save): one refund, the settled save is mirrored up  — {"coins":4907,"cloud":4907}
+PASS  LEGACY-08b account copy ahead and pre-D+: it replaces this line and gets its own single refund (500 + 4870), mirrored, with the card  — {"coins":5370,"disk":5370,"cloud":5370,"t":"Wiry są teraz tylko wyglądem"}
+PASS  LEGACY-08c account copy ahead and already settled: adopted as is, no further refund  — {"coins":5370,"level":15}
+PASS  LEGACY-08d a pre-D+ backup code: that state gets one refund (37 + 4870); loading the same code again gives the same state, not a second refund  — {"coins0":4907,"disk0":4907,"coins1":4907,"disk1":4907}
+PASS  LEGACY-08e re-adopting an already settled save twice: no further refund  — 4907
+PASS  LEGACY-09 refund stored but its "seen" mark fails to save: no card, no refund event, the card stays pending (memory and disk)  — {"mem":{"coins":4907,"eco":{"looksOnly":1,"refund":4870,"notice":true,"boughtAfter":[]}},"disk":{"looksOnly":1,"refund":4870,"notice":true,"boughtAfter":[]},"title":null,"refundEvent":false}
+PASS  LEGACY-09 after a reload with working storage: the card shows once (event logged, mark saved), no second refund; the next reload shows nothing  — {"t2":"Wiry są teraz tylko wyglądem","disk":{"looksOnly":1,"refund":4870,"notice":false,"boughtAfter":[]},"c2":4907,"t3":null,"c3":4907}
+PASS  px02: no runtime errors (LEGACY-09)
+PASS  LEGACY-10 backup code while the write fails (quota): no "Postęp wczytany", the player is told it is not saved; storage untouched; no refund card  — {"title":"Kopia wczytana bez zapisu","coins":37,"guard":"ok","diskUntouched":true,"baseline":"same"}
+PASS  LEGACY-10 storage works again: the same code loads for real ("Postęp wczytany"), stored with exactly one refund (37 + 4870)  — {"title":"Postęp wczytany","coins":4907,"guard":"ok","disk":4907}
+PASS  px02: no runtime errors (LEGACY-10 quota)
+PASS  LEGACY-10 backup code while the write fails (another tab wrote first (stale)): no "Postęp wczytany", the player is told it is not saved; storage untouched; no refund card  — {"title":"Kopia wczytana bez zapisu","coins":37,"guard":"stale","diskUntouched":true,"baseline":"changed by the other tab"}
+PASS  px02: no runtime errors (LEGACY-10 another tab wrote first (stale))
+PASS  LEGACY-10 cloud copy adopted while the local write fails: no refund kept in memory, no refund card, nothing mirrored, local bytes untouched  — {"coins":500,"level":15,"title":null,"cloudUntouched":true,"localUntouched":true}
+PASS  px02: no runtime errors (LEGACY-10 cloud)
+PASS  UX-01 Warsztat at 375/360/320 px with 2587, 4870 and 10000 coins: title not cut, wallet and gear on screen, no sideways scroll  — ["375:2587","375:4870","375:10000","360:2587","360:4870","360:10000","320:2587","320:4870","320:10000"]
+
+95/95 PX02 checks passed
+exit 0

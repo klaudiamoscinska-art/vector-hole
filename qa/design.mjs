@@ -111,7 +111,8 @@ export async function runDesignChecks(url) {
     await g.page.waitForTimeout(1200);
     const loginShown = await g.page.evaluate(() => !document.getElementById('loginRewardScreen').classList.contains('hidden'));
     await g.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
-    const st = await g.page.evaluate(() => ({ state: window.game.state, setup: !document.getElementById('runSetupScreen').classList.contains('hidden') }));
+    // PX02 D+: the run-tool screen is gone for every round (null-safe check kept).
+    const st = await g.page.evaluate(() => { const el = document.getElementById('runSetupScreen'); return { state: window.game.state, setup: !!el && !el.classList.contains('hidden') }; });
     const rush = await g.page.evaluate(() => {
       const gm = window.game; let n = 0;
       for (let seed = 1; seed <= 40; seed++) { gm.startRound({ seed }); if (gm.modifier !== 'none') n++; }

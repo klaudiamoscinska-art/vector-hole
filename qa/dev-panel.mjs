@@ -443,7 +443,7 @@ export async function runDevPanelChecks(url) {
   {
     const g = await devGame(url, { realSave: veteran });
     const { page } = g;
-    // One skin unlocked in the panel -> worn from the real Warsztat grid -> its perk acts in a round.
+    // One skin unlocked in the panel -> worn from the real Warsztat grid -> it shows in a round (PX02 D+: a look only).
     const skin = await page.evaluate(async () => {
       const gm = window.game;
       window.__devClick('gear', 'cos-give', 'skin|gold');
@@ -456,12 +456,13 @@ export async function runDevPanelChecks(url) {
       const worn = gm.save.selected;
       gm.startRound();
       await new Promise(r => setTimeout(r, 200));
-      const res = { shop, ownedCard, worn, inRound: gm.player.skin, perkCoins: gm.perk('coins') };
+      const res = { shop, ownedCard, worn, inRound: gm.player.skin, perkFn: typeof gm.perk };
       window.__devClick('play', 'a-end', 'now');
       await new Promise(r => setTimeout(r, 500));
       return res;
     });
-    push('warsztat: a skin unlocked in the panel shows as owned in the real Warsztat, is worn by a tap and its perk acts in a round', skin.shop && skin.ownedCard && skin.worn === 'gold' && skin.inRound === 'gold' && Math.abs(skin.perkCoins - 0.3) < 1e-9, JSON.stringify(skin));
+    // PX02 D+: vortices are looks only -- the worn one shows in the round, with no perk code at all.
+    push('warsztat: a skin unlocked in the panel shows as owned in the real Warsztat, is worn by a tap and shows in a round (a look, no perk)', skin.shop && skin.ownedCard && skin.worn === 'gold' && skin.inRound === 'gold' && skin.perkFn === 'undefined', JSON.stringify(skin));
     const allCos = await page.evaluate(async () => {
       const gm = window.game, s = gm.save;
       window.__devClick('gear', 'cos-give-all', '*');
@@ -599,13 +600,12 @@ export async function runDevPanelChecks(url) {
       window.__devSet('play', 'devRadius', '70'); window.__devClick('play', 'set-radius');
       const r70 = Math.round(gm.player.radius);
       window.__devClick('play', 'mutation', 'magnet_pulse');
-      window.__devClick('play', 'live-tool', 'shield');
       window.__devClick('play', 'a-event', 'golden');
       const golden = !!gm.goldenObj;
       window.__devClick('play', 'a-event', 'frenzy');
       await sleep(100);
       const frenzy = gm.frenzyActive;
-      const mag = gm.magnetUntil === Infinity, shield = gm.shieldCharges;
+      const mag = gm.magnetUntil === Infinity;
       window.__devClick('play', 'cards');
       const cards = window.__visible('evolutionOverlay') && gm.evolutionPending;
       gm.skipEvolutionOffer();
@@ -617,10 +617,11 @@ export async function runDevPanelChecks(url) {
       window.__devClick('play', 'a-end', 'lose');
       await sleep(700);
       const lose = { screen: window.__visible('gameOverScreen'), place: document.getElementById('finalPlace').textContent };
-      return { before, after, eaten, down, r70, golden, frenzy, mag, shield, cards, win, lose };
+      return { before, after, eaten, down, r70, golden, frenzy, mag, cards, win, lose };
     });
     push('gameplay (Arena): size tier T3 unlocks T3 objects (and swallows one), back to T1, exact radius', !arena.before.canEat && arena.after.tier === 2 && arena.after.canEat && arena.eaten && arena.down === 0 && Math.abs(arena.r70 - 70) <= 1, JSON.stringify({ before: arena.before, after: arena.after, eaten: arena.eaten, down: arena.down, r70: arena.r70 }));
-    push('gameplay (Arena): mutation, run tool, Złoty Rdzeń, SZAŁ and evolution cards on demand', arena.mag && arena.shield >= 1 && arena.golden && arena.frenzy && arena.cards, JSON.stringify(arena));
+    // PX02 D+: the Arena run tools are gone, so the panel has none to give.
+    push('gameplay (Arena): mutation, Złoty Rdzeń, SZAŁ and evolution cards on demand', arena.mag && arena.golden && arena.frenzy && arena.cards, JSON.stringify(arena));
     push('gameplay (Arena): forced win shows ZWYCIĘSTWO 1., forced loss the last place — the real result screen', arena.win.screen && arena.win.eyebrow === 'ZWYCIĘSTWO!' && arena.win.place === '1.' && arena.lose.screen && arena.lose.place === '6.', JSON.stringify({ win: arena.win, lose: arena.lose }));
     const mission = await page.evaluate(async () => {
       const gm = window.game;

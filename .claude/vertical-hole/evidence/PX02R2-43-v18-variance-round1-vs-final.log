@@ -1,0 +1,19 @@
+=== round 1: round1
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":66,"d5":70},"time":{"all":77,"d5":80},"start":{"all":66,"d5":60},"sprint":{"all":80,"d5":85},"magnet":{"all":73,"d5":70}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":80,"d5":85},"time":{"all":77,"d5":80}}
+=== round 1: final
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":59,"d5":60},"time":{"all":77,"d5":70},"start":{"all":75,"d5":70},"sprint":{"all":77,"d5":90},"magnet":{"all":80,"d5":90}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":77,"d5":90},"time":{"all":77,"d5":70}}
+=== round 2: round1
+PASS  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":52,"d5":70},"time":{"all":86,"d5":85},"start":{"all":70,"d5":55},"sprint":{"all":75,"d5":85},"magnet":{"all":59,"d5":80}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":75,"d5":85},"time":{"all":86,"d5":85}}
+=== round 2: final
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":57,"d5":65},"time":{"all":70,"d5":60},"start":{"all":61,"d5":60},"sprint":{"all":80,"d5":80},"magnet":{"all":66,"d5":75}}
+FAIL  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":80,"d5":80},"time":{"all":70,"d5":60}}
+=== round 3: round1
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":66,"d5":80},"time":{"all":82,"d5":80},"start":{"all":75,"d5":70},"sprint":{"all":66,"d5":70},"magnet":{"all":57,"d5":70}}
+PASS  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":66,"d5":70},"time":{"all":82,"d5":80}}
+=== round 3: final
+FAIL  balance: Zegar, Turbo start and Sprint each lift the casual pass rate on hard missions (each ≥ 5, mean ≥ 8 points)  — {"none":{"all":68,"d5":85},"time":{"all":75,"d5":65},"start":{"all":70,"d5":60},"sprint":{"all":84,"d5":80},"magnet":{"all":61,"d5":65}}
+FAIL  balance: Sprint is not a must-buy (no better than Zegar + 8 points overall)  — {"sprint":{"all":84,"d5":80},"time":{"all":75,"d5":65}}
+exit 0

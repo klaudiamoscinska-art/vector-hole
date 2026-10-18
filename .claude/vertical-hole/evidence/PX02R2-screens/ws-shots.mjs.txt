@@ -1,0 +1,18 @@
+import path from 'node:path';
+const [root, out] = process.argv.slice(2);
+const { serve, openGame, veteranSave } = await import(path.join(root, 'qa', 'lib.mjs'));
+const { server, url } = await serve();
+const res = [];
+for (const [w, coins, lang] of [[375, 2587, 'pl-PL'], [375, 4870, 'pl-PL'], [375, 10000, 'pl-PL'], [320, 10000, 'pl-PL'], [375, 10000, 'en-US']]) {
+  const g = await openGame(url, { viewport: { width: w, height: 667 }, locale: lang });
+  const s = await veteranSave(g.page, { missions: 6, coins, runsPlayed: 5 }); s.prisms = 55;
+  await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), s);
+  await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state);
+  const r = await g.page.evaluate(() => { const gm = window.game; gm.closeInfoSheet(); gm.openWarsztatScreen(); gm.updateCoinDisplays(); const t = document.querySelector('#shopScreen .app-title'); return { title: t.textContent, cut: t.scrollWidth > t.clientWidth + 1, fs: getComputedStyle(t).fontSize }; });
+  await g.page.waitForTimeout(300);
+  const name = `ws-${w}-${coins}-${lang}.png`;
+  await g.page.screenshot({ path: path.join(out, name) });
+  res.push({ w, coins, lang, ...r, shot: name, errors: g.errors.length });
+  await g.browser.close();
+}
+server.close(); console.log(JSON.stringify(res, null, 1));

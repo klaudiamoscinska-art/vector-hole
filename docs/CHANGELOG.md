@@ -4,6 +4,42 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## PX02 D+ „W Arenie liczy się gra” — izolacja Areny (bez zmiany schematu, nadal v13)
+Decyzja właścicielki (2026-10-17): „W Arenie liczy się to, jak grasz.
+Monety kupują wygląd i wzmocnienia misji”.
+
+- Wiry to sam wygląd: usunięte perki wszystkich wirów (prędkość, combo,
+  magnes, XP, monety, start od T2, punkty, wzrost — również Kryształ i
+  Pryzmat z Core City) wraz z `Game.perk()` / `activePerks`. Warsztat
+  pokazuje opis wyglądu („WYGLĄD WIRU · BEZ BONUSU W RUNDZIE”).
+- Arena bez płatnej przewagi: usunięty ekran „WYBIERZ WSPARCIE” i
+  `RUN_TOOLS` (Tarcza 45, Magnes 25, Turbo start 70), karta „Rywale rosną w
+  siłę” po przegranej i reklama `turbo_free` (Turbo za reklamę, także w
+  rewanżu wyzwania znajomego). GRAJ, ZAGRAJ JESZCZE RAZ i rewanż startują od
+  razu. Mutacje w rundzie, Złoty Rdzeń, SZAŁ, Core City i ×2 monet za
+  reklamę po rundzie bez zmian.
+- Dzielnice bez zmian: 240 misji, `MISSION_BOOSTERS` (ceny, zapas, reklama,
+  pryzmaty), +20 s, gwiazdki, NELA. Monety z Areny mogą opłacić wzmocnienie
+  misji tylko świadomym zakupem (jawny wyjątek w kontrakcie izolacji).
+- Jednorazowy zwrot: zapis sprzed D+ z płatnymi wirami dostaje ich cenę z
+  cennika (komplet 4870 monet), raz na linię zapisu (`economy.looksOnly`,
+  `settleLooksOnly()`), w tym samym zapisie co znacznik, tylko przez
+  `saveGame()` (oryginał pod `.bak`), nigdy przy `SAVE_GUARD`; nieudany
+  zapis cofa zwrot w pamięci. Karta z kwotą raz, po udanym zapisie. Wir
+  kupiony, zanim linia zapisu została rozliczona (`economy.boughtAfter`),
+  nie dostaje zwrotu.
+  Poprzednia wersja (5db3b02) zachowuje znacznik przy odczycie i zapisie.
+- Panel DEV: usunięte przyciski dodatków Areny (nie ma już czego dawać).
+- Poprawki po przeglądzie GPT: karta zwrotu pokazuje się dopiero, gdy jej
+  znacznik „widziane” trafi do zapisu (inaczej czeka do następnego
+  uruchomienia; zwrot nie jest płacony drugi raz); kod kopii, którego nie
+  udało się zapisać (brak miejsca, druga karta), mówi „Kopia wczytana bez
+  zapisu” zamiast „Postęp wczytany”; tytuł Warsztatu nie jest ucinany obok
+  dużego salda na telefonach (375/360/320 px).
+- QA: `qa/px02-isolation.mjs` (ISO-A…D, BOOST-01…03, LEGACY-01…08) w
+  `run-all`; testy v22 / design / dev-panel dostosowane do braku ekranu
+  dodatków i perków.
+
 ## PX01 „Bezpieczny zapis” — naprawa VH-03 (bez zmiany schematu, nadal v13)
 Zapis gracza nie może już zniknąć przez zapis z nowszej wersji gry,
 obcięty JSON, jedno pole w złym formacie ani drugą kartę.

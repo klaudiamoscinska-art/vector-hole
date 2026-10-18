@@ -517,27 +517,6 @@
   </div>
 
 
-  <!-- ===================== RUN SETUP (casual run tools) ===================== -->
-  <div id="runSetupScreen" class="screen hidden">
-    <div class="screen-inner">
-      <h2 class="section-title">WYBIERZ WSPARCIE</h2>
-      <div class="threat-meter" id="runThreat">
-        <span class="threat-label">ZAGROŻENIE RYWALI</span>
-        <span class="threat-segments"><i></i><i></i><i></i><i></i></span>
-        <strong id="runThreatValue">ŁATWY</strong>
-      </div>
-      <button class="run-perk" id="runPerk" type="button">
-        <span class="run-perk-label">TWÓJ WIR: <b id="runPerkName">Tęcza</b></span>
-        <strong id="runPerkValue">—</strong>
-        <span class="run-perk-cta">ZMIEŃ ›</span>
-      </button>
-      <p class="hint-text">Opcjonalnie kup jednorazowy dodatek na tę rundę za monety — albo od razu naciśnij START i zagraj bez niczego.</p>
-      <div id="runToolGrid" class="run-tool-grid"></div>
-      <button id="btnConfirmStart" class="btn btn-primary">START RUNDY (2:00)</button>
-      <button id="btnRunSetupBack" class="btn btn-secondary">POWRÓT</button>
-    </div>
-  </div>
-
   <!-- ===================== DZIELNICE — kampania i misje (Vector Hole v4 / GDD 4.0 §5.2) =====================
        Anti-confusion rule (§8.4): this screen shows per-district rebuild
        progress ("ODBUDOWA: X% · Y z Z misji"), never the big Core City %. -->
@@ -680,14 +659,14 @@
             <div class="warsztat-preview-glow"></div>
             <canvas id="warsztatPreviewCanvas" class="warsztat-preview-canvas"></canvas>
           </div>
-          <!-- v14: name + bonus + the rest of the loadout in one line (the
+          <!-- v14: name + look + the rest of the loadout in one line (the
                "PODGLĄD NA ŻYWO" caption and the 2x2 "AKTYWNE ELEMENTY"
                tiles repeated what the tabs and the grid already show). -->
           <div class="warsztat-preview-labels">
             <div class="warsztat-preview-name" id="warsztatPreviewName">—</div>
-            <div class="warsztat-perk" id="warsztatPerk">
-              <span class="warsztat-perk-label">BONUS WIRU W RUNDZIE</span>
-              <strong id="warsztatPerkValue">—</strong>
+            <div class="warsztat-look" id="warsztatLook">
+              <span class="warsztat-look-label">WYGLĄD WIRU · BEZ BONUSU W RUNDZIE</span>
+              <strong id="warsztatLookValue">—</strong>
             </div>
             <div class="warsztat-preview-loadout" id="warsztatPreviewLoadout">—</div>
           </div>
@@ -899,17 +878,6 @@
           <div id="resultCoreBar" class="result-core-bar-after"></div>
         </div>
       </div>
-      </div>
-
-      <!-- Golden Shot v8 upgrade funnel: shown when the difficulty curve
-           starts to bite (lost the podium) -- points at the run tools. -->
-      <div id="resultUpsell" class="result-card result-upsell hidden">
-        <span class="result-upsell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span>
-        <div class="result-upsell-body">
-          <span class="result-card-label" id="resultUpsellLabel">RYWALE SĄ CORAZ SILNIEJSI</span>
-          <span class="result-upsell-text" id="resultUpsellText">Zacznij następną rundę od T2 z Turbo startem.</span>
-        </div>
-        <button id="btnUpsell" class="btn btn-gold btn-small">WZMOCNIJ SIĘ</button>
       </div>
 
       </div>

@@ -1,0 +1,342 @@
+diff --git a/qa/px02-isolation.mjs b/qa/px02-isolation.mjs
+index 9a04ee1..5707aed 100644
+--- a/qa/px02-isolation.mjs
++++ b/qa/px02-isolation.mjs
+@@ -801,12 +801,141 @@ export async function runPx02Checks(url) {
+     }
+   }
+ 
++  results.push(...await runPx02ReviewChecks(url));
++  return results;
++}
++
++/** PX02 review fixes (GPT audit): a write that fails is never shown as done.
++ *  LEGACY-09 -- the refund card's "seen" mark; LEGACY-10 -- a backup code or a
++ *  cloud copy adopted while storage refuses the write; UX-01 -- the Warsztat
++ *  title next to a big wallet on phones. */
++export async function runPx02ReviewChecks(url) {
++  const results = [];
++  const push = (name, ok, details) => results.push(report(name, ok, details));
++  const noErr = (errors, label) => push(`px02: no runtime errors (${label})`, errors.length === 0, errors.slice(0, 3).join(' | '));
++  const L1 = { coins: 37, prisms: 55, level: 9, xp: 120, missions: 14, owned: ['rainbow', 'cyan', 'pink', 'green', 'purple', 'gold', 'white'], selected: 'white' };
++  const events = (page) => page.evaluate(() => window.game.analytics.queue.map(e => e.name || e.event || e.type).filter(Boolean));
++
++  // LEGACY-09: the refund is stored, then the write that marks its card as
++  // seen fails -> no card, no "done" event; the next start shows it once and
++  // pays nothing again.
++  {
++    const raw = await legacyRaw(url, L1);
++    // Every write of the save key after the first one fails until lifted.
++    const ackFails = `(() => { const set = Storage.prototype.setItem; let n = 0;
++      Storage.prototype.setItem = function (k, v) {
++        if (k === 'vectorHoleSave_v1' && localStorage.getItem('__qaAckFail') === '1' && n++ >= 1) throw new DOMException('full', 'QuotaExceededError');
++        return set.call(this, k, v); }; })();`;
++    const ctx = await sharedContext(raw, `if (!localStorage.getItem('__qaAckInit')) { localStorage.setItem('__qaAckInit', '1'); localStorage.setItem('__qaAckFail', '1'); }` + ackFails);
++    const page = await ctx.open(url);
++    const a = await page.evaluate(() => ({ coins: window.game.save.coins, eco: window.game.save.economy }));
++    const t1 = await sheetTitle(page);
++    const ev1 = await events(page);
++    const d1 = await diskSave(page);
++    push('LEGACY-09 refund stored but its "seen" mark fails to save: no card, no refund event, the card stays pending (memory and disk)',
++      d1.coins === 4907 && d1.economy.looksOnly === 1 && d1.economy.notice === true && a.eco.notice === true && !REFUND_TITLE.test(t1 || '') && !ev1.includes('looks_only_refund'),
++      JSON.stringify({ mem: a, disk: d1.economy, title: t1, refundEvent: ev1.includes('looks_only_refund') }));
++    await page.evaluate(() => localStorage.setItem('__qaAckFail', '0'));
++    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
++    const t2 = await sheetTitle(page);
++    const ev2 = await events(page);
++    const d2 = await diskSave(page);
++    const c2 = await page.evaluate(() => window.game.save.coins);
++    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
++    const t3 = await sheetTitle(page);
++    const c3 = await page.evaluate(() => window.game.save.coins);
++    push('LEGACY-09 after a reload with working storage: the card shows once (event logged, mark saved), no second refund; the next reload shows nothing',
++      REFUND_TITLE.test(t2 || '') && ev2.includes('looks_only_refund') && d2.economy.notice === false && c2 === 4907 && d2.coins === 4907 && !REFUND_TITLE.test(t3 || '') && c3 === 4907,
++      JSON.stringify({ t2, disk: d2.economy, c2, t3, c3 }));
++    noErr(ctx.errors, 'LEGACY-09');
++    await ctx.browser.close();
++  }
++
++  // LEGACY-10: a backup code adopted while the write fails (quota, another tab)
++  // never says "Postęp wczytany"; once storage works the same code loads for real.
++  {
++    const code = await (async () => { const raw = await legacyRaw(url, L1); return 'VH1.' + Buffer.from(raw, 'utf8').toString('base64'); })();
++    const local = await (async () => { const r = await legacyRaw(url, { coins: 9000, owned: ['rainbow'], missions: 3, level: 2 }); const g = await boot(url, r); const s = await rawOf(g.page); await g.browser.close(); return s; })();
++    const load = (c) => {
++      const gm = window.game;
++      gm.closeInfoSheet();
++      gm.openBackupLoad(); document.getElementById('backupInput').value = c; document.getElementById('btnInfoSheetAction').click();
++      const act = document.getElementById('btnInfoSheetAction');
++      if (/MIMO TO/.test(act.textContent) && !act.classList.contains('hidden')) act.click();
++      const sheet = document.getElementById('infoSheet');
++      return { title: sheet.classList.contains('hidden') ? null : document.getElementById('infoSheetTitle').textContent, coins: gm.save.coins, guard: SAVE_GUARD.state };
++    };
++    for (const [label, how] of [['quota', 'quota'], ['another tab wrote first (stale)', 'stale']]) {
++      const quota = `(() => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (/^vectorHoleSave_v1/.test(k) && window.__qaQuota) throw new DOMException('full', 'QuotaExceededError'); return set.call(this, k, v); }; })();`;
++      const g = await boot(url, local, { initScript: quota });
++      const before = await rawOf(g.page);
++      if (how === 'quota') await g.page.evaluate(() => { window.__qaQuota = true; });
++      else await g.page.evaluate(() => { const s = JSON.parse(localStorage.getItem('vectorHoleSave_v1')); s.coins = 9001; localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)); });
++      const expectDisk = await rawOf(g.page);
++      const r = await g.page.evaluate(load, code);
++      const after = await rawOf(g.page);
++      const ev = await events(g.page);
++      push(`LEGACY-10 backup code while the write fails (${label}): no "Postęp wczytany", the player is told it is not saved; storage untouched; no refund card`,
++        r.title !== 'Postęp wczytany' && /bez zapisu/i.test(r.title || '') && after === expectDisk && !REFUND_TITLE.test(r.title || ''),
++        JSON.stringify({ ...r, diskUntouched: after === expectDisk, baseline: before === expectDisk ? 'same' : 'changed by the other tab' }));
++      if (how === 'quota') {
++        await g.page.evaluate(() => { window.__qaQuota = false; });
++        const r2 = await g.page.evaluate(load, code);
++        const d2 = await diskSave(g.page);
++        push('LEGACY-10 storage works again: the same code loads for real ("Postęp wczytany"), stored with exactly one refund (37 + 4870)',
++          r2.title === 'Postęp wczytany' && d2.coins === 4907 && d2.economy.looksOnly === 1 && r2.coins === 4907, JSON.stringify({ ...r2, disk: d2.coins }));
++      }
++      noErr(g.errors, `LEGACY-10 ${label}`);
++      await g.browser.close();
++    }
++    // A cloud copy adopted at start while the write fails: nothing claims a restore or a refund.
++    {
++      const mockCrazy = (store) => `window.__cgStore = ${JSON.stringify(store)}; window.CrazyGames = { SDK: { init: async () => {}, game: { gameplayStart() {}, gameplayStop() {}, loadingStop() {}, happytime() {} }, ad: { requestAd: (t, cb) => { cb && cb.adFinished && cb.adFinished(); } }, data: { getItem: k => (k in __cgStore ? __cgStore[k] : null), setItem: (k, v) => { __cgStore[k] = v; }, removeItem: k => { delete __cgStore[k]; } } } };`;
++      const ahead = await legacyRaw(url, { ...L1, coins: 500, missions: 40, level: 15 });
++      // Writes start failing once the page has booted (before the cloud copy arrives).
++      const failLater = `(() => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (/^vectorHoleSave_v1/.test(k) && window.__qaQuota) throw new DOMException('full', 'QuotaExceededError'); return set.call(this, k, v); }; })();`;
++      const g = await boot(url, local, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: ahead }) + failLater + `document.addEventListener('DOMContentLoaded', () => { window.__qaQuota = true; });` });
++      await g.page.waitForTimeout(800);
++      const r = await g.page.evaluate((k) => ({ coins: window.game.save.coins, level: window.game.save.player.level, cloudSame: __cgStore[k], disk: localStorage.getItem(k) }), KEY);
++      const t = await sheetTitle(g.page);
++      push('LEGACY-10 cloud copy adopted while the local write fails: no refund kept in memory, no refund card, nothing mirrored, local bytes untouched',
++        !REFUND_TITLE.test(t || '') && r.coins < 4870 && r.cloudSame === ahead && r.disk === local,
++        JSON.stringify({ coins: r.coins, level: r.level, title: t, cloudUntouched: r.cloudSame === ahead, localUntouched: r.disk === local }));
++      noErr(g.errors, 'LEGACY-10 cloud');
++      await g.browser.close();
++    }
++  }
++
++  // UX-01: the Warsztat title is not cut next to the wallet on phones.
++  {
++    const rows = [];
++    for (const w of [375, 360, 320]) for (const coins of [2587, 4870, 10000]) {
++      const g = await openGame(url, { viewport: { width: w, height: 667 } });
++      await g.page.addScriptTag({ content: PROFILE });
++      const r = await g.page.evaluate(({ coins }) => {
++        const s = window.__px02Profile({ coins, prisms: 55, missions: 6 });
++        localStorage.setItem('vectorHoleSave_v1', sealSave(s));
++        return true;
++      }, { coins });
++      await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state);
++      const m = await g.page.evaluate(() => {
++        const gm = window.game; gm.closeInfoSheet(); gm.openWarsztatScreen(); gm.updateCoinDisplays();
++        const t = document.querySelector('#shopScreen .app-title'), gear = document.querySelector('#shopScreen .hub-gear-btn');
++        const coinsEl = document.getElementById('coinCountShop');
++        return { cut: t.scrollWidth > t.clientWidth + 1, gear: gear.getBoundingClientRect().right <= innerWidth, coins: coinsEl.textContent, page: document.documentElement.scrollWidth <= innerWidth };
++      });
++      rows.push({ w, coins, ...m });
++      await g.browser.close();
++    }
++    const bad = rows.filter(r => r.cut || !r.gear || !r.page);
++    push('UX-01 Warsztat at 375/360/320 px with 2587, 4870 and 10000 coins: title not cut, wallet and gear on screen, no sideways scroll', bad.length === 0, JSON.stringify(bad.length ? bad : rows.map(r => `${r.w}:${r.coins}`)));
++  }
+   return results;
+ }
+ 
+ if (process.argv[1] && process.argv[1].endsWith('px02-isolation.mjs')) {
+   const { server, url } = await serve();
+-  const results = await runPx02Checks(url);
++  const results = process.argv.includes('--review') ? await runPx02ReviewChecks(url) : await runPx02Checks(url);
+   server.close();
+   const failed = results.filter(r => !r.ok);
+   console.log(`\n${results.length - failed.length}/${results.length} PX02 checks passed`);
+diff --git a/CLAUDE.md b/CLAUDE.md
+index d8d057d..5b863e9 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -60,7 +60,7 @@ Bots tick `game.update()` in virtual time (RAF detached, `performance.now` advan
+ - **`CONFIG.flags`** gates major systems; `proceduralDistricts` stays `false` (no authored chunk generator was built).
+ - **`GameState`** (`BOOT/MENU/MATCH_SETUP/PLAYING/PAUSED/RESULTS`) on `Game.state`.
+ - **`SeededRNG`** (mulberry32) seeds only a round's *initial* layout (objects, street trails, spawn feasts, spawns) so Daily and friend-challenge maps are identical for everyone; mid-round randomness stays on `Math.random()`. Any new layout step must consume the seeded stream the same way for every player, and `computeDailyLayout()` must replay it exactly (`qa/design.mjs` asserts preview == real round).
+-- **Save**: `localStorage` key `vectorHoleSave_v1` (never changes), `SAVE_SCHEMA_VERSION` 13 (v22 dropped `energy`, `campaign.discoveredTypes`/`discoveredHoleEating` and every `M00` key) with a `migrateSave()` chain (add an `if (data.schemaVersion < N)` branch per breaking change). Every load runs `sanitizeSave()` against `defaultSave()`, so **a new save field must be added to `defaultSave()`** to survive. `saveGame()` seals the payload (`_sig`). **PX01 save guard:** `loadSave()` never writes on a plain read; a save it can't fully read (`readSave()` → `SAVE_GUARD.state` 'future' / 'corrupt' / 'invalid' (a field `sanitizeSave(save, issues)` had to repair, or `verifyMigration()` failed) / 'unavailable' / 'stale' (another tab wrote)) is played from memory and `saveGame()` — the only write path, cloud mirror included — writes nothing until the player's explicit choice (`releaseSaveGuard()` keeps the original under `SAVE_SLOT + '.rescue'`); a migration commits only after `verifyMigration()` and a copy of the original under `SAVE_SLOT + '.bak'`. Only a save that reached `localStorage` is mirrored to the cloud; an existing empty key is a broken save, not "no save"; a reset of a held-back save aborts if the `.rescue` copy fails. Never write `SAVE_SLOT` around `saveGame()`; `qa/save-safety.mjs` checks it. **PX02 D+ refund:** `save.economy` (`looksOnly` 1 = settled — a new profile is born settled; `migrateSave()` marks a save without the block `looksOnly: 0`, no schema bump) — `settleLooksOnly()` pays the list price of the owned paid vortices (`LOOKS_ONLY_REFUND`, 4870 for the set) once, only on a verified save in `loadSave()` (riding on its migration write, original under `.bak`) or in `adoptSave()` (cloud copy / backup code), and `unsettleLooksOnly()` rolls it back in memory when that `saveGame()` returns false; a paid vortex bought while the line is still unsettled goes to `economy.boughtAfter` and is never refunded; `verifyMigration()` refuses to drop a settled marker; the card (`showLooksOnlyNotice()`) shows once, only after a successful commit (`economy.notice`). `qa/px02-isolation.mjs` checks it.
++- **Save**: `localStorage` key `vectorHoleSave_v1` (never changes), `SAVE_SCHEMA_VERSION` 13 (v22 dropped `energy`, `campaign.discoveredTypes`/`discoveredHoleEating` and every `M00` key) with a `migrateSave()` chain (add an `if (data.schemaVersion < N)` branch per breaking change). Every load runs `sanitizeSave()` against `defaultSave()`, so **a new save field must be added to `defaultSave()`** to survive. `saveGame()` seals the payload (`_sig`). **PX01 save guard:** `loadSave()` never writes on a plain read; a save it can't fully read (`readSave()` → `SAVE_GUARD.state` 'future' / 'corrupt' / 'invalid' (a field `sanitizeSave(save, issues)` had to repair, or `verifyMigration()` failed) / 'unavailable' / 'stale' (another tab wrote)) is played from memory and `saveGame()` — the only write path, cloud mirror included — writes nothing until the player's explicit choice (`releaseSaveGuard()` keeps the original under `SAVE_SLOT + '.rescue'`); a migration commits only after `verifyMigration()` and a copy of the original under `SAVE_SLOT + '.bak'`. Only a save that reached `localStorage` is mirrored to the cloud; an existing empty key is a broken save, not "no save"; a reset of a held-back save aborts if the `.rescue` copy fails. Never write `SAVE_SLOT` around `saveGame()`; `qa/save-safety.mjs` checks it. **PX02 D+ refund:** `save.economy` (`looksOnly` 1 = settled — a new profile is born settled; `migrateSave()` marks a save without the block `looksOnly: 0`, no schema bump) — `settleLooksOnly()` pays the list price of the owned paid vortices (`LOOKS_ONLY_REFUND`, 4870 for the set) once, only on a verified save in `loadSave()` (riding on its migration write, original under `.bak`) or in `adoptSave()` (cloud copy / backup code), and `unsettleLooksOnly()` rolls it back in memory when that `saveGame()` returns false; a paid vortex bought while the line is still unsettled goes to `economy.boughtAfter` and is never refunded; `verifyMigration()` refuses to drop a settled marker; the card (`showLooksOnlyNotice()`) shows once, only after a successful commit (`economy.notice`) and only when its "seen" write succeeds (else it stays pending). `adoptSave()` returns whether the adopted save reached storage (`true` / `false` = memory only / `null` = not adopted); `importBackup()` says „Postęp wczytany” only for `true`. `qa/px02-isolation.mjs` checks it.
+ - **Ranking is always by score** (`rankHoles()`; radius/name are tiebreakers). Don't reintroduce a radius sort.
+ - `Analytics` keeps an in-memory buffer and forwards to a host sink only with consent (`save.privacy.analytics`). No backend; the game sends nothing itself.
+ - `escapeHtml()` for every player-controlled string that reaches `innerHTML`.
+diff --git a/README.md b/README.md
+index ee3e10f..bab42a4 100644
+--- a/README.md
++++ b/README.md
+@@ -21,7 +21,7 @@ instalacji — na telefonie i komputerze.
+ > - **60 misji kampanii** w 6 dzielnicach z wielkimi budowlami do pochłonięcia
+ > - **Wyzwanie dnia** — ta sama mapa dla wszystkich, codziennie nowa
+ > - **Pojedynki ze znajomymi** — wyślij link, pobij wynik na tej samej mapie
+-> - **Wiry z bonusami**, smugi, efekty i odbudowa Core City
++> - **Wiry do kolekcji** (sam wygląd — w Arenie liczy się gra), smugi, efekty i odbudowa Core City
+ > - Dynamiczna muzyka synthwave i dźwięki, które rosną razem z combo
+ 
+ **Słowa kluczowe:** gra io, czarna dziura, gra w przeglądarce,
+diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
+index 61bd72c..9dde8f7 100644
+--- a/docs/CHANGELOG.md
++++ b/docs/CHANGELOG.md
+@@ -30,6 +30,12 @@ Monety kupują wygląd i wzmocnienia misji”.
+   nie dostaje zwrotu.
+   Poprzednia wersja (5db3b02) zachowuje znacznik przy odczycie i zapisie.
+ - Panel DEV: usunięte przyciski dodatków Areny (nie ma już czego dawać).
++- Poprawki po przeglądzie GPT: karta zwrotu pokazuje się dopiero, gdy jej
++  znacznik „widziane” trafi do zapisu (inaczej czeka do następnego
++  uruchomienia; zwrot nie jest płacony drugi raz); kod kopii, którego nie
++  udało się zapisać (brak miejsca, druga karta), mówi „Kopia wczytana bez
++  zapisu” zamiast „Postęp wczytany”; tytuł Warsztatu nie jest ucinany obok
++  dużego salda na telefonach (375/360/320 px).
+ - QA: `qa/px02-isolation.mjs` (ISO-A…D, BOOST-01…03, LEGACY-01…08) w
+   `run-all`; testy v22 / design / dev-panel dostosowane do braku ekranu
+   dodatków i perków.
+diff --git a/docs/GAME_DESIGN.md b/docs/GAME_DESIGN.md
+index e0787c1..4d12a3d 100644
+--- a/docs/GAME_DESIGN.md
++++ b/docs/GAME_DESIGN.md
+@@ -71,7 +71,8 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
+   `.bak`); przy zablokowanym zapisie (`SAVE_GUARD`) zwrotu nie ma, a przy
+   nieudanym zapisie jest cofany w pamięci (następne uruchomienie próbuje
+   ponownie). Karta „Wiry są teraz tylko wyglądem” z kwotą pokazuje się raz,
+-  tylko po udanym zapisie. Nowy profil rodzi się rozliczony, więc wir
++  tylko po udanym zapisie — i dopiero gdy zapisze się też jej znacznik
++  „widziane” (inaczej wraca przy następnym uruchomieniu). Nowy profil rodzi się rozliczony, więc wir
+   kupiony po D+ nigdy nie dostaje zwrotu; wir kupiony w sesji, w której
+   linia zapisu nie była jeszcze rozliczona (zapis zablokowany albo
+   nieudany), trafia do `economy.boughtAfter` i też go nie dostaje.
+@@ -279,6 +280,9 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
+   awanse poziomu, kalendarz, skrzynia, reklama, sklep. Wydatki — rzadkie
+   Smugi, Efekty i Finisze (20–40 ◆), wzmocnienie misji przy braku monet
+   (4 ◆), +20 s w misji (8 ◆). Same kosmetyki i skróty, nigdy czas gry.
++- **Kod kopii zapasowej:** „Postęp wczytany” tylko wtedy, gdy wczytany
++  postęp trafił do zapisu; gdy przeglądarka go nie zapisze (brak miejsca,
++  gra otwarta w innej karcie), gra mówi „Kopia wczytana bez zapisu”.
+ - **Retencja:** 7-dniowy kalendarz logowania, darmowa skrzynia co 4 h,
+   Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
+   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
+diff --git a/game.js b/game.js
+index f65196e..089daca 100644
+--- a/game.js
++++ b/game.js
+@@ -9349,48 +9349,61 @@ class Game {
+         return;
+       }
+     }
+-    this.adoptSave(save, 'backup');
+-    this.analytics.track('backup_load', {});
++    const stored = this.adoptSave(save, 'backup');
++    this.analytics.track('backup_load', { stored: stored === true });
++    // PX02 review: "Postęp wczytany" only when the code's save reached storage.
++    if (stored === null) return; // nothing adopted -- the guard notice already says why
++    if (!stored) {
++      this.openInfoSheet({ title: 'Kopia wczytana bez zapisu', body: ['Postęp z kodu działa w tej sesji, ale przeglądarka go nie zapisała (np. brak miejsca na dane albo gra otwarta w innej karcie).', 'Dopóki zapis się nie uda, po odświeżeniu strony może wrócić poprzedni postęp. Zachowaj kod — możesz go wczytać ponownie.'] });
++      return;
++    }
+     this.openInfoSheet({ title: 'Postęp wczytany', body: ['Witaj z powrotem! Cały postęp z kodu jest na tym urządzeniu.'], closeLabel: 'GRAMY', onClose: () => setTimeout(() => this.showLooksOnlyNotice(), 0) });
+   }
+ 
+   /** v19: replace the whole save (cloud restore / backup code). Mid-round it
+-   *  waits for the next screen change, so a round is never yanked away. */
++   *  waits for the next screen change, so a round is never yanked away.
++   *  Returns true when the adopted save reached storage, false when it is
++   *  played from memory only (the write failed), null when nothing was
++   *  adopted (deferred, or the held-back save could not be kept). */
+   adoptSave(save, source, after) {
+-    if (this.running) { this.pendingSave = { save, source, after }; return; }
++    if (this.running) { this.pendingSave = { save, source, after }; return null; }
+     this.pendingSave = null;
+     // PX01: a backup code / test state is the player's explicit choice, so
+     // it may replace a held-back save -- whose bytes go to the rescue key first.
+     // A cloud copy is not a choice: it never lifts the guard by itself.
+     if (!saveWritable()) {
+-      if (source === 'cloud') return;
+-      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
++      if (source === 'cloud') return null;
++      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return null; }
+     }
+     this.save = save;
+     // PX02 D+: a cloud copy or backup code from before D+ is settled once,
+     // in the same write that adopts it.
+     const undo = settleLooksOnly(save);
+-    if (!saveGame(save, { touch: false, mirror: false }) && undo) unsettleLooksOnly(save, undo);
++    const stored = saveGame(save, { touch: false, mirror: false });
++    if (!stored && undo) unsettleLooksOnly(save, undo);
+     if (after) after();
+     this.sound.settings = save.settings;
+     this.sound.applySettings();
+-    this.analytics.track('save_adopted', { source });
++    this.analytics.track('save_adopted', { source, stored });
+     if (this.state !== GameState.BOOT) {
+       this.updateCoinDisplays();
+       this.showScreen('mainMenu');
+       // A backup code says "Postęp wczytany" first (importBackup()).
+       if (source !== 'backup') this.showLooksOnlyNotice();
+     }
++    return stored;
+   }
+ 
+   /** PX02 D+: the one card that explains the change and the refund -- only
+    *  after the refund reached storage (economy.notice is set only then),
+-   *  and once. */
++   *  and once: only when its "seen" mark is stored too. If that write fails
++   *  the card stays pending for the next start (the refund itself is already
++   *  stored and is never paid again). */
+   showLooksOnlyNotice() {
+     const e = this.save.economy;
+     if (!e || !e.notice || !saveWritable() || this.running) return;
+     e.notice = false;
+-    saveGame(this.save);
++    if (!saveGame(this.save)) { e.notice = true; return; }
+     this.analytics.track('looks_only_refund', { refund: e.refund });
+     this.openInfoSheet({
+       icon: REWARD_CATEGORY_ICONS.skin,
+@@ -16115,12 +16128,15 @@ const I18N_EN = {
+   "(wygląd dziury) i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza). W Arenie nie da się kupić przewagi.": "(how your hole looks) and on boosters before a mission (Clock, Turbo Start, Sprint, Magnet, Shield). An Arena advantage can’t be bought.",
+   "Biała burza z wyładowaniami": "White lightning storm",
+   "Cyjanowe obwody": "Cyan circuits",
++  "Dopóki zapis się nie uda, po odświeżeniu strony może wrócić poprzedni postęp. Zachowaj kod — możesz go wczytać ponownie.": "Until saving works, reloading the page may bring back your previous progress. Keep the code — you can load it again.",
+   "Fioletowa galaktyka": "Violet galaxy",
+   "Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!": "Next chest in 4 hours. Spend coins in the Workshop or on mission boosters!",
++  "Kopia wczytana bez zapisu": "Backup loaded but not saved",
+   "Kryształowe ściany": "Crystal facets",
+   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down.",
+   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down. 10 new missions await.",
+   "Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.": "The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost.",
++  "Postęp z kodu działa w tej sesji, ale przeglądarka go nie zapisała (np. brak miejsca na dane albo gra otwarta w innej karcie).": "The progress from the code works in this session, but the browser did not save it (for example, no storage space left or the game is open in another tab).",
+   "Różowa plazma": "Pink plasma",
+   "Sam wygląd — w rundzie działa tak samo jak każdy inny wir.": "Looks only — in a round it plays exactly like every other vortex.",
+   "Toksyczne bąble": "Toxic bubbles",
+diff --git a/qa/README.md b/qa/README.md
+index f5b211c..09d465e 100644
+--- a/qa/README.md
++++ b/qa/README.md
+@@ -14,7 +14,7 @@ node qa/flow.mjs          # v14: start screen = logo + GRAJ, Miasto without a fl
+ node qa/dev-panel.mjs      # v23: dev panel -- access (hidden gesture, code, lockout, ?dev, simulated production host; VH_DEV_CODE=... also checks the real code), test-mode isolation (real save untouched, no analytics sink/cloud mirror/real ads/payments), every tab and what it unlocks really working in the game, phones portrait/landscape + desktop
+ node qa/dev-code.mjs "<code>"  # v23: prints DEV_CODE_HASH for a new dev code
+ node qa/save-safety.mjs    # PX01: a newer (schema > current), broken (truncated JSON) or partly broken (wrong field type) save is never written over -- not on load and not by any later autosave (login, chest, Arena round, mission, tab switch, reload); the player's explicit repair / start over / reset keeps the original under `.rescue`; migrations commit only after a verified result and a `.bak` of the original; two tabs (storage event + read-before-write); QuotaExceededError / refused backup / interrupted commit / unreadable storage; cloud copy from a newer version, broken or empty is never overwritten; review regressions R1–R4 (reset without a rescue copy deletes nothing, a failed local write is never mirrored, an existing empty key is a broken save, unreadable storage shows a notice). Fixtures -> qa/out/save-fixtures/
+-node qa/px02-isolation.mjs # PX02 D+ (owner decision): ISO-A..D -- Arena, Daily and friend challenges start with the same parameters for any campaign progress, coins, XP, level and any vortex (bought for real in Warsztat); GRAJ / replay / rematch start at once with nothing for sale; Arena rounds change nothing in the campaign; BOOST-01..03 -- mission boosters never touch the Arena, Magnes/Sprint/Turbo start/Zegar/Tarcza still act in missions, no Turbo for coins or ads in the Arena; LEGACY-01..08 -- the one-time vortex refund (4870 for the 6 paid vortices) is paid once per save line, with its marker in the same write, never while SAVE_GUARD holds a save, rolled back on a failed write, kept by the previous release (5db3b02, read from git), safe across reloads, two tabs, cloud copies and backup codes. Fixtures -> qa/out/px02-fixtures/
++node qa/px02-isolation.mjs # PX02 D+ (owner decision): ISO-A..D -- Arena, Daily and friend challenges start with the same parameters for any campaign progress, coins, XP, level and any vortex (bought for real in Warsztat); GRAJ / replay / rematch start at once with nothing for sale; Arena rounds change nothing in the campaign; BOOST-01..03 -- mission boosters never touch the Arena, Magnes/Sprint/Turbo start/Zegar/Tarcza still act in missions, no Turbo for coins or ads in the Arena; LEGACY-01..08 -- the one-time vortex refund (4870 for the 6 paid vortices) is paid once per save line, with its marker in the same write, never while SAVE_GUARD holds a save, rolled back on a failed write, kept by the previous release (5db3b02, read from git), safe across reloads, two tabs, cloud copies and backup codes; review fixes (`--review` runs only these): LEGACY-09 the refund card waits for its "seen" write, LEGACY-10 a backup code / cloud copy whose write fails is never confirmed as loaded, UX-01 the Warsztat title fits next to the wallet at 375/360/320 px. Fixtures -> qa/out/px02-fixtures/
+ node qa/v22.mjs            # v22: no energy anywhere (source, DOM, store, ads) + 15 rounds / 6 Dailies / 15 mission attempts in a row at 0 coins; first launch = an Arena round with the whole bestiary; campaign progress changes nothing in Arena and vice versa; same unlocks in either order; each mode pays for what it sells (bots); first-round coach only for a hesitating player (EN too); v12 -> v13 migration + reload; prisms (booster for 4 ◆, prism looks)
+ node qa/v21.mjs            # v21: big screens -- phones keep their framing; 1366×768/1440×900/1920×1080 see about a phone's worth of city with a bigger vortex, cursor steering through the zoom, bigger HUD/minimap; desktop layout (body.wide): nav rail + two columns on Miasto/Dzielnice/Warsztat/Wyzwania/results at 960×540…1920×1080 and 1180×820, all 12 districts in view, nothing sideways; portrait phones/tablets keep the phone layout; district strip mouse wheel + edge fades
+ node qa/v20.mjs            # v20: gates are helpers -- no mission asks to go through a gate/portal, impulse pad (+50% speed, recharge), two-way portal pair, M11 „Pierwszy impuls” shows a pad + food on its first frame, EN chips
+diff --git a/style.css b/style.css
+index 7fc975f..6005368 100644
+--- a/style.css
++++ b/style.css
+@@ -4257,9 +4257,15 @@ body[data-gfx="0"] #hud::before { display: none; }
+ .nav-screen > .app-header .app-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .nav-screen > .app-header .hub-header-right { flex: none; }
+ @media (max-width: 440px) {
+-  #campaignScreen .app-title { font-size: 21px; }
+-  #campaignScreen .coin-display, #mainMenu .coin-display { padding: 6px 9px; gap: 4px; }
+-  #campaignScreen .currency-row, #mainMenu .currency-row { gap: 5px; }
++  #campaignScreen .app-title, #shopScreen .app-title { font-size: 21px; }
++  #campaignScreen .coin-display, #mainMenu .coin-display, #shopScreen .coin-display { padding: 6px 9px; gap: 4px; }
++  #campaignScreen .currency-row, #mainMenu .currency-row, #shopScreen .currency-row { gap: 5px; }
++}
++/* PX02 review: „WARSZTAT” fits next to a 5-digit wallet down to 320 px. */
++@media (max-width: 340px) {
++  #shopScreen .app-title { font-size: 17px; }
++  #shopScreen .coin-display { padding: 5px 7px; gap: 3px; }
++  #shopScreen .currency-row { gap: 4px; }
+ }
+ .inline-bolt { width: 0.95em; height: 0.95em; vertical-align: -0.12em; }
+ .mc-boost.off { opacity: 0.38; cursor: not-allowed; }

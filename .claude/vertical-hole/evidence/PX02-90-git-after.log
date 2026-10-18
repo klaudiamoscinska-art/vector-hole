@@ -1,0 +1,36 @@
+# PX02 end of session (after all tests; no commit/push)
+HEAD: 5db3b02094592b541a18fc11ca52e248ff0c14a4
+branch: px02-economy-dplus
+git status --short:
+ M .claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md
+ M CLAUDE.md
+ M VH_PREFLIGHT_REPORT.md
+ M docs/CHANGELOG.md
+ M docs/GAME_DESIGN.md
+ M game.js
+ M index.html
+ M qa/README.md
+ M qa/design.mjs
+ M qa/dev-panel.mjs
+ M qa/run-all.mjs
+ M qa/save-safety.mjs
+ M qa/v22.mjs
+ M style.css
+?? .claude/vertical-hole/evidence/PX02-00-git-before.log
+?? .claude/vertical-hole/evidence/PX02-10-repro-base-px02-isolation.log
+?? .claude/vertical-hole/evidence/PX02-11-px02-isolation-intermediate-run2.log
+?? .claude/vertical-hole/evidence/PX02-12-late-arena.log
+?? .claude/vertical-hole/evidence/PX02-12-late-arena.mjs.txt
+?? .claude/vertical-hole/evidence/PX02-20-git-before-tests.log
+?? .claude/vertical-hole/evidence/PX02-21-code-hashes-before-tests.txt
+?? .claude/vertical-hole/evidence/PX02-22-code-hashes-after-tests.txt
+?? .claude/vertical-hole/evidence/PX02-30-qa-run-all.log
+?? .claude/vertical-hole/evidence/PX02-31-px02-isolation.log
+?? .claude/vertical-hole/evidence/PX02-40-base-qa-run-all.log
+?? .claude/vertical-hole/evidence/PX02-42-v18-variance.log
+?? .claude/vertical-hole/evidence/PX02-50-diff.patch
+?? .claude/vertical-hole/evidence/PX02-51-diffstat.log
+?? .claude/vertical-hole/evidence/PX02-90-git-after.log
+?? .claude/vertical-hole/evidence/PX02-fixtures/
+?? .claude/vertical-hole/evidence/PX02-screens/
+?? qa/px02-isolation.mjs

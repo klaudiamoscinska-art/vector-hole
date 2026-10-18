@@ -42,7 +42,7 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 | Progresja | Core City LVL 1–6 (+%) i nagrody kosmetyczne, rosnąca trudność rywali (od liczby rund), pacer | 12 dzielnic, gwiazdki, Skrzynie gwiazd, nowe dzielnice i ich utwory |
 | Rozmiary T1–T6 | tylko z wielkości wiru w rundzie; cały bestiariusz od 1. rundy | tylko z jednostek wzrostu w misji |
 | Odblokowania | **Wyzwania** po 3 rundach Areny | **wzmocnienia** po M04 (+ po jednym w prezencie) |
-| Ulepszenia | Wiry z bonusem (tylko w Arenie), dodatki na rundę | wzmocnienia misji, pożyczka NELI |
+| Ulepszenia | **brak** (PX02 D+: nic, co zmienia rundę, nie jest na sprzedaż; wiry to sam wygląd) | wzmocnienia misji, pożyczka NELI |
 | Nagrody | monety, XP, Core City, co 3. runda +2 pryzmaty, rekord dnia | monety za misję, XP, Skrzynie gwiazd (monety, pryzmaty, wzmocnienie) |
 
 - Wspólne są tylko: **portfel** (monety, pryzmaty — oba tryby je
@@ -50,12 +50,38 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   sprawdza bot: 6 misji opłaca wzmocnienie, 3 rundy Areny pierwszy Wir),
   **wygląd wiru** (Warsztat), poziom konta (XP z obu trybów, nic nie
   blokuje) i ustawienia.
+- **PX02 D+ (decyzja właścicielki, 2026-10-17): „W Arenie liczy się to, jak
+  grasz. Monety kupują wygląd i wzmocnienia misji”.** Wiry nie dają
+  żadnego bonusu (prędkość, combo, magnes, XP, monety, start, punkty,
+  wzrost — wszystkie usunięte, także Kryształ i Pryzmat z Core City); przed
+  rundą Areny nie ma ekranu dodatków (Tarcza / Magnes / Turbo start za
+  monety), a po przegranej nie ma Turbo za monety ani za reklamę — także w
+  Wyzwaniu dnia i wyzwaniach znajomych. GRAJ, ZAGRAJ JESZCZE RAZ i rewanż
+  startują od razu. Jedyny przepływ między trybami to **świadomy zakup**:
+  monety z Areny mogą opłacić wzmocnienie misji w odprawie (jawny,
+  zaakceptowany wyjątek, `ARENA_DISTRICT_CONTRACT.md`); w drugą stronę nic
+  nie płynie — postęp, nagrody i zakupy Dzielnic nie zmieniają Areny.
+- **Jednorazowy zwrot (D+, `settleLooksOnly()`):** zapis sprzed D+, który
+  ma płatne wiry z dawnym bonusem, dostaje raz ich cenę z cennika (Cyjan
+  100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800, Neonowe
+  Złoto 1300, Biała Plazma 2000 — komplet 4870). Wiry zostają (posiadane i
+  założone). Kryształ i Pryzmat (nagrody Core City) tracą bonus bez zwrotu;
+  Tęcza i Aurora nigdy go nie miały. Zwrot i znacznik `economy.looksOnly`
+  trafiają do zapisu w tym samym `saveGame()` (oryginał najpierw pod
+  `.bak`); przy zablokowanym zapisie (`SAVE_GUARD`) zwrotu nie ma, a przy
+  nieudanym zapisie jest cofany w pamięci (następne uruchomienie próbuje
+  ponownie). Karta „Wiry są teraz tylko wyglądem” z kwotą pokazuje się raz,
+  tylko po udanym zapisie — i dopiero gdy zapisze się też jej znacznik
+  „widziane” (inaczej wraca przy następnym uruchomieniu). Nowy profil rodzi się rozliczony, więc wir
+  kupiony po D+ nigdy nie dostaje zwrotu; wir kupiony w sesji, w której
+  linia zapisu nie była jeszcze rozliczona (zapis zablokowany albo
+  nieudany), trafia do `economy.boughtAfter` i też go nie dostaje.
 - **Warsztat** otwiera się po 2 rundach Areny **albo** po misji M02 — co
   pierwsze; odblokowanie nigdy się nie cofa (`CONFIG.unlockGates`).
 - Postęp kampanii nie zmienia Areny (mapa, rywale, trudność, obiekty —
   wcześniej Arena pokazywała tylko typy „odkryte” w misjach), a postęp
   Areny nie zmienia misji (limity, start, plansza). Wir „Aurora Finału”
-  (nagroda za M24) jest trofeum bez bonusu w Arenie.
+  (nagroda za M24) jest trofeum — jak każdy wir, sam wygląd.
 - **Pierwsze uruchomienie:** ekran powitalny z jednym GRAJ → od razu runda
   Areny (z linkiem wyzwania — ta runda). Po niej kampania przedstawia się
   raz („DRUGI TRYB · KAMPANIA” → Dzielnice) i pojawia się nawigacja.
@@ -235,12 +261,12 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   planszy pełnoekranowej; te zostają dla nowych funkcji i kosmetyków).
 - **Warsztat (ceny v13 ×~3,3, bo 20-rundowa kariera kończyła się z 8 000
   niewydanych monet):** Wiry Cyjan 100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800,
-  Neonowe Złoto 1300, Biała Plazma 2000 monet (każdy z bonusem
-  rozgrywki, tylko Arena/Dzienne), Smuga „Iskra” 500 monet, „Żar” 15 i
+  Neonowe Złoto 1300, Biała Plazma 2000 monet (PX02 D+: sam wygląd, bez
+  bonusu w rundzie), Smuga „Iskra” 500 monet, „Żar” 15 i
   „Zawirowanie” 30 pryzmatów; v22: Efekty „Neonowa Róża” 20 i „Fioletowa
   Szczelina” 35, Finisze „Złoty Szczyt” 25 i „Zielona Burza” 40 pryzmatów
-  (wcześniej w tych kategoriach nie było nic do kupienia). Dodatki na
-  rundę: Tarcza 45, Magnes 25, Turbo start 70 monet.
+  (wcześniej w tych kategoriach nie było nic do kupienia). Dodatków na
+  rundę Areny (Tarcza 45, Magnes 25, Turbo start 70) nie ma od PX02 D+.
 - **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go
   zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a arkusz
   pyta „KUP I ZAŁÓŻ · cena” (zamknięcie = powrót do założonego, nic nie
@@ -254,12 +280,15 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   awanse poziomu, kalendarz, skrzynia, reklama, sklep. Wydatki — rzadkie
   Smugi, Efekty i Finisze (20–40 ◆), wzmocnienie misji przy braku monet
   (4 ◆), +20 s w misji (8 ◆). Same kosmetyki i skróty, nigdy czas gry.
+- **Kod kopii zapasowej:** „Postęp wczytany” tylko wtedy, gdy wczytany
+  postęp trafił do zapisu; gdy przeglądarka go nie zapisze (brak miejsca,
+  gra otwarta w innej karcie), gra mówi „Kopia wczytana bez zapisu”.
 - **Retencja:** 7-dniowy kalendarz logowania, darmowa skrzynia co 4 h,
   Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
 - **Monetyzacja (`Monetization`):** tylko reklamy z nagrodą (×2 monety,
-  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, darmowe Turbo,
-  wzmocnienie misji przy braku monet) i
+  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, wzmocnienie misji przy
+  braku monet; PX02 D+ usunęło darmowe Turbo do Areny) i
   reklamy między rundami co 3. powtórka (nie w rundach nowicjusza, min.
   2,5 min odstępu). Sklep IAP pojawia się tylko z natywnym opakowaniem;
   w przeglądarce działa oznaczony dostawca demo. Sklep: Pakiet Startowy

@@ -1,0 +1,15 @@
+ .claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md |  19 ++
+ CLAUDE.md                                        |  12 +-
+ docs/CHANGELOG.md                                |  30 ++
+ docs/GAME_DESIGN.md                              |  41 ++-
+ game.js                                          | 403 +++++++++--------------
+ index.html                                       |  40 +--
+ qa/README.md                                     |   1 +
+ qa/design.mjs                                    |   3 +-
+ qa/dev-panel.mjs                                 |  15 +-
+ qa/run-all.mjs                                   |   3 +-
+ qa/save-safety.mjs                               |   3 +-
+ qa/v22.mjs                                       |  19 +-
+ style.css                                        | 142 +-------
+ 13 files changed, 291 insertions(+), 440 deletions(-)
+?? qa/px02-isolation.mjs (814 lines, new)
