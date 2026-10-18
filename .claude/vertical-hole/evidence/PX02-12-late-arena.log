@@ -1,0 +1,15 @@
+# Late-career Arena (runsPlayed 30 -> difficulty t = 1), casual bot, 20 rounds per config,
+# on the base code 5db3b02 (node late-arena.mjs <base> neutral,white+turbo 20). Virtual time.
+# "neutral" = rainbow, no run tool (the only Arena a D+ player has; same code path on the new code).
+# "white+turbo" = the strongest pre-D+ paid advantage (Biała Plazma perks + Turbo start).
+neutral {"n":20,"avgPlace":1.9,"podium":17,"wins":11,"avgScore":7411.8,"avgDeaths":2.9}
+white+turbo {"n":20,"avgPlace":1.6,"podium":18,"wins":14,"avgScore":10668,"avgDeaths":2.1}
+# Final PX02 code (113db9e4...), neutral, same script:
+new-1 {"neutral":{"n":20,"avgPlace":1.4,"podium":20,"wins":14,"avgScore":10373.8,"avgDeaths":2.1}}
+# Alternating repeat (variance of the neutral path; Math.random in rounds):
+base-2 {"neutral":{"n":20,"avgPlace":2,"podium":17,"wins":9,"avgScore":6567.9,"avgDeaths":3.1}}
+new-2 {"neutral":{"n":20,"avgPlace":2.3,"podium":15,"wins":10,"avgScore":6786.4,"avgDeaths":2.5}}
+base-3 {"neutral":{"n":20,"avgPlace":2,"podium":17,"wins":11,"avgScore":9012.6,"avgDeaths":2.7}}
+new-3 {"neutral":{"n":20,"avgPlace":2.1,"podium":16,"wins":10,"avgScore":8511.3,"avgDeaths":2.6}}
+# Neutral parameter signature (seed 4242) is byte-identical on base and final code
+# (PX02-10 vs PX02-31, ISO-A line): {"startRadius":18,"speed":165,...,"coinsEarned":79,"xpGained":146}.

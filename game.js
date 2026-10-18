@@ -83,8 +83,7 @@ const CONFIG = {
   // bigger than you, hunt you from far away, decide faster, and keep
   // growing on their own). Each [easy, hard] pair is lerp'd by `t`. The
   // Daily Seed Challenge uses a fixed dailyT so its seeded layout plays the
-  // same for everyone. The run-setup screen shows the current threat level
-  // next to the run tools (RUN_TOOLS) that counter it.
+  // same for everyone.
   difficulty: {
     rampStartRuns: 3,
     rampFullRuns: 24,   // v13: 16 -> 24, the wall arrived as a cliff (runs 15-17: 6th, 3rd, 6th)
@@ -98,8 +97,7 @@ const CONFIG = {
     botPassiveUnitsPerSec: [0, 0.22],
     // In-round escalation: bots speed up for the final stretch of every round.
     lateRoundSeconds: 40,
-    lateRoundBotSpeedBonus: 0.1,
-    labels: ['NISKIE', 'ŚREDNIE', 'WYSOKIE', 'EKSTREMALNE']
+    lateRoundBotSpeedBonus: 0.1
   },
   // v13 "the race": one rival per round (the pacer, Game.pacer) runs on a
   // par-score curve taken from the player's own recent form -- the median
@@ -1819,7 +1817,6 @@ const AD_PLACEMENTS = {
   chest_skip: { label: 'Skrzynia teraz', dailyCap: 3 },
   login_double: { label: '×2 nagroda dnia' },
   free_prisms: { label: '+5 pryzmatów', dailyCap: 3 },
-  turbo_free: { label: 'Turbo start gratis', dailyCap: 2 },
   // v18: short on coins in the briefing -- one picked booster for an ad.
   booster_ad: { label: 'Wzmocnienie za reklamę', dailyCap: 3 }
 };
@@ -2196,26 +2193,33 @@ const BOT_COLORS = ['#FF54AD', '#46D99A', '#EFCB63', '#9875FF', '#50F0FA', '#ff3
 const SKINS = [
   // v13 prices ~3.3x: a 20-round QA career ended with 8 139 coins unspent
   // and every coin item (then ~1 560 in total) bought after 5-10 rounds.
-  // Golden Shot v9: every Rdzeń now has a gameplay bonus (`perks`, applied
-  // in Arena/Daily rounds only -- see Game.perk()) on top of its signature
-  // look (SKIN_STYLES), so buying one changes how you play, not just color.
-  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — wir startowy' },
-  { id: 'cyan', name: 'Cyjan', price: 100, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
-  { id: 'pink', name: 'Gorący Róż', price: 220, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
-  { id: 'green', name: 'Toksyczna Zieleń', price: 450, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
-  { id: 'purple', name: 'Ultrafiolet', price: 800, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
-  { id: 'gold', name: 'Neonowe Złoto', price: 1300, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
-  { id: 'white', name: 'Biała Plazma', price: 2000, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
+  // PX02 D+ (owner decision): every Rdzeń is a look only (SKIN_STYLES) --
+  // "in the Arena what counts is how you play". The Golden Shot v9 perks
+  // (speed, combo, magnet, XP, coins, start size, points, growth) are gone;
+  // saves that owned a paid one got its list price back once
+  // (settleLooksOnly(), LOOKS_ONLY_REFUND).
+  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, look: 'Tęczowy pryzmat — wir startowy' },
+  { id: 'cyan', name: 'Cyjan', price: 100, color: '#50F0FA', look: 'Cyjanowe obwody' },
+  { id: 'pink', name: 'Gorący Róż', price: 220, color: '#FF54AD', look: 'Różowa plazma' },
+  { id: 'green', name: 'Toksyczna Zieleń', price: 450, color: '#46D99A', look: 'Toksyczne bąble' },
+  { id: 'purple', name: 'Ultrafiolet', price: 800, color: '#9875FF', look: 'Fioletowa galaktyka' },
+  { id: 'gold', name: 'Neonowe Złoto', price: 1300, color: '#EFCB63', look: 'Złote słońce' },
+  { id: 'white', name: 'Biała Plazma', price: 2000, color: '#ffffff', look: 'Biała burza z wyładowaniami' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
-  // in CAMPAIGN_MISSIONS + endCampaignMission()). v22: a trophy look only --
-  // perks act in Arena, and a campaign reward must not tilt Arena's balance.
-  { id: 'aurora', name: 'Aurora Finału', price: null, color: '#7cffcb', unlockSource: { type: 'mission', id: 'M24' }, perks: [], perkLabel: 'Trofeum kampanii — bez bonusu w Arenie' },
+  // in CAMPAIGN_MISSIONS + endCampaignMission()).
+  { id: 'aurora', name: 'Aurora Finału', price: null, color: '#7cffcb', unlockSource: { type: 'mission', id: 'M24' }, look: 'Zorza — trofeum kampanii' },
   // GDD 4.0 §8.2 Core City reward ladder (never for sale, granted by
   // grantCoreCityLevelReward() — see CORE_CITY_LEVEL_REWARDS below).
-  { id: 'krysztal', name: 'Kryształ', price: null, color: '#8ce8ff', unlockSource: { type: 'coreCity', level: 3 }, perks: [{ type: 'growth', value: 0.15 }], perkLabel: '+15% wzrostu z obiektów' },
-  { id: 'pryzmat', name: 'Pryzmat', price: null, rainbow: true, unlockSource: { type: 'coreCity', level: 6 }, perks: [{ type: 'coins', value: 0.2 }, { type: 'xp', value: 0.2 }], perkLabel: '+20% monet i +20% XP' }
+  { id: 'krysztal', name: 'Kryształ', price: null, color: '#8ce8ff', unlockSource: { type: 'coreCity', level: 3 }, look: 'Kryształowe ściany' },
+  { id: 'pryzmat', name: 'Pryzmat', price: null, rainbow: true, unlockSource: { type: 'coreCity', level: 6 }, look: 'Tęczowy pryzmat — nagroda Core City' }
 ];
+
+// PX02 D+: the one-time refund for vortices whose Arena bonus was removed --
+// their list price (100+220+450+800+1300+2000 = 4870 for the set). The two
+// Core City rewards (Kryształ, Pryzmat) keep their look with no money back
+// (owner decision DEC-4); Tęcza and Aurora never had a bonus.
+const LOOKS_ONLY_REFUND = { cyan: 100, pink: 220, green: 450, purple: 800, gold: 1300, white: 2000 };
 
 // Phase 7 shop v2: a second cosmetic category beyond ring skins, purchasable
 // with either currency to give Prisms an actual sink (GDD 10.1/10.2). GDD
@@ -2270,16 +2274,10 @@ const CORE_CITY_LEVEL_REWARDS = {
   6: { skinId: 'pryzmat', auraId: 'pryzmat', effectId: 'pryzmat', overdriveSkinId: 'pryzmat', badge: 'pryzmat', coins: 400, label: 'Zestaw „Pryzmat” + odznaka' }
 };
 
-// Phase 7 casual run tools: consumable per-run boosters, Coins-only, casual
-// mode only (no ranked/daily equivalent exists yet to keep them fair for).
-const RUN_TOOLS = [
-  { id: 'none', name: 'Bez dodatku', price: 0, desc: 'Zwykły start, bez żadnego efektu. Zawsze darmowe.' },
-  { id: 'shield', name: 'Tarcza', price: 45, desc: 'Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.' },
-  { id: 'magnet', name: 'Magnes', price: 25, desc: 'Przez pierwsze 12 s rundy obiekty same lecą w Twoją stronę.' },
-  // Golden Shot v8: the direct counter to the difficulty ramp -- start
-  // the round already at T2, bigger than a hard-mode rival's spawn size.
-  { id: 'boost', name: 'Turbo start', price: 70, desc: 'Startujesz od razu z rozmiarem T2 — Twój wir od pierwszej sekundy przerasta rywali.', hot: true }
-];
+// PX02 D+: the Phase 7 Arena run tools (Tarcza / Magnes / Turbo start bought
+// with coins before a round, Turbo for an ad after a lost one) are gone --
+// nothing that changes an Arena round is for sale. Mission boosters below
+// are the campaign's own.
 
 // v15 mission boosters (owner: "przed rozpoczęciem levelu powinno dać się
 // dokupić toole"): picked in the briefing, one use each, bought with coins
@@ -3731,7 +3729,14 @@ function defaultSave() {
     challenge: null,
     integrity: { tampered: false },
     // v19: when the game last wrote this save (cloud-save conflict checks).
-    meta: { savedAt: 0, devSandbox: false }
+    meta: { savedAt: 0, devSandbox: false },
+    // PX02 D+: vortices are looks only. looksOnly 1 = this save line is
+    // settled (a new profile is born settled; a save from before D+ gets
+    // looksOnly 0 in migrateSave() and is settled once by settleLooksOnly());
+    // refund = the coins it got back; notice = its card is still to show;
+    // boughtAfter = paid vortices bought while the line was still unsettled
+    // (a held-back or unsaved session) -- bought after D+, never refunded.
+    economy: { looksOnly: 1, refund: 0, notice: false, boughtAfter: [] }
   };
 }
 
@@ -3985,7 +3990,45 @@ function migrateSave(data) {
     data = { ...rest, schemaVersion: 13 };
   }
 
+  // PX02 D+ (no schema bump -- the previous release keeps an unknown block
+  // as it is): a save written before D+ has no economy block, so it is
+  // marked unsettled here, before sanitizeSave() would fill in a new
+  // profile's settled default.
+  if (!data.economy || typeof data.economy !== 'object' || Array.isArray(data.economy)) {
+    data = { ...data, economy: { looksOnly: 0, refund: 0, notice: false, boughtAfter: [] } };
+  }
+
   return data;
+}
+
+/* ---------------- PX02 D+: one-time refund for vortex bonuses ----------------
+   "In the Arena what counts is how you play": vortices are looks only. A
+   save line from before D+ that owns one of the paid vortices whose bonus
+   went away gets their list price back once (LOOKS_ONLY_REFUND, owned =
+   ownership, not a record of what was actually paid). The refund and its
+   marker live in the same save object, so they reach storage in the same
+   setItem -- through saveGame() only, never while SAVE_GUARD holds a save
+   -- and are rolled back in memory if that write fails (the save then stays
+   unsettled and the next load tries again). A save that isn't fully readable
+   is never settled: it is repaired or replaced first. */
+/** Settles an unsettled save in place; returns what undoes it (null when
+ *  the save was already settled). */
+function settleLooksOnly(save) {
+  const e = save && save.economy;
+  if (!e || e.looksOnly >= 1) return null;
+  const undo = { coins: save.coins, economy: e };
+  const ids = new Set(save.owned || []);
+  (e.boughtAfter || []).forEach(id => ids.delete(id));
+  const refund = Object.keys(LOOKS_ONLY_REFUND).reduce((sum, id) => sum + (ids.has(id) ? LOOKS_ONLY_REFUND[id] : 0), 0);
+  save.coins = Math.min(SAVE_CURRENCY_CAP, (save.coins || 0) + refund);
+  save.economy = { ...e, looksOnly: 1, refund, notice: refund > 0 };
+  return undo;
+}
+/** Undoes settleLooksOnly() in memory when its write didn't reach storage --
+ *  coins that aren't saved can't be spent, and no card claims a refund. */
+function unsettleLooksOnly(save, undo) {
+  save.coins = undo.coins;
+  save.economy = undo.economy;
 }
 
 /* ----------------------- PX01: save guard -----------------------
@@ -4064,6 +4107,8 @@ function verifyMigration(before, after) {
   keepsAll(before.entitlements && before.entitlements.purchased, after.entitlements.purchased, 'purchases');
   keepsAll(before.campaign && before.campaign.unlockedDistricts, after.campaign.unlockedDistricts, 'districts');
   if (before.entitlements && before.entitlements.noAds === true && !after.entitlements.noAds) out.push('lost noAds');
+  // PX02: a settled save never turns unsettled (that would pay its refund twice).
+  if (before.economy && before.economy.looksOnly >= 1 && !(after.economy && after.economy.looksOnly >= 1)) out.push('lost economy');
   const done = before.campaign && before.campaign.completed;
   if (done && typeof done === 'object') Object.keys(done).forEach(id => { if (done[id] && id !== 'M00' && !after.campaign.completed[id]) out.push('lost mission ' + id); });
   const boosters = before.boosters;
@@ -4090,12 +4135,15 @@ function loadSave() {
     SAVE_GUARD.issues = res.issues;
     return res.save;
   }
+  // PX02 D+: a verified save from before D+ is settled once -- the refund
+  // rides on the migration write below.
+  const undo = settleLooksOnly(res.save);
   // A verified save: written back only if the migration changed it, and
   // only after the original bytes are safe under the backup key (the
   // commit itself is one setItem -- a close in between just redoes it).
   if (sealSave(res.save) !== raw) {
     SAVE_GUARD.backupPending = true;
-    saveGame(res.save, { touch: false, mirror: false });
+    if (!saveGame(res.save, { touch: false, mirror: false }) && undo) unsettleLooksOnly(res.save, undo);
   }
   return res.save;
 }
@@ -7820,11 +7868,6 @@ class Game {
     // Phase 5: seeded run modifier (lightweight — see docs for scope)
     this.modifier = 'none';
 
-    // Phase 7: casual run tools (consumable, casual-only)
-    this.selectedRunTool = 'none';
-    this.shieldCharges = 0;
-    this.toolMagnetUntil = 0;
-
     // Phase 9: Daily Seed Challenge
     this.isDailyRun = false;
 
@@ -7896,6 +7939,7 @@ class Game {
     this.trackRetention();
     this.renderConsentBar();
     this.showSaveGuardNotice();
+    this.showLooksOnlyNotice();
     if (this.save.integrity.tampered && !this.save.integrity.reported) {
       this.analytics.track('save_tampered', {});
       this.save.integrity.reported = true;
@@ -8168,12 +8212,6 @@ class Game {
     document.querySelectorAll('[data-consent]').forEach(btn => btn.addEventListener('click', () => this.setConsent(btn.dataset.consent === '1')));
     document.getElementById('hubFreeChest').addEventListener('click', () => this.openFreeChest());
     document.getElementById('hubPlayerLevel').addEventListener('click', () => this.openPlayerLevelInfo());
-    document.getElementById('btnUpsell').addEventListener('click', () => this.onUpsellClick());
-    document.getElementById('runPerk').addEventListener('click', () => {
-      if (this.isWarsztatUnlocked()) this.openWarsztatScreen(); else this.openLockedTabInfo('warsztat');
-    });
-    document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
-    document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
 
     // GDD 4.0 §5.1: Miasto's secondary CTA opens the Wyzwania tab (goal
     // text/countdown/streak live there); the tab's own button actually
@@ -8446,11 +8484,11 @@ class Game {
       name.textContent = item.name;
       body.appendChild(name);
 
-      if (gridId === 'skinGrid' && item.perkLabel) {
-        const perk = document.createElement('div');
-        perk.className = 'skin-perk' + (item.perks && item.perks.length ? '' : ' none');
-        perk.textContent = item.perkLabel;
-        body.appendChild(perk);
+      if (gridId === 'skinGrid' && item.look) {
+        const look = document.createElement('div');
+        look.className = 'skin-look';
+        look.textContent = item.look;
+        body.appendChild(look);
       }
 
       const meta = document.createElement('div');
@@ -8548,7 +8586,8 @@ class Game {
     this.updateWarsztatPreview();
     const revert = () => { this.pendingLoadout[cat] = equipped; this.updateWarsztatPreview(); };
     const title = `${C.noun} „${item.name}”`;
-    const perk = cat === 'skin' && item.perkLabel ? [`Bonus w rundzie: <strong>${item.perkLabel}</strong>`] : [];
+    // PX02 D+: a vortex is a look only -- the sheet says so, never a bonus.
+    const perk = cat === 'skin' ? ['Sam wygląd — w rundzie działa tak samo jak każdy inny wir.'] : [];
     const icon = REWARD_CATEGORY_ICONS[cat === 'overdriveSkin' ? 'overdrive' : cat];
     if (item.unlockSource) {
       this.analytics.track('cosmetic_preview', { [C.key]: item.id, locked: true });
@@ -8577,6 +8616,9 @@ class Game {
       action: { label: `KUP I ZAŁÓŻ · ${price} ${sym}`, onClick: () => {
         if (prisms) this.save.prisms -= price; else this.save.coins -= price;
         C.owned.push(item.id);
+        // PX02 D+: bought after D+ on a line not settled yet -- never refunded.
+        const eco = this.save.economy;
+        if (cat === 'skin' && eco.looksOnly < 1 && LOOKS_ONLY_REFUND[item.id] && !eco.boughtAfter.includes(item.id)) eco.boughtAfter.push(item.id);
         this.analytics.track('soft_purchase', { [C.key]: item.id, price, currency: prisms ? 'prisms' : 'coins' });
         this.pendingLoadout[cat] = item.id;
         this.onEquipClick();
@@ -8769,8 +8811,7 @@ class Game {
     // The preview canvas itself is redrawn every frame from pendingLoadout
     // by renderWarsztatCanvases(); this just refreshes the text labels.
     document.getElementById('warsztatPreviewName').textContent = skin.name;
-    document.getElementById('warsztatPerkValue').textContent = skin.perkLabel || '—';
-    document.getElementById('warsztatPerk').classList.toggle('none', !(skin.perks && skin.perks.length));
+    document.getElementById('warsztatLookValue').textContent = skin.look || '—';
     document.getElementById('warsztatPreviewLoadout').textContent =
       `Smuga: ${(aura && aura.name) || 'Brak'} · Efekt: ${(effect && effect.name) || 'Klasyczny'} · Finisz: ${(overdrive && overdrive.name) || 'Klasyczny'}`;
   }
@@ -8940,46 +8981,6 @@ class Game {
       }
       ctx.restore();
     }
-  }
-
-  /** Phase 7 casual run tools — Coins-only, consumed at round start, no
-   *  ranked/daily equivalent exists yet to keep those modes fair. */
-  populateRunToolGrid() {
-    const t = this.computeDifficultyT();
-    const threat = document.getElementById('runThreat');
-    const level = Math.min(3, Math.floor(t * 4));
-    threat.dataset.level = level;
-    threat.querySelectorAll('.threat-segments i').forEach((seg, i) => seg.classList.toggle('on', i <= level));
-    document.getElementById('runThreatValue').textContent = this.difficultyLabel(t);
-    const equippedSkin = SKINS.find(sk => sk.id === this.save.selected) || SKINS[0];
-    document.getElementById('runPerkName').textContent = equippedSkin.name;
-    document.getElementById('runPerkValue').textContent = equippedSkin.perkLabel || '—';
-    const grid = document.getElementById('runToolGrid');
-    grid.innerHTML = '';
-    RUN_TOOLS.forEach(tool => {
-      const afford = tool.price === 0 || this.save.coins >= tool.price;
-      const btn = document.createElement('button');
-      btn.className = 'run-tool-card' + (this.selectedRunTool === tool.id ? ' selected' : '');
-      btn.style.opacity = afford ? '1' : '0.5';
-      const hot = tool.hot && t >= 0.25 ? '<span class="run-tool-hot">POLECANE</span>' : '';
-      btn.innerHTML = `<span><span class="run-tool-name">${tool.name}</span>${hot}<br><span class="run-tool-desc">${tool.desc}</span></span><span class="run-tool-price">${tool.price > 0 ? '◇ ' + tool.price : 'GRATIS'}</span>`;
-      btn.addEventListener('click', () => {
-        if (!afford) return;
-        this.selectedRunTool = tool.id;
-        this.populateRunToolGrid();
-      });
-      grid.appendChild(btn);
-    });
-  }
-
-  confirmRunSetup() {
-    const tool = RUN_TOOLS.find(t => t.id === this.selectedRunTool);
-    if (tool && tool.price > 0) {
-      this.save.coins -= tool.price;
-      saveGame(this.save);
-      this.updateCoinDisplays();
-    }
-    this.startRound();
   }
 
   openProfileScreen() {
@@ -9348,33 +9349,71 @@ class Game {
         return;
       }
     }
-    this.adoptSave(save, 'backup');
-    this.analytics.track('backup_load', {});
-    this.openInfoSheet({ title: 'Postęp wczytany', body: ['Witaj z powrotem! Cały postęp z kodu jest na tym urządzeniu.'], closeLabel: 'GRAMY' });
+    const stored = this.adoptSave(save, 'backup');
+    this.analytics.track('backup_load', { stored: stored === true });
+    // PX02 review: "Postęp wczytany" only when the code's save reached storage.
+    if (stored === null) return; // nothing adopted -- the guard notice already says why
+    if (!stored) {
+      this.openInfoSheet({ title: 'Kopia wczytana bez zapisu', body: ['Postęp z kodu działa w tej sesji, ale przeglądarka go nie zapisała (np. brak miejsca na dane albo gra otwarta w innej karcie).', 'Dopóki zapis się nie uda, po odświeżeniu strony może wrócić poprzedni postęp. Zachowaj kod — możesz go wczytać ponownie.'] });
+      return;
+    }
+    this.openInfoSheet({ title: 'Postęp wczytany', body: ['Witaj z powrotem! Cały postęp z kodu jest na tym urządzeniu.'], closeLabel: 'GRAMY', onClose: () => setTimeout(() => this.showLooksOnlyNotice(), 0) });
   }
 
   /** v19: replace the whole save (cloud restore / backup code). Mid-round it
-   *  waits for the next screen change, so a round is never yanked away. */
+   *  waits for the next screen change, so a round is never yanked away.
+   *  Returns true when the adopted save reached storage, false when it is
+   *  played from memory only (the write failed), null when nothing was
+   *  adopted (deferred, or the held-back save could not be kept). */
   adoptSave(save, source, after) {
-    if (this.running) { this.pendingSave = { save, source, after }; return; }
+    if (this.running) { this.pendingSave = { save, source, after }; return null; }
     this.pendingSave = null;
     // PX01: a backup code / test state is the player's explicit choice, so
     // it may replace a held-back save -- whose bytes go to the rescue key first.
     // A cloud copy is not a choice: it never lifts the guard by itself.
     if (!saveWritable()) {
-      if (source === 'cloud') return;
-      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
+      if (source === 'cloud') return null;
+      if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return null; }
     }
     this.save = save;
-    saveGame(save, { touch: false, mirror: false });
+    // PX02 D+: a cloud copy or backup code from before D+ is settled once,
+    // in the same write that adopts it.
+    const undo = settleLooksOnly(save);
+    const stored = saveGame(save, { touch: false, mirror: false });
+    if (!stored && undo) unsettleLooksOnly(save, undo);
     if (after) after();
     this.sound.settings = save.settings;
     this.sound.applySettings();
-    this.analytics.track('save_adopted', { source });
+    this.analytics.track('save_adopted', { source, stored });
     if (this.state !== GameState.BOOT) {
       this.updateCoinDisplays();
       this.showScreen('mainMenu');
+      // A backup code says "Postęp wczytany" first (importBackup()).
+      if (source !== 'backup') this.showLooksOnlyNotice();
     }
+    return stored;
+  }
+
+  /** PX02 D+: the one card that explains the change and the refund -- only
+   *  after the refund reached storage (economy.notice is set only then),
+   *  and once: only when its "seen" mark is stored too. If that write fails
+   *  the card stays pending for the next start (the refund itself is already
+   *  stored and is never paid again). */
+  showLooksOnlyNotice() {
+    const e = this.save.economy;
+    if (!e || !e.notice || !saveWritable() || this.running) return;
+    e.notice = false;
+    if (!saveGame(this.save)) { e.notice = true; return; }
+    this.analytics.track('looks_only_refund', { refund: e.refund });
+    this.openInfoSheet({
+      icon: REWARD_CATEGORY_ICONS.skin,
+      title: 'Wiry są teraz tylko wyglądem',
+      body: [
+        'W Arenie liczy się to, jak grasz: żaden wir nie daje już bonusu w rundzie i przed rundą nie ma płatnych dodatków.',
+        `Zwrot za Twoje wiry z bonusem: +${e.refund} monet.`,
+        'Wszystkie wiry zostają Twoje i wyglądają tak samo. Monety kupują wygląd w Warsztacie i wzmocnienia misji w Dzielnicach.'
+      ]
+    });
   }
 
   /** PX01: tells the player why progress isn't being saved and offers the
@@ -9726,7 +9765,7 @@ class Game {
         '<ul class="info-sheet-list"><li>Za każdą rundę GRAJ 2:00 i Wyzwanie dnia</li>' +
           '<li>Za pierwsze ukończenie misji w Dzielnicach</li>' +
           '<li>Za każdy nowy poziom Core City</li></ul>',
-        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza).'
+        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury) i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza). W Arenie nie da się kupić przewagi.'
       ]
     });
   }
@@ -10123,32 +10162,10 @@ class Game {
       kicker: jackpot ? 'JACKPOT ×3!' : 'SKRZYNIA OTWARTA!', eyebrow: 'DARMOWA SKRZYNIA',
       title: `+${coins} monet${prisms ? ` · +${prisms} ◆` : ''}`, color: jackpot ? '#FF54AD' : '#EFCB63',
       icon: REWARD_CATEGORY_ICONS.bundle, noCta: true,
-      desc: 'Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wsparcie przed rundą!'
+      desc: 'Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!'
     });
     this.queueUnlockCelebrations();
     this.updateCoinDisplays();
-  }
-
-  /* ---------- Golden Shot v8: result-screen upgrade funnel ---------- */
-
-  async onUpsellClick() {
-    const boost = RUN_TOOLS.find(t => t.id === 'boost');
-    if (this.save.coins >= boost.price) {
-      this.selectedRunTool = 'boost';
-      this.populateRunToolGrid();
-      this.showScreen('runSetupScreen');
-    } else if (this.monetization.placementLeft('turbo_free') > 0) {
-      // Golden Shot v11: can't afford it -> a free Turbo start for an ad,
-      // straight into the rematch (startRound() never charges for tools).
-      if (await this.monetization.rewarded('turbo_free')) {
-        this.selectedRunTool = 'boost';
-        if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
-        else this.startRound();
-      }
-    } else {
-      this.openFreeChest();
-    }
-    this.analytics.track('upsell_click', { affordable: this.save.coins >= boost.price });
   }
 
   showScreen(id) {
@@ -10156,7 +10173,7 @@ class Game {
     // save it replaced (whose buttons would then act on the new one).
     if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
     if (SAVE_GUARD.state === 'stale' && !this.saveGuardShown) setTimeout(() => this.showSaveGuardNotice(), 0);
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
     document.getElementById('hud').classList.toggle('hidden', true);
@@ -10186,7 +10203,7 @@ class Game {
   }
 
   hideAllOverlays() {
-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen', 'missionBriefing'].forEach(s => {
+    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen', 'missionBriefing'].forEach(s => {
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
@@ -10367,13 +10384,10 @@ class Game {
     this.layStarterFeasts(rng, [spawns.player, ...spawns.bots]);
   }
 
-  /** GRAJ 2:00: the run-tool screen only once tools make sense -- a new
-   *  player's first rounds start straight away (v13). */
+  /** GRAJ 2:00 starts the round at once. PX02 D+: there is no run-tool
+   *  screen any more -- nothing that changes an Arena round is for sale. */
   startArenaRound() {
-    this.selectedRunTool = 'none';
-    if ((this.save.stats.runsPlayed || 0) < CONFIG.difficulty.rampStartRuns) { this.startRound(); return; }
-    this.populateRunToolGrid();
-    this.showScreen('runSetupScreen');
+    this.startRound();
   }
 
   pickModifier() {
@@ -11346,10 +11360,8 @@ class Game {
     this.camera.y = this.player.y;
     // Campaign keeps a fixed framing (camera is clamped to the mission
     // box; 1:1 on a phone, scaled up on a big screen, v21); only Arena
-    // zooms out with growth. Skin perks are Arena/Daily-only too --
-    // missions are hand-balanced.
+    // zooms out with growth.
     this.zoom = this.viewScale;
-    this.activePerks = [];
     this.floatTexts = [];
     this.banner = null;
     this.bannerQueue = [];
@@ -12876,8 +12888,6 @@ class Game {
     // on a brand-new player's very first round). The seeded draw above is
     // kept, so Daily/challenge maps -- never at t = 0 -- are unchanged.
     if (this.difficultyT === 0) this.modifier = 'none';
-    const equipped = SKINS.find(sk => sk.id === this.save.selected);
-    this.activePerks = (equipped && equipped.perks) || [];
 
     this.createObjects(this.rng);
     this.createEntities(this.rng);
@@ -12888,8 +12898,6 @@ class Game {
     // v13: a short spawn shield -- on hard careers bots start bigger than
     // the player and could eat it in the first second.
     this.player.invulnerableUntil = performance.now() + 2500;
-    this.player.perkSpeedMult = 1 + this.perk('speed');
-    if (this.perk('startUnits')) this.player.radius = radiusForUnits(this.perk('startUnits'));
     this.particles = [];
     this.ripples = [];
     this.floatTexts = [];
@@ -12931,17 +12939,6 @@ class Game {
     document.getElementById('evolutionOverlay').classList.add('hidden');
     document.getElementById('overdriveBanner').classList.add('hidden');
 
-    // Phase 7 run tool, selected in the Run Setup screen (or 'none')
-    this.shieldCharges = this.selectedRunTool === 'shield' ? 1 : 0;
-    this.toolMagnetUntil = this.selectedRunTool === 'magnet' ? performance.now() + 12000 : 0;
-    if (this.selectedRunTool === 'boost') {
-      // Turbo start: spawn just past the T2 threshold (checkSizeTier()
-      // celebrates the jump on the first frame).
-      this.player.radius = radiusForUnits(Math.max(unitsForRadius(this.player.radius), CONFIG.growth.unitAnchors[1]) + 2);
-    }
-    const runTool = this.selectedRunTool;
-    this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
-
     // v16: a new track every round (Daily / challenge: one per seed).
     this.sound.setScene('arena', { seed: this.runSeed, daily: this.isDailyRun, challenge: !!this.challenge });
     this.sound.go();
@@ -12964,7 +12961,6 @@ class Game {
       skin: this.player.skin,
       playCount: this.playCount,
       modifier: this.modifier,
-      runTool,
       daily: this.isDailyRun,
       difficulty: Math.round(this.difficultyT * 100) / 100
     });
@@ -13027,8 +13023,6 @@ class Game {
     // Golden Shot v8: a new player's first runs pay double.
     this.newbieBonusApplied = (this.save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns;
     if (this.newbieBonusApplied) coinsEarned = Math.round(coinsEarned * CONFIG.economy.newbieCoinMult);
-    this.perkCoinsBonus = Math.round(coinsEarned * this.perk('coins'));
-    coinsEarned += this.perkCoinsBonus;
     this.adPendingCoins = coinsEarned;
     this.save.coins += coinsEarned;
     this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
@@ -13041,7 +13035,7 @@ class Game {
 
     // Golden Shot v8: player XP (score + podium bonus).
     const P = CONFIG.progression;
-    this.lastXpResult = this.grantXp((P.xpRunBase + P.xpSqrtK * Math.sqrt(Math.max(0, this.player.score)) + (P.xpPlaceBonus[place - 1] || 0)) * (1 + this.perk('xp')));
+    this.lastXpResult = this.grantXp((P.xpRunBase + P.xpSqrtK * Math.sqrt(Math.max(0, this.player.score)) + (P.xpPlaceBonus[place - 1] || 0)));
 
     // Daily mission: was a static, never-checked line before this pass.
     // Checked once per day (save.mission.completed guards re-granting the
@@ -13171,20 +13165,6 @@ class Game {
     eyebrow.classList.toggle('result-eyebrow-win', place <= 3);
     document.getElementById('resultNewbieTag').classList.toggle('hidden', !this.newbieBonusApplied);
     this.renderXpCard('result', this.lastXpResult);
-    const upsell = document.getElementById('resultUpsell');
-    const showUpsell = !this.isDailyRun && place > 2 && this.difficultyT >= 0.25; // from ŚREDNI up
-    upsell.classList.toggle('hidden', !showUpsell);
-    if (showUpsell) {
-      const boost = RUN_TOOLS.find(t => t.id === 'boost');
-      const affordable = this.save.coins >= boost.price;
-      document.getElementById('resultUpsellLabel').textContent = `ZAGROŻENIE: ${this.difficultyLabel(this.difficultyT)}`;
-      document.getElementById('resultUpsellText').textContent = affordable
-        ? `Rywale rosną w siłę. Zacznij od T2 z Turbo startem (◇ ${boost.price}) i wskocz na podium!`
-        : 'Rywale rosną w siłę. Zbierz monety ze skrzyni i nagród dziennych na Turbo start!';
-      const adTurbo = !affordable && this.monetization.placementLeft('turbo_free') > 0;
-      document.getElementById('btnUpsell').textContent = affordable ? `TURBO START ◇ ${boost.price}` : (adTurbo ? 'TURBO GRATIS · REKLAMA' : 'ZDOBĄDŹ MONETY');
-      if (adTurbo) document.getElementById('resultUpsellText').textContent = 'Rywale rosną w siłę. Obejrzyj krótką reklamę i zacznij rewanż od T2 z Turbo startem!';
-    }
 
     // v5 result hero (design/screens/wynik_rundy.svg): big glowing score,
     // a size-tier badge reusing CONFIG.sizeTiers (previously tracked only
@@ -13763,14 +13743,6 @@ class Game {
     ctx.fillRect(x, y + 2, w * clamp(left / CONFIG.golden.frenzySeconds, 0, 1), 5);
   }
 
-  /** Golden Shot v9: the equipped Rdzeń's bonus of `type` (0 if none).
-   *  Only active in Arena/Daily rounds (this.activePerks is cleared for
-   *  Campaign, whose missions are hand-balanced). */
-  perk(type) {
-    const p = (this.activePerks || []).find(x => x.type === type);
-    return p ? p.value : 0;
-  }
-
   /** Combo counter in a fixed screen spot (left, under the top HUD strip)
    *  instead of floating over the hole, where it collided with banners and
    *  score pops. Pops on every new link; the bar is the time left to chain. */
@@ -13807,7 +13779,7 @@ class Game {
     ctx.font = `800 13px ${FONT_UI}`;
     ctx.fillStyle = '#f2f8ff';
     ctx.fillText(`PKT x${m.toFixed(1)}`, w + 8, 4);
-    const windowS = (this.comboWindowOverride || CONFIG.juice.combo.windowSeconds) + this.perk('comboWindow');
+    const windowS = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
     const frac = clamp(this.comboTimer / windowS, 0, 1);
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.fillRect(0, 14, 110, 4);
@@ -13823,11 +13795,6 @@ class Game {
     if (this.isDailyRun || this.challenge) return D.dailyT; // same rivals for everyone on a shared seed
     const runs = this.save.stats.runsPlayed || 0;
     return clamp((runs - D.rampStartRuns) / (D.rampFullRuns - D.rampStartRuns), 0, 1);
-  }
-
-  difficultyLabel(t) {
-    const labels = CONFIG.difficulty.labels;
-    return labels[Math.min(labels.length - 1, Math.floor(t * labels.length))];
   }
 
   /** Camera half-extent in world units (Arena zooms out as the hole grows). */
@@ -13873,7 +13840,7 @@ class Game {
   registerCombo() {
     this.comboCount++;
     // Combo Reactor mutation (Phase 4) extends the window for this run only.
-    this.comboTimer = (this.comboWindowOverride || CONFIG.juice.combo.windowSeconds) + this.perk('comboWindow');
+    this.comboTimer = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
     // Campaign uses its own multiplier cap (GDD 07: "combo 1,0-2,0 mnoży
     // punkty, nie wzrost"); Arena/Daily keep their existing tuned cap.
     const maxMultiplier = this.mode === 'campaign' ? CONFIG.campaign.comboMaxMultiplier : CONFIG.juice.combo.maxMultiplier;
@@ -13932,20 +13899,10 @@ class Game {
         if (a.radius <= b.radius * EAT_HOLE_RATIO) continue;
         const d = dist(a.x, a.y, b.x, b.y);
         if (d < a.radius * 0.75) {
-          // Phase 7 "Shield" run tool: fully negates one collision instead
-          // of softening it (Phase Edge softens; Shield blocks outright).
-          if (b.isPlayer && this.shieldCharges > 0) {
-            this.shieldCharges--;
-            this.spawnParticles(b.x, b.y, '#50F0FA', 20);
-            this.sound.shield();
-            this.vibrate(60);
-            continue;
-          }
-
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
           const multiplier = a.isPlayer ? this.registerCombo() : (a.paceMult || 1);
           const isBounty = a.isPlayer && b === this.bountyTarget;
-          const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer ? (1 + this.perk('score')) * (this.frenzyActive ? CONFIG.golden.scoreMult : 1) : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
+          const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
           a.score += rivalPts;
           if (isBounty) this.bountyTarget = null;
           this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);
@@ -14169,8 +14126,8 @@ class Game {
   updateMutationEffects(dt) {
     const now = performance.now();
 
-    const fullMagnet = now < this.magnetUntil || now < this.toolMagnetUntil;
-    const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : this.perk('magnet'), this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
+    const fullMagnet = now < this.magnetUntil;
+    const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : 0, this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
     if (magnetRadius > 0) {
       for (const obj of this.objects) {
         if (obj.eating || !this.holeCanEat(this.player, obj)) continue;
@@ -14340,10 +14297,10 @@ class Game {
     for (const obj of this.objects) {
       if (obj.consumed) {
         const hole = obj.eater;
-        hole.growUnits(TIERS[obj.tier].growth * (hole.isPlayer ? 1 + this.perk('growth') : Math.min(hole.paceMult || 1, CONFIG.rival.maxGrowthBoost)));
+        hole.growUnits(TIERS[obj.tier].growth * (hole.isPlayer ? 1 : Math.min(hole.paceMult || 1, CONFIG.rival.maxGrowthBoost)));
         const multiplier = hole.isPlayer ? this.registerCombo() : (hole.paceMult || 1);
         const frenzyMult = hole.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1;
-        const pts = Math.round(obj.value * multiplier * frenzyMult * (hole.isPlayer ? 1 + this.perk('score') : 1));
+        const pts = Math.round(obj.value * multiplier * frenzyMult);
         hole.score += pts;
         this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer, hole);
         if (hole.isPlayer) {
@@ -15014,7 +14971,7 @@ class Game {
 /* ----------------------- v23: Dev / QA panel -----------------------
    A test panel for the owner (access: see DEV_* near SAVE_KEY). Everything
    it lists comes from the game's own data (DISTRICTS, CAMPAIGN_MISSIONS,
-   SKINS/AURAS/EAT_EFFECTS/OVERDRIVE_SKINS, MISSION_BOOSTERS, RUN_TOOLS,
+   SKINS/AURAS/EAT_EFFECTS/OVERDRIVE_SKINS, MISSION_BOOSTERS,
    MUTATIONS, CAMPAIGN_POWERS, IAP_PRODUCTS, CORE_CITY_LEVEL_REWARDS), and
    every change goes through the game's own paths (grantXp(),
    grantCoreCityLevelReward(), grantProduct(), onEquipClick(),
@@ -15358,7 +15315,7 @@ class DevPanel {
       const owned = cd.owned(s), sel = cd.selected(s);
       const rows = cd.items.map(it => {
         const has = owned.includes(it.id), worn = sel === it.id;
-        return `<li><span class="dev-li-main">${escapeHtml(it.name)}<small>${source(it)}${it.perkLabel ? ' · ' + escapeHtml(it.perkLabel) : ''}</small></span>` +
+        return `<li><span class="dev-li-main">${escapeHtml(it.name)}<small>${source(it)}${it.look ? ' · ' + escapeHtml(it.look) : ''}</small></span>` +
           `<span class="dev-chip${worn ? ' on' : has ? ' own' : ''}">${worn ? 'ZAŁOŻONE' : has ? 'POSIADANE' : 'BRAK'}</span>` +
           (has ? (worn ? '' : `<button type="button" class="dev-btn" data-act="cos-wear" data-arg="${cd.cat}|${it.id}">ZAŁÓŻ</button>`) +
             (it.id === cd.base ? '' : `<button type="button" class="dev-btn dev-btn-danger" data-act="cos-take" data-arg="${cd.cat}|${it.id}">ZABIERZ</button>`)
@@ -15370,14 +15327,11 @@ class DevPanel {
     const boosters = MISSION_BOOSTERS.map(b => `<div class="dev-field"><label for="devBoost-${b.id}">${b.name} <small>${escapeHtml(b.short)}</small></label>` +
       `<input id="devBoost-${b.id}" class="dev-input dev-num" type="number" inputmode="numeric" value="${s.boosters[b.id] || 0}">` +
       `<button type="button" class="dev-btn" data-act="booster-set" data-arg="${b.id}">USTAW</button><button type="button" class="dev-btn" data-act="booster-add" data-arg="${b.id}|1">+1</button><button type="button" class="dev-btn" data-act="booster-add" data-arg="${b.id}|-1">−1</button></div>`).join('');
-    const tools = RUN_TOOLS.filter(t => t.id !== 'none').map(t => [`arena-tool`, `RUNDA Z: ${t.name.toUpperCase()}`, '', t.id]);
     return this.section('Wszystko naraz', this.btns([['cos-give-all', 'ODBLOKUJ WSZYSTKIE KOSMETYKI', 'main', '*'], ['feature-unlock', 'ODBLOKUJ WARSZTAT', '', 'warsztat']])) +
       cats +
       this.section('Wzmocnienia misji (zapas)',
-        `<p class="dev-note">Gra nie ma poziomów ulepszeń — narzędzia to jednorazowe wzmocnienia misji (liczy się zapas) i dodatki do rundy Areny. Wzmocnienia: ${this.game.boostersUnlocked() ? 'odblokowane' : 'jeszcze zablokowane'}.</p>` +
+        `<p class="dev-note">Gra nie ma poziomów ulepszeń — narzędzia to jednorazowe wzmocnienia misji (liczy się zapas); w Arenie nic się nie kupuje (PX02 D+). Wzmocnienia: ${this.game.boostersUnlocked() ? 'odblokowane' : 'jeszcze zablokowane'}.</p>` +
         this.btns([['feature-unlock', 'ODBLOKUJ WZMOCNIENIA', '', 'boosters'], ['booster-all', '+5 KAŻDEGO']]) + boosters) +
-      this.section('Dodatki do rundy Areny',
-        '<p class="dev-note">Start rundy z wybranym dodatkiem, bez opłaty (normalnie kosztuje monety w ekranie przed rundą).</p>' + this.btns(tools)) +
       this.section('Odznaki', `<p class="dev-note">Posiadane: ${s.badges.length ? s.badges.map(escapeHtml).join(', ') : 'brak'} (jedyna odznaka w grze to „pryzmat” za Core City LVL 6).</p>` +
         this.btns([['badge-toggle', s.badges.includes('pryzmat') ? 'ZABIERZ ODZNAKĘ PRYZMAT' : 'DAJ ODZNAKĘ PRYZMAT', '', 'pryzmat']]));
   }
@@ -15432,8 +15386,7 @@ class DevPanel {
     const arenaLive = inArena ? this.section('Trwa runda Areny',
       this.btns([['a-end', 'KONIEC: WYGRANA', 'main', 'win'], ['a-end', 'KONIEC: OSTATNIE MIEJSCE', 'danger', 'lose'], ['a-end', 'KONIEC TERAZ', '', 'now']]) +
       this.btns([['a-event', 'ZŁOTY RDZEŃ', '', 'golden'], ['a-event', 'SZAŁ', '', 'frenzy'], ['a-event', 'WIELKI FINISZ', '', 'overdrive'], ['cards', 'KARTY EWOLUCJI']]) +
-      '<h4 class="dev-h4">Mutacje (od razu)</h4>' + this.btns(MUTATIONS.map(m => ['mutation', m.name.toUpperCase(), '', m.id])) +
-      '<h4 class="dev-h4">Dodatki (od razu)</h4>' + this.btns(RUN_TOOLS.filter(t => t.id !== 'none').map(t => ['live-tool', t.name.toUpperCase(), '', t.id]))) : '';
+      '<h4 class="dev-h4">Mutacje (od razu)</h4>' + this.btns(MUTATIONS.map(m => ['mutation', m.name.toUpperCase(), '', m.id]))) : '';
     // Starting something new ends what runs -- so it asks twice then.
     const replace = g.running ? 'Przerwie obecną grę — dotknij ponownie' : undefined;
     const missionSec = this.section(g.running ? 'Nowa misja' : 'Misja',
@@ -15566,7 +15519,6 @@ class DevPanel {
     const g = this.game;
     this.stopPlay();
     this.close(false);
-    g.selectedRunTool = opts.tool || 'none';
     if (opts.daily) g.startDailyChallenge(); else g.startRound();
   }
 
@@ -15961,7 +15913,6 @@ class DevPanel {
       /* ---- gameplay ---- */
       case 'arena-start': this.startArena(); return '';
       case 'daily-start': this.startArena({ daily: true }); return '';
-      case 'arena-tool': this.startArena({ tool: arg }); return '';
       case 'set-tier': return this.setTier(Number(arg));
       case 'set-radius': {
         this.needLive();
@@ -16028,12 +15979,6 @@ class DevPanel {
         g.evolutionPending = true;
         g.pickMutation(arg);
         return `Mutacja: ${MUTATIONS.find(m => m.id === arg).name}`;
-      case 'live-tool':
-        this.needLive('arena');
-        if (arg === 'shield') g.shieldCharges = (g.shieldCharges || 0) + 1;
-        if (arg === 'magnet') g.toolMagnetUntil = performance.now() + 12000;
-        if (arg === 'boost' && getSizeTierIndex(g.player.radius) < 1) this.setTier(2);
-        return `Dodatek: ${RUN_TOOLS.find(t => t.id === arg).name}`;
       case 'a-event':
         this.needLive('arena');
         if (arg === 'golden') { if (g.goldenObj) g.objects = g.objects.filter(o => o !== g.goldenObj); g.goldenObj = null; g.spawnGoldenCore(); }
@@ -16180,9 +16125,21 @@ function nextCampaignMissionIdSafe(game) {
 }
 
 const I18N_EN = {
+  "(wygląd dziury) i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza). W Arenie nie da się kupić przewagi.": "(how your hole looks) and on boosters before a mission (Clock, Turbo Start, Sprint, Magnet, Shield). An Arena advantage can’t be bought.",
+  "Biała burza z wyładowaniami": "White lightning storm",
+  "Cyjanowe obwody": "Cyan circuits",
+  "Dopóki zapis się nie uda, po odświeżeniu strony może wrócić poprzedni postęp. Zachowaj kod — możesz go wczytać ponownie.": "Until saving works, reloading the page may bring back your previous progress. Keep the code — you can load it again.",
+  "Fioletowa galaktyka": "Violet galaxy",
+  "Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!": "Next chest in 4 hours. Spend coins in the Workshop or on mission boosters!",
+  "Kopia wczytana bez zapisu": "Backup loaded but not saved",
+  "Kryształowe ściany": "Crystal facets",
   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down.",
   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down. 10 new missions await.",
   "Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.": "The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost.",
+  "Postęp z kodu działa w tej sesji, ale przeglądarka go nie zapisała (np. brak miejsca na dane albo gra otwarta w innej karcie).": "The progress from the code works in this session, but the browser did not save it (for example, no storage space left or the game is open in another tab).",
+  "Różowa plazma": "Pink plasma",
+  "Sam wygląd — w rundzie działa tak samo jak każdy inny wir.": "Looks only — in a round it plays exactly like every other vortex.",
+  "Toksyczne bąble": "Toxic bubbles",
   "Trzy bramy impulsu na alejkach. Rozpędź się i posprzątaj park.": "Three impulse gates on the paths. Pick up speed and clean up the park.",
   "Kryształy leżą po drugiej stronie galerii. Portal przeniesie Cię tam w mgnieniu oka — i z powrotem.": "The crystals lie on the far side of the gallery. The portal takes you there in a blink — and back.",
   "Na dachach świecą bramy impulsu. Leć od jednej do drugiej i łap kapsuły po drodze.": "Impulse gates glow on the rooftops. Fly from one to the next and grab capsules on the way.",
@@ -16192,25 +16149,27 @@ const I18N_EN = {
   "BRAMY IMPULSU": "IMPULSE GATES",
   "PORTALE": "PORTALS",
   "IMPULS!": "BOOST!",
+  "Tęczowy pryzmat — nagroda Core City": "Rainbow prism — Core City reward",
+  "Tęczowy pryzmat — wir startowy": "Rainbow prism — starter vortex",
+  "W Arenie liczy się to, jak grasz: żaden wir nie daje już bonusu w rundzie i przed rundą nie ma płatnych dodatków.": "In the Arena what counts is how you play: no vortex gives an in-round bonus any more, and there are no paid power-ups before a round.",
+  "WYGLĄD WIRU · BEZ BONUSU W RUNDZIE": "VORTEX LOOK · NO IN-ROUND BONUS",
+  "Wiry są teraz tylko wyglądem": "Vortices are now looks only",
+  "Wszystkie wiry zostają Twoje i wyglądają tak samo. Monety kupują wygląd w Warsztacie i wzmocnienia misji w Dzielnicach.": "All your vortices stay yours and look the same. Coins buy looks in the Workshop and mission boosters in Districts.",
+  "Zorza — trofeum kampanii": "Aurora — campaign trophy",
+  "Zwrot za Twoje wiry z bonusem: +{#0} monet.": "Refund for your vortices that had a bonus: +{#0} coins.",
+  "Złote słońce": "Golden sun",
   "Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.": "A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Then the gate recharges.",
   "Dwa portale są połączone: wjedź w jeden, wyjedziesz z drugiego. Działają w obie strony.": "The two portals are linked: go into one, come out of the other. They work both ways.",
   "(masz {0} {1}). Na podglądzie widać, jak wygląda.": "(you have {0} {1}). The preview shows how it looks.",
   "(wcześniej)": "(earlier)",
-  "(wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza).": "(how your hole looks), power-ups before a round and boosters before a mission (Clock, Turbo Start, Sprint, Magnet, Shield).",
   "({0}).": "({0}).",
-  "+0,6 s na utrzymanie combo": "+0.6 s to keep a combo",
   "+15 s do limitu czasu misji.": "+15 s to the mission time limit.",
   "+15% szybciej": "+15% faster",
-  "+15% wzrostu z obiektów": "+15% growth from objects",
   "+16% za rundę · nagroda za 7 rund": "+16% per round · reward in 7 rounds",
   "+20 S · OBEJRZYJ REKLAMĘ": "+20 S · WATCH AD",
   "+20 s na misję": "+20 s per mission",
-  "+20% monet i +20% XP": "+20% coins and +20% XP",
-  "+25% XP za rundę": "+25% XP per round",
-  "+30% monet za rundę": "+30% coins per round",
   "+5 pryzmatów": "+5 prisms",
   "+5 ◆ · REKLAMA": "+5 ◆ · AD",
-  "+8% prędkości": "+8% speed",
   "+{#0} cel": "+{0} goal",
   "+{#0} cele": "+{0} goals",
   "+{#0} celów": "+{0} goals",
@@ -16262,7 +16221,6 @@ const I18N_EN = {
   "BARDZO TRUDNA": "VERY HARD",
   "BAZAR": "BAZAAR",
   "BONUS NOWICJUSZA ×1,5": "ROOKIE BONUS ×1.5",
-  "BONUS WIRU W RUNDZIE": "IN-ROUND VORTEX BONUS",
   "BOSKIE!": "GODLIKE!",
   "BRAKUJE {0} PKT": "{0} PTS BEHIND",
   "BRAMA IGLICY": "SPIRE GATE",
@@ -16272,8 +16230,6 @@ const I18N_EN = {
   "Bazar wraca do życia.": "The bazaar comes back to life.",
   "Bazarowe combo": "Bazaar Combo",
   "Bez awarii": "No Breakdowns",
-  "Bez bonusu — wir startowy": "No bonus — starter vortex",
-  "Bez dodatku": "No power-up",
   "Bez jednego płatka": "Not One Petal Lost",
   "Bez reklam": "No Ads",
   "Bez straty": "No Losses",
@@ -16282,7 +16238,6 @@ const I18N_EN = {
   "Biała Plazma": "White Plasma",
   "Bieg wokół stawu": "Run Around the Pond",
   "Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.": "So close! Now you know the route — the next try will go faster.",
-  "Bonus w rundzie:": "In-round bonus:",
   "Brak": "None",
   "Brakuje {0} {1} na wybrane wzmocnienia.": "You're {0} {1} short for the selected boosters.",
   "Brama Bazaru": "Bazaar Gate",
@@ -16399,7 +16354,6 @@ const I18N_EN = {
   "Dźwięki": "Sounds",
   "EFEKT": "EFFECT",
   "EKSTREMALNA": "EXTREME",
-  "EKSTREMALNE": "EXTREME",
   "EWOLUCJA": "EVOLUTION",
   "Echo w tunelu niesie się daleko. Glitch też je słyszy.": "Echoes carry far in the tunnel. Glitch hears them too.",
   "Efekt pochłaniania": "Swallow Effect",
@@ -16536,7 +16490,6 @@ const I18N_EN = {
   "Kolejna alejka do odzyskania.": "Another alley to reclaim.",
   "Kolejna linia czysta.": "Another line clean.",
   "Kolejna linia produkcyjna do zatrzymania.": "Another production line to stop.",
-  "Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wsparcie przed rundą!": "Next chest in 4 hours. Spend coins in the Workshop or on pre-round boosts!",
   "Kolejna stacja do odzyskania.": "Another station to reclaim.",
   "Kolejny brzeg do odzyskania.": "Another shore to reclaim.",
   "Kolejny brzeg odzyskany.": "Another shore reclaimed.",
@@ -16649,7 +16602,6 @@ const I18N_EN = {
   "NIE": "NO",
   "NIE TERAZ": "NOT NOW",
   "NIESAMOWITE!": "INCREDIBLE!",
-  "NISKIE": "LOW",
   "NOCNY BAZAR": "NIGHT BAZAAR",
   "NOWA": "NEW",
   "NOWA DZIELNICA": "NEW DISTRICT",
@@ -16745,7 +16697,6 @@ const I18N_EN = {
   "Ogrody znów oddychają.": "The gardens breathe again.",
   "Ogród nocą": "Garden at Night",
   "Ogród rozkwita.": "The garden is in bloom.",
-  "Opcjonalnie kup jednorazowy dodatek na tę rundę za monety — albo od razu naciśnij START i zagraj bez niczego.": "Optionally buy a one-time power-up for this round with coins — or just press START and play without one.",
   "Ostatni Kurs": "Last Train",
   "Ostatni kurs": "Last Train",
   "Ostatni obwód": "Last Circuit",
@@ -16982,10 +16933,8 @@ const I18N_EN = {
   "Przed zamknięciem": "Before closing",
   "Przegrzanie": "Overheat",
   "Przesył Danych": "Data Stream",
-  "Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.": "Survive 1 clash with a bigger rival without losing size.",
   "Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.": "For the whole mission, objects you can eat drift into your vortex on their own.",
   "Przez całą misję wir jest o 15% szybszy — dogonisz Złodzieja i zdążysz do dalekich celów.": "For the whole mission your vortex is 15% faster — catch the Thief and reach far targets in time.",
-  "Przez pierwsze 12 s rundy obiekty same lecą w Twoją stronę.": "For the first 12 s of the round, objects fly toward you on their own.",
   "Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.": "Absorbs 2 hits from a bigger rival or a glitch zone. Also protects a fragile vortex.",
   "Przypływ": "High Tide",
   "Przypływ niesie skażony kod.": "The tide carries corrupted code.",
@@ -17009,7 +16958,6 @@ const I18N_EN = {
   "ROZUMIEM": "GOT IT",
   "ROŚNIESZ · {0}": "GROWING · {0}",
   "RYWALE": "RIVALS",
-  "RYWALE SĄ CORAZ SILNIEJSI": "RIVALS ARE GETTING STRONGER",
   "Rafa danych": "Data Reef",
   "Rdzeń Miasta": "City Core",
   "Rdzeń Miasta. Stąd Glitch steruje wszystkim. Pochłoń Rdzeń, a Neonowe Miasto znów zaświeci.": "City Core. Glitch controls everything from here. Swallow the Core and the Neon City will shine again.",
@@ -17039,9 +16987,6 @@ const I18N_EN = {
   "Ruszaj dalej: {0} czeka.": "Move on: {0} awaits.",
   "Rytm kwiatów": "Flower Rhythm",
   "Rywale przyspieszają!": "Rivals are speeding up!",
-  "Rywale rosną w siłę. Obejrzyj krótką reklamę i zacznij rewanż od T2 z Turbo startem!": "Rivals are getting stronger. Watch a short ad and start your rematch at T2 with Turbo Start!",
-  "Rywale rosną w siłę. Zacznij od T2 z Turbo startem (◇ {0}) i wskocz na podium!": "Rivals are getting stronger. Start at T2 with Turbo Start (◇ {0}) and jump onto the podium!",
-  "Rywale rosną w siłę. Zbierz monety ze skrzyni i nagród dziennych na Turbo start!": "Rivals are getting stronger. Collect coins from the chest and daily rewards for a Turbo Start!",
   "Rywale zniknęli w Twoim wirze.": "The rivals vanished into your vortex.",
   "Rzadsza waluta premium. Masz teraz:": "Rarer premium currency. You have:",
   "Rój glitcha": "Glitch Swarm",
@@ -17056,7 +17001,6 @@ const I18N_EN = {
   "SPRÓBUJ PONOWNIE{0}": "TRY AGAIN{0}",
   "SPRÓBUJ Z: {0}{1}": "TRY WITH: {0}{1}",
   "STACJA": "STATION",
-  "START RUNDY (2:00)": "START ROUND (2:00)",
   "STEROWANIE": "CONTROLS",
   "STREFY GLITCHA": "GLITCH ZONES",
   "SZAŁ ×2 · {0} s": "FRENZY ×2 · {0} s",
@@ -17094,10 +17038,7 @@ const I18N_EN = {
   "Stacja odzyskana.": "Station reclaimed.",
   "Stację Centralną": "Central Station",
   "Start misji": "Mission start",
-  "Start od T2 + 10% punktów": "Start at T2 + 10% points",
-  "Startujesz od razu z rozmiarem T2 — Twój wir od pierwszej sekundy przerasta rywali.": "You start right away at size T2 — your vortex outgrows the rivals from the very first second.",
   "Statek widmo": "Ghost Ship",
-  "Stały mini-magnes 120 px": "Permanent 120 px mini-magnet",
   "Stragan z autami": "Car Stall",
   "Strażnicy chmury": "Cloud Guardians",
   "Strażnicy dachów": "Rooftop Guardians",
@@ -17132,8 +17073,6 @@ const I18N_EN = {
   "TERAZ GRA": "NOW PLAYING",
   "TRUDNA": "HARD",
   "TUNELE METRA": "METRO TUNNELS",
-  "TURBO GRATIS · REKLAMA": "FREE TURBO · AD",
-  "TWÓJ WIR:": "YOUR VORTEX:",
   "Ta misja daje w kość. Masz ode mnie Zegar (+{0} s) — wybierz go w odprawie.": "This mission is tough. Here's a Clock from me (+{0} s) — pick it in the briefing.",
   "Ta misja jest naprawdę trudna. Zegar albo Turbo start z odprawy mogą pomóc.": "This mission is really hard. A Clock or Turbo Start from the briefing can help.",
   "Ta przeglądarka nie obsługuje dźwięku.": "This browser doesn't support sound.",
@@ -17184,7 +17123,6 @@ const I18N_EN = {
   "Tunele Metra odzyskane! Nocny Bazar czeka.": "Metro Tunnels reclaimed! The Night Bazaar awaits.",
   "Turbo combo": "Turbo Combo",
   "Turbo start": "Turbo Start",
-  "Turbo start gratis": "Free Turbo Start",
   "Twoja nazwa (opcjonalnie)": "Your name (optional)",
   "Twoje prawa (RODO):": "Your rights (GDPR):",
   "Twój rekord dziś: {0} pkt. Pobij go: +{1} monet i +{2} ◆.": "Your best today: {0} pts. Beat it: +{1} coins and +{2} ◆.",
@@ -17267,11 +17205,9 @@ const I18N_EN = {
   "WRÓĆ DO MIASTA": "BACK TO CITY",
   "WSZYSTKIE MISJE": "ALL MISSIONS",
   "WYBIERZ": "CHOOSE",
-  "WYBIERZ WSPARCIE": "CHOOSE SUPPORT",
   "WYJDŹ DO MIASTA": "EXIT TO CITY",
   "WYNIK": "SCORE",
   "WYNIK {0}": "SCORE {0}",
-  "WYSOKIE": "HIGH",
   "WYZWANIA": "CHALLENGES",
   "WYZWANIE DNIA": "DAILY CHALLENGE",
   "WYZWANIE DNIA ukończone: +{0} monet (rekord dnia: {1})": "DAILY CHALLENGE complete: +{0} coins (today's best: {1})",
@@ -17285,7 +17221,6 @@ const I18N_EN = {
   "WYZWANIE · {0}": "CHALLENGE · {0}",
   "WYZWIJ ZNAJOMEGO": "CHALLENGE A FRIEND",
   "WZMOCNIENIA": "BOOSTERS",
-  "WZMOCNIJ SIĘ": "POWER UP",
   "Wadliwa partia": "Faulty Batch",
   "Wagon z bajtami": "Byte Wagon",
   "Warsztacie": "Workshop",
@@ -17400,8 +17335,6 @@ const I18N_EN = {
   "ZAGRAJ RUNDĘ": "PLAY A ROUND",
   "ZAGRAJ TERAZ": "PLAY NOW",
   "ZAGRAJ WYZWANIE": "PLAY CHALLENGE",
-  "ZAGROŻENIE RYWALI": "RIVAL THREAT",
-  "ZAGROŻENIE: {0}": "THREAT: {0}",
   "ZAMKNIJ": "CLOSE",
   "ZAPISZ": "SAVE",
   "ZATOKA HOLOGRAMÓW": "HOLOGRAM BAY",
@@ -17409,13 +17342,11 @@ const I18N_EN = {
   "ZAŁÓŻ": "EQUIP",
   "ZAŁÓŻ W WARSZTACIE": "EQUIP IN WORKSHOP",
   "ZDOBYTE MONETY": "COINS EARNED",
-  "ZDOBĄDŹ MONETY": "GET COINS",
   "ZESTAWY I KOSMETYKI": "SETS & COSMETICS",
   "ZGODA": "AGREE",
   "ZJEDZONO CIĘ!": "YOU GOT EATEN!",
   "ZJEDZONY! +{0}": "EATEN! +{0}",
   "ZMIEŃ WYGLĄD": "CHANGE LOOK",
-  "ZMIEŃ ›": "CHANGE ›",
   "ZOBACZ": "VIEW",
   "ZRESETOWAĆ PROFIL?": "RESET PROFILE?",
   "ZWYCIĘSTWO W NEONOWYM MIEŚCIE": "VICTORY IN THE NEON CITY",
@@ -17426,7 +17357,6 @@ const I18N_EN = {
   "Za pierwsze ukończenie misji w Dzielnicach": "For your first mission clear in Districts",
   "Zabrakło tylko {0} pkt do {1}. miejsca{2}!": "Just {0} pts short of #{1}{2}!",
   "Zaczarowane latarnie": "Enchanted Lamps",
-  "Zacznij następną rundę od T2 z Turbo startem.": "Start your next round at T2 with Turbo Start.",
   "Zagraj Wyzwanie dnia każdego dnia, żeby nie przerwać serii.": "Play the Daily Challenge every day to keep your streak.",
   "Zamknij": "Close",
   "Zapora": "Barrier",
@@ -17540,7 +17470,6 @@ const I18N_EN = {
   "Zostało: {0}": "Left: {0}",
   "Zwiń/rozwiń pełny ranking": "Collapse/expand full ranking",
   "Zwrotnice": "Switches",
-  "Zwykły start, bez żadnego efektu. Zawsze darmowe.": "A plain start, no effect. Always free.",
   "ZŁODZIEJ": "THIEF",
   "ZŁODZIEJ +1": "THIEF +1",
   "ZŁODZIEJ BYŁ SZYBSZY": "THE THIEF WAS FASTER",
@@ -17931,7 +17860,6 @@ const I18N_EN = {
   "ŚREDNI": "MEDIUM",
   "ŚREDNI!": "MEDIUM!",
   "ŚREDNIA": "MEDIUM",
-  "ŚREDNIE": "MEDIUM",
   "ŚWIETNIE": "GREAT",
   "Ścieżka bez błędu": "Flawless Path",
   "Ślepy tor": "Dead End",
@@ -17985,7 +17913,6 @@ const I18N_EN = {
   "Awans poziomu, kalendarz logowania, darmowa skrzynia": "Level-ups, the login calendar, the free chest",
   "na rzadsze Smugi, Efekty i Finisze, na wzmocnienie misji, gdy brakuje monet ({#0} ◆), i na dodatkowe sekundy w misji.": "on rarer Trails, Effects and Finishes, on a mission booster when you're short on coins ({0} ◆), and on extra seconds in missions.",
   "{0} za {#1} ◆": "{0} for {1} ◆",
-  "Trofeum kampanii — bez bonusu w Arenie": "Campaign trophy — no Arena bonus",
   "Neonowa Róża": "Neon Rose",
   "Fioletowa Szczelina": "Violet Rift",
   "Złoty Szczyt": "Golden Peak",

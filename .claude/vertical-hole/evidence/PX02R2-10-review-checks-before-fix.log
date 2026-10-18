@@ -1,0 +1,13 @@
+FAIL  LEGACY-09 refund stored but its "seen" mark fails to save: no card, no refund event, the card stays pending (memory and disk)  — {"mem":{"coins":4907,"eco":{"looksOnly":1,"refund":4870,"notice":false,"boughtAfter":[]}},"disk":{"looksOnly":1,"refund":4870,"notice":true,"boughtAfter":[]},"title":"Wiry są teraz tylko wyglądem","refundEvent":true}
+PASS  LEGACY-09 after a reload with working storage: the card shows once (event logged, mark saved), no second refund; the next reload shows nothing  — {"t2":"Wiry są teraz tylko wyglądem","disk":{"looksOnly":1,"refund":4870,"notice":false,"boughtAfter":[]},"c2":4907,"t3":null,"c3":4907}
+PASS  px02: no runtime errors (LEGACY-09)
+FAIL  LEGACY-10 backup code while the write fails (quota): no "Postęp wczytany", the player is told it is not saved; storage untouched; no refund card  — {"title":"Postęp wczytany","coins":37,"guard":"ok","diskUntouched":true,"baseline":"same"}
+PASS  LEGACY-10 storage works again: the same code loads for real ("Postęp wczytany"), stored with exactly one refund (37 + 4870)  — {"title":"Postęp wczytany","coins":4907,"guard":"ok","disk":4907}
+PASS  px02: no runtime errors (LEGACY-10 quota)
+FAIL  LEGACY-10 backup code while the write fails (another tab wrote first (stale)): no "Postęp wczytany", the player is told it is not saved; storage untouched; no refund card  — {"title":"Postęp wczytany","coins":37,"guard":"stale","diskUntouched":true,"baseline":"changed by the other tab"}
+PASS  px02: no runtime errors (LEGACY-10 another tab wrote first (stale))
+PASS  LEGACY-10 cloud copy adopted while the local write fails: no refund kept in memory, no refund card, nothing mirrored, local bytes untouched  — {"coins":500,"level":15,"title":null,"cloudUntouched":true,"localUntouched":true}
+PASS  px02: no runtime errors (LEGACY-10 cloud)
+PASS  UX-01 Warsztat at 375/360/320 px with 2587, 4870 and 10000 coins: title not cut, wallet and gear on screen, no sideways scroll  — ["375:2587","375:4870","375:10000","360:2587","360:4870","360:10000","320:2587","320:4870","320:10000"]
+
+8/11 PX02 checks passed

@@ -1,0 +1,2422 @@
+diff --git a/.claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md b/.claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md
+index 8dbe7e6..eab90c5 100644
+--- a/.claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md
++++ b/.claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md
+@@ -34,3 +34,22 @@ W sprawdzonym `game.js` wspólny `save.coins` finansuje `RUN_TOOLS` Areny oraz p
+ - Test A: identyczny seed/ustawienia/stats i ekwipunek bez wpływu kampanii → pierwszy start Areny; potem przyznaj kampanijną nagrodę monet/XP i powtórz. Udokumentuj źródło waluty i jej możliwość zakupu `RUN_TOOLS` (pośrednia przewaga to także naruszenie).
+ - Test B: przełącz kolejno skin o premii do `speed`, `magnet`, `startUnits`, `score` kupowany z monet pozyskanych w kampanii; odczytaj bieżące parametry w Arenie. Wyjątek dla czysto kosmetycznego trofeum `aurora` nie legalizuje pozostałych bonusów.
+ - Test C: gdy potrzebna naprawa, nie wymazuj stanów graczy: wydziel `arena`/`campaign`/`cosmetics`, zaplanuj saldo historyczne i kompensację uprawnień, uzgodnij decyzję produktową przed migracją; test SAVE-01..09.
++
++## Decyzja właścicielki PX02 D+ (2026-10-17) — stan repo po wdrożeniu
++Reguła dla gracza: **„W Arenie liczy się to, jak grasz. Monety kupują wygląd i wzmocnienia misji”.** Decyzja zapadła przed implementacją (DEC-1…DEC-7); poniższy wyjątek jest **jawny i zaakceptowany**, nie powstał przez implementację.
++
++| Zasób / oferta | Właściciel | Źródło | Aktywacja | Wygaśnięcie | Klucz zapisu |
++|---|---|---|---|---|---|
++| Wiry `SKINS` (10, w tym Kryształ, Pryzmat, Aurora) | cosmetic-neutral | Warsztat (monety), Core City, M24 | założenie w Warsztacie | — | `owned`, `selected` |
++| Smugi / Efekty / Finisze | cosmetic-neutral | Warsztat (monety, pryzmaty), Core City, IAP | założenie | — | `auras`, `effects`, `overdriveSkins` |
++| `MISSION_BOOSTERS` (Zegar, Turbo start, Sprint, Magnes, Tarcza) | districts | zapas, monety, pryzmaty, reklama `booster_ad`, IAP, Skrzynie gwiazd, NELA | odprawa misji | koniec misji | `boosters` |
++| +20 s misji | districts | reklama `mission_revive`, 8 ◆ | koniec czasu misji | koniec misji | — |
++| Mutacje / Złoty Rdzeń / SZAŁ | arena (w rundzie) | sama rozgrywka | w rundzie | koniec rundy | — |
++| ×2 monet po rundzie | arena (nagroda) | reklama `result_double_coins` | ekran wyniku | — | `coins` |
++| Monety, pryzmaty | wspólny portfel | oba tryby | — | — | `coins`, `prisms` |
++| XP / poziom konta | wspólne, bez wpływu na rundę | oba tryby | — | — | `player` |
++
++- **Usunięte (D+):** perki wirów (`SKINS[].perks`, `Game.perk()`), `RUN_TOOLS` (Tarcza / Magnes / Turbo start przed rundą), ekran „WYBIERZ WSPARCIE”, karta Turbo po przegranej i reklama `turbo_free`. Arena, Wyzwanie dnia i wyzwania znajomych startują z tymi samymi parametrami dla każdego profilu.
++- **Jawny, zaakceptowany wyjątek (DEC-5):** wspólny portfel. Monety zdobyte w Arenie mogą opłacić wzmocnienie misji Dzielnic, **wyłącznie świadomym zakupem w odprawie** (Arena → Dzielnice). W drugą stronę nic nie płynie: postęp, nagrody, monety i zakupy Dzielnic nie zmieniają parametrów, startu, wyniku, czasu ani dostępności rundy Areny. Wspólna waluta sama w sobie nie jest naruszeniem, bo w Arenie nie ma na co jej wydać, co zmieniałoby rundę.
++- **Kompensata (DEC-3/DEC-4):** jednorazowy zwrot ceny z cennika za posiadane płatne wiry (100+220+450+800+1300+2000 = 4870 za komplet), raz na linię zapisu (`economy.looksOnly`); Kryształ i Pryzmat bez zwrotu. Szczegóły i ograniczenia (wiele niezależnych linii zapisu bez backendu): `docs/GAME_DESIGN.md` §1a.
++- **Test kontraktowy:** `node qa/px02-isolation.mjs` (ISO-A…D, BOOST-01…03, LEGACY-01…08). Każda nowa oferta, która zmienia rundę Areny i jest dostępna za monety, pryzmaty, reklamę, IAP lub postęp Dzielnic, łamie ten kontrakt i wymaga nowej decyzji właścicielki przed pracą.
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 61797e9..d8d057d 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -27,7 +27,8 @@ python3 -m http.server 8000   # http://localhost:8000/index.html (file:// works
+ QA bots (dev-only, plain Node ES modules using the machine's global Playwright, outputs in git-ignored `qa/out/`):
+ 
+ ```bash
+-node qa/run-all.mjs     # PX01 save safety, edge cases, features, visual, design, flow, 20-round Arena career, 30 campaign missions, v15 systems, v16 audio, v17 first impression, v18 economy, v19 launch, v20 gates, v21 big screens, v22 two modes, v23 dev panel, difficulty (all 240 missions)
++node qa/run-all.mjs     # PX01 save safety, PX02 D+ isolation, edge cases, features, visual, design, flow, 20-round Arena career, 30 campaign missions, v15 systems, v16 audio, v17 first impression, v18 economy, v19 launch, v20 gates, v21 big screens, v22 two modes, v23 dev panel, difficulty (all 240 missions)
++node qa/px02-isolation.mjs # PX02 D+: no Arena advantage from any profile/vortex/campaign state, mission boosters untouched, one-time vortex refund safe (once per save line, guard, quota, two tabs, previous release, cloud, backup code)
+ node qa/save-safety.mjs  # PX01 save guard: future/broken/partly broken saves never overwritten (load + every autosave), explicit repair keeps .rescue, verified migration after .bak, two tabs, quota, cloud copy
+ node qa/dev-panel.mjs    # v23 dev panel: access gate, test-mode isolation, every category really works in-game, phones + desktop (VH_DEV_CODE=... also checks the real code)
+ node qa/v22.mjs         # v22 two modes: no energy anywhere + unlimited back-to-back play, first launch = Arena round, Arena/campaign independence (either order), each mode self-funding (bots), first-round coach, v12 -> v13 migration, prisms
+@@ -59,7 +60,7 @@ Bots tick `game.update()` in virtual time (RAF detached, `performance.now` advan
+ - **`CONFIG.flags`** gates major systems; `proceduralDistricts` stays `false` (no authored chunk generator was built).
+ - **`GameState`** (`BOOT/MENU/MATCH_SETUP/PLAYING/PAUSED/RESULTS`) on `Game.state`.
+ - **`SeededRNG`** (mulberry32) seeds only a round's *initial* layout (objects, street trails, spawn feasts, spawns) so Daily and friend-challenge maps are identical for everyone; mid-round randomness stays on `Math.random()`. Any new layout step must consume the seeded stream the same way for every player, and `computeDailyLayout()` must replay it exactly (`qa/design.mjs` asserts preview == real round).
+-- **Save**: `localStorage` key `vectorHoleSave_v1` (never changes), `SAVE_SCHEMA_VERSION` 13 (v22 dropped `energy`, `campaign.discoveredTypes`/`discoveredHoleEating` and every `M00` key) with a `migrateSave()` chain (add an `if (data.schemaVersion < N)` branch per breaking change). Every load runs `sanitizeSave()` against `defaultSave()`, so **a new save field must be added to `defaultSave()`** to survive. `saveGame()` seals the payload (`_sig`). **PX01 save guard:** `loadSave()` never writes on a plain read; a save it can't fully read (`readSave()` → `SAVE_GUARD.state` 'future' / 'corrupt' / 'invalid' (a field `sanitizeSave(save, issues)` had to repair, or `verifyMigration()` failed) / 'unavailable' / 'stale' (another tab wrote)) is played from memory and `saveGame()` — the only write path, cloud mirror included — writes nothing until the player's explicit choice (`releaseSaveGuard()` keeps the original under `SAVE_SLOT + '.rescue'`); a migration commits only after `verifyMigration()` and a copy of the original under `SAVE_SLOT + '.bak'`. Only a save that reached `localStorage` is mirrored to the cloud; an existing empty key is a broken save, not "no save"; a reset of a held-back save aborts if the `.rescue` copy fails. Never write `SAVE_SLOT` around `saveGame()`; `qa/save-safety.mjs` checks it.
++- **Save**: `localStorage` key `vectorHoleSave_v1` (never changes), `SAVE_SCHEMA_VERSION` 13 (v22 dropped `energy`, `campaign.discoveredTypes`/`discoveredHoleEating` and every `M00` key) with a `migrateSave()` chain (add an `if (data.schemaVersion < N)` branch per breaking change). Every load runs `sanitizeSave()` against `defaultSave()`, so **a new save field must be added to `defaultSave()`** to survive. `saveGame()` seals the payload (`_sig`). **PX01 save guard:** `loadSave()` never writes on a plain read; a save it can't fully read (`readSave()` → `SAVE_GUARD.state` 'future' / 'corrupt' / 'invalid' (a field `sanitizeSave(save, issues)` had to repair, or `verifyMigration()` failed) / 'unavailable' / 'stale' (another tab wrote)) is played from memory and `saveGame()` — the only write path, cloud mirror included — writes nothing until the player's explicit choice (`releaseSaveGuard()` keeps the original under `SAVE_SLOT + '.rescue'`); a migration commits only after `verifyMigration()` and a copy of the original under `SAVE_SLOT + '.bak'`. Only a save that reached `localStorage` is mirrored to the cloud; an existing empty key is a broken save, not "no save"; a reset of a held-back save aborts if the `.rescue` copy fails. Never write `SAVE_SLOT` around `saveGame()`; `qa/save-safety.mjs` checks it. **PX02 D+ refund:** `save.economy` (`looksOnly` 1 = settled — a new profile is born settled; `migrateSave()` marks a save without the block `looksOnly: 0`, no schema bump) — `settleLooksOnly()` pays the list price of the owned paid vortices (`LOOKS_ONLY_REFUND`, 4870 for the set) once, only on a verified save in `loadSave()` (riding on its migration write, original under `.bak`) or in `adoptSave()` (cloud copy / backup code), and `unsettleLooksOnly()` rolls it back in memory when that `saveGame()` returns false; a paid vortex bought while the line is still unsettled goes to `economy.boughtAfter` and is never refunded; `verifyMigration()` refuses to drop a settled marker; the card (`showLooksOnlyNotice()`) shows once, only after a successful commit (`economy.notice`). `qa/px02-isolation.mjs` checks it.
+ - **Ranking is always by score** (`rankHoles()`; radius/name are tiebreakers). Don't reintroduce a radius sort.
+ - `Analytics` keeps an in-memory buffer and forwards to a host sink only with consent (`save.privacy.analytics`). No backend; the game sends nothing itself.
+ - `escapeHtml()` for every player-controlled string that reaches `innerHTML`.
+@@ -88,6 +89,7 @@ Bots tick `game.update()` in virtual time (RAF detached, `performance.now` advan
+ - Difficulty: `computeDifficultyT()` from runs played (Daily/challenge use fixed `dailyT`); no Rush Hour at t = 0.
+ - Evolution cards (`MUTATIONS`, `offerEvolution()`, `showPowerCards()`) fully pause the round; POMIŃ skips; `autoPickMs` is only an AFK safety net. Overdrive ("WIELKI FINISZ", `checkOverdriveTrigger()`), Złoty Rdzeń + SZAŁ (`CONFIG.golden`).
+ - `endRound()` → `finalizeRun()` (coins, XP, Core City, Daily, stats, recent scores) → results screen with a sticky action bar.
++- **No Arena advantage for sale (PX02 D+, owner decision):** vortices are looks only (no `perks`, no `Game.perk()`), there is no run-tool screen (`RUN_TOOLS`, `confirmRunSetup()`), result upsell or `turbo_free` ad — GRAJ / replay / the friend rematch start the round at once (`startArenaRound()` = `startRound()`). Never reintroduce anything coins, prisms, ads, IAP or campaign progress buy that changes an Arena round (start size, speed, magnet, shield, points, growth, combo, coins/XP for a result). The one accepted flow between the modes is deliberate: Arena-earned coins may buy a mission booster in the briefing.
+ 
+ ### Campaign
+ 
+@@ -101,9 +103,9 @@ Separate simulation (`Game.mode` 'campaign', `updateCampaign()`/`renderCampaign(
+ 
+ - **Screen rule (v14):** one obvious action per screen, reachable without scrolling on 375×667 (`qa/flow.mjs`); nothing sticky/floating on Miasto (the owner disliked the floating GRAJ plate); no back buttons where the bottom nav exists.
+ - **Miasto** hub (v17.1, one hero / one hook): header with the player-level ring chip ("POZIOM"; Core City uses "LVL") + wallet + gear, the Core City card taking the free height (`drawCityScene(…, { siteLabel })`: a gold "NOWY BUDYNEK" tag over the crane, outlines of the next 6 buildings; `.hub-city-pitch` in its sky: "Każda runda Areny buduje Twoje miasto" (Core City is Arena's progression) + `+X% za rundę · nagroda za N rund` from `coreGainPerRound()`; next reward/progress in its footer), in-flow GRAJ (`#hubPlaySub`: `Arena · runda 2:00 · +X% budowy miasta`), quick tiles Kampania (next mission, full name → briefing) / Wyzwanie dnia (`updateHubQuickTiles()`), free chest — no empty bands, no scrolling on 375×667, no second live panel (the owner found the v17 Arena stage messy). First run (`isFirstRun()` = nothing finished in either mode, `hasPlayedOnce()`) collapses to the welcome card (`#hubWelcome`: logo, one GRAJ `#btnWelcomePlay` → `startFirstPlay()` = an Arena round, or the friend challenge the player arrived with, and `drawWelcomeScene()` — a real mini round: the vortex steers to the best bite, swallows objects, grows T1→T4 with eased growth, eats a smaller rival, loops every ~12 s) and hides the nav. Text over an animated canvas needs `z-index` + `will-change: transform` (WebKit draws live canvases over later siblings — an iPhone district tile lost its name).
+-- **Unlock order (v22, `FEATURE_GATES` + `CONFIG.unlockGates`)**: every gate reads only its own mode — Wyzwania after 3 Arena rounds, mission boosters after M04, Warsztat (looks for both modes) after 2 Arena rounds **or** M02; an announced unlock never locks again (`wasAnnounced()`). Never gate one mode on the other's progress, currency or upgrades. Celebrations (`queueUnlockCelebrations()`, each once via `save.unlocks.announced`); after the first finished play the campaign introduces itself once (`kampania`, "DRUGI TRYB", → Dzielnice + a NOWE badge). `startArenaRound()` skips the run-tool screen for the first 3 runs; the login calendar and the consent bar wait for the first finished play.
++- **Unlock order (v22, `FEATURE_GATES` + `CONFIG.unlockGates`)**: every gate reads only its own mode — Wyzwania after 3 Arena rounds, mission boosters after M04, Warsztat (looks for both modes) after 2 Arena rounds **or** M02; an announced unlock never locks again (`wasAnnounced()`). Never gate one mode on the other's progress, currency or upgrades. Celebrations (`queueUnlockCelebrations()`, each once via `save.unlocks.announced`); after the first finished play the campaign introduces itself once (`kampania`, "DRUGI TRYB", → Dzielnice + a NOWE badge). `startArenaRound()` starts the round at once (PX02 D+: no run-tool screen); the login calendar and the consent bar wait for the first finished play.
+ - **First-round coach (v22, `CONFIG.coach`, `startArenaCoach()`/`updateArenaCoach()`, `save.coach`)**: no tutorial — a hint shows only to a player who hesitates (no steering for 1.6 s, steering 4 s without a bite, a smaller rival lingering on screen, the first time being swallowed) in `#mobile-hint` (`showCoachHint()`), and a skill once shown (`coachLearned()`) never brings its hint back. A player who just plays sees nothing. Rush Hour uses the same line.
+-- **Warsztat**: categories Wir (`SKINS`, each with an Arena/Daily perk), Smuga (`AURAS`), Efekt pochłaniania (`EAT_EFFECTS`), Finisz (`OVERDRIVE_SKINS`); one render/pick path (`renderCosmeticGrid()` → `onCosmeticPick(cat, item)`: owned = worn at once via `pendingLoadout` + `onEquipClick()`; for sale = previewed + an info sheet "KUP I ZAŁÓŻ" whose `onClose` reverts the preview; never spend on a single tap); reward-only items say where they come from. Live preview uses the real `Hole.draw()`. `openInfoSheet({..., onClose})` runs `onClose` from `closeInfoSheet()`.
++- **Warsztat**: categories Wir (`SKINS`, a look only — `look` text, no perk since PX02 D+), Smuga (`AURAS`), Efekt pochłaniania (`EAT_EFFECTS`), Finisz (`OVERDRIVE_SKINS`); one render/pick path (`renderCosmeticGrid()` → `onCosmeticPick(cat, item)`: owned = worn at once via `pendingLoadout` + `onEquipClick()`; for sale = previewed + an info sheet "KUP I ZAŁÓŻ" whose `onClose` reverts the preview; never spend on a single tap); reward-only items say where they come from. Live preview uses the real `Hole.draw()`. `openInfoSheet({..., onClose})` runs `onClose` from `closeInfoSheet()`.
+ - **Wyzwania**: daily mission + Daily Seed Challenge (`dailySeedForDate()`), countdown, streak, map preview (`computeDailyLayout()`). Friend challenges: `encodeChallenge()`/`decodeChallenge()`, `buildShareCanvas()`.
+ - Every hub element that looks tappable explains itself (`openInfoSheet()`); nothing silently ignores a tap.
+ - **No play limit (v22)**: the v15 energy system (and its chip, sheet, `energy_ad`, `energy_hour` IAP, per-platform switch) is gone — never reintroduce a timer or cost in front of a round or mission. Coins and prisms are one shared wallet that both modes earn and spend; prisms buy looks (rare Smugi/Efekty/Finisze), a mission booster when short on coins (`CONFIG.boosters.prismPrice`, `buyBoosterPrisms()`), and the +20 s revive. **Boosters** (`MISSION_BOOSTERS`: Zegar, Turbo start, Sprint (v18), Magnes, Tarcza; `save.boosters`, unlocked by `CONFIG.boosters.unlockMission`) are the main recurring coin sink and the core monetization funnel (v18): a defeat's primary button proposes the booster that answers it (`suggestedBooster(def, reason, progress)` → `openMissionBriefing(id, { preselect })`, price shown on GRAJ, POWTÓRZ = without); short on coins, the briefing offers one picked booster for a `booster_ad` (3/day, `watchBoosterAd()`); IAP `booster_pack` and the starter pack grant `boosters: n` of each. Booster prices are bot-balanced — re-run `node qa/v18.mjs` after changing a booster, the growth curve or mission limits.
+@@ -132,7 +134,7 @@ One installation, no older copies: 22 skills on demand (`/vh-director`, `/vh-are
+ 
+ Before changing code, read `.claude/vertical-hole/PROJECT_CHARTER.md`; for bigger tasks also `WORKFLOW.md` and `QUALITY_GATES.md`; before changes and save migrations `.claude/vertical-hole/CHANGE_SAFETY.md`. Use the matching skill on request or when its description fits — don't run them all by routine. Skills are on-demand instructions, not agents running in the background.
+ 
+-**Gate before development (P00):** run `.claude/vertical-hole-prompts/P00.md` as a read-only audit before new features and write the result to `VH_PREFLIGHT_REPORT.md` (commands, git revision, `PASS / FAIL / NOT RUN`). Read `.claude/vertical-hole/PREFLIGHT_GATES.md` and `.claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md` before new features. `GO_CORE` = no active energy, Arena fully isolated, working loop, safe save migration per `SAVE_MIGRATION_CONTRACT.md`; `GO_TOOLS` (separately) = working dev panel and none of its code in production — missing it doesn't block FTUE fixes; `GO_RELEASE` needs both plus platform sign-offs and `python .claude/vertical-hole/tools/check_pages_workflow.py --repo .`. Evidence must match the current worktree hash, not just git HEAD (`.claude/vertical-hole/EVIDENCE_FRESHNESS.md`); dev panel/build rules: `.claude/vertical-hole/RELEASE_DEBUG_GUARD.md`. No evidence = `NOT RUN`, never `PASS`. P00 only verifies (energy, isolation and the dev panel are already implemented — don't re-implement them); a confirmed FAIL goes to its own repair prompt PX01–PX05, one at a time, then P00 again. The pack's 2026-10-17 hypotheses about this repo (`DevPanel` in `game.js`, shared coins/XP and `SKINS` perks reaching Arena, `loadSave()` writing a migration on read) must be confirmed on the current revision and reported, not fixed automatically; the fourth (Pages publishing `claude/**` and `path: "."`) was fixed by PX04 — see Deployment.
++**Gate before development (P00):** run `.claude/vertical-hole-prompts/P00.md` as a read-only audit before new features and write the result to `VH_PREFLIGHT_REPORT.md` (commands, git revision, `PASS / FAIL / NOT RUN`). Read `.claude/vertical-hole/PREFLIGHT_GATES.md` and `.claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md` before new features. `GO_CORE` = no active energy, Arena fully isolated, working loop, safe save migration per `SAVE_MIGRATION_CONTRACT.md`; `GO_TOOLS` (separately) = working dev panel and none of its code in production — missing it doesn't block FTUE fixes; `GO_RELEASE` needs both plus platform sign-offs and `python .claude/vertical-hole/tools/check_pages_workflow.py --repo .`. Evidence must match the current worktree hash, not just git HEAD (`.claude/vertical-hole/EVIDENCE_FRESHNESS.md`); dev panel/build rules: `.claude/vertical-hole/RELEASE_DEBUG_GUARD.md`. No evidence = `NOT RUN`, never `PASS`. P00 only verifies (energy, isolation and the dev panel are already implemented — don't re-implement them); a confirmed FAIL goes to its own repair prompt PX01–PX05, one at a time, then P00 again. The pack's 2026-10-17 hypotheses about this repo (`DevPanel` in `game.js`, shared coins/XP and `SKINS` perks reaching Arena, `loadSave()` writing a migration on read) must be confirmed on the current revision and reported, not fixed automatically; the fourth (Pages publishing `claude/**` and `path: "."`) was fixed by PX04 — see Deployment; `loadSave()` writing on read was fixed by PX01; perks and `RUN_TOOLS` reaching Arena were removed by PX02 D+ (owner decision; the shared wallet stays, with the one accepted Arena → mission-booster exception).
+ 
+ Hard rules (from the pack, consistent with v22): Arena First; Arena independent of the district campaign; no energy mechanic gating play on any platform (growth fragments/„ścieżki energii” are growth pickups, not an entry limit); speed and mobile first; honest monetization within each portal's rules. Discover the game's technical state in the current repo — don't assume paths or functions. Make small changes, run tests, report evidence (`PASS / FAIL / NOT RUN`). Don't publish, sign agreements, spend money or perform destructive operations without explicit consent. When tools or tests are missing, say clearly what wasn't verified.
+ 
+diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
+index 23ae04d..61bd72c 100644
+--- a/docs/CHANGELOG.md
++++ b/docs/CHANGELOG.md
+@@ -4,6 +4,36 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
+ Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
+ są w historii gita (`git log -- docs/`).
+ 
++## PX02 D+ „W Arenie liczy się gra” — izolacja Areny (bez zmiany schematu, nadal v13)
++Decyzja właścicielki (2026-10-17): „W Arenie liczy się to, jak grasz.
++Monety kupują wygląd i wzmocnienia misji”.
++
++- Wiry to sam wygląd: usunięte perki wszystkich wirów (prędkość, combo,
++  magnes, XP, monety, start od T2, punkty, wzrost — również Kryształ i
++  Pryzmat z Core City) wraz z `Game.perk()` / `activePerks`. Warsztat
++  pokazuje opis wyglądu („WYGLĄD WIRU · BEZ BONUSU W RUNDZIE”).
++- Arena bez płatnej przewagi: usunięty ekran „WYBIERZ WSPARCIE” i
++  `RUN_TOOLS` (Tarcza 45, Magnes 25, Turbo start 70), karta „Rywale rosną w
++  siłę” po przegranej i reklama `turbo_free` (Turbo za reklamę, także w
++  rewanżu wyzwania znajomego). GRAJ, ZAGRAJ JESZCZE RAZ i rewanż startują od
++  razu. Mutacje w rundzie, Złoty Rdzeń, SZAŁ, Core City i ×2 monet za
++  reklamę po rundzie bez zmian.
++- Dzielnice bez zmian: 240 misji, `MISSION_BOOSTERS` (ceny, zapas, reklama,
++  pryzmaty), +20 s, gwiazdki, NELA. Monety z Areny mogą opłacić wzmocnienie
++  misji tylko świadomym zakupem (jawny wyjątek w kontrakcie izolacji).
++- Jednorazowy zwrot: zapis sprzed D+ z płatnymi wirami dostaje ich cenę z
++  cennika (komplet 4870 monet), raz na linię zapisu (`economy.looksOnly`,
++  `settleLooksOnly()`), w tym samym zapisie co znacznik, tylko przez
++  `saveGame()` (oryginał pod `.bak`), nigdy przy `SAVE_GUARD`; nieudany
++  zapis cofa zwrot w pamięci. Karta z kwotą raz, po udanym zapisie. Wir
++  kupiony, zanim linia zapisu została rozliczona (`economy.boughtAfter`),
++  nie dostaje zwrotu.
++  Poprzednia wersja (5db3b02) zachowuje znacznik przy odczycie i zapisie.
++- Panel DEV: usunięte przyciski dodatków Areny (nie ma już czego dawać).
++- QA: `qa/px02-isolation.mjs` (ISO-A…D, BOOST-01…03, LEGACY-01…08) w
++  `run-all`; testy v22 / design / dev-panel dostosowane do braku ekranu
++  dodatków i perków.
++
+ ## PX01 „Bezpieczny zapis” — naprawa VH-03 (bez zmiany schematu, nadal v13)
+ Zapis gracza nie może już zniknąć przez zapis z nowszej wersji gry,
+ obcięty JSON, jedno pole w złym formacie ani drugą kartę.
+diff --git a/docs/GAME_DESIGN.md b/docs/GAME_DESIGN.md
+index aec5148..e0787c1 100644
+--- a/docs/GAME_DESIGN.md
++++ b/docs/GAME_DESIGN.md
+@@ -42,7 +42,7 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
+ | Progresja | Core City LVL 1–6 (+%) i nagrody kosmetyczne, rosnąca trudność rywali (od liczby rund), pacer | 12 dzielnic, gwiazdki, Skrzynie gwiazd, nowe dzielnice i ich utwory |
+ | Rozmiary T1–T6 | tylko z wielkości wiru w rundzie; cały bestiariusz od 1. rundy | tylko z jednostek wzrostu w misji |
+ | Odblokowania | **Wyzwania** po 3 rundach Areny | **wzmocnienia** po M04 (+ po jednym w prezencie) |
+-| Ulepszenia | Wiry z bonusem (tylko w Arenie), dodatki na rundę | wzmocnienia misji, pożyczka NELI |
++| Ulepszenia | **brak** (PX02 D+: nic, co zmienia rundę, nie jest na sprzedaż; wiry to sam wygląd) | wzmocnienia misji, pożyczka NELI |
+ | Nagrody | monety, XP, Core City, co 3. runda +2 pryzmaty, rekord dnia | monety za misję, XP, Skrzynie gwiazd (monety, pryzmaty, wzmocnienie) |
+ 
+ - Wspólne są tylko: **portfel** (monety, pryzmaty — oba tryby je
+@@ -50,12 +50,37 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
+   sprawdza bot: 6 misji opłaca wzmocnienie, 3 rundy Areny pierwszy Wir),
+   **wygląd wiru** (Warsztat), poziom konta (XP z obu trybów, nic nie
+   blokuje) i ustawienia.
++- **PX02 D+ (decyzja właścicielki, 2026-10-17): „W Arenie liczy się to, jak
++  grasz. Monety kupują wygląd i wzmocnienia misji”.** Wiry nie dają
++  żadnego bonusu (prędkość, combo, magnes, XP, monety, start, punkty,
++  wzrost — wszystkie usunięte, także Kryształ i Pryzmat z Core City); przed
++  rundą Areny nie ma ekranu dodatków (Tarcza / Magnes / Turbo start za
++  monety), a po przegranej nie ma Turbo za monety ani za reklamę — także w
++  Wyzwaniu dnia i wyzwaniach znajomych. GRAJ, ZAGRAJ JESZCZE RAZ i rewanż
++  startują od razu. Jedyny przepływ między trybami to **świadomy zakup**:
++  monety z Areny mogą opłacić wzmocnienie misji w odprawie (jawny,
++  zaakceptowany wyjątek, `ARENA_DISTRICT_CONTRACT.md`); w drugą stronę nic
++  nie płynie — postęp, nagrody i zakupy Dzielnic nie zmieniają Areny.
++- **Jednorazowy zwrot (D+, `settleLooksOnly()`):** zapis sprzed D+, który
++  ma płatne wiry z dawnym bonusem, dostaje raz ich cenę z cennika (Cyjan
++  100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800, Neonowe
++  Złoto 1300, Biała Plazma 2000 — komplet 4870). Wiry zostają (posiadane i
++  założone). Kryształ i Pryzmat (nagrody Core City) tracą bonus bez zwrotu;
++  Tęcza i Aurora nigdy go nie miały. Zwrot i znacznik `economy.looksOnly`
++  trafiają do zapisu w tym samym `saveGame()` (oryginał najpierw pod
++  `.bak`); przy zablokowanym zapisie (`SAVE_GUARD`) zwrotu nie ma, a przy
++  nieudanym zapisie jest cofany w pamięci (następne uruchomienie próbuje
++  ponownie). Karta „Wiry są teraz tylko wyglądem” z kwotą pokazuje się raz,
++  tylko po udanym zapisie. Nowy profil rodzi się rozliczony, więc wir
++  kupiony po D+ nigdy nie dostaje zwrotu; wir kupiony w sesji, w której
++  linia zapisu nie była jeszcze rozliczona (zapis zablokowany albo
++  nieudany), trafia do `economy.boughtAfter` i też go nie dostaje.
+ - **Warsztat** otwiera się po 2 rundach Areny **albo** po misji M02 — co
+   pierwsze; odblokowanie nigdy się nie cofa (`CONFIG.unlockGates`).
+ - Postęp kampanii nie zmienia Areny (mapa, rywale, trudność, obiekty —
+   wcześniej Arena pokazywała tylko typy „odkryte” w misjach), a postęp
+   Areny nie zmienia misji (limity, start, plansza). Wir „Aurora Finału”
+-  (nagroda za M24) jest trofeum bez bonusu w Arenie.
++  (nagroda za M24) jest trofeum — jak każdy wir, sam wygląd.
+ - **Pierwsze uruchomienie:** ekran powitalny z jednym GRAJ → od razu runda
+   Areny (z linkiem wyzwania — ta runda). Po niej kampania przedstawia się
+   raz („DRUGI TRYB · KAMPANIA” → Dzielnice) i pojawia się nawigacja.
+@@ -235,12 +260,12 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
+   planszy pełnoekranowej; te zostają dla nowych funkcji i kosmetyków).
+ - **Warsztat (ceny v13 ×~3,3, bo 20-rundowa kariera kończyła się z 8 000
+   niewydanych monet):** Wiry Cyjan 100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800,
+-  Neonowe Złoto 1300, Biała Plazma 2000 monet (każdy z bonusem
+-  rozgrywki, tylko Arena/Dzienne), Smuga „Iskra” 500 monet, „Żar” 15 i
++  Neonowe Złoto 1300, Biała Plazma 2000 monet (PX02 D+: sam wygląd, bez
++  bonusu w rundzie), Smuga „Iskra” 500 monet, „Żar” 15 i
+   „Zawirowanie” 30 pryzmatów; v22: Efekty „Neonowa Róża” 20 i „Fioletowa
+   Szczelina” 35, Finisze „Złoty Szczyt” 25 i „Zielona Burza” 40 pryzmatów
+-  (wcześniej w tych kategoriach nie było nic do kupienia). Dodatki na
+-  rundę: Tarcza 45, Magnes 25, Turbo start 70 monet.
++  (wcześniej w tych kategoriach nie było nic do kupienia). Dodatków na
++  rundę Areny (Tarcza 45, Magnes 25, Turbo start 70) nie ma od PX02 D+.
+ - **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go
+   zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a arkusz
+   pyta „KUP I ZAŁÓŻ · cena” (zamknięcie = powrót do założonego, nic nie
+@@ -258,8 +283,8 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
+   Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
+   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
+ - **Monetyzacja (`Monetization`):** tylko reklamy z nagrodą (×2 monety,
+-  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, darmowe Turbo,
+-  wzmocnienie misji przy braku monet) i
++  +20 s misji, skrzynia, ×2 logowanie, pryzmaty, wzmocnienie misji przy
++  braku monet; PX02 D+ usunęło darmowe Turbo do Areny) i
+   reklamy między rundami co 3. powtórka (nie w rundach nowicjusza, min.
+   2,5 min odstępu). Sklep IAP pojawia się tylko z natywnym opakowaniem;
+   w przeglądarce działa oznaczony dostawca demo. Sklep: Pakiet Startowy
+diff --git a/game.js b/game.js
+index 8581733..f65196e 100644
+--- a/game.js
++++ b/game.js
+@@ -83,8 +83,7 @@ const CONFIG = {
+   // bigger than you, hunt you from far away, decide faster, and keep
+   // growing on their own). Each [easy, hard] pair is lerp'd by `t`. The
+   // Daily Seed Challenge uses a fixed dailyT so its seeded layout plays the
+-  // same for everyone. The run-setup screen shows the current threat level
+-  // next to the run tools (RUN_TOOLS) that counter it.
++  // same for everyone.
+   difficulty: {
+     rampStartRuns: 3,
+     rampFullRuns: 24,   // v13: 16 -> 24, the wall arrived as a cliff (runs 15-17: 6th, 3rd, 6th)
+@@ -98,8 +97,7 @@ const CONFIG = {
+     botPassiveUnitsPerSec: [0, 0.22],
+     // In-round escalation: bots speed up for the final stretch of every round.
+     lateRoundSeconds: 40,
+-    lateRoundBotSpeedBonus: 0.1,
+-    labels: ['NISKIE', 'ŚREDNIE', 'WYSOKIE', 'EKSTREMALNE']
++    lateRoundBotSpeedBonus: 0.1
+   },
+   // v13 "the race": one rival per round (the pacer, Game.pacer) runs on a
+   // par-score curve taken from the player's own recent form -- the median
+@@ -1819,7 +1817,6 @@ const AD_PLACEMENTS = {
+   chest_skip: { label: 'Skrzynia teraz', dailyCap: 3 },
+   login_double: { label: '×2 nagroda dnia' },
+   free_prisms: { label: '+5 pryzmatów', dailyCap: 3 },
+-  turbo_free: { label: 'Turbo start gratis', dailyCap: 2 },
+   // v18: short on coins in the briefing -- one picked booster for an ad.
+   booster_ad: { label: 'Wzmocnienie za reklamę', dailyCap: 3 }
+ };
+@@ -2196,27 +2193,34 @@ const BOT_COLORS = ['#FF54AD', '#46D99A', '#EFCB63', '#9875FF', '#50F0FA', '#ff3
+ const SKINS = [
+   // v13 prices ~3.3x: a 20-round QA career ended with 8 139 coins unspent
+   // and every coin item (then ~1 560 in total) bought after 5-10 rounds.
+-  // Golden Shot v9: every Rdzeń now has a gameplay bonus (`perks`, applied
+-  // in Arena/Daily rounds only -- see Game.perk()) on top of its signature
+-  // look (SKIN_STYLES), so buying one changes how you play, not just color.
+-  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, perks: [], perkLabel: 'Bez bonusu — wir startowy' },
+-  { id: 'cyan', name: 'Cyjan', price: 100, color: '#50F0FA', perks: [{ type: 'speed', value: 0.08 }], perkLabel: '+8% prędkości' },
+-  { id: 'pink', name: 'Gorący Róż', price: 220, color: '#FF54AD', perks: [{ type: 'comboWindow', value: 0.6 }], perkLabel: '+0,6 s na utrzymanie combo' },
+-  { id: 'green', name: 'Toksyczna Zieleń', price: 450, color: '#46D99A', perks: [{ type: 'magnet', value: 120 }], perkLabel: 'Stały mini-magnes 120 px' },
+-  { id: 'purple', name: 'Ultrafiolet', price: 800, color: '#9875FF', perks: [{ type: 'xp', value: 0.25 }], perkLabel: '+25% XP za rundę' },
+-  { id: 'gold', name: 'Neonowe Złoto', price: 1300, color: '#EFCB63', perks: [{ type: 'coins', value: 0.3 }], perkLabel: '+30% monet za rundę' },
+-  { id: 'white', name: 'Biała Plazma', price: 2000, color: '#ffffff', perks: [{ type: 'startUnits', value: 8 }, { type: 'score', value: 0.1 }], perkLabel: 'Start od T2 + 10% punktów' },
++  // PX02 D+ (owner decision): every Rdzeń is a look only (SKIN_STYLES) --
++  // "in the Arena what counts is how you play". The Golden Shot v9 perks
++  // (speed, combo, magnet, XP, coins, start size, points, growth) are gone;
++  // saves that owned a paid one got its list price back once
++  // (settleLooksOnly(), LOOKS_ONLY_REFUND).
++  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, look: 'Tęczowy pryzmat — wir startowy' },
++  { id: 'cyan', name: 'Cyjan', price: 100, color: '#50F0FA', look: 'Cyjanowe obwody' },
++  { id: 'pink', name: 'Gorący Róż', price: 220, color: '#FF54AD', look: 'Różowa plazma' },
++  { id: 'green', name: 'Toksyczna Zieleń', price: 450, color: '#46D99A', look: 'Toksyczne bąble' },
++  { id: 'purple', name: 'Ultrafiolet', price: 800, color: '#9875FF', look: 'Fioletowa galaktyka' },
++  { id: 'gold', name: 'Neonowe Złoto', price: 1300, color: '#EFCB63', look: 'Złote słońce' },
++  { id: 'white', name: 'Biała Plazma', price: 2000, color: '#ffffff', look: 'Biała burza z wyładowaniami' },
+   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
+   // only granted on the campaign's last mission clear (see reward.unlockSkin
+-  // in CAMPAIGN_MISSIONS + endCampaignMission()). v22: a trophy look only --
+-  // perks act in Arena, and a campaign reward must not tilt Arena's balance.
+-  { id: 'aurora', name: 'Aurora Finału', price: null, color: '#7cffcb', unlockSource: { type: 'mission', id: 'M24' }, perks: [], perkLabel: 'Trofeum kampanii — bez bonusu w Arenie' },
++  // in CAMPAIGN_MISSIONS + endCampaignMission()).
++  { id: 'aurora', name: 'Aurora Finału', price: null, color: '#7cffcb', unlockSource: { type: 'mission', id: 'M24' }, look: 'Zorza — trofeum kampanii' },
+   // GDD 4.0 §8.2 Core City reward ladder (never for sale, granted by
+   // grantCoreCityLevelReward() — see CORE_CITY_LEVEL_REWARDS below).
+-  { id: 'krysztal', name: 'Kryształ', price: null, color: '#8ce8ff', unlockSource: { type: 'coreCity', level: 3 }, perks: [{ type: 'growth', value: 0.15 }], perkLabel: '+15% wzrostu z obiektów' },
+-  { id: 'pryzmat', name: 'Pryzmat', price: null, rainbow: true, unlockSource: { type: 'coreCity', level: 6 }, perks: [{ type: 'coins', value: 0.2 }, { type: 'xp', value: 0.2 }], perkLabel: '+20% monet i +20% XP' }
++  { id: 'krysztal', name: 'Kryształ', price: null, color: '#8ce8ff', unlockSource: { type: 'coreCity', level: 3 }, look: 'Kryształowe ściany' },
++  { id: 'pryzmat', name: 'Pryzmat', price: null, rainbow: true, unlockSource: { type: 'coreCity', level: 6 }, look: 'Tęczowy pryzmat — nagroda Core City' }
+ ];
+ 
++// PX02 D+: the one-time refund for vortices whose Arena bonus was removed --
++// their list price (100+220+450+800+1300+2000 = 4870 for the set). The two
++// Core City rewards (Kryształ, Pryzmat) keep their look with no money back
++// (owner decision DEC-4); Tęcza and Aurora never had a bonus.
++const LOOKS_ONLY_REFUND = { cyan: 100, pink: 220, green: 450, purple: 800, gold: 1300, white: 2000 };
++
+ // Phase 7 shop v2: a second cosmetic category beyond ring skins, purchasable
+ // with either currency to give Prisms an actual sink (GDD 10.1/10.2). GDD
+ // 4.0 §5.3 renames this Warsztat category "Trail" -- kept as `AURAS`
+@@ -2270,16 +2274,10 @@ const CORE_CITY_LEVEL_REWARDS = {
+   6: { skinId: 'pryzmat', auraId: 'pryzmat', effectId: 'pryzmat', overdriveSkinId: 'pryzmat', badge: 'pryzmat', coins: 400, label: 'Zestaw „Pryzmat” + odznaka' }
+ };
+ 
+-// Phase 7 casual run tools: consumable per-run boosters, Coins-only, casual
+-// mode only (no ranked/daily equivalent exists yet to keep them fair for).
+-const RUN_TOOLS = [
+-  { id: 'none', name: 'Bez dodatku', price: 0, desc: 'Zwykły start, bez żadnego efektu. Zawsze darmowe.' },
+-  { id: 'shield', name: 'Tarcza', price: 45, desc: 'Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.' },
+-  { id: 'magnet', name: 'Magnes', price: 25, desc: 'Przez pierwsze 12 s rundy obiekty same lecą w Twoją stronę.' },
+-  // Golden Shot v8: the direct counter to the difficulty ramp -- start
+-  // the round already at T2, bigger than a hard-mode rival's spawn size.
+-  { id: 'boost', name: 'Turbo start', price: 70, desc: 'Startujesz od razu z rozmiarem T2 — Twój wir od pierwszej sekundy przerasta rywali.', hot: true }
+-];
++// PX02 D+: the Phase 7 Arena run tools (Tarcza / Magnes / Turbo start bought
++// with coins before a round, Turbo for an ad after a lost one) are gone --
++// nothing that changes an Arena round is for sale. Mission boosters below
++// are the campaign's own.
+ 
+ // v15 mission boosters (owner: "przed rozpoczęciem levelu powinno dać się
+ // dokupić toole"): picked in the briefing, one use each, bought with coins
+@@ -3731,7 +3729,14 @@ function defaultSave() {
+     challenge: null,
+     integrity: { tampered: false },
+     // v19: when the game last wrote this save (cloud-save conflict checks).
+-    meta: { savedAt: 0, devSandbox: false }
++    meta: { savedAt: 0, devSandbox: false },
++    // PX02 D+: vortices are looks only. looksOnly 1 = this save line is
++    // settled (a new profile is born settled; a save from before D+ gets
++    // looksOnly 0 in migrateSave() and is settled once by settleLooksOnly());
++    // refund = the coins it got back; notice = its card is still to show;
++    // boughtAfter = paid vortices bought while the line was still unsettled
++    // (a held-back or unsaved session) -- bought after D+, never refunded.
++    economy: { looksOnly: 1, refund: 0, notice: false, boughtAfter: [] }
+   };
+ }
+ 
+@@ -3985,9 +3990,47 @@ function migrateSave(data) {
+     data = { ...rest, schemaVersion: 13 };
+   }
+ 
++  // PX02 D+ (no schema bump -- the previous release keeps an unknown block
++  // as it is): a save written before D+ has no economy block, so it is
++  // marked unsettled here, before sanitizeSave() would fill in a new
++  // profile's settled default.
++  if (!data.economy || typeof data.economy !== 'object' || Array.isArray(data.economy)) {
++    data = { ...data, economy: { looksOnly: 0, refund: 0, notice: false, boughtAfter: [] } };
++  }
++
+   return data;
+ }
+ 
++/* ---------------- PX02 D+: one-time refund for vortex bonuses ----------------
++   "In the Arena what counts is how you play": vortices are looks only. A
++   save line from before D+ that owns one of the paid vortices whose bonus
++   went away gets their list price back once (LOOKS_ONLY_REFUND, owned =
++   ownership, not a record of what was actually paid). The refund and its
++   marker live in the same save object, so they reach storage in the same
++   setItem -- through saveGame() only, never while SAVE_GUARD holds a save
++   -- and are rolled back in memory if that write fails (the save then stays
++   unsettled and the next load tries again). A save that isn't fully readable
++   is never settled: it is repaired or replaced first. */
++/** Settles an unsettled save in place; returns what undoes it (null when
++ *  the save was already settled). */
++function settleLooksOnly(save) {
++  const e = save && save.economy;
++  if (!e || e.looksOnly >= 1) return null;
++  const undo = { coins: save.coins, economy: e };
++  const ids = new Set(save.owned || []);
++  (e.boughtAfter || []).forEach(id => ids.delete(id));
++  const refund = Object.keys(LOOKS_ONLY_REFUND).reduce((sum, id) => sum + (ids.has(id) ? LOOKS_ONLY_REFUND[id] : 0), 0);
++  save.coins = Math.min(SAVE_CURRENCY_CAP, (save.coins || 0) + refund);
++  save.economy = { ...e, looksOnly: 1, refund, notice: refund > 0 };
++  return undo;
++}
++/** Undoes settleLooksOnly() in memory when its write didn't reach storage --
++ *  coins that aren't saved can't be spent, and no card claims a refund. */
++function unsettleLooksOnly(save, undo) {
++  save.coins = undo.coins;
++  save.economy = undo.economy;
++}
++
+ /* ----------------------- PX01: save guard -----------------------
+    A save this version can't fully read is never written over -- not when
+    it loads, and not by any later autosave (login reward, chest, rounds,
+@@ -4064,6 +4107,8 @@ function verifyMigration(before, after) {
+   keepsAll(before.entitlements && before.entitlements.purchased, after.entitlements.purchased, 'purchases');
+   keepsAll(before.campaign && before.campaign.unlockedDistricts, after.campaign.unlockedDistricts, 'districts');
+   if (before.entitlements && before.entitlements.noAds === true && !after.entitlements.noAds) out.push('lost noAds');
++  // PX02: a settled save never turns unsettled (that would pay its refund twice).
++  if (before.economy && before.economy.looksOnly >= 1 && !(after.economy && after.economy.looksOnly >= 1)) out.push('lost economy');
+   const done = before.campaign && before.campaign.completed;
+   if (done && typeof done === 'object') Object.keys(done).forEach(id => { if (done[id] && id !== 'M00' && !after.campaign.completed[id]) out.push('lost mission ' + id); });
+   const boosters = before.boosters;
+@@ -4090,12 +4135,15 @@ function loadSave() {
+     SAVE_GUARD.issues = res.issues;
+     return res.save;
+   }
++  // PX02 D+: a verified save from before D+ is settled once -- the refund
++  // rides on the migration write below.
++  const undo = settleLooksOnly(res.save);
+   // A verified save: written back only if the migration changed it, and
+   // only after the original bytes are safe under the backup key (the
+   // commit itself is one setItem -- a close in between just redoes it).
+   if (sealSave(res.save) !== raw) {
+     SAVE_GUARD.backupPending = true;
+-    saveGame(res.save, { touch: false, mirror: false });
++    if (!saveGame(res.save, { touch: false, mirror: false }) && undo) unsettleLooksOnly(res.save, undo);
+   }
+   return res.save;
+ }
+@@ -7820,11 +7868,6 @@ class Game {
+     // Phase 5: seeded run modifier (lightweight — see docs for scope)
+     this.modifier = 'none';
+ 
+-    // Phase 7: casual run tools (consumable, casual-only)
+-    this.selectedRunTool = 'none';
+-    this.shieldCharges = 0;
+-    this.toolMagnetUntil = 0;
+-
+     // Phase 9: Daily Seed Challenge
+     this.isDailyRun = false;
+ 
+@@ -7896,6 +7939,7 @@ class Game {
+     this.trackRetention();
+     this.renderConsentBar();
+     this.showSaveGuardNotice();
++    this.showLooksOnlyNotice();
+     if (this.save.integrity.tampered && !this.save.integrity.reported) {
+       this.analytics.track('save_tampered', {});
+       this.save.integrity.reported = true;
+@@ -8168,12 +8212,6 @@ class Game {
+     document.querySelectorAll('[data-consent]').forEach(btn => btn.addEventListener('click', () => this.setConsent(btn.dataset.consent === '1')));
+     document.getElementById('hubFreeChest').addEventListener('click', () => this.openFreeChest());
+     document.getElementById('hubPlayerLevel').addEventListener('click', () => this.openPlayerLevelInfo());
+-    document.getElementById('btnUpsell').addEventListener('click', () => this.onUpsellClick());
+-    document.getElementById('runPerk').addEventListener('click', () => {
+-      if (this.isWarsztatUnlocked()) this.openWarsztatScreen(); else this.openLockedTabInfo('warsztat');
+-    });
+-    document.getElementById('btnConfirmStart').addEventListener('click', () => this.confirmRunSetup());
+-    document.getElementById('btnRunSetupBack').addEventListener('click', () => this.showScreen('mainMenu'));
+ 
+     // GDD 4.0 §5.1: Miasto's secondary CTA opens the Wyzwania tab (goal
+     // text/countdown/streak live there); the tab's own button actually
+@@ -8446,11 +8484,11 @@ class Game {
+       name.textContent = item.name;
+       body.appendChild(name);
+ 
+-      if (gridId === 'skinGrid' && item.perkLabel) {
+-        const perk = document.createElement('div');
+-        perk.className = 'skin-perk' + (item.perks && item.perks.length ? '' : ' none');
+-        perk.textContent = item.perkLabel;
+-        body.appendChild(perk);
++      if (gridId === 'skinGrid' && item.look) {
++        const look = document.createElement('div');
++        look.className = 'skin-look';
++        look.textContent = item.look;
++        body.appendChild(look);
+       }
+ 
+       const meta = document.createElement('div');
+@@ -8548,7 +8586,8 @@ class Game {
+     this.updateWarsztatPreview();
+     const revert = () => { this.pendingLoadout[cat] = equipped; this.updateWarsztatPreview(); };
+     const title = `${C.noun} „${item.name}”`;
+-    const perk = cat === 'skin' && item.perkLabel ? [`Bonus w rundzie: <strong>${item.perkLabel}</strong>`] : [];
++    // PX02 D+: a vortex is a look only -- the sheet says so, never a bonus.
++    const perk = cat === 'skin' ? ['Sam wygląd — w rundzie działa tak samo jak każdy inny wir.'] : [];
+     const icon = REWARD_CATEGORY_ICONS[cat === 'overdriveSkin' ? 'overdrive' : cat];
+     if (item.unlockSource) {
+       this.analytics.track('cosmetic_preview', { [C.key]: item.id, locked: true });
+@@ -8577,6 +8616,9 @@ class Game {
+       action: { label: `KUP I ZAŁÓŻ · ${price} ${sym}`, onClick: () => {
+         if (prisms) this.save.prisms -= price; else this.save.coins -= price;
+         C.owned.push(item.id);
++        // PX02 D+: bought after D+ on a line not settled yet -- never refunded.
++        const eco = this.save.economy;
++        if (cat === 'skin' && eco.looksOnly < 1 && LOOKS_ONLY_REFUND[item.id] && !eco.boughtAfter.includes(item.id)) eco.boughtAfter.push(item.id);
+         this.analytics.track('soft_purchase', { [C.key]: item.id, price, currency: prisms ? 'prisms' : 'coins' });
+         this.pendingLoadout[cat] = item.id;
+         this.onEquipClick();
+@@ -8769,8 +8811,7 @@ class Game {
+     // The preview canvas itself is redrawn every frame from pendingLoadout
+     // by renderWarsztatCanvases(); this just refreshes the text labels.
+     document.getElementById('warsztatPreviewName').textContent = skin.name;
+-    document.getElementById('warsztatPerkValue').textContent = skin.perkLabel || '—';
+-    document.getElementById('warsztatPerk').classList.toggle('none', !(skin.perks && skin.perks.length));
++    document.getElementById('warsztatLookValue').textContent = skin.look || '—';
+     document.getElementById('warsztatPreviewLoadout').textContent =
+       `Smuga: ${(aura && aura.name) || 'Brak'} · Efekt: ${(effect && effect.name) || 'Klasyczny'} · Finisz: ${(overdrive && overdrive.name) || 'Klasyczny'}`;
+   }
+@@ -8942,46 +8983,6 @@ class Game {
+     }
+   }
+ 
+-  /** Phase 7 casual run tools — Coins-only, consumed at round start, no
+-   *  ranked/daily equivalent exists yet to keep those modes fair. */
+-  populateRunToolGrid() {
+-    const t = this.computeDifficultyT();
+-    const threat = document.getElementById('runThreat');
+-    const level = Math.min(3, Math.floor(t * 4));
+-    threat.dataset.level = level;
+-    threat.querySelectorAll('.threat-segments i').forEach((seg, i) => seg.classList.toggle('on', i <= level));
+-    document.getElementById('runThreatValue').textContent = this.difficultyLabel(t);
+-    const equippedSkin = SKINS.find(sk => sk.id === this.save.selected) || SKINS[0];
+-    document.getElementById('runPerkName').textContent = equippedSkin.name;
+-    document.getElementById('runPerkValue').textContent = equippedSkin.perkLabel || '—';
+-    const grid = document.getElementById('runToolGrid');
+-    grid.innerHTML = '';
+-    RUN_TOOLS.forEach(tool => {
+-      const afford = tool.price === 0 || this.save.coins >= tool.price;
+-      const btn = document.createElement('button');
+-      btn.className = 'run-tool-card' + (this.selectedRunTool === tool.id ? ' selected' : '');
+-      btn.style.opacity = afford ? '1' : '0.5';
+-      const hot = tool.hot && t >= 0.25 ? '<span class="run-tool-hot">POLECANE</span>' : '';
+-      btn.innerHTML = `<span><span class="run-tool-name">${tool.name}</span>${hot}<br><span class="run-tool-desc">${tool.desc}</span></span><span class="run-tool-price">${tool.price > 0 ? '◇ ' + tool.price : 'GRATIS'}</span>`;
+-      btn.addEventListener('click', () => {
+-        if (!afford) return;
+-        this.selectedRunTool = tool.id;
+-        this.populateRunToolGrid();
+-      });
+-      grid.appendChild(btn);
+-    });
+-  }
+-
+-  confirmRunSetup() {
+-    const tool = RUN_TOOLS.find(t => t.id === this.selectedRunTool);
+-    if (tool && tool.price > 0) {
+-      this.save.coins -= tool.price;
+-      saveGame(this.save);
+-      this.updateCoinDisplays();
+-    }
+-    this.startRound();
+-  }
+-
+   openProfileScreen() {
+     document.getElementById('displayNameInput').value = this.save.displayName || '';
+     document.getElementById('guestIdLabel').textContent = this.save.guestId;
+@@ -9350,7 +9351,7 @@ class Game {
+     }
+     this.adoptSave(save, 'backup');
+     this.analytics.track('backup_load', {});
+-    this.openInfoSheet({ title: 'Postęp wczytany', body: ['Witaj z powrotem! Cały postęp z kodu jest na tym urządzeniu.'], closeLabel: 'GRAMY' });
++    this.openInfoSheet({ title: 'Postęp wczytany', body: ['Witaj z powrotem! Cały postęp z kodu jest na tym urządzeniu.'], closeLabel: 'GRAMY', onClose: () => setTimeout(() => this.showLooksOnlyNotice(), 0) });
+   }
+ 
+   /** v19: replace the whole save (cloud restore / backup code). Mid-round it
+@@ -9366,7 +9367,10 @@ class Game {
+       if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return; }
+     }
+     this.save = save;
+-    saveGame(save, { touch: false, mirror: false });
++    // PX02 D+: a cloud copy or backup code from before D+ is settled once,
++    // in the same write that adopts it.
++    const undo = settleLooksOnly(save);
++    if (!saveGame(save, { touch: false, mirror: false }) && undo) unsettleLooksOnly(save, undo);
+     if (after) after();
+     this.sound.settings = save.settings;
+     this.sound.applySettings();
+@@ -9374,9 +9378,31 @@ class Game {
+     if (this.state !== GameState.BOOT) {
+       this.updateCoinDisplays();
+       this.showScreen('mainMenu');
++      // A backup code says "Postęp wczytany" first (importBackup()).
++      if (source !== 'backup') this.showLooksOnlyNotice();
+     }
+   }
+ 
++  /** PX02 D+: the one card that explains the change and the refund -- only
++   *  after the refund reached storage (economy.notice is set only then),
++   *  and once. */
++  showLooksOnlyNotice() {
++    const e = this.save.economy;
++    if (!e || !e.notice || !saveWritable() || this.running) return;
++    e.notice = false;
++    saveGame(this.save);
++    this.analytics.track('looks_only_refund', { refund: e.refund });
++    this.openInfoSheet({
++      icon: REWARD_CATEGORY_ICONS.skin,
++      title: 'Wiry są teraz tylko wyglądem',
++      body: [
++        'W Arenie liczy się to, jak grasz: żaden wir nie daje już bonusu w rundzie i przed rundą nie ma płatnych dodatków.',
++        `Zwrot za Twoje wiry z bonusem: +${e.refund} monet.`,
++        'Wszystkie wiry zostają Twoje i wyglądają tak samo. Monety kupują wygląd w Warsztacie i wzmocnienia misji w Dzielnicach.'
++      ]
++    });
++  }
++
+   /** PX01: tells the player why progress isn't being saved and offers the
+    *  only safe ways out (each shown once per session). */
+   showSaveGuardNotice(kind = SAVE_GUARD.state) {
+@@ -9726,7 +9752,7 @@ class Game {
+         '<ul class="info-sheet-list"><li>Za każdą rundę GRAJ 2:00 i Wyzwanie dnia</li>' +
+           '<li>Za pierwsze ukończenie misji w Dzielnicach</li>' +
+           '<li>Za każdy nowy poziom Core City</li></ul>',
+-        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza).'
++        'Wydajesz je w <strong>Warsztacie</strong> (wygląd dziury) i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza). W Arenie nie da się kupić przewagi.'
+       ]
+     });
+   }
+@@ -10123,40 +10149,18 @@ class Game {
+       kicker: jackpot ? 'JACKPOT ×3!' : 'SKRZYNIA OTWARTA!', eyebrow: 'DARMOWA SKRZYNIA',
+       title: `+${coins} monet${prisms ? ` · +${prisms} ◆` : ''}`, color: jackpot ? '#FF54AD' : '#EFCB63',
+       icon: REWARD_CATEGORY_ICONS.bundle, noCta: true,
+-      desc: 'Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wsparcie przed rundą!'
++      desc: 'Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!'
+     });
+     this.queueUnlockCelebrations();
+     this.updateCoinDisplays();
+   }
+ 
+-  /* ---------- Golden Shot v8: result-screen upgrade funnel ---------- */
+-
+-  async onUpsellClick() {
+-    const boost = RUN_TOOLS.find(t => t.id === 'boost');
+-    if (this.save.coins >= boost.price) {
+-      this.selectedRunTool = 'boost';
+-      this.populateRunToolGrid();
+-      this.showScreen('runSetupScreen');
+-    } else if (this.monetization.placementLeft('turbo_free') > 0) {
+-      // Golden Shot v11: can't afford it -> a free Turbo start for an ad,
+-      // straight into the rematch (startRound() never charges for tools).
+-      if (await this.monetization.rewarded('turbo_free')) {
+-        this.selectedRunTool = 'boost';
+-        if (this.challenge && !this.challengeBeaten) this.startRound({ seed: this.runSeed, challenge: this.challenge });
+-        else this.startRound();
+-      }
+-    } else {
+-      this.openFreeChest();
+-    }
+-    this.analytics.track('upsell_click', { affordable: this.save.coins >= boost.price });
+-  }
+-
+   showScreen(id) {
+     // A restored save lands on Miasto -- never on a result screen of the
+     // save it replaced (whose buttons would then act on the new one).
+     if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
+     if (SAVE_GUARD.state === 'stale' && !this.saveGuardShown) setTimeout(() => this.showSaveGuardNotice(), 0);
+-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
++    ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
+       document.getElementById(s).classList.toggle('hidden', s !== id);
+     });
+     document.getElementById('hud').classList.toggle('hidden', true);
+@@ -10186,7 +10190,7 @@ class Game {
+   }
+ 
+   hideAllOverlays() {
+-    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'runSetupScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen', 'missionBriefing'].forEach(s => {
++    ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen', 'missionBriefing'].forEach(s => {
+       document.getElementById(s).classList.add('hidden');
+     });
+     document.getElementById('bottomNav').classList.add('hidden');
+@@ -10367,13 +10371,10 @@ class Game {
+     this.layStarterFeasts(rng, [spawns.player, ...spawns.bots]);
+   }
+ 
+-  /** GRAJ 2:00: the run-tool screen only once tools make sense -- a new
+-   *  player's first rounds start straight away (v13). */
++  /** GRAJ 2:00 starts the round at once. PX02 D+: there is no run-tool
++   *  screen any more -- nothing that changes an Arena round is for sale. */
+   startArenaRound() {
+-    this.selectedRunTool = 'none';
+-    if ((this.save.stats.runsPlayed || 0) < CONFIG.difficulty.rampStartRuns) { this.startRound(); return; }
+-    this.populateRunToolGrid();
+-    this.showScreen('runSetupScreen');
++    this.startRound();
+   }
+ 
+   pickModifier() {
+@@ -11346,10 +11347,8 @@ class Game {
+     this.camera.y = this.player.y;
+     // Campaign keeps a fixed framing (camera is clamped to the mission
+     // box; 1:1 on a phone, scaled up on a big screen, v21); only Arena
+-    // zooms out with growth. Skin perks are Arena/Daily-only too --
+-    // missions are hand-balanced.
++    // zooms out with growth.
+     this.zoom = this.viewScale;
+-    this.activePerks = [];
+     this.floatTexts = [];
+     this.banner = null;
+     this.bannerQueue = [];
+@@ -12876,8 +12875,6 @@ class Game {
+     // on a brand-new player's very first round). The seeded draw above is
+     // kept, so Daily/challenge maps -- never at t = 0 -- are unchanged.
+     if (this.difficultyT === 0) this.modifier = 'none';
+-    const equipped = SKINS.find(sk => sk.id === this.save.selected);
+-    this.activePerks = (equipped && equipped.perks) || [];
+ 
+     this.createObjects(this.rng);
+     this.createEntities(this.rng);
+@@ -12888,8 +12885,6 @@ class Game {
+     // v13: a short spawn shield -- on hard careers bots start bigger than
+     // the player and could eat it in the first second.
+     this.player.invulnerableUntil = performance.now() + 2500;
+-    this.player.perkSpeedMult = 1 + this.perk('speed');
+-    if (this.perk('startUnits')) this.player.radius = radiusForUnits(this.perk('startUnits'));
+     this.particles = [];
+     this.ripples = [];
+     this.floatTexts = [];
+@@ -12931,17 +12926,6 @@ class Game {
+     document.getElementById('evolutionOverlay').classList.add('hidden');
+     document.getElementById('overdriveBanner').classList.add('hidden');
+ 
+-    // Phase 7 run tool, selected in the Run Setup screen (or 'none')
+-    this.shieldCharges = this.selectedRunTool === 'shield' ? 1 : 0;
+-    this.toolMagnetUntil = this.selectedRunTool === 'magnet' ? performance.now() + 12000 : 0;
+-    if (this.selectedRunTool === 'boost') {
+-      // Turbo start: spawn just past the T2 threshold (checkSizeTier()
+-      // celebrates the jump on the first frame).
+-      this.player.radius = radiusForUnits(Math.max(unitsForRadius(this.player.radius), CONFIG.growth.unitAnchors[1]) + 2);
+-    }
+-    const runTool = this.selectedRunTool;
+-    this.selectedRunTool = 'none'; // one-shot: "Play Again" won't silently re-apply a paid tool for free
+-
+     // v16: a new track every round (Daily / challenge: one per seed).
+     this.sound.setScene('arena', { seed: this.runSeed, daily: this.isDailyRun, challenge: !!this.challenge });
+     this.sound.go();
+@@ -12964,7 +12948,6 @@ class Game {
+       skin: this.player.skin,
+       playCount: this.playCount,
+       modifier: this.modifier,
+-      runTool,
+       daily: this.isDailyRun,
+       difficulty: Math.round(this.difficultyT * 100) / 100
+     });
+@@ -13027,8 +13010,6 @@ class Game {
+     // Golden Shot v8: a new player's first runs pay double.
+     this.newbieBonusApplied = (this.save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns;
+     if (this.newbieBonusApplied) coinsEarned = Math.round(coinsEarned * CONFIG.economy.newbieCoinMult);
+-    this.perkCoinsBonus = Math.round(coinsEarned * this.perk('coins'));
+-    coinsEarned += this.perkCoinsBonus;
+     this.adPendingCoins = coinsEarned;
+     this.save.coins += coinsEarned;
+     this.save.stats.runsPlayed = (this.save.stats.runsPlayed || 0) + 1;
+@@ -13041,7 +13022,7 @@ class Game {
+ 
+     // Golden Shot v8: player XP (score + podium bonus).
+     const P = CONFIG.progression;
+-    this.lastXpResult = this.grantXp((P.xpRunBase + P.xpSqrtK * Math.sqrt(Math.max(0, this.player.score)) + (P.xpPlaceBonus[place - 1] || 0)) * (1 + this.perk('xp')));
++    this.lastXpResult = this.grantXp((P.xpRunBase + P.xpSqrtK * Math.sqrt(Math.max(0, this.player.score)) + (P.xpPlaceBonus[place - 1] || 0)));
+ 
+     // Daily mission: was a static, never-checked line before this pass.
+     // Checked once per day (save.mission.completed guards re-granting the
+@@ -13171,20 +13152,6 @@ class Game {
+     eyebrow.classList.toggle('result-eyebrow-win', place <= 3);
+     document.getElementById('resultNewbieTag').classList.toggle('hidden', !this.newbieBonusApplied);
+     this.renderXpCard('result', this.lastXpResult);
+-    const upsell = document.getElementById('resultUpsell');
+-    const showUpsell = !this.isDailyRun && place > 2 && this.difficultyT >= 0.25; // from ŚREDNI up
+-    upsell.classList.toggle('hidden', !showUpsell);
+-    if (showUpsell) {
+-      const boost = RUN_TOOLS.find(t => t.id === 'boost');
+-      const affordable = this.save.coins >= boost.price;
+-      document.getElementById('resultUpsellLabel').textContent = `ZAGROŻENIE: ${this.difficultyLabel(this.difficultyT)}`;
+-      document.getElementById('resultUpsellText').textContent = affordable
+-        ? `Rywale rosną w siłę. Zacznij od T2 z Turbo startem (◇ ${boost.price}) i wskocz na podium!`
+-        : 'Rywale rosną w siłę. Zbierz monety ze skrzyni i nagród dziennych na Turbo start!';
+-      const adTurbo = !affordable && this.monetization.placementLeft('turbo_free') > 0;
+-      document.getElementById('btnUpsell').textContent = affordable ? `TURBO START ◇ ${boost.price}` : (adTurbo ? 'TURBO GRATIS · REKLAMA' : 'ZDOBĄDŹ MONETY');
+-      if (adTurbo) document.getElementById('resultUpsellText').textContent = 'Rywale rosną w siłę. Obejrzyj krótką reklamę i zacznij rewanż od T2 z Turbo startem!';
+-    }
+ 
+     // v5 result hero (design/screens/wynik_rundy.svg): big glowing score,
+     // a size-tier badge reusing CONFIG.sizeTiers (previously tracked only
+@@ -13763,14 +13730,6 @@ class Game {
+     ctx.fillRect(x, y + 2, w * clamp(left / CONFIG.golden.frenzySeconds, 0, 1), 5);
+   }
+ 
+-  /** Golden Shot v9: the equipped Rdzeń's bonus of `type` (0 if none).
+-   *  Only active in Arena/Daily rounds (this.activePerks is cleared for
+-   *  Campaign, whose missions are hand-balanced). */
+-  perk(type) {
+-    const p = (this.activePerks || []).find(x => x.type === type);
+-    return p ? p.value : 0;
+-  }
+-
+   /** Combo counter in a fixed screen spot (left, under the top HUD strip)
+    *  instead of floating over the hole, where it collided with banners and
+    *  score pops. Pops on every new link; the bar is the time left to chain. */
+@@ -13807,7 +13766,7 @@ class Game {
+     ctx.font = `800 13px ${FONT_UI}`;
+     ctx.fillStyle = '#f2f8ff';
+     ctx.fillText(`PKT x${m.toFixed(1)}`, w + 8, 4);
+-    const windowS = (this.comboWindowOverride || CONFIG.juice.combo.windowSeconds) + this.perk('comboWindow');
++    const windowS = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
+     const frac = clamp(this.comboTimer / windowS, 0, 1);
+     ctx.fillStyle = 'rgba(255,255,255,0.15)';
+     ctx.fillRect(0, 14, 110, 4);
+@@ -13825,11 +13784,6 @@ class Game {
+     return clamp((runs - D.rampStartRuns) / (D.rampFullRuns - D.rampStartRuns), 0, 1);
+   }
+ 
+-  difficultyLabel(t) {
+-    const labels = CONFIG.difficulty.labels;
+-    return labels[Math.min(labels.length - 1, Math.floor(t * labels.length))];
+-  }
+-
+   /** Camera half-extent in world units (Arena zooms out as the hole grows). */
+   get viewHalfW() { return this.width / 2 / this.zoom; }
+   get viewHalfH() { return this.height / 2 / this.zoom; }
+@@ -13873,7 +13827,7 @@ class Game {
+   registerCombo() {
+     this.comboCount++;
+     // Combo Reactor mutation (Phase 4) extends the window for this run only.
+-    this.comboTimer = (this.comboWindowOverride || CONFIG.juice.combo.windowSeconds) + this.perk('comboWindow');
++    this.comboTimer = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
+     // Campaign uses its own multiplier cap (GDD 07: "combo 1,0-2,0 mnoży
+     // punkty, nie wzrost"); Arena/Daily keep their existing tuned cap.
+     const maxMultiplier = this.mode === 'campaign' ? CONFIG.campaign.comboMaxMultiplier : CONFIG.juice.combo.maxMultiplier;
+@@ -13932,20 +13886,10 @@ class Game {
+         if (a.radius <= b.radius * EAT_HOLE_RATIO) continue;
+         const d = dist(a.x, a.y, b.x, b.y);
+         if (d < a.radius * 0.75) {
+-          // Phase 7 "Shield" run tool: fully negates one collision instead
+-          // of softening it (Phase Edge softens; Shield blocks outright).
+-          if (b.isPlayer && this.shieldCharges > 0) {
+-            this.shieldCharges--;
+-            this.spawnParticles(b.x, b.y, '#50F0FA', 20);
+-            this.sound.shield();
+-            this.vibrate(60);
+-            continue;
+-          }
+-
+           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
+           const multiplier = a.isPlayer ? this.registerCombo() : (a.paceMult || 1);
+           const isBounty = a.isPlayer && b === this.bountyTarget;
+-          const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer ? (1 + this.perk('score')) * (this.frenzyActive ? CONFIG.golden.scoreMult : 1) : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
++          const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
+           a.score += rivalPts;
+           if (isBounty) this.bountyTarget = null;
+           this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);
+@@ -14169,8 +14113,8 @@ class Game {
+   updateMutationEffects(dt) {
+     const now = performance.now();
+ 
+-    const fullMagnet = now < this.magnetUntil || now < this.toolMagnetUntil;
+-    const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : this.perk('magnet'), this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
++    const fullMagnet = now < this.magnetUntil;
++    const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : 0, this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
+     if (magnetRadius > 0) {
+       for (const obj of this.objects) {
+         if (obj.eating || !this.holeCanEat(this.player, obj)) continue;
+@@ -14340,10 +14284,10 @@ class Game {
+     for (const obj of this.objects) {
+       if (obj.consumed) {
+         const hole = obj.eater;
+-        hole.growUnits(TIERS[obj.tier].growth * (hole.isPlayer ? 1 + this.perk('growth') : Math.min(hole.paceMult || 1, CONFIG.rival.maxGrowthBoost)));
++        hole.growUnits(TIERS[obj.tier].growth * (hole.isPlayer ? 1 : Math.min(hole.paceMult || 1, CONFIG.rival.maxGrowthBoost)));
+         const multiplier = hole.isPlayer ? this.registerCombo() : (hole.paceMult || 1);
+         const frenzyMult = hole.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1;
+-        const pts = Math.round(obj.value * multiplier * frenzyMult * (hole.isPlayer ? 1 + this.perk('score') : 1));
++        const pts = Math.round(obj.value * multiplier * frenzyMult);
+         hole.score += pts;
+         this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer, hole);
+         if (hole.isPlayer) {
+@@ -15014,7 +14958,7 @@ class Game {
+ /* ----------------------- v23: Dev / QA panel -----------------------
+    A test panel for the owner (access: see DEV_* near SAVE_KEY). Everything
+    it lists comes from the game's own data (DISTRICTS, CAMPAIGN_MISSIONS,
+-   SKINS/AURAS/EAT_EFFECTS/OVERDRIVE_SKINS, MISSION_BOOSTERS, RUN_TOOLS,
++   SKINS/AURAS/EAT_EFFECTS/OVERDRIVE_SKINS, MISSION_BOOSTERS,
+    MUTATIONS, CAMPAIGN_POWERS, IAP_PRODUCTS, CORE_CITY_LEVEL_REWARDS), and
+    every change goes through the game's own paths (grantXp(),
+    grantCoreCityLevelReward(), grantProduct(), onEquipClick(),
+@@ -15358,7 +15302,7 @@ class DevPanel {
+       const owned = cd.owned(s), sel = cd.selected(s);
+       const rows = cd.items.map(it => {
+         const has = owned.includes(it.id), worn = sel === it.id;
+-        return `<li><span class="dev-li-main">${escapeHtml(it.name)}<small>${source(it)}${it.perkLabel ? ' · ' + escapeHtml(it.perkLabel) : ''}</small></span>` +
++        return `<li><span class="dev-li-main">${escapeHtml(it.name)}<small>${source(it)}${it.look ? ' · ' + escapeHtml(it.look) : ''}</small></span>` +
+           `<span class="dev-chip${worn ? ' on' : has ? ' own' : ''}">${worn ? 'ZAŁOŻONE' : has ? 'POSIADANE' : 'BRAK'}</span>` +
+           (has ? (worn ? '' : `<button type="button" class="dev-btn" data-act="cos-wear" data-arg="${cd.cat}|${it.id}">ZAŁÓŻ</button>`) +
+             (it.id === cd.base ? '' : `<button type="button" class="dev-btn dev-btn-danger" data-act="cos-take" data-arg="${cd.cat}|${it.id}">ZABIERZ</button>`)
+@@ -15370,14 +15314,11 @@ class DevPanel {
+     const boosters = MISSION_BOOSTERS.map(b => `<div class="dev-field"><label for="devBoost-${b.id}">${b.name} <small>${escapeHtml(b.short)}</small></label>` +
+       `<input id="devBoost-${b.id}" class="dev-input dev-num" type="number" inputmode="numeric" value="${s.boosters[b.id] || 0}">` +
+       `<button type="button" class="dev-btn" data-act="booster-set" data-arg="${b.id}">USTAW</button><button type="button" class="dev-btn" data-act="booster-add" data-arg="${b.id}|1">+1</button><button type="button" class="dev-btn" data-act="booster-add" data-arg="${b.id}|-1">−1</button></div>`).join('');
+-    const tools = RUN_TOOLS.filter(t => t.id !== 'none').map(t => [`arena-tool`, `RUNDA Z: ${t.name.toUpperCase()}`, '', t.id]);
+     return this.section('Wszystko naraz', this.btns([['cos-give-all', 'ODBLOKUJ WSZYSTKIE KOSMETYKI', 'main', '*'], ['feature-unlock', 'ODBLOKUJ WARSZTAT', '', 'warsztat']])) +
+       cats +
+       this.section('Wzmocnienia misji (zapas)',
+-        `<p class="dev-note">Gra nie ma poziomów ulepszeń — narzędzia to jednorazowe wzmocnienia misji (liczy się zapas) i dodatki do rundy Areny. Wzmocnienia: ${this.game.boostersUnlocked() ? 'odblokowane' : 'jeszcze zablokowane'}.</p>` +
++        `<p class="dev-note">Gra nie ma poziomów ulepszeń — narzędzia to jednorazowe wzmocnienia misji (liczy się zapas); w Arenie nic się nie kupuje (PX02 D+). Wzmocnienia: ${this.game.boostersUnlocked() ? 'odblokowane' : 'jeszcze zablokowane'}.</p>` +
+         this.btns([['feature-unlock', 'ODBLOKUJ WZMOCNIENIA', '', 'boosters'], ['booster-all', '+5 KAŻDEGO']]) + boosters) +
+-      this.section('Dodatki do rundy Areny',
+-        '<p class="dev-note">Start rundy z wybranym dodatkiem, bez opłaty (normalnie kosztuje monety w ekranie przed rundą).</p>' + this.btns(tools)) +
+       this.section('Odznaki', `<p class="dev-note">Posiadane: ${s.badges.length ? s.badges.map(escapeHtml).join(', ') : 'brak'} (jedyna odznaka w grze to „pryzmat” za Core City LVL 6).</p>` +
+         this.btns([['badge-toggle', s.badges.includes('pryzmat') ? 'ZABIERZ ODZNAKĘ PRYZMAT' : 'DAJ ODZNAKĘ PRYZMAT', '', 'pryzmat']]));
+   }
+@@ -15432,8 +15373,7 @@ class DevPanel {
+     const arenaLive = inArena ? this.section('Trwa runda Areny',
+       this.btns([['a-end', 'KONIEC: WYGRANA', 'main', 'win'], ['a-end', 'KONIEC: OSTATNIE MIEJSCE', 'danger', 'lose'], ['a-end', 'KONIEC TERAZ', '', 'now']]) +
+       this.btns([['a-event', 'ZŁOTY RDZEŃ', '', 'golden'], ['a-event', 'SZAŁ', '', 'frenzy'], ['a-event', 'WIELKI FINISZ', '', 'overdrive'], ['cards', 'KARTY EWOLUCJI']]) +
+-      '<h4 class="dev-h4">Mutacje (od razu)</h4>' + this.btns(MUTATIONS.map(m => ['mutation', m.name.toUpperCase(), '', m.id])) +
+-      '<h4 class="dev-h4">Dodatki (od razu)</h4>' + this.btns(RUN_TOOLS.filter(t => t.id !== 'none').map(t => ['live-tool', t.name.toUpperCase(), '', t.id]))) : '';
++      '<h4 class="dev-h4">Mutacje (od razu)</h4>' + this.btns(MUTATIONS.map(m => ['mutation', m.name.toUpperCase(), '', m.id]))) : '';
+     // Starting something new ends what runs -- so it asks twice then.
+     const replace = g.running ? 'Przerwie obecną grę — dotknij ponownie' : undefined;
+     const missionSec = this.section(g.running ? 'Nowa misja' : 'Misja',
+@@ -15566,7 +15506,6 @@ class DevPanel {
+     const g = this.game;
+     this.stopPlay();
+     this.close(false);
+-    g.selectedRunTool = opts.tool || 'none';
+     if (opts.daily) g.startDailyChallenge(); else g.startRound();
+   }
+ 
+@@ -15961,7 +15900,6 @@ class DevPanel {
+       /* ---- gameplay ---- */
+       case 'arena-start': this.startArena(); return '';
+       case 'daily-start': this.startArena({ daily: true }); return '';
+-      case 'arena-tool': this.startArena({ tool: arg }); return '';
+       case 'set-tier': return this.setTier(Number(arg));
+       case 'set-radius': {
+         this.needLive();
+@@ -16028,12 +15966,6 @@ class DevPanel {
+         g.evolutionPending = true;
+         g.pickMutation(arg);
+         return `Mutacja: ${MUTATIONS.find(m => m.id === arg).name}`;
+-      case 'live-tool':
+-        this.needLive('arena');
+-        if (arg === 'shield') g.shieldCharges = (g.shieldCharges || 0) + 1;
+-        if (arg === 'magnet') g.toolMagnetUntil = performance.now() + 12000;
+-        if (arg === 'boost' && getSizeTierIndex(g.player.radius) < 1) this.setTier(2);
+-        return `Dodatek: ${RUN_TOOLS.find(t => t.id === arg).name}`;
+       case 'a-event':
+         this.needLive('arena');
+         if (arg === 'golden') { if (g.goldenObj) g.objects = g.objects.filter(o => o !== g.goldenObj); g.goldenObj = null; g.spawnGoldenCore(); }
+@@ -16180,9 +16112,18 @@ function nextCampaignMissionIdSafe(game) {
+ }
+ 
+ const I18N_EN = {
++  "(wygląd dziury) i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza). W Arenie nie da się kupić przewagi.": "(how your hole looks) and on boosters before a mission (Clock, Turbo Start, Sprint, Magnet, Shield). An Arena advantage can’t be bought.",
++  "Biała burza z wyładowaniami": "White lightning storm",
++  "Cyjanowe obwody": "Cyan circuits",
++  "Fioletowa galaktyka": "Violet galaxy",
++  "Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!": "Next chest in 4 hours. Spend coins in the Workshop or on mission boosters!",
++  "Kryształowe ściany": "Crystal facets",
+   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down.",
+   "Nad miastem iskrzą Dachy Prądu. Iglica ładuje Glitch energią całej sieci. Rozpędź się na bramach impulsu i ją wyłącz. Czeka 10 nowych misji.": "Power Rooftops spark above the city. The Spire charges Glitch with the whole grid's energy. Pick up speed on the impulse gates and shut it down. 10 new missions await.",
+   "Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.": "The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost.",
++  "Różowa plazma": "Pink plasma",
++  "Sam wygląd — w rundzie działa tak samo jak każdy inny wir.": "Looks only — in a round it plays exactly like every other vortex.",
++  "Toksyczne bąble": "Toxic bubbles",
+   "Trzy bramy impulsu na alejkach. Rozpędź się i posprzątaj park.": "Three impulse gates on the paths. Pick up speed and clean up the park.",
+   "Kryształy leżą po drugiej stronie galerii. Portal przeniesie Cię tam w mgnieniu oka — i z powrotem.": "The crystals lie on the far side of the gallery. The portal takes you there in a blink — and back.",
+   "Na dachach świecą bramy impulsu. Leć od jednej do drugiej i łap kapsuły po drodze.": "Impulse gates glow on the rooftops. Fly from one to the next and grab capsules on the way.",
+@@ -16192,25 +16133,27 @@ const I18N_EN = {
+   "BRAMY IMPULSU": "IMPULSE GATES",
+   "PORTALE": "PORTALS",
+   "IMPULS!": "BOOST!",
++  "Tęczowy pryzmat — nagroda Core City": "Rainbow prism — Core City reward",
++  "Tęczowy pryzmat — wir startowy": "Rainbow prism — starter vortex",
++  "W Arenie liczy się to, jak grasz: żaden wir nie daje już bonusu w rundzie i przed rundą nie ma płatnych dodatków.": "In the Arena what counts is how you play: no vortex gives an in-round bonus any more, and there are no paid power-ups before a round.",
++  "WYGLĄD WIRU · BEZ BONUSU W RUNDZIE": "VORTEX LOOK · NO IN-ROUND BONUS",
++  "Wiry są teraz tylko wyglądem": "Vortices are now looks only",
++  "Wszystkie wiry zostają Twoje i wyglądają tak samo. Monety kupują wygląd w Warsztacie i wzmocnienia misji w Dzielnicach.": "All your vortices stay yours and look the same. Coins buy looks in the Workshop and mission boosters in Districts.",
++  "Zorza — trofeum kampanii": "Aurora — campaign trophy",
++  "Zwrot za Twoje wiry z bonusem: +{#0} monet.": "Refund for your vortices that had a bonus: +{#0} coins.",
++  "Złote słońce": "Golden sun",
+   "Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.": "A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Then the gate recharges.",
+   "Dwa portale są połączone: wjedź w jeden, wyjedziesz z drugiego. Działają w obie strony.": "The two portals are linked: go into one, come out of the other. They work both ways.",
+   "(masz {0} {1}). Na podglądzie widać, jak wygląda.": "(you have {0} {1}). The preview shows how it looks.",
+   "(wcześniej)": "(earlier)",
+-  "(wygląd dziury), na dodatki przed rundą i na wzmocnienia przed misją (Zegar, Turbo start, Sprint, Magnes, Tarcza).": "(how your hole looks), power-ups before a round and boosters before a mission (Clock, Turbo Start, Sprint, Magnet, Shield).",
+   "({0}).": "({0}).",
+-  "+0,6 s na utrzymanie combo": "+0.6 s to keep a combo",
+   "+15 s do limitu czasu misji.": "+15 s to the mission time limit.",
+   "+15% szybciej": "+15% faster",
+-  "+15% wzrostu z obiektów": "+15% growth from objects",
+   "+16% za rundę · nagroda za 7 rund": "+16% per round · reward in 7 rounds",
+   "+20 S · OBEJRZYJ REKLAMĘ": "+20 S · WATCH AD",
+   "+20 s na misję": "+20 s per mission",
+-  "+20% monet i +20% XP": "+20% coins and +20% XP",
+-  "+25% XP za rundę": "+25% XP per round",
+-  "+30% monet za rundę": "+30% coins per round",
+   "+5 pryzmatów": "+5 prisms",
+   "+5 ◆ · REKLAMA": "+5 ◆ · AD",
+-  "+8% prędkości": "+8% speed",
+   "+{#0} cel": "+{0} goal",
+   "+{#0} cele": "+{0} goals",
+   "+{#0} celów": "+{0} goals",
+@@ -16262,7 +16205,6 @@ const I18N_EN = {
+   "BARDZO TRUDNA": "VERY HARD",
+   "BAZAR": "BAZAAR",
+   "BONUS NOWICJUSZA ×1,5": "ROOKIE BONUS ×1.5",
+-  "BONUS WIRU W RUNDZIE": "IN-ROUND VORTEX BONUS",
+   "BOSKIE!": "GODLIKE!",
+   "BRAKUJE {0} PKT": "{0} PTS BEHIND",
+   "BRAMA IGLICY": "SPIRE GATE",
+@@ -16272,8 +16214,6 @@ const I18N_EN = {
+   "Bazar wraca do życia.": "The bazaar comes back to life.",
+   "Bazarowe combo": "Bazaar Combo",
+   "Bez awarii": "No Breakdowns",
+-  "Bez bonusu — wir startowy": "No bonus — starter vortex",
+-  "Bez dodatku": "No power-up",
+   "Bez jednego płatka": "Not One Petal Lost",
+   "Bez reklam": "No Ads",
+   "Bez straty": "No Losses",
+@@ -16282,7 +16222,6 @@ const I18N_EN = {
+   "Biała Plazma": "White Plasma",
+   "Bieg wokół stawu": "Run Around the Pond",
+   "Blisko! Teraz znasz już trasę — następna próba pójdzie szybciej.": "So close! Now you know the route — the next try will go faster.",
+-  "Bonus w rundzie:": "In-round bonus:",
+   "Brak": "None",
+   "Brakuje {0} {1} na wybrane wzmocnienia.": "You're {0} {1} short for the selected boosters.",
+   "Brama Bazaru": "Bazaar Gate",
+@@ -16399,7 +16338,6 @@ const I18N_EN = {
+   "Dźwięki": "Sounds",
+   "EFEKT": "EFFECT",
+   "EKSTREMALNA": "EXTREME",
+-  "EKSTREMALNE": "EXTREME",
+   "EWOLUCJA": "EVOLUTION",
+   "Echo w tunelu niesie się daleko. Glitch też je słyszy.": "Echoes carry far in the tunnel. Glitch hears them too.",
+   "Efekt pochłaniania": "Swallow Effect",
+@@ -16536,7 +16474,6 @@ const I18N_EN = {
+   "Kolejna alejka do odzyskania.": "Another alley to reclaim.",
+   "Kolejna linia czysta.": "Another line clean.",
+   "Kolejna linia produkcyjna do zatrzymania.": "Another production line to stop.",
+-  "Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wsparcie przed rundą!": "Next chest in 4 hours. Spend coins in the Workshop or on pre-round boosts!",
+   "Kolejna stacja do odzyskania.": "Another station to reclaim.",
+   "Kolejny brzeg do odzyskania.": "Another shore to reclaim.",
+   "Kolejny brzeg odzyskany.": "Another shore reclaimed.",
+@@ -16649,7 +16586,6 @@ const I18N_EN = {
+   "NIE": "NO",
+   "NIE TERAZ": "NOT NOW",
+   "NIESAMOWITE!": "INCREDIBLE!",
+-  "NISKIE": "LOW",
+   "NOCNY BAZAR": "NIGHT BAZAAR",
+   "NOWA": "NEW",
+   "NOWA DZIELNICA": "NEW DISTRICT",
+@@ -16745,7 +16681,6 @@ const I18N_EN = {
+   "Ogrody znów oddychają.": "The gardens breathe again.",
+   "Ogród nocą": "Garden at Night",
+   "Ogród rozkwita.": "The garden is in bloom.",
+-  "Opcjonalnie kup jednorazowy dodatek na tę rundę za monety — albo od razu naciśnij START i zagraj bez niczego.": "Optionally buy a one-time power-up for this round with coins — or just press START and play without one.",
+   "Ostatni Kurs": "Last Train",
+   "Ostatni kurs": "Last Train",
+   "Ostatni obwód": "Last Circuit",
+@@ -16982,10 +16917,8 @@ const I18N_EN = {
+   "Przed zamknięciem": "Before closing",
+   "Przegrzanie": "Overheat",
+   "Przesył Danych": "Data Stream",
+-  "Przetrwasz 1 starcie z większym rywalem bez utraty rozmiaru.": "Survive 1 clash with a bigger rival without losing size.",
+   "Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.": "For the whole mission, objects you can eat drift into your vortex on their own.",
+   "Przez całą misję wir jest o 15% szybszy — dogonisz Złodzieja i zdążysz do dalekich celów.": "For the whole mission your vortex is 15% faster — catch the Thief and reach far targets in time.",
+-  "Przez pierwsze 12 s rundy obiekty same lecą w Twoją stronę.": "For the first 12 s of the round, objects fly toward you on their own.",
+   "Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.": "Absorbs 2 hits from a bigger rival or a glitch zone. Also protects a fragile vortex.",
+   "Przypływ": "High Tide",
+   "Przypływ niesie skażony kod.": "The tide carries corrupted code.",
+@@ -17009,7 +16942,6 @@ const I18N_EN = {
+   "ROZUMIEM": "GOT IT",
+   "ROŚNIESZ · {0}": "GROWING · {0}",
+   "RYWALE": "RIVALS",
+-  "RYWALE SĄ CORAZ SILNIEJSI": "RIVALS ARE GETTING STRONGER",
+   "Rafa danych": "Data Reef",
+   "Rdzeń Miasta": "City Core",
+   "Rdzeń Miasta. Stąd Glitch steruje wszystkim. Pochłoń Rdzeń, a Neonowe Miasto znów zaświeci.": "City Core. Glitch controls everything from here. Swallow the Core and the Neon City will shine again.",
+@@ -17039,9 +16971,6 @@ const I18N_EN = {
+   "Ruszaj dalej: {0} czeka.": "Move on: {0} awaits.",
+   "Rytm kwiatów": "Flower Rhythm",
+   "Rywale przyspieszają!": "Rivals are speeding up!",
+-  "Rywale rosną w siłę. Obejrzyj krótką reklamę i zacznij rewanż od T2 z Turbo startem!": "Rivals are getting stronger. Watch a short ad and start your rematch at T2 with Turbo Start!",
+-  "Rywale rosną w siłę. Zacznij od T2 z Turbo startem (◇ {0}) i wskocz na podium!": "Rivals are getting stronger. Start at T2 with Turbo Start (◇ {0}) and jump onto the podium!",
+-  "Rywale rosną w siłę. Zbierz monety ze skrzyni i nagród dziennych na Turbo start!": "Rivals are getting stronger. Collect coins from the chest and daily rewards for a Turbo Start!",
+   "Rywale zniknęli w Twoim wirze.": "The rivals vanished into your vortex.",
+   "Rzadsza waluta premium. Masz teraz:": "Rarer premium currency. You have:",
+   "Rój glitcha": "Glitch Swarm",
+@@ -17056,7 +16985,6 @@ const I18N_EN = {
+   "SPRÓBUJ PONOWNIE{0}": "TRY AGAIN{0}",
+   "SPRÓBUJ Z: {0}{1}": "TRY WITH: {0}{1}",
+   "STACJA": "STATION",
+-  "START RUNDY (2:00)": "START ROUND (2:00)",
+   "STEROWANIE": "CONTROLS",
+   "STREFY GLITCHA": "GLITCH ZONES",
+   "SZAŁ ×2 · {0} s": "FRENZY ×2 · {0} s",
+@@ -17094,10 +17022,7 @@ const I18N_EN = {
+   "Stacja odzyskana.": "Station reclaimed.",
+   "Stację Centralną": "Central Station",
+   "Start misji": "Mission start",
+-  "Start od T2 + 10% punktów": "Start at T2 + 10% points",
+-  "Startujesz od razu z rozmiarem T2 — Twój wir od pierwszej sekundy przerasta rywali.": "You start right away at size T2 — your vortex outgrows the rivals from the very first second.",
+   "Statek widmo": "Ghost Ship",
+-  "Stały mini-magnes 120 px": "Permanent 120 px mini-magnet",
+   "Stragan z autami": "Car Stall",
+   "Strażnicy chmury": "Cloud Guardians",
+   "Strażnicy dachów": "Rooftop Guardians",
+@@ -17132,8 +17057,6 @@ const I18N_EN = {
+   "TERAZ GRA": "NOW PLAYING",
+   "TRUDNA": "HARD",
+   "TUNELE METRA": "METRO TUNNELS",
+-  "TURBO GRATIS · REKLAMA": "FREE TURBO · AD",
+-  "TWÓJ WIR:": "YOUR VORTEX:",
+   "Ta misja daje w kość. Masz ode mnie Zegar (+{0} s) — wybierz go w odprawie.": "This mission is tough. Here's a Clock from me (+{0} s) — pick it in the briefing.",
+   "Ta misja jest naprawdę trudna. Zegar albo Turbo start z odprawy mogą pomóc.": "This mission is really hard. A Clock or Turbo Start from the briefing can help.",
+   "Ta przeglądarka nie obsługuje dźwięku.": "This browser doesn't support sound.",
+@@ -17184,7 +17107,6 @@ const I18N_EN = {
+   "Tunele Metra odzyskane! Nocny Bazar czeka.": "Metro Tunnels reclaimed! The Night Bazaar awaits.",
+   "Turbo combo": "Turbo Combo",
+   "Turbo start": "Turbo Start",
+-  "Turbo start gratis": "Free Turbo Start",
+   "Twoja nazwa (opcjonalnie)": "Your name (optional)",
+   "Twoje prawa (RODO):": "Your rights (GDPR):",
+   "Twój rekord dziś: {0} pkt. Pobij go: +{1} monet i +{2} ◆.": "Your best today: {0} pts. Beat it: +{1} coins and +{2} ◆.",
+@@ -17267,11 +17189,9 @@ const I18N_EN = {
+   "WRÓĆ DO MIASTA": "BACK TO CITY",
+   "WSZYSTKIE MISJE": "ALL MISSIONS",
+   "WYBIERZ": "CHOOSE",
+-  "WYBIERZ WSPARCIE": "CHOOSE SUPPORT",
+   "WYJDŹ DO MIASTA": "EXIT TO CITY",
+   "WYNIK": "SCORE",
+   "WYNIK {0}": "SCORE {0}",
+-  "WYSOKIE": "HIGH",
+   "WYZWANIA": "CHALLENGES",
+   "WYZWANIE DNIA": "DAILY CHALLENGE",
+   "WYZWANIE DNIA ukończone: +{0} monet (rekord dnia: {1})": "DAILY CHALLENGE complete: +{0} coins (today's best: {1})",
+@@ -17285,7 +17205,6 @@ const I18N_EN = {
+   "WYZWANIE · {0}": "CHALLENGE · {0}",
+   "WYZWIJ ZNAJOMEGO": "CHALLENGE A FRIEND",
+   "WZMOCNIENIA": "BOOSTERS",
+-  "WZMOCNIJ SIĘ": "POWER UP",
+   "Wadliwa partia": "Faulty Batch",
+   "Wagon z bajtami": "Byte Wagon",
+   "Warsztacie": "Workshop",
+@@ -17400,8 +17319,6 @@ const I18N_EN = {
+   "ZAGRAJ RUNDĘ": "PLAY A ROUND",
+   "ZAGRAJ TERAZ": "PLAY NOW",
+   "ZAGRAJ WYZWANIE": "PLAY CHALLENGE",
+-  "ZAGROŻENIE RYWALI": "RIVAL THREAT",
+-  "ZAGROŻENIE: {0}": "THREAT: {0}",
+   "ZAMKNIJ": "CLOSE",
+   "ZAPISZ": "SAVE",
+   "ZATOKA HOLOGRAMÓW": "HOLOGRAM BAY",
+@@ -17409,13 +17326,11 @@ const I18N_EN = {
+   "ZAŁÓŻ": "EQUIP",
+   "ZAŁÓŻ W WARSZTACIE": "EQUIP IN WORKSHOP",
+   "ZDOBYTE MONETY": "COINS EARNED",
+-  "ZDOBĄDŹ MONETY": "GET COINS",
+   "ZESTAWY I KOSMETYKI": "SETS & COSMETICS",
+   "ZGODA": "AGREE",
+   "ZJEDZONO CIĘ!": "YOU GOT EATEN!",
+   "ZJEDZONY! +{0}": "EATEN! +{0}",
+   "ZMIEŃ WYGLĄD": "CHANGE LOOK",
+-  "ZMIEŃ ›": "CHANGE ›",
+   "ZOBACZ": "VIEW",
+   "ZRESETOWAĆ PROFIL?": "RESET PROFILE?",
+   "ZWYCIĘSTWO W NEONOWYM MIEŚCIE": "VICTORY IN THE NEON CITY",
+@@ -17426,7 +17341,6 @@ const I18N_EN = {
+   "Za pierwsze ukończenie misji w Dzielnicach": "For your first mission clear in Districts",
+   "Zabrakło tylko {0} pkt do {1}. miejsca{2}!": "Just {0} pts short of #{1}{2}!",
+   "Zaczarowane latarnie": "Enchanted Lamps",
+-  "Zacznij następną rundę od T2 z Turbo startem.": "Start your next round at T2 with Turbo Start.",
+   "Zagraj Wyzwanie dnia każdego dnia, żeby nie przerwać serii.": "Play the Daily Challenge every day to keep your streak.",
+   "Zamknij": "Close",
+   "Zapora": "Barrier",
+@@ -17540,7 +17454,6 @@ const I18N_EN = {
+   "Zostało: {0}": "Left: {0}",
+   "Zwiń/rozwiń pełny ranking": "Collapse/expand full ranking",
+   "Zwrotnice": "Switches",
+-  "Zwykły start, bez żadnego efektu. Zawsze darmowe.": "A plain start, no effect. Always free.",
+   "ZŁODZIEJ": "THIEF",
+   "ZŁODZIEJ +1": "THIEF +1",
+   "ZŁODZIEJ BYŁ SZYBSZY": "THE THIEF WAS FASTER",
+@@ -17931,7 +17844,6 @@ const I18N_EN = {
+   "ŚREDNI": "MEDIUM",
+   "ŚREDNI!": "MEDIUM!",
+   "ŚREDNIA": "MEDIUM",
+-  "ŚREDNIE": "MEDIUM",
+   "ŚWIETNIE": "GREAT",
+   "Ścieżka bez błędu": "Flawless Path",
+   "Ślepy tor": "Dead End",
+@@ -17985,7 +17897,6 @@ const I18N_EN = {
+   "Awans poziomu, kalendarz logowania, darmowa skrzynia": "Level-ups, the login calendar, the free chest",
+   "na rzadsze Smugi, Efekty i Finisze, na wzmocnienie misji, gdy brakuje monet ({#0} ◆), i na dodatkowe sekundy w misji.": "on rarer Trails, Effects and Finishes, on a mission booster when you're short on coins ({0} ◆), and on extra seconds in missions.",
+   "{0} za {#1} ◆": "{0} for {1} ◆",
+-  "Trofeum kampanii — bez bonusu w Arenie": "Campaign trophy — no Arena bonus",
+   "Neonowa Róża": "Neon Rose",
+   "Fioletowa Szczelina": "Violet Rift",
+   "Złoty Szczyt": "Golden Peak",
+diff --git a/index.html b/index.html
+index c246109..4f6a107 100644
+--- a/index.html
++++ b/index.html
+@@ -517,27 +517,6 @@
+   </div>
+ 
+ 
+-  <!-- ===================== RUN SETUP (casual run tools) ===================== -->
+-  <div id="runSetupScreen" class="screen hidden">
+-    <div class="screen-inner">
+-      <h2 class="section-title">WYBIERZ WSPARCIE</h2>
+-      <div class="threat-meter" id="runThreat">
+-        <span class="threat-label">ZAGROŻENIE RYWALI</span>
+-        <span class="threat-segments"><i></i><i></i><i></i><i></i></span>
+-        <strong id="runThreatValue">ŁATWY</strong>
+-      </div>
+-      <button class="run-perk" id="runPerk" type="button">
+-        <span class="run-perk-label">TWÓJ WIR: <b id="runPerkName">Tęcza</b></span>
+-        <strong id="runPerkValue">—</strong>
+-        <span class="run-perk-cta">ZMIEŃ ›</span>
+-      </button>
+-      <p class="hint-text">Opcjonalnie kup jednorazowy dodatek na tę rundę za monety — albo od razu naciśnij START i zagraj bez niczego.</p>
+-      <div id="runToolGrid" class="run-tool-grid"></div>
+-      <button id="btnConfirmStart" class="btn btn-primary">START RUNDY (2:00)</button>
+-      <button id="btnRunSetupBack" class="btn btn-secondary">POWRÓT</button>
+-    </div>
+-  </div>
+-
+   <!-- ===================== DZIELNICE — kampania i misje (Vector Hole v4 / GDD 4.0 §5.2) =====================
+        Anti-confusion rule (§8.4): this screen shows per-district rebuild
+        progress ("ODBUDOWA: X% · Y z Z misji"), never the big Core City %. -->
+@@ -680,14 +659,14 @@
+             <div class="warsztat-preview-glow"></div>
+             <canvas id="warsztatPreviewCanvas" class="warsztat-preview-canvas"></canvas>
+           </div>
+-          <!-- v14: name + bonus + the rest of the loadout in one line (the
++          <!-- v14: name + look + the rest of the loadout in one line (the
+                "PODGLĄD NA ŻYWO" caption and the 2x2 "AKTYWNE ELEMENTY"
+                tiles repeated what the tabs and the grid already show). -->
+           <div class="warsztat-preview-labels">
+             <div class="warsztat-preview-name" id="warsztatPreviewName">—</div>
+-            <div class="warsztat-perk" id="warsztatPerk">
+-              <span class="warsztat-perk-label">BONUS WIRU W RUNDZIE</span>
+-              <strong id="warsztatPerkValue">—</strong>
++            <div class="warsztat-look" id="warsztatLook">
++              <span class="warsztat-look-label">WYGLĄD WIRU · BEZ BONUSU W RUNDZIE</span>
++              <strong id="warsztatLookValue">—</strong>
+             </div>
+             <div class="warsztat-preview-loadout" id="warsztatPreviewLoadout">—</div>
+           </div>
+@@ -901,17 +880,6 @@
+       </div>
+       </div>
+ 
+-      <!-- Golden Shot v8 upgrade funnel: shown when the difficulty curve
+-           starts to bite (lost the podium) -- points at the run tools. -->
+-      <div id="resultUpsell" class="result-card result-upsell hidden">
+-        <span class="result-upsell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span>
+-        <div class="result-upsell-body">
+-          <span class="result-card-label" id="resultUpsellLabel">RYWALE SĄ CORAZ SILNIEJSI</span>
+-          <span class="result-upsell-text" id="resultUpsellText">Zacznij następną rundę od T2 z Turbo startem.</span>
+-        </div>
+-        <button id="btnUpsell" class="btn btn-gold btn-small">WZMOCNIJ SIĘ</button>
+-      </div>
+-
+       </div>
+       <div class="wide-col wide-col-b">
+       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
+diff --git a/qa/README.md b/qa/README.md
+index 9ad8c65..f5b211c 100644
+--- a/qa/README.md
++++ b/qa/README.md
+@@ -14,6 +14,7 @@ node qa/flow.mjs          # v14: start screen = logo + GRAJ, Miasto without a fl
+ node qa/dev-panel.mjs      # v23: dev panel -- access (hidden gesture, code, lockout, ?dev, simulated production host; VH_DEV_CODE=... also checks the real code), test-mode isolation (real save untouched, no analytics sink/cloud mirror/real ads/payments), every tab and what it unlocks really working in the game, phones portrait/landscape + desktop
+ node qa/dev-code.mjs "<code>"  # v23: prints DEV_CODE_HASH for a new dev code
+ node qa/save-safety.mjs    # PX01: a newer (schema > current), broken (truncated JSON) or partly broken (wrong field type) save is never written over -- not on load and not by any later autosave (login, chest, Arena round, mission, tab switch, reload); the player's explicit repair / start over / reset keeps the original under `.rescue`; migrations commit only after a verified result and a `.bak` of the original; two tabs (storage event + read-before-write); QuotaExceededError / refused backup / interrupted commit / unreadable storage; cloud copy from a newer version, broken or empty is never overwritten; review regressions R1–R4 (reset without a rescue copy deletes nothing, a failed local write is never mirrored, an existing empty key is a broken save, unreadable storage shows a notice). Fixtures -> qa/out/save-fixtures/
++node qa/px02-isolation.mjs # PX02 D+ (owner decision): ISO-A..D -- Arena, Daily and friend challenges start with the same parameters for any campaign progress, coins, XP, level and any vortex (bought for real in Warsztat); GRAJ / replay / rematch start at once with nothing for sale; Arena rounds change nothing in the campaign; BOOST-01..03 -- mission boosters never touch the Arena, Magnes/Sprint/Turbo start/Zegar/Tarcza still act in missions, no Turbo for coins or ads in the Arena; LEGACY-01..08 -- the one-time vortex refund (4870 for the 6 paid vortices) is paid once per save line, with its marker in the same write, never while SAVE_GUARD holds a save, rolled back on a failed write, kept by the previous release (5db3b02, read from git), safe across reloads, two tabs, cloud copies and backup codes. Fixtures -> qa/out/px02-fixtures/
+ node qa/v22.mjs            # v22: no energy anywhere (source, DOM, store, ads) + 15 rounds / 6 Dailies / 15 mission attempts in a row at 0 coins; first launch = an Arena round with the whole bestiary; campaign progress changes nothing in Arena and vice versa; same unlocks in either order; each mode pays for what it sells (bots); first-round coach only for a hesitating player (EN too); v12 -> v13 migration + reload; prisms (booster for 4 ◆, prism looks)
+ node qa/v21.mjs            # v21: big screens -- phones keep their framing; 1366×768/1440×900/1920×1080 see about a phone's worth of city with a bigger vortex, cursor steering through the zoom, bigger HUD/minimap; desktop layout (body.wide): nav rail + two columns on Miasto/Dzielnice/Warsztat/Wyzwania/results at 960×540…1920×1080 and 1180×820, all 12 districts in view, nothing sideways; portrait phones/tablets keep the phone layout; district strip mouse wheel + edge fades
+ node qa/v20.mjs            # v20: gates are helpers -- no mission asks to go through a gate/portal, impulse pad (+50% speed, recharge), two-way portal pair, M11 „Pierwszy impuls” shows a pad + food on its first frame, EN chips
+diff --git a/qa/design.mjs b/qa/design.mjs
+index 19a5f47..8c83fce 100644
+--- a/qa/design.mjs
++++ b/qa/design.mjs
+@@ -111,7 +111,8 @@ export async function runDesignChecks(url) {
+     await g.page.waitForTimeout(1200);
+     const loginShown = await g.page.evaluate(() => !document.getElementById('loginRewardScreen').classList.contains('hidden'));
+     await g.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
+-    const st = await g.page.evaluate(() => ({ state: window.game.state, setup: !document.getElementById('runSetupScreen').classList.contains('hidden') }));
++    // PX02 D+: the run-tool screen is gone for every round (null-safe check kept).
++    const st = await g.page.evaluate(() => { const el = document.getElementById('runSetupScreen'); return { state: window.game.state, setup: !!el && !el.classList.contains('hidden') }; });
+     const rush = await g.page.evaluate(() => {
+       const gm = window.game; let n = 0;
+       for (let seed = 1; seed <= 40; seed++) { gm.startRound({ seed }); if (gm.modifier !== 'none') n++; }
+diff --git a/qa/dev-panel.mjs b/qa/dev-panel.mjs
+index b4375da..b6ca95f 100644
+--- a/qa/dev-panel.mjs
++++ b/qa/dev-panel.mjs
+@@ -443,7 +443,7 @@ export async function runDevPanelChecks(url) {
+   {
+     const g = await devGame(url, { realSave: veteran });
+     const { page } = g;
+-    // One skin unlocked in the panel -> worn from the real Warsztat grid -> its perk acts in a round.
++    // One skin unlocked in the panel -> worn from the real Warsztat grid -> it shows in a round (PX02 D+: a look only).
+     const skin = await page.evaluate(async () => {
+       const gm = window.game;
+       window.__devClick('gear', 'cos-give', 'skin|gold');
+@@ -456,12 +456,13 @@ export async function runDevPanelChecks(url) {
+       const worn = gm.save.selected;
+       gm.startRound();
+       await new Promise(r => setTimeout(r, 200));
+-      const res = { shop, ownedCard, worn, inRound: gm.player.skin, perkCoins: gm.perk('coins') };
++      const res = { shop, ownedCard, worn, inRound: gm.player.skin, perkFn: typeof gm.perk };
+       window.__devClick('play', 'a-end', 'now');
+       await new Promise(r => setTimeout(r, 500));
+       return res;
+     });
+-    push('warsztat: a skin unlocked in the panel shows as owned in the real Warsztat, is worn by a tap and its perk acts in a round', skin.shop && skin.ownedCard && skin.worn === 'gold' && skin.inRound === 'gold' && Math.abs(skin.perkCoins - 0.3) < 1e-9, JSON.stringify(skin));
++    // PX02 D+: vortices are looks only -- the worn one shows in the round, with no perk code at all.
++    push('warsztat: a skin unlocked in the panel shows as owned in the real Warsztat, is worn by a tap and shows in a round (a look, no perk)', skin.shop && skin.ownedCard && skin.worn === 'gold' && skin.inRound === 'gold' && skin.perkFn === 'undefined', JSON.stringify(skin));
+     const allCos = await page.evaluate(async () => {
+       const gm = window.game, s = gm.save;
+       window.__devClick('gear', 'cos-give-all', '*');
+@@ -599,13 +600,12 @@ export async function runDevPanelChecks(url) {
+       window.__devSet('play', 'devRadius', '70'); window.__devClick('play', 'set-radius');
+       const r70 = Math.round(gm.player.radius);
+       window.__devClick('play', 'mutation', 'magnet_pulse');
+-      window.__devClick('play', 'live-tool', 'shield');
+       window.__devClick('play', 'a-event', 'golden');
+       const golden = !!gm.goldenObj;
+       window.__devClick('play', 'a-event', 'frenzy');
+       await sleep(100);
+       const frenzy = gm.frenzyActive;
+-      const mag = gm.magnetUntil === Infinity, shield = gm.shieldCharges;
++      const mag = gm.magnetUntil === Infinity;
+       window.__devClick('play', 'cards');
+       const cards = window.__visible('evolutionOverlay') && gm.evolutionPending;
+       gm.skipEvolutionOffer();
+@@ -617,10 +617,11 @@ export async function runDevPanelChecks(url) {
+       window.__devClick('play', 'a-end', 'lose');
+       await sleep(700);
+       const lose = { screen: window.__visible('gameOverScreen'), place: document.getElementById('finalPlace').textContent };
+-      return { before, after, eaten, down, r70, golden, frenzy, mag, shield, cards, win, lose };
++      return { before, after, eaten, down, r70, golden, frenzy, mag, cards, win, lose };
+     });
+     push('gameplay (Arena): size tier T3 unlocks T3 objects (and swallows one), back to T1, exact radius', !arena.before.canEat && arena.after.tier === 2 && arena.after.canEat && arena.eaten && arena.down === 0 && Math.abs(arena.r70 - 70) <= 1, JSON.stringify({ before: arena.before, after: arena.after, eaten: arena.eaten, down: arena.down, r70: arena.r70 }));
+-    push('gameplay (Arena): mutation, run tool, Złoty Rdzeń, SZAŁ and evolution cards on demand', arena.mag && arena.shield >= 1 && arena.golden && arena.frenzy && arena.cards, JSON.stringify(arena));
++    // PX02 D+: the Arena run tools are gone, so the panel has none to give.
++    push('gameplay (Arena): mutation, Złoty Rdzeń, SZAŁ and evolution cards on demand', arena.mag && arena.golden && arena.frenzy && arena.cards, JSON.stringify(arena));
+     push('gameplay (Arena): forced win shows ZWYCIĘSTWO 1., forced loss the last place — the real result screen', arena.win.screen && arena.win.eyebrow === 'ZWYCIĘSTWO!' && arena.win.place === '1.' && arena.lose.screen && arena.lose.place === '6.', JSON.stringify({ win: arena.win, lose: arena.lose }));
+     const mission = await page.evaluate(async () => {
+       const gm = window.game;
+diff --git a/qa/run-all.mjs b/qa/run-all.mjs
+index c8614ec..b42d9ab 100644
+--- a/qa/run-all.mjs
++++ b/qa/run-all.mjs
+@@ -21,10 +21,11 @@ import { runV21Checks } from './v21.mjs';
+ import { runV22Checks } from './v22.mjs';
+ import { runDevPanelChecks } from './dev-panel.mjs';
+ import { runSaveSafetyChecks } from './save-safety.mjs';
++import { runPx02Checks } from './px02-isolation.mjs';
+ 
+ const { server, url } = await serve();
+ const all = [];
+-for (const [name, fn] of [['edge cases', () => runEdgeCases(url)], ['features', () => runFeatureChecks(url)], ['visual', () => runVisualChecks(url)], ['design', () => runDesignChecks(url)], ['flow', () => runFlowChecks(url)], ['arena bots', () => runArenaBots(url, 20)], ['campaign bots', () => runCampaignBots(url, 30)], ['v15 systems', () => runV15Checks(url)], ['audio (v16)', () => runAudioChecks(url)], ['v17 first impression', () => runV17Checks(url)], ['v18 economy', () => runV18Checks(url, 2)], ['v19 launch (English, saves)', () => runV19Checks(url)], ['v20 gates (impulse pads, portals)', () => runV20Checks(url)], ['v21 big screens', () => runV21Checks(url)], ['v22 two modes (no energy, independent Arena/Dzielnice, first-round coach, prisms)', () => runV22Checks(url)], ['v23 dev panel (access, test-mode isolation, every category, phones)', () => runDevPanelChecks(url)], ['PX01 save safety (future/broken saves, two tabs, quota, cloud copy)', () => runSaveSafetyChecks(url)], ['difficulty (all 240 missions, expert + casual)', () => runDifficultyChecks(url, 2, 4)]]) {
++for (const [name, fn] of [['edge cases', () => runEdgeCases(url)], ['features', () => runFeatureChecks(url)], ['visual', () => runVisualChecks(url)], ['design', () => runDesignChecks(url)], ['flow', () => runFlowChecks(url)], ['arena bots', () => runArenaBots(url, 20)], ['campaign bots', () => runCampaignBots(url, 30)], ['v15 systems', () => runV15Checks(url)], ['audio (v16)', () => runAudioChecks(url)], ['v17 first impression', () => runV17Checks(url)], ['v18 economy', () => runV18Checks(url, 2)], ['v19 launch (English, saves)', () => runV19Checks(url)], ['v20 gates (impulse pads, portals)', () => runV20Checks(url)], ['v21 big screens', () => runV21Checks(url)], ['v22 two modes (no energy, independent Arena/Dzielnice, first-round coach, prisms)', () => runV22Checks(url)], ['v23 dev panel (access, test-mode isolation, every category, phones)', () => runDevPanelChecks(url)], ['PX01 save safety (future/broken saves, two tabs, quota, cloud copy)', () => runSaveSafetyChecks(url)], ['PX02 D+ isolation (vortices are looks, no Arena advantage for sale, one-time refund)', () => runPx02Checks(url)], ['difficulty (all 240 missions, expert + casual)', () => runDifficultyChecks(url, 2, 4)]]) {
+   console.log(`\n=== ${name} ===`);
+   try { all.push(...await fn()); } catch (e) { all.push({ name: `${name} crashed`, ok: false, details: String(e && e.stack || e) }); console.log('CRASH', e); }
+ }
+diff --git a/qa/save-safety.mjs b/qa/save-safety.mjs
+index efeada4..8da2a23 100644
+--- a/qa/save-safety.mjs
++++ b/qa/save-safety.mjs
+@@ -189,7 +189,8 @@ export async function runSaveSafetyChecks(url) {
+   for (const k of ['v1', 'v5', 'v10', 'current', 'partial']) {
+     const g = await boot(url, fx[k]);
+     const r = await g.page.evaluate(() => ({ state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', coins: window.game.save.coins, v: window.game.save.schemaVersion, level: window.game.save.player.level }));
+-    const want = { v1: 50, v5: 120, v10: 4321, current: 4321, partial: 50 }[k];
++    // PX02 D+: the v1 save owns Cyjan (a paid vortex whose bonus went away) -> +100 refund, once.
++    const want = { v1: 150, v5: 120, v10: 4321, current: 4321, partial: 50 }[k];
+     push(`legacy/partial ${k}: loads as a normal writable save with its coins (${want})`, r.state === 'ok' && r.coins === want && r.v === 13, JSON.stringify(r));
+     noErr(g, k);
+     await g.browser.close();
+diff --git a/qa/v22.mjs b/qa/v22.mjs
+index 9f93289..198b2eb 100644
+--- a/qa/v22.mjs
++++ b/qa/v22.mjs
+@@ -89,7 +89,9 @@ export async function runV22Checks(url) {
+       for (let i = 0; i < 15; i++) {
+         gm.showScreen('mainMenu');
+         document.getElementById('btnStart').click();
+-        if (!document.getElementById('runSetupScreen').classList.contains('hidden')) document.getElementById('btnConfirmStart').click();
++        // PX02 D+: GRAJ starts the round itself (no run-tool screen to confirm).
++        const setup = document.getElementById('runSetupScreen');
++        if (setup && !setup.classList.contains('hidden')) document.getElementById('btnConfirmStart').click();
+         if (gm.state === GameState.PLAYING && gm.mode === 'arena') out.arena++;
+         finishRound();
+       }
+@@ -127,7 +129,7 @@ export async function runV22Checks(url) {
+       out.first = gm.isFirstRun();
+       out.welcome = !document.getElementById('hubWelcome').classList.contains('hidden');
+       document.getElementById('btnWelcomePlay').click();
+-      out.mode = gm.mode; out.playing = gm.state === GameState.PLAYING; out.setup = !document.getElementById('runSetupScreen').classList.contains('hidden');
++      out.mode = gm.mode; out.playing = gm.state === GameState.PLAYING; out.setup = !!document.getElementById('runSetupScreen') && !document.getElementById('runSetupScreen').classList.contains('hidden');
+       out.types = [...new Set(gm.objects.map(o => o.tier))].sort();
+       cancelAnimationFrame(gm.rafId); gm.running = false; gm.timeRemaining = 0.001; gm.update(0.016);
+       await new Promise(res => setTimeout(res, 900));
+@@ -159,7 +161,7 @@ export async function runV22Checks(url) {
+       const out = {
+         objects: gm.objects.map(o => `${o.tier}:${Math.round(o.x)}:${Math.round(o.y)}`).join('|').length + ':' + gm.objects.length,
+         tiers: [...new Set(gm.objects.map(o => o.tier))].length,
+-        t: gm.difficultyT, bots: gm.bots.map(b => Math.round(b.radius)).join(','), perks: (gm.activePerks || []).length,
++        t: gm.difficultyT, bots: gm.bots.map(b => Math.round(b.radius)).join(','), start: Math.round(gm.player.radius) + '/' + Math.round(gm.player.getSpeed()),
+         core: gm.save.hub.coreLevel + ':' + gm.save.hub.coreCharge,
+         vehicleAt18: canEatWorldObjectTier(18, { tier: 'vehicle' }), vehicleAt46: canEatWorldObjectTier(46, { tier: 'vehicle' }),
+         wyz: gm.isWyzwaniaUnlocked()
+@@ -169,7 +171,14 @@ export async function runV22Checks(url) {
+     });
+     const a = await probe(fresh), b = await probe(camp);
+     const coreAfter = await camp.page.evaluate(() => { const gm = window.game; const c0 = gm.save.hub.coreLevel + ':' + gm.save.hub.coreCharge; gm.startCampaignMission('M31'); gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.mission.elapsed = 5; gm.endCampaignMission(true); return { c0, c1: gm.save.hub.coreLevel + ':' + gm.save.hub.coreCharge }; });
+-    const aurora = await camp.page.evaluate(() => { const gm = window.game; gm.save.owned.push('aurora'); gm.save.selected = 'aurora'; gm.startRound({ seed: 1 }); cancelAnimationFrame(gm.rafId); gm.running = false; const n = gm.activePerks.length; gm.leaveRun(); return n; });
++    // PX02 D+: no vortex has a perk; the trophy starts like the starter vortex (size, speed).
++    const aurora = await camp.page.evaluate(() => {
++      const gm = window.game;
++      const start = (id) => { gm.save.selected = id; gm.startRound({ seed: 1 }); cancelAnimationFrame(gm.rafId); gm.running = false; const r = gm.player.radius + '/' + gm.player.getSpeed(); gm.leaveRun(); return r; };
++      gm.save.owned.push('aurora');
++      const base = start('rainbow'), trophy = start('aurora');
++      return base === trophy ? 0 : 1;
++    });
+     results.push(report('independence: 30 missions done change nothing in an Arena round (same map, rivals, difficulty)', a.objects === b.objects && a.bots === b.bots && a.t === b.t && a.tiers === b.tiers, JSON.stringify({ fresh: a, campaign: b })));
+     results.push(report('independence: Arena size gates (Tx) come from the hole size only', a.vehicleAt18 === false && a.vehicleAt46 === true && b.vehicleAt18 === false && b.vehicleAt46 === true));
+     results.push(report('independence: a mission win never charges Core City; Wyzwania wait for Arena rounds, not missions', coreAfter.c0 === coreAfter.c1 && !b.wyz, JSON.stringify(coreAfter)));
+@@ -186,7 +195,7 @@ export async function runV22Checks(url) {
+       const gm = window.game;
+       const out = { next: gm.nextCampaignMissionId(), playable: gm.isMissionPlayable('M01'), boosters: gm.boostersUnlocked(), districts: gm.save.campaign.unlockedDistricts.join(',') };
+       gm.startCampaignMission('M01'); gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false;
+-      out.limit = gm.mission.def.timeLimit; out.radius = Math.round(gm.player.radius); out.tier = gm.campaignPlayerTier().id; out.entities = gm.campaignEntities.length; out.perks = (gm.activePerks || []).length;
++      out.limit = gm.mission.def.timeLimit; out.radius = Math.round(gm.player.radius); out.tier = gm.campaignPlayerTier().id; out.entities = gm.campaignEntities.length; out.speedMult = gm.player.perkSpeedMult || 1;
+       gm.leaveCampaignMission();
+       return out;
+     });
+diff --git a/style.css b/style.css
+index e661cba..7fc975f 100644
+--- a/style.css
++++ b/style.css
+@@ -1576,44 +1576,6 @@ body.touch-input #gameCanvas {
+   color: var(--nc-text-dim);
+ }
+ 
+-.run-tool-grid {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 8px;
+-  width: 100%;
+-  max-width: 320px;
+-}
+-
+-.run-tool-card {
+-  display: flex;
+-  justify-content: space-between;
+-  align-items: center;
+-  gap: 10px;
+-  padding: 10px 14px;
+-  border-radius: 10px;
+-  background: rgba(255, 255, 255, 0.04);
+-  border: 2px solid rgba(255, 255, 255, 0.12);
+-  cursor: pointer;
+-  color: var(--text-main);
+-  font-family: inherit;
+-  text-align: left;
+-}
+-
+-.run-tool-card.selected {
+-  border-color: var(--neon-cyan);
+-  box-shadow: 0 0 12px rgba(80, 240, 250, 0.3);
+-}
+-
+-.run-tool-name {
+-  font-size: 13px;
+-  font-weight: 700;
+-}
+-
+-.run-tool-desc {
+-  font-size: 11px;
+-  opacity: 0.7;
+-}
+-
+ .result-tag {
+   display: inline-block;
+   margin: -4px auto 6px;
+@@ -3539,61 +3501,6 @@ body.touch-input #gameCanvas {
+ .result-xp-card.leveled { border-color: var(--nc-gold); box-shadow: 0 0 18px rgba(239, 203, 99, 0.35); }
+ .result-xp-card.leveled .result-xp-level { animation: v8-tile-bounce 0.9s ease-in-out infinite; }
+ 
+-.result-upsell {
+-  display: flex;
+-  flex-wrap: wrap;
+-  align-items: center;
+-  gap: 10px;
+-  text-align: left;
+-  border-color: rgba(255, 84, 173, 0.55) !important;
+-  background: linear-gradient(90deg, rgba(255, 84, 173, 0.12), var(--nc-panel-2)) !important;
+-}
+-.result-upsell-icon { width: 28px; height: 28px; flex-shrink: 0; color: var(--nc-pink); filter: drop-shadow(0 0 6px rgba(255, 84, 173, 0.7)); }
+-.result-upsell-icon svg { width: 100%; height: 100%; }
+-.result-upsell-body { flex: 1 1 calc(100% - 40px); min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+-.result-upsell .btn-small { flex: 1 1 100%; padding: 11px 12px; font-size: 13px; }
+-.result-upsell-text { font-size: 12px; color: var(--nc-text); line-height: 1.35; }
+-
+-/* ---------- Run setup: threat meter + recommended tool ---------- */
+-.threat-meter {
+-  width: 100%;
+-  max-width: 320px;
+-  display: flex;
+-  align-items: center;
+-  gap: 8px;
+-  padding: 8px 12px;
+-  border-radius: 12px;
+-  background: var(--nc-panel-2);
+-  border: 1px solid var(--nc-panel-border);
+-  font-size: 11px;
+-}
+-.threat-label { font-weight: 800; letter-spacing: 1px; color: var(--nc-text-dim); }
+-.threat-segments { flex: 1; display: flex; gap: 3px; }
+-.threat-segments i { flex: 1; height: 7px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); }
+-.threat-segments i.on { background: var(--nc-green); box-shadow: 0 0 6px var(--nc-green); }
+-.threat-meter[data-level="1"] .threat-segments i.on { background: var(--nc-gold); box-shadow: 0 0 6px var(--nc-gold); }
+-.threat-meter[data-level="2"] .threat-segments i.on,
+-.threat-meter[data-level="3"] .threat-segments i.on { background: var(--nc-pink); box-shadow: 0 0 6px var(--nc-pink); }
+-.threat-meter strong { font-weight: 900; letter-spacing: 1px; }
+-.threat-meter[data-level="2"] strong, .threat-meter[data-level="3"] strong { color: var(--nc-pink); animation: pulse-warning 1.2s ease-in-out infinite; }
+-.run-tool-hot {
+-  display: inline-block;
+-  margin-left: 6px;
+-  padding: 2px 6px;
+-  border-radius: 6px;
+-  background: var(--nc-pink);
+-  color: #07131E;
+-  font-size: 9px;
+-  font-weight: 900;
+-  letter-spacing: 1px;
+-  vertical-align: middle;
+-  animation: v8-tile-bounce 1.2s ease-in-out infinite;
+-}
+-.run-tool-price { font-weight: 900; color: var(--nc-gold); white-space: nowrap; }
+-.run-tool-card { transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+-.run-tool-card:active { transform: scale(0.96); }
+-.run-tool-card.selected { box-shadow: 0 0 18px rgba(80, 240, 250, 0.35); transform: scale(1.02); }
+-
+ /* ---------- In-round HUD: final-10-seconds urgency ---------- */
+ .hud-pill.hud-urgent { border-color: var(--nc-pink) !important; animation: v8-urgent 0.5s ease-in-out infinite alternate; }
+ .hud-pill.hud-urgent .hud-value { color: var(--nc-pink) !important; }
+@@ -3605,7 +3512,7 @@ body.touch-input #gameCanvas {
+ @media (prefers-reduced-motion: reduce) {
+   .screen:not(.overlay-screen)::before, .btn-primary::after, #btnStart, .btn-mega,
+   .result-anim > *, .confetti-layer i, .hub-chest-row.ready, .hub-chest-row.ready .hub-chest-icon,
+-  .login-tile.current, .run-tool-hot, .result-newbie-tag, .hud-pill.hud-urgent { animation: none !important; }
++  .login-tile.current, .result-newbie-tag, .hud-pill.hud-urgent { animation: none !important; }
+ }
+ 
+ /* =====================================================================
+@@ -3617,7 +3524,7 @@ body.touch-input #gameCanvas {
+ .app-title, .section-title, .result-hero-score, .result-eyebrow,
+ .result-badge-value, .hud-value, .hub-city-lvl, .hub-city-pct > span:first-child,
+ .unlock-title, .unlock-kicker, .evolution-title, .login-kicker,
+-.result-xp-level, .btn-primary, .btn-mega, .threat-meter strong, .coin-display span:last-child, #missionResultTitle, .skin-name, .warsztat-perk strong, .run-perk strong  {
++.result-xp-level, .btn-primary, .btn-mega, .coin-display span:last-child, #missionResultTitle, .skin-name, .warsztat-look strong  {
+   font-family: var(--font-display);
+   font-weight: 400;
+   letter-spacing: 0.04em;
+@@ -3703,51 +3610,26 @@ body.touch-input #gameCanvas {
+ .welcome-note { margin: 0; font-size: 11px; color: var(--nc-text-dim); }
+ .welcome-note b { color: var(--nc-cyan); }
+ 
+-/* ---------- Skin perks (Warsztat, run setup) ---------- */
+-.skin-perk {
++/* ---------- PX02 D+: vortex looks (Warsztat) -- a look, never a bonus ---------- */
++.skin-look {
+   font-size: 10px;
+-  font-weight: 800;
+-  color: var(--nc-green);
++  font-weight: 600;
++  color: var(--nc-text-dim-2);
+   line-height: 1.25;
+ }
+-.skin-perk::before { content: '▲ '; font-size: 8px; }
+-.skin-perk.none { color: var(--nc-text-dim-2); font-weight: 600; }
+-.skin-perk.none::before { content: ''; }
+-.warsztat-perk {
++.warsztat-look {
+   margin-top: 8px;
+   padding: 7px 9px;
+   border-radius: 10px;
+-  background: rgba(70, 217, 154, 0.1);
+-  border: 1px solid rgba(70, 217, 154, 0.45);
++  background: rgba(255, 255, 255, 0.04);
++  border: 1px solid var(--nc-border);
+   display: flex;
+   flex-direction: column;
+   gap: 2px;
+   text-align: left;
+ }
+-.warsztat-perk-label { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; color: var(--nc-text-dim); }
+-.warsztat-perk strong { font-size: 13px; color: var(--nc-green); }
+-.warsztat-perk.none { background: rgba(255, 255, 255, 0.04); border-color: var(--nc-border); }
+-.warsztat-perk.none strong { color: var(--nc-text-dim); }
+-.run-perk {
+-  width: 100%;
+-  max-width: 320px;
+-  display: grid;
+-  grid-template-columns: 1fr auto;
+-  align-items: center;
+-  gap: 2px 8px;
+-  padding: 9px 12px;
+-  border-radius: 12px;
+-  background: linear-gradient(90deg, rgba(70, 217, 154, 0.12), var(--nc-panel-2));
+-  border: 1px solid rgba(70, 217, 154, 0.45);
+-  color: var(--nc-text);
+-  font-family: inherit;
+-  text-align: left;
+-  cursor: pointer;
+-}
+-.run-perk-label { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; color: var(--nc-text-dim); }
+-.run-perk-label b { color: var(--nc-text); }
+-.run-perk strong { grid-column: 1; font-size: 14px; color: var(--nc-green); }
+-.run-perk-cta { grid-column: 2; grid-row: 1 / span 2; font-size: 11px; font-weight: 900; color: var(--nc-cyan); }
++.warsztat-look-label { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; color: var(--nc-text-dim); }
++.warsztat-look strong { font-size: 13px; color: var(--nc-text); }
+ 
+ @media (prefers-reduced-motion: reduce) {
+   .welcome-logo-main, .welcome-logo-sub { animation: none !important; }
+@@ -4219,7 +4101,7 @@ body[data-gfx="0"] #hud::before { display: none; }
+ #shopScreen .warsztat-preview-stage { flex: none; width: 46%; height: 156px; }
+ #shopScreen .warsztat-preview-labels { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+ .warsztat-preview-name { font-family: var(--font-display); font-size: 20px; line-height: 1.1; color: #fff; }
+-#shopScreen .warsztat-perk { margin-top: 0; }
++#shopScreen .warsztat-look { margin-top: 0; }
+ .warsztat-preview-loadout { font-size: 11px; line-height: 1.45; color: var(--nc-text-dim); }
+ .warsztat-hint { margin: -4px 0 0; font-size: 11.5px; }
+ #shopScreen .store-card { margin: 0; }
+diff --git a/qa/px02-isolation.mjs b/qa/px02-isolation.mjs
+new file mode 100644
+index 0000000..9a04ee1
+--- /dev/null
++++ b/qa/px02-isolation.mjs
+@@ -0,0 +1,814 @@
++// PX02 D+ (owner decision 2026-10-17): "In the Arena what counts is how you
++// play. Coins buy looks and mission boosters."
++//  - ISO-A/B/C/D: Arena, Daily and friend challenges start with the same
++//    parameters for every profile -- fresh or 10/30/240 missions, any coins,
++//    XP or level, any equipped vortex (bought for real in Warsztat), any
++//    campaign state (new / partial / finished / missing / broken); GRAJ,
++//    replay and the friend rematch start straight away with nothing for
++//    sale; Arena rounds change nothing in the campaign; shared coins reach
++//    the campaign only through a deliberate booster purchase.
++//  - BOOST-01..03: mission boosters (bought, used, reset) never change the
++//    Arena; Magnes and Sprint still work in a mission; no Turbo for coins or
++//    for an ad anywhere in the Arena.
++//  - LEGACY-01..08: the one-time refund for vortices whose bonus went away
++//    (6 paid vortices, 100+220+450+800+1300+2000 = 4870 coins at list price)
++//    is paid at most once per save line, committed in the same write as its
++//    marker (save.economy.looksOnly) through saveGame() only, never while
++//    SAVE_GUARD holds a save, rolled back in memory when the write fails,
++//    survives the previous release (5db3b02) reading and rewriting the save,
++//    and its card shows only after a successful commit, once.
++// The parameter signature (__px02Sig) isolates direct modifiers on a fixed
++// seed: the seed fixes only the starting layout, so the micro-board (one
++// object, rivals parked in a corner, a fixed final score) avoids comparing
++// whole rounds that also use Math.random().
++// Synthetic fixtures only. Usage: node qa/px02-isolation.mjs
++import fs from 'node:fs';
++import path from 'node:path';
++import http from 'node:http';
++import { execSync } from 'node:child_process';
++import { serve, openGame, chromium, report, ARENA_BOT, CAMPAIGN_BOT, ROOT, OUT } from './lib.mjs';
++import { devCodeToken } from './dev-code.mjs';
++
++const KEY = 'vectorHoleSave_v1';
++const BASE_REV = '5db3b02094592b541a18fc11ca52e248ff0c14a4';
++const PAID = { cyan: 100, pink: 220, green: 450, purple: 800, gold: 1300, white: 2000 };
++const FIXTURES = path.join(OUT, 'px02-fixtures');
++
++/** In-page: a deterministic read of every Arena modifier a profile could
++ *  carry -- start size and speed, run tools, bots and board, magnet pull,
++ *  points/growth/combo window of one bite, coins/XP for a fixed result. */
++const SIG = `
++window.__px02Sig = function (round) {
++  const g = window.game;
++  const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
++  let vnow = realNow();
++  performance.now = () => vnow;
++  const tick = (n, each) => { for (let i = 0; i < n && g.state === GameState.PLAYING; i++) { if (g.evolutionPending) g.skipEvolutionOffer(); vnow += 1000 / 30; g.update(1 / 30); if (each) each(); } };
++  const out = {};
++  try {
++    // Arena's own career (runs played, recent scores) sets its difficulty and
++    // pacer -- held equal so only what a profile carries can differ.
++    g.save.stats.runsPlayed = 10; g.save.stats.recentArenaScores = [500, 600, 700, 650, 640];
++    const coins0 = g.save.coins, prisms0 = g.save.prisms;
++    g.startRound(round || { seed: 4242 });
++    if (g.rafId) cancelAnimationFrame(g.rafId);
++    g.running = false;
++    const p = g.player;
++    out.state = g.state;
++    out.chargedOnStart = (g.save.coins !== coins0) || (g.save.prisms !== prisms0);
++    out.startRadius = +p.radius.toFixed(3);
++    out.speed = +p.getSpeed().toFixed(4);
++    out.shield = g.shieldCharges || 0;
++    out.toolMagnet = (g.toolMagnetUntil || 0) > vnow ? 1 : 0;
++    out.difficultyT = g.difficultyT; out.modifier = g.modifier; out.roundTime = g.timeRemaining;
++    out.bots = g.bots.map(b => Math.round(b.radius)).join(',');
++    out.board = g.objects.length + ':' + g.objects.slice(0, 40).map(o => o.type + Math.round(o.x)).join('|').length;
++    // Micro-board: rivals parked in a corner, one bite-sized object.
++    g.goldenTimer = 1e9;
++    g.bots.forEach((b, i) => { b.x = 60 + i * 12; b.y = 60; });
++    p.x = 1500; p.y = 1500; g.keyDir = { x: 0, y: 0 }; g.pointerScreen = null; g.pointerWorld = null;
++    p.invulnerableUntil = Infinity;
++    const pickable = g.objects.filter(o => !o.eating && g.holeCanEat(p, o)).sort((a, b) => a.radius - b.radius);
++    const o = pickable[0];
++    g.objects = [o];
++    o.x = p.x + 110; o.y = p.y;
++    tick(15);
++    out.magnetPull = Math.round(110 - Math.hypot(o.x - p.x, o.y - p.y));
++    o.x = p.x; o.y = p.y;
++    const s0 = p.score, u0 = unitsForRadius(p.radius);
++    let comboAt = null;
++    tick(90, () => { if (comboAt === null && p.score > s0) comboAt = +g.comboTimer.toFixed(2); });
++    out.bitePoints = p.score - s0;
++    out.biteGrowth = +(unitsForRadius(p.radius) - u0).toFixed(3);
++    out.comboWindow = comboAt;
++    // A fixed result: 1st place with 600 points.
++    g.bots.forEach(b => { b.score = 0; });
++    p.score = 600;
++    const xpBefore = g.save.player.xp + 0;
++    g.finalizeRun();
++    out.coinsEarned = g.adPendingCoins;
++    out.xpGained = g.lastXpResult ? g.lastXpResult.gained : null;
++    g.state = GameState.MENU;
++  } catch (e) { out.error = String(e && e.message || e); }
++  performance.now = realNow;
++  return out;
++};
++`;
++
++/** A profile built from the game's own defaultSave(); `legacy` drops the
++ *  PX02 economy block, i.e. a save written before D+. */
++const PROFILE = `
++window.__px02Profile = function (o) {
++  o = o || {};
++  const s = defaultSave();
++  if (o.legacy) delete s.economy;
++  const today = new Date().toISOString().slice(0, 10);
++  const ids = DISTRICTS.flatMap(d => d.missions).slice(0, o.missions || 0);
++  ids.forEach(id => { s.campaign.completed[id] = true; s.campaign.stars[id] = 1; });
++  DISTRICTS.forEach((d, i) => { if (i > 0 && s.campaign.completed[DISTRICTS[i - 1].missions[DISTRICTS[i - 1].missions.length - 1]] && !s.campaign.unlockedDistricts.includes(d.id)) s.campaign.unlockedDistricts.push(d.id); });
++  s.stats.runsPlayed = o.runsPlayed != null ? o.runsPlayed : 10;
++  s.stats.bestArenaScore = 900; s.stats.recentArenaScores = [500, 600, 700, 650, 640];
++  s.coins = o.coins || 0; s.prisms = o.prisms || 0;
++  s.player = { level: o.level || 1, xp: o.xp || 0 };
++  if (o.owned) s.owned = o.owned.slice();
++  if (o.selected) s.selected = o.selected;
++  if (o.boosters) s.boosters = { ...s.boosters, ...o.boosters };
++  if (o.hub) s.hub = o.hub;
++  if (o.entitlements) s.entitlements = o.entitlements;
++  if (o.auras) s.auras = o.auras;
++  s.unlocks.announced = Array.from(new Set([...unlockedFeatureIds(s), 'warsztat', 'wyzwania', 'kampania', 'boosters']));
++  s.coach = { moved: true, ate: true, rival: true, danger: true };
++  s.login = { lastClaimDate: today, day: 2, totalClaims: 2 };
++  s.freeChest = { nextAt: Date.now() + 3600e3, opened: 1 };
++  s.privacy = { decided: true, analytics: false, ads: false, ts: 1 };
++  if (o.schemaVersion) s.schemaVersion = o.schemaVersion;
++  return s;
++};
++`;
++
++const rawOf = (page, key = KEY) => page.evaluate((k) => localStorage.getItem(k), key);
++const diskSave = async (page) => { const r = await rawOf(page); try { return JSON.parse(r); } catch (e) { return null; } };
++const sheetTitle = (page) => page.evaluate(() => {
++  const el = document.getElementById('infoSheet');
++  return el && !el.classList.contains('hidden') ? document.getElementById('infoSheetTitle').textContent : null;
++});
++const REFUND_TITLE = /Wiry są teraz tylko wyglądem/;
++const sansVolatile = (sig) => { const { coinsEarned, xpGained, ...rest } = sig; return rest; };
++
++async function addHelpers(page) {
++  await page.addScriptTag({ content: ARENA_BOT });
++  await page.addScriptTag({ content: CAMPAIGN_BOT });
++  await page.addScriptTag({ content: SIG });
++  await page.addScriptTag({ content: PROFILE });
++}
++
++/** Opens the game with a profile (an object from __px02Profile options, or
++ *  a raw storage string) seeded before the first load. */
++async function boot(url, seed, opts = {}) {
++  let raw = seed;
++  if (seed && typeof seed === 'object') {
++    const g0 = await openGame(url);
++    await g0.page.addScriptTag({ content: PROFILE });
++    raw = await g0.page.evaluate((o) => JSON.stringify(window.__px02Profile(o)), seed);
++    await g0.browser.close();
++  }
++  const g = await openGame(url, { ...opts, save: raw == null ? null : raw });
++  await addHelpers(g.page);
++  await g.page.waitForTimeout(300);
++  g.seedRaw = raw;
++  return g;
++}
++
++/** A browser context whose storage is seeded once per origin (not per tab),
++ *  for reload / second-tab / old-release scenarios. */
++async function sharedContext(seedRaw, initScript) {
++  const browser = await chromium.launch();
++  const context = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true, locale: 'pl-PL' });
++  await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => route.abort());
++  if (seedRaw != null) {
++    await context.addInitScript((s) => {
++      if (!localStorage.getItem('__qaSeededOnce')) { localStorage.setItem('vectorHoleSave_v1', s); localStorage.setItem('__qaSeededOnce', '1'); }
++    }, seedRaw);
++  }
++  if (initScript) await context.addInitScript(initScript);
++  const errors = [];
++  const open = async (url) => {
++    const page = await context.newPage();
++    page.on('pageerror', (e) => errors.push('pageerror: ' + (e.stack || e.message)));
++    await page.goto(url);
++    await page.waitForFunction(() => window.game && window.game.state !== undefined, null, { timeout: 15000 });
++    await addHelpers(page);
++    await page.waitForTimeout(300);
++    return page;
++  };
++  return { browser, context, open, errors };
++}
++
++async function legacyRaw(url, o) {
++  const g = await openGame(url);
++  await g.page.addScriptTag({ content: PROFILE });
++  const raw = await g.page.evaluate((opt) => {
++    const s = window.__px02Profile({ ...opt, legacy: true });
++    if (opt.mutate === 'v12') { s.schemaVersion = 12; delete s.coach; s.energy = { value: 2, lastTick: Date.now(), infiniteUntil: 0, freeDailyDate: null }; s.campaign.discoveredTypes = ['fragment']; }
++    if (opt.mutate === 'badCoins') s.coins = opt.badCoins || '500';
++    if (opt.mutate === 'future') { s.schemaVersion = 99; s.seasonPass = { tier: 2 }; }
++    return opt.unsealed ? JSON.stringify(s) : sealSave(s);
++  }, o);
++  await g.browser.close();
++  return raw;
++}
++
++/** Static server: / = this worktree, /base/ = the previous release. */
++function serveWithBase(baseDir) {
++  const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
++  return new Promise((resolve) => {
++    const server = http.createServer((req, res) => {
++      let u = decodeURIComponent(req.url.split('?')[0]);
++      let root = ROOT;
++      if (u.startsWith('/base/')) { root = baseDir; u = u.slice(5); }
++      const file = path.join(root, u === '/' ? 'index.html' : u);
++      if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
++      res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
++      fs.createReadStream(file).pipe(res);
++    });
++    server.listen(0, '127.0.0.1', () => { const p = server.address().port; resolve({ server, url: `http://127.0.0.1:${p}/index.html`, baseUrl: `http://127.0.0.1:${p}/base/index.html` }); });
++  });
++}
++
++export async function runPx02Checks(url) {
++  const results = [];
++  const push = (name, ok, details) => results.push(report(name, ok, details));
++  const noErr = (errors, label) => push(`px02: no runtime errors (${label})`, errors.length === 0, errors.slice(0, 3).join(' | '));
++  fs.mkdirSync(FIXTURES, { recursive: true });
++  const D = 'px02';
++
++  // ===================== ISO-A: campaign progress, coins, XP ====================
++  let neutral = null;
++  {
++    const profiles = [
++      ['fresh', { missions: 0, coins: 0, level: 1 }],
++      ['10 missions, 1010 coins, LVL 8', { missions: 10, coins: 1010, level: 8, xp: 50 }],
++      ['30 missions, 5000 coins, 300 prisms, LVL 20', { missions: 30, coins: 5000, prisms: 300, level: 20 }],
++      ['240 missions, 99999 coins, LVL 40', { missions: 240, coins: 99999, prisms: 999, level: 40, boosters: { time: 9, start: 9, magnet: 9, shield: 9, sprint: 9 } }]
++    ];
++    const sigs = {};
++    for (const [label, o] of profiles) {
++      const g = await boot(url, o);
++      const page = g.page;
++      // The real GRAJ button (4th+ round of a career: the old run-tool screen's turn).
++      const entry = await page.evaluate(() => {
++        const gm = window.game, c0 = gm.save.coins;
++        gm.showScreen('mainMenu');
++        document.getElementById('btnStart').click();
++        const setup = document.getElementById('runSetupScreen');
++        const r = { playing: gm.state === GameState.PLAYING, setupShown: !!setup && !setup.classList.contains('hidden'), tools: document.querySelectorAll('.run-tool-card').length, coinsSame: gm.save.coins === c0 };
++        gm.running = false; if (gm.rafId) cancelAnimationFrame(gm.rafId); gm.state = GameState.MENU;
++        return r;
++      });
++      push(`ISO-A ${label}: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)`, entry.playing && !entry.setupShown && entry.tools === 0 && entry.coinsSame, JSON.stringify(entry));
++      sigs[label] = await page.evaluate(() => window.__px02Sig({ seed: 4242 }));
++      noErr(g.errors, `ISO-A ${label}`);
++      await g.browser.close();
++    }
++    neutral = sigs.fresh;
++    fs.writeFileSync(path.join(OUT, 'px02-sig-neutral.json'), JSON.stringify(neutral, null, 2));
++    for (const [label] of profiles.slice(1)) {
++      const same = JSON.stringify(sigs[label]) === JSON.stringify(neutral);
++      push(`ISO-A ${label}: same Arena parameters on seed 4242 as a fresh profile (size, speed, magnet, shield, bots, board, points, growth, combo, coins/XP for a fixed result)`, same && !neutral.error, same ? JSON.stringify(neutral) : JSON.stringify({ fresh: neutral, profile: sigs[label] }));
++    }
++    // No Arena advantage can be bought: no run tools in the code or DOM.
++    const g = await boot(url, { missions: 30, coins: 99999, prisms: 999 });
++    const shop = await g.page.evaluate(() => ({ runTools: typeof RUN_TOOLS !== 'undefined', setupScreen: !!document.getElementById('runSetupScreen'), upsell: !!document.getElementById('resultUpsell'), turboAd: !!AD_PLACEMENTS.turbo_free, confirm: typeof window.game.confirmRunSetup === 'function', upsellFn: typeof window.game.onUpsellClick === 'function' }));
++    push('ISO-A no way to buy an Arena advantage: no RUN_TOOLS, run-tool screen, result upsell, turbo_free ad, confirmRunSetup or onUpsellClick', !shop.runTools && !shop.setupScreen && !shop.upsell && !shop.turboAd && !shop.confirm && !shop.upsellFn, JSON.stringify(shop));
++    await g.browser.close();
++  }
++
++  // ===================== ISO-B: every vortex, Arena / Daily / challenge =========
++  {
++    const g = await boot(url, { missions: 30, coins: 20000, prisms: 500, level: 10 });
++    const page = g.page;
++    const r = await page.evaluate(() => {
++      const gm = window.game, out = { modes: {}, bought: [], noPerks: SKINS.every(s => !s.perks || !s.perks.length) };
++      const modes = { arena: { seed: 4242 }, daily: { seed: 4242, daily: true }, challenge: { seed: 4242, challenge: { score: 500, from: 'QA' } } };
++      // 1) the real Warsztat path for every vortex sold for coins.
++      gm.openWarsztatScreen();
++      for (const sk of SKINS.filter(s => s.price > 0)) {
++        gm.onCosmeticPick('skin', sk);
++        const btn = document.getElementById('btnInfoSheetAction');
++        if (btn && !btn.classList.contains('hidden')) btn.click();
++        gm.closeInfoSheet();
++        out.bought.push(sk.id + ':' + (gm.save.owned.includes(sk.id) && gm.save.selected === sk.id));
++        for (const [m, round] of Object.entries(modes)) (out.modes[m] = out.modes[m] || {})['bought:' + sk.id] = window.__px02Sig(round);
++      }
++      // 2) every vortex, rewards included, simply equipped.
++      for (const sk of SKINS) {
++        if (!gm.save.owned.includes(sk.id)) gm.save.owned.push(sk.id);
++        gm.save.selected = sk.id;
++        for (const [m, round] of Object.entries(modes)) (out.modes[m] = out.modes[m] || {})[sk.id] = window.__px02Sig(round);
++      }
++      return out;
++    });
++    push('ISO-B the real Warsztat purchase works for every coin vortex (bought and worn)', r.bought.length === 6 && r.bought.every(b => b.endsWith(':true')), r.bought.join(' '));
++    push('ISO-B no vortex carries a perk list any more', r.noPerks, '');
++    for (const [m, sigs] of Object.entries(r.modes)) {
++      const ref = sigs.rainbow;
++      const diff = Object.entries(sigs).filter(([, s]) => JSON.stringify(s) !== JSON.stringify(ref)).map(([id, s]) => id + ' ' + JSON.stringify(Object.fromEntries(Object.entries(s).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(ref[k])))));
++      push(`ISO-B ${m}: all ${Object.keys(sigs).length} vortex states (10 vortices + 6 Warsztat purchases) give the neutral vortex's parameters`, diff.length === 0 && !ref.error, diff.length ? diff.join(' | ') : JSON.stringify(ref));
++    }
++    // Copy: Warsztat and its sheets describe looks only.
++    const copy = await page.evaluate(() => {
++      const gm = window.game;
++      gm.openWarsztatScreen();
++      const grid = document.getElementById('skinGrid') ? document.getElementById('skinGrid').innerText : '';
++      const head = document.querySelector('.warsztat-preview-labels') ? document.querySelector('.warsztat-preview-labels').innerText : '';
++      const sheets = [];
++      gm.save.owned = ['rainbow']; gm.save.coins = 0;
++      for (const sk of SKINS.filter(s => s.id !== 'rainbow')) { gm.onCosmeticPick('skin', sk); sheets.push(document.getElementById('infoSheetBody').innerText); gm.closeInfoSheet(); }
++      return { grid, head, sheets: sheets.join(' || ') };
++    });
++    const bonusWords = /bonus|prędko|monet za rundę|XP|punktów|mini-magnes|wzrostu|Start od T2|combo/i;
++    // "BEZ BONUSU" (the preview label saying there is none) is not a promise.
++    const promise = (t) => bonusWords.test(t.replace(/bez bonusu/gi, ''));
++    push('ISO-B Warsztat copy: no vortex promises a bonus (grid, preview label, every info sheet)', !promise(copy.grid) && !promise(copy.head) && !promise(copy.sheets), [copy.grid, copy.head, copy.sheets].join(' ## ').replace(/\s+/g, ' ').slice(0, 400));
++    noErr(g.errors, 'ISO-B');
++    await g.browser.close();
++  }
++
++  // ===================== ISO-C: campaign state new / partial / done / missing / broken
++  {
++    const cases = [['new', { missions: 0 }], ['partly completed', { missions: 37 }], ['finished (240)', { missions: 240 }]];
++    for (const [label, o] of cases) {
++      const g = await boot(url, o);
++      const r = await g.page.evaluate(() => {
++        const gm = window.game, out = {};
++        gm.showScreen('mainMenu');
++        document.getElementById('btnStart').click();
++        out.start = gm.state === GameState.PLAYING;
++        const res = window.__qaPlayArena({ style: 'greedy', round: undefined });
++        out.ended = gm.state === GameState.RESULTS || res.state === GameState.RESULTS;
++        gm.endRound && gm.state !== GameState.RESULTS && gm.endRound();
++        return out;
++      });
++      // Replay ("ZAGRAJ JESZCZE RAZ") from the result screen.
++      const replay = await g.page.evaluate(async () => {
++        const gm = window.game;
++        gm.playCount = 0;
++        await gm.playAgainFlow();
++        const ok = gm.state === GameState.PLAYING;
++        gm.running = false; if (gm.rafId) cancelAnimationFrame(gm.rafId);
++        return ok;
++      });
++      const sig = await g.page.evaluate(() => window.__px02Sig({ seed: 4242 }));
++      const same = JSON.stringify(sansVolatile(sig)) === JSON.stringify(sansVolatile(neutral));
++      push(`ISO-C campaign ${label}: GRAJ, a full round, replay and the round's parameters don't depend on campaign progress`, r.start && r.ended && replay && same, JSON.stringify({ ...r, replay, same }));
++      noErr(g.errors, `ISO-C ${label}`);
++      await g.browser.close();
++    }
++    // Missing campaign block (repaired from defaults) and a broken one (SAVE_GUARD 'invalid').
++    for (const [label, mutate] of [['missing', 'missing'], ['broken (wrong type)', 'broken']]) {
++      const g0 = await openGame(url);
++      await g0.page.addScriptTag({ content: PROFILE });
++      const raw = await g0.page.evaluate((m) => { const s = window.__px02Profile({ missions: 12 }); if (m === 'missing') delete s.campaign; else s.campaign = 'garbage'; return sealSave(s); }, mutate);
++      await g0.browser.close();
++      const g = await boot(url, raw);
++      const r = await g.page.evaluate(() => {
++        const gm = window.game;
++        document.getElementById('btnStart').click();
++        const start = gm.state === GameState.PLAYING;
++        gm.running = false; if (gm.rafId) cancelAnimationFrame(gm.rafId); gm.state = GameState.MENU;
++        const res = window.__qaPlayArena({ style: 'greedy' });
++        return { start, ended: res.state === GameState.RESULTS, guard: SAVE_GUARD.state };
++      });
++      const sig = await g.page.evaluate(() => window.__px02Sig({ seed: 4242 }));
++      const after = await rawOf(g.page);
++      const same = JSON.stringify(sansVolatile(sig)) === JSON.stringify(sansVolatile(neutral));
++      const guardOk = mutate === 'broken' ? (r.guard === 'invalid' && after === raw) : true;
++      push(`ISO-C campaign ${label}: Arena starts and plays with the neutral parameters${mutate === 'broken' ? '; the held-back save stays byte-identical (no forced reset)' : ''}`, r.start && r.ended && same && guardOk, JSON.stringify({ ...r, same, bytesKept: after === raw }));
++      noErr(g.errors, `ISO-C ${label}`);
++      await g.browser.close();
++    }
++  }
++
++  // ===================== ISO-D / BOOST-01..03 ====================================
++  {
++    const g = await boot(url, { missions: 12, coins: 2000, level: 5 });
++    const page = g.page;
++    const d = await page.evaluate(async () => {
++      const gm = window.game, out = {};
++      const camp0 = JSON.stringify(gm.save.campaign), boost0 = JSON.stringify(gm.save.boosters);
++      for (let i = 0; i < 3; i++) window.__qaPlayArena({ style: 'greedy' });
++      out.campaignSame = JSON.stringify(gm.save.campaign) === camp0;
++      out.boostersSame = JSON.stringify(gm.save.boosters) === boost0;
++      out.coins = gm.save.coins;
++      // A deliberate purchase: the briefing's Magnes bought with Arena-earned coins.
++      gm.save.boosters.magnet = 0;
++      const c0 = gm.save.coins;
++      gm.openMissionBriefing('M05');
++      const chip = document.querySelector('#briefingCard [data-booster="magnet"]');
++      if (chip) chip.click();
++      out.chip = !!chip;
++      gm.launchMission('M05');
++      if (gm.introPending) gm.beginMissionPlay();
++      if (gm.rafId) cancelAnimationFrame(gm.rafId);
++      gm.running = false;
++      out.paid = c0 - gm.save.coins;
++      out.used = !!(gm.mission && gm.mission.boosters && gm.mission.boosters.includes('magnet'));
++      gm.leaveCampaignMission();
++      gm.state = GameState.MENU;
++      return out;
++    });
++    push('ISO-D 3 Arena rounds change nothing in the campaign (missions, stars, unlocks, boosters)', d.campaignSame && d.boostersSame, JSON.stringify(d));
++    push('ISO-D shared coins reach the campaign only through a deliberate purchase (Magnes picked in the briefing: -40 coins, used in the mission)', d.chip && d.paid === 40 && d.used, JSON.stringify(d));
++    // BOOST-01: buy (stock), use in a mission, reset -- Arena is unchanged each time.
++    const b = await page.evaluate(() => {
++      const gm = window.game, out = {};
++      out.ref = window.__px02Sig({ seed: 4242 });
++      MISSION_BOOSTERS.forEach(x => { gm.save.boosters[x.id] = 5; });
++      out.stocked = window.__px02Sig({ seed: 4242 });
++      window.__qaPlayMission('M05', { boosters: MISSION_BOOSTERS.map(x => x.id) });
++      gm.leaveCampaignMission && gm.mode === 'campaign' && gm.leaveCampaignMission();
++      out.afterMission = window.__px02Sig({ seed: 4242 });
++      MISSION_BOOSTERS.forEach(x => { gm.save.boosters[x.id] = 0; });
++      out.reset = window.__px02Sig({ seed: 4242 });
++      return out;
++    });
++    const sB = (x) => JSON.stringify(sansVolatile(x));
++    push('BOOST-01 mission boosters bought, used in a mission (all five) and reset never change Arena parameters', sB(b.stocked) === sB(b.ref) && sB(b.afterMission) === sB(b.ref) && sB(b.reset) === sB(b.ref) && !b.ref.error, JSON.stringify({ ref: b.ref.speed + '/' + b.ref.startRadius, stocked: b.stocked.speed + '/' + b.stocked.startRadius, afterMission: b.afterMission.speed + '/' + b.afterMission.startRadius + '/' + b.afterMission.magnetPull, reset: b.reset.speed }));
++    // BOOST-02: Magnes, Sprint, Turbo start, Zegar and Tarcza act in a mission
++    // (each one started on its own against a start without boosters).
++    const m = await page.evaluate(() => {
++      const gm = window.game;
++      const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
++      let vnow = realNow(); performance.now = () => vnow;
++      const step = () => { if (gm.evolutionPending) gm.skipEvolutionOffer(); vnow += 1000 / 30; gm.update(1 / 30); };
++      const start = (boosters) => { gm.missionBoosters = boosters; gm.startCampaignMission('M05'); if (gm.introPending) gm.beginMissionPlay(); if (gm.rafId) cancelAnimationFrame(gm.rafId); gm.running = false; };
++      // The magnet's own pass (eating would swallow anything in its narrow
++      // band first): an eatable entity at 1.35 r, one second of pull.
++      const pull = () => {
++        const p = gm.player, tier = gm.campaignTierIndex(gm.campaignPlayerTier().id);
++        const e = gm.campaignEntities.find(x => !x.consumed && !x.eating && x.live && x.type !== 'gate' && x.type !== 'landmark' && !((x.type === 'node' || x.type === 'pylon') && !x.active) && tier >= x.stats.minTier);
++        if (!e) return null;
++        const d0 = p.radius * 1.35; e.x = p.x + d0; e.y = p.y;
++        for (let i = 0; i < 30; i++) gm.updateMutationEffectsCampaign(1 / 30);
++        return +(d0 - Math.hypot(e.x - p.x, e.y - p.y)).toFixed(2);
++      };
++      const read = (b) => { start(b); const r = { speed: +gm.player.getSpeed().toFixed(3), mult: gm.player.perkSpeedMult || 1, time: gm.mission.timeRemaining, shields: gm.mission.shields || 0, radius: +gm.player.radius.toFixed(2), magnet: gm.activeMutations.has('magnes'), pull: pull() }; return r; };
++      const out = { none: read([]) }; gm.leaveCampaignMission();
++      for (const id of ['sprint', 'magnet', 'start', 'time', 'shield']) { out[id] = read([id]); if (id === 'sprint') { for (let i = 0; i < 60 * 30 && !gm.mission.ended; i++) step(); out.sprintAfter60s = gm.player.perkSpeedMult; } gm.leaveCampaignMission(); }
++      gm.state = GameState.MENU;
++      performance.now = realNow;
++      out.sprintMult = CONFIG.boosters.sprintMult;
++      return out;
++    });
++    const n0 = m.none;
++    const ok2 = Math.abs(m.sprint.speed / n0.speed - m.sprintMult) < 0.01 && m.sprintAfter60s === m.sprintMult
++      && m.magnet.magnet && !n0.magnet && m.magnet.pull > (n0.pull || 0) + 1
++      && m.start.radius > n0.radius && m.time.time > n0.time && m.shield.shields > n0.shields;
++    push('BOOST-02 in a mission: Sprint (+15% for the whole mission), Magnes (pull), Turbo start (T2), Zegar (+time), Tarcza (shields) each act', ok2, JSON.stringify(m));
++    // BOOST-03: no Turbo for coins or for an ad after a lost round / in a rematch.
++    const t = await page.evaluate(async () => {
++      const gm = window.game, out = { rewarded: [], interstitial: 0 };
++      const rw = gm.monetization.rewarded.bind(gm.monetization);
++      gm.monetization.rewarded = async (pl) => { out.rewarded.push(pl); return rw(pl); };
++      gm.save.stats.runsPlayed = 30; gm.save.coins = 5;
++      for (const round of [{}, { seed: 4242, daily: true }, { seed: 4242, challenge: { score: 99999, from: 'QA' } }]) {
++        const res = window.__qaPlayArena({ style: 'afk', round });
++        const up = document.getElementById('resultUpsell');
++        const shown = !!up && !up.classList.contains('hidden');
++        const k = round.daily ? 'daily' : round.challenge ? 'challenge' : 'arena';
++        out[k] = { place: res.place, state: gm.state, upsell: shown, turboText: /TURBO/i.test(document.getElementById('gameOverScreen').innerText) };
++        // A player tapping the offer (old releases: Turbo for coins or for an ad).
++        if (shown) { await gm.onUpsellClick(); out[k].afterTap = gm.state; gm.running = false; if (gm.rafId) cancelAnimationFrame(gm.rafId); if (gm.state === GameState.PLAYING) { gm.state = GameState.MENU; } }
++      }
++      const c0 = gm.save.coins;
++      gm.playCount = 0;
++      await gm.playAgainFlow(); // the friend rematch (lost challenge -> same map)
++      out.rematch = { playing: gm.state === GameState.PLAYING, challenge: !!gm.challenge, radius: +gm.player.radius.toFixed(3), shield: gm.shieldCharges || 0, coinsSame: gm.save.coins === c0 };
++      gm.running = false; if (gm.rafId) cancelAnimationFrame(gm.rafId);
++      out.placements = Object.keys(AD_PLACEMENTS).join(',');
++      return out;
++    });
++    const noTurbo = ['arena', 'daily', 'challenge'].every(k => t[k] && !t[k].upsell && !t[k].turboText) && t.rewarded.length === 0 && !/turbo/.test(t.placements);
++    push('BOOST-03 Arena / Daily / friend challenge results: no Turbo offer (coins or ad), no rewarded ad fired; the rematch starts plain', noTurbo && t.rematch.playing && t.rematch.challenge && t.rematch.shield === 0 && t.rematch.coinsSame && t.rematch.radius === neutral.startRadius, JSON.stringify(t));
++    push('BOOST-03 campaign Turbo start is still a mission booster', true && (await page.evaluate(() => MISSION_BOOSTERS.some(b => b.id === 'start'))), '');
++    noErr(g.errors, 'ISO-D/BOOST');
++    await g.browser.close();
++  }
++
++  // ===================== LEGACY-01: the full set, 37 coins, white worn ==========
++  const L1 = { coins: 37, prisms: 55, level: 9, xp: 120, missions: 14, owned: ['rainbow', 'cyan', 'pink', 'green', 'purple', 'gold', 'white'], selected: 'white',
++    boosters: { time: 2, start: 1, magnet: 3, shield: 1, sprint: 2, gift: true, sprintGift: true }, hub: { coreCharge: 40, coreLevel: 3 },
++    entitlements: { noAds: true, purchased: ['starter_pack'] }, auras: { owned: ['none', 'starter_glow'], selected: 'starter_glow' } };
++  const keep = (s) => s && JSON.stringify({ owned: s.owned, selected: s.selected, prisms: s.prisms, player: s.player, boosters: s.boosters, entitlements: s.entitlements, auras: s.auras, effects: s.effects, overdriveSkins: s.overdriveSkins, campaign: s.campaign, hub: s.hub, stats: s.stats, badges: s.badges, unlocks: s.unlocks, login: s.login, freeChest: s.freeChest, guestId: s.guestId });
++  {
++    const raw = await legacyRaw(url, L1);
++    fs.writeFileSync(path.join(FIXTURES, 'legacy-01-full-set.txt'), raw);
++    const orig = JSON.parse(raw);
++    const ctx = await sharedContext(raw);
++    const page = await ctx.open(url);
++    const a = await page.evaluate(() => ({ coins: window.game.save.coins, eco: window.game.save.economy, guard: SAVE_GUARD.state, bak: localStorage.getItem('vectorHoleSave_v1.bak') }));
++    const title = await sheetTitle(page);
++    const body = await page.evaluate(() => document.getElementById('infoSheetBody').innerText);
++    const disk = await diskSave(page);
++    push('LEGACY-01 6 paid vortices + 37 coins -> 4907 coins in memory and on disk, marker committed in the same write', a.coins === 4907 && disk.coins === 4907 && disk.economy && disk.economy.looksOnly === 1 && disk.economy.refund === 4870 && a.guard === 'ok', JSON.stringify({ mem: a.coins, disk: disk.coins, eco: disk.economy, guard: a.guard }));
++    push('LEGACY-01 everything else kept (vortices owned + white worn, prisms, XP, boosters, purchases, Smuga, missions, Core City, stats, unlocks)', keep(disk) === keep(orig), keep(disk) === keep(orig) ? '' : keep(disk).slice(0, 300));
++    push('LEGACY-01 the original pre-D+ bytes are kept under .bak before the commit', a.bak === raw, a.bak ? 'bak ok' : 'no bak');
++    push('LEGACY-01 one card explains the change with the amount', REFUND_TITLE.test(title || '') && /4870|4 870/.test(body), `${title} | ${body.replace(/\s+/g, ' ').slice(0, 200)}`);
++    // LEGACY-02: two reloads, a second tab opened later.
++    await page.evaluate(() => window.game.closeInfoSheet());
++    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
++    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
++    const r2 = await page.evaluate(() => ({ coins: window.game.save.coins }));
++    const t2 = await sheetTitle(page);
++    const tab2 = await ctx.open(url);
++    const r3 = await tab2.evaluate(() => ({ coins: window.game.save.coins }));
++    const t3 = await sheetTitle(tab2);
++    const disk2 = await diskSave(page);
++    push('LEGACY-02 two reloads + a second tab: still 4907, the refund and its card come once', r2.coins === 4907 && r3.coins === 4907 && disk2.coins === 4907 && !REFUND_TITLE.test(t2 || '') && !REFUND_TITLE.test(t3 || ''), JSON.stringify({ reload: r2.coins, tab2: r3.coins, disk: disk2.coins, t2, t3 }));
++    noErr(ctx.errors, 'LEGACY-01/02');
++    await ctx.browser.close();
++  }
++  // LEGACY-02 race: two tabs both read the pre-D+ save; the second one's commit
++  // finds newer bytes (stale writer) -> no second refund, no card there.
++  {
++    const raw = await legacyRaw(url, L1);
++    const ctx = await sharedContext(raw);
++    const a = await ctx.open(url);
++    // Tab B's loadSave() read sees the old bytes (it read them before tab A
++    // committed); every later read (saveGame()'s check) sees storage as it is.
++    // (Only the tab's first load: sessionStorage survives the reload below.)
++    const inject = `(() => { if (sessionStorage.getItem('__qaRaceOnce')) return; sessionStorage.setItem('__qaRaceOnce', '1'); const LEG = ${JSON.stringify(raw)}; const get = Storage.prototype.getItem; let first = true;
++      Storage.prototype.getItem = function (k) { if (first && k === 'vectorHoleSave_v1' && window.name === 'B' && /loadSave/.test(new Error().stack)) { first = false; return LEG; } return get.call(this, k); }; })();`;
++    const b = await ctx.context.newPage();
++    await b.addInitScript(`window.name = 'B';` + inject);
++    await b.goto(url); await b.waitForFunction(() => window.game && window.game.state); await b.waitForTimeout(400);
++    const rb = await b.evaluate(() => ({ coins: window.game.save.coins, guard: SAVE_GUARD.state, eco: window.game.save.economy }));
++    const tb = await sheetTitle(b);
++    const disk = await diskSave(a);
++    push('LEGACY-02 stale writer: a tab that read the old save before another tab committed gets no refund in memory, writes nothing, shows no refund card', rb.coins === 37 && rb.guard === 'stale' && disk.coins === 4907 && !REFUND_TITLE.test(tb || ''), JSON.stringify({ tabB: rb, disk: disk.coins, tb }));
++    await b.reload(); await b.waitForFunction(() => window.game && window.game.state); await b.waitForTimeout(300);
++    const rb2 = await b.evaluate(() => window.game.save.coins);
++    push('LEGACY-02 that tab after a reload: 4907 (exactly one refund)', rb2 === 4907, String(rb2));
++    noErr(ctx.errors, 'LEGACY-02 race');
++    await ctx.browser.close();
++  }
++
++  // ===================== LEGACY-03: future / corrupt / invalid / unavailable ====
++  {
++    const fut = await legacyRaw(url, { ...L1, mutate: 'future' });
++    const bad = await legacyRaw(url, { ...L1, mutate: 'badCoins' });
++    const good = await legacyRaw(url, L1);
++    const cut = good.slice(0, Math.floor(good.length * 0.6));
++    for (const [label, raw, expect] of [['future (schema 99)', fut, 'future'], ['corrupt (truncated)', cut, 'corrupt'], ['invalid (coins "500")', bad, 'invalid']]) {
++      const g = await boot(url, raw);
++      const r = await g.page.evaluate(() => ({ coins: window.game.save.coins, guard: SAVE_GUARD.state, looksOnly: window.game.save.economy ? window.game.save.economy.looksOnly : null }));
++      const ops = await g.page.evaluate(() => { const gm = window.game; window.__qaPlayArena({ style: 'greedy' }); gm.showScreen('mainMenu'); saveGame(gm.save); return gm.save.coins; });
++      const after = await rawOf(g.page);
++      const t = await sheetTitle(g.page);
++      const refunded = expect === 'invalid' ? r.coins >= 4870 : (expect === 'future' ? r.coins !== 37 : false);
++      push(`LEGACY-03 ${label}: bytes untouched after load + a round + autosaves, no refund, no refund card`, after === raw && r.guard === expect && !refunded && !REFUND_TITLE.test(t || ''), JSON.stringify({ ...r, same: after === raw, title: t }));
++      if (expect === 'invalid') {
++        // The player's explicit repair writes the save (no refund yet: it was not verified); the next load settles once.
++        await g.page.evaluate(() => { const gm = window.game; gm.saveGuardShown = null; gm.showSaveGuardNotice('invalid'); document.getElementById('btnInfoSheetAction').click(); });
++        const rep = await diskSave(g.page);
++        await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(300);
++        const after2 = await g.page.evaluate(() => ({ coins: window.game.save.coins, rescue: localStorage.getItem('vectorHoleSave_v1.rescue') }));
++        const disk2 = await diskSave(g.page);
++        push('LEGACY-03 invalid -> NAPRAW ZAPIS -> reload: original under .rescue, then exactly one refund on the repaired save', after2.rescue === raw && rep && rep.economy && rep.economy.looksOnly === 0 && disk2.coins === rep.coins + 4870 && after2.coins === disk2.coins, JSON.stringify({ repairedCoins: rep && rep.coins, repairedMarker: rep && rep.economy, final: disk2.coins }));
++      }
++      noErr(g.errors, `LEGACY-03 ${label}`);
++      await g.browser.close();
++    }
++    const denied = () => { Storage.prototype.getItem = function () { throw new DOMException('denied', 'SecurityError'); }; };
++    const g = await boot(url, good, { initScript: denied });
++    const r = await g.page.evaluate(() => ({ coins: window.game.save.coins, guard: SAVE_GUARD.state }));
++    await g.page.evaluate(() => { window.__qaPlayArena({ style: 'greedy' }); saveGame(window.game.save); });
++    const t = await sheetTitle(g.page);
++    push('LEGACY-03 unavailable storage: no refund, no write, no refund card', r.guard === 'unavailable' && r.coins < 4870 && !REFUND_TITLE.test(t || ''), JSON.stringify({ ...r, title: t }));
++    await g.browser.close();
++  }
++
++  // ===================== LEGACY-04: quota during the refund commit =============
++  {
++    const raw = await legacyRaw(url, L1);
++    for (const [label, rule] of [['every write fails', 'all'], ['.bak ok, the save write fails', 'main']]) {
++      const quota = `(() => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) {
++        if (localStorage.getItem('__qaQuota') === '1' && (${rule === 'all' ? `/^vectorHoleSave_v1/.test(k)` : `k === 'vectorHoleSave_v1'`})) throw new DOMException('full', 'QuotaExceededError');
++        return set.call(this, k, v); }; })();`;
++      const ctx = await sharedContext(raw, `if (!localStorage.getItem('__qaQuotaInit')) { localStorage.setItem('__qaQuotaInit', '1'); localStorage.setItem('__qaQuota', '1'); }` + quota);
++      const page = await ctx.open(url);
++      const r = await page.evaluate(() => ({ coins: window.game.save.coins, looksOnly: (window.game.save.economy || {}).looksOnly, guard: SAVE_GUARD.state }));
++      const t = await sheetTitle(page);
++      const disk = await rawOf(page);
++      // Spending the refund is impossible (it isn't there); a purchase attempt fails for lack of coins.
++      const spend = await page.evaluate(() => { const gm = window.game; gm.save.owned = gm.save.owned.filter(id => id !== 'purple'); gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'purple')); const b = document.getElementById('btnInfoSheetAction'); const buyable = /KUP/.test(b.textContent) && !b.classList.contains('hidden'); gm.closeInfoSheet(); gm.save.owned.push('purple'); return buyable; });
++      push(`LEGACY-04 quota (${label}): the refund is rolled back in memory (37 coins, marker 0), disk keeps the original bytes, no card, nothing to spend`, r.coins === 37 && r.looksOnly === 0 && disk === raw && !REFUND_TITLE.test(t || '') && !spend, JSON.stringify({ ...r, diskSame: disk === raw, title: t, spend }));
++      // Storage frees up mid-session: an autosave writes the unsettled save; the next load refunds once.
++      const mid = await page.evaluate(() => { localStorage.setItem('__qaQuota', '0'); const res = window.__qaPlayArena({ style: 'greedy' }); return { coins: window.game.save.coins, earned: res.coinsEarned }; });
++      const diskMid = await diskSave(page);
++      await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
++      const after = await page.evaluate(() => window.game.save.coins);
++      const t2 = await sheetTitle(page);
++      await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
++      const after2 = await page.evaluate(() => window.game.save.coins);
++      push(`LEGACY-04 quota (${label}) lifted: the unsettled save is written (marker 0), the next load pays exactly one refund (+card), a further reload nothing`, diskMid && diskMid.economy && diskMid.economy.looksOnly === 0 && diskMid.coins === mid.coins && after === mid.coins + 4870 && after2 === after && REFUND_TITLE.test(t2 || ''), JSON.stringify({ mid, diskMarker: diskMid && diskMid.economy, after, after2, t2 }));
++      noErr(ctx.errors, `LEGACY-04 ${label}`);
++      await ctx.browser.close();
++    }
++  }
++
++  // ===================== LEGACY-05: v1 / v5 / v12 -> migration -> refund =======
++  {
++    const v1 = JSON.stringify({ coins: 50, owned: ['rainbow', 'cyan'], selected: 'cyan' });
++    const v5 = JSON.stringify({ schemaVersion: 5, coins: 120, prisms: 3, owned: ['rainbow', 'cyan', 'gold'], selected: 'gold', guestId: 'guest_old5',
++      settings: { inputMode: 'thumbpad', sensitivity: 1, haptics: true, minimap: 'auto' }, stats: { runsPlayed: 4 },
++      auras: { owned: ['none'], selected: 'none' }, displayName: null, hub: { coreCharge: 10 }, daily: { lastSeedDate: null, lastSeedScore: 0 }, mission: { dateKey: null, completed: false } });
++    const v12 = await legacyRaw(url, { ...L1, mutate: 'v12' });
++    fs.writeFileSync(path.join(FIXTURES, 'legacy-05-v5.txt'), v5);
++    fs.writeFileSync(path.join(FIXTURES, 'legacy-05-v12.txt'), v12);
++    for (const [label, raw, coins, check] of [['v1', v1, 150, s => s.selected === 'cyan'], ['v5', v5, 1520, s => s.hub.coreCharge === 10 && s.stats.runsPlayed === 4 && s.prisms === 3 && s.selected === 'gold'], ['v12 (energy era)', v12, 4907, s => !('energy' in s) && Object.keys(s.campaign.completed).length === 14 && s.boosters.magnet === 3 && s.entitlements.noAds]]) {
++      const g = await boot(url, raw);
++      const r = await g.page.evaluate(() => ({ coins: window.game.save.coins, bak: localStorage.getItem('vectorHoleSave_v1.bak'), guard: SAVE_GUARD.state }));
++      const disk = await diskSave(g.page);
++      push(`LEGACY-05 ${label} -> v13 -> refund: ${coins} coins, original under .bak, history kept`, r.guard === 'ok' && disk.schemaVersion === 13 && disk.coins === coins && r.coins === coins && r.bak === raw && disk.economy.looksOnly === 1 && check(disk), JSON.stringify({ coins: disk.coins, mem: r.coins, bak: r.bak === raw, eco: disk.economy }));
++      noErr(g.errors, `LEGACY-05 ${label}`);
++      await g.browser.close();
++    }
++  }
++
++  // ===================== LEGACY-06: the previous release reads/rewrites =======
++  {
++    const baseDir = path.join(OUT, 'base-' + BASE_REV.slice(0, 7));
++    let haveBase = false;
++    try {
++      fs.mkdirSync(baseDir, { recursive: true });
++      for (const f of ['index.html', 'style.css', 'game.js']) fs.writeFileSync(path.join(baseDir, f), execSync(`git -C "${ROOT}" show ${BASE_REV}:${f}`, { maxBuffer: 64 << 20 }));
++      haveBase = true;
++    } catch (e) { console.log('NOT RUN  LEGACY-06 (previous release not available from git: ' + e.message.split('\n')[0] + ')'); }
++    const sameCode = haveBase && fs.readFileSync(path.join(baseDir, 'game.js'), 'utf8') === fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8');
++    if (haveBase && !sameCode) {
++      const { server, url: newUrl, baseUrl } = await serveWithBase(baseDir);
++      const raw = await legacyRaw(newUrl, { ...L1, coins: 100, owned: ['rainbow', 'cyan', 'pink', 'green'], selected: 'green' });
++      const ctx = await sharedContext(raw);
++      const p1 = await ctx.open(newUrl);
++      const s1 = await diskSave(p1);
++      await p1.close();
++      // The old release: reads the settled save, buys Ultrafiolet (800, still with its perk there), plays a round, saves.
++      const p2 = await ctx.open(baseUrl);
++      const old = await p2.evaluate(() => {
++        const gm = window.game;
++        const r = { guard: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', eco: gm.save.economy, coins: gm.save.coins };
++        gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'purple'));
++        const b = document.getElementById('btnInfoSheetAction'); if (b && !b.classList.contains('hidden')) b.click();
++        gm.closeInfoSheet();
++        window.__qaPlayArena({ style: 'greedy' });
++        saveGame(gm.save);
++        r.after = gm.save.coins; r.owned = gm.save.owned.join(',');
++        return r;
++      });
++      const s2 = await diskSave(p2);
++      await p2.close();
++      const p3 = await ctx.open(newUrl);
++      const s3 = await p3.evaluate(() => ({ coins: window.game.save.coins, eco: window.game.save.economy }));
++      const t3 = await sheetTitle(p3);
++      push('LEGACY-06 the settled save (870 coins) is read by 5db3b02 without a guard block and the marker survives its rewrite', s1.coins === 870 && old.guard === 'ok' && old.eco && old.eco.looksOnly === 1 && s2.economy && s2.economy.looksOnly === 1 && s2.economy.refund === 770, JSON.stringify({ first: s1.coins, old, oldDisk: s2.economy }));
++      push('LEGACY-06 back on the new code: no second refund (also none for the vortex bought on the old release), no card', s3.coins === s2.coins && s3.eco.looksOnly === 1 && s3.eco.refund === 770 && !REFUND_TITLE.test(t3 || '') && /purple/.test(old.owned), JSON.stringify({ oldDisk: s2.coins, now: s3.coins, t3 }));
++      noErr(ctx.errors, 'LEGACY-06');
++      await ctx.browser.close();
++      server.close();
++    } else if (sameCode) console.log('NOT RUN  LEGACY-06 (running on the previous release itself)');
++  }
++
++  // ===================== LEGACY-07: policy cases ===============================
++  {
++    // A brand-new profile is born settled: buying a vortex later is never refunded.
++    const ctx = await sharedContext(null);
++    const p = await ctx.open(url);
++    const fresh = await p.evaluate(() => {
++      const gm = window.game;
++      const r = { eco: JSON.stringify(gm.save.economy) };
++      gm.save.coins = 300; saveGame(gm.save);
++      gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'cyan'));
++      const b = document.getElementById('btnInfoSheetAction'); b.click(); gm.closeInfoSheet();
++      r.coins = gm.save.coins;
++      return r;
++    });
++    await p.reload(); await p.waitForFunction(() => window.game && window.game.state); await p.waitForTimeout(300);
++    const fr = await p.evaluate(() => ({ coins: window.game.save.coins, owned: window.game.save.owned.join(',') }));
++    push('LEGACY-07 new profile: born settled; a vortex bought after D+ (cyan, 100) is never refunded', /"looksOnly":1/.test(fresh.eco) && fresh.coins === 200 && fr.coins === 200 && /cyan/.test(fr.owned), JSON.stringify({ fresh, reload: fr }));
++    await ctx.browser.close();
++    for (const [label, o, coins] of [
++      ['some paid vortices (cyan + green)', { coins: 10, owned: ['rainbow', 'cyan', 'green'], selected: 'cyan' }, 560],
++      ['reward vortices only (Aurora, Kryształ, Pryzmat: kept, no money)', { coins: 10, owned: ['rainbow', 'aurora', 'krysztal', 'pryzmat'], selected: 'pryzmat' }, 10],
++      ['an unknown / removed vortex id', { coins: 10, owned: ['rainbow', 'legacy_blue', 'cyan'], selected: 'cyan' }, 110]
++    ]) {
++      const raw = await legacyRaw(url, o);
++      const g = await boot(url, raw);
++      const r = await g.page.evaluate(() => ({ coins: window.game.save.coins, owned: window.game.save.owned.join(','), selected: window.game.save.selected }));
++      const t = await sheetTitle(g.page);
++      const disk = await diskSave(g.page);
++      const card = coins > o.coins;
++      push(`LEGACY-07 ${label}: ${coins} coins, vortices kept, card ${card ? 'once' : 'none'}`, r.coins === coins && disk.coins === coins && r.owned === o.owned.join(',') && r.selected === o.selected && REFUND_TITLE.test(t || '') === card && disk.economy.looksOnly === 1, JSON.stringify({ ...r, disk: disk.coins, title: t }));
++      noErr(g.errors, `LEGACY-07 ${label}`);
++      await g.browser.close();
++    }
++    // A vortex bought while the line is not settled yet (a held-back save played
++    // from memory) is a purchase after D+: repaired + reloaded, only the
++    // historical vortex is refunded.
++    {
++      const raw = await legacyRaw(url, { owned: ['rainbow', 'green'], selected: 'green', mutate: 'badCoins', badCoins: '900' });
++      const g = await boot(url, raw);
++      const r = await g.page.evaluate(() => {
++        const gm = window.game, out = { guard: SAVE_GUARD.state, coins0: gm.save.coins };
++        gm.closeInfoSheet();
++        gm.openWarsztatScreen();
++        gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'cyan'));
++        document.getElementById('btnInfoSheetAction').click();
++        out.bought = gm.save.owned.includes('cyan'); out.after = (gm.save.economy.boughtAfter || []).join(',');
++        gm.saveGuardShown = null; gm.showSaveGuardNotice('invalid'); document.getElementById('btnInfoSheetAction').click();
++        return out;
++      });
++      const rep = await diskSave(g.page);
++      await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(300);
++      const fin = await diskSave(g.page);
++      push('LEGACY-07 a paid vortex bought on a not-yet-settled line (held-back save, then NAPRAW ZAPIS) is never refunded; the historical one is (900 - 100 + 450)', r.guard === 'invalid' && r.coins0 === 900 && r.bought && r.after === 'cyan' && rep.economy.looksOnly === 0 && fin.coins === 1250 && fin.economy.refund === 450 && fin.owned.includes('cyan'), JSON.stringify({ ...r, repaired: rep.coins, final: fin.coins, eco: fin.economy }));
++      noErr(g.errors, 'LEGACY-07 bought while unsettled');
++      await g.browser.close();
++    }
++    // Dev test mode: a copy of a pre-D+ real save settles only in the sandbox slot.
++    {
++      const raw = await legacyRaw(url, { coins: 10, owned: ['rainbow', 'cyan'], selected: 'cyan' });
++      const ctx2 = await sharedContext(raw, `localStorage.setItem('vectorHoleDevAccess_v1', ${JSON.stringify(devCodeToken('dev'))});`);
++      const page = await ctx2.open(url);
++      const realAfterBoot = await rawOf(page);
++      await page.evaluate(() => { window.game.devPanel.open(); const t = document.querySelector('#devPanel [data-tab="data"]'); if (t) t.click(); const b = document.querySelector('#devPanel [data-act="sandbox-copy"]'); if (b) b.click(); });
++      await page.waitForFunction(() => window.game && window.game.devPanel && DEV.sandbox, null, { timeout: 15000 }).catch(() => {});
++      await page.waitForTimeout(300);
++      const sb = await page.evaluate(() => ({ sandbox: DEV.sandbox, coins: window.game.save.coins, sandboxDisk: localStorage.getItem(DEV_SANDBOX_SAVE_KEY) }));
++      const realNow = await rawOf(page);
++      const sbDisk = sb.sandboxDisk ? JSON.parse(sb.sandboxDisk) : null;
++      push('LEGACY-07 dev test mode: the real save is settled once on the real slot; the sandbox copy carries that state (no second refund), the real bytes are untouched by test mode', sb.sandbox && JSON.parse(realAfterBoot).coins === 110 && realNow === realAfterBoot && sbDisk && sbDisk.coins === 110 && sb.coins === 110, JSON.stringify({ sandbox: sb.sandbox, realCoins: JSON.parse(realAfterBoot).coins, sbCoins: sbDisk && sbDisk.coins, mem: sb.coins, realSame: realNow === realAfterBoot }));
++      noErr(ctx2.errors, 'LEGACY-07 dev');
++      await ctx2.browser.close();
++    }
++  }
++
++  // ===================== LEGACY-08: cloud copy / backup code / re-adoption =====
++  {
++    const mockCrazy = (store) => `
++      window.__cgStore = ${JSON.stringify(store || {})};
++      window.CrazyGames = { SDK: { init: async () => {},
++        game: { gameplayStart() {}, gameplayStop() {}, loadingStop() {}, happytime() {} },
++        ad: { requestAd: (t, cb) => { cb && cb.adFinished && cb.adFinished(); } },
++        data: { getItem: k => (k in __cgStore ? __cgStore[k] : null), setItem: (k, v) => { __cgStore[k] = v; }, removeItem: k => { delete __cgStore[k]; } } } };`;
++    const cloudBoot = async (local, remote) => {
++      const g = await boot(url, local, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: remote }) });
++      await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
++      await g.page.waitForTimeout(600);
++      return g;
++    };
++    const legacy = await legacyRaw(url, L1);
++    // (a) delayed cloud: the account still has the same pre-D+ save.
++    {
++      const g = await cloudBoot(legacy, legacy);
++      const r = await g.page.evaluate((k) => ({ coins: window.game.save.coins, cloud: JSON.parse(__cgStore[k]) }), KEY);
++      push('LEGACY-08a delayed cloud copy (same pre-D+ save): one refund, the settled save is mirrored up', r.coins === 4907 && r.cloud.coins === 4907 && r.cloud.economy.looksOnly === 1, JSON.stringify({ coins: r.coins, cloud: r.cloud.coins }));
++      await g.browser.close();
++    }
++    // (b) this device settled; the account holds a pre-D+ save with more progress (another device).
++    {
++      const settled = await (async () => { const g = await boot(url, legacy); const s = await rawOf(g.page); await g.browser.close(); return s; })();
++      const ahead = await legacyRaw(url, { ...L1, coins: 500, missions: 40, level: 15 });
++      const g = await cloudBoot(settled, ahead);
++      const r = await g.page.evaluate((k) => ({ coins: window.game.save.coins, level: window.game.save.player.level, cloud: JSON.parse(__cgStore[k]) }), KEY);
++      const disk = await diskSave(g.page);
++      const t = await sheetTitle(g.page);
++      push('LEGACY-08b account copy ahead and pre-D+: it replaces this line and gets its own single refund (500 + 4870), mirrored, with the card', r.level === 15 && r.coins === 5370 && disk.coins === 5370 && r.cloud.coins === 5370 && r.cloud.economy.looksOnly === 1 && REFUND_TITLE.test(t || ''), JSON.stringify({ coins: r.coins, disk: disk.coins, cloud: r.cloud.coins, t }));
++      await g.browser.close();
++    }
++    // (c) this device pre-D+; the account holds a settled save with more progress.
++    {
++      const aheadSettled = await (async () => { const raw = await legacyRaw(url, { ...L1, coins: 500, missions: 40, level: 15 }); const g = await boot(url, raw); const s = await rawOf(g.page); await g.browser.close(); return s; })();
++      const g = await cloudBoot(legacy, aheadSettled);
++      const r = await g.page.evaluate(() => ({ coins: window.game.save.coins, level: window.game.save.player.level }));
++      push('LEGACY-08c account copy ahead and already settled: adopted as is, no further refund', r.level === 15 && r.coins === 5370, JSON.stringify(r));
++      await g.browser.close();
++    }
++    // (d) a backup code made before D+, loaded twice on a settled device.
++    {
++      const code = await (async () => { const g = await openGame(url); const c = await g.page.evaluate((raw) => 'VH1.' + btoa(unescape(encodeURIComponent(raw))), legacy); await g.browser.close(); return c; })();
++      const settled = await (async () => { const raw = await legacyRaw(url, { coins: 9000, owned: ['rainbow'], missions: 3, level: 2 }); const g = await boot(url, raw); const s = await rawOf(g.page); await g.browser.close(); return s; })();
++      const g = await boot(url, settled);
++      const r = await g.page.evaluate((c) => {
++        const gm = window.game, out = {};
++        for (let i = 0; i < 2; i++) {
++          gm.closeInfoSheet();
++          gm.openBackupLoad(); document.getElementById('backupInput').value = c; document.getElementById('btnInfoSheetAction').click();
++          const act = document.getElementById('btnInfoSheetAction'); if (/MIMO TO/.test(act.textContent) && !act.classList.contains('hidden')) act.click();
++          out['coins' + i] = gm.save.coins; out['disk' + i] = JSON.parse(localStorage.getItem('vectorHoleSave_v1')).coins;
++        }
++        return out;
++      }, code);
++      push('LEGACY-08d a pre-D+ backup code: that state gets one refund (37 + 4870); loading the same code again gives the same state, not a second refund', r.coins0 === 4907 && r.disk0 === 4907 && r.coins1 === 4907 && r.disk1 === 4907, JSON.stringify(r));
++      await g.browser.close();
++    }
++    // (e) re-adopting a save object that is already settled changes nothing.
++    {
++      const g = await boot(url, legacy);
++      const r = await g.page.evaluate(() => { const gm = window.game; const copy = JSON.parse(JSON.stringify(gm.save)); gm.adoptSave(copy, 'backup'); gm.adoptSave(JSON.parse(JSON.stringify(gm.save)), 'backup'); return gm.save.coins; });
++      push('LEGACY-08e re-adopting an already settled save twice: no further refund', r === 4907, String(r));
++      await g.browser.close();
++    }
++  }
++
++  return results;
++}
++
++if (process.argv[1] && process.argv[1].endsWith('px02-isolation.mjs')) {
++  const { server, url } = await serve();
++  const results = await runPx02Checks(url);
++  server.close();
++  const failed = results.filter(r => !r.ok);
++  console.log(`\n${results.length - failed.length}/${results.length} PX02 checks passed`);
++  process.exit(failed.length ? 1 : 0);
++}

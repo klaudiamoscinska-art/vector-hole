@@ -1,0 +1,22 @@
+// Measures header fit on nav screens at phone widths for several balances.
+import path from 'node:path';
+const root = process.argv[2];
+const { serve, openGame, veteranSave } = await import(path.join(root, 'qa', 'lib.mjs'));
+const { server, url } = await serve();
+const out = [];
+for (const w of [375, 360, 320]) for (const coins of [2587, 4870, 10000, 99999]) {
+  const g = await openGame(url, { viewport: { width: w, height: 667 } });
+  const s = await veteranSave(g.page, { missions: 6, coins, runsPlayed: 5 });
+  s.prisms = coins >= 10000 ? 999 : 55;
+  await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), s);
+  await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state);
+  const r = await g.page.evaluate(() => {
+    const gm = window.game; gm.openWarsztatScreen(); gm.updateCoinDisplays();
+    const t = document.querySelector('#shopScreen .app-title'); const gear = document.querySelector('#shopScreen .hub-gear-btn');
+    const right = document.querySelector('#shopScreen .hub-header-right').getBoundingClientRect();
+    return { cut: t.scrollWidth > t.clientWidth + 1, fs: getComputedStyle(t).fontSize, gearIn: gear.getBoundingClientRect().right <= innerWidth, rightEdge: Math.round(right.right), vw: innerWidth };
+  });
+  out.push(`${w}px coins ${coins}: title ${r.cut ? 'CUT' : 'ok'} (${r.fs}), gear on screen ${r.gearIn}`);
+  await g.browser.close();
+}
+server.close(); console.log(out.join('\n'));

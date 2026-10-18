@@ -89,7 +89,9 @@ export async function runV22Checks(url) {
       for (let i = 0; i < 15; i++) {
         gm.showScreen('mainMenu');
         document.getElementById('btnStart').click();
-        if (!document.getElementById('runSetupScreen').classList.contains('hidden')) document.getElementById('btnConfirmStart').click();
+        // PX02 D+: GRAJ starts the round itself (no run-tool screen to confirm).
+        const setup = document.getElementById('runSetupScreen');
+        if (setup && !setup.classList.contains('hidden')) document.getElementById('btnConfirmStart').click();
         if (gm.state === GameState.PLAYING && gm.mode === 'arena') out.arena++;
         finishRound();
       }
@@ -127,7 +129,7 @@ export async function runV22Checks(url) {
       out.first = gm.isFirstRun();
       out.welcome = !document.getElementById('hubWelcome').classList.contains('hidden');
       document.getElementById('btnWelcomePlay').click();
-      out.mode = gm.mode; out.playing = gm.state === GameState.PLAYING; out.setup = !document.getElementById('runSetupScreen').classList.contains('hidden');
+      out.mode = gm.mode; out.playing = gm.state === GameState.PLAYING; out.setup = !!document.getElementById('runSetupScreen') && !document.getElementById('runSetupScreen').classList.contains('hidden');
       out.types = [...new Set(gm.objects.map(o => o.tier))].sort();
       cancelAnimationFrame(gm.rafId); gm.running = false; gm.timeRemaining = 0.001; gm.update(0.016);
       await new Promise(res => setTimeout(res, 900));
@@ -159,7 +161,7 @@ export async function runV22Checks(url) {
       const out = {
         objects: gm.objects.map(o => `${o.tier}:${Math.round(o.x)}:${Math.round(o.y)}`).join('|').length + ':' + gm.objects.length,
         tiers: [...new Set(gm.objects.map(o => o.tier))].length,
-        t: gm.difficultyT, bots: gm.bots.map(b => Math.round(b.radius)).join(','), perks: (gm.activePerks || []).length,
+        t: gm.difficultyT, bots: gm.bots.map(b => Math.round(b.radius)).join(','), start: Math.round(gm.player.radius) + '/' + Math.round(gm.player.getSpeed()),
         core: gm.save.hub.coreLevel + ':' + gm.save.hub.coreCharge,
         vehicleAt18: canEatWorldObjectTier(18, { tier: 'vehicle' }), vehicleAt46: canEatWorldObjectTier(46, { tier: 'vehicle' }),
         wyz: gm.isWyzwaniaUnlocked()
@@ -169,7 +171,14 @@ export async function runV22Checks(url) {
     });
     const a = await probe(fresh), b = await probe(camp);
     const coreAfter = await camp.page.evaluate(() => { const gm = window.game; const c0 = gm.save.hub.coreLevel + ':' + gm.save.hub.coreCharge; gm.startCampaignMission('M31'); gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.mission.elapsed = 5; gm.endCampaignMission(true); return { c0, c1: gm.save.hub.coreLevel + ':' + gm.save.hub.coreCharge }; });
-    const aurora = await camp.page.evaluate(() => { const gm = window.game; gm.save.owned.push('aurora'); gm.save.selected = 'aurora'; gm.startRound({ seed: 1 }); cancelAnimationFrame(gm.rafId); gm.running = false; const n = gm.activePerks.length; gm.leaveRun(); return n; });
+    // PX02 D+: no vortex has a perk; the trophy starts like the starter vortex (size, speed).
+    const aurora = await camp.page.evaluate(() => {
+      const gm = window.game;
+      const start = (id) => { gm.save.selected = id; gm.startRound({ seed: 1 }); cancelAnimationFrame(gm.rafId); gm.running = false; const r = gm.player.radius + '/' + gm.player.getSpeed(); gm.leaveRun(); return r; };
+      gm.save.owned.push('aurora');
+      const base = start('rainbow'), trophy = start('aurora');
+      return base === trophy ? 0 : 1;
+    });
     results.push(report('independence: 30 missions done change nothing in an Arena round (same map, rivals, difficulty)', a.objects === b.objects && a.bots === b.bots && a.t === b.t && a.tiers === b.tiers, JSON.stringify({ fresh: a, campaign: b })));
     results.push(report('independence: Arena size gates (Tx) come from the hole size only', a.vehicleAt18 === false && a.vehicleAt46 === true && b.vehicleAt18 === false && b.vehicleAt46 === true));
     results.push(report('independence: a mission win never charges Core City; Wyzwania wait for Arena rounds, not missions', coreAfter.c0 === coreAfter.c1 && !b.wyz, JSON.stringify(coreAfter)));
@@ -186,7 +195,7 @@ export async function runV22Checks(url) {
       const gm = window.game;
       const out = { next: gm.nextCampaignMissionId(), playable: gm.isMissionPlayable('M01'), boosters: gm.boostersUnlocked(), districts: gm.save.campaign.unlockedDistricts.join(',') };
       gm.startCampaignMission('M01'); gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false;
-      out.limit = gm.mission.def.timeLimit; out.radius = Math.round(gm.player.radius); out.tier = gm.campaignPlayerTier().id; out.entities = gm.campaignEntities.length; out.perks = (gm.activePerks || []).length;
+      out.limit = gm.mission.def.timeLimit; out.radius = Math.round(gm.player.radius); out.tier = gm.campaignPlayerTier().id; out.entities = gm.campaignEntities.length; out.speedMult = gm.player.perkSpeedMult || 1;
       gm.leaveCampaignMission();
       return out;
     });

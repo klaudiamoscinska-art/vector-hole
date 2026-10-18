@@ -1,0 +1,65 @@
+FAIL  ISO-A fresh: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":false,"setupShown":true,"tools":4,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A fresh)
+FAIL  ISO-A 10 missions, 1010 coins, LVL 8: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":false,"setupShown":true,"tools":4,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A 10 missions, 1010 coins, LVL 8)
+FAIL  ISO-A 30 missions, 5000 coins, 300 prisms, LVL 20: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":false,"setupShown":true,"tools":4,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A 30 missions, 5000 coins, 300 prisms, LVL 20)
+FAIL  ISO-A 240 missions, 99999 coins, LVL 40: GRAJ starts the round at once (no run-tool screen, nothing for sale, no charge)  — {"playing":false,"setupShown":true,"tools":4,"coinsSame":true}
+PASS  px02: no runtime errors (ISO-A 240 missions, 99999 coins, LVL 40)
+PASS  ISO-A 10 missions, 1010 coins, LVL 8: same Arena parameters on seed 4242 as a fresh profile (size, speed, magnet, shield, bots, board, points, growth, combo, coins/XP for a fixed result)  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.3333333333333333,"modifier":"none","roundTime":120,"bots":"16,17,18,19,20","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-A 30 missions, 5000 coins, 300 prisms, LVL 20: same Arena parameters on seed 4242 as a fresh profile (size, speed, magnet, shield, bots, board, points, growth, combo, coins/XP for a fixed result)  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.3333333333333333,"modifier":"none","roundTime":120,"bots":"16,17,18,19,20","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+PASS  ISO-A 240 missions, 99999 coins, LVL 40: same Arena parameters on seed 4242 as a fresh profile (size, speed, magnet, shield, bots, board, points, growth, combo, coins/XP for a fixed result)  — {"state":"PLAYING","chargedOnStart":false,"startRadius":18,"speed":165,"shield":0,"toolMagnet":0,"difficultyT":0.3333333333333333,"modifier":"none","roundTime":120,"bots":"16,17,18,19,20","board":"299:159","magnetPull":0,"bitePoints":5,"biteGrowth":1,"comboWindow":1.77,"coinsEarned":79,"xpGained":146}
+FAIL  ISO-A no way to buy an Arena advantage: no RUN_TOOLS, run-tool screen, result upsell, turbo_free ad, confirmRunSetup or onUpsellClick  — {"runTools":true,"setupScreen":true,"upsell":true,"turboAd":true,"confirm":true,"upsellFn":true}
+PASS  ISO-B the real Warsztat purchase works for every coin vortex (bought and worn)  — cyan:true pink:true green:true purple:true gold:true white:true
+FAIL  ISO-B no vortex carries a perk list any more
+FAIL  ISO-B arena: all 16 vortex states (10 vortices + 6 Warsztat purchases) give the neutral vortex's parameters  — bought:cyan {"speed":178.2} | bought:pink {"comboWindow":2.37} | bought:green {"magnetPull":4} | bought:purple {"xpGained":183} | bought:gold {"coinsEarned":103} | bought:white {"startRadius":32,"speed":145.3821,"bitePoints":6} | cyan {"speed":178.2} | pink {"comboWindow":2.37} | green {"magnetPull":4} | purple {"xpGained":183} | gold {"coinsEarned":103} | white {"startRadius":32,"speed":145.3821,"bitePoints":6} | krysztal {"biteGrowth":1.15} | pryzmat {"coinsEarned":95,"xpGained":175}
+FAIL  ISO-B daily: all 16 vortex states (10 vortices + 6 Warsztat purchases) give the neutral vortex's parameters  — bought:cyan {"speed":178.2} | bought:pink {"comboWindow":2.37} | bought:green {"magnetPull":4} | bought:purple {"xpGained":183} | bought:gold {"coinsEarned":103} | bought:white {"startRadius":32,"speed":145.3821,"bitePoints":6} | cyan {"speed":178.2} | pink {"comboWindow":2.37} | green {"magnetPull":4} | purple {"xpGained":183} | gold {"coinsEarned":103} | white {"startRadius":32,"speed":145.3821,"bitePoints":6} | krysztal {"biteGrowth":1.15} | pryzmat {"coinsEarned":95,"xpGained":175}
+FAIL  ISO-B challenge: all 16 vortex states (10 vortices + 6 Warsztat purchases) give the neutral vortex's parameters  — bought:cyan {"speed":178.2} | bought:pink {"comboWindow":2.37} | bought:green {"magnetPull":4} | bought:purple {"xpGained":183} | bought:gold {"coinsEarned":103} | bought:white {"startRadius":32,"speed":145.3821,"bitePoints":6} | cyan {"speed":178.2} | pink {"comboWindow":2.37} | green {"magnetPull":4} | purple {"xpGained":183} | gold {"coinsEarned":103} | white {"startRadius":32,"speed":145.3821,"bitePoints":6} | krysztal {"biteGrowth":1.15} | pryzmat {"coinsEarned":95,"xpGained":175}
+FAIL  ISO-B Warsztat copy: no vortex promises a bonus (grid, preview label, every info sheet)  — Tęcza Bez bonusu — wir startowy ZAŁÓŻ Cyjan +8% prędkości ZAŁÓŻ Gorący Róż +0,6 s na utrzymanie combo ZAŁÓŻ Toksyczna Zieleń Stały mini-magnes 120 px ZAŁÓŻ Ultrafiolet +25% XP za rundę ZAŁÓŻ Neonowe Złoto +30% monet za rundę ZAŁÓŻ Biała Plazma Start od T2 + 10% punktów ZAŁÓŻ Aurora Finału Trofeum kampanii — bez bonusu w Arenie ZAŁÓŻ Kryształ +15% wzrostu z obiektów ZAŁÓŻ Pryzmat +20% monet i +20% 
+PASS  px02: no runtime errors (ISO-B)
+FAIL  ISO-C campaign new: GRAJ, a full round, replay and the round's parameters don't depend on campaign progress  — {"start":false,"ended":true,"replay":true,"same":true}
+PASS  px02: no runtime errors (ISO-C new)
+FAIL  ISO-C campaign partly completed: GRAJ, a full round, replay and the round's parameters don't depend on campaign progress  — {"start":false,"ended":true,"replay":true,"same":true}
+PASS  px02: no runtime errors (ISO-C partly completed)
+FAIL  ISO-C campaign finished (240): GRAJ, a full round, replay and the round's parameters don't depend on campaign progress  — {"start":false,"ended":true,"replay":true,"same":true}
+PASS  px02: no runtime errors (ISO-C finished (240))
+FAIL  ISO-C campaign missing: Arena starts and plays with the neutral parameters  — {"start":false,"ended":true,"guard":"ok","same":true,"bytesKept":false}
+PASS  px02: no runtime errors (ISO-C missing)
+FAIL  ISO-C campaign broken (wrong type): Arena starts and plays with the neutral parameters; the held-back save stays byte-identical (no forced reset)  — {"start":false,"ended":true,"guard":"invalid","same":true,"bytesKept":true}
+PASS  px02: no runtime errors (ISO-C broken (wrong type))
+PASS  ISO-D 3 Arena rounds change nothing in the campaign (missions, stars, unlocks, boosters)  — {"campaignSame":true,"boostersSame":true,"coins":3488,"chip":false,"paid":0,"used":false}
+FAIL  ISO-D shared coins reach the campaign only through a deliberate purchase (Magnes picked in the briefing: -40 coins, used in the mission)  — {"campaignSame":true,"boostersSame":true,"coins":3488,"chip":false,"paid":0,"used":false}
+PASS  BOOST-01 mission boosters bought, used in a mission (all five) and reset never change Arena parameters  — {"ref":"165/18","stocked":"165/18","afterMission":"165/18/0","reset":165}
+FAIL  BOOST-02 in a mission: Sprint (+speed, whole mission), Magnes (pull), Turbo start (T2), Zegar (+time), Tarcza (shields) all act  — {"base":{"speed":165,"time":70,"shields":0,"radius":18,"magnet":false},"withB":{"speed":169.5801674046026,"time":85,"shields":2,"radius":30,"magnet":true},"pull":0,"sprintLate":1.15,"sprintMult":1.15}
+FAIL  BOOST-03 Arena / Daily / friend challenge results: no Turbo offer (coins or ad), no rewarded ad fired; the rematch starts plain  — {"rewarded":["turbo_free"],"interstitial":0,"arena":{"place":6,"state":"RESULTS","upsell":true,"turboText":true,"afterTap":"PLAYING"},"daily":{"place":6,"state":"RESULTS","upsell":false,"turboText":false},"challenge":{"place":6,"state":"RESULTS","upsell":true,"turboText":true,"afterTap":"RESULTS"},"rematch":{"playing":true,"challenge":true,"radius":32,"shield":0,"coinsSame":true},"placements":"result_double_coins,mission_revive,chest_skip,login_double,free_prisms,turbo_free,booster_ad"}
+PASS  BOOST-03 campaign Turbo start is still a mission booster
+PASS  px02: no runtime errors (ISO-D/BOOST)
+FAIL  LEGACY-01 6 paid vortices + 37 coins -> 4907 coins in memory and on disk, marker committed in the same write  — {"mem":37,"disk":37,"guard":"ok"}
+PASS  LEGACY-01 everything else kept (vortices owned + white worn, prisms, XP, boosters, purchases, Smuga, missions, Core City, stats, unlocks)
+FAIL  LEGACY-01 the original pre-D+ bytes are kept under .bak before the commit  — no bak
+FAIL  LEGACY-01 one card explains the change with the amount  — null | 
+FAIL  LEGACY-02 two reloads + a second tab: still 4907, the refund and its card come once  — {"reload":37,"tab2":37,"disk":37,"t2":null,"t3":null}
+PASS  px02: no runtime errors (LEGACY-01/02)
+FAIL  LEGACY-02 stale writer: a tab that read the old save before another tab committed gets no refund in memory, writes nothing, shows no refund card  — {"tabB":{"coins":37,"guard":"ok"},"disk":37,"tb":null}
+FAIL  LEGACY-02 that tab after a reload: 4907 (exactly one refund)  — 37
+PASS  px02: no runtime errors (LEGACY-02 race)
+PASS  LEGACY-03 future (schema 99): bytes untouched after load + a round + autosaves, no refund, no refund card  — {"coins":37,"guard":"future","looksOnly":null,"same":true,"title":null}
+PASS  px02: no runtime errors (LEGACY-03 future (schema 99))
+PASS  LEGACY-03 corrupt (truncated): bytes untouched after load + a round + autosaves, no refund, no refund card  — {"coins":0,"guard":"corrupt","looksOnly":null,"same":true,"title":null}
+PASS  px02: no runtime errors (LEGACY-03 corrupt (truncated))
+PASS  LEGACY-03 invalid (coins "500"): bytes untouched after load + a round + autosaves, no refund, no refund card  — {"coins":500,"guard":"invalid","looksOnly":null,"same":true,"title":null}
+FAIL  LEGACY-03 invalid -> NAPRAW ZAPIS -> reload: original under .rescue, then exactly one refund on the repaired save  — {"repairedCoins":765,"final":765}
+PASS  px02: no runtime errors (LEGACY-03 invalid (coins "500"))
+PASS  LEGACY-03 unavailable storage: no refund, no write, no refund card  — {"coins":0,"guard":"unavailable","title":null}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+page.evaluate: TypeError: Cannot read properties of undefined (reading 'looksOnly')
+    at eval (eval at evaluate (:290:30), <anonymous>:1:77)
+    at UtilityScript.evaluate (<anonymous>:292:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+    at runPx02Checks (/tmp/claude-0/-home-user-vector-hole/6db5f274-c4b2-52e6-8361-5f361677922b/scratchpad/base/qa/px02-isolation.mjs:570:28)
+    at async file:///tmp/claude-0/-home-user-vector-hole/6db5f274-c4b2-52e6-8361-5f361677922b/scratchpad/base/qa/px02-isolation.mjs:776:19
+
+Node.js v22.22.0

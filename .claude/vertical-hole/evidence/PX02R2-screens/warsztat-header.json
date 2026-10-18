@@ -1,0 +1,52 @@
+[
+ {
+  "w": 375,
+  "coins": 2587,
+  "lang": "pl-PL",
+  "title": "WARSZTAT",
+  "cut": false,
+  "fs": "21px",
+  "shot": "ws-375-2587-pl-PL.png",
+  "errors": 0
+ },
+ {
+  "w": 375,
+  "coins": 4870,
+  "lang": "pl-PL",
+  "title": "WARSZTAT",
+  "cut": false,
+  "fs": "21px",
+  "shot": "ws-375-4870-pl-PL.png",
+  "errors": 0
+ },
+ {
+  "w": 375,
+  "coins": 10000,
+  "lang": "pl-PL",
+  "title": "WARSZTAT",
+  "cut": false,
+  "fs": "21px",
+  "shot": "ws-375-10000-pl-PL.png",
+  "errors": 0
+ },
+ {
+  "w": 320,
+  "coins": 10000,
+  "lang": "pl-PL",
+  "title": "WARSZTAT",
+  "cut": false,
+  "fs": "17px",
+  "shot": "ws-320-10000-pl-PL.png",
+  "errors": 0
+ },
+ {
+  "w": 375,
+  "coins": 10000,
+  "lang": "en-US",
+  "title": "WORKSHOP",
+  "cut": false,
+  "fs": "21px",
+  "shot": "ws-375-10000-en-US.png",
+  "errors": 0
+ }
+]

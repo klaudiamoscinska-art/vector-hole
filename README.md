@@ -21,7 +21,7 @@ instalacji — na telefonie i komputerze.
 > - **60 misji kampanii** w 6 dzielnicach z wielkimi budowlami do pochłonięcia
 > - **Wyzwanie dnia** — ta sama mapa dla wszystkich, codziennie nowa
 > - **Pojedynki ze znajomymi** — wyślij link, pobij wynik na tej samej mapie
-> - **Wiry z bonusami**, smugi, efekty i odbudowa Core City
+> - **Wiry do kolekcji** (sam wygląd — w Arenie liczy się gra), smugi, efekty i odbudowa Core City
 > - Dynamiczna muzyka synthwave i dźwięki, które rosną razem z combo
 
 **Słowa kluczowe:** gra io, czarna dziura, gra w przeglądarce,

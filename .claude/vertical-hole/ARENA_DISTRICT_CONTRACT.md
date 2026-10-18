@@ -34,3 +34,22 @@ W sprawdzonym `game.js` wspólny `save.coins` finansuje `RUN_TOOLS` Areny oraz p
 - Test A: identyczny seed/ustawienia/stats i ekwipunek bez wpływu kampanii → pierwszy start Areny; potem przyznaj kampanijną nagrodę monet/XP i powtórz. Udokumentuj źródło waluty i jej możliwość zakupu `RUN_TOOLS` (pośrednia przewaga to także naruszenie).
 - Test B: przełącz kolejno skin o premii do `speed`, `magnet`, `startUnits`, `score` kupowany z monet pozyskanych w kampanii; odczytaj bieżące parametry w Arenie. Wyjątek dla czysto kosmetycznego trofeum `aurora` nie legalizuje pozostałych bonusów.
 - Test C: gdy potrzebna naprawa, nie wymazuj stanów graczy: wydziel `arena`/`campaign`/`cosmetics`, zaplanuj saldo historyczne i kompensację uprawnień, uzgodnij decyzję produktową przed migracją; test SAVE-01..09.
+
+## Decyzja właścicielki PX02 D+ (2026-10-17) — stan repo po wdrożeniu
+Reguła dla gracza: **„W Arenie liczy się to, jak grasz. Monety kupują wygląd i wzmocnienia misji”.** Decyzja zapadła przed implementacją (DEC-1…DEC-7); poniższy wyjątek jest **jawny i zaakceptowany**, nie powstał przez implementację.
+
+| Zasób / oferta | Właściciel | Źródło | Aktywacja | Wygaśnięcie | Klucz zapisu |
+|---|---|---|---|---|---|
+| Wiry `SKINS` (10, w tym Kryształ, Pryzmat, Aurora) | cosmetic-neutral | Warsztat (monety), Core City, M24 | założenie w Warsztacie | — | `owned`, `selected` |
+| Smugi / Efekty / Finisze | cosmetic-neutral | Warsztat (monety, pryzmaty), Core City, IAP | założenie | — | `auras`, `effects`, `overdriveSkins` |
+| `MISSION_BOOSTERS` (Zegar, Turbo start, Sprint, Magnes, Tarcza) | districts | zapas, monety, pryzmaty, reklama `booster_ad`, IAP, Skrzynie gwiazd, NELA | odprawa misji | koniec misji | `boosters` |
+| +20 s misji | districts | reklama `mission_revive`, 8 ◆ | koniec czasu misji | koniec misji | — |
+| Mutacje / Złoty Rdzeń / SZAŁ | arena (w rundzie) | sama rozgrywka | w rundzie | koniec rundy | — |
+| ×2 monet po rundzie | arena (nagroda) | reklama `result_double_coins` | ekran wyniku | — | `coins` |
+| Monety, pryzmaty | wspólny portfel | oba tryby | — | — | `coins`, `prisms` |
+| XP / poziom konta | wspólne, bez wpływu na rundę | oba tryby | — | — | `player` |
+
+- **Usunięte (D+):** perki wirów (`SKINS[].perks`, `Game.perk()`), `RUN_TOOLS` (Tarcza / Magnes / Turbo start przed rundą), ekran „WYBIERZ WSPARCIE”, karta Turbo po przegranej i reklama `turbo_free`. Arena, Wyzwanie dnia i wyzwania znajomych startują z tymi samymi parametrami dla każdego profilu.
+- **Jawny, zaakceptowany wyjątek (DEC-5):** wspólny portfel. Monety zdobyte w Arenie mogą opłacić wzmocnienie misji Dzielnic, **wyłącznie świadomym zakupem w odprawie** (Arena → Dzielnice). W drugą stronę nic nie płynie: postęp, nagrody, monety i zakupy Dzielnic nie zmieniają parametrów, startu, wyniku, czasu ani dostępności rundy Areny. Wspólna waluta sama w sobie nie jest naruszeniem, bo w Arenie nie ma na co jej wydać, co zmieniałoby rundę.
+- **Kompensata (DEC-3/DEC-4):** jednorazowy zwrot ceny z cennika za posiadane płatne wiry (100+220+450+800+1300+2000 = 4870 za komplet), raz na linię zapisu (`economy.looksOnly`); Kryształ i Pryzmat bez zwrotu. Szczegóły i ograniczenia (wiele niezależnych linii zapisu bez backendu): `docs/GAME_DESIGN.md` §1a.
+- **Test kontraktowy:** `node qa/px02-isolation.mjs` (ISO-A…D, BOOST-01…03, LEGACY-01…08). Każda nowa oferta, która zmienia rundę Areny i jest dostępna za monety, pryzmaty, reklamę, IAP lub postęp Dzielnic, łamie ten kontrakt i wymaga nowej decyzji właścicielki przed pracą.

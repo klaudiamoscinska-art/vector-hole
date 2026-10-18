@@ -1,0 +1,16 @@
+5db3b02094592b541a18fc11ca52e248ff0c14a4
+ M .claude/vertical-hole/ARENA_DISTRICT_CONTRACT.md
+ M CLAUDE.md
+ M docs/CHANGELOG.md
+ M docs/GAME_DESIGN.md
+ M game.js
+ M index.html
+ M qa/README.md
+ M qa/design.mjs
+ M qa/dev-panel.mjs
+ M qa/run-all.mjs
+ M qa/save-safety.mjs
+ M qa/v22.mjs
+ M style.css
+?? qa/px02-isolation.mjs
+px02-economy-dplus

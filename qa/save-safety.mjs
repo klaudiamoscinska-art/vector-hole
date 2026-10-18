@@ -189,7 +189,8 @@ export async function runSaveSafetyChecks(url) {
   for (const k of ['v1', 'v5', 'v10', 'current', 'partial']) {
     const g = await boot(url, fx[k]);
     const r = await g.page.evaluate(() => ({ state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', coins: window.game.save.coins, v: window.game.save.schemaVersion, level: window.game.save.player.level }));
-    const want = { v1: 50, v5: 120, v10: 4321, current: 4321, partial: 50 }[k];
+    // PX02 D+: the v1 save owns Cyjan (a paid vortex whose bonus went away) -> +100 refund, once.
+    const want = { v1: 150, v5: 120, v10: 4321, current: 4321, partial: 50 }[k];
     push(`legacy/partial ${k}: loads as a normal writable save with its coins (${want})`, r.state === 'ok' && r.coins === want && r.v === 13, JSON.stringify(r));
     noErr(g, k);
     await g.browser.close();

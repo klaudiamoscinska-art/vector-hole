@@ -1576,44 +1576,6 @@ body.touch-input #gameCanvas {
   color: var(--nc-text-dim);
 }
 
-.run-tool-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  max-width: 320px;
-}
-
-.run-tool-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  cursor: pointer;
-  color: var(--text-main);
-  font-family: inherit;
-  text-align: left;
-}
-
-.run-tool-card.selected {
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 12px rgba(80, 240, 250, 0.3);
-}
-
-.run-tool-name {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.run-tool-desc {
-  font-size: 11px;
-  opacity: 0.7;
-}
-
 .result-tag {
   display: inline-block;
   margin: -4px auto 6px;
@@ -3539,61 +3501,6 @@ body.touch-input #gameCanvas {
 .result-xp-card.leveled { border-color: var(--nc-gold); box-shadow: 0 0 18px rgba(239, 203, 99, 0.35); }
 .result-xp-card.leveled .result-xp-level { animation: v8-tile-bounce 0.9s ease-in-out infinite; }
 
-.result-upsell {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  border-color: rgba(255, 84, 173, 0.55) !important;
-  background: linear-gradient(90deg, rgba(255, 84, 173, 0.12), var(--nc-panel-2)) !important;
-}
-.result-upsell-icon { width: 28px; height: 28px; flex-shrink: 0; color: var(--nc-pink); filter: drop-shadow(0 0 6px rgba(255, 84, 173, 0.7)); }
-.result-upsell-icon svg { width: 100%; height: 100%; }
-.result-upsell-body { flex: 1 1 calc(100% - 40px); min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.result-upsell .btn-small { flex: 1 1 100%; padding: 11px 12px; font-size: 13px; }
-.result-upsell-text { font-size: 12px; color: var(--nc-text); line-height: 1.35; }
-
-/* ---------- Run setup: threat meter + recommended tool ---------- */
-.threat-meter {
-  width: 100%;
-  max-width: 320px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: var(--nc-panel-2);
-  border: 1px solid var(--nc-panel-border);
-  font-size: 11px;
-}
-.threat-label { font-weight: 800; letter-spacing: 1px; color: var(--nc-text-dim); }
-.threat-segments { flex: 1; display: flex; gap: 3px; }
-.threat-segments i { flex: 1; height: 7px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); }
-.threat-segments i.on { background: var(--nc-green); box-shadow: 0 0 6px var(--nc-green); }
-.threat-meter[data-level="1"] .threat-segments i.on { background: var(--nc-gold); box-shadow: 0 0 6px var(--nc-gold); }
-.threat-meter[data-level="2"] .threat-segments i.on,
-.threat-meter[data-level="3"] .threat-segments i.on { background: var(--nc-pink); box-shadow: 0 0 6px var(--nc-pink); }
-.threat-meter strong { font-weight: 900; letter-spacing: 1px; }
-.threat-meter[data-level="2"] strong, .threat-meter[data-level="3"] strong { color: var(--nc-pink); animation: pulse-warning 1.2s ease-in-out infinite; }
-.run-tool-hot {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: var(--nc-pink);
-  color: #07131E;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  vertical-align: middle;
-  animation: v8-tile-bounce 1.2s ease-in-out infinite;
-}
-.run-tool-price { font-weight: 900; color: var(--nc-gold); white-space: nowrap; }
-.run-tool-card { transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
-.run-tool-card:active { transform: scale(0.96); }
-.run-tool-card.selected { box-shadow: 0 0 18px rgba(80, 240, 250, 0.35); transform: scale(1.02); }
-
 /* ---------- In-round HUD: final-10-seconds urgency ---------- */
 .hud-pill.hud-urgent { border-color: var(--nc-pink) !important; animation: v8-urgent 0.5s ease-in-out infinite alternate; }
 .hud-pill.hud-urgent .hud-value { color: var(--nc-pink) !important; }
@@ -3605,7 +3512,7 @@ body.touch-input #gameCanvas {
 @media (prefers-reduced-motion: reduce) {
   .screen:not(.overlay-screen)::before, .btn-primary::after, #btnStart, .btn-mega,
   .result-anim > *, .confetti-layer i, .hub-chest-row.ready, .hub-chest-row.ready .hub-chest-icon,
-  .login-tile.current, .run-tool-hot, .result-newbie-tag, .hud-pill.hud-urgent { animation: none !important; }
+  .login-tile.current, .result-newbie-tag, .hud-pill.hud-urgent { animation: none !important; }
 }
 
 /* =====================================================================
@@ -3617,7 +3524,7 @@ body.touch-input #gameCanvas {
 .app-title, .section-title, .result-hero-score, .result-eyebrow,
 .result-badge-value, .hud-value, .hub-city-lvl, .hub-city-pct > span:first-child,
 .unlock-title, .unlock-kicker, .evolution-title, .login-kicker,
-.result-xp-level, .btn-primary, .btn-mega, .threat-meter strong, .coin-display span:last-child, #missionResultTitle, .skin-name, .warsztat-perk strong, .run-perk strong  {
+.result-xp-level, .btn-primary, .btn-mega, .coin-display span:last-child, #missionResultTitle, .skin-name, .warsztat-look strong  {
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.04em;
@@ -3703,51 +3610,26 @@ body.touch-input #gameCanvas {
 .welcome-note { margin: 0; font-size: 11px; color: var(--nc-text-dim); }
 .welcome-note b { color: var(--nc-cyan); }
 
-/* ---------- Skin perks (Warsztat, run setup) ---------- */
-.skin-perk {
+/* ---------- PX02 D+: vortex looks (Warsztat) -- a look, never a bonus ---------- */
+.skin-look {
   font-size: 10px;
-  font-weight: 800;
-  color: var(--nc-green);
+  font-weight: 600;
+  color: var(--nc-text-dim-2);
   line-height: 1.25;
 }
-.skin-perk::before { content: '▲ '; font-size: 8px; }
-.skin-perk.none { color: var(--nc-text-dim-2); font-weight: 600; }
-.skin-perk.none::before { content: ''; }
-.warsztat-perk {
+.warsztat-look {
   margin-top: 8px;
   padding: 7px 9px;
   border-radius: 10px;
-  background: rgba(70, 217, 154, 0.1);
-  border: 1px solid rgba(70, 217, 154, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--nc-border);
   display: flex;
   flex-direction: column;
   gap: 2px;
   text-align: left;
 }
-.warsztat-perk-label { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; color: var(--nc-text-dim); }
-.warsztat-perk strong { font-size: 13px; color: var(--nc-green); }
-.warsztat-perk.none { background: rgba(255, 255, 255, 0.04); border-color: var(--nc-border); }
-.warsztat-perk.none strong { color: var(--nc-text-dim); }
-.run-perk {
-  width: 100%;
-  max-width: 320px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 2px 8px;
-  padding: 9px 12px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, rgba(70, 217, 154, 0.12), var(--nc-panel-2));
-  border: 1px solid rgba(70, 217, 154, 0.45);
-  color: var(--nc-text);
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.run-perk-label { font-size: 10px; font-weight: 800; letter-spacing: 0.08em; color: var(--nc-text-dim); }
-.run-perk-label b { color: var(--nc-text); }
-.run-perk strong { grid-column: 1; font-size: 14px; color: var(--nc-green); }
-.run-perk-cta { grid-column: 2; grid-row: 1 / span 2; font-size: 11px; font-weight: 900; color: var(--nc-cyan); }
+.warsztat-look-label { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; color: var(--nc-text-dim); }
+.warsztat-look strong { font-size: 13px; color: var(--nc-text); }
 
 @media (prefers-reduced-motion: reduce) {
   .welcome-logo-main, .welcome-logo-sub { animation: none !important; }
@@ -4219,7 +4101,7 @@ body[data-gfx="0"] #hud::before { display: none; }
 #shopScreen .warsztat-preview-stage { flex: none; width: 46%; height: 156px; }
 #shopScreen .warsztat-preview-labels { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; text-align: left; }
 .warsztat-preview-name { font-family: var(--font-display); font-size: 20px; line-height: 1.1; color: #fff; }
-#shopScreen .warsztat-perk { margin-top: 0; }
+#shopScreen .warsztat-look { margin-top: 0; }
 .warsztat-preview-loadout { font-size: 11px; line-height: 1.45; color: var(--nc-text-dim); }
 .warsztat-hint { margin: -4px 0 0; font-size: 11.5px; }
 #shopScreen .store-card { margin: 0; }
@@ -4375,9 +4257,15 @@ body[data-gfx="0"] #hud::before { display: none; }
 .nav-screen > .app-header .app-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-screen > .app-header .hub-header-right { flex: none; }
 @media (max-width: 440px) {
-  #campaignScreen .app-title { font-size: 21px; }
-  #campaignScreen .coin-display, #mainMenu .coin-display { padding: 6px 9px; gap: 4px; }
-  #campaignScreen .currency-row, #mainMenu .currency-row { gap: 5px; }
+  #campaignScreen .app-title, #shopScreen .app-title { font-size: 21px; }
+  #campaignScreen .coin-display, #mainMenu .coin-display, #shopScreen .coin-display { padding: 6px 9px; gap: 4px; }
+  #campaignScreen .currency-row, #mainMenu .currency-row, #shopScreen .currency-row { gap: 5px; }
+}
+/* PX02 review: „WARSZTAT” fits next to a 5-digit wallet down to 320 px. */
+@media (max-width: 340px) {
+  #shopScreen .app-title { font-size: 17px; }
+  #shopScreen .coin-display { padding: 5px 7px; gap: 3px; }
+  #shopScreen .currency-row { gap: 4px; }
 }
 .inline-bolt { width: 0.95em; height: 0.95em; vertical-align: -0.12em; }
 .mc-boost.off { opacity: 0.38; cursor: not-allowed; }

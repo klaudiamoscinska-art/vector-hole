@@ -1,0 +1,15 @@
+{
+  "bootSheet": "Wiry są teraz tylko wyglądem",
+  "afterGraj": {
+    "state": "PLAYING",
+    "setup": false
+  },
+  "result": {
+    "upsell": false,
+    "text": "KONIEC RUNDY BURZA PORTALI WYNIK 0 ROZMIAR T1 · MAŁY MIEJSCE 6. NAGRODY ◇ ZDOBYTE MONETY +15 monet POZIOM 1 +25 XP 25 / 120 XP POSTĘP CORE CITY 0% → 16% +16% #1 GlitchKing 6 232 pkt T6 #2 ToxicSlime 4 580 pkt T6 #3 LagMonster 3 613 pkt T6 #4 NightHawk 3 290 pkt T2 #5 GridRunner 1 162 pkt T4 #6 Ty 0 pkt T1 ZAGRAJ JESZCZE RAZ ×2 MONET · REKLAMA WYZWIJ ZNAJOMEGO Wróć do Miasta"
+  },
+  "replay": "PLAYING",
+  "errors": [],
+  "first": "PLAYING",
+  "errors2": []
+}

@@ -1,0 +1,28 @@
+// Late-career Arena (runsPlayed 30 -> difficulty t = 1): casual bot, N rounds
+// per config. Usage: node late-arena.mjs <repoRoot> <configs comma list> <N>
+// configs: neutral | white | turbo | white+turbo   (white/turbo need the base code)
+import path from 'node:path';
+const [root, cfgList, nArg] = process.argv.slice(2);
+const { serve, openGame, ARENA_BOT } = await import(path.join(root, 'qa', 'lib.mjs'));
+const N = +nArg || 20;
+const { server, url } = await serve();
+const g = await openGame(url);
+await g.page.addScriptTag({ content: ARENA_BOT });
+const out = {};
+for (const cfg of cfgList.split(',')) {
+  out[cfg] = await g.page.evaluate(({ cfg, N }) => {
+    const gm = window.game, rows = [];
+    for (let i = 0; i < N; i++) {
+      gm.save.stats.runsPlayed = 30; gm.save.stats.recentArenaScores = [2500, 2600, 2700, 2800, 2900];
+      gm.save.owned = ['rainbow', 'white']; gm.save.selected = cfg.includes('white') ? 'white' : 'rainbow';
+      if (cfg.includes('turbo')) gm.selectedRunTool = 'boost';
+      const r = window.__qaPlayArena({ style: 'casual' });
+      rows.push(r);
+    }
+    const avg = k => +(rows.reduce((a, r) => a + r[k], 0) / rows.length).toFixed(1);
+    return { n: rows.length, avgPlace: avg('place'), podium: rows.filter(r => r.place <= 3).length, wins: rows.filter(r => r.place === 1).length, avgScore: avg('score'), avgDeaths: avg('deaths') };
+  }, { cfg, N });
+  console.log(cfg, JSON.stringify(out[cfg]));
+}
+await g.browser.close(); server.close();
+console.log(JSON.stringify(out));
