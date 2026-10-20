@@ -514,8 +514,9 @@ Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
 ## 7. Świadomie niezbudowane / decyzje dla właściciela
 
 - Brak backendu: rankingi, zapis w chmurze i konta są lokalne.
-- Brak PWA/service workera i `og:image` (wymagają dodatkowych plików —
-  decyzja właściciela wobec zasady trzech plików).
+- Brak PWA/service workera i `og:image` (decyzja właścicielki; zasada trzech
+  plików uchylona 18.10.2026 — przeszkodą nie są już pliki, tylko własny
+  mechanizm aktualizacji service workera).
 - Pacer to ukryte dopasowanie trudności (standard w grach casual); ekspert
   grający jak bot „greedy” nadal wygrywa wysoko — to celowe.
 - Kamera zatrzymuje się na krawędzi świata, więc przy brzegu dziura może

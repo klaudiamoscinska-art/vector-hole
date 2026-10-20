@@ -25,8 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { execSync } from 'node:child_process';
-import { serve, openGame, chromium, report, ARENA_BOT, CAMPAIGN_BOT, ROOT, OUT, installQaBridge, waitForQaBridge } from './lib.mjs';
+import { serve, openGame, chromium, report, ARENA_BOT, CAMPAIGN_BOT, ROOT, OUT, installQaBridge, waitForQaBridge, revisionFile } from './lib.mjs';
 import { devCodeToken } from './dev-code.mjs';
 
 const KEY = 'vectorHoleSave_v1';
@@ -624,9 +623,9 @@ export async function runPx02Checks(url) {
     let haveBase = false;
     try {
       fs.mkdirSync(baseDir, { recursive: true });
-      for (const f of ['index.html', 'style.css', 'game.js']) fs.writeFileSync(path.join(baseDir, f), execSync(`git -C "${ROOT}" show ${BASE_REV}:${f}`, { maxBuffer: 64 << 20 }));
+      for (const f of ['index.html', 'style.css', 'game.js']) fs.writeFileSync(path.join(baseDir, f), revisionFile(BASE_REV, f));
       haveBase = true;
-    } catch (e) { console.log('NOT RUN  LEGACY-06 (previous release not available from git: ' + e.message.split('\n')[0] + ')'); }
+    } catch (e) { console.log('NOT RUN  LEGACY-06 (previous release not available from git / VH_QA_REVS: ' + e.message.split('\n')[0] + ')'); }
     const sameCode = haveBase && fs.readFileSync(path.join(baseDir, 'game.js'), 'utf8') === fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8');
     if (haveBase && !sameCode) {
       const { server, url: newUrl, baseUrl } = await serveWithBase(baseDir);

@@ -7,6 +7,7 @@ the machine — no `package.json`, no build step.
 
 ```bash
 node qa/run-all.mjs        # everything below, exit 1 on any failure (prints the environment, writes qa/out/environment.json)
+node qa/release.mjs        # E3: the published artifact -- runs .github/scripts/assemble-release.mjs on snapshot histories (L1: + the deployment ledger read from a fake GitHub API): exact file list, frozen classic root pins, v/<id>/ = repo bytes, graph = readRuntimeSources(), QA-leak checks (the harmless QA_BRIDGE_NAMES comment passes, real hooks / qa/ files fail), 17 broken graphs, retention scenarios, live pre/post-checks on a local fake site, the workflow's own bash check; in Chromium: new HTML (/ and /vector-hole/), old cached HTML + frozen root, negative "E2 alone" (SyntaxError), mixed versions with the real HTTP cache (max-age=600), long-open page reloading, one save for old and new code, rollback
 node qa/bridge.mjs         # E2: game.js as an ES module -- one module script, loaded once, same boot as the classic base (listeners, writes), the QA bridge on live bindings (getters, the SAVE_MIRROR setter), exact export list, negative checks (no bridge, missing export, broken setter, failed import, second copy)
 node qa/boot.mjs           # E1: the game starts (fresh phone pl-PL, fresh desktop en-US, saved profile), no page errors, loads exactly the runtime files from index.html (all 200), nothing external
 node qa/trace.mjs          # E1: deterministic trace -- an Arena round + the FIRST clear of mission M01, each played twice from the same seed, must match exactly (--record FILE / --compare FILE, --seed=N, --mission=Mxx)
@@ -129,12 +130,22 @@ so a refactor that must not change the game can prove it doesn't.
 - **`environmentInfo()`**: Node, Playwright, Chromium, git HEAD, changed
   paths, SHA-256 of every runtime file; printed by `run-all`, `boot`,
   `trace`, `v18`, stored in `qa/out/environment.json` and the trace file.
+- **No-git mode (E3)**: `VH_QA_REVS=DIR` -- QA runs no git command at all:
+  earlier revisions (`bridge.mjs`: the classic base 63b50d0; `release.mjs`:
+  its index.html and frozen pair; `px02-isolation.mjs` LEGACY-06: 5db3b02)
+  are read from `DIR/<full sha>/<file>` (`revisionFile()` in `lib.mjs`)
+  instead of `git show`, and `environmentInfo()` reports
+  `NOT VERIFIED (VH_QA_REVS offline mode, no git)` instead of HEAD. The
+  snapshot is the runner's responsibility: check its hashes (the frozen pair
+  is also checked against the release script's pins).
 
 ## E2: game.js is an ES module -- the QA bridge
 
-`index.html` loads `<script type="module" src="game.js">` (the deploy
-workflow's guard greps for `src="game.js"`; `./game.js` would fail it). A
-module keeps its top-level names to itself, so the bare names the suites use
+`index.html` loads `<script type="module" src="game.js">` (E3: the
+published page is the release script's rewrite of it, `v/<id>/game.js`;
+`bridge.mjs` checks that result with a dry run instead of the old workflow's
+grep guards). The bridge imports the page's own module URL, so it works the
+same for `v/<id>/game.js`. A module keeps its top-level names to itself, so the bare names the suites use
 inside the page (`CONFIG`, `defaultSave()`, `SAVE_GUARD`, `SAVE_MIRROR = fn`
 ...) come from the bridge in `lib.mjs`:
 
@@ -166,10 +177,64 @@ inside the page (`CONFIG`, `defaultSave()`, `SAVE_GUARD`, `SAVE_MIRROR = fn`
 Run the game over HTTP(S) (`python3 -m http.server`); `file://` can't load
 a module script.
 
-Not covered yet (gates before the matching E3+ step): the Daily / friend
-challenge / twist missions in the trace, an import-graph check for ES
-modules (`qa/module-graph.mjs`: cycles, forbidden Arena ↔ Campaign edges,
-relative specifiers only), `px02-isolation.mjs` LEGACY-06 rebuilding the
-previous release from a multi-file tree, `dev-code.mjs` finding
-`DEV_CODE_SALT` outside `game.js`, (the test bridge for globals the suites read by
-name is done in E2, above).
+## E3: the release layout (`qa/release.mjs`)
+
+Production is not the repo folder: the workflow runs
+`.github/scripts/assemble-release.mjs`, which builds `release/` --
+`index.html` (script/stylesheet rewritten to `v/<id>/`), the frozen last
+classic `game.js`/`style.css` at the root (commit 63b50d0, SHA-pinned) for
+browsers still holding a pre-E3 `index.html`, and the immutable `v/<id>/`
+of this release and of the retained earlier ones (id = first 12 hex of the
+commit). `release.mjs` runs that script as a child process (the same code CI
+runs) with `--source fixture`: snapshot histories in `qa/out/release/`
+(trees + `history.json`) stand in for git, so the retention rules are tested
+on controlled histories, not on the real one. The worktree suites stay
+separate: a PASS of `release.mjs` is about the assembled artifact, not the
+repo folder, and never about the live site (the workflow's live checks and
+the owner's iPhone test on a separate origin are).
+
+- Negative checks must fail for the right reason: the "E2 alone" layout
+  (old HTML + the module under the old address) must show the SyntaxError,
+  the cache test has a control without retention that must 404.
+- Playwright switches the HTTP cache off when a context intercepts requests
+  (`context.route()`), so the cache checks run without interception.
+- L1 (the deployment ledger): `release.mjs` starts a fake GitHub REST API
+  (GET only, `/repos/{o}/{r}/deployments` + `/deployments/{id}/statuses`,
+  pagination with `Link`, GitHub's 90-day deletion of older statuses
+  simulated) and runs the script's `ledger` command against it, then the
+  assembly with `--ledger`. Covered: first versioned deploy with only
+  classic records, the API not showing the newest deploy yet, success later
+  inactive, failure / queued / in_progress / stale records, a failure
+  between two successes, the same sha twice, an older sha again, forward
+  rollback, the 30-day window vs the last 5, > 20 and > 60 releases, a
+  never-published broken commit (left out) vs a published / maybe published
+  / live broken one (STOP -- the gap GPT found), ledger vs live, bad shas,
+  other repo/environment, bad or contradictory times and ids, duplicates,
+  incomplete pagination, a next link to another server (refused, 0 requests
+  there), HTTP 401/403/404/429/5xx, rate limit, timeout, broken JSON, no
+  token, a superseded re-run, a stale or tampered ledger file, no silent
+  `--no-ledger`, lazy status reads, GET-only + no token in any output.
+  L1-R1 (shape of the real API, read in K0): the fake API's `Link` names the
+  repository by id (`/repositories/<id>/...`) like GitHub, every record
+  starts with `waiting`, records carry `performed_via_github_app`. Checks:
+  264 records over 3 pages in both link forms (the script requests only its
+  own `/repos/` URLs), 19 bad next links (host, user info, repository name
+  or id incl. `$GITHUB_REPOSITORY_ID`, endpoint, `../`, environment,
+  per_page, extra/duplicate parameter, missing/same/skipped/malformed page,
+  two next, unreadable) = STOP before a second request; waiting -> ... ->
+  success / failure / inactive, fresh (exit 3) and stale (maybe published)
+  `waiting`, an unknown state; the first and second E3 deploy; since the era
+  epoch only the `github-actions` app (also in the ledger file).
+  These are fixture/mock results: the real API is first read by CI. The
+  replay of the real K0 responses is a review-package harness, not a repo test.
+- Not run here: the git source of the script (`gitHistory()`/`gitTree()`,
+  `classify()`), the real GitHub API and the live site -- first executed by
+  CI; WebKit (not installed).
+
+Not covered yet (gates before E4): the Daily / friend challenge / twist
+missions in the trace, Arena <-> Campaign import-edge rules for the module
+graph (the release script already rejects bare/absolute/dynamic imports and,
+for the release being published, cycles), the QA bridge for more than one
+entry module, `px02-isolation.mjs` LEGACY-06 rebuilding the previous release
+from a multi-file tree, `dev-code.mjs` finding `DEV_CODE_SALT` outside
+`game.js`.

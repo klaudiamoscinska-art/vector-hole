@@ -25,18 +25,46 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
-/** Static server over the repo root on a random port. */
-export function serve() {
+/** Static server on a random port: the repo root by default (as before).
+ *  E3 (qa/release.mjs): `root` serves another folder (an assembled release),
+ *  `prefix` mounts it under a path like GitHub Pages' /vector-hole/,
+ *  `cacheControl` adds that header (Pages sends max-age=600), and the
+ *  returned setRoot() swaps the folder mid-test (a deploy); `log` lists
+ *  every request path the server saw. */
+export function serve({ root = ROOT, prefix = '', cacheControl = null } = {}) {
+  let dir = root;
+  const log = [];
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
-      const url = decodeURIComponent(req.url.split('?')[0]);
-      const file = path.join(ROOT, url === '/' ? 'index.html' : url);
-      if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
-      res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
+      let url = decodeURIComponent(req.url.split('?')[0]);
+      log.push(url);
+      if (prefix) { if (!url.startsWith(prefix + '/')) { res.writeHead(404); res.end(); return; } url = url.slice(prefix.length); }
+      const file = path.join(dir, url === '/' ? 'index.html' : url);
+      if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
+      const headers = { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' };
+      if (cacheControl) headers['Cache-Control'] = cacheControl;
+      res.writeHead(200, headers);
       fs.createReadStream(file).pipe(res);
     });
-    server.listen(0, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}/index.html` }));
+    server.listen(0, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}${prefix}/index.html`, setRoot: (d) => { dir = d; }, log }));
   });
+}
+
+/* ---------- E3: reading an earlier revision without (or with) git ----------
+   Some suites compare against an earlier commit's runtime files (bridge:
+   the classic base; px02 LEGACY-06: the previous release). By default they
+   come from `git show REV:FILE` (read-only). With VH_QA_REVS=DIR set, QA
+   runs no git at all: the files are read from DIR/<full sha>/<file> (a
+   snapshot prepared and checked by the person running the suite), and
+   environmentInfo() reports the offline mode instead of git HEAD. */
+export const QA_REVS = process.env.VH_QA_REVS || null;
+export function revisionFile(rev, file) {
+  if (QA_REVS) {
+    const p = path.join(QA_REVS, rev, file);
+    if (!fs.existsSync(p)) throw new Error(`offline revision ${rev.slice(0, 12)}:${file} not in VH_QA_REVS (${QA_REVS})`);
+    return fs.readFileSync(p);
+  }
+  return execSync(`git -C "${ROOT}" show ${rev}:${file}`, { maxBuffer: 64 << 20 });
 }
 
 /* ---------- E2: QA bridge (game.js is an ES module) ----------
@@ -319,10 +347,11 @@ export function readRuntimeSources(root = ROOT) {
 }
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 /** Where and on what a QA run happened: Node, Playwright, Chromium (needs
- *  a browser), git HEAD + whether the worktree has changes, and the SHA-256
- *  of every runtime file (readRuntimeSources()). */
+ *  a browser), git HEAD + whether the worktree has changes (not read in
+ *  the VH_QA_REVS offline mode), and the SHA-256 of every runtime file
+ *  (readRuntimeSources()). */
 export async function environmentInfo(browser = null, root = ROOT) {
-  const git = (cmd) => { try { return execSync(`git -C "${root}" ${cmd}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return null; } };
+  const git = (cmd) => { if (QA_REVS) return null; try { return execSync(`git -C "${root}" ${cmd}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return null; } };
   let playwright = null;
   for (const t of PLAYWRIGHT_TRIES) { try { playwright = require(t + '/package.json').version; break; } catch (e) { /* next */ } }
   let chromiumVersion = null;
@@ -332,7 +361,7 @@ export async function environmentInfo(browser = null, root = ROOT) {
   const status = git('status --porcelain');
   return {
     node: process.version, playwright, chromium: chromiumVersion,
-    head: git('rev-parse HEAD'), worktreeChanges: status == null ? null : status.split('\n').filter(Boolean).length,
+    head: QA_REVS ? 'NOT VERIFIED (VH_QA_REVS offline mode, no git)' : git('rev-parse HEAD'), worktreeChanges: status == null ? null : status.split('\n').filter(Boolean).length,
     runtime: Object.fromEntries([src.html, ...src.files].map(f => [f.path, sha256(fs.readFileSync(path.join(root, f.path)))])),
     missingRuntimeFiles: src.missing,
     platform: `${process.platform} ${process.arch}`, at: new Date().toISOString()

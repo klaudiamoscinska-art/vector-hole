@@ -5,12 +5,15 @@
 //   game.js fetched once, one Game, served as JavaScript;
 // - the same boot as the classic script it replaced: listeners added (by
 //   target and type), storage writes and the first screen match the base
-//   commit's classic build (read from git, never written);
+//   commit's classic build (read from git, never written -- or from the
+//   VH_QA_REVS snapshot, no git at all);
 // - the bridge works on the module's live bindings: reads follow the
 //   game's own writes (devBoot() -> SAVE_SLOT, attachCloudSave() /
 //   clearCloudSave() -> SAVE_MIRROR), a QA write reaches the game
 //   (saveGame() calls the mirror QA set), read-only names refuse writes;
-// - game.js exports exactly the bridged names + their setters;
+// - game.js exports exactly the bridged names + their setters, and the
+//   page the release script publishes (E3) loads it once as a module from
+//   v/<id>/;
 // - negative: without the bridge the names are really out of reach, and a
 //   missing export, a setter that doesn't reach the game, a failed import
 //   or a second copy of game.js each make the bridge fail loudly.
@@ -18,8 +21,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { execSync } from 'node:child_process';
-import { serve, openGame, chromium, report, ROOT, QA_BRIDGE, QA_BRIDGE_NAMES, QA_BRIDGE_SETTERS, installQaBridge } from './lib.mjs';
+import { execFileSync } from 'node:child_process';
+import { serve, openGame, chromium, report, ROOT, OUT, QA_BRIDGE, QA_BRIDGE_NAMES, QA_BRIDGE_SETTERS, installQaBridge, revisionFile } from './lib.mjs';
 import { devCodeToken } from './dev-code.mjs';
 
 const BASE_REV = process.env.VH_E2_BASE || '63b50d0f470272aed8734c7854dda24b4f61e712';
@@ -69,6 +72,12 @@ const BOOT_PROBE = `(() => {
   let g;
   Object.defineProperty(window, 'game', { configurable: true, get() { return g; }, set(v) { P.games++; g = v; } });
 })();`;
+/** The frozen classic pair (the base commit's game.js/style.css) for a dry run. */
+function frozenDir() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vh-e3-frozen-'));
+  for (const f of ['game.js', 'style.css']) fs.writeFileSync(path.join(dir, f), revisionFile(BASE_REV, f));
+  return dir;
+}
 async function bootProfile(url) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ locale: 'pl-PL', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
@@ -88,10 +97,11 @@ async function bootProfile(url) {
   return { ...r, errors };
 }
 
-/** The base commit's runtime files (git show, read-only) on their own server. */
+/** The base commit's runtime files (git show, read-only -- or the
+ *  VH_QA_REVS snapshot, lib.mjs revisionFile()) on their own server. */
 function serveBase() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vh-e2-base-'));
-  for (const f of ['index.html', 'style.css', 'game.js']) fs.writeFileSync(path.join(dir, f), execSync(`git -C "${ROOT}" show ${BASE_REV}:${f}`, { maxBuffer: 64 << 20 }));
+  for (const f of ['index.html', 'style.css', 'game.js']) fs.writeFileSync(path.join(dir, f), revisionFile(BASE_REV, f));
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       const u = decodeURIComponent(req.url.split('?')[0]);
@@ -115,11 +125,20 @@ export async function runBridgeChecks(url) {
     const tags = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m => m[0]);
     const ok = tags.length === 1 && /type="module"/.test(tags[0]) && /src="(\.\/)?game\.js"/.test(tags[0]);
     push('module: index.html loads game.js once, as <script type="module"> with a relative src (resolves under /vector-hole/ on Pages)', ok, tags.join(' '));
-    // The Pages workflow (not changed by E2) refuses a release whose
-    // index.html doesn't contain src="game.js" -- `./game.js` would fail it.
-    const wf = fs.readFileSync(path.join(ROOT, '.github/workflows/deploy-pages.yml'), 'utf8');
-    const guards = [...wf.matchAll(/grep -q '([^']+)' release\/index\.html/g)].map(m => m[1]);
-    push('module: index.html still passes the deploy workflow\'s own guards (grep -q ... release/index.html)', guards.length >= 2 && guards.every(gd => html.includes(gd)), JSON.stringify(guards));
+    // E3: the published page is not this file but the release script's
+    // rewrite of it -- check that result (the script itself, in a dry run
+    // on this worktree) instead of the old workflow's grep guards.
+    const out = path.join(OUT, 'bridge-release-dryrun');
+    fs.rmSync(out, { recursive: true, force: true });
+    let built = null, err = null;
+    const frozen = frozenDir();
+    try {
+      execFileSync(process.execPath, ['--experimental-vm-modules', '--no-warnings', path.join(ROOT, '.github/scripts/assemble-release.mjs'), 'assemble', '--source', 'worktree', '--repo', ROOT, '--id', 'bridgecheck', '--frozen-dir', frozen, '--no-live-anchor', '--out', out], { stdio: ['ignore', 'pipe', 'pipe'] });
+      const rel = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
+      built = [...rel.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m => m[0]);
+    } catch (e) { err = String(e.stderr || e.message).trim().split('\n')[0]; }
+    fs.rmSync(frozen, { recursive: true, force: true });
+    push('module: the release script turns index.html into exactly one <script type="module"> loading v/<id>/game.js (the published page, E3)', !!built && built.length === 1 && /type="module"/.test(built[0]) && /src="v\/bridgecheck\/game\.js"/.test(built[0]), JSON.stringify(built || err));
     const ex = moduleExports(src);
     const want = [...QA_BRIDGE_NAMES, ...Object.values(QA_BRIDGE_SETTERS)].sort();
     const got = [...ex.names].sort();
