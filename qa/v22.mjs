@@ -28,7 +28,7 @@ async function withSave(url, build, opts = {}) {
   if (save) {
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   }
   await g.page.addScriptTag({ content: ARENA_BOT });
   await g.page.addScriptTag({ content: CAMPAIGN_BOT });
@@ -300,7 +300,7 @@ export async function runV22Checks(url) {
       return { at, text, visible, gone, learned: gm.save.coach.moved, seen };
     });
     results.push(report('coach: a player who does not steer gets the steering hint after ~1.6 s, it stays until they steer', afk.at != null && afk.at >= 1.4 && afk.at <= 2.2 && afk.visible && /Przeciągnij palcem/.test(afk.text) && afk.gone && afk.learned, JSON.stringify(afk)));
-    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const again = await g.page.evaluate(() => {
       const gm = window.game, seen = [];
       const orig = gm.showCoachHint.bind(gm); gm.showCoachHint = (k, ...a) => { seen.push(k); return orig(k, ...a); };
@@ -400,7 +400,7 @@ export async function runV22Checks(url) {
       wyzwania: truthy(r.wyz), warsztat: truthy(r.warsztat), noArenaUnlock: notMatches(/\barena\b/, r.announced + r.fresh), kampaniaAnnounced: matches(/kampania/, r.announced),
       coachMoved: truthy(r.coach.moved), coachAte: truthy(r.coach.ate), nextMission: is(r.next, 'M25'), firstRun: falsy(r.first)
     }, JSON.stringify(r)));
-    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const again = await g.page.evaluate(() => { const s = window.game.save; return { v: s.schemaVersion, done: Object.keys(s.campaign.completed).sort().join(','), coins: s.coins, energy: 'energy' in s, wyz: window.game.isWyzwaniaUnlocked() }; });
     results.push(expectAll('save: a reload after migrating keeps everything (idempotent)', {
       schemaVersion: is(again.v, 13), completed: is(again.done, 'M01,M02,M03'), coins: is(again.coins, 777), energy: falsy(again.energy), wyzwania: truthy(again.wyz)

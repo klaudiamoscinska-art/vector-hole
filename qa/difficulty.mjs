@@ -31,7 +31,7 @@ export async function runDifficultyChecks(url, runs = 2, workers = 4, { seed: ba
     save.settings.music = false; save.settings.sfx = false;
     await page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await page.reload();
-    await page.waitForFunction(() => window.game && window.game.state);
+    await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     await page.addScriptTag({ content: CAMPAIGN_BOT });
     await page.addScriptTag({ content: QA_RANDOM });
     for (const m of chunk) {

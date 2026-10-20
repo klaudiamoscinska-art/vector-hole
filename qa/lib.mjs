@@ -39,6 +39,93 @@ export function serve() {
   });
 }
 
+/* ---------- E2: QA bridge (game.js is an ES module) ----------
+   The suites read the game's top-level names bare inside the page
+   (`CONFIG.ads...`, `defaultSave()`, `SAVE_GUARD.state`, `SAVE_MIRROR = fn`).
+   A classic script made every top-level const/let/class/function visible to
+   later scripts; a module keeps them in its own scope. game.js exports just
+   the names below (and one setter), and this init script (QA only -- it is
+   installed by openGame() and the suites' own contexts, never shipped) puts
+   each on `window` as an accessor over the module's live binding:
+   - get: reads `ns[name]` every time (live -- SAVE_SLOT after devBoot(),
+     SAVE_MIRROR after attachCloudSave(), never a copy);
+   - set: only for QA_BRIDGE_SETTERS (SAVE_MIRROR -> setSaveMirror()), and it
+     re-reads the binding afterwards, so a setter that doesn't reach the game
+     throws; any other name is read-only and an assignment throws.
+   It imports the exact URL of the page's own <script type="module"> (the
+   same module-map entry: no second evaluation, no second Game), from an
+   inline module script added at DOMContentLoaded (after game.js has run)
+   which holds the load event, so the bridge is ready before page.goto() /
+   page.reload() return. A missing export, a failed import, a second copy of
+   game.js or a bridge not ready at `load` sets __qaBridge.error and logs a
+   console error (the suites' "no runtime errors" checks see it); openGame()
+   throws on it. A page without a module script (the previous release in
+   px02's LEGACY-06) keeps its real classic globals: mode 'classic'. */
+export const QA_BRIDGE_NAMES = [
+  'AD_PLACEMENTS', 'AURAS', 'CAMPAIGN_MISSIONS', 'CONFIG', 'CampaignEntity', 'DEV', 'DEV_CODE_HASH', 'DEV_SANDBOX_SAVE_KEY',
+  'DISTRICTS', 'DISTRICT_COLORS', 'DISTRICT_STORY', 'DISTRICT_THEME', 'EAT_EFFECTS', 'FEATURE_GATES', 'GAMEPLAY_TRACK_IDS',
+  'GameState', 'I18N', 'IAP_PRODUCTS', 'LANDMARK_SIGNS', 'MENU_TRACK_IDS', 'MISSION_BOOSTERS', 'MISSION_BOT_TIME',
+  'MUSIC_TRACKS', 'MUSIC_TRACK_BY_ID', 'OVERDRIVE_SKINS', 'SAVE_GUARD', 'SAVE_MIRROR', 'SAVE_SLOT', 'SCREEN_FLOOR', 'SKINS',
+  'SeededRNG', 'SoundEngine', 'TIERS', 'WORLD_H', 'WORLD_W', 'campaignMissionById', 'canEatWorldObjectTier', 'clamp',
+  'compileSong', 'decodeChallenge', 'decodeSaveCode', 'defaultSave', 'devIsLoopback', 'districtLandmarkId',
+  'encodeChallenge', 'encodeSaveCode', 'formatClock', 'getSizeTierIndex', 'loadSave', 'migrateSave', 'missionCode',
+  'rankHoles', 'sanitizeSave', 'saveGame', 'sealSave', 'unitsForRadius', 'unlockedFeatureIds'
+];
+/** Bridged names a suite assigns to, and the game.js export that sets each. */
+export const QA_BRIDGE_SETTERS = { SAVE_MIRROR: 'setSaveMirror' };
+function qaBridgeInit(names, setters) {
+  if (window.__qaBridge) return;
+  const state = { ready: false, mode: null, error: null, src: null, names: names.length, installedBeforeLoad: null };
+  Object.defineProperty(window, '__qaBridge', { value: state });
+  const fail = (msg) => { if (!state.error) { state.error = msg; console.error('QA bridge: ' + msg); } };
+  window.addEventListener('load', () => { if (!state.ready) fail('not ready at the load event'); });
+  document.addEventListener('DOMContentLoaded', () => {
+    const mods = document.querySelectorAll('script[type="module"][src]');
+    if (!mods.length) { state.mode = 'classic'; state.ready = true; return; }
+    if (mods.length !== 1) { fail(mods.length + ' module scripts in the page, expected 1'); return; }
+    const src = state.src = window.__qaBridgeImportOverride || mods[0].src;
+    const path = new URL(mods[0].src).pathname;
+    Object.defineProperty(window, '__qaBridgeInstall', { configurable: true, value: (ns) => {
+      try {
+        const loads = performance.getEntriesByType('resource').filter(e => new URL(e.name).pathname === path && !/^(fetch|xmlhttprequest)$/.test(e.initiatorType)).length;
+        if (loads !== 1) { fail(path + ' loaded ' + loads + ' times (a second module instance)'); return; }
+        const missing = names.filter(n => !(n in ns));
+        if (missing.length) { fail('game.js does not export: ' + missing.join(', ')); return; }
+        const noSetter = Object.keys(setters).filter(n => typeof ns[setters[n]] !== 'function');
+        if (noSetter.length) { fail('game.js has no setter export for: ' + noSetter.join(', ')); return; }
+        for (const n of names) {
+          Object.defineProperty(window, n, {
+            configurable: true, enumerable: false,
+            get() { return ns[n]; },
+            set(v) {
+              if (!setters[n]) throw new TypeError('QA bridge: ' + n + ' is read-only (game.js has no setter for it)');
+              ns[setters[n]](v);
+              if (ns[n] !== v) throw new Error('QA bridge: setting ' + n + ' did not reach the game');
+            }
+          });
+        }
+        state.mode = 'module';
+        state.installedBeforeLoad = document.readyState !== 'complete';
+        state.ready = true;
+      } catch (e) { fail('install failed: ' + (e && e.message || e)); }
+    } });
+    const s = document.createElement('script');
+    s.type = 'module';
+    s.textContent = 'import * as ns from ' + JSON.stringify(src) + '; window.__qaBridgeInstall(ns);';
+    s.addEventListener('error', () => fail('import of ' + src + ' failed'));
+    document.head.appendChild(s);
+  });
+}
+export const QA_BRIDGE = `(${qaBridgeInit})(${JSON.stringify(QA_BRIDGE_NAMES)}, ${JSON.stringify(QA_BRIDGE_SETTERS)});`;
+/** Adds the bridge to a browser context (before its first page). */
+export async function installQaBridge(context) { await context.addInitScript(QA_BRIDGE); }
+/** Waits for the bridge on a page whose game is up; throws on its error. */
+export async function waitForQaBridge(page, timeout = 15000) {
+  await page.waitForFunction(() => window.__qaBridge && (window.__qaBridge.ready || window.__qaBridge.error), null, { timeout });
+  const err = await page.evaluate(() => window.__qaBridge.error);
+  if (err) throw new Error('QA bridge: ' + err);
+}
+
 /** Launch Chromium + a page that records console errors and page errors.
  *  External requests (Google Fonts etc.) are blocked so runs are offline
  *  and deterministic; `allowExternal` lets the network test opt back in. */
@@ -47,6 +134,7 @@ export async function openGame(baseUrl, { save = null, viewport = { width: 420, 
   // v19: the game picks its language from the browser -- the suites assert
   // Polish copy, so they run as a Polish browser unless told otherwise.
   const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile, deviceScaleFactor, locale });
+  await installQaBridge(context);
   const errors = [];
   const external = [];
   if (!allowExternal) {
@@ -73,6 +161,7 @@ export async function openGame(baseUrl, { save = null, viewport = { width: 420, 
   }
   await page.goto(baseUrl + query);
   await page.waitForFunction(() => window.game && window.game.state !== undefined, null, { timeout: 15000 });
+  await waitForQaBridge(page);
   return { browser, context, page, errors, external, requests };
 }
 

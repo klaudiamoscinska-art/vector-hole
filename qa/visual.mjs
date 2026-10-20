@@ -12,7 +12,7 @@ async function veteranPage(url, saveOpts = {}, opts = {}) {
   const save = await veteranSave(g.page, saveOpts);
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.addScriptTag({ content: ARENA_BOT });
   await g.page.addScriptTag({ content: QA_TICK });
   return g;
@@ -170,7 +170,7 @@ export async function runVisualChecks(url) {
     const save = await veteranSave(g.page, { coins: 0, runsPlayed: 6, missions: 40 });
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const idle = await g.page.evaluate(() => {
       const gm = window.game, out = {};
       gm.applyGfx(2);

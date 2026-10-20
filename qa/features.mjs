@@ -12,7 +12,7 @@ async function veteranPage(url, opts = {}, saveOpts = {}) {
   if (opts.mutate) opts.mutate(save);
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.addScriptTag({ content: ARENA_BOT });
   return g;
 }
@@ -238,7 +238,7 @@ export async function runFeatureChecks(url) {
     results.push(report('viral: share card renders as a JPEG under 600 KB', link.card > 20000 && link.card < 600000, `${Math.round(link.card / 1024)} KB`));
     const q = link.url.slice(link.url.indexOf('?'));
     await g.page.goto(url + q);
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     await g.page.addScriptTag({ content: ARENA_BOT });
     const c = await g.page.evaluate(() => {
       const gm = window.game;
@@ -258,7 +258,7 @@ export async function runFeatureChecks(url) {
     const tampered = q.replace(/c=([0-9a-z]+)\.([0-9a-z]+)\./, (m, a) => `c=${a}.zzz.`);
     await g.page.evaluate(() => { window.game.save.challenge = null; saveGame(window.game.save); });
     await g.page.goto(url + tampered);
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const t = await g.page.evaluate(() => window.game.save.challenge);
     results.push(report('anti-cheat: edited challenge score is rejected', t === null));
     results.push(report('viral: no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));

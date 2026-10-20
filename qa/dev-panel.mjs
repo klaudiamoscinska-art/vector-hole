@@ -9,7 +9,7 @@
 // verifies the gate rejects the local code there).
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, chromium, ROOT, OUT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, chromium, ROOT, OUT, installQaBridge } from './lib.mjs';
 import { devCodeHash, devCodeToken } from './dev-code.mjs';
 
 const SHOTS = path.join(OUT, 'dev-panel');
@@ -60,11 +60,11 @@ async function devGame(url, { realSave = null, sandbox = 'copy', viewport, mobil
   const g = await openGame(url, { save: realSave, viewport, mobile, query });
   await g.page.evaluate((tok) => localStorage.setItem('vectorHoleDevAccess_v1', tok), LOCAL_TOKEN);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.devPanel);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel);
   await g.page.addScriptTag({ content: HELPERS });
   if (sandbox) {
     await g.page.evaluate((kind) => window.__devClick('data', kind === 'fresh' ? 'sandbox-fresh' : 'sandbox-copy'), sandbox);
-    await g.page.waitForFunction(() => window.game && window.game.devPanel && DEV.sandbox, null, { timeout: 15000 });
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel && DEV.sandbox, null, { timeout: 15000 });
     await g.page.addScriptTag({ content: HELPERS });
   }
   return g;
@@ -147,6 +147,7 @@ export async function runDevPanelChecks(url) {
   {
     const browser = await chromium.launch();
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'pl-PL' });
+    await installQaBridge(context);
     const PROD = 'https://klaudiamoscinska-art.github.io/vector-hole/';
     await context.route(/^https?:\/\/(?!klaudiamoscinska-art\.github\.io)/, r => r.abort());
     await context.route(PROD + '**', (r) => {
@@ -160,7 +161,7 @@ export async function runDevPanelChecks(url) {
     const page = await context.newPage();
     page.on('pageerror', e => errors.push(String(e)));
     await page.goto(PROD + 'index.html?dev');
-    await page.waitForFunction(() => window.game && window.game.devPanel);
+    await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel);
     await wait(page, 600);
     await page.fill('#devCodeInput', 'dev');
     await page.click('#devCodeBox button[type="submit"]');
@@ -170,20 +171,20 @@ export async function runDevPanelChecks(url) {
     // A forged token (the local code's hash) in storage is ignored there too.
     await page.evaluate((tok) => localStorage.setItem('vectorHoleDevAccess_v1', tok), LOCAL_TOKEN);
     await page.goto(PROD + 'index.html');
-    await page.waitForFunction(() => window.game && window.game.devPanel);
+    await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel);
     const forged = await page.evaluate(() => ({ access: DEV.access, fab: !!document.getElementById('devFab') }));
     push('production host: a planted local-code token gives no access', !forged.access && !forged.fab, JSON.stringify(forged));
     // The hash in the source is not a token either.
     await page.evaluate(() => localStorage.setItem('vectorHoleDevAccess_v1', DEV_CODE_HASH));
     await page.goto(PROD + 'index.html');
-    await page.waitForFunction(() => window.game && window.game.devPanel);
+    await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel);
     const planted = await page.evaluate(() => ({ access: DEV.access, fab: !!document.getElementById('devFab') }));
     push('production host: planting DEV_CODE_HASH from the source gives no access', !planted.access && !planted.fab, JSON.stringify(planted));
     const real = process.env.VH_DEV_CODE;
     if (real) {
       const hashMatches = await page.evaluate(() => DEV_CODE_HASH) === devCodeHash(real);
       await page.goto(PROD + 'index.html?dev');
-      await page.waitForFunction(() => window.game && window.game.devPanel);
+      await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel);
       await wait(page, 600);
       await page.fill('#devCodeInput', '  ' + real.toUpperCase() + ' ');
       await page.click('#devCodeBox button[type="submit"]');
@@ -260,7 +261,7 @@ export async function runDevPanelChecks(url) {
 
     // Test state survives a reload, still in test mode.
     await page.reload();
-    await page.waitForFunction(() => window.game && window.game.devPanel);
+    await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel);
     await page.addScriptTag({ content: HELPERS });
     const kept = await page.evaluate(() => ({ sandbox: DEV.sandbox, coins: window.game.save.coins, districts: window.game.save.campaign.unlockedDistricts.length }));
     push('data: test mode and the test save survive a reload', kept.sandbox && kept.coins === snap.coinsAtSnap && kept.districts === 12, JSON.stringify(kept));
@@ -293,7 +294,7 @@ export async function runDevPanelChecks(url) {
     const realMid = await page.evaluate(() => localStorage.getItem('vectorHoleSave_v1'));
     const testCode = await page.evaluate(() => encodeSaveCode(window.game.save));
     await page.evaluate(() => window.__devClick('data', 'sandbox-exit'));
-    await page.waitForFunction(() => window.game && window.game.devPanel && !DEV.sandbox, null, { timeout: 15000 });
+    await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel && !DEV.sandbox, null, { timeout: 15000 });
     // Opening the game on the real save counts a session (retention) and
     // stamps nothing else: everything but that bookkeeping must match.
     const back = await page.evaluate(() => ({ raw: localStorage.getItem('vectorHoleSave_v1'), coins: window.game.save.coins, slot: SAVE_SLOT, fab: document.getElementById('devFab').textContent, runs: window.game.save.stats.runsPlayed, m05: !!window.game.save.campaign.completed.M05 }));

@@ -7,6 +7,7 @@ the machine — no `package.json`, no build step.
 
 ```bash
 node qa/run-all.mjs        # everything below, exit 1 on any failure (prints the environment, writes qa/out/environment.json)
+node qa/bridge.mjs         # E2: game.js as an ES module -- one module script, loaded once, same boot as the classic base (listeners, writes), the QA bridge on live bindings (getters, the SAVE_MIRROR setter), exact export list, negative checks (no bridge, missing export, broken setter, failed import, second copy)
 node qa/boot.mjs           # E1: the game starts (fresh phone pl-PL, fresh desktop en-US, saved profile), no page errors, loads exactly the runtime files from index.html (all 200), nothing external
 node qa/trace.mjs          # E1: deterministic trace -- an Arena round + the FIRST clear of mission M01, each played twice from the same seed, must match exactly (--record FILE / --compare FILE, --seed=N, --mission=Mxx)
 node qa/edge-cases.mjs     # broken saves, private mode, monkey taps, pause/resize spam, XSS, clock rollback, hostile links
@@ -129,10 +130,46 @@ so a refactor that must not change the game can prove it doesn't.
   paths, SHA-256 of every runtime file; printed by `run-all`, `boot`,
   `trace`, `v18`, stored in `qa/out/environment.json` and the trace file.
 
-Not covered yet (gates before the matching E2+ step): the Daily / friend
+## E2: game.js is an ES module -- the QA bridge
+
+`index.html` loads `<script type="module" src="game.js">` (the deploy
+workflow's guard greps for `src="game.js"`; `./game.js` would fail it). A
+module keeps its top-level names to itself, so the bare names the suites use
+inside the page (`CONFIG`, `defaultSave()`, `SAVE_GUARD`, `SAVE_MIRROR = fn`
+...) come from the bridge in `lib.mjs`:
+
+- `QA_BRIDGE_NAMES` -- the names the suites really read in the page (57,
+  found by scanning `qa/` for game.js's top-level names and dropping
+  comments, source-text scans and Node-side names); game.js's one
+  `export { ... }` lists exactly these plus `setSaveMirror` (checked).
+- `QA_BRIDGE` (init script, added by `openGame()`, px02's `sharedContext()`
+  and the dev panel's production-host context via `installQaBridge()`): at
+  DOMContentLoaded (game.js has run) an inline module script imports the
+  page's own module URL -- the same instance, no second evaluation -- and
+  defines each name on `window` as an accessor: get = the live binding,
+  set = only `SAVE_MIRROR` (through `setSaveMirror()`, then re-read: a
+  setter that doesn't reach the game throws), any other assignment throws.
+  It holds the load event, so it's ready before `goto()` / `reload()`
+  return; `openGame()` also waits on it (`waitForQaBridge()`), and every
+  suite's "game is up" wait reads `window.game && window.__qaBridge &&
+  window.__qaBridge.ready && ...` -- a reload the game starts itself (dev
+  panel test mode, language switch) is polled while the page loads, and
+  `window.game` exists a moment before the bridge does.
+- Fails loudly: a missing export, a failed import, a second copy of game.js
+  or "not ready at load" set `__qaBridge.error` and log a console error
+  (the suites' no-runtime-errors checks), `openGame()` throws. A page with no
+  module script (px02's previous release) keeps its classic globals.
+- Nothing of this ships: the bridge lives in `qa/`; the game only gained the
+  export list and `setSaveMirror()` (reachable by `import()` of game.js --
+  strictly less than the 266 globals a classic script exposed).
+
+Run the game over HTTP(S) (`python3 -m http.server`); `file://` can't load
+a module script.
+
+Not covered yet (gates before the matching E3+ step): the Daily / friend
 challenge / twist missions in the trace, an import-graph check for ES
 modules (`qa/module-graph.mjs`: cycles, forbidden Arena ↔ Campaign edges,
 relative specifiers only), `px02-isolation.mjs` LEGACY-06 rebuilding the
 previous release from a multi-file tree, `dev-code.mjs` finding
-`DEV_CODE_SALT` outside `game.js`, and the test bridge for globals the
-suites read by name once the game is a module.
+`DEV_CODE_SALT` outside `game.js`, (the test bridge for globals the suites read by
+name is done in E2, above).

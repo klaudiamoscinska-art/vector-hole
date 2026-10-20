@@ -21,7 +21,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(dir, name + '.png
   save.challenge = { seed: 12345, score: 4321, from: 'Ania', receivedAt: Date.now() };
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.addScriptTag({ content: ARENA_BOT });
   await g.page.waitForTimeout(800);
   await shot(g.page, '02-hub-challenge');
@@ -54,7 +54,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(dir, name + '.png
   const save = await veteranSave(g.page, { coins: 900, runsPlayed: 8, missions: 40 });
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.addScriptTag({ content: QA_TICK });
   await g.page.evaluate(() => { const gm = window.game; gm.checkEvolutionTriggers = () => {}; gm.startRound({ seed: 777 }); cancelAnimationFrame(gm.rafId); gm.running = false; });
   await g.page.evaluate(() => window.__qaTick(900));
@@ -92,7 +92,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(dir, name + '.png
   const save = await veteranSave(g.page, { coins: 240, runsPlayed: 2, missions: 3 });
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.waitForTimeout(700);
   await shot(g.page, '17-hub-frontier');
   await g.page.evaluate(() => window.game.openCampaignScreen());
@@ -120,7 +120,7 @@ for (const vp of [{ width: 375, height: 667 }]) { // SE-class phone
   const save = await veteranSave(g.page, { coins: 240, runsPlayed: 4, missions: 5 });
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.waitForTimeout(700);
   await shot(g.page, '23-hub-se');
   await g.page.evaluate(() => window.game.openCampaignScreen());
@@ -148,7 +148,7 @@ for (const vp of [{ width: 375, height: 667 }]) { // SE-class phone
   save.prisms = 20;
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.waitForTimeout(500);
   await g.page.evaluate(() => { window.game.openCampaignScreen(); window.game.selectCampaignDistrict('metro'); });
   await g.page.waitForTimeout(400);

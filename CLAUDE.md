@@ -10,7 +10,7 @@ Vanilla HTML/CSS/JS, zero dependencies, no build step, deliberately exactly thre
 
 - `index.html` — canvas, in-round HUD, and every screen (Miasto hub, Dzielnice, mission briefing sheet, Warsztat, Wyzwania, run setup, profile, pause, quick-equip, evolution cards, game over, ad, mission result) present in the DOM at once and toggled with `.hidden`, plus a persistent bottom nav.
 - `style.css` — neon visual system, responsive layout (phone first, desktop too), self-hosted subsetted fonts as base64 `@font-face` (the default build makes **zero** third-party requests — keep it that way).
-- `game.js` — all game logic in one long file (ES6 classes: `Game`, `Hole`, `Bot`, `WorldObject`, `CampaignEntity`, `CityFloor`, `SoundEngine`, `Monetization`, `Analytics`, `SeededRNG`, `Particle`, `FloatText`, `Ripple`).
+- `game.js` — all game logic in one long file, loaded as a native ES module since E2 (`<script type="module" src="game.js">`; its top-level names aren't globals — the `export { … }` at the end lists only what `qa/` reads through the QA bridge, see `qa/README.md` E2) (ES6 classes: `Game`, `Hole`, `Bot`, `WorldObject`, `CampaignEntity`, `CityFloor`, `SoundEngine`, `Monetization`, `Analytics`, `SeededRNG`, `Particle`, `FloatText`, `Ripple`).
 
 **Do not split `game.js` or add a build step / dependency without flagging it to the user first** — the three-file, zero-dependency rule is a deliberate, repeated instruction.
 
@@ -21,13 +21,13 @@ Vanilla HTML/CSS/JS, zero dependencies, no build step, deliberately exactly thre
 No package manager, build or linter. Serve the folder and open `index.html`:
 
 ```bash
-python3 -m http.server 8000   # http://localhost:8000/index.html (file:// works too)
+python3 -m http.server 8000   # http://localhost:8000/index.html (HTTP/HTTPS only: since E2 game.js is an ES module, file:// doesn't load it)
 ```
 
 QA bots (dev-only, plain Node ES modules using the machine's global Playwright, outputs in git-ignored `qa/out/`):
 
 ```bash
-node qa/run-all.mjs     # PX01 save safety, PX02 D+ isolation, edge cases, features, visual, design, flow, 20-round Arena career, 30 campaign missions, v15 systems, v16 audio, v17 first impression, v18 economy, v19 launch, v20 gates, v21 big screens, v22 two modes, v23 dev panel, difficulty (all 240 missions)
+node qa/run-all.mjs     # E1 boot + trace, E2 module + QA bridge, PX01 save safety, PX02 D+ isolation, edge cases, features, visual, design, flow, 20-round Arena career, 30 campaign missions, v15 systems, v16 audio, v17 first impression, v18 economy, v19 launch, v20 gates, v21 big screens, v22 two modes, v23 dev panel, difficulty (all 240 missions)
 node qa/px02-isolation.mjs # PX02 D+: no Arena advantage from any profile/vortex/campaign state, mission boosters untouched, one-time vortex refund safe (once per save line, guard, quota, two tabs, previous release, cloud, backup code)
 node qa/save-safety.mjs  # PX01 save guard: future/broken/partly broken saves never overwritten (load + every autosave), explicit repair keeps .rescue, verified migration after .bak, two tabs, quota, cloud copy
 node qa/dev-panel.mjs    # v23 dev panel: access gate, test-mode isolation, every category really works in-game, phones + desktop (VH_DEV_CODE=... also checks the real code)

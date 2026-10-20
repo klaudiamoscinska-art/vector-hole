@@ -13,7 +13,7 @@ export async function runCampaignBots(url, count = 12) {
   const save = await allDistrictsSave(page);
   await page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await page.reload();
-  await page.waitForFunction(() => window.game && window.game.state);
+  await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await page.addScriptTag({ content: CAMPAIGN_BOT });
   // v15: in play order (district by district), every mission under its
   // real time limit.

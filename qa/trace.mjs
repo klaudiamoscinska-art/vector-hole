@@ -165,7 +165,7 @@ export async function traceScenario(url, scenario, seed) {
     save.settings.music = false; save.settings.sfx = false; // see "Held fixed" above
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     await g.page.addScriptTag({ content: scenario === 'arena' ? ARENA_BOT : CAMPAIGN_BOT });
     await g.page.addScriptTag({ content: TRACE_PAGE });
     const run = await g.page.evaluate(([sc, sd]) => window.__qaTraceRun(sc, sd), [scenario, seed]);
