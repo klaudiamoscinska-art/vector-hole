@@ -1,7 +1,7 @@
 # E3_ROLLBACK_PLAN — rollback wersjonowanych wydań GitHub Pages
 
 > **Dotyczy:** workflow `.github/workflows/deploy-pages.yml` (build → deploy → verify-live) i skryptu `.github/scripts/assemble-release.mjs` wprowadzonych przez PR #76 (E2 + E3 + L1-R1).
-> **Źródło:** projekt z przeglądu K2F-R (2026-10-22), sprawdzony z kodem w K2F-1. Każde twierdzenie o zachowaniu skryptu wskazuje dowód z próby K2F-R (S0–S13, `qa/release.mjs`).
+> **Źródło:** projekt z przeglądu K2F-R (2026-10-22), sprawdzony z kodem w K2F-1; §4 opisuje tryb awaryjny `recovery` z K2F-1 (K2). Każde twierdzenie o zachowaniu skryptu wskazuje dowód z próby K2F-R (S0–S13, `qa/release.mjs`).
 > **Zasada:** żadnej procedury z tego dokumentu nie uruchamia się bez zgody właścicielki. Workflow nigdy nie cofa niczego sam.
 
 ## Słownik
@@ -32,6 +32,7 @@ Gdzie szukać danych w czasie incydentu: **Actions → run → Summary** (sekcje
 | N7 | **`--no-ledger` / `--allow-non-tip` w produkcji** i **ręczna publikacja** (upload artefaktu poza workflow, inny workflow, „Deploy from branch”) | `--no-ledger` jest odrzucane pod Actions. Publikacja poza workflow nie zostawia rekordu w ledgerze albo zostawia rekord innej aplikacji, więc następny build zrobi STOP (S7, H1). Ręczny upload może też nie zawierać wymaganych `v/<id>/`. |
 | N8 | **Anulowanie joba `deploy` w trakcie** i „naprawianie” rekordów deploymentów zapisami do API | Rekord w `waiting/queued/pending/in_progress` młodszy niż 6 h blokuje każdy build, także rollback (S2). Workflow ma tylko `deployments: read`. |
 | N9 | **Rollback do kodu z niższym `SAVE_SCHEMA_VERSION`** niż najwyższy opublikowany (dziś wszędzie `13`) | PX01: zapis „z przyszłości” jest wstrzymany (nie nadpisany), ale gracz gra z pamięci i postęp się nie zapisuje. |
+| N10 | **Trybu awaryjnego (`mode: recovery`) poza warunkiem §4.3**, „na wszelki wypadek”, drugi raz bez nowej analizy, ani **re-run** runu recovery | Recovery dopuszcza dwa udokumentowane odstępstwa (§4.1). Każde uruchomienie to osobna decyzja na jednym stanie; re-run jest odrzucany w kodzie. |
 
 Re-run samego joba `deploy` ze starszego runu E3 jest **bezpieczny, ale bezużyteczny**: guard odmawia, jeśli żywy `index.html` zmienił się od buildu (S12), a artefakt `release-files` i tak wygasa po 1 dniu.
 
@@ -139,9 +140,9 @@ Każdy scenariusz: **Warunek → Zgody → Czynności → Kontrole → STOP → 
   - (c) **na żywej stronie, wydanie żywe** (anchor): 404, inne bajty albo zły MIME → precheck exit 1 (S5: 404, `text/plain`), więc **standardowy rollback jest zablokowany**;
   - (d) **na żywej stronie, inne zachowane wydanie** (nie anchor): precheck tego nie sprawdza; każdy udany build publikuje cały artefakt od nowa z Gita, więc odtwarza też te katalogi.
 - **Zgody:** (a)/(b) poprawka = nowy PR (właścicielka); (c) każde działanie poza czekaniem — właścicielka + GPT; (d) `workflow_dispatch` — właścicielka.
-- **Czynności:** (a)/(b) naprawa źródła commitem naprzód, nigdy przez usunięcie wydania z retencji. (c) odczekać 15–30 min, ponowić raz (`workflow_dispatch`); jeśli stan trwa → §2.8. (d) jeden `workflow_dispatch` na `main`.
+- **Czynności:** (a)/(b) naprawa źródła commitem naprzód, nigdy przez usunięcie wydania z retencji. (c) odczekać 15–30 min, ponowić raz (`workflow_dispatch`); jeśli stan trwa, a przyczyną jest 404 albo zły MIME → §4 (klasa A); inne bajty → STOP. (d) jeden `workflow_dispatch` na `main`.
 - **Kontrole:** precheck PASS; step summary zawiera wszystkie wymagane id; `verify-live` PASS (sprawdza każdy plik artefaktu, także starsze `v/<id>/`).
-- **STOP:** (a) zawsze; (c) po drugiej nieudanej próbie albo przy **innych bajtach** pod istniejącym id (immutability — nigdy nie nadpisywać).
+- **STOP:** (a) zawsze; (c) przy **innych bajtach** pod istniejącym id (immutability — nigdy nie nadpisywać), przy HTTP innym niż 404, albo gdy recovery (§4) też odmawia.
 - **Sukces:** każdy plik każdego zachowanego `v/<id>/` serwowany z poprawnym hashem i MIME (`verify-live`).
 
 ### 2.6 GitHub API niedostępne
@@ -162,9 +163,9 @@ Każdy scenariusz: **Warunek → Zgody → Czynności → Kontrole → STOP → 
 - **Czynności:**
   1. Zapisać: żywe id (słownik), ostatni rekord `success` i jego SHA, czas.
   2. Przejściowe: odczekać 15–30 min, jeden `workflow_dispatch`.
-  3. Trwałe: → §4.
+  3. Trwałe: → §4 (klasa B). Recovery przejdzie tylko wtedy, gdy ledger sam chroni żywe wydanie (rekord `success` w zakresie retencji); inaczej STOP.
 - **Kontrole:** żywe id i ledger porównane ręcznie; żywe `v/<id>/` kompletne (curl).
-- **STOP:** żywe id nie należy do łańcucha `main`; ledger nie zna żadnej publikacji żywego wydania; każdy pomysł na ręczną publikację, zmianę źródła Pages albo usunięcie `v/`.
+- **STOP:** żywe id nie należy do łańcucha `main`; ledger nie zna udanej publikacji żywego wydania (np. jedyny rekord `failure` po faktycznej publikacji — R9) — recovery też odmówi (§4.7); każdy pomysł na ręczną publikację, zmianę źródła Pages albo usunięcie `v/`.
 - **Sukces:** build przechodzi bez komunikatu o niezgodności.
 
 ### 2.8 Rollback zablokowany przez precheck
@@ -175,11 +176,11 @@ Każdy scenariusz: **Warunek → Zgody → Czynności → Kontrole → STOP → 
 - **Czynności:**
   1. Sklasyfikować przyczynę z komunikatu `RELEASE CHECK FAILED`.
   2. Przejściowe (propagacja CDN, opóźnienie API): czekać 15–30 min, ponowić raz.
-  3. Trwałe: → §4.
+  3. Trwałe, żywe `v/<id>/` z 404 albo złym MIME, albo niezgodność live ↔ ledger → §4 (klasy A/B). Najpierw zmergować commit naprzód (§1.3 krok 5–6): jego zwykły run zatrzyma się na precheck (oczekiwane, nic nie publikuje), a recovery opublikuje ten sam `main`.
   4. Root ≠ piny albo klasyczny `index.html` ≠ pin (publikacja spoza E3, N2/N3): **STOP**. Decyzja właścicielki co do pinów i root wymaga osobnej analizy tego, co gracze mają w cache. Nie zmieniać pinów ani root w ramach rollbacku.
 - **Kontrole:** precheck PASS w następnym przebiegu.
-- **STOP:** root/pin (pkt 4); `index.html` 404; wydanie spoza łańcucha; każda ręczna publikacja.
-- **Sukces:** standardowy build commita naprzód przechodzi, dalej §1.3 krok 7–8.
+- **STOP:** root/pin (pkt 4); `index.html` 404; wydanie spoza łańcucha; każda ręczna publikacja. Recovery tych przypadków nie obsługuje (§4.7).
+- **Sukces:** standardowy build commita naprzód albo run recovery (§4) przechodzi, dalej §1.3 krok 7–8.
 
 ### 2.9 Zachowanie klasycznych root `game.js` i `style.css`
 
@@ -216,16 +217,91 @@ Każdy scenariusz: **Warunek → Zgody → Czynności → Kontrole → STOP → 
 | Force-push / reset `main` | opublikowane wydanie poza łańcuchem → STOP każdego buildu (N4, S10) | commit naprzód |
 | Ręczna publikacja (upload, „Deploy from branch”, inny workflow) | brak wymaganych `v/<id>/`, ledger niespójny albo H1 → STOP (N6, N7) | §1, a przy blokadzie §4 |
 
-## 4. Gdy standardowa ścieżka jest trwale zablokowana
+## 4. Tryb awaryjny `recovery` (break-glass) i powrót do standardu
 
-**Stan w tej wersji repozytorium: trybu awaryjnego nie ma.** Skrypt nie ma flagi obejścia precheck ani zgodności live ↔ ledger (K2F-R: K2).
+Mechanizm z K2: ręczne uruchomienie workflow (`workflow_dispatch`) z `mode: recovery`. **Domyślnie wyłączony**: push i zwykły `workflow_dispatch` (`mode: standard`) zawsze są runem standardowym. Nic nie jest zapisywane na stałe — każdy run recovery jest jednorazową decyzją.
 
-- **Warunek:** §2.7 albo §2.8, przyczyna trwała (dwie próby w odstępie ≥ 15 min).
-- **Zgody:** właścicielka + GPT.
-- **Czynności:** nie publikować. Zebrać dowody (logi runów, żywe id, hashe, ostatnie rekordy ledgera). Eskalacja: przygotowanie osobno przeglądniętej zmiany „break-glass” w `assemble-release.mjs`/workflow (osobne zadanie, osobny PR, osobna zgoda). Komunikat dla graczy, jeśli gra nie działa.
-- **Kontrole:** brak nowych rekordów `github-pages`, żywa strona bez zmian.
-- **STOP:** każda publikacja poza workflow, zmiana źródła Pages, usunięcie `v/`, zmiana pinów.
-- **Sukces / powrót do standardu:** po wdrożeniu przeglądniętej poprawki pierwszy zwykły build przechodzi precheck i ledger bez wyjątków; od tej chwili obowiązuje wyłącznie §1–§2.
+### 4.1 Co recovery zmienia, a czego nie
+
+| Odstępstwo od runu standardowego | Warunek | Dowód |
+|---|---|---|
+| **Klasa A** — plik żywego wydania (`v/<live>/…`) ma **HTTP 404** albo **zły `content-type`**: zamiast STOP zostaje zapisany jako uszkodzony i odbudowany z Gita (te same bajty, ten sam id) | każdy plik, który żywa strona serwuje (także ze złym MIME), musi mieć **dokładnie** bajty z Gita; inaczej STOP (immutability) | `qa/release-recovery.mjs` REC-01…07, STOP-01/02; replay R2/R3/R4 |
+| **Klasa B** — **niezgodność live ↔ ledger** (`ledger disagrees…`, `the live release's deployment … is now …`): zamiast STOP zostaje zapisana w manifeście | ledger **sam** zachowuje żywe wydanie (udana publikacja w zakresie retencji), żeby kolejne runy standardowe też je zachowały; inaczej STOP | REC-08, STOP-13/14; replay R7/R8 |
+
+Bez zmian względem runu standardowego: retencja (ta sama lista `v/<id>/`, REC-03, REC-05: identyczny artefakt), piny i zamrożony root, niezmienność, reguły grafu, kontrola bash, guard joba `deploy`, `verify-live`, STOP przy awarii API. Dodatkowo recovery wymaga `SAVE_SCHEMA_VERSION` zadeklarowanego dokładnie raz i ≥ 13 (STOP-16/17).
+
+### 4.2 Autoryzacja (wymuszona w kodzie)
+
+| Wymóg | Gdzie | Skutek naruszenia |
+|---|---|---|
+| zdarzenie `workflow_dispatch` na `refs/heads/main` | `authorize-recovery` + każdy kolejny krok | STOP |
+| `GITHUB_ACTOR` = `GITHUB_TRIGGERING_ACTOR` = właściciel repozytorium (`GITHUB_REPOSITORY_OWNER`) | j.w. | STOP (repo organizacji: zawsze STOP — fail closed) |
+| pierwsza próba (`GITHUB_RUN_ATTEMPT = 1`); job `deploy` runu recovery nie da się ponowić | `authorize-recovery`; krok „Check the live site is still what the build saw” | STOP — trzeba wysłać nowy dispatch (nowa decyzja na aktualnym stanie) |
+| `expected_main_sha` = pełny SHA runu = tip `main` w chwili składania | `authorize-recovery`, `assemble` | STOP (exit 1, nie „superseded”) |
+| `expected_live` = żywe id (12 hex) albo `classic` widziane przez precheck | `precheck-live` | STOP |
+| `reason` 10–200 znaków: litery, cyfry, spacje i `. , ; _ ( ) # / + ' -` | `authorize-recovery` | odrzucenie (exit 2) |
+| plik autoryzacji należy do tego runu (`run_id`, aktor, repo) | każdy krok | STOP |
+| zwykły run z wypełnionym polem recovery | `authorize-recovery` | odrzucenie (exit 2) — nic nie jest „w połowie włączone” |
+
+Wejścia trafiają do powłoki wyłącznie przez `env` (bez wstrzyknięcia skryptu). **Granice (NOT VERIFIED, do potwierdzenia przez właścicielkę przed poleganiem na mechanizmie):** `workflow_dispatch` może uruchomić każdy z prawem zapisu — kontrola „tylko właścicielka” działa w kodzie, ale osoba z prawem zapisu do `main` mogłaby zmienić sam workflow. Zalecane: Settings → Collaborators (kto ma zapis), ochrona gałęzi `main` (PR + przegląd), środowisko `github-pages` tylko dla `main`. Wymaganych recenzentów na `github-pages` nie dodawać bez decyzji (zatrzymałoby to też zwykłe deploye w `waiting`, K2F-R R5).
+
+### 4.3 Warunek zastosowania
+
+Wszystkie naraz:
+
+1. Standardowy run zatrzymał się w §2.5c, §2.7 albo §2.8 z komunikatem klasy A (`HTTP 404 -- the live release is incomplete`, `content-type …` dla `v/<live>/…`) albo klasy B (`ledger disagrees with the live site…`, `the live release's deployment … is now …`).
+2. Przyczyna jest trwała: dwie próby w odstępie ≥ 15 min (CDN, opóźnienie API wykluczone).
+3. Tip `main` zawiera to, co ma zostać opublikowane: bieżący `main`, jeśli jest dobry, albo zmergowany commit naprzód F1/F2 (§1.3 krok 1–6; jego zwykły run zatrzyma się na precheck — oczekiwane).
+4. API GitHub działa, rekordu w toku młodszego niż 6 h nie ma (§2.2, §2.6).
+
+### 4.4 Zgody
+
+Właścicielka: decyzja i uruchomienie (tylko ona przejdzie autoryzację). GPT: odbiór decyzji, jeśli czas pozwala. Bez zgody właścicielki nikt nie uruchamia recovery; workflow nigdy nie robi tego sam.
+
+### 4.5 Czynności
+
+1. Zapisać komunikat STOP ostatniego runu (klasa A/B, §4.3 pkt 1).
+2. Żywe id: `curl -fsS "${BASE}index.html?vh-check=$(date +%s)" | grep -oE 'v/[0-9a-f]{12}/' | head -1` (brak wyniku = `classic`).
+3. SHA `main`: `git ls-remote https://github.com/klaudiamoscinska-art/vector-hole refs/heads/main` (pełne 40 hex).
+4. Klasa B: w Settings → Environments → github-pages sprawdzić, że żywy SHA ma udaną publikację z ostatnich 30 dni albo z 5 ostatnich. Jeśli nie — recovery odmówi (§4.7); nie uruchamiać.
+5. Actions → „Deploy to GitHub Pages” → **Run workflow** → branch `main`; `mode` = `recovery`; `expected_main_sha` = pkt 3; `expected_live` = pkt 2; `reason` = krótki opis (bez dwukropka i `%`).
+6. Obserwować run: adnotacje `RECOVERY RUN` / `RECOVERY` / `RECOVERY DEPLOYMENT`; w step summary sekcja **„RECOVERY DEPLOYMENT”** (kto, kiedy, SHA, oczekiwane live, powód, schemat zapisu, lista odbudowanych plików, zaakceptowane niezgodności) i zwykła tabela zachowanych wydań.
+7. Job `deploy` czerwony → **nie ponawiać** (zablokowane w kodzie); wrócić do pkt 1 na nowym stanie.
+8. Pobrać artefakt **`recovery-record`** (90 dni: autoryzacja, live przed deployem, ledger, manifest) i dołączyć do raportu incydentu.
+
+### 4.6 Kontrole
+
+- `verify-live` zielony (każdy plik artefaktu, także odbudowane `v/<live>/…`, ma bajty i MIME).
+- Ręcznie: root = piny (§2.9), żywy `index.html` → `v/<main>/`, odbudowany plik ma hash z manifestu.
+- Gra na iPhonie i desktopie; zapis: ten sam postęp, `schemaVersion 13` (§2.11).
+
+### 4.7 STOP — recovery tego nie naprawia (eskalacja do GPT i właścicielki)
+
+| Stan | Komunikat | Dlaczego STOP | Dalej |
+|---|---|---|---|
+| inne bajty pod istniejącym id | `immutability: …` | URL zmieniłby znaczenie | eskalacja; nigdy nie nadpisywać |
+| HTTP ≠ 200/404 dla pliku żywego wydania; 403/429/5xx | `HTTP 410 …` / `INFRASTRUCTURE FAILURE` | nie wiadomo, co serwuje strona | czekać (§2.6) |
+| żywy `index.html` 404 | `is 404 -- no live site to protect?` | Pages wyłączone? | decyzja właścicielki |
+| root ≠ piny; klasyczny `index.html` ≠ pin | `the root pair was overwritten` / `pins need review` | gracze ze starym HTML mają w cache coś innego | osobna analiza pinów (§2.8 pkt 4) |
+| żywe live ≠ `expected_live`; `main` ≠ `expected_main_sha` | `authorized for …` / `main has moved on` | stan zmienił się od decyzji | nowa decyzja (§4.5 od pkt 1) |
+| ledger nie zachowuje żywego wydania (np. jedyny rekord `failure` po faktycznej publikacji, R9; brak udanej publikacji wersjonowanej) | `the ledger does not keep the live release …` | kolejne runy standardowe mogłyby usunąć `v/<live>/`, a strony w cache wciąż go ładują | eskalacja; rozwiązanie wymaga osobnej, przeglądniętej zmiany (np. jawnej listy wydań do zachowania) — **nie istnieje** |
+| wymagane wydanie poza łańcuchem `main` / nie do odbudowania | `off main's first-parent chain` / `cannot be rebuilt` | jego `v/<id>/` zniknęłoby | eskalacja (N1, N4) |
+| ponad 60 wydań / 400 MB | `over the limit of 60` | nic nie znika po cichu | decyzja właścicielki |
+| rekord w toku < 6 h; inna aplikacja niż `github-actions` (H1) | `still in_progress` / `not github-actions` | publikacja w toku / zmienione źródło Pages | czekać / Settings → Pages (N6) |
+| `SAVE_SCHEMA_VERSION` < 13 albo nieczytelny | `SAVE_SCHEMA_VERSION 12` / `0 times` | zapisy graczy wyglądałyby na „z przyszłości” | poprawić commit naprzód (N9) |
+| autoryzacja: nie właścicielka, re-run, nie `main`, nie dispatch | `recovery: …` | brak uprawnienia | właścicielka uruchamia sama, nowy dispatch |
+
+### 4.8 Sukces
+
+Run recovery zielony we wszystkich trzech jobach; `verify-live` PASS; gra działa na urządzeniach; zapis bez zmian; artefakt `recovery-record` zarchiwizowany.
+
+### 4.9 Powrót do standardowego procesu
+
+1. Recovery nie zostawia przełącznika: następny push albo `workflow_dispatch` z `mode: standard` (pola recovery **puste** — wypełnione dają exit 2) jest zwykłym runem.
+2. Po udanym recovery żywa strona i ledger są zgodne (nowy rekord `success` dla `main`), a uszkodzone pliki są odbudowane. Pierwszy następny run standardowy musi przejść precheck i ledger **bez wyjątków** (dowód: `qa/release-recovery.mjs` REC-10, replay R6).
+3. Kolejne zmiany wyłącznie przez zwykły PR → merge (§1). Recovery nie jest sposobem publikacji.
+4. Jeśli pierwszy run standardowy po recovery znów zatrzymuje się z tą samą klasą przyczyny, to przyczyna nie zniknęła (np. Pages dalej serwuje zły MIME): **STOP**, eskalacja; nie powtarzać recovery bez nowej analizy (N10).
+5. Usunięcie mechanizmu w przyszłości: zwykły commit naprzód zmieniający skrypt i workflow (marker `.github/scripts/assemble-release.mjs` zostaje, runtime bez zmian). Nigdy revert PR #76 ani samego workflow E3 (N1, N2).
 
 ## 5. Szybka ścieżka decyzji
 
@@ -235,10 +311,11 @@ Coś nie tak po merge?
 ├─ deploy czerwony ────────────────────► 2.2 (sprawdź rekord + żywy index)
 ├─ verify-live czerwony ───────────────► 2.3 (czekaj 10–15 min, re-run verify-live ≤ 24 h)
 ├─ wszystko zielone, gra nie działa ───► 2.4 → F1 / F2 (pierwsze wydanie: F2)
-├─ build rollbacku odmawia (precheck) ─► 2.8 → przejściowe: czekaj; trwałe: §4
-├─ ledger ≠ live ──────────────────────► 2.7 → przejściowe: czekaj; trwałe: §4
-└─ API GitHub nie działa ──────────────► 2.6 → czekaj, nic nie publikuj
-Zawsze: N1–N9. Zapisy: 2.11 przed czymkolwiek, co dotyka danych przeglądarki.
+├─ build rollbacku odmawia (precheck) ─► 2.8 → przejściowe: czekaj; trwałe 404/MIME: §4 klasa A; root/pin/404 index: STOP
+├─ ledger ≠ live ──────────────────────► 2.7 → przejściowe: czekaj; trwałe: §4 klasa B (tylko gdy ledger chroni żywe)
+├─ recovery odmawia ───────────────────► §4.7 → STOP, eskalacja; nie ponawiać bez nowej analizy
+└─ API GitHub nie działa ──────────────► 2.6 → czekaj, nic nie publikuj (recovery też czeka)
+Zawsze: N1–N10. Zapisy: 2.11 przed czymkolwiek, co dotyka danych przeglądarki.
 ```
 
 ## 6. Granice dowodu
@@ -249,3 +326,5 @@ Zawsze: N1–N9. Zapisy: 2.11 przed czymkolwiek, co dotyka danych przeglądarki.
 | Prawdziwy przebieg w GitHub Actions; ustawienia Pages i środowiska `github-pages`; żywe bajty produkcji | NOT VERIFIED |
 | Zachowanie GitHub przy anulowanym/timeout `deploy-pages`; CDN przy rollbacku | NOT VERIFIED |
 | iPhone / WebKit / aplikacja z ikony przy rollbacku; ES w aplikacji z ikony | NOT VERIFIED |
+| Tryb awaryjny (§4): autoryzacja, klasy A/B, STOP-y, powrót do standardu | PASS lokalnie (K2F-1: `qa/release-recovery.mjs`; replay na prawdziwej historii i prawdziwym ledgerze, Node 20 i 22) |
+| Tryb awaryjny w prawdziwym GitHub Actions (`inputs`, `GITHUB_TRIGGERING_ACTOR`, artefakt `recovery-record`, adnotacje); ustawienia dostępu (współpracownicy, ochrona `main`) | NOT VERIFIED |

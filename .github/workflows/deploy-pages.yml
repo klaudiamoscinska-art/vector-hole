@@ -16,6 +16,11 @@ name: Deploy to GitHub Pages
 # for a real upload + deploy, and its success means "published": the build
 # job (live pre-check, ledger, assembly, checks) and the post-deploy live
 # check are separate jobs that never write a record.
+# K2 break-glass (docs/E3_ROLLBACK_PLAN.md §4): workflow_dispatch with
+# mode=recovery, owner only, first attempt, naming main's sha and the live
+# release. It may rebuild a damaged live release and accept a live/ledger
+# disagreement the ledger itself covers -- nothing else; every other check
+# below runs unchanged. A push is always a standard run.
 on:
   push:
     branches:
@@ -29,6 +34,26 @@ on:
       - '.github/scripts/**'
       - .github/workflows/deploy-pages.yml
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'standard = a normal publication (leave the fields below empty). recovery = break-glass, owner only (docs/E3_ROLLBACK_PLAN.md §4)'
+        type: choice
+        options:
+          - standard
+          - recovery
+        default: standard
+      expected_main_sha:
+        description: 'recovery only: the full 40-hex sha of main (its tip) to publish'
+        type: string
+        default: ''
+      expected_live:
+        description: 'recovery only: the live release id you see now (12 hex from the live index.html) or classic'
+        type: string
+        default: ''
+      reason:
+        description: 'recovery only: why (10-200 chars: letters, digits, spaces and . , ; _ ( ) # / + '' -)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -49,6 +74,7 @@ jobs:
       tree: ${{ steps.tree.outputs.tree }}
       base_url: ${{ steps.pages.outputs.base_url }}
       live_index: ${{ steps.live.outputs.index }}
+      recovery: ${{ steps.mode.outputs.recovery }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,17 +93,38 @@ jobs:
           node --version
           node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' || { echo "::error::Node >= 18 is required"; exit 1; }
 
+      - name: Standard or recovery run
+        id: mode
+        # K2: a push or a standard dispatch passes (and must carry no recovery
+        # input); a recovery run must be a first-attempt dispatch on main by
+        # the repository owner, for main's sha. Inputs only via env.
+        env:
+          VH_MODE: ${{ inputs.mode }}
+          VH_EXPECT_SHA: ${{ inputs.expected_main_sha }}
+          VH_EXPECT_LIVE: ${{ inputs.expected_live }}
+          VH_REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs authorize-recovery --out "$RUNNER_TEMP/recovery.json"
+          mode="$(node -p 'require(process.argv[1]).mode' "$RUNNER_TEMP/recovery.json")"
+          if [ "$mode" = recovery ]; then echo "recovery=true" >> "$GITHUB_OUTPUT"; else echo "recovery=false" >> "$GITHUB_OUTPUT"; fi
+
       - name: Check the live site before deploying
         id: live
         # Exit 1 = the live site is inconsistent with what this release assumes
         # (STOP, nothing deployed); exit 3 = the site or network refused
-        # (infrastructure, STOP, nothing deployed). Never bypassed.
+        # (infrastructure, STOP, nothing deployed). Never bypassed; only a
+        # recovery run (K2) records a 404 / mistyped file of the live release
+        # as damaged (rebuilt from git; served bytes must still match).
         env:
           BASE_URL: ${{ steps.pages.outputs.base_url }}
+          RECOVERY: ${{ steps.mode.outputs.recovery }}
         run: |
           set -euo pipefail
+          rec=()
+          if [ "${RECOVERY:-}" = true ]; then rec=(--recovery "$RUNNER_TEMP/recovery.json"); fi
           node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs precheck-live \
-            --url "$BASE_URL" --out-json "$RUNNER_TEMP/live-before.json"
+            --url "$BASE_URL" --out-json "$RUNNER_TEMP/live-before.json" ${rec[@]+"${rec[@]}"}
           echo "index=$(node -p 'require(process.argv[1]).index' "$RUNNER_TEMP/live-before.json")" >> "$GITHUB_OUTPUT"
           {
             echo "### Live site before deploy"
@@ -104,16 +151,20 @@ jobs:
 
       - name: Assemble release/
         id: assemble
+        env:
+          RECOVERY: ${{ steps.mode.outputs.recovery }}
         run: |
           set -euo pipefail
           rm -rf release
+          rec=()
+          if [ "${RECOVERY:-}" = true ]; then rec=(--recovery "$RUNNER_TEMP/recovery.json"); fi
           rc=0
           node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs assemble \
             --source git --repo . --rev "$GITHUB_SHA" --out release \
             --live-json "$RUNNER_TEMP/live-before.json" \
             --ledger "$RUNNER_TEMP/ledger.json" --repository "$GITHUB_REPOSITORY" \
             --manifest-out "$RUNNER_TEMP/release-manifest.json" \
-            --summary "$GITHUB_STEP_SUMMARY" || rc=$?
+            --summary "$GITHUB_STEP_SUMMARY" ${rec[@]+"${rec[@]}"} || rc=$?
           if [ "$rc" -eq 4 ]; then
             echo "::notice::main has moved past ${GITHUB_SHA::12}: this run deploys nothing (the newer run publishes)"
             echo "deploy=false" >> "$GITHUB_OUTPUT"
@@ -181,6 +232,21 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Keep the recovery decision trail
+        # K2: what the recovery run was authorized for, saw and built --
+        # kept 90 days whether it deployed or stopped. No secrets in it.
+        if: always() && steps.mode.outputs.recovery == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-record
+          path: |
+            ${{ runner.temp }}/recovery.json
+            ${{ runner.temp }}/live-before.json
+            ${{ runner.temp }}/ledger.json
+            ${{ runner.temp }}/release-manifest.json
+          if-no-files-found: warn
+          retention-days: 90
+
   deploy:
     # The only job bound to github-pages: its deployment record (and the
     # ledger the next runs read) means exactly "this sha was uploaded and
@@ -213,11 +279,17 @@ jobs:
         # A re-run of this job alone in an older run must never publish its
         # artifact over a newer release (whose v/ folder it may not hold):
         # the live index.html must still be the one the build checked.
+        # K2: a recovery run's deploy job is never re-run at all.
         env:
           BASE_URL: ${{ needs.build.outputs.base_url }}
           LIVE_INDEX: ${{ needs.build.outputs.live_index }}
+          RECOVERY: ${{ needs.build.outputs.recovery }}
         run: |
           set -euo pipefail
+          if [ "${RECOVERY:-}" = true ]; then
+            [ "${GITHUB_RUN_ATTEMPT:-0}" = 1 ] || { echo "::error::a recovery run is never re-run (attempt ${GITHUB_RUN_ATTEMPT:-unknown}): dispatch a new one on the current state"; exit 1; }
+            echo "::warning title=RECOVERY DEPLOYMENT::publishing a break-glass build (docs/E3_ROLLBACK_PLAN.md §4)"
+          fi
           [ -n "$LIVE_INDEX" ] || { echo "::error::no live index.html hash from the build"; exit 1; }
           got="$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL%/}/index.html?vh-check=deploy-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-0}" | sha256sum | cut -d' ' -f1)"
           [ "$got" = "$LIVE_INDEX" ] || { echo "::error::the live index.html changed since the build ($got != $LIVE_INDEX): a newer release was published -- this run must not deploy its older artifact"; exit 1; }
@@ -232,8 +304,8 @@ jobs:
         uses: actions/deploy-pages@v4
 
   verify-live:
-    # Red here = the deployed site does not serve the artifact: follow the
-    # rollback plan (it never rolls back by itself). Exit 3 = network. A
+    # Red here = the deployed site does not serve the artifact: follow
+    # docs/E3_ROLLBACK_PLAN.md §2.3 (it never rolls back by itself). Exit 3 = network. A
     # separate job, so this check never changes the deployment record.
     needs: [build, deploy]
     if: github.ref == 'refs/heads/main' && needs.build.outputs.deploy == 'true'

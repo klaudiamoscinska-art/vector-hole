@@ -39,8 +39,24 @@
 //   precheck-live --url BASE --out-json FILE
 //   verify-live   --url BASE --release DIR [--attempts 5] [--delay-ms 20000]
 //   verify        --release DIR [--id ID] [--manifest FILE]
+//   authorize-recovery --out FILE   (K2, the workflow's first check; env:
+//                 VH_MODE standard|recovery, VH_EXPECT_SHA, VH_EXPECT_LIVE,
+//                 VH_REASON + GitHub's run variables)
+//   precheck-live and assemble also take --recovery FILE (from authorize-recovery).
 // The same assembly code runs for every --source: only where the trees and
 // the history come from differs (git in CI, snapshot folders in qa/release.mjs).
+//
+// K2 break-glass (docs/E3_ROLLBACK_PLAN.md §4): a recovery run is a
+// workflow_dispatch on main by the repository owner, first attempt, naming
+// the main sha and the live release it was decided on. It differs from a
+// standard run in exactly two places, each logged in the manifest and the
+// step summary: the live release may have files that are missing (404) or
+// served with a wrong type -- they are rebuilt from git, and every file that
+// is served must still match its rebuild byte for byte; and the ledger may
+// disagree with the live site -- only if the ledger itself keeps the live
+// release, so the standard runs that follow keep it too. Retention, pins,
+// the root pair, immutability, every graph and artifact check and the live
+// check after deploying are those of a standard run; anything else is a STOP.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -73,6 +89,9 @@ export const DEV_DIRS = new Set(['qa', '.claude', '.github', 'docs', 'design', '
 export const QA_MECHANISMS = [/__qa[A-Za-z_$]/, /\binstallQaBridge\b/, /\bqaBridgeInit\b/, /\bwaitForQaBridge\b/, /\baddInitScript\b/];
 const ID_RE = /^[0-9a-f]{12}$/;
 const TEST_ID_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
+// K2: a recovery run never publishes a game whose saves would read as "from
+// the future" for players already on this schema (PX01).
+export const RECOVERY = { schema: 'vh-recovery/1', minSaveSchema: 13, reason: /^[\p{L}\p{N} .,;_()#/+'-]{10,200}$/u };
 
 /* ---------------------------------------------------------------- errors */
 export class ReleaseError extends Error {
@@ -409,7 +428,7 @@ export function readFrozen(tree) {
  *  provably never published. Without a ledger (--no-ledger: local previews
  *  and tests only) the generous git-only rule above applies.
  *  More than `max` -> error, never a silent drop. */
-export function selectRetention({ chain, current, anchor = null, nowMs, ledger = null, classify = null, live = null, policy = RETENTION, eraEpoch = LEDGER.eraEpoch, planOut = null }) {
+export function selectRetention({ chain, current, anchor = null, nowMs, ledger = null, classify = null, live = null, policy = RETENTION, eraEpoch = LEDGER.eraEpoch, planOut = null, recovery = false }) {
   const bySha = new Map(chain.map((c, i) => [c.sha, { ...c, order: i }]));
   if (!bySha.has(current)) fail(`release ${current.slice(0, 12)} is not on main's first-parent chain of the versioned era`);
   const keep = new Map();
@@ -427,7 +446,7 @@ export function selectRetention({ chain, current, anchor = null, nowMs, ledger =
   } else {
     if (!classify) fail('ledger mode needs the history to classify deployment records');
     if (!live) usage('the ledger mode needs the live site (--live-json from precheck-live): the ledger is checked against it');
-    const plan = planLedger({ deployments: ledger.deployments, fetched: ledger.fetched, classify, nowMs: ledger.nowMs, policy, live, eraEpoch });
+    const plan = planLedger({ deployments: ledger.deployments, fetched: ledger.fetched, classify, nowMs: ledger.nowMs, policy, live, eraEpoch, recovery });
     if (plan.needMore) fail(`ledger is incomplete: the statuses of ${plan.examined} of ${plan.relevant} versioned-era records do not settle the retention -- re-read the ledger; never guessed`);
     for (const [sha, why] of plan.keep) { if (!bySha.has(sha)) fail(`ledger: release ${sha.slice(0, 12)} must be kept but is not on main's first-parent chain`); why.forEach(w => add(sha, w)); }
     if (planOut) Object.assign(planOut, plan);
@@ -557,7 +576,7 @@ export function checkLedger(l, { nowMs, repository = null, eraEpoch = LEDGER.era
  *  (served by the frozen root: no v/ folder). A needed release that is not
  *  on main's era chain cannot be rebuilt -> STOP. `needMore` = the statuses
  *  read so far cannot settle the answer (the ledger reader reads on). */
-export function planLedger({ deployments, fetched, classify, nowMs, policy = RETENTION, live = null, eraEpoch = LEDGER.eraEpoch }) {
+export function planLedger({ deployments, fetched, classify, nowMs, policy = RETENTION, live = null, eraEpoch = LEDGER.eraEpoch, recovery = false }) {
   const epoch = Date.parse(eraEpoch);
   const ds = deployments.map((d) => { const t = Date.parse(d.created_at); return { ...d, t, kind: t < epoch ? 'pre-era' : classify(d.sha) }; });
   let relevant = 0;
@@ -607,17 +626,24 @@ export function planLedger({ deployments, fetched, classify, nowMs, policy = RET
     }
   }
   if (!all && !(windowDone && distinct.length >= policy.min)) return more();
+  // K2: a recovery run records a disagreement instead of stopping -- only
+  // when the ledger itself keeps the live release (checked below).
+  const disagreements = [];
+  const disagree = (msg) => { if (!recovery) fail(msg); disagreements.push(msg); };
   if (live) {
     if (live.era === 'versioned') {
-      if (!latest || latest.kind !== 'era') fail(`ledger disagrees with the live site: live v/${live.anchorId}/, but the ledger shows no successful versioned publication -- the API may not show the newest deployment yet (retry later); never guessed`);
-      if (!latest.sha.startsWith(live.anchorId)) fail(`ledger disagrees with the live site (live ${live.anchorId}, ledger's last successful publication ${latest.sha.slice(0, 12)}, deployment ${latest.dep} at ${latest.at}) -- a propagation delay or contradictory data; retry later, never guessed`);
-      const cur = ds.find(d => d.id === latest.dep).statuses.slice(-1)[0];
-      if (cur.state !== 'success') fail(`ledger: the live release's deployment ${latest.dep} is now ${cur.state} with no newer publication -- contradictory (STOP, owner review)`);
-    } else if (latest && latest.kind === 'era') fail(`ledger disagrees with the live site: the live site is classic, the ledger's last successful publication is the versioned ${latest.sha.slice(0, 12)} (deployment ${latest.dep})`);
+      if (!latest || latest.kind !== 'era') disagree(`ledger disagrees with the live site: live v/${live.anchorId}/, but the ledger shows no successful versioned publication -- the API may not show the newest deployment yet (retry later); never guessed`);
+      else if (!latest.sha.startsWith(live.anchorId)) disagree(`ledger disagrees with the live site (live ${live.anchorId}, ledger's last successful publication ${latest.sha.slice(0, 12)}, deployment ${latest.dep} at ${latest.at}) -- a propagation delay or contradictory data; retry later, never guessed`);
+      else {
+        const cur = ds.find(d => d.id === latest.dep).statuses.slice(-1)[0];
+        if (cur.state !== 'success') disagree(`ledger: the live release's deployment ${latest.dep} is now ${cur.state} with no newer publication -- contradictory (STOP, owner review)`);
+      }
+      if (disagreements.length && ![...keep.keys()].some(sha => sha.startsWith(live.anchorId))) fail(`recovery: the ledger does not keep the live release ${live.anchorId} (no proven publication of it in the retention range) -- the standard runs after a recovery could drop v/${live.anchorId}/ while pages may still load it: STOP, owner decision (${disagreements[0]})`);
+    } else if (latest && latest.kind === 'era') disagree(`ledger disagrees with the live site: the live site is classic, the ledger's last successful publication is the versioned ${latest.sha.slice(0, 12)} (deployment ${latest.dep})`);
   }
   return {
     needMore: false, examined: fetched, relevant, keep, latest: latest && { sha: latest.sha, deployment: latest.dep, at: latest.at },
-    classic: [...classic].map(([sha, why]) => ({ sha, why })), notPublished, unknown
+    classic: [...classic].map(([sha, why]) => ({ sha, why })), notPublished, unknown, disagreements
   };
 }
 
@@ -751,15 +777,23 @@ export async function readLedger({ apiUrl, repository, token, history, nowMs, pe
 }
 
 /* ---------------------------------------------------------------- assemble */
-export function assemble({ history, current, id, out, live = null, nowMs, ledger = null, policy = RETENTION, allowNonTip = false, worktree = null, eraEpoch = LEDGER.eraEpoch }) {
+export function assemble({ history, current, id, out, live = null, nowMs, ledger = null, policy = RETENTION, allowNonTip = false, worktree = null, eraEpoch = LEDGER.eraEpoch, recovery = null }) {
   const warnings = [];
   const plan = {};
   let retained;
+  // K2: a damaged live site is accepted only by a recovery run, and a recovery run only with the ledger and its own pre-check.
+  if (live && live.recovery && !recovery) fail('the live pre-check was made for a recovery run -- a standard run never accepts it');
+  if (recovery) {
+    if (worktree || !ledger || allowNonTip) usage('a recovery run assembles main from git with the deployment ledger (no --source worktree, --no-ledger or --allow-non-tip)');
+    if (!live || live.recovery !== true || !Array.isArray(live.damaged)) usage('a recovery run needs its own live pre-check (precheck-live --recovery)');
+    if (recovery.sha !== current) fail(`recovery: authorized for ${recovery.sha.slice(0, 12)}, assembling ${current.slice(0, 12)} (STOP)`);
+    if (history.tip !== current) fail(`recovery: main has moved on (tip ${history.tip.slice(0, 12)}, authorized ${current.slice(0, 12)}) -- STOP, decide again on the current state`);
+  }
   if (worktree) {
     retained = [{ sha: id, id, time: null, reasons: ['current (worktree, no history)'] }];
   } else {
     if (history.tip !== current && !allowNonTip) throw new ReleaseError('superseded', `main has moved on (tip ${history.tip.slice(0, 12)}, this run ${current.slice(0, 12)}): nothing to deploy -- the newer run publishes`);
-    retained = selectRetention({ chain: history.chain, current, anchor: live && live.anchorId, nowMs, ledger, classify: history.classify, live, policy, eraEpoch, planOut: plan });
+    retained = selectRetention({ chain: history.chain, current, anchor: live && live.anchorId, nowMs, ledger, classify: history.classify, live, policy, eraEpoch, planOut: plan, recovery: !!recovery });
   }
   const ids = new Map();
   for (const r of retained) { if (ids.has(r.id) && ids.get(r.id) !== r.sha) fail(`id collision: ${r.id} is the prefix of two commits`); ids.set(r.id, r.sha); }
@@ -770,6 +804,7 @@ export function assemble({ history, current, id, out, live = null, nowMs, ledger
   for (const [n, d] of Object.entries(frozen)) put(n, d);
 
   const releases = [], excluded = [];
+  let saveSchema = null;
   for (const r of retained) {
     const isCurrent = r.sha === current;
     const isLive = r.reasons.includes('live now');
@@ -797,11 +832,16 @@ export function assemble({ history, current, id, out, live = null, nowMs, ledger
       list.push({ path: p, sha256: sha256(f.data), bytes: f.data.length });
     }
     if (isCurrent) put('index.html', Buffer.from(rewriteHtml(rel.html, `v/${r.id}/${rel.script.path}`, `v/${r.id}/${rel.style.path}`), 'utf8'));
+    if (isCurrent && recovery) saveSchema = saveSchemaOf(rel);
     if (isLive && live && live.anchorFiles) {
       const liveList = Object.keys(live.anchorFiles).sort().join(',');
       const ours = list.map(l => l.path).sort().join(',');
-      if (liveList !== ours) fail(`immutability: live v/${r.id}/ holds [${liveList}], the rebuild gives [${ours}]`);
-      for (const l of list) if (live.anchorFiles[l.path] !== l.sha256) fail(`immutability: live v/${r.id}/${l.path} is ${live.anchorFiles[l.path]}, the rebuild gives ${l.sha256} -- an id must never change bytes`);
+      if (recovery) {
+        // K2: the damaged files are rebuilt; every file the live site serves must be one of the rebuild, with its bytes.
+        const missing = [...Object.keys(live.anchorFiles), ...live.damaged.map(d => d.path)].filter(p => !list.some(l => l.path === p));
+        if (missing.length) fail(`immutability: live v/${r.id}/ has [${missing.join(',')}], which the rebuild [${ours}] does not -- not the same release (STOP)`);
+      } else if (liveList !== ours) fail(`immutability: live v/${r.id}/ holds [${liveList}], the rebuild gives [${ours}]`);
+      for (const l of list) if ((!recovery || l.path in live.anchorFiles) && live.anchorFiles[l.path] !== l.sha256) fail(`immutability: live v/${r.id}/${l.path} is ${live.anchorFiles[l.path]}, the rebuild gives ${l.sha256} -- an id must never change bytes`);
     }
     releases.push({ id: r.id, sha: r.sha, commitTime: r.time, reasons: r.reasons, entry: rel.script.path, type: rel.script.type, style: rel.style.path, files: list });
   }
@@ -825,6 +865,8 @@ export function assemble({ history, current, id, out, live = null, nowMs, ledger
     releases, excluded, warnings,
     files: [...files].map(([p, d]) => ({ path: p, sha256: sha256(d), bytes: d.length })).sort((a, b) => a.path.localeCompare(b.path))
   };
+  // K2: the decision trail of a recovery run (a standard manifest has no such key).
+  if (recovery) manifest.recovery = { authorization: recovery, damaged: live.damaged, disagreements: plan.disagreements || [], saveSchema };
   if (ledger && excluded.length) fail('internal: the ledger mode never excludes a release');
   manifest.artifactSha256 = sha256(manifest.files.map(f => `${f.sha256}  ${f.path}\n`).join(''));
   verifyRelease(out, { id, manifest });
@@ -927,8 +969,12 @@ function mimeOk(p, type) {
   if (ext === '.css') return /^text\/css\b/i.test(type);
   return /^text\/html\b/i.test(type);
 }
-/** Before deploying: what the players' browsers can be holding right now. */
-export async function precheckLive(baseUrl, { nonce = Date.now() } = {}) {
+/** Before deploying: what the players' browsers can be holding right now.
+ *  recovery (K2): the live state must be the one the owner named; a file of
+ *  the live release that is missing (404) or served with a wrong type is
+ *  recorded as damaged instead of a STOP (the assembly rebuilds it from git).
+ *  Everything else stops exactly as in a standard run. */
+export async function precheckLive(baseUrl, { nonce = Date.now(), recovery = null } = {}) {
   const idx = await fetchBytes(bust(join(baseUrl, 'index.html'), nonce));
   if (idx.status === 404) fail(`live ${join(baseUrl, 'index.html')} is 404 -- no live site to protect? Refusing to guess (owner decision)`);
   if (idx.status !== 200) infra(`live index.html: HTTP ${idx.status}`);
@@ -941,33 +987,42 @@ export async function precheckLive(baseUrl, { nonce = Date.now() } = {}) {
     root[n] = sha256(r.data);
   }
   const vm1 = /^v\/([0-9a-f]{12})\/(.+)$/.exec(script.ref);
+  if (recovery && (vm1 ? vm1[1] : 'classic') !== recovery.expectLive) fail(`recovery: the live site is ${vm1 ? 'v/' + vm1[1] + '/' : 'classic'}, the recovery was authorized for ${recovery.expectLive} -- the state changed since the decision (STOP)`);
   if (!vm1) {
     // Still the classic era: the frozen pair must be exactly what old pages load.
     const indexSha = sha256(idx.data);
     if (script.ref.replace(/^\.\//, '') !== 'game.js' || style.ref.replace(/^\.\//, '') !== 'style.css') fail(`live index.html loads ${script.ref} / ${style.ref}: neither the classic layout nor v/<id>/`);
     if (indexSha !== FROZEN.html) fail(`live classic index.html is ${indexSha}, expected ${FROZEN.html} -- the frozen pair may not match what players have cached; the pins need review`);
     for (const [n, pin] of Object.entries(FROZEN.files)) if (root[n] !== pin) fail(`live /${n} is ${root[n]}, expected the frozen ${pin}`);
-    return { era: 'classic', anchorId: null, index: indexSha, root, anchorFiles: null };
+    return { era: 'classic', anchorId: null, index: indexSha, root, anchorFiles: null, ...(recovery ? { recovery: true, damaged: [] } : {}) };
   }
   for (const [n, pin] of Object.entries(FROZEN.files)) if (root[n] !== pin) fail(`live /${n} is ${root[n]}, expected the frozen ${pin} -- the root pair was overwritten`);
   const anchorId = vm1[1];
   const cm = /^v\/([0-9a-f]{12})\/(.+)$/.exec(style.ref);
   if (!cm || cm[1] !== anchorId) fail(`live index.html: stylesheet ${style.ref} is not in v/${anchorId}/`);
   const anchorFiles = {};
+  const damaged = [];
+  // K2: only a missing file or a wrong type of the live release is repairable (rebuilt from git, same bytes).
+  const damage = (p, msg, status) => {
+    if (!recovery || (status !== 200 && status !== 404)) fail(msg);
+    damaged.push({ path: p, problem: msg });
+  };
   const queue = [vm1[2]];
+  const seen = new Set();
   while (queue.length) {
     const p = queue.shift();
-    if (p in anchorFiles) continue;
+    if (seen.has(p)) continue;
+    seen.add(p);
     const r = await fetchBytes(bust(join(baseUrl, `v/${anchorId}/${p}`), nonce));
-    if (r.status !== 200) fail(`live v/${anchorId}/${p}: HTTP ${r.status} -- the live release is incomplete`);
-    if (!mimeOk(p, r.type)) fail(`live v/${anchorId}/${p}: content-type ${r.type}`);
+    if (r.status !== 200) { damage(p, `live v/${anchorId}/${p}: HTTP ${r.status} -- the live release is incomplete`, r.status); continue; }
+    if (!mimeOk(p, r.type)) damage(p, `live v/${anchorId}/${p}: content-type ${r.type}`, r.status);
     anchorFiles[p] = sha256(r.data);
     if (script.type === 'module') for (const q of moduleRequests(r.data.toString('utf8'), p)) queue.push(resolveLocal(q.specifier, path.posix.dirname(p), `live ${p} import`, '.js', { module: true }));
   }
   const css = await fetchBytes(bust(join(baseUrl, style.ref), nonce));
-  if (css.status !== 200) fail(`live ${style.ref}: HTTP ${css.status}`);
-  anchorFiles[cm[2]] = sha256(css.data);
-  return { era: 'versioned', anchorId, index: sha256(idx.data), root, anchorFiles };
+  if (css.status !== 200) damage(cm[2], `live ${style.ref}: HTTP ${css.status}`, css.status);
+  else anchorFiles[cm[2]] = sha256(css.data);
+  return { era: 'versioned', anchorId, index: sha256(idx.data), root, anchorFiles, ...(recovery ? { recovery: true, damaged } : {}) };
 }
 /** After deploying: every file of the artifact is served with its bytes. */
 export async function verifyLive(baseUrl, dir, { attempts = 5, delayMs = 20000, log = console.log } = {}) {
@@ -991,7 +1046,57 @@ export async function verifyLive(baseUrl, dir, { attempts = 5, delayMs = 20000, 
     log(`attempt ${i}/${attempts}: ${bad.length} file(s) differ -- ${last}`);
     if (i < attempts) await new Promise(r => setTimeout(r, delayMs));
   }
-  return fail(`live site does not match the artifact after ${attempts} attempts: ${last} -- treat as a failed release (rollback plan)`);
+  return fail(`live site does not match the artifact after ${attempts} attempts: ${last} -- treat as a failed release (docs/E3_ROLLBACK_PLAN.md §2.3)`);
+}
+
+/* ---------------------------------------------------------------- recovery (K2) */
+const lc = (s) => String(s || '').toLowerCase();
+/** The workflow's first check. A standard run (push, or a dispatch with mode
+ *  standard) takes no recovery input at all; a recovery run must be exactly
+ *  what the owner authorized for this run. */
+export function authorizeRecovery(env) {
+  const mode = env.VH_MODE || 'standard';
+  const given = ['VH_EXPECT_SHA', 'VH_EXPECT_LIVE', 'VH_REASON'].filter(k => String(env[k] || '').trim());
+  if (mode === 'standard') {
+    if (given.length) usage(`recovery inputs (${given.join(', ')}) given to a standard run -- refusing: a standard run takes none, a recovery run needs mode "recovery"`);
+    return { schema: RECOVERY.schema, mode: 'standard' };
+  }
+  if (mode !== 'recovery') usage(`mode ${JSON.stringify(mode)} is neither "standard" nor "recovery"`);
+  return checkAuthorization({
+    schema: RECOVERY.schema, mode: 'recovery',
+    sha: String(env.VH_EXPECT_SHA || '').trim(), expectLive: String(env.VH_EXPECT_LIVE || '').trim(), reason: String(env.VH_REASON || '').trim(),
+    actor: env.GITHUB_ACTOR || '', repository: env.GITHUB_REPOSITORY || '', runId: env.GITHUB_RUN_ID || '', authorizedAt: new Date().toISOString()
+  }, env);
+}
+/** A recovery record, checked on its own and against the run that uses it
+ *  (every step checks again: a file is never trusted for a different run). */
+function checkAuthorization(rec, env) {
+  if (!rec || typeof rec !== 'object' || rec.schema !== RECOVERY.schema || rec.mode !== 'recovery') fail('recovery: not a recovery authorization');
+  if (env.GITHUB_ACTIONS !== 'true') usage('recovery: only a GitHub Actions run can be a recovery run');
+  if (env.GITHUB_EVENT_NAME !== 'workflow_dispatch') fail(`recovery: only a manual workflow_dispatch can recover (this run: ${env.GITHUB_EVENT_NAME || 'unknown'})`);
+  if (env.GITHUB_REF !== 'refs/heads/main') fail(`recovery: only main can be recovered (this run: ${env.GITHUB_REF || 'unknown'})`);
+  if (env.GITHUB_RUN_ATTEMPT !== '1') fail(`recovery: attempt ${env.GITHUB_RUN_ATTEMPT || 'unknown'} -- a recovery run is never re-run; dispatch a new one (a new decision on the current state)`);
+  const owner = lc(env.GITHUB_REPOSITORY_OWNER);
+  if (!owner || lc(env.GITHUB_ACTOR) !== owner || lc(env.GITHUB_TRIGGERING_ACTOR) !== owner) fail(`recovery: run by ${env.GITHUB_ACTOR || 'unknown'}, triggered by ${env.GITHUB_TRIGGERING_ACTOR || 'unknown'}, but only the repository owner (${env.GITHUB_REPOSITORY_OWNER || 'unknown'}) may`);
+  if (typeof rec.sha !== 'string' || !SHA_RE.test(rec.sha)) usage(`recovery: expected_main_sha ${JSON.stringify(rec.sha)} is not a full 40-hex commit`);
+  if (rec.sha !== env.GITHUB_SHA) fail(`recovery: authorized for ${rec.sha.slice(0, 12)}, but this run builds ${String(env.GITHUB_SHA || 'unknown').slice(0, 12)} (main moved?) -- STOP, decide again on the current state`);
+  if (rec.expectLive !== 'classic' && !ID_RE.test(String(rec.expectLive))) usage(`recovery: expected_live ${JSON.stringify(rec.expectLive)} must be the live release id (12 hex) or "classic"`);
+  if (typeof rec.reason !== 'string' || !RECOVERY.reason.test(rec.reason)) usage('recovery: reason must be 10-200 characters: letters, digits, spaces and . , ; _ ( ) # / + \' -');
+  if (lc(rec.actor) !== lc(env.GITHUB_ACTOR) || String(rec.runId) !== String(env.GITHUB_RUN_ID || '') || lc(rec.repository) !== lc(env.GITHUB_REPOSITORY)) fail('recovery: the authorization belongs to another run');
+  return rec;
+}
+function loadRecovery(file, env) {
+  let rec;
+  try { rec = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { fail(`recovery file ${file}: ${e.message}`); }
+  return checkAuthorization(rec, env);
+}
+/** The save schema a recovery run would publish (N9: never lower than the players' saves). */
+function saveSchemaOf(rel) {
+  const found = [];
+  for (const [p, f] of rel.files) if (p.endsWith('.js')) for (const m of f.data.toString('utf8').matchAll(/\bSAVE_SCHEMA_VERSION\s*=\s*(\d+)\b/g)) found.push({ p, v: Number(m[1]) });
+  if (found.length !== 1) fail(`recovery: the release declares SAVE_SCHEMA_VERSION ${found.length} times, expected exactly once -- its save schema cannot be checked (STOP)`);
+  if (found[0].v < RECOVERY.minSaveSchema) fail(`recovery: the release has SAVE_SCHEMA_VERSION ${found[0].v} (${found[0].p}), lower than ${RECOVERY.minSaveSchema} -- players' saves would read as from the future (STOP)`);
+  return found[0].v;
 }
 
 /* ---------------------------------------------------------------- CLI */
@@ -1016,7 +1121,13 @@ function epochArg(o) {
 }
 function summaryMd(m) {
   const rows = m.releases.map(r => `| \`${r.id}\` | ${r.commitTime ? new Date(r.commitTime * 1000).toISOString().slice(0, 10) : '-'} | ${r.type} | ${r.reasons.join('; ')} |`);
+  const rc = m.recovery;
   return [
+    ...(rc ? ['## RECOVERY DEPLOYMENT (break-glass, docs/E3_ROLLBACK_PLAN.md §4)', '',
+      `Authorized by \`${rc.authorization.actor}\` at ${rc.authorization.authorizedAt} for main \`${rc.authorization.sha}\`, live expected: \`${rc.authorization.expectLive}\`. Reason: ${rc.authorization.reason}`, '',
+      `Save schema of this release: ${rc.saveSchema}. Retention, pins, root pair and every check are those of a standard run.`, '',
+      `Damaged live files rebuilt from git: ${rc.damaged.length ? rc.damaged.map(d => d.problem).join('; ') : 'none'}`, '',
+      `Ledger / live disagreements accepted: ${rc.disagreements.length ? rc.disagreements.join('; ') : 'none'}`, ''] : []),
     '### Release artifact', '', `Current release: \`v/${m.current}/\` · assembled ${m.now} · artifact SHA-256 \`${m.artifactSha256}\``, '',
     `Live before deploy: ${m.liveBefore ? `${m.liveBefore.era}${m.liveBefore.anchorId ? ' `' + m.liveBefore.anchorId + '`' : ''}` : 'not checked'}`, '',
     '| id | commit date | entry | kept because |', '|---|---|---|---|', ...rows, '',
@@ -1036,6 +1147,7 @@ export async function main(argv = process.argv.slice(2)) {
     const nowMs = o.now ? Date.parse(o.now) : Date.now();
     if (!Number.isFinite(nowMs)) usage('--now must be an ISO date');
     const eraEpoch = epochArg(o);
+    const recovery = o.recovery ? loadRecovery(o.recovery, process.env) : null;
     let m;
     const source = o.source || 'git';
     // L1: git/fixture assemblies take the deployment ledger; going without it is explicit and never in CI.
@@ -1052,16 +1164,17 @@ export async function main(argv = process.argv.slice(2)) {
       if (!ID_RE.test(o.id) && !TEST_ID_RE.test(o.id)) usage('--id: 12 hex or a short lowercase test id');
       if (live) usage('--source worktree has no history to rebuild a live release from: use --no-live-anchor');
       const frozenTree = fsTree(o['frozen-dir'], 'frozen-dir');
-      m = assemble({ history: { frozen: () => frozenTree }, current: o.id, id: o.id, out: o.out, live, nowMs, worktree: fsTree(o.repo || '.', 'worktree') });
+      m = assemble({ history: { frozen: () => frozenTree }, current: o.id, id: o.id, out: o.out, live, nowMs, worktree: fsTree(o.repo || '.', 'worktree'), recovery });
     } else {
       const history = source === 'git' ? gitHistory(path.resolve(o.repo || '.')) : source === 'fixture' ? fixtureHistory(o.fixture) : usage(`unknown --source ${source}`);
       const current = o.rev || (source === 'fixture' ? history.tip : usage('--rev SHA is required with --source git'));
       if (!/^[0-9a-f]{40}$/.test(current)) usage('--rev must be a full 40-hex commit');
-      m = assemble({ history, current, id: current.slice(0, 12), out: o.out, live, nowMs, ledger, eraEpoch, allowNonTip: !!o['allow-non-tip'] });
+      m = assemble({ history, current, id: current.slice(0, 12), out: o.out, live, nowMs, ledger, eraEpoch, allowNonTip: !!o['allow-non-tip'], recovery });
     }
     if (o['manifest-out']) fs.writeFileSync(o['manifest-out'], JSON.stringify(m, null, 2) + '\n');
     if (o.summary) fs.appendFileSync(o.summary, summaryMd(m));
     m.warnings.forEach(w => console.log(`${process.env.GITHUB_ACTIONS ? '::warning::' : 'WARNING '}${w}`));
+    if (m.recovery) console.log(`${process.env.GITHUB_ACTIONS ? '::warning title=RECOVERY DEPLOYMENT::' : 'RECOVERY '}break-glass assembly for ${m.recovery.authorization.sha.slice(0, 12)}: ${m.recovery.damaged.length} damaged live file(s) rebuilt, ${m.recovery.disagreements.length} ledger/live disagreement(s) accepted -- see the step summary`);
     console.log(`assembled v/${m.current}/ + ${m.releases.length - 1} retained release(s), ${m.files.length} files, artifact ${m.artifactSha256}`);
     return 0;
   }
@@ -1080,9 +1193,19 @@ export async function main(argv = process.argv.slice(2)) {
   }
   if (cmd === 'precheck-live') {
     if (!o.url || !o['out-json']) usage('precheck-live --url BASE --out-json FILE');
-    const r = await precheckLive(o.url);
+    const recovery = o.recovery ? loadRecovery(o.recovery, process.env) : null;
+    const r = await precheckLive(o.url, { recovery });
     fs.writeFileSync(o['out-json'], JSON.stringify(r, null, 2) + '\n');
     console.log(`live site: ${r.era}${r.anchorId ? ' v/' + r.anchorId + '/' : ''}, root pair = frozen pins`);
+    if (r.recovery) r.damaged.forEach(d => console.log(`${process.env.GITHUB_ACTIONS ? '::warning title=RECOVERY::' : 'RECOVERY '}damaged live file, to be rebuilt from git: ${d.problem}`));
+    return 0;
+  }
+  if (cmd === 'authorize-recovery') {
+    if (!o.out) usage('authorize-recovery --out FILE');
+    const r = authorizeRecovery(process.env);
+    fs.writeFileSync(o.out, JSON.stringify(r, null, 2) + '\n');
+    if (r.mode === 'recovery') console.log(`${process.env.GITHUB_ACTIONS ? '::warning title=RECOVERY RUN::' : 'RECOVERY '}break-glass run authorized for ${r.actor}: main ${r.sha}, live ${r.expectLive} -- ${r.reason}`);
+    else console.log('standard run (no recovery)');
     return 0;
   }
   if (cmd === 'verify-live') {
@@ -1097,7 +1220,7 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(`release OK: ${r.files} files, ${r.bytes} bytes, current v/${r.current}/, versions ${r.versions.join(' ')}`);
     return 0;
   }
-  usage('command: ledger | assemble | precheck-live | verify-live | verify');
+  usage('command: ledger | assemble | precheck-live | verify-live | verify | authorize-recovery');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
