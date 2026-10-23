@@ -12,7 +12,7 @@ export async function runArenaBots(url, rounds = 20) {
   const save = await veteranSave(page);
   await page.evaluate((s) => { localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)); }, save);
   await page.reload();
-  await page.waitForFunction(() => window.game && window.game.state);
+  await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await page.addScriptTag({ content: ARENA_BOT });
 
   const career = [];

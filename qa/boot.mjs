@@ -46,7 +46,7 @@ export async function runBootChecks(url) {
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     g.requests.length = 0;
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const kept = await g.page.evaluate(() => ({ coins: window.game.save.coins, done: Object.keys(window.game.save.campaign.completed).length, guard: SAVE_GUARD.state }));
     results.push(expectAll('boot saved profile: the save is read back as written (coins, missions, save guard ok)', {
       coins: is(kept.coins, 250), missions: is(kept.done, 6), guard: is(kept.guard, 'ok')

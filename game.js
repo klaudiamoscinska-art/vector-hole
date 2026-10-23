@@ -4155,6 +4155,9 @@ function loadSave() {
  *  progress another tab stored since this tab read it. Returns true when
  *  the save reached storage. */
 let SAVE_MIRROR = null;
+/** E2: qa/ swaps the mirror from outside the module (an imported binding
+ *  can't be assigned to), through the QA bridge in qa/lib.mjs. */
+function setSaveMirror(fn) { SAVE_MIRROR = fn; }
 function sealSave(save) {
   const body = JSON.stringify(save);
   return body.slice(0, -1) + `,"_sig":"${fnv1a(SEAL_SALT + body)}"}`;
@@ -17929,3 +17932,19 @@ window.addEventListener('DOMContentLoaded', () => {
   window.game = new Game();
   window.game.devPanel = new DevPanel(window.game);
 });
+
+/* E2: game.js runs as an ES module (index.html: <script type="module">), so
+   its top-level names are no longer globals. The game itself needs none of
+   these from outside; they are what qa/ reads (QA_BRIDGE_NAMES in
+   qa/lib.mjs) plus the one setter it uses -- not a public API. */
+export {
+  AD_PLACEMENTS, AURAS, CAMPAIGN_MISSIONS, CONFIG, CampaignEntity, DEV, DEV_CODE_HASH,
+  DEV_SANDBOX_SAVE_KEY, DISTRICTS, DISTRICT_COLORS, DISTRICT_STORY, DISTRICT_THEME, EAT_EFFECTS,
+  FEATURE_GATES, GAMEPLAY_TRACK_IDS, GameState, I18N, IAP_PRODUCTS, LANDMARK_SIGNS, MENU_TRACK_IDS,
+  MISSION_BOOSTERS, MISSION_BOT_TIME, MUSIC_TRACKS, MUSIC_TRACK_BY_ID, OVERDRIVE_SKINS, SAVE_GUARD,
+  SAVE_MIRROR, SAVE_SLOT, SCREEN_FLOOR, SKINS, SeededRNG, SoundEngine, TIERS, WORLD_H, WORLD_W,
+  campaignMissionById, canEatWorldObjectTier, clamp, compileSong, decodeChallenge, decodeSaveCode,
+  defaultSave, devIsLoopback, districtLandmarkId, encodeChallenge, encodeSaveCode, formatClock,
+  getSizeTierIndex, loadSave, migrateSave, missionCode, rankHoles, sanitizeSave, saveGame,
+  sealSave, unitsForRadius, unlockedFeatureIds, setSaveMirror
+};

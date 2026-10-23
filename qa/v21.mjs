@@ -26,7 +26,7 @@ async function seeded(url, [width, height], desktop) {
   const save = await veteranSave(g.page, { missions: 30, coins: 500, runsPlayed: 6 });
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.waitForTimeout(500);
   return g;
 }
@@ -210,7 +210,7 @@ export async function runV21Checks(url) {
     save.settings.inputMode = 'thumbpad';
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const r = await g.page.evaluate(async () => {
       game.startRound();
       await new Promise(res => setTimeout(res, 300));

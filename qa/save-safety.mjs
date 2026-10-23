@@ -158,7 +158,7 @@ export async function runSaveSafetyChecks(url) {
     const pick = () => g.page.evaluate(() => { const s = window.game.save; return JSON.stringify({ c: s.coins, p: s.prisms, o: s.owned, a: s.auras, e: s.effects, od: s.overdriveSkins, b: s.boosters, ent: s.entitlements, l: s.login, ch: s.freeChest, sc: s.campaign.starChests, st: s.campaign.stars, lv: s.player, badges: s.badges, best: s.stats.bestArenaScore }); });
     const first = await pick();
     const snaps = [first];
-    for (let i = 0; i < 3; i++) { await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(150); snaps.push(await pick()); }
+    for (let i = 0; i < 3; i++) { await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await g.page.waitForTimeout(150); snaps.push(await pick()); }
     const f = JSON.parse(first);
     const kept = f.c === 4321 && f.p === 77 && f.o.join() === 'rainbow,cyan,green' && f.a.owned.includes('spark') && f.e.owned.includes('pixel_burst') && f.od.owned.includes('fala')
       && f.b.time === 2 && f.b.magnet === 3 && f.b.sprint === 1 && f.ent.noAds && f.ent.purchased.includes('starter_pack') && f.l.totalClaims === 3 && f.ch.opened === 5 && f.sc === 1 && f.lv.level === 12 && f.best === 987;
@@ -226,7 +226,7 @@ export async function runSaveSafetyChecks(url) {
     const ops = await autoOps(g);
     const raw1 = await rawOf(g);
     push(`${label}: original bytes unchanged after every automatic save (login, chest, Arena round, mission, tab switch, saveGame)`, raw1 === fx[k], `${ops.join(' ')} -> ${raw1 === fx[k] ? 'identical' : 'CHANGED'}`);
-    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(200);
+    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await g.page.waitForTimeout(200);
     await g.page.addScriptTag({ content: ARENA_BOT }); await g.page.addScriptTag({ content: CAMPAIGN_BOT });
     await autoOps(g);
     const raw2 = await rawOf(g);
@@ -262,7 +262,7 @@ export async function runSaveSafetyChecks(url) {
   {
     const g = await boot(url, fx.current);
     const b = await g.context.newPage();
-    await b.goto(url); await b.waitForFunction(() => window.game && window.game.state); await b.waitForTimeout(250);
+    await b.goto(url); await b.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await b.waitForTimeout(250);
     await g.page.waitForTimeout(200);
     // Tab B earns 500 coins and saves; tab A (opened first, stale) then saves its own change.
     await b.evaluate(() => { window.game.save.coins += 500; saveGame(window.game.save); });
@@ -314,7 +314,7 @@ export async function runSaveSafetyChecks(url) {
     const raw = await rawOf(g);
     const bak = await rawOf(g, KEY + '.bak');
     await g.page.evaluate(() => sessionStorage.setItem('__qaLift', '1'));
-    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(200);
+    await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await g.page.waitForTimeout(200);
     const r = await g.page.evaluate((k) => ({ stored: JSON.parse(localStorage.getItem(k)), bak: localStorage.getItem(k + '.bak') }), KEY);
     const ref = await g.page.evaluate((raw) => { const p = JSON.parse(raw); delete p._sig; const m = sanitizeSave(migrateSave(p)); return { coins: m.coins, done: Object.keys(m.campaign.completed).sort().join(), v: m.schemaVersion }; }, fx.v12);
     const st = r.stored;
@@ -342,7 +342,7 @@ export async function runSaveSafetyChecks(url) {
       data: { getItem: k => (k in __cgStore ? __cgStore[k] : null), setItem: (k, v) => { __cgStore[k] = v; }, removeItem: k => { delete __cgStore[k]; } } } };`;
   for (const [label, remote, local] of [['SAVE-06 account copy from a newer game version', fx.future, fx.current], ['SAVE-06 unreadable account copy', fx.truncated, fx.current]]) {
     const g = await boot(url, local, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: remote }) });
-    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
     await g.page.waitForTimeout(500);
     await autoOps(g);
     const r = await g.page.evaluate((k) => ({ remote: __cgStore[k], local: JSON.parse(localStorage.getItem(k)).coins }), KEY);
@@ -352,7 +352,7 @@ export async function runSaveSafetyChecks(url) {
   }
   {
     const g = await boot(url, fx.truncated, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: fx.current }) });
-    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
     await g.page.waitForTimeout(600);
     const r = await g.page.evaluate((k) => ({ coins: window.game.save.coins, level: window.game.save.player.level, rescue: localStorage.getItem(k + '.rescue'), state: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none' }), KEY);
     push('SAVE-06 broken local save + good account copy: restored from the account, broken bytes kept under the rescue key', r.coins === 4321 && r.level === 12 && r.rescue === fx.truncated && r.state === 'ok', JSON.stringify({ ...r, rescue: r.rescue === fx.truncated }));
@@ -410,7 +410,7 @@ export async function runSaveSafetyChecks(url) {
   {
     const g = await boot(url, fx.future);
     await Promise.all([g.page.waitForNavigation(), g.page.evaluate(() => { window.game.closeInfoSheet(); window.game.resetProfile(); })]);
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const r = await g.page.evaluate((k) => ({ main: localStorage.getItem(k), rescue: localStorage.getItem(k + '.rescue') }), KEY);
     push('locked save + explicit Profil reset: the original is kept under the rescue key', r.rescue === fx.future && r.main !== fx.future, JSON.stringify({ rescue: r.rescue === fx.future, mainReplaced: r.main !== fx.future }));
     await g.browser.close();
@@ -436,7 +436,7 @@ export async function runSaveSafetyChecks(url) {
   {
     // ... with the cloud mirror attached (a stale tab): the account copy stays too.
     const g = await boot(url, fx.current, { query: '?portal=crazygames', initScript: mockCrazy({}) + `;(${rescueRefused.toString()})();` });
-    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
     await g.page.waitForTimeout(600);
     const r = await g.page.evaluate((k) => {
       const cloudBefore = __cgStore[k];
@@ -458,7 +458,7 @@ export async function runSaveSafetyChecks(url) {
   {
     const mainFlag = () => { const set = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === 'vectorHoleSave_v1' && window.__failMain) throw new DOMException('full', 'QuotaExceededError'); return set.call(this, k, v); }; };
     const g = await boot(url, fx.current, { query: '?portal=crazygames', initScript: mockCrazy({}) + `;(${mainFlag.toString()})();` });
-    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
     await g.page.waitForTimeout(600);
     const r = await g.page.evaluate((k) => {
       const gm = window.game, before = __cgStore[k];
@@ -501,7 +501,7 @@ export async function runSaveSafetyChecks(url) {
   {
     // ... and an empty account copy is not overwritten by the mirror.
     const g = await boot(url, fx.current, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: '' }) });
-    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
     await g.page.waitForTimeout(600);
     await autoOps(g);
     const r = await g.page.evaluate((k) => ({ remote: __cgStore[k], local: JSON.parse(localStorage.getItem(k)).coins }), KEY);

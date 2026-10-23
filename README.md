@@ -29,13 +29,13 @@ darmowa gra, gra mobilna, neon, cyberpunk, gra bez instalacji.
 
 ## Uruchomienie
 
-Trzy pliki, zero zależności, bez kroku budowania:
+Zero zależności, bez kroku budowania (natywne moduły ES — potrzebny serwer HTTP, `file://` nie działa):
 
 ```bash
 python3 -m http.server 8000   # potem http://localhost:8000/index.html
 ```
 
-Push na `main` zmieniający `index.html`, `style.css`, `game.js` lub workflow publikuje grę na GitHub Pages (`.github/workflows/deploy-pages.yml`). Publikowany jest wyłącznie wygenerowany katalog z tymi trzema plikami, nie całe repo.
+Push na `main` zmieniający pliki gry (`index.html`, `style.css`, `game.js`, inne `.js`/`.css`), skrypt wydania lub workflow publikuje grę na GitHub Pages (`.github/workflows/deploy-pages.yml`). Publikowany jest wyłącznie katalog `release/` składany w CI przez `.github/scripts/assemble-release.mjs`: pliki gry w niezmiennym katalogu `v/<commit>/` (plus wcześniejsze wydania z ostatnich 30 dni) i zamrożona klasyczna wersja dla starych kopii strony w pamięci przeglądarki — nie całe repo. Adres gry i zapisy graczy się nie zmieniają.
 
 ## Testy (boty QA)
 
@@ -58,7 +58,8 @@ zapisuje 16 zrzutów ekranu telefonu do `qa/out/screens/` (przegląd wizualny).
 1. Uzupełnij `CONFIG.legal` (wydawca + kontakt) w `game.js` i zleć przegląd
    polityki prywatności.
 2. Wybierz kanał przychodu:
-   - **Portal (CrazyGames / Poki):** wgraj trzy pliki — SDK portalu ładuje
+   - **Portal (CrazyGames / Poki):** wgraj zawartość złożonego katalogu
+     `release/` (`node --experimental-vm-modules .github/scripts/assemble-release.mjs assemble …`, opis w `qa/README.md` E3) — SDK portalu ładuje
      się automatycznie, reklamy z nagrodą i między rundami działają od razu.
    - **Własna domena + AdSense H5 Games Ads:** dodaj tag AdSense
      (`adsbygoogle.js` + `adBreak/adConfig`) i certyfikowany przez Google CMP
@@ -70,5 +71,6 @@ zapisuje 16 zrzutów ekranu telefonu do `qa/out/screens/` (przegląd wizualny).
    płyną tylko po zgodzie gracza; śledź `retention_day` (D1/D7),
    `run_end`, `ad_reward_granted`, `iap_success`, `share_success`,
    `challenge_open`.
-4. Dodaj grafikę `og:image` (1200×630) do udostępnień — wymaga czwartego
-   pliku (decyzja wobec zasady trzech plików, patrz `docs/GAME_DESIGN.md` §7).
+4. Dodaj grafikę `og:image` (1200×630) do udostępnień — wymaga dodatkowego
+   pliku i dopisania go do skryptu wydania (decyzja właścicielki, patrz
+   `docs/GAME_DESIGN.md` §7).

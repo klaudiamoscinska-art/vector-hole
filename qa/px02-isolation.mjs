@@ -25,8 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { execSync } from 'node:child_process';
-import { serve, openGame, chromium, report, ARENA_BOT, CAMPAIGN_BOT, ROOT, OUT } from './lib.mjs';
+import { serve, openGame, chromium, report, ARENA_BOT, CAMPAIGN_BOT, ROOT, OUT, installQaBridge, waitForQaBridge, revisionFile } from './lib.mjs';
 import { devCodeToken } from './dev-code.mjs';
 
 const KEY = 'vectorHoleSave_v1';
@@ -165,6 +164,7 @@ async function sharedContext(seedRaw, initScript) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true, locale: 'pl-PL' });
   await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => route.abort());
+  await installQaBridge(context);
   if (seedRaw != null) {
     await context.addInitScript((s) => {
       if (!localStorage.getItem('__qaSeededOnce')) { localStorage.setItem('vectorHoleSave_v1', s); localStorage.setItem('__qaSeededOnce', '1'); }
@@ -176,7 +176,8 @@ async function sharedContext(seedRaw, initScript) {
     const page = await context.newPage();
     page.on('pageerror', (e) => errors.push('pageerror: ' + (e.stack || e.message)));
     await page.goto(url);
-    await page.waitForFunction(() => window.game && window.game.state !== undefined, null, { timeout: 15000 });
+    await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state !== undefined, null, { timeout: 15000 });
+    await waitForQaBridge(page);
     await addHelpers(page);
     await page.waitForTimeout(300);
     return page;
@@ -496,8 +497,8 @@ export async function runPx02Checks(url) {
     push('LEGACY-01 one card explains the change with the amount', REFUND_TITLE.test(title || '') && /4870|4 870/.test(body), `${title} | ${body.replace(/\s+/g, ' ').slice(0, 200)}`);
     // LEGACY-02: two reloads, a second tab opened later.
     await page.evaluate(() => window.game.closeInfoSheet());
-    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
-    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
+    await page.reload(); await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await page.waitForTimeout(300);
+    await page.reload(); await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await page.waitForTimeout(300);
     const r2 = await page.evaluate(() => ({ coins: window.game.save.coins }));
     const t2 = await sheetTitle(page);
     const tab2 = await ctx.open(url);
@@ -521,12 +522,12 @@ export async function runPx02Checks(url) {
       Storage.prototype.getItem = function (k) { if (first && k === 'vectorHoleSave_v1' && window.name === 'B' && /loadSave/.test(new Error().stack)) { first = false; return LEG; } return get.call(this, k); }; })();`;
     const b = await ctx.context.newPage();
     await b.addInitScript(`window.name = 'B';` + inject);
-    await b.goto(url); await b.waitForFunction(() => window.game && window.game.state); await b.waitForTimeout(400);
+    await b.goto(url); await b.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await b.waitForTimeout(400);
     const rb = await b.evaluate(() => ({ coins: window.game.save.coins, guard: SAVE_GUARD.state, eco: window.game.save.economy }));
     const tb = await sheetTitle(b);
     const disk = await diskSave(a);
     push('LEGACY-02 stale writer: a tab that read the old save before another tab committed gets no refund in memory, writes nothing, shows no refund card', rb.coins === 37 && rb.guard === 'stale' && disk.coins === 4907 && !REFUND_TITLE.test(tb || ''), JSON.stringify({ tabB: rb, disk: disk.coins, tb }));
-    await b.reload(); await b.waitForFunction(() => window.game && window.game.state); await b.waitForTimeout(300);
+    await b.reload(); await b.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await b.waitForTimeout(300);
     const rb2 = await b.evaluate(() => window.game.save.coins);
     push('LEGACY-02 that tab after a reload: 4907 (exactly one refund)', rb2 === 4907, String(rb2));
     noErr(ctx.errors, 'LEGACY-02 race');
@@ -551,7 +552,7 @@ export async function runPx02Checks(url) {
         // The player's explicit repair writes the save (no refund yet: it was not verified); the next load settles once.
         await g.page.evaluate(() => { const gm = window.game; gm.saveGuardShown = null; gm.showSaveGuardNotice('invalid'); document.getElementById('btnInfoSheetAction').click(); });
         const rep = await diskSave(g.page);
-        await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(300);
+        await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await g.page.waitForTimeout(300);
         const after2 = await g.page.evaluate(() => ({ coins: window.game.save.coins, rescue: localStorage.getItem('vectorHoleSave_v1.rescue') }));
         const disk2 = await diskSave(g.page);
         push('LEGACY-03 invalid -> NAPRAW ZAPIS -> reload: original under .rescue, then exactly one refund on the repaired save', after2.rescue === raw && rep && rep.economy && rep.economy.looksOnly === 0 && disk2.coins === rep.coins + 4870 && after2.coins === disk2.coins, JSON.stringify({ repairedCoins: rep && rep.coins, repairedMarker: rep && rep.economy, final: disk2.coins }));
@@ -586,10 +587,10 @@ export async function runPx02Checks(url) {
       // Storage frees up mid-session: an autosave writes the unsettled save; the next load refunds once.
       const mid = await page.evaluate(() => { localStorage.setItem('__qaQuota', '0'); const res = window.__qaPlayArena({ style: 'greedy' }); return { coins: window.game.save.coins, earned: res.coinsEarned }; });
       const diskMid = await diskSave(page);
-      await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
+      await page.reload(); await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await page.waitForTimeout(300);
       const after = await page.evaluate(() => window.game.save.coins);
       const t2 = await sheetTitle(page);
-      await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
+      await page.reload(); await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await page.waitForTimeout(300);
       const after2 = await page.evaluate(() => window.game.save.coins);
       push(`LEGACY-04 quota (${label}) lifted: the unsettled save is written (marker 0), the next load pays exactly one refund (+card), a further reload nothing`, diskMid && diskMid.economy && diskMid.economy.looksOnly === 0 && diskMid.coins === mid.coins && after === mid.coins + 4870 && after2 === after && REFUND_TITLE.test(t2 || ''), JSON.stringify({ mid, diskMarker: diskMid && diskMid.economy, after, after2, t2 }));
       noErr(ctx.errors, `LEGACY-04 ${label}`);
@@ -622,9 +623,9 @@ export async function runPx02Checks(url) {
     let haveBase = false;
     try {
       fs.mkdirSync(baseDir, { recursive: true });
-      for (const f of ['index.html', 'style.css', 'game.js']) fs.writeFileSync(path.join(baseDir, f), execSync(`git -C "${ROOT}" show ${BASE_REV}:${f}`, { maxBuffer: 64 << 20 }));
+      for (const f of ['index.html', 'style.css', 'game.js']) fs.writeFileSync(path.join(baseDir, f), revisionFile(BASE_REV, f));
       haveBase = true;
-    } catch (e) { console.log('NOT RUN  LEGACY-06 (previous release not available from git: ' + e.message.split('\n')[0] + ')'); }
+    } catch (e) { console.log('NOT RUN  LEGACY-06 (previous release not available from git / VH_QA_REVS: ' + e.message.split('\n')[0] + ')'); }
     const sameCode = haveBase && fs.readFileSync(path.join(baseDir, 'game.js'), 'utf8') === fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8');
     if (haveBase && !sameCode) {
       const { server, url: newUrl, baseUrl } = await serveWithBase(baseDir);
@@ -673,7 +674,7 @@ export async function runPx02Checks(url) {
       r.coins = gm.save.coins;
       return r;
     });
-    await p.reload(); await p.waitForFunction(() => window.game && window.game.state); await p.waitForTimeout(300);
+    await p.reload(); await p.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await p.waitForTimeout(300);
     const fr = await p.evaluate(() => ({ coins: window.game.save.coins, owned: window.game.save.owned.join(',') }));
     push('LEGACY-07 new profile: born settled; a vortex bought after D+ (cyan, 100) is never refunded', /"looksOnly":1/.test(fresh.eco) && fresh.coins === 200 && fr.coins === 200 && /cyan/.test(fr.owned), JSON.stringify({ fresh, reload: fr }));
     await ctx.browser.close();
@@ -709,7 +710,7 @@ export async function runPx02Checks(url) {
         return out;
       });
       const rep = await diskSave(g.page);
-      await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state); await g.page.waitForTimeout(300);
+      await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await g.page.waitForTimeout(300);
       const fin = await diskSave(g.page);
       push('LEGACY-07 a paid vortex bought on a not-yet-settled line (held-back save, then NAPRAW ZAPIS) is never refunded; the historical one is (900 - 100 + 450)', r.guard === 'invalid' && r.coins0 === 900 && r.bought && r.after === 'cyan' && rep.economy.looksOnly === 0 && fin.coins === 1250 && fin.economy.refund === 450 && fin.owned.includes('cyan'), JSON.stringify({ ...r, repaired: rep.coins, final: fin.coins, eco: fin.economy }));
       noErr(g.errors, 'LEGACY-07 bought while unsettled');
@@ -722,7 +723,7 @@ export async function runPx02Checks(url) {
       const page = await ctx2.open(url);
       const realAfterBoot = await rawOf(page);
       await page.evaluate(() => { window.game.devPanel.open(); const t = document.querySelector('#devPanel [data-tab="data"]'); if (t) t.click(); const b = document.querySelector('#devPanel [data-act="sandbox-copy"]'); if (b) b.click(); });
-      await page.waitForFunction(() => window.game && window.game.devPanel && DEV.sandbox, null, { timeout: 15000 }).catch(() => {});
+      await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.devPanel && DEV.sandbox, null, { timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(300);
       const sb = await page.evaluate(() => ({ sandbox: DEV.sandbox, coins: window.game.save.coins, sandboxDisk: localStorage.getItem(DEV_SANDBOX_SAVE_KEY) }));
       const realNow = await rawOf(page);
@@ -743,7 +744,7 @@ export async function runPx02Checks(url) {
         data: { getItem: k => (k in __cgStore ? __cgStore[k] : null), setItem: (k, v) => { __cgStore[k] = v; }, removeItem: k => { delete __cgStore[k]; } } } };`;
     const cloudBoot = async (local, remote) => {
       const g = await boot(url, local, { query: '?portal=crazygames', initScript: mockCrazy({ [KEY]: remote }) });
-      await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
+      await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 }).catch(() => {});
       await g.page.waitForTimeout(600);
       return g;
     };
@@ -836,12 +837,12 @@ export async function runPx02ReviewChecks(url) {
       d1.coins === 4907 && d1.economy.looksOnly === 1 && d1.economy.notice === true && a.eco.notice === true && !REFUND_TITLE.test(t1 || '') && !ev1.includes('looks_only_refund'),
       JSON.stringify({ mem: a, disk: d1.economy, title: t1, refundEvent: ev1.includes('looks_only_refund') }));
     await page.evaluate(() => localStorage.setItem('__qaAckFail', '0'));
-    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
+    await page.reload(); await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await page.waitForTimeout(300);
     const t2 = await sheetTitle(page);
     const ev2 = await events(page);
     const d2 = await diskSave(page);
     const c2 = await page.evaluate(() => window.game.save.coins);
-    await page.reload(); await page.waitForFunction(() => window.game && window.game.state); await page.waitForTimeout(300);
+    await page.reload(); await page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state); await page.waitForTimeout(300);
     const t3 = await sheetTitle(page);
     const c3 = await page.evaluate(() => window.game.save.coins);
     push('LEGACY-09 after a reload with working storage: the card shows once (event logged, mark saved), no second refund; the next reload shows nothing',
@@ -917,7 +918,7 @@ export async function runPx02ReviewChecks(url) {
         localStorage.setItem('vectorHoleSave_v1', sealSave(s));
         return true;
       }, { coins });
-      await g.page.reload(); await g.page.waitForFunction(() => window.game && window.game.state);
+      await g.page.reload(); await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
       const m = await g.page.evaluate(() => {
         const gm = window.game; gm.closeInfoSheet(); gm.openWarsztatScreen(); gm.updateCoinDisplays();
         const t = document.querySelector('#shopScreen .app-title'), gear = document.querySelector('#shopScreen .hub-gear-btn');

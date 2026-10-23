@@ -4,6 +4,43 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## E2 + E3 — natywne moduły ES i bezpieczna publikacja (bez zmian w rozgrywce, schemat zapisu nadal v13)
+Decyzja właścicielki (18.10.2026): moduły ES, wiele plików JS dozwolone, bez
+bundlera i bez nowych zależności, bez zmian rozgrywki podczas podziału.
+
+- E2: `game.js` ładowany jako `<script type="module">`; lista eksportów
+  tylko dla QA i `setSaveMirror()`; mostek QA (`qa/lib.mjs`, `qa/bridge.mjs`)
+  na żywych powiązaniach modułu. `file://` nie działa — grę uruchamia się
+  przez HTTP(S).
+- E3: publikacja przez `.github/scripts/assemble-release.mjs` (tylko CI):
+  pliki wydania w niezmiennym `v/<12 znaków commita>/`, `index.html` wskazuje
+  tylko swój katalog, w katalogu głównym na stałe zamrożona ostatnia
+  klasyczna para `game.js`/`style.css` (63b50d0) dla przeglądarek ze starą
+  stroną w pamięci — stara strona + nowy moduł pod starym adresem nie może
+  się już zdarzyć. Poprzednie wydania z ostatnich 30 dni zostają; kontrola
+  strony live przed i po wdrożeniu; niezależna kontrola artefaktu; brak
+  plików QA/dev w artefakcie. Workflow publikuje tylko szczyt `main`.
+- E3 L1: retencja liczona z rzeczywistej historii publikacji — rekordów
+  wdrożeń GitHub środowiska `github-pages` (uprawnienie `deployments: read`,
+  tylko odczyt). Wydanie opublikowane (lub być może opublikowane, gdy
+  GitHub usunął już stare statusy) nigdy nie jest pomijane: jeśli nie da
+  się go odtworzyć, publikacja się zatrzymuje. Workflow w trzech zadaniach
+  (budowanie / wdrożenie / kontrola live), tak by rekord wdrożenia znaczył
+  dokładnie jedną publikację.
+- E3 L1-R1 (korekta po odczycie prawdziwego API GitHub, K0): kolejne strony
+  listy wdrożeń GitHub podaje jako `/repositories/<id>/…` — skrypt sprawdza
+  nagłówek `Link`, ale następną stronę buduje z własnego adresu
+  `/repos/{o}/{r}/…` (inny host, repozytorium, endpoint lub parametr = STOP);
+  stan `waiting` (pierwszy status każdego rekordu) jest znany i liczony jak
+  „w toku”; rekord środowiska `github-pages` od daty granicznej E3 musi
+  pochodzić z aplikacji `github-actions` (inna, np. publikacja z gałęzi,
+  albo brak = STOP i kontrola Settings → Pages → Source).
+- Adres gry, `localStorage` i klucz zapisu bez zmian: ten sam zapis v13,
+  ekonomia D+, wspólny portfel, izolacja Areny i Kampanii — bez zmian.
+- QA: `qa/release.mjs` (artefakt, retencja, rollback, cache, stary/nowy HTML,
+  wspólny zapis, ewidencja wdrożeń L1 na atrapie API GitHub); tryb bez gita
+  `VH_QA_REVS`.
+
 ## PX02 D+ „W Arenie liczy się gra” — izolacja Areny (bez zmiany schematu, nadal v13)
 Decyzja właścicielki (2026-10-17): „W Arenie liczy się to, jak grasz.
 Monety kupują wygląd i wzmocnienia misji”.

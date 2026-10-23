@@ -66,7 +66,7 @@ async function balancePage(url) {
   save.settings.music = false; save.settings.sfx = false;
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.addScriptTag({ content: CAMPAIGN_BOT });
   await g.page.addScriptTag({ content: QA_RANDOM });
   const ids = await g.page.evaluate(() => {
@@ -82,7 +82,7 @@ async function seeded(url, mutate, opts = {}) {
   if (mutate) mutate(save);
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.addScriptTag({ content: CAMPAIGN_BOT });
   return g;
 }
@@ -113,7 +113,7 @@ export async function runV18Checks(url, runs = 3, { seed: base = baseSeed().seed
     results.push(report('Sprint: the vortex is 15% faster for the whole mission (stock used first)', Math.abs(r.ratio - 1.15) < 0.01 && r.used === 0, JSON.stringify(r)));
     // Reload: the gift is not handed out again.
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const again = await g.page.evaluate(() => window.game.save.boosters.sprint);
     results.push(report('Sprint: the gift is not repeated on the next load', again === 0, String(again)));
     results.push(report('v18: no runtime errors (Sprint)', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
@@ -219,7 +219,7 @@ export async function runV18Checks(url, runs = 3, { seed: base = baseSeed().seed
     save.boosters = { time: 2, start: 0, magnet: 0, shield: 0, sprint: 0, gift: true, sprintGift: true };
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const r = await g.page.evaluate(async (id) => {
       const gm = window.game;
       gm.openMissionBriefing(id || gm.nextCampaignMissionId());

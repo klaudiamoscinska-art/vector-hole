@@ -29,7 +29,7 @@ async function seededPage(url, opts, saveOpts, mutate) {
     if (mutate) mutate(save);
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   }
   return g;
 }
@@ -89,7 +89,7 @@ export async function runV19Checks(url) {
     const g = await seededPage(url, {}, { missions: 12, runsPlayed: 6 });
     const pl = await g.page.evaluate(() => ({ lang: I18N.lang, play: document.getElementById('btnStart').innerText }));
     await g.page.evaluate(() => { window.game.openProfileScreen(); document.querySelector('[data-lang="en"]').click(); });
-    await g.page.waitForFunction(() => window.game && window.game.state && I18N.lang === 'en', null, { timeout: 15000 });
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state && I18N.lang === 'en', null, { timeout: 15000 });
     await g.page.waitForTimeout(300);
     const en = await g.page.evaluate(() => ({ lang: I18N.lang, play: document.getElementById('btnStart').innerText, saved: window.game.save.settings.lang }));
     results.push(report('language: a Polish browser plays in Polish; Profil → English switches and is remembered', pl.lang === 'pl' && /GRAJ/.test(pl.play) && en.lang === 'en' && /PLAY/.test(en.play) && en.saved === 'en', JSON.stringify({ pl, en })));
@@ -105,7 +105,7 @@ export async function runV19Checks(url) {
     const richSealed = await g0.page.evaluate((s) => sealSave(sanitizeSave(s)), rich);
     await g0.browser.close();
     const g = await seededPage(url, { query: '?portal=crazygames', initScript: mockCrazy({ vectorHoleSave_v1: richSealed }) }, { missions: 1 });
-    await g.page.waitForFunction(() => window.game && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 });
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.monetization.provider === 'crazygames', null, { timeout: 10000 });
     await g.page.waitForTimeout(500);
     const c = await g.page.evaluate((remoteDone) => {
       const gm = window.game;

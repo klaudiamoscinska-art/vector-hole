@@ -12,7 +12,7 @@ async function seeded(url, saveOpts = {}, opts = {}) {
   const save = await veteranSave(g.page, saveOpts);
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.waitForTimeout(500);
   return g;
 }

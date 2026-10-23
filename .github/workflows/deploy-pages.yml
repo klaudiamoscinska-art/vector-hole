@@ -1,10 +1,26 @@
 name: Deploy to GitHub Pages
 
-# Production comes only from main. The site is a generated release/ folder
-# built from an allowlist of the game's runtime files, never the repo root
-# (.claude/, docs/, qa/, design/ and other dev files are not published).
-# Changes outside the published files don't redeploy; workflow_dispatch on
-# main redeploys by hand.
+# Production comes only from main. The site is a generated release/ folder,
+# never the repo root (.claude/, docs/, qa/, design/ and other dev files are
+# not published). E3: .github/scripts/assemble-release.mjs builds it from the
+# git checkout -- index.html (its script/stylesheet rewritten to v/<id>/),
+# the immutable v/<id>/ of this release (id = first 12 hex of the commit) and
+# of the earlier ones still retained, and at the root the frozen last classic
+# game.js/style.css for browsers holding a pre-E3 index.html. A URL never
+# changes meaning. Changes outside the deploy paths don't redeploy;
+# workflow_dispatch on main redeploys by hand. Only main's tip is ever
+# deployed: an older run (a re-run of a superseded commit) deploys nothing.
+# L1: retention reads the real publication history -- GitHub's deployment
+# records of the github-pages environment (deployments: read, GET only).
+# Only the deploy job is bound to that environment, so a record exists only
+# for a real upload + deploy, and its success means "published": the build
+# job (live pre-check, ledger, assembly, checks) and the post-deploy live
+# check are separate jobs that never write a record.
+# K2 break-glass (docs/E3_ROLLBACK_PLAN.md §4): workflow_dispatch with
+# mode=recovery, owner only, first attempt, naming main's sha and the live
+# release. It may rebuild a damaged live release and accept a live/ledger
+# disagreement the ledger itself covers -- nothing else; every other check
+# below runs unchanged. A push is always a standard run.
 on:
   push:
     branches:
@@ -13,60 +29,270 @@ on:
       - index.html
       - style.css
       - game.js
+      - '**.js'
+      - '**.css'
+      - '.github/scripts/**'
       - .github/workflows/deploy-pages.yml
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'standard = a normal publication (leave the fields below empty). recovery = break-glass, owner only (docs/E3_ROLLBACK_PLAN.md §4)'
+        type: choice
+        options:
+          - standard
+          - recovery
+        default: standard
+      expected_main_sha:
+        description: 'recovery only: the full 40-hex sha of main (its tip) to publish'
+        type: string
+        default: ''
+      expected_live:
+        description: 'recovery only: the live release id you see now (12 hex from the live index.html) or classic'
+        type: string
+        default: ''
+      reason:
+        description: 'recovery only: why (10-200 chars: letters, digits, spaces and . , ; _ ( ) # / + '' -)'
+        type: string
+        default: ''
 
 permissions:
   contents: read
   pages: write
   id-token: write
+  deployments: read
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     if: github.ref == 'refs/heads/main'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.assemble.outputs.deploy }}
+      tree: ${{ steps.tree.outputs.tree }}
+      base_url: ${{ steps.pages.outputs.base_url }}
+      live_index: ${{ steps.live.outputs.index }}
+      recovery: ${{ steps.mode.outputs.recovery }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          # E3: the frozen classic pair and the retained releases are read from git history.
+          fetch-depth: 0
 
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v5
 
-      - name: Build release folder from the allowlist
+      - name: Check Node
         run: |
           set -euo pipefail
-          # The game runs from exactly these files (icon and fonts are inline data: URIs).
-          RELEASE_FILES="index.html style.css game.js"
-          rm -rf release
-          mkdir release
-          for f in $RELEASE_FILES; do
-            test -f "$f" || { echo "::error::missing release file $f"; exit 1; }
-            cp "$f" "release/$f"
-          done
-          grep -q 'href="style.css"' release/index.html || { echo "::error::index.html no longer loads style.css"; exit 1; }
-          grep -q 'src="game.js"' release/index.html || { echo "::error::index.html no longer loads game.js"; exit 1; }
-          actual="$(cd release && find . -mindepth 1 -printf '%P\n' | sort)"
-          expected="$(printf '%s\n' $RELEASE_FILES | sort)"
-          if [ "$actual" != "$expected" ]; then
-            echo "::error::release/ holds files outside the allowlist"
-            echo "$actual"
-            exit 1
-          fi
+          node --version
+          node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 18 ? 0 : 1)' || { echo "::error::Node >= 18 is required"; exit 1; }
+
+      - name: Standard or recovery run
+        id: mode
+        # K2: a push or a standard dispatch passes (and must carry no recovery
+        # input); a recovery run must be a first-attempt dispatch on main by
+        # the repository owner, for main's sha. Inputs only via env.
+        env:
+          VH_MODE: ${{ inputs.mode }}
+          VH_EXPECT_SHA: ${{ inputs.expected_main_sha }}
+          VH_EXPECT_LIVE: ${{ inputs.expected_live }}
+          VH_REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs authorize-recovery --out "$RUNNER_TEMP/recovery.json"
+          mode="$(node -p 'require(process.argv[1]).mode' "$RUNNER_TEMP/recovery.json")"
+          if [ "$mode" = recovery ]; then echo "recovery=true" >> "$GITHUB_OUTPUT"; else echo "recovery=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Check the live site before deploying
+        id: live
+        # Exit 1 = the live site is inconsistent with what this release assumes
+        # (STOP, nothing deployed); exit 3 = the site or network refused
+        # (infrastructure, STOP, nothing deployed). Never bypassed; only a
+        # recovery run (K2) records a 404 / mistyped file of the live release
+        # as damaged (rebuilt from git; served bytes must still match).
+        env:
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+          RECOVERY: ${{ steps.mode.outputs.recovery }}
+        run: |
+          set -euo pipefail
+          rec=()
+          if [ "${RECOVERY:-}" = true ]; then rec=(--recovery "$RUNNER_TEMP/recovery.json"); fi
+          node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs precheck-live \
+            --url "$BASE_URL" --out-json "$RUNNER_TEMP/live-before.json" ${rec[@]+"${rec[@]}"}
+          echo "index=$(node -p 'require(process.argv[1]).index' "$RUNNER_TEMP/live-before.json")" >> "$GITHUB_OUTPUT"
           {
-            echo "### Release manifest"
-            echo '```'
-            (cd release && sha256sum $RELEASE_FILES)
+            echo "### Live site before deploy"
+            echo '```json'
+            cat "$RUNNER_TEMP/live-before.json"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Read the deployment ledger
+        # L1: GET-only reads of this repository's github-pages deployment
+        # records and their statuses. HTTP 401/403/404/429/5xx, a timeout,
+        # broken JSON, incomplete pagination or contradictory records = STOP
+        # (exit 3 / 1), never a fallback to the git-only rule. The token is
+        # only in this step's environment and is never printed or written.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          API_URL: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs ledger \
+            --source git --repo . --api-url "$API_URL" --repository "$REPOSITORY" \
+            --out "$RUNNER_TEMP/ledger.json"
+
+      - name: Assemble release/
+        id: assemble
+        env:
+          RECOVERY: ${{ steps.mode.outputs.recovery }}
+        run: |
+          set -euo pipefail
+          rm -rf release
+          rec=()
+          if [ "${RECOVERY:-}" = true ]; then rec=(--recovery "$RUNNER_TEMP/recovery.json"); fi
+          rc=0
+          node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs assemble \
+            --source git --repo . --rev "$GITHUB_SHA" --out release \
+            --live-json "$RUNNER_TEMP/live-before.json" \
+            --ledger "$RUNNER_TEMP/ledger.json" --repository "$GITHUB_REPOSITORY" \
+            --manifest-out "$RUNNER_TEMP/release-manifest.json" \
+            --summary "$GITHUB_STEP_SUMMARY" ${rec[@]+"${rec[@]}"} || rc=$?
+          if [ "$rc" -eq 4 ]; then
+            echo "::notice::main has moved past ${GITHUB_SHA::12}: this run deploys nothing (the newer run publishes)"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$rc" -eq 0 ] || exit "$rc"
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release/ independently
+        if: steps.assemble.outputs.deploy == 'true'
+        # A second, deliberately separate check of what will be uploaded.
+        run: |
+          set -euo pipefail
+          id="${GITHUB_SHA::12}"
+          cd release
+          die() { echo "::error::release/ check: $*"; exit 1; }
+          # (a) only regular .html/.js/.css files, no symlinks
+          odd="$(find . -mindepth 1 \( -type l -o \( -type f ! \( -name '*.html' -o -name '*.js' -o -name '*.css' \) \) -o \( ! -type f ! -type d \) \) -printf '%P\n')"
+          [ -z "$odd" ] || die "files outside the allowed types: $odd"
+          # (b) no dev/QA/docs paths, no hidden paths
+          devp="$(find . -mindepth 1 -printf '%P\n' | grep -E '(^|/)(qa|\.claude|\.github|docs|design|node_modules|tests?|evidence|logs|out)(/|$)|(^|/)\.' || true)"
+          [ -z "$devp" ] || die "dev paths in the artifact: $devp"
+          # (c) the root holds exactly index.html, game.js, style.css, v/; every v/ entry is a 12-hex id
+          [ "$(find . -mindepth 1 -maxdepth 1 -printf '%P\n' | sort | tr '\n' ' ')" = "game.js index.html style.css v " ] || die "unexpected root entries"
+          bad_ids="$(find v -mindepth 1 -maxdepth 1 -printf '%P\n' | grep -Ev '^[0-9a-f]{12}$' || true)"
+          [ -z "$bad_ids" ] || die "v/ entries that are not release ids: $bad_ids"
+          [ -d "v/$id" ] || die "v/$id/ missing"
+          # (d) index.html: one script and one stylesheet, both from v/<id>/ and present
+          scripts="$(grep -oE '<script[^>]*src="[^"]*"' index.html | grep -oE 'src="[^"]*"' || true)"
+          [ "$(printf '%s\n' "$scripts" | grep -c .)" = 1 ] || die "index.html must have exactly one <script src>"
+          src="${scripts#src=\"}"; src="${src%\"}"
+          case "$src" in "v/$id/"*.js) ;; *) die "script src $src is not in v/$id/";; esac
+          [ -f "$src" ] || die "$src missing"
+          sheets="$(grep -oE '<link[^>]*rel="stylesheet"[^>]*>' index.html | grep -oE 'href="[^"]*"' || true)"
+          [ "$(printf '%s\n' "$sheets" | grep -c .)" = 1 ] || die "index.html must have exactly one stylesheet"
+          css="${sheets#href=\"}"; css="${css%\"}"
+          case "$css" in "v/$id/"*.css) ;; *) die "stylesheet $css is not in v/$id/";; esac
+          [ -f "$css" ] || die "$css missing"
+          # (e) the frozen classic pair is byte-identical to its pins
+          echo "5011c0e4047c20ff96b22ae1da84746229f0cf99a738287d1a79414134392664  game.js" | sha256sum -c --quiet - || die "root game.js is not the frozen classic file"
+          echo "b5eb39fef65635eeb75c91de0c7b52c42dedd640e5b4b920bbbf95d4f3611b61  style.css" | sha256sum -c --quiet - || die "root style.css is not the frozen classic file"
+          # (f) no QA mechanism (bridge, its installer, bot page hooks) anywhere
+          qa="$(grep -rlE '__qa[A-Za-z_$]|installQaBridge|qaBridgeInit|waitForQaBridge|addInitScript' . || true)"
+          [ -z "$qa" ] || die "QA mechanisms in: $qa"
+          # (g) size well under the Pages limit
+          size="$(du -sb . | cut -f1)"
+          [ "$size" -lt 419430400 ] || die "artifact is $size bytes"
+          echo "release/ verified: $(find . -type f | wc -l) files, $size bytes, current v/$id/"
+
+      - name: Fingerprint release/
+        if: steps.assemble.outputs.deploy == 'true'
+        id: tree
+        run: |
+          set -euo pipefail
+          tree="$(cd release && find . -type f -printf '%P\n' | LC_ALL=C sort | while IFS= read -r f; do printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"; done | sha256sum | cut -d' ' -f1)"
+          echo "tree=$tree" >> "$GITHUB_OUTPUT"
+          echo "release/ fingerprint: $tree"
+
+      - name: Hand release/ to the deploy job
+        if: steps.assemble.outputs.deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: release
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Keep the recovery decision trail
+        # K2: what the recovery run was authorized for, saw and built --
+        # kept 90 days whether it deployed or stopped. No secrets in it.
+        if: always() && steps.mode.outputs.recovery == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-record
+          path: |
+            ${{ runner.temp }}/recovery.json
+            ${{ runner.temp }}/live-before.json
+            ${{ runner.temp }}/ledger.json
+            ${{ runner.temp }}/release-manifest.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  deploy:
+    # The only job bound to github-pages: its deployment record (and the
+    # ledger the next runs read) means exactly "this sha was uploaded and
+    # deployed". Nothing else runs here.
+    needs: build
+    if: github.ref == 'refs/heads/main' && needs.build.outputs.deploy == 'true'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Receive release/
+        uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: release
+
+      - name: Check release/ is the verified folder
+        env:
+          TREE: ${{ needs.build.outputs.tree }}
+        run: |
+          set -euo pipefail
+          got="$(cd release && find . -type f -printf '%P\n' | LC_ALL=C sort | while IFS= read -r f; do printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"; done | sha256sum | cut -d' ' -f1)"
+          [ "$got" = "$TREE" ] || { echo "::error::release/ changed between the build and the deploy job ($got != $TREE)"; exit 1; }
+          [ -z "$(find release -type l)" ] || { echo "::error::symlink in release/"; exit 1; }
+
+      - name: Check the live site is still what the build saw
+        # A re-run of this job alone in an older run must never publish its
+        # artifact over a newer release (whose v/ folder it may not hold):
+        # the live index.html must still be the one the build checked.
+        # K2: a recovery run's deploy job is never re-run at all.
+        env:
+          BASE_URL: ${{ needs.build.outputs.base_url }}
+          LIVE_INDEX: ${{ needs.build.outputs.live_index }}
+          RECOVERY: ${{ needs.build.outputs.recovery }}
+        run: |
+          set -euo pipefail
+          if [ "${RECOVERY:-}" = true ]; then
+            [ "${GITHUB_RUN_ATTEMPT:-0}" = 1 ] || { echo "::error::a recovery run is never re-run (attempt ${GITHUB_RUN_ATTEMPT:-unknown}): dispatch a new one on the current state"; exit 1; }
+            echo "::warning title=RECOVERY DEPLOYMENT::publishing a break-glass build (docs/E3_ROLLBACK_PLAN.md §4)"
+          fi
+          [ -n "$LIVE_INDEX" ] || { echo "::error::no live index.html hash from the build"; exit 1; }
+          got="$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL%/}/index.html?vh-check=deploy-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-0}" | sha256sum | cut -d' ' -f1)"
+          [ "$got" = "$LIVE_INDEX" ] || { echo "::error::the live index.html changed since the build ($got != $LIVE_INDEX): a newer release was published -- this run must not deploy its older artifact"; exit 1; }
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
@@ -76,3 +302,33 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify-live:
+    # Red here = the deployed site does not serve the artifact: follow
+    # docs/E3_ROLLBACK_PLAN.md §2.3 (it never rolls back by itself). Exit 3 = network. A
+    # separate job, so this check never changes the deployment record.
+    needs: [build, deploy]
+    if: github.ref == 'refs/heads/main' && needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Receive release/
+        uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: release
+
+      - name: Verify the live site
+        env:
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+          TREE: ${{ needs.build.outputs.tree }}
+        run: |
+          set -euo pipefail
+          got="$(cd release && find . -type f -printf '%P\n' | LC_ALL=C sort | while IFS= read -r f; do printf '%s  %s\n' "$(sha256sum < "$f" | cut -d' ' -f1)" "$f"; done | sha256sum | cut -d' ' -f1)"
+          [ "$got" = "$TREE" ] || { echo "::error::release/ is not the deployed folder ($got != $TREE)"; exit 1; }
+          node --experimental-vm-modules --no-warnings .github/scripts/assemble-release.mjs verify-live \
+            --url "$PAGE_URL" --release release --attempts 5 --delay-ms 20000

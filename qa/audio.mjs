@@ -14,7 +14,7 @@ async function veteranPage(url, opts = {}, saveOpts = {}) {
   if (opts.mutate) opts.mutate(save);
   await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
   await g.page.reload();
-  await g.page.waitForFunction(() => window.game && window.game.state);
+  await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   await g.page.addScriptTag({ content: ARENA_BOT });
   return g;
 }

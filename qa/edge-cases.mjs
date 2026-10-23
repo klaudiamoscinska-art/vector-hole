@@ -52,7 +52,7 @@ export async function runEdgeCases(url) {
     save.displayName = '<img src=x onerror="window.__xss=1">';
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     await g.page.addScriptTag({ content: ARENA_BOT });
 
     // Monkey: 400 random clicks on whatever is visible & enabled (minus reset

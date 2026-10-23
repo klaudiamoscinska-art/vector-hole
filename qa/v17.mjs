@@ -46,7 +46,7 @@ export async function runV17Checks(url) {
     const save = await veteranSave(g.page, { missions: 12, runsPlayed: 6 });
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     await g.page.waitForTimeout(1500);
     const hub = await g.page.evaluate(() => {
       const rect = id => document.getElementById(id).getBoundingClientRect();
@@ -76,7 +76,7 @@ export async function runV17Checks(url) {
     const save = await veteranSave(g.page, { missions: 1 });
     await g.page.evaluate((s) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)), save);
     await g.page.reload();
-    await g.page.waitForFunction(() => window.game && window.game.state);
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
     const tiles = await g.page.evaluate(async () => {
       window.game.openCampaignScreen();
       await new Promise(r => setTimeout(r, 400));
