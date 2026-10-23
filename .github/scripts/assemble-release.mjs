@@ -1021,7 +1021,10 @@ export async function precheckLive(baseUrl, { nonce = Date.now(), recovery = nul
   }
   const css = await fetchBytes(bust(join(baseUrl, style.ref), nonce));
   if (css.status !== 200) damage(cm[2], `live ${style.ref}: HTTP ${css.status}`, css.status);
-  else anchorFiles[cm[2]] = sha256(css.data);
+  else {
+    if (!mimeOk(cm[2], css.type)) damage(cm[2], `live ${style.ref}: content-type ${css.type}`, css.status);
+    anchorFiles[cm[2]] = sha256(css.data);
+  }
   return { era: 'versioned', anchorId, index: sha256(idx.data), root, anchorFiles, ...(recovery ? { recovery: true, damaged } : {}) };
 }
 /** After deploying: every file of the artifact is served with its bytes. */

@@ -13,6 +13,8 @@
 // - the standard run is unchanged: a damaged live release, a wrong type, a
 //   ledger/live disagreement, an API outage still stop it; it never accepts
 //   a recovery pre-check;
+// - the live stylesheet's type is checked like the scripts' (K2F-1R): a
+//   standard run stops on it, a recovery records it and checks its bytes;
 // - recovery: a missing (404) or mistyped live file is rebuilt from git with
 //   the same bytes; different bytes, other HTTP errors, a classic index or
 //   root pair off its pins, an unexpected live state, an API outage, a moved
@@ -392,6 +394,48 @@ export async function runRecoveryChecks() {
     const nonTip = await runAsync(['assemble', '--source', 'fixture', '--fixture', H, '--rev', C, '--out', path.join(W, 'u2'), '--now', NOW, '--era-epoch', EPOCH, '--live-json', path.join(rd, 'live-before.json'), '--ledger', path.join(rd, 'ledger.json'), '--repository', REPO, '--allow-non-tip', '--recovery', path.join(rd, 'recovery.json')], dispatchEnv(C));
     const wt = await runAsync(['assemble', '--source', 'worktree', '--repo', ROOT, '--id', 'k2test', '--frozen-dir', path.join(H, 'frozen'), '--out', path.join(W, 'u3'), '--no-live-anchor', '--recovery', path.join(rd, 'recovery.json')], dispatchEnv(C));
     check('STOP-19 recovery with --no-ledger / --allow-non-tip / --source worktree -> refused (exit 2)', base.code === 0 && noLedger.code === 2 && nonTip.code === 2 && wt.code === 2, [noLedger, nonTip, wt].map(r => r.code + ' ' + last(r.all)).join(' | '));
+  }
+
+  /* ---------- the live stylesheet's type (K2F-1R): checked like the scripts' ---------- */
+  {
+    const go = async (faults, o = {}) => { const live = await fakeLive(siteB, faults); const r = await e3Run(H, { liveBase: live.base, deps: DEPS(), rev: C, ...(o.recovery ? { recovery: { live: idOf('B') } } : {}) }); live.server.close(); return r; };
+    const cssBytes = fs.readFileSync(path.join(siteB, bCss));
+    const plain = { mime: { [bCss]: 'text/plain' } };
+    const std = await go({});
+    check('CSS-01 live stylesheet served as text/css: the standard run passes and the pre-check records its bytes', std.code === 0 && std.live.anchorFiles['style.css'] === sha256(cssBytes) && !('recovery' in std.manifest), `${std.stage} ${std.msg}`);
+    const s1 = await go(plain);
+    check('CSS-02 live stylesheet served as text/plain (HTTP 200) -> the standard precheck STOPs (exit 1, content-type)', s1.stage === 'precheck' && s1.code === 1 && /style\.css: content-type text\/plain/.test(s1.msg), s1.msg);
+    const r1 = await go(plain, { recovery: true });
+    const d1 = r1.manifest && r1.manifest.recovery.damaged;
+    const rebuilt = r1.out ? fs.readFileSync(path.join(r1.out, bCss)) : null;
+    check('CSS-03 live stylesheet text/plain: recovery records the damage, checks its bytes and rebuilds the same artifact as a standard run', r1.code === 0 && d1.length === 1 && d1[0].path === 'style.css' && /content-type text\/plain/.test(d1[0].problem) && r1.live.anchorFiles['style.css'] === sha256(cssBytes) && rebuilt && rebuilt.equals(cssBytes) && r1.manifest.artifactSha256 === std.manifest.artifactSha256, `${r1.stage} ${r1.msg} ${JSON.stringify(d1)}`);
+    check('CSS-04 the stylesheet\'s wrong type reaches the decision trail: live-before.json, manifest.recovery, the step summary and the RECOVERY log lines', r1.code === 0 && r1.live.damaged.length === 1 && /style\.css: content-type text\/plain/.test(r1.summary) && /RECOVERY(::| )damaged live file, to be rebuilt from git: .*style\.css: content-type text\/plain/.test(r1.steps.precheck.all) && /RECOVERY/.test(r1.steps.assemble.all), `${r1.stage} ${r1.msg}`);
+    const r404 = await go({ status: { [bCss]: 404 } }, { recovery: true });
+    check('CSS-05 live stylesheet 404: recovery unchanged (damage recorded as HTTP 404, same artifact as a standard run)', r404.code === 0 && r404.manifest.recovery.damaged.length === 1 && /HTTP 404/.test(r404.manifest.recovery.damaged[0].problem) && !('style.css' in r404.live.anchorFiles) && r404.manifest.artifactSha256 === std.manifest.artifactSha256, `${r404.stage} ${r404.msg}`);
+    const tampered = Buffer.from('/* tampered */');
+    const tm = await go({ body: { [bCss]: tampered }, mime: { [bCss]: 'text/plain' } }, { recovery: true });
+    const tc = await go({ body: { [bCss]: tampered } }, { recovery: true });
+    const ts = await go({ body: { [bCss]: tampered }, mime: { [bCss]: 'text/plain' } });
+    check('CSS-06 live stylesheet with other bytes -> STOP (immutability, exit 1): recovery with text/plain or text/css, never accepted; the standard run stops at its precheck', tm.stage === 'assemble' && tm.code === 1 && /immutability: live v\/[0-9a-f]{12}\/style\.css/.test(tm.msg) && tc.stage === 'assemble' && tc.code === 1 && /immutability/.test(tc.msg) && ts.stage === 'precheck' && ts.code === 1, [tm, tc, ts].map(r => `${r.stage} ${r.code} ${r.msg}`).join(' | '));
+    const infra = [];
+    for (const code of [403, 429, 500, 503]) for (const recovery of [false, true]) { const r = await go({ status: { [bCss]: code } }, { recovery }); infra.push({ code, recovery, stage: r.stage, exit: r.code }); }
+    const g410 = await go({ status: { [bCss]: 410 } }, { recovery: true });
+    check('CSS-07 live stylesheet HTTP 403 / 429 / 500 / 503 -> STOP (exit 3, infrastructure) in a standard and a recovery run; 410 -> STOP (exit 1)', infra.every(x => x.stage === 'precheck' && x.exit === 3) && g410.stage === 'precheck' && g410.code === 1, JSON.stringify(infra) + ` 410: ${g410.stage} ${g410.code}`);
+    const js = await go({ mime: { [bJs]: 'text/javascript; charset=utf-8' } });
+    check('CSS-08 live JS as text/javascript: the standard run still passes (the JS type check is unchanged)', js.code === 0 && js.manifest.artifactSha256 === std.manifest.artifactSha256, `${js.stage} ${js.msg}`);
+    const both = await go({ mime: { [bJs]: 'text/plain', [bCss]: 'text/plain' } }, { recovery: true });
+    const rd = path.join(H, `run${runNo}`); // the recovery run just above: its record and pre-check
+    check('CSS-09 live JS and stylesheet both text/plain: recovery records both (JS path unchanged) and rebuilds the standard artifact', both.code === 0 && both.manifest.recovery.damaged.map(d => d.path).sort().join(',') === 'game.js,style.css' && both.manifest.artifactSha256 === std.manifest.artifactSha256, `${both.stage} ${both.msg}`);
+    // A push never turns on the stylesheet exception: its pre-check takes no recovery record, its assembly no recovery pre-check.
+    const live = await fakeLive(siteB, plain);
+    const lj = path.join(W, 'css-push-live.json');
+    const pushPre = await runAsync(['precheck-live', '--url', live.base, '--out-json', lj, '--recovery', path.join(rd, 'recovery.json')], { ...dispatchEnv(C), GITHUB_EVENT_NAME: 'push' });
+    live.server.close();
+    const dir = path.join(W, 'css-std-recovery-live'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    const pushAsm = await runAsync(['assemble', '--source', 'fixture', '--fixture', H, '--rev', C, '--out', path.join(dir, 'release'), '--now', NOW, '--era-epoch', EPOCH, '--live-json', path.join(rd, 'live-before.json'), '--ledger', path.join(rd, 'ledger.json'), '--repository', REPO]);
+    check('CSS-10 a push cannot use the stylesheet exception: a push pre-check given a recovery record STOPs (exit 1); a standard assembly given the recovery pre-check refuses (exit 1)', both.code === 0 && pushPre.code === 1 && !fs.existsSync(lj) && pushAsm.code === 1 && /recovery run/.test(pushAsm.all), `${pushPre.code} ${last(pushPre.all)} | ${pushAsm.code} ${last(pushAsm.all)}`);
+    const relB = (m) => m.releases.find(x => x.id === idOf('B'));
+    check('CSS-11 retention and SHA checks unchanged: the stylesheet recovery keeps the standard releases, the root pair at its pins, and v/<B>/style.css at its published SHA-256', r1.code === 0 && ids(r1.manifest) === ids(std.manifest) && JSON.stringify(relB(r1.manifest).files) === JSON.stringify(relB(std.manifest).files) && relB(r1.manifest).files.find(f => f.path === 'style.css').sha256 === sha256(cssBytes) && sha256(fs.readFileSync(path.join(r1.out, 'game.js'))) === REL.FROZEN.files['game.js'] && sha256(fs.readFileSync(path.join(r1.out, 'style.css'))) === REL.FROZEN.files['style.css'], `${ids(r1.manifest)} vs ${ids(std.manifest)}`);
   }
 
   /* ---------- the workflow ---------- */
