@@ -4,6 +4,25 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## R1: runda przerwana daje tylko częściowe monety i XP (decyzja właścicielki 24.10.2026; schemat zapisu nadal v13)
+Zmiana kontraktu rozgrywki zatwierdzona przez właścicielkę: pełne nagrody
+i postęp tylko za ukończoną Arenę.
+
+- Runda opuszczona w pauzie przy wyniku > 0 (`payLeftRun()`): monety
+  1,6·√wynik (×1,5 w pierwszych 5 ukończonych rundach) i XP za wynik
+  (`xpSqrtK`·√wynik). Bez stałej części za rundę i bonusu miejsca, bez Core
+  City, pryzmatów co 3. rundę, misji dnia, premii / rekordu / serii
+  Wyzwania dnia, rekordu Areny i bez `runsPlayed` — od teraz liczy tylko
+  ukończone rundy (trudność, rundy nowicjusza, bramki Warsztatu / Wyzwań /
+  kafelka kampanii); licznik zapisany przez starsze wersje zostaje bez zmian
+  (bez migracji, bez nowego pola).
+- Runda ukończona (`endRound()` → `finalizeRun()`): bez zmian. Wynik 0 —
+  jak w poprawce poniżej (`abandonRun()`).
+- Okno „OPUŚCIĆ RUNDĘ?” mówi to wprost: „Monety i XP za dotychczasowy wynik
+  zostaną zapisane. Budowa miasta i premie — tylko za ukończoną rundę.”
+  (z tłumaczeniem EN).
+- Testy: `qa/leave-run.mjs` rozszerzony o R1.
+
 ## Poprawka: runda opuszczona bez gry nie buduje Miasta (schemat zapisu nadal v13, ekonomia bez zmian)
 Błąd zgłoszony przez właścicielkę (iPhone, staging FTUE-1): wejście do
 Areny i wyjście do Miasta (pauza → OPUŚĆ RUNDĘ) bez rozegrania rundy

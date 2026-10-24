@@ -263,15 +263,21 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
 
 ## 5. Meta i ekonomia
 
-- **Monety za rundę:** 15 + 1,6·√wynik + bonus miejsca (25/15/8);
-  pierwsze 5 rund ×1,5; reklama ×2 (nie na wyniku pierwszej Areny w
-  historii zapisu — FTUE-1). Co 3. runda +2 pryzmaty.
-- **Runda opuszczona (pauza → OPUŚĆ RUNDĘ):** monety, XP i Core City za
-  wynik osiągnięty do tej pory, runda liczy się do licznika rund (nie do
-  „par” rywala). Runda opuszczona przy wyniku 0 (nic nie zjedzone) nie
-  daje niczego i się nie liczy — wejście i wyjście nie buduje Miasta ani
-  nie otwiera Warsztatu/Wyzwań.
-- **Core City (LVL):** runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
+- **Monety za ukończoną rundę:** 15 + 1,6·√wynik + bonus miejsca (25/15/8);
+  pierwsze 5 ukończonych rund ×1,5; reklama ×2 (nie na wyniku pierwszej
+  Areny w historii zapisu — FTUE-1). Co 3. ukończona runda +2 pryzmaty.
+- **Runda przerwana przez gracza (pauza → OPUŚĆ RUNDĘ) — R1, decyzja
+  właścicielki 24.10.2026:** tylko częściowe monety i XP za faktyczny wynik
+  — 1,6·√wynik monet (pierwsze 5 ukończonych rund ×1,5) i część XP za wynik
+  (XP_√·√wynik; awans poziomu z tego XP daje zwykłą nagrodę poziomu). Bez
+  stałej części za rundę (15 monet, bazowe XP), bez bonusu miejsca, Core
+  City, pryzmatów co 3. rundę, misji dnia, premii, rekordu i serii Wyzwania
+  dnia, rekordu Areny i bez zaliczenia rundy (licznik rund = ukończone
+  rundy: trudność, rundy nowicjusza, odblokowanie Warsztatu po 2 i Wyzwań
+  oraz kafelka kampanii po 3 rundach; licznik ze starszych zapisów zostaje,
+  jaki jest). Runda przerwana przy wyniku 0 (nic nie zjedzone) nie daje
+  niczego. Pełne nagrody i postęp — tylko za rundę dograną do końca czasu.
+- **Core City (LVL):** ukończona runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
   rekord), Wyzwanie dnia +20% (+10% rekord); LVL 1–2 ×1,6. Nadwyżka
   przechodzi dalej. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
   „Pikselowy Wybuch”, Finisz „Fala”, zestaw „Pryzmat”; potem 100 monet + 10
@@ -512,8 +518,11 @@ ponownym uruchomieniu, zapisy po 1, 2, 3+ rundach, z ogłoszoną i
 nieogłoszoną kampanią, po angielsku; na 390×844, 375×667, 844×390, 1280×720),
 **opuszczona runda** (`qa/leave-run.mjs`: wejście i natychmiastowe wyjście
 nie zmienia zapisu — także 5× pod rząd i po ponownym uruchomieniu;
-ukończona runda i runda rozegrana, a potem opuszczona płacą jak dotąd;
-istniejący zapis, izolacja od kampanii, bramki, Wyzwanie dnia).
+runda przerwana po zjedzeniu jednego obiektu i po większym wyniku płaci
+tylko częściowe monety i XP według formuł, bez Core City, premii, misji dnia
+i zaliczenia rundy (R1); ukończona runda płaci pełne nagrody; istniejący
+zapis, izolacja od kampanii, bramki po ukończonych rundach, Wyzwanie
+dnia).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 odkleja się, gdy utknie (bram impulsu i portali nie używa celowo —

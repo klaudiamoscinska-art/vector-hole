@@ -13096,8 +13096,8 @@ class Game {
    *  XP, prisms, Core City, Daily bonus or streak, daily mission, and no
    *  runsPlayed (it drives difficulty and the Warsztat/Wyzwania/campaign
    *  gates), so entering and leaving can't farm rewards or unlocks. The
-   *  save is still written as finalizeRun() would (in-round state such as
-   *  the coach's learned skills). */
+   *  save is still written (in-round state such as the coach's learned
+   *  skills). */
   abandonRun() {
     this.stopRun();
     const ranked = rankHoles([this.player, ...this.bots]);
@@ -13105,9 +13105,39 @@ class Game {
     return { ranked, place: ranked.indexOf(this.player) + 1, coinsEarned: 0 };
   }
 
-  /** Stops the round, grants coins for the score reached so far, and
-   *  persists stats. Shared by a normal timeout end and an early Leave Run,
-   *  which only differ in whether the results screen is shown. */
+  /** R1 (owner decision 2026-10-24): a round the player left after scoring
+   *  pays only what the score itself earned -- the score part of the round
+   *  formulas (coinsSqrtK·√score with the newbie multiplier, xpSqrtK·√score;
+   *  a level-up from that XP pays its usual level reward). Nothing that
+   *  needs a finished round: no coinsBase/xpRunBase or place bonus, Core
+   *  City, prism trickle, daily mission, Daily bonus/record/streak, personal
+   *  best, recentArenaScores or runsPlayed -- runsPlayed counts finished
+   *  rounds from here on (difficulty, newbie runs, the Warsztat / Wyzwania /
+   *  campaign gates; older saves keep the count they have). */
+  payLeftRun() {
+    this.stopRun();
+    const ranked = rankHoles([this.player, ...this.bots]);
+    const score = Math.max(0, this.player.score);
+    const E = CONFIG.economy;
+    let coinsEarned = Math.round(E.coinsSqrtK * Math.sqrt(score));
+    this.newbieBonusApplied = (this.save.stats.runsPlayed || 0) < E.newbieRuns;
+    if (this.newbieBonusApplied) coinsEarned = Math.round(coinsEarned * E.newbieCoinMult);
+    this.adPendingCoins = 0; // no result screen, no ×2 offer
+    this.save.coins += coinsEarned;
+    this.lastXpResult = this.grantXp(CONFIG.progression.xpSqrtK * Math.sqrt(score));
+    this.missionJustCompleted = false;
+    this.dailyResult = null;
+    this.hubMilestoneReached = false;
+    this.hubMilestoneRewards = [];
+    this.hubMilestoneReward = null;
+    saveGame(this.save);
+    return { ranked, place: ranked.indexOf(this.player) + 1, coinsEarned };
+  }
+
+  /** A finished round (the clock ran out, endRound()): stops it and grants
+   *  every reward of a finished round -- coins, XP, Core City, Daily, the
+   *  daily mission, stats, recent scores -- and persists them. A round
+   *  left early goes through payLeftRun() / abandonRun() instead. */
   finalizeRun() {
     this.stopRun();
 
@@ -13368,8 +13398,8 @@ class Game {
     document.getElementById('btnWatchAd').textContent = '×2 MONET · REKLAMA';
     // FTUE-1: the first Arena result in the player's history offers no ad
     // (the round's coins are paid as usual); WYZWIJ ZNAJOMEGO fills the row.
-    // runsPlayed also counts a round left early (leaveRun()), so a new
-    // player's (newbieBonusApplied) first *finished* regular round is the
+    // Saves from before R1 also counted rounds left early in runsPlayed, so
+    // a new player's (newbieBonusApplied) first *finished* regular round is the
     // one that just started recentArenaScores (finished rounds only) --
     // unless this session already showed an ad-free result (a friend's
     // challenge played first). Older saves without that history keep the ad.
@@ -13451,11 +13481,11 @@ class Game {
     }
   }
 
-  /** Casual mode has no forfeit penalty (that's reserved for future
-   *  ranked/daily modes) — the player keeps coins earned for the score
-   *  reached so far and returns straight to the menu, per GDD 5.2. A
-   *  round left at score 0 reached nothing, so it grants and counts
-   *  nothing (abandonRun()); any score keeps the partial reward. */
+  /** Pause → OPUŚĆ RUNDĘ: back to the menu without a results screen. R1
+   *  (GDD 5): a round left with a score pays only the partial coins and XP
+   *  that score earned (payLeftRun()); a round left at score 0 grants and
+   *  counts nothing (abandonRun()). Only a finished round (endRound() →
+   *  finalizeRun()) pays the finished-round rewards and progression. */
   leaveRun() {
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
@@ -13464,7 +13494,7 @@ class Game {
       return;
     }
     const durationMs = Math.round(performance.now() - this.runStartedAt);
-    const { place, coinsEarned } = this.player.score > 0 ? this.finalizeRun() : this.abandonRun();
+    const { place, coinsEarned } = this.player.score > 0 ? this.payLeftRun() : this.abandonRun();
     this.state = GameState.MENU;
     this.showScreen('mainMenu');
     this.updateCoinDisplays();
@@ -17370,7 +17400,7 @@ const I18N_EN = {
   "Wklej kod kopii. Postęp na tym urządzeniu zostanie zastąpiony postępem z kodu.": "Paste your backup code. The progress on this device will be replaced with the progress from the code.",
   "Wkrótce": "Coming soon",
   "Wracaj codziennie — nagrody rosną. Dzień 7 to wielka paczka!": "Come back daily — rewards keep growing. Day 7 is a big bundle!",
-  "Wrócisz do menu głównego. Monety za dotychczasowy wynik zostaną zapisane.": "You'll return to the main menu. Coins for your current score will be saved.",
+  "Wrócisz do menu głównego. Monety i XP za dotychczasowy wynik zostaną zapisane. Budowa miasta i premie — tylko za ukończoną rundę.": "You'll return to the main menu. Coins and XP for your current score will be saved. City building and bonuses come only with a finished round.",
   "Wróć do Miasta": "Back to City",
   "Wróć jutro po więcej": "Come back tomorrow for more",
   "Wróć, gdy licznik dojdzie do zera!": "Come back when the timer hits zero!",

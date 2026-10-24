@@ -24,7 +24,7 @@ export const REQUIRED_RULES = [
   ['saveGame only write path, PX01 guard, PX02 refund', /`saveGame\(\)` is the only write path.*PX01 guard.*PX02 D\+ one-time refund/],
   ['save suites named', /qa\/save-safety\.mjs.*qa\/px02-isolation\.mjs/],
   ['Arena/campaign independence + own-mode gates', /\*\*Arena ↔ campaign independence:\*\*.*every unlock gate reads only its own mode/],
-  ['Core City only from finalizeRun; abandoned round grants nothing', /Core City is filled only by `finalizeRun\(\)`.*score 0 grants and counts nothing/],
+  ['Core City only from finalizeRun; R1: a round left early pays partial coins/XP only, at score 0 nothing', /Core City is filled only by `finalizeRun\(\)`.*left early pays only partial coins and XP.*`payLeftRun\(\)`.*score 0 nothing \(`abandonRun\(\)`\); Core City, bonuses, prisms and the run count .* come only from a finished round/],
   ['no Arena advantage for sale (PX02 D+)', /\*\*No Arena advantage for sale \(PX02 D\+\):\*\*/],
   ['no energy / no play limit', /never reintroduce energy, a timer or a cost/],
   ['economy changes only with the owner', /\*\*Economy:\*\* prices, rewards, booster balance and the growth curve change only with the owner/],
