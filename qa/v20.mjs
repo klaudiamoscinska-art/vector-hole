@@ -9,7 +9,7 @@
 //  - the briefing explains them with a chip + a line,
 //  - on M11 a pad and food are on screen from the first frame.
 // Usage: node qa/v20.mjs
-import { serve, openGame, veteranSave, report } from './lib.mjs';
+import { serve, openGame, veteranSave, report, isMain } from './lib.mjs';
 
 async function seeded(url, opts = {}) {
   const g = await openGame(url, { viewport: { width: 402, height: 874 }, ...opts });
@@ -147,7 +147,7 @@ export async function runV20Checks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runV20Checks(url);
   server.close();

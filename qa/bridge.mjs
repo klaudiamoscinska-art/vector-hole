@@ -22,7 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
-import { serve, openGame, chromium, report, ROOT, OUT, QA_BRIDGE, QA_BRIDGE_NAMES, QA_BRIDGE_SETTERS, installQaBridge, revisionFile } from './lib.mjs';
+import { serve, openGame, chromium, report, ROOT, OUT, QA_BRIDGE, QA_BRIDGE_NAMES, QA_BRIDGE_SETTERS, installQaBridge, revisionFile, isMain } from './lib.mjs';
 import { devCodeToken } from './dev-code.mjs';
 
 const BASE_REV = process.env.VH_E2_BASE || '63b50d0f470272aed8734c7854dda24b4f61e712';
@@ -286,7 +286,7 @@ export async function runBridgeChecks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const results = await runBridgeChecks(url);
   server.close();

@@ -3,7 +3,7 @@
 // pity loan, the v11 -> v12 save migration, and the shape of all 240
 // missions. (v22: the energy limit is gone -- qa/v22.mjs checks that.)
 // Usage: node qa/v15.mjs
-import { serve, openGame, veteranSave, report, allDistrictsSave } from './lib.mjs';
+import { serve, openGame, veteranSave, report, allDistrictsSave, isMain } from './lib.mjs';
 
 async function seeded(url, mutate, opts = {}) {
   const g = await openGame(url, opts);
@@ -194,7 +194,7 @@ export async function runV15Checks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runV15Checks(url);
   server.close();

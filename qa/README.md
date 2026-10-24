@@ -23,6 +23,7 @@ node qa/save-safety.mjs    # PX01: a newer (schema > current), broken (truncated
 node qa/px02-isolation.mjs # PX02 D+ (owner decision): ISO-A..D -- Arena, Daily and friend challenges start with the same parameters for any campaign progress, coins, XP, level and any vortex (bought for real in Warsztat); GRAJ / replay / rematch start at once with nothing for sale; Arena rounds change nothing in the campaign; BOOST-01..03 -- mission boosters never touch the Arena, Magnes/Sprint/Turbo start/Zegar/Tarcza still act in missions, no Turbo for coins or ads in the Arena; LEGACY-01..08 -- the one-time vortex refund (4870 for the 6 paid vortices) is paid once per save line, with its marker in the same write, never while SAVE_GUARD holds a save, rolled back on a failed write, kept by the previous release (5db3b02, read from git), safe across reloads, two tabs, cloud copies and backup codes; review fixes (`--review` runs only these): LEGACY-09 the refund card waits for its "seen" write, LEGACY-10 a backup code / cloud copy whose write fails is never confirmed as loaded, UX-01 the Warsztat title fits next to the wallet at 375/360/320 px. Fixtures -> qa/out/px02-fixtures/
 node qa/v22.mjs            # v22: no energy anywhere (source, DOM, store, ads) + 15 rounds / 6 Dailies / 15 mission attempts in a row at 0 coins; first launch = an Arena round with the whole bestiary; campaign progress changes nothing in Arena and vice versa; same unlocks in either order; each mode pays for what it sells (bots); first-round coach only for a hesitating player (EN too); v12 -> v13 migration + reload; prisms (booster for 4 ◆, prism looks)
 node qa/ftue1.mjs          # FTUE-1 „Druga runda”: the first Arena result shows no card and no ×2 ad (reward unchanged; also a new player's first finished result after a round left early -- same session, relaunch, existing save -- while an older save without finished-round history keeps it, and only one ad-free result after a friend's challenge played first), ZAGRAJ JESZCZE RAZ starts round 2 at once (same 2:00), Warsztat / Wyzwania cards wait for the result animation and never pile up later, the campaign is presented on Miasto's tile after round 3 (not again once met), the login calendar waits for the 2nd Miasto visit or a relaunch (one claim per day), existing saves after 1 / 2 / 3+ rounds with or without the campaign announced lose or repeat nothing, EN tile copy; 390x844, 375x667, 844x390, 1280x720
+node qa/leave-run.mjs      # leaving an Arena round: at score 0 (entered, not played) nothing is granted or counted -- save unchanged, also 5x in a row and after a relaunch, no gate/Daily/daily mission; a finished round and a played-then-left round pay as before (CONFIG formulas); existing save, Arena/campaign isolation
 node qa/v21.mjs            # v21: big screens -- phones keep their framing; 1366×768/1440×900/1920×1080 see about a phone's worth of city with a bigger vortex, cursor steering through the zoom, bigger HUD/minimap; desktop layout (body.wide): nav rail + two columns on Miasto/Dzielnice/Warsztat/Wyzwania/results at 960×540…1920×1080 and 1180×820, all 12 districts in view, nothing sideways; portrait phones/tablets keep the phone layout; district strip mouse wheel + edge fades
 node qa/v20.mjs            # v20: gates are helpers -- no mission asks to go through a gate/portal, impulse pad (+50% speed, recharge), two-way portal pair, M11 „Pierwszy impuls” shows a pad + food on its first frame, EN chips
 node qa/v19.mjs            # v19: English (a full sweep in an en-US browser with ?i18n=log: nothing Polish reaches the screen), language switch, cloud save restore/mirror (mocked CrazyGames SDK), backup code
@@ -240,3 +241,20 @@ for the release being published, cycles), the QA bridge for more than one
 entry module, `px02-isolation.mjs` LEGACY-06 rebuilding the previous release
 from a multi-file tree, `dev-code.mjs` finding `DEV_CODE_SALT` outside
 `game.js`.
+
+## Running on Windows
+
+- A direct `node qa/<suite>.mjs` used to run nothing and exit 0 on Windows
+  (`import.meta.url === \`file://${process.argv[1]}\`` never matches
+  `file:///C:/...`) -- a silent false PASS. Every suite now uses
+  `isMain(import.meta.url)` from `lib.mjs`; a run that prints no
+  `N/M ... checks passed` line did not run.
+- `release.mjs` / `release-recovery.mjs` import the release script by file
+  URL (a bare `C:\...` path is not an ESM URL) and read the workflow with
+  CRLF normalized (`core.autocrlf=true` checkouts).
+- Symlinks need Developer Mode or admin rights: without them the two symlink
+  negatives of `release.mjs` print `NOT RUN` (not counted as PASS) instead
+  of crashing the suite; run them on Linux/CI or with Developer Mode.
+- `check_pages_workflow.py` is called as `python3`; the Windows Store alias
+  is not Python -- put a real `python3.exe` (e.g. a venv's `python.exe`
+  copied as `python3.exe`) first on `PATH`.

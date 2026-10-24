@@ -70,8 +70,11 @@ window.__ftueReward = (c0, runsBefore) => {
   const ranked = rankHoles([g.player, ...g.bots]), place = ranked.indexOf(g.player) + 1;
   let want = E.coinsBase + Math.round(E.coinsSqrtK * Math.sqrt(Math.max(0, g.player.score))) + (E.coinsPlaceBonus[place - 1] || 0);
   if (runsBefore < E.newbieRuns) want = Math.round(want * E.newbieCoinMult);
-  const extra = (g.lastXpResult && g.lastXpResult.levelsUp || []).reduce((a, l) => a + (l.coins || 0), 0) + (g.hubMilestoneRewards || []).reduce((a, r) => a + (r.coins || 0), 0);
-  return { ok: g.adPendingCoins === want && g.save.coins - c0 === want + extra, want, got: g.adPendingCoins, delta: g.save.coins - c0, extra };
+  // The daily mission (rotates by date, e.g. "T4" +60) may complete in the
+  // same round -- its reward is paid on top, exactly once (finalizeRun()).
+  const mission = g.missionJustCompleted && g.activeMission ? g.activeMission.rewardCoins : 0;
+  const extra = (g.lastXpResult && g.lastXpResult.levelsUp || []).reduce((a, l) => a + (l.coins || 0), 0) + (g.hubMilestoneRewards || []).reduce((a, r) => a + (r.coins || 0), 0) + mission;
+  return { ok: g.adPendingCoins === want && g.save.coins - c0 === want + extra, want, got: g.adPendingCoins, delta: g.save.coins - c0, extra, mission };
 };
 `;
 

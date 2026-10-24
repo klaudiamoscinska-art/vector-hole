@@ -9,7 +9,7 @@
 //    save with more progress and mirrors every save; a backup code moves
 //    progress between devices; a plain load never re-stamps savedAt.
 // Usage: node qa/v19.mjs
-import { serve, openGame, veteranSave, allDistrictsSave, report, ARENA_BOT, CAMPAIGN_BOT } from './lib.mjs';
+import { serve, openGame, veteranSave, allDistrictsSave, report, ARENA_BOT, CAMPAIGN_BOT, isMain } from './lib.mjs';
 
 /** A CrazyGames SDK stand-in: data module backed by an object, markers. */
 const mockCrazy = (remote) => `
@@ -196,7 +196,7 @@ export async function runV19Checks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runV19Checks(url);
   server.close();

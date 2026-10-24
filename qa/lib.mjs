@@ -20,6 +20,15 @@ function loadPlaywright() {
 export const { chromium } = loadPlaywright();
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+/** True when `url` (a suite's import.meta.url) is the script Node was started
+ *  with. `import.meta.url === `file://${process.argv[1]}`` never matches on
+ *  Windows (file:///C:/... vs C:\...), so a direct `node qa/<suite>.mjs` ran
+ *  nothing and exited 0 -- a silent false PASS. */
+export function isMain(url) {
+  if (!process.argv[1]) return false;
+  const norm = (p) => process.platform === 'win32' ? p.toLowerCase() : p;
+  return norm(fileURLToPath(url)) === norm(path.resolve(process.argv[1]));
+}
 export const OUT = path.join(ROOT, 'qa', 'out');
 fs.mkdirSync(OUT, { recursive: true });
 

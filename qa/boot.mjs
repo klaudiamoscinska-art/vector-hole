@@ -9,7 +9,7 @@
 //  - no request leaves the local server (zero third-party requests);
 //  - the QA helpers this suite relies on (expectAll, seedFor) behave.
 // Usage: node qa/boot.mjs
-import { serve, openGame, veteranSave, report, expectAll, is, truthy, falsy, holds, seedFor, readRuntimeSources, environmentInfo } from './lib.mjs';
+import { serve, openGame, veteranSave, report, expectAll, is, truthy, falsy, holds, seedFor, readRuntimeSources, environmentInfo, isMain } from './lib.mjs';
 
 export async function runBootChecks(url) {
   const results = [];
@@ -69,7 +69,7 @@ export async function runBootChecks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const env = await environmentInfo();
   console.log(`env: node ${env.node} · playwright ${env.playwright} · chromium ${env.chromium} · HEAD ${env.head} (${env.worktreeChanges} changed paths)`);
