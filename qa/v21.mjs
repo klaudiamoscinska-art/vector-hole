@@ -159,10 +159,19 @@ export async function runV21Checks(url) {
   }
 
   // --- Phones / tablets in portrait never get the desktop layout ----------
-  for (const vp of [[402, 874], [820, 1180], [844, 390]]) {
+  for (const vp of [[402, 874], [820, 1180]]) {
     const g = await seeded(url, vp, false);
     const r = await g.page.evaluate(() => ({ wide: document.body.classList.contains('wide'), navBottom: Math.round(document.getElementById('bottomNav').getBoundingClientRect().bottom), H: innerHeight }));
     results.push(report(`${vp.join('×')}: phone layout kept (no rail, the nav at the bottom)`, !r.wide && Math.abs(r.navBottom - r.H) <= 1, JSON.stringify(r)));
+    await g.browser.close();
+  }
+  // FTUE-2: a phone on its side is a landscape frame -- the compact
+  // landscape layout (rail, two columns, UI scale 1), not the portrait
+  // column cut off at 390 px (qa/responsive.mjs checks it in full).
+  {
+    const g = await seeded(url, [844, 390], false);
+    const r = await g.page.evaluate(() => { const nav = document.getElementById('bottomNav').getBoundingClientRect(); return { wide: document.body.classList.contains('wide'), compact: document.body.classList.contains('compact'), ui: window.game.uiScale, rail: nav.width < 150 && nav.left === 0 && nav.height > innerHeight * 0.9 }; });
+    results.push(report('844×390 (phone on its side): compact landscape layout (rail on the left, UI scale 1)', r.wide && r.compact && r.ui === 1 && r.rail, JSON.stringify(r)));
     await g.browser.close();
   }
 
