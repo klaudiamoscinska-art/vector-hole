@@ -9,7 +9,8 @@
 //    a Dzielnice visit marks it met. Dzielnice stays open from round 1.
 //  - 1C: no "×2 MONET · REKLAMA" on the first Arena result in the save's
 //    history (runsPlayed === 1) -- nor on the first *finished* one after a
-//    round left early (pause -> OPUŚĆ RUNDĘ also counts in runsPlayed), in
+//    round left early (R1: such a round pays partial coins only and is not
+//    counted; saves from before R1 counted it in runsPlayed), in
 //    one session or after a relaunch; the reward itself is unchanged; the
 //    share button fills the row.
 //  - 1D: a session that started on the welcome card shows no login
@@ -78,6 +79,17 @@ window.__ftueReward = (c0, runsBefore) => {
 };
 `;
 
+/** R1: what a round left in the pause sheet pays -- the score part only. */
+const FTUE_PARTIAL = `
+window.__ftuePartial = (c0, runsBefore) => {
+  const g = window.game, E = CONFIG.economy, score = Math.max(0, g.player.score);
+  let want = Math.round(E.coinsSqrtK * Math.sqrt(score));
+  if (runsBefore < E.newbieRuns) want = Math.round(want * E.newbieCoinMult);
+  const extra = (g.lastXpResult && g.lastXpResult.levelsUp || []).reduce((a, l) => a + (l.coins || 0), 0);
+  return { ok: score > 0 && g.save.coins - c0 === want + extra && g.save.hub.coreCharge === 0, want, delta: g.save.coins - c0, extra, core: g.save.hub.coreCharge };
+};
+`;
+
 const dayKey = (off) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + off); return d.toISOString().slice(0, 10); };
 
 /** Opens the game on a save built from defaultSave() by `build` (or fresh). */
@@ -89,7 +101,7 @@ async function withSave(url, build, opts = {}) {
     await g.page.reload();
     await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state);
   }
-  await g.page.addScriptTag({ content: FTUE_TICK });
+  await g.page.addScriptTag({ content: FTUE_TICK + FTUE_PARTIAL });
   return g;
 }
 const playedSave = (o) => `(() => {
@@ -282,7 +294,7 @@ export async function runFtue1Checks(url) {
       document.getElementById('btnLeaveConfirmYes').click();
       await new Promise(r => setTimeout(r, 300));
       out.hub = __ftueVis('mainMenu') && gm.state === GameState.MENU;
-      out.reward = window.__ftueReward(c0, 0);
+      out.reward = window.__ftuePartial(c0, 0);
       out.runs = gm.save.stats.runsPlayed;
       out.recent = gm.save.stats.recentArenaScores.length;
       return out;
@@ -300,9 +312,9 @@ export async function runFtue1Checks(url) {
       });
     }
     const schema = await page.evaluate(() => JSON.parse(localStorage.getItem('vectorHoleSave_v1')).schemaVersion);
-    results.push(report(`FTUE-1C leave (${tag}): OPUŚĆ RUNDĘ on the first round -- back on Miasto, reward and runsPlayed as before (1), nothing finished`, left.first && left.hub && left.reward.ok && left.runs === 1 && left.recent === 0, JSON.stringify(left)));
-    results.push(report(`FTUE-1C leave (${tag}): first FINISHED result -- no ×2 ad, share button shown, reward = CONFIG.economy`, f1.arena && f1.t.result && !f1.t.ad && f1.t.share && f1.reward.ok && f1.runs === 2 && f1.recent === 1, JSON.stringify(f1)));
-    results.push(report(`FTUE-1C leave (${tag}): next finished result -- ad offered again, reward unchanged, schema 13`, f2.t.result && f2.t.ad && f2.reward.ok && f2.runs === 3 && schema === 13, JSON.stringify({ f2, schema })));
+    results.push(report(`FTUE-1C leave (${tag}): OPUŚĆ RUNDĘ on the first round -- back on Miasto, R1: partial coins only, no Core City, not counted (runsPlayed 0), nothing finished`, left.first && left.hub && left.reward.ok && left.runs === 0 && left.recent === 0, JSON.stringify(left)));
+    results.push(report(`FTUE-1C leave (${tag}): first FINISHED result -- no ×2 ad, share button shown, reward = CONFIG.economy`, f1.arena && f1.t.result && !f1.t.ad && f1.t.share && f1.reward.ok && f1.runs === 1 && f1.recent === 1, JSON.stringify(f1)));
+    results.push(report(`FTUE-1C leave (${tag}): next finished result -- ad offered again, reward unchanged, schema 13`, f2.t.result && f2.t.ad && f2.reward.ok && f2.runs === 2 && schema === 13, JSON.stringify({ f2, schema })));
     results.push(report(`FTUE-1C leave (${tag}): no runtime errors`, g.errors.length === 0, g.errors.slice(0, 3).join(' | ')));
     await g.browser.close();
   }
