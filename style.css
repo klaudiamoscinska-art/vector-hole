@@ -4789,7 +4789,8 @@ body.compact .start-card { max-height: calc(100% - 12px); overflow-y: auto; }
 /* --- compact HUD: the leader and you in the standings, a smaller minimap,
    NELA and hints along the edges (never over the vortex) ------------- */
 body.compact #hud-topright { min-width: 0; width: 168px; max-width: 168px; padding: 6px 10px; }
-body.compact #leaderboardList li:not(.lb-first):not(.is-player), body.compact #leaderboardList li.lb-gap { display: none; }
+/* (leading: you and the runner-up) */
+body.compact #leaderboardList li:not(.lb-first):not(.is-player):not(.lb-first.is-player + li), body.compact #leaderboardList li.lb-gap { display: none; }
 body.compact #leaderboardList li { font-size: 11px; padding: 2px 6px; }
 body.compact #hud-tier-strip.clears-standings { right: calc(192px + env(safe-area-inset-right, 0px)); }
 body.compact .nela-toast { top: calc(58px + env(safe-area-inset-top, 0px)); bottom: auto; left: calc(12px + env(safe-area-inset-left, 0px)); transform: none; max-width: min(46%, 360px); }
