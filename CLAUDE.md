@@ -9,7 +9,8 @@ Guidance for Claude Code in this repository. This file is loaded into every sess
 - **Preflight before work:** repo, branch, HEAD, remotes, `git status`, current `origin/main` SHA; keep untracked QA evidence and backups. No destructive git (`reset --hard`, `clean`, `stash`, force-push, rewriting shared history), no `git add -A` without checking the file list. On a conflict or an unexpected state: stop and report, never overwrite earlier work.
 - Don't publish, sign agreements, spend money, perform destructive operations, or change global Claude settings/permissions without explicit consent.
 - **Evidence:** report `PASS / FAIL / NOT RUN`; a test that executed nothing is `NOT RUN`, never `PASS`; compare against the base commit on the same machine; never hide a new regression in a total. When tools or tests are missing, say what wasn't verified.
-- **Reports:** lead with the verdict, results, differences and failures; keep full logs in files (`qa/out/`, an evidence folder) and quote only the relevant lines. Close a task with HANDOFFs when asked — `docs/claude/HANDOFF_TEMPLATE.md` (short, complete).
+- **Reports:** lead with the verdict, results, differences and failures; keep full logs in files (`qa/out/`, an evidence folder) and quote only the relevant lines.
+- **HANDOFF is mandatory** (not only on request): after every significant stage and whenever the work passes to a new session, write a short but complete HANDOFF — status, repo + branch + full SHA, tests `PASS / FAIL / NOT RUN`, changes made, open risks, the next step, how to continue safely (`docs/claude/HANDOFF_TEMPLATE.md`).
 - **Token hygiene** (`docs/claude/TOKEN_GUIDE.md`): start Claude Code in the repo folder (this file loads only there), read only the sections a task needs, use a skill only when its description fits, prefer the cheapest model that can do a step (guide), don't re-read whole history docs to rediscover what a HANDOFF states.
 
 ## Project

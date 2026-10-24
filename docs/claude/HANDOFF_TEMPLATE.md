@@ -1,19 +1,21 @@
 # HANDOFF template (short, complete)
 
-Written in Polish for the owner. Aim for one screen per HANDOFF: facts and
-pointers, no narrative. Anything long (logs, diffs) goes into a file and
-the HANDOFF names the file.
+Mandatory (CLAUDE.md): after every significant stage and whenever the work
+passes to a new session -- not only when the owner asks. Written in Polish.
+Aim for one screen per HANDOFF: facts and pointers, no narrative, but every
+field filled (write "brak" rather than dropping a field). Anything long
+(logs, diffs) goes into a file and the HANDOFF names the file.
 
 ## HANDOFF_CLAUDE (for the next Claude session)
 
 ```
-STAN: <gałąź> @ <pełne SHA>, origin/main = <SHA>, git status: <czysto / lista>
-ZROBIONE: <1–5 punktów, każdy z commitem>
+STAN PRAC: <etap, co skończone / w toku>
+REPO: <owner/repo>, gałąź <nazwa> @ <pełne SHA>, origin/main = <SHA>, PR: <link/brak>, git status: <czysto / lista>
 TESTY: <zestaw: N/M PASS | FAIL (nazwa) | NOT RUN (powód)> — log: <ścieżka>
-OTWARTE: <ryzyka / decyzje właścicielki>
+ZMIANY: <1–5 punktów, każdy z commitem>
+RYZYKA: <otwarte ryzyka / decyzje właścicielki>
 NASTĘPNY KROK: <jedno zadanie, warunki STOP>
-NIE RUSZAĆ: <np. produkcyjny main, SAVE v13, workflow>
-CZYTAJ NAJPIERW: <max 3 pliki/sekcje>
+BEZPIECZNA KONTYNUACJA: <preflight do wykonania, czego nie ruszać (produkcyjny main, SAVE v13, workflow), co przeczytać najpierw (max 3 pliki/sekcje)>
 ```
 
 ## HANDOFF_GPT (for the GPT coordinator / reviewer)

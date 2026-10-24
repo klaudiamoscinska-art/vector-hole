@@ -19,7 +19,7 @@ export const REQUIRED_RULES = [
   ['no destructive git, no blind git add -A', /No destructive git .*no `git add -A` without checking/],
   ['no publishing/spending/destructive ops/global settings without consent', /Don't publish, sign agreements, spend money, perform destructive operations, or change global Claude settings/],
   ['evidence: NOT RUN never PASS, base comparison, no hidden regressions', /executed nothing is `NOT RUN`, never `PASS`.*base commit on the same machine.*never hide a new regression/],
-  ['HANDOFFs + template', /HANDOFFs when asked — `docs\/claude\/HANDOFF_TEMPLATE\.md`/],
+  ['HANDOFF mandatory after every significant stage / session hand-over, with all 7 elements + template', /\*\*HANDOFF is mandatory\*\* \(not only on request\): after every significant stage and whenever the work passes to a new session, write a short but complete HANDOFF — status, repo \+ branch \+ full SHA, tests `PASS \/ FAIL \/ NOT RUN`, changes made, open risks, the next step, how to continue safely \(`docs\/claude\/HANDOFF_TEMPLATE\.md`\)/],
   ['SAVE key + schema 13 + migration contract', /`vectorHoleSave_v1` never changes; `SAVE_SCHEMA_VERSION` stays \*\*13\*\*.*SAVE_MIGRATION_CONTRACT\.md/],
   ['saveGame only write path, PX01 guard, PX02 refund', /`saveGame\(\)` is the only write path.*PX01 guard.*PX02 D\+ one-time refund/],
   ['save suites named', /qa\/save-safety\.mjs.*qa\/px02-isolation\.mjs/],
@@ -75,6 +75,13 @@ export function runInstructionChecks() {
     }
   }
   results.push(report('instructions: every repo path CLAUDE.md and docs/claude/* name exists', dangling.length === 0 && checked > 20, dangling.length ? dangling.join(' | ') : `${checked} references`));
+  // OPT-2 correction: a HANDOFF is mandatory, never "only when asked", and
+  // the template carries every field the rule names.
+  const onRequest = /HANDOFFs? (?:only )?(?:when|if) asked|HANDOFFs? on request/i.test(flat.replace(/not only on request/gi, ''));
+  const tpl = read('docs/claude/HANDOFF_TEMPLATE.md');
+  const fields = ['STAN PRAC:', 'REPO:', 'TESTY:', 'ZMIANY:', 'RYZYKA:', 'NASTĘPNY KROK:', 'BEZPIECZNA KONTYNUACJA:'].filter(f => !tpl.includes(f));
+  results.push(report('instructions: HANDOFF is mandatory (no "when asked" wording) and HANDOFF_TEMPLATE.md has all 7 fields (status, repo/branch/SHA, tests, changes, risks, next step, safe continuation)',
+    !onRequest && fields.length === 0 && /\bPASS \/ FAIL \/ NOT RUN\b/.test(tpl + flat), JSON.stringify({ onRequest, missingFields: fields })));
   return results;
 }
 
