@@ -4,6 +4,26 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## Poprawka: runda opuszczona bez gry nie buduje Miasta (schemat zapisu nadal v13, ekonomia bez zmian)
+Błąd zgłoszony przez właścicielkę (iPhone, staging FTUE-1): wejście do
+Areny i wyjście do Miasta (pauza → OPUŚĆ RUNDĘ) bez rozegrania rundy
+zwiększało Core City. `leaveRun()` zawsze uruchamiało pełne
+`finalizeRun()`: przy wyniku 0 wszyscy remisują, więc gracz był „1.” i
+dostawał też premię podium i zwycięstwa (nowy gracz: +24% Core City,
++60 monet, +85 XP i +1 do `runsPlayed` za każde wejście i wyjście; trzy
+takie wejścia otwierały Wyzwania i dawały +2 pryzmaty). Błąd był też
+w produkcji (810334f).
+
+- Runda opuszczona przy wyniku 0 (nic nie zjedzone — zgodnie z GDD 5.2
+  „monety za wynik osiągnięty do tej pory”) niczego nie daje i nie jest
+  liczona: bez monet, XP, pryzmatów, Core City, premii i serii Wyzwania
+  dnia, misji dnia i bez `runsPlayed` (od niego zależą trudność i bramki
+  Warsztatu, Wyzwań i kafelka kampanii) — nowe `abandonRun()`.
+- Runda naprawdę rozegrana (wynik > 0) i opuszczona: nagroda częściowa
+  bez zmian (jak dotąd, łącznie z Core City). Runda dograna do końca czasu:
+  bez zmian. Bez progu czasowego, bez zmian ekonomii i zapisu.
+- Testy: nowy `qa/leave-run.mjs` (w `run-all`).
+
 ## FTUE-1 „Druga runda” — pierwsze pięć minut (schemat zapisu nadal v13, balans bez zmian)
 Decyzja właścicielki: wariant D — Arena jako centrum + drabina trzech rund.
 

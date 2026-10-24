@@ -266,6 +266,11 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
 - **Monety za rundę:** 15 + 1,6·√wynik + bonus miejsca (25/15/8);
   pierwsze 5 rund ×1,5; reklama ×2 (nie na wyniku pierwszej Areny w
   historii zapisu — FTUE-1). Co 3. runda +2 pryzmaty.
+- **Runda opuszczona (pauza → OPUŚĆ RUNDĘ):** monety, XP i Core City za
+  wynik osiągnięty do tej pory, runda liczy się do licznika rund (nie do
+  „par” rywala). Runda opuszczona przy wyniku 0 (nic nie zjedzone) nie
+  daje niczego i się nie liczy — wejście i wyjście nie buduje Miasta ani
+  nie otwiera Warsztatu/Wyzwań.
 - **Core City (LVL):** runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
   rekord), Wyzwanie dnia +20% (+10% rekord); LVL 1–2 ×1,6. Nadwyżka
   przechodzi dalej. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
@@ -504,7 +509,11 @@ i ponowne wczytanie, pryzmaty: wzmocnienie za 4 ◆, kosmetyki),
 reklamy, powtórka prosto do 2. rundy, Warsztat/Wyzwania po animacji wyniku,
 kafelek kampanii po 3. rundzie, kalendarz przy 2. wizycie w Mieście i po
 ponownym uruchomieniu, zapisy po 1, 2, 3+ rundach, z ogłoszoną i
-nieogłoszoną kampanią, po angielsku; na 390×844, 375×667, 844×390, 1280×720).
+nieogłoszoną kampanią, po angielsku; na 390×844, 375×667, 844×390, 1280×720),
+**opuszczona runda** (`qa/leave-run.mjs`: wejście i natychmiastowe wyjście
+nie zmienia zapisu — także 5× pod rząd i po ponownym uruchomieniu;
+ukończona runda i runda rozegrana, a potem opuszczona płacą jak dotąd;
+istniejący zapis, izolacja od kampanii, bramki, Wyzwanie dnia).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 odkleja się, gdy utknie (bram impulsu i portali nie używa celowo —

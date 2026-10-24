@@ -13082,15 +13082,34 @@ class Game {
     this.updateCoinDisplays();
   }
 
-  /** Stops the round, grants coins for the score reached so far, and
-   *  persists stats. Shared by a normal timeout end and an early Leave Run,
-   *  which only differ in whether the results screen is shown. */
-  finalizeRun() {
+  /** Stops the round loop and hides the HUD (no rewards, no save write). */
+  stopRun() {
     this.running = false;
     this.paused = false;
     this.monetization.gameplayStop();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     document.getElementById('hud').classList.add('hidden');
+  }
+
+  /** Ends a round left before the player scored anything -- a round that
+   *  was entered but never played. Nothing is granted or counted: no coins,
+   *  XP, prisms, Core City, Daily bonus or streak, daily mission, and no
+   *  runsPlayed (it drives difficulty and the Warsztat/Wyzwania/campaign
+   *  gates), so entering and leaving can't farm rewards or unlocks. The
+   *  save is still written as finalizeRun() would (in-round state such as
+   *  the coach's learned skills). */
+  abandonRun() {
+    this.stopRun();
+    const ranked = rankHoles([this.player, ...this.bots]);
+    saveGame(this.save);
+    return { ranked, place: ranked.indexOf(this.player) + 1, coinsEarned: 0 };
+  }
+
+  /** Stops the round, grants coins for the score reached so far, and
+   *  persists stats. Shared by a normal timeout end and an early Leave Run,
+   *  which only differ in whether the results screen is shown. */
+  finalizeRun() {
+    this.stopRun();
 
     const ranked = rankHoles([this.player, ...this.bots]);
     const place = ranked.indexOf(this.player) + 1;
@@ -13434,7 +13453,9 @@ class Game {
 
   /** Casual mode has no forfeit penalty (that's reserved for future
    *  ranked/daily modes) — the player keeps coins earned for the score
-   *  reached so far and returns straight to the menu, per GDD 5.2. */
+   *  reached so far and returns straight to the menu, per GDD 5.2. A
+   *  round left at score 0 reached nothing, so it grants and counts
+   *  nothing (abandonRun()); any score keeps the partial reward. */
   leaveRun() {
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
@@ -13443,7 +13464,7 @@ class Game {
       return;
     }
     const durationMs = Math.round(performance.now() - this.runStartedAt);
-    const { place, coinsEarned } = this.finalizeRun();
+    const { place, coinsEarned } = this.player.score > 0 ? this.finalizeRun() : this.abandonRun();
     this.state = GameState.MENU;
     this.showScreen('mainMenu');
     this.updateCoinDisplays();
