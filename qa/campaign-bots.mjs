@@ -4,7 +4,7 @@
 // against each mission's limit. Usage: node qa/campaign-bots.mjs [count]
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, allDistrictsSave, report, OUT, CAMPAIGN_BOT } from './lib.mjs';
+import { serve, openGame, allDistrictsSave, report, OUT, CAMPAIGN_BOT, isMain } from './lib.mjs';
 
 
 export async function runCampaignBots(url, count = 12) {
@@ -33,7 +33,7 @@ export async function runCampaignBots(url, count = 12) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runCampaignBots(url, Number(process.argv[2]) || 12);
   server.close();

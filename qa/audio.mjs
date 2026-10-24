@@ -6,7 +6,7 @@
 // favourites, locked Rozdział II tracks), the final-stretch drop, the
 // pause "underwater" mix, NASTĘPNY, Szafa grająca and the new event cues.
 // Usage: node qa/audio.mjs
-import { serve, openGame, veteranSave, report, ARENA_BOT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, ARENA_BOT, isMain } from './lib.mjs';
 
 async function veteranPage(url, opts = {}, saveOpts = {}) {
   const g = await openGame(url, opts);
@@ -406,7 +406,7 @@ function MUSIC_IDS_OK(renders) {
   return { ok: bad.length === 0, details: bad.length ? bad.join(', ') : 'all 12 in-game tracks' };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runAudioChecks(url);
   server.close();

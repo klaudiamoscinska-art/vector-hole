@@ -15,7 +15,7 @@
 //    results: what you got | what's next), nothing cut off or scrolling
 //    sideways, also in a small 960×540 portal frame.
 // Usage: node qa/v21.mjs
-import { serve, openGame, veteranSave, report, expectAll, truthy, falsy } from './lib.mjs';
+import { serve, openGame, veteranSave, report, expectAll, truthy, falsy, isMain } from './lib.mjs';
 
 const PHONES = [[375, 667], [402, 874], [430, 932]];
 const DESKTOPS = [[1366, 768], [1440, 900], [1920, 1080]];
@@ -229,7 +229,7 @@ export async function runV21Checks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runV21Checks(url);
   server.close();

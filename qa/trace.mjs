@@ -39,7 +39,7 @@
 // difference is printed with its path (sample, frame, field) and both values.
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, expectAll, is, truthy, falsy, holds, ARENA_BOT, CAMPAIGN_BOT, QA_RANDOM, frozenDateScript, environmentInfo, OUT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, expectAll, is, truthy, falsy, holds, ARENA_BOT, CAMPAIGN_BOT, QA_RANDOM, frozenDateScript, environmentInfo, OUT, isMain } from './lib.mjs';
 
 export const TRACE_VERSION = 2; // 2: the campaign scenario is a first clear (v1 replayed an already completed M01)
 export const TRACE_DEFAULT_SEED = 20261018;
@@ -269,7 +269,7 @@ export async function runTraceChecks(url, { seed = TRACE_DEFAULT_SEED, only = nu
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const arg = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
   const seedArg = process.argv.find(a => /^--seed=\d+$/.test(a));
   const seed = seedArg ? Number(seedArg.slice(7)) : (process.env.VH_QA_SEED ? Number(process.env.VH_QA_SEED) : TRACE_DEFAULT_SEED);

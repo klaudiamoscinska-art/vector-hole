@@ -10,7 +10,7 @@
 // browser context, i.e. its own isolated localStorage.
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, report, ARENA_BOT, CAMPAIGN_BOT, OUT } from './lib.mjs';
+import { serve, openGame, report, ARENA_BOT, CAMPAIGN_BOT, OUT, isMain } from './lib.mjs';
 
 const KEY = 'vectorHoleSave_v1';
 const FIXTURES = path.join(OUT, 'save-fixtures');
@@ -527,7 +527,7 @@ export async function runSaveSafetyChecks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const results = await runSaveSafetyChecks(url);
   server.close();
