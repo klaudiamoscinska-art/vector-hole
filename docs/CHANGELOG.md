@@ -4,6 +4,76 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## R1: runda przerwana daje tylko częściowe monety i XP (decyzja właścicielki 24.10.2026; schemat zapisu nadal v13)
+Zmiana kontraktu rozgrywki zatwierdzona przez właścicielkę: pełne nagrody
+i postęp tylko za ukończoną Arenę.
+
+- Runda opuszczona w pauzie przy wyniku > 0 (`payLeftRun()`): monety
+  1,6·√wynik (×1,5 w pierwszych 5 ukończonych rundach) i XP za wynik
+  (`xpSqrtK`·√wynik). Bez stałej części za rundę i bonusu miejsca, bez Core
+  City, pryzmatów co 3. rundę, misji dnia, premii / rekordu / serii
+  Wyzwania dnia, rekordu Areny i bez `runsPlayed` — od teraz liczy tylko
+  ukończone rundy (trudność, rundy nowicjusza, bramki Warsztatu / Wyzwań /
+  kafelka kampanii); licznik zapisany przez starsze wersje zostaje bez zmian
+  (bez migracji, bez nowego pola).
+- Runda ukończona (`endRound()` → `finalizeRun()`): bez zmian. Wynik 0 —
+  jak w poprawce poniżej (`abandonRun()`).
+- Okno „OPUŚCIĆ RUNDĘ?” mówi to wprost: „Monety i XP za dotychczasowy wynik
+  zostaną zapisane. Budowa miasta i premie — tylko za ukończoną rundę.”
+  (z tłumaczeniem EN).
+- Testy: `qa/leave-run.mjs` rozszerzony o R1.
+
+## Poprawka: runda opuszczona bez gry nie buduje Miasta (schemat zapisu nadal v13, ekonomia bez zmian)
+Błąd zgłoszony przez właścicielkę (iPhone, staging FTUE-1): wejście do
+Areny i wyjście do Miasta (pauza → OPUŚĆ RUNDĘ) bez rozegrania rundy
+zwiększało Core City. `leaveRun()` zawsze uruchamiało pełne
+`finalizeRun()`: przy wyniku 0 wszyscy remisują, więc gracz był „1.” i
+dostawał też premię podium i zwycięstwa (nowy gracz: +24% Core City,
++60 monet, +85 XP i +1 do `runsPlayed` za każde wejście i wyjście; trzy
+takie wejścia otwierały Wyzwania i dawały +2 pryzmaty). Błąd był też
+w produkcji (810334f).
+
+- Runda opuszczona przy wyniku 0 (nic nie zjedzone — zgodnie z GDD 5.2
+  „monety za wynik osiągnięty do tej pory”) niczego nie daje i nie jest
+  liczona: bez monet, XP, pryzmatów, Core City, premii i serii Wyzwania
+  dnia, misji dnia i bez `runsPlayed` (od niego zależą trudność i bramki
+  Warsztatu, Wyzwań i kafelka kampanii) — nowe `abandonRun()`.
+- Runda naprawdę rozegrana (wynik > 0) i opuszczona: nagroda częściowa
+  bez zmian (jak dotąd, łącznie z Core City). Runda dograna do końca czasu:
+  bez zmian. Bez progu czasowego, bez zmian ekonomii i zapisu.
+- Testy: nowy `qa/leave-run.mjs` (w `run-all`).
+
+## FTUE-1 „Druga runda” — pierwsze pięć minut (schemat zapisu nadal v13, balans bez zmian)
+Decyzja właścicielki: wariant D — Arena jako centrum + drabina trzech rund.
+
+- 1A: wynik pierwszej Areny bez automatycznych kart (karta „DRUGI TRYB ·
+  KAMPANIA” wjeżdżała po 650 ms, w trakcie liczenia wyniku). ZAGRAJ JESZCZE
+  RAZ zostaje głównym przyciskiem i od razu startuje drugą rundę.
+- 1B: kampania przedstawia się dopiero po 3. rundzie Areny, na kafelku
+  kampanii w Mieście (plakietka NOWE, także na zakładce Dzielnice), bez
+  okna; dotknięcie otwiera Dzielnice. Wizyta w Dzielnicach zapisuje
+  „kampania” w `save.unlocks.announced` (ten sam identyfikator i format co
+  dotąd); kto poznał kampanię wcześniej (ogłoszenie z poprzedniej wersji,
+  wizyta, rozpoczęta lub ukończona misja), nie widzi wstępu. Dzielnice
+  dostępne od pierwszej rundy jak dotąd.
+- 1C: bez „×2 MONET · REKLAMA” na wyniku pierwszej Areny w historii zapisu
+  (`stats.runsPlayed === 1`) — także na pierwszym *ukończonym* wyniku po
+  rundzie opuszczonej w pauzie (`leaveRun()` też liczy się do `runsPlayed`;
+  ukończone rundy rozpoznaje istniejące `stats.recentArenaScores`, tylko
+  u nowego gracza — `runsPlayed` < `CONFIG.economy.newbieRuns` przed rundą —
+  bez nowego pola zapisu; starszy zapis bez tej historii zachowuje
+  reklamę); nagroda, mnożniki i pozostałe reklamy bez zmian.
+- 1D: nowy gracz (sesja rozpoczęta od ekranu powitalnego) dostaje kalendarz
+  logowania przy drugiej wizycie w Mieście albo po ponownym uruchomieniu —
+  licznik wizyt tylko w pamięci, bez nowego pola w zapisie; nagrody,
+  seria i blokada podwójnego odbioru bez zmian.
+- 1E: karty „WARSZTAT” (po 2. rundzie) i „WYZWANIA” (po 3.) czekają na koniec
+  animacji wyniku (`CONFIG.ftue.resultCelebrationDelayMs` 2400 ms) i nie
+  pokazują się, gdy gracz już przeszedł dalej (bez serii kart przy kolejnym
+  wyniku; zostaje NOWE). Progi odblokowań bez zmian.
+- Testy: nowy `qa/ftue1.mjs` (w `run-all`), `qa/v22.mjs` „first launch”
+  zaktualizowany do nowego przebiegu.
+
 ## E2 + E3 — natywne moduły ES i bezpieczna publikacja (bez zmian w rozgrywce, schemat zapisu nadal v13)
 Decyzja właścicielki (18.10.2026): moduły ES, wiele plików JS dozwolone, bez
 bundlera i bez nowych zależności, bez zmian rozgrywki podczas podziału.

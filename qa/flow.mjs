@@ -5,7 +5,7 @@
 // opens its briefing, the result screen previews the next mission above the
 // button that starts it, NELA is a visible character, and Warsztat never
 // spends coins on a single tap. Usage: node qa/flow.mjs
-import { serve, openGame, veteranSave, report } from './lib.mjs';
+import { serve, openGame, veteranSave, report, isMain } from './lib.mjs';
 
 async function seeded(url, saveOpts = {}, opts = {}) {
   const g = await openGame(url, opts);
@@ -230,7 +230,7 @@ export async function runFlowChecks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runFlowChecks(url);
   server.close();

@@ -3,7 +3,7 @@
 // display name, and hostile challenge links. Usage: node qa/edge-cases.mjs
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, ARENA_BOT, OUT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, ARENA_BOT, OUT, isMain } from './lib.mjs';
 
 async function bootCase(url, name, opts) {
   const g = await openGame(url, opts);
@@ -135,7 +135,7 @@ export async function runEdgeCases(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runEdgeCases(url);
   server.close();

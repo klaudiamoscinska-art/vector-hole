@@ -83,8 +83,22 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   Areny nie zmienia misji (limity, start, plansza). Wir „Aurora Finału”
   (nagroda za M24) jest trofeum — jak każdy wir, sam wygląd.
 - **Pierwsze uruchomienie:** ekran powitalny z jednym GRAJ → od razu runda
-  Areny (z linkiem wyzwania — ta runda). Po niej kampania przedstawia się
-  raz („DRUGI TRYB · KAMPANIA” → Dzielnice) i pojawia się nawigacja.
+  Areny (z linkiem wyzwania — ta runda). Po niej pojawia się nawigacja.
+- **Drabina trzech rund (FTUE-1, wariant D, `CONFIG.ftue`):** wynik
+  pierwszej Areny nie pokazuje żadnej karty ani reklamy „×2 MONET” (nagroda
+  bez zmian, „WYZWIJ ZNAJOMEGO” wypełnia rząd; po rundzie opuszczonej
+  w pauzie bez reklamy jest pierwszy *ukończony* wynik); główny przycisk to
+  ZAGRAJ JESZCZE RAZ — od razu druga runda, bez Miasta i Dzielnic. Po 2.
+  rundzie karta „WARSZTAT”, po 3. — „WYZWANIA”; każda czeka, aż skończy się
+  animacja wyniku (2,4 s), i nie pojawia się, jeśli gracz zdążył już
+  przejść dalej (zostaje plakietka NOWE na zakładce). Kampania nie ma już
+  karty nad wynikiem: od 3. rundy Areny Miasto przedstawia ją na swoim
+  kafelku kampanii („DRUGI TRYB · Kampania: 240 misji”, plakietka NOWE,
+  także na zakładce Dzielnice) — bez okna, GRAJ zostaje nad nim. Dotknięcie
+  kafelka otwiera Dzielnice. Kto już poznał kampanię (wizyta w Dzielnicach,
+  rozpoczęta lub ukończona misja, wstęp z poprzedniej wersji w
+  `save.unlocks.announced`), nie widzi wstępu. Dzielnice są dostępne od
+  pierwszej rundy jak dotąd; progi odblokowań bez zmian.
 - **Pierwsza runda uczy, nie samouczek (`CONFIG.coach`,
   `updateArenaCoach()`):** podpowiedź pojawia się tylko wtedy, gdy gracz
   się waha, i znika na zawsze, gdy pokaże umiejętność (`save.coach`):
@@ -249,9 +263,21 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
 
 ## 5. Meta i ekonomia
 
-- **Monety za rundę:** 15 + 1,6·√wynik + bonus miejsca (25/15/8);
-  pierwsze 5 rund ×1,5; reklama ×2. Co 3. runda +2 pryzmaty.
-- **Core City (LVL):** runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
+- **Monety za ukończoną rundę:** 15 + 1,6·√wynik + bonus miejsca (25/15/8);
+  pierwsze 5 ukończonych rund ×1,5; reklama ×2 (nie na wyniku pierwszej
+  Areny w historii zapisu — FTUE-1). Co 3. ukończona runda +2 pryzmaty.
+- **Runda przerwana przez gracza (pauza → OPUŚĆ RUNDĘ) — R1, decyzja
+  właścicielki 24.10.2026:** tylko częściowe monety i XP za faktyczny wynik
+  — 1,6·√wynik monet (pierwsze 5 ukończonych rund ×1,5) i część XP za wynik
+  (XP_√·√wynik; awans poziomu z tego XP daje zwykłą nagrodę poziomu). Bez
+  stałej części za rundę (15 monet, bazowe XP), bez bonusu miejsca, Core
+  City, pryzmatów co 3. rundę, misji dnia, premii, rekordu i serii Wyzwania
+  dnia, rekordu Areny i bez zaliczenia rundy (licznik rund = ukończone
+  rundy: trudność, rundy nowicjusza, odblokowanie Warsztatu po 2 i Wyzwań
+  oraz kafelka kampanii po 3 rundach; licznik ze starszych zapisów zostaje,
+  jaki jest). Runda przerwana przy wyniku 0 (nic nie zjedzone) nie daje
+  niczego. Pełne nagrody i postęp — tylko za rundę dograną do końca czasu.
+- **Core City (LVL):** ukończona runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
   rekord), Wyzwanie dnia +20% (+10% rekord); LVL 1–2 ×1,6. Nadwyżka
   przechodzi dalej. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
   „Pikselowy Wybuch”, Finisz „Fala”, zestaw „Pryzmat”; potem 100 monet + 10
@@ -283,7 +309,10 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
 - **Kod kopii zapasowej:** „Postęp wczytany” tylko wtedy, gdy wczytany
   postęp trafił do zapisu; gdy przeglądarka go nie zapisze (brak miejsca,
   gra otwarta w innej karcie), gra mówi „Kopia wczytana bez zapisu”.
-- **Retencja:** 7-dniowy kalendarz logowania, darmowa skrzynia co 4 h,
+- **Retencja:** 7-dniowy kalendarz logowania (FTUE-1: nowy gracz nie widzi
+  go przy pierwszej wizycie w Mieście po pierwszej rozgrywce, tylko przy
+  drugiej albo po ponownym uruchomieniu; nagrody i seria bez zmian),
+  darmowa skrzynia co 4 h,
   Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
 - **Monetyzacja (`Monetization`):** tylko reklamy z nagrodą (×2 monety,
@@ -481,7 +510,19 @@ pierwsze uruchomienie = runda Areny z całym bestiariuszem, postęp kampanii
 nie zmienia rundy Areny i odwrotnie, ta sama kolejność odblokowań przy obu
 kolejnościach gry, każdy tryb sam opłaca swoje zakupy (boty), podpowiedzi
 pierwszej rundy tylko przy wahaniu i po angielsku, migracja v12 → v13
-i ponowne wczytanie, pryzmaty: wzmocnienie za 4 ◆, kosmetyki).
+i ponowne wczytanie, pryzmaty: wzmocnienie za 4 ◆, kosmetyki),
+**druga runda FTUE-1** (`qa/ftue1.mjs`: wynik pierwszej Areny bez karty i
+reklamy, powtórka prosto do 2. rundy, Warsztat/Wyzwania po animacji wyniku,
+kafelek kampanii po 3. rundzie, kalendarz przy 2. wizycie w Mieście i po
+ponownym uruchomieniu, zapisy po 1, 2, 3+ rundach, z ogłoszoną i
+nieogłoszoną kampanią, po angielsku; na 390×844, 375×667, 844×390, 1280×720),
+**opuszczona runda** (`qa/leave-run.mjs`: wejście i natychmiastowe wyjście
+nie zmienia zapisu — także 5× pod rząd i po ponownym uruchomieniu;
+runda przerwana po zjedzeniu jednego obiektu i po większym wyniku płaci
+tylko częściowe monety i XP według formuł, bez Core City, premii, misji dnia
+i zaliczenia rundy (R1); ukończona runda płaci pełne nagrody; istniejący
+zapis, izolacja od kampanii, bramki po ukończonych rundach, Wyzwanie
+dnia).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 odkleja się, gdy utknie (bram impulsu i portali nie używa celowo —

@@ -20,7 +20,7 @@
 //   add --paired                            the same layouts for every booster (common random numbers)
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, CAMPAIGN_BOT, QA_RANDOM, allDistrictsSave, veteranSave, report, seedFor, baseSeed, environmentInfo, OUT } from './lib.mjs';
+import { serve, openGame, CAMPAIGN_BOT, QA_RANDOM, allDistrictsSave, veteranSave, report, seedFor, baseSeed, environmentInfo, OUT, isMain } from './lib.mjs';
 
 const BALANCE_CONFIGS = { none: [], time: ['time'], start: ['start'], sprint: ['sprint'], magnet: ['magnet'] };
 
@@ -288,7 +288,7 @@ export async function calibrateV18Balance(url, k, runs = 3, { first = baseSeed()
   return out;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const env = await environmentInfo();
   const num = process.argv.slice(2).find(a => /^\d+$/.test(a));

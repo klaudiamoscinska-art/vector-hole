@@ -39,11 +39,22 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { spawnSync, spawn } from 'node:child_process';
-import { serve, openGame, chromium, report, ROOT, OUT, revisionFile, readRuntimeSources, installQaBridge, QA_BRIDGE } from './lib.mjs';
+import { pathToFileURL } from 'node:url';
+import { serve, openGame, chromium, report, ROOT, OUT, revisionFile, readRuntimeSources, installQaBridge, QA_BRIDGE, isMain } from './lib.mjs';
 
 const SCRIPT = path.join(ROOT, '.github/scripts/assemble-release.mjs');
 const WORKFLOW = path.join(ROOT, '.github/workflows/deploy-pages.yml');
-const REL = await import(SCRIPT);
+// The checks match the workflow line by line; a CRLF checkout (Windows,
+// core.autocrlf) must not turn them into false FAILs.
+const readWorkflow = () => fs.readFileSync(WORKFLOW, 'utf8').replace(/\r\n/g, '\n');
+// Windows creates symlinks only with Developer Mode or admin rights; there
+// the two symlink negatives are logged as NOT RUN instead of crashing the suite.
+const CAN_SYMLINK = (() => {
+  const d = path.join(OUT, 'symlink-probe');
+  try { fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true }); fs.symlinkSync('a', path.join(d, 'b')); return true; }
+  catch (e) { return false; } finally { fs.rmSync(d, { recursive: true, force: true }); }
+})();
+const REL = await import(pathToFileURL(SCRIPT).href); // a bare Windows path (C:\...) is not an ESM URL
 const BASE = REL.FROZEN.rev;
 const W = path.join(OUT, 'release');
 const NOW = '2026-10-19T12:00:00Z';
@@ -121,7 +132,7 @@ const firstLine = (s) => String(s || '').trim().split('\n').filter(Boolean).pop(
 
 /** A workflow step's bash script (default: "Verify release/ independently"), run as written. */
 function workflowCheckScript(step = 'Verify release/ independently') {
-  const lines = fs.readFileSync(WORKFLOW, 'utf8').split('\n');
+  const lines = readWorkflow().split('\n');
   const at = lines.findIndex(l => l.trim() === '- name: ' + step);
   const r = lines.findIndex((l, i) => i > at && /^\s+run: \|\s*$/.test(l));
   const ind = lines[r].match(/^\s*/)[0].length;
@@ -321,7 +332,7 @@ export async function runReleaseChecks() {
 
   // ===================================================== graph rules (negative)
   {
-    const cases = [
+    let cases = [
       ['missing module (./missing.js) -- named in the message', { 'game.js': Buffer.concat([Buffer.from("import { x } from './missing.js';\n"), GOOD['game.js']]) }, /missing\.js is missing/],
       ['dynamic import()', { 'game.js': Buffer.concat([GOOD['game.js'], Buffer.from("\nconst lazy = () => import('./later.js');\n")]) }, /dynamic import/],
       ['absolute import (/x.js breaks under /vector-hole/)', { 'game.js': Buffer.concat([Buffer.from("import '/x.js';\n"), GOOD['game.js']]), 'x.js': '' }, /absolute/],
@@ -341,6 +352,11 @@ export async function runReleaseChecks() {
       ['an external stylesheet (third-party request)', { 'index.html': Buffer.from(GOOD['index.html'].toString('utf8').replace('href="style.css"', 'href="https://fonts.example/x.css"')) }, /not a local file/]
     ];
     const bad = [];
+    const usesSymlink = ([, files]) => Object.values(files).some(d => d && d.symlinkTo);
+    if (!CAN_SYMLINK) {
+      cases.filter(usesSymlink).forEach(([label]) => notRun(`graph: ${label}`, 'this OS refuses symlinks (Windows without Developer Mode)'));
+      cases = cases.filter(c => !usesSymlink(c));
+    }
     for (const [label, files, re] of cases) {
       const h = makeHistory(path.join(W, 'h-neg-' + crypto.createHash('md5').update(label).digest('hex').slice(0, 6)), [{ name: 'neg', files: { ...GOOD, ...files } }]);
       const r = assembleFx(h, 'x');
@@ -881,7 +897,7 @@ export async function runReleaseChecks() {
 
   // ===================================================== workflow
   {
-    const wf = fs.readFileSync(WORKFLOW, 'utf8');
+    const wf = readWorkflow();
     const pathsBlock = /\n {4}paths:\n((?: {6}- .*\n)+)/.exec(wf);
     const wfPaths = pathsBlock ? pathsBlock[1].trim().split('\n').map(l => l.replace(/^\s*-\s*/, '').replace(/^'(.*)'$/, '$1')) : [];
     push('workflow: on.push.paths = the script\'s DEPLOY_PATHS (runtime, any .js/.css module, the release script, the workflow)', JSON.stringify(wfPaths) === JSON.stringify(REL.DEPLOY_PATHS), JSON.stringify(wfPaths));
@@ -942,9 +958,10 @@ export async function runReleaseChecks() {
       rootExtra: tamper('root', d => fs.writeFileSync(path.join(d, 'extra.js'), '')),
       srcRoot: tamper('src', d => { const f = path.join(d, 'index.html'); fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(`v/${MAIN_ID}/game.js`, 'game.js')); }),
       badId: tamper('id', d => fs.cpSync(path.join(d, 'v', MAIN_ID), path.join(d, 'v', 'latest'), { recursive: true })),
-      symlink: tamper('link', d => fs.symlinkSync('game.js', path.join(d, 'v', MAIN_ID, 'alias.js'))),
+      ...(CAN_SYMLINK ? { symlink: tamper('link', d => fs.symlinkSync('game.js', path.join(d, 'v', MAIN_ID, 'alias.js'))) } : {}),
       missing: tamper('miss', d => fs.rmSync(path.join(d, 'v', MAIN_ID, 'style.css')))
     };
+    if (!CAN_SYMLINK) notRun('workflow: its bash check fails a symlink', 'this OS refuses symlinks (Windows without Developer Mode)');
     push('workflow: its bash check fails a changed frozen pin, an extra root file, a script loaded from the root, a v/ folder that is not an id, a symlink and a missing stylesheet', Object.values(res).every(c => c === 1), JSON.stringify(res));
   }
   notRun('git source (gitHistory/gitTree) and the real CI run', 'no git commands in this session: the git-reading code path is reviewed, not executed; first executed by CI');
@@ -1135,7 +1152,7 @@ export async function runReleaseChecks() {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const results = await runReleaseChecks();
   const failed = results.filter(r => !r.ok).length;
   console.log(`\n${results.length - failed}/${results.length} release checks passed`);

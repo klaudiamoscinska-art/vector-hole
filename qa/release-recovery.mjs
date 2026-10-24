@@ -26,12 +26,15 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { report, ROOT, OUT, revisionFile } from './lib.mjs';
 
 const SCRIPT = path.join(ROOT, '.github/scripts/assemble-release.mjs');
 const WORKFLOW = path.join(ROOT, '.github/workflows/deploy-pages.yml');
-const REL = await import(SCRIPT);
+// The checks match the workflow line by line; a CRLF checkout (Windows,
+// core.autocrlf) must not turn them into false FAILs.
+const readWorkflow = () => fs.readFileSync(WORKFLOW, 'utf8').replace(/\r\n/g, '\n');
+const REL = await import(pathToFileURL(SCRIPT).href); // a bare Windows path (C:\...) is not an ESM URL
 const BASE = REL.FROZEN.rev;
 const W = path.join(OUT, 'release-recovery');
 const NOW = '2026-10-19T12:00:00Z';
@@ -138,7 +141,7 @@ function fakeLive(dir, faults = {}) {
 
 /* ---------------------------------------------------------------- the workflow's bash steps */
 function stepScript(name) {
-  const lines = fs.readFileSync(WORKFLOW, 'utf8').split('\n');
+  const lines = readWorkflow().split('\n');
   const at = lines.findIndex(l => l.trim() === '- name: ' + name);
   if (at < 0) throw new Error(`workflow step "${name}" not found`);
   const r = lines.findIndex((l, i) => i > at && /^\s+run: \|\s*$/.test(l));
@@ -440,7 +443,7 @@ export async function runRecoveryChecks() {
 
   /* ---------- the workflow ---------- */
   {
-    const wf = fs.readFileSync(WORKFLOW, 'utf8');
+    const wf = readWorkflow();
     const runs = [...wf.matchAll(/run: \|\n((?:[ ]{10,}.*\n|\s*\n)*)/g)].map(m => m[1]).join('\n');
     check('WF-01 no workflow input is expanded inside a run script (inputs reach the shell only via env)', !/\$\{\{\s*(inputs|github\.event\.inputs)\./.test(runs) && /VH_REASON: \$\{\{ inputs\.reason \}\}/.test(wf), '');
     check('WF-02 push stays a main-only, input-free trigger; every job keeps `github.ref == refs/heads/main`', /push:\n\s+branches:\n\s+- main\n/.test(wf) && (wf.match(/if: github\.ref == 'refs\/heads\/main'/g) || []).length === 3, '');

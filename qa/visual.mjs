@@ -5,7 +5,7 @@
 // Usage: node qa/visual.mjs
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, ARENA_BOT, QA_TICK, OUT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, ARENA_BOT, QA_TICK, OUT, isMain } from './lib.mjs';
 
 async function veteranPage(url, saveOpts = {}, opts = {}) {
   const g = await openGame(url, opts);
@@ -220,7 +220,7 @@ export async function runVisualChecks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runVisualChecks(url);
   server.close();

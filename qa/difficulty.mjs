@@ -11,7 +11,7 @@
 // and written to qa/out/difficulty.json -- `--seed=N` / VH_QA_SEED=N replays it.
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, CAMPAIGN_BOT, QA_RANDOM, allDistrictsSave, report, seedFor, baseSeed, OUT } from './lib.mjs';
+import { serve, openGame, CAMPAIGN_BOT, QA_RANDOM, allDistrictsSave, report, seedFor, baseSeed, OUT, isMain } from './lib.mjs';
 
 export async function runDifficultyChecks(url, runs = 2, workers = 4, { seed: base = baseSeed().seed } = {}) {
   console.log(`  difficulty seed ${base} -- replay: VH_QA_SEED=${base} node qa/difficulty.mjs ${runs} ${workers}`);
@@ -76,7 +76,7 @@ export async function runDifficultyChecks(url, runs = 2, workers = 4, { seed: ba
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const nums = process.argv.slice(2).filter(a => /^\d+$/.test(a));
   const res = await runDifficultyChecks(url, Number(nums[0]) || 2, Number(nums[1]) || 4, { seed: baseSeed().seed });

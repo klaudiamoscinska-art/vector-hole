@@ -6,7 +6,7 @@
 // labels over animated canvases sit on their own layer (iPhone showed a
 // district tile without its name).
 // Usage: node qa/v17.mjs
-import { serve, openGame, veteranSave, report } from './lib.mjs';
+import { serve, openGame, veteranSave, report, isMain } from './lib.mjs';
 
 export async function runV17Checks(url) {
   const results = [];
@@ -93,7 +93,7 @@ export async function runV17Checks(url) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runV17Checks(url);
   server.close();

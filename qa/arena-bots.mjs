@@ -4,7 +4,7 @@
 // frame budget). Usage: node qa/arena-bots.mjs [rounds]
 import fs from 'node:fs';
 import path from 'node:path';
-import { serve, openGame, veteranSave, report, ARENA_BOT, OUT } from './lib.mjs';
+import { serve, openGame, veteranSave, report, ARENA_BOT, OUT, isMain } from './lib.mjs';
 
 export async function runArenaBots(url, rounds = 20) {
   const results = [];
@@ -49,7 +49,7 @@ export async function runArenaBots(url, rounds = 20) {
   return results;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta.url)) {
   const { server, url } = await serve();
   const res = await runArenaBots(url, Number(process.argv[2]) || 20);
   server.close();
