@@ -149,21 +149,24 @@ export async function runV22Checks(url) {
       out.mode = gm.mode; out.playing = gm.state === GameState.PLAYING; out.setup = !!document.getElementById('runSetupScreen') && !document.getElementById('runSetupScreen').classList.contains('hidden');
       out.types = [...new Set(gm.objects.map(o => o.tier))].sort();
       cancelAnimationFrame(gm.rafId); gm.running = false; gm.timeRemaining = 0.001; gm.update(0.016);
-      await new Promise(res => setTimeout(res, 900));
-      out.kampaniaIntro = !document.getElementById('unlockOverlay').classList.contains('hidden') && document.getElementById('unlockTitle').textContent;
-      document.getElementById('btnUnlockGo').click();
+      // FTUE-1: no "DRUGI TRYB · KAMPANIA" card over the first result any more.
+      await new Promise(res => setTimeout(res, CONFIG.ftue.resultCelebrationDelayMs + 400));
+      out.overlay = !document.getElementById('unlockOverlay').classList.contains('hidden') && document.getElementById('unlockTitle').textContent;
+      out.again = !document.getElementById('btnPlayAgain').classList.contains('hidden');
+      gm.showScreen('mainMenu');
+      out.firstAfter = gm.isFirstRun();
+      out.navShown = !document.getElementById('bottomNav').classList.contains('hidden');
+      out.intro = document.getElementById('hubCampaignTile').classList.contains('is-intro');
+      document.getElementById('btnNavDzielnice').click();
       await new Promise(res => setTimeout(res, 100));
       out.onCampaign = !document.getElementById('campaignScreen').classList.contains('hidden');
       out.m01 = gm.isMissionPlayable('M01') && gm.nextCampaignMissionId() === 'M01';
-      out.navShown = !document.getElementById('bottomNav').classList.contains('hidden');
-      gm.showScreen('mainMenu');
-      out.firstAfter = gm.isFirstRun();
-      out.dzNew = document.getElementById('btnNavDzielnice').classList.contains('is-new');
+      out.known = gm.save.unlocks.announced.includes('kampania');
       return out;
     });
     results.push(report('first launch: welcome card, GRAJ = an Arena round at once (no tutorial, no setup screen)', r.first && r.welcome && r.mode === 'arena' && r.playing && !r.setup, JSON.stringify(r)));
     results.push(report('first launch: the first Arena round already has the whole bestiary (T1-T6, nothing learned in missions needed)', ['fragment', 'capsule', 'prop', 'vehicle', 'landmark', 'structure', 'heavy', 'tower'].every(t => r.types.includes(t)), r.types.join(',')));
-    results.push(report('first launch: after the round the campaign introduces itself once ("KAMPANIA" → Dzielnice), M01 playable', r.kampaniaIntro === 'KAMPANIA' && r.onCampaign && r.m01 && r.navShown && !r.firstAfter, JSON.stringify(r)));
+    results.push(report('first launch (FTUE-1): no campaign card after the first round (ZAGRAJ JESZCZE RAZ stays free); Dzielnice open from the nav, M01 playable, the visit marks the campaign as met', !r.overlay && r.again && !r.intro && r.navShown && !r.firstAfter && r.onCampaign && r.m01 && r.known, JSON.stringify(r)));
     await done(g, 'first launch');
   }
 

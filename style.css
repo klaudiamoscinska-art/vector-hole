@@ -3909,6 +3909,11 @@ body[data-gfx="0"] #hud::before { display: none; }
 .hub-quick-daily { --q: var(--nc-pink); }
 .hub-quick-tile:active { transform: scale(0.97); }
 .hub-quick-tile.locked { opacity: 0.6; }
+/* FTUE-1: the campaign tile presents the second mode after the third Arena
+   round -- a NOWE tag and a soft glow, never a popup. */
+.hub-quick-campaign.is-intro { position: relative; box-shadow: 0 0 14px color-mix(in srgb, var(--q) 32%, transparent); }
+.hub-quick-campaign.is-intro::after { content: 'NOWE'; position: absolute; top: -7px; right: 10px; padding: 1px 5px; border-radius: 6px;
+  background: var(--nc-pink); color: #07131E; font-size: 8px; font-weight: 800; letter-spacing: 0.4px; line-height: 1.3; box-shadow: 0 0 8px var(--nc-pink); }
 .hub-quick-icon { flex: none; width: 22px; height: 22px; color: var(--q); filter: drop-shadow(0 0 6px var(--q)); }
 .hub-quick-icon svg { width: 100%; height: 100%; }
 .hub-quick-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -4359,6 +4364,7 @@ body[data-gfx="0"] #hud::before { display: none; }
 
 /* v19: the nav "NOWE" badge is CSS content -- out of the translator's reach. */
 html[lang="en"] .nav-tab.is-new .nav-tab-icon::after { content: 'NEW'; }
+html[lang="en"] .hub-quick-campaign.is-intro::after { content: 'NEW'; }
 
 /* =====================================================================
    v21 „Komputer” (układ poziomy) — the landscape layout for big screens.

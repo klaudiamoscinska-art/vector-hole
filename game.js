@@ -188,6 +188,19 @@ const CONFIG = {
     warsztatMission: 'M02',  // ... or this mission cleared (or a cosmetic already owned)
     wyzwaniaRuns: 3          // finished Arena rounds
   },
+  // FTUE-1 (owner-approved variant D, "Arena as the centre + a ladder of
+  // three rounds"): the first results lead straight to the next round.
+  // Nothing here changes a round, an unlock gate or a reward.
+  ftue: {
+    // Miasto presents the campaign (its tile, Game.updateHubQuickTiles())
+    // from this many finished Arena rounds on -- never as a popup.
+    campaignIntroRuns: 3,
+    // An "ODBLOKOWANO!" card on the Arena result waits for the result's own
+    // animation (count-ups 1.1 s, XP bar 0.35 s + 1.1 s) and a beat to read it.
+    resultCelebrationDelayMs: 2400,
+    // The very first Arena result offers no "×2 MONET · REKLAMA".
+    firstResultNoAd: true
+  },
   // v22: no tutorial -- the first Arena round teaches the game (owner: "gracz
   // ma poznawać grę podczas pierwszej rozgrywki; gdy nie wie, co zrobić,
   // podpowiedzieć, a jeśli radzi sobie od razu, nic nie wyjaśniać"). Each
@@ -3371,6 +3384,17 @@ function hasPlayedOnce(s) { return arenaRunsOf(s) > 0 || missionsClearedOf(s) > 
 /** An unlock never locks again (v22 moved the gates: a campaign save that
  *  had Wyzwania open keeps it). */
 function wasAnnounced(s, id) { return !!(s.unlocks && Array.isArray(s.unlocks.announced) && s.unlocks.announced.includes(id)); }
+/** FTUE-1: has the player met the campaign already -- introduced (the
+ *  pre-FTUE-1 card, the v13 migration, or a Dzielnice visit, all kept as
+ *  'kampania' in save.unlocks.announced), or a mission started or cleared? */
+function knowsCampaign(s) {
+  return wasAnnounced(s, 'kampania') || missionsClearedOf(s) > 0 || Object.keys((s.campaign && s.campaign.attempts) || {}).length > 0;
+}
+/** FTUE-1: Miasto presents the campaign as an extra, optional mode once
+ *  the player has CONFIG.ftue.campaignIntroRuns Arena rounds behind them
+ *  (derived from the save, nothing new stored). Dzielnice itself is open
+ *  from the first launch either way. */
+function campaignIntroDue(s) { return !knowsCampaign(s) && arenaRunsOf(s) >= CONFIG.ftue.campaignIntroRuns; }
 const FEATURE_GATES = {
   // Arena rounds, or the mission -- whichever comes first -- or already
   // owning a cosmetic beyond the free defaults.
@@ -3396,12 +3420,15 @@ const UNLOCK_ICONS = {
  *  reached. District entries are generated from DISTRICTS (Plac Neonów is
  *  unlocked from the start, so it never gets one). */
 const FEATURE_UNLOCKS = [
-  // v22: not a lock -- the campaign is open from the start. After the first
-  // finished play (an Arena round) the second mode introduces itself once.
+  // v22: not a lock -- the campaign is open from the start. FTUE-1
+  // (`hubIntro`): no "DRUGI TRYB" card over a result any more -- Miasto's
+  // campaign tile presents the mode after CONFIG.ftue.campaignIntroRuns
+  // Arena rounds (campaignIntroDue()), and a Dzielnice visit marks it
+  // announced. The entry stays for the dev panel and older saves.
   {
     id: 'kampania', kicker: 'DRUGI TRYB', eyebrow: 'DZIELNICE', title: 'KAMPANIA', color: '#46D99A', icon: UNLOCK_ICONS.kampania,
     desc: '240 misji w 12 dzielnicach: cele, gwiazdki i wzmocnienia. Osobna droga rozwoju — rundy Areny i misje nie blokują się nawzajem.',
-    cta: 'DO DZIELNIC', isUnlocked: s => hasPlayedOnce(s)
+    cta: 'DO DZIELNIC', hubIntro: true, isUnlocked: s => hasPlayedOnce(s)
   },
   {
     id: 'warsztat', eyebrow: 'NOWA ZAKŁADKA', title: 'WARSZTAT', color: '#EFCB63', icon: UNLOCK_ICONS.warsztat,
@@ -7789,6 +7816,10 @@ class Game {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
     this.save = loadSave();
+    // FTUE-1: did this session start on the welcome card (a brand-new
+    // player)? Only then the first Miasto visit skips the login calendar.
+    this.bootFirstRun = !hasPlayedOnce(this.save);
+    this.hubVisits = 0;
     // PX01: another tab saving newer progress stops this one from saving.
     SAVE_GUARD.notify = () => { if (!this.running && this.state !== GameState.BOOT) this.showSaveGuardNotice(); };
     window.addEventListener('storage', (e) => {
@@ -8263,6 +8294,8 @@ class Game {
     // briefing; any mission card's GRAJ (briefing, Dzielnice's "next"
     // card) starts it via a delegated [data-mc-play] click.
     document.getElementById('hubCampaignTile').addEventListener('click', () => {
+      // FTUE-1: while it presents the mode, the tile opens Dzielnice.
+      if (campaignIntroDue(this.save)) { this.analytics.track('campaign_intro', { action: 'open' }); this.openCampaignScreen(); return; }
       const next = this.nextCampaignMissionId();
       if (next) this.openMissionBriefing(next); else this.openCampaignScreen();
     });
@@ -9379,6 +9412,8 @@ class Game {
       if (!releaseSaveGuard()) { this.showSaveGuardNotice('rescueFailed'); return null; }
     }
     this.save = save;
+    // FTUE-1: an adopted save with progress is no brand-new player.
+    if (hasPlayedOnce(save)) this.bootFirstRun = false;
     // PX02 D+: a cloud copy or backup code from before D+ is settled once,
     // in the same write that adopts it.
     const undo = settleLooksOnly(save);
@@ -9553,6 +9588,18 @@ class Game {
     document.getElementById('hubCampaignTile').style.setProperty('--q', next ? (DISTRICT_COLORS[district.id] || '#46D99A') : '#46D99A');
     document.getElementById('hubCampaignTitle').textContent = next ? `${missionCode(next)} · ${next.name}` : 'Ukończona!';
     document.getElementById('hubCampaignSub').textContent = next ? this.missionStepRows(next)[0].label : `Zbieraj gwiazdki: ★ ${this.totalStars()}`;
+    // FTUE-1: after the third Arena round the same tile presents the second
+    // mode (a NOWE tag, no popup); a tap goes to Dzielnice. GRAJ stays the
+    // main action right above it.
+    const intro = campaignIntroDue(this.save);
+    document.getElementById('hubCampaignTile').classList.toggle('is-intro', intro);
+    if (intro) {
+      document.getElementById('hubCampaignTile').style.setProperty('--q', '#46D99A');
+      document.getElementById('hubCampaignEyebrow').textContent = 'DRUGI TRYB';
+      document.getElementById('hubCampaignTitle').textContent = `Kampania: ${CAMPAIGN_MISSIONS.length} misji`;
+      document.getElementById('hubCampaignSub').textContent = `${DISTRICTS.length} dzielnic · zagraj, kiedy chcesz`;
+      if (!this.campaignIntroTracked) { this.campaignIntroTracked = true; this.analytics.track('campaign_intro', { action: 'shown', runs: arenaRunsOf(this.save) }); }
+    }
     const daily = document.getElementById('btnDaily');
     const wyzwania = this.isWyzwaniaUnlocked();
     daily.classList.toggle('locked', !wyzwania);
@@ -9641,10 +9688,14 @@ class Game {
   /** Diffs FEATURE_UNLOCKS against save.unlocks.announced, marks anything
    *  new as announced + fresh (nav "NOWE" badge), and plays the queued
    *  "ODBLOKOWANO!" overlays -- features first, then cosmetic rewards --
-   *  shortly after the result screen appears, so the result reads first. */
-  queueUnlockCelebrations() {
+   *  shortly after the result screen appears, so the result reads first.
+   *  FTUE-1: `delay` (ms) / `screen`: the Arena result waits for its own
+   *  animation, and a card due there shows only while that screen is still
+   *  up -- never over a round or another screen. The campaign (`hubIntro`)
+   *  is presented by Miasto's tile instead (campaignIntroDue()). */
+  queueUnlockCelebrations({ delay = 650, screen = null } = {}) {
     const u = this.save.unlocks;
-    const newFeatures = FEATURE_UNLOCKS.filter(f => f.isUnlocked(this.save) && !u.announced.includes(f.id));
+    const newFeatures = FEATURE_UNLOCKS.filter(f => !f.hubIntro && f.isUnlocked(this.save) && !u.announced.includes(f.id));
     newFeatures.forEach(f => {
       u.announced.push(f.id);
       if (!u.fresh.includes(f.id)) u.fresh.push(f.id);
@@ -9656,7 +9707,16 @@ class Game {
     this.unlockQueue = (this.unlockQueue || []).concat(items);
     this.unlockQueueTotal = this.unlockQueue.length;
     clearTimeout(this.unlockShowTimer);
-    this.unlockShowTimer = setTimeout(() => this.showNextUnlock(), 650);
+    this.unlockShowTimer = setTimeout(() => {
+      if (this.running || (screen && document.getElementById(screen).classList.contains('hidden'))) {
+        // The player moved on first: a new tab keeps its NOWE badge instead
+        // of a card later (no series of cards on the next result); reward
+        // cards wait for the next call.
+        this.unlockQueue = this.unlockQueue.filter(it => it.kind !== 'feature');
+        return;
+      }
+      this.showNextUnlock();
+    }, delay);
   }
 
   showNextUnlock() {
@@ -9976,6 +10036,11 @@ class Game {
     // v13: not before the first finished play -- never between the welcome
     // card and the first round. (v22: a round or a mission, either mode.)
     if (this.running || this.isFirstRun()) return;
+    // FTUE-1: a player who started this session on the welcome card gets no
+    // calendar on the first Miasto visit after that play -- it waits for the
+    // second visit (or the next launch). Nothing is claimed or lost: the
+    // streak starts with the first claim, whenever it comes.
+    if (this.bootFirstRun && (this.hubVisits || 0) < 2) return;
     if (document.getElementById('mainMenu').classList.contains('hidden')) return;
     if (!document.getElementById('unlockOverlay').classList.contains('hidden')) return;
     if (!document.getElementById('missionBriefing').classList.contains('hidden') || !document.getElementById('infoSheet').classList.contains('hidden')) return;
@@ -10176,6 +10241,9 @@ class Game {
     // save it replaced (whose buttons would then act on the new one).
     if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
     if (SAVE_GUARD.state === 'stale' && !this.saveGuardShown) setTimeout(() => this.showSaveGuardNotice(), 0);
+    // FTUE-1: Miasto visits (a real arrival, not a re-render) after the
+    // first finished play -- the login calendar waits for the second.
+    if (id === 'mainMenu' && document.getElementById('mainMenu').classList.contains('hidden') && !this.isFirstRun()) this.hubVisits = (this.hubVisits || 0) + 1;
     ['mainMenu', 'shopScreen', 'gameOverScreen', 'profileScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen'].forEach(s => {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
@@ -10189,10 +10257,14 @@ class Game {
     this.introPending = false;
     if (id === 'mainMenu') {
       this.renderHubChallenge();
+      this.updateHubQuickTiles(); // FTUE-1: the campaign tile's intro state follows a Dzielnice visit
       clearTimeout(this.loginPopupTimer);
       this.loginPopupTimer = setTimeout(() => this.maybeShowLoginReward(), 600);
     }
     const visitedFeature = { shopScreen: 'warsztat', challengesScreen: 'wyzwania', campaignScreen: 'kampania' }[id];
+    // FTUE-1: whoever opens Dzielnice has met the campaign -- Miasto won't
+    // present it again (same 'kampania' id the old card stored).
+    if (id === 'campaignScreen' && !wasAnnounced(this.save, 'kampania')) { this.save.unlocks.announced.push('kampania'); saveGame(this.save); }
     if (visitedFeature) this.markUnlockVisited(visitedFeature);
     this.renderBottomNav(id);
     this.startScreenAnim();
@@ -10228,7 +10300,8 @@ class Game {
 
     const tabs = [
       { btn: 'btnNavMiasto', screen: 'mainMenu', unlocked: true },
-      { btn: 'btnNavDzielnice', screen: 'campaignScreen', unlocked: true, fresh: ['district:', 'kampania'] },
+      // FTUE-1: also NOWE while Miasto presents the campaign (campaignIntroDue()).
+      { btn: 'btnNavDzielnice', screen: 'campaignScreen', unlocked: true, fresh: ['district:', 'kampania'], due: campaignIntroDue(this.save) },
       { btn: 'btnNavWarsztat', screen: 'shopScreen', unlocked: this.isWarsztatUnlocked(), fresh: 'warsztat' },
       { btn: 'btnNavWyzwania', screen: 'challengesScreen', unlocked: this.isWyzwaniaUnlocked(), fresh: 'wyzwania' }
     ];
@@ -10241,7 +10314,7 @@ class Game {
       btn.classList.toggle('locked', !t.unlocked);
       const lockBadge = btn.querySelector('.nav-tab-lock');
       if (lockBadge) lockBadge.classList.toggle('hidden', t.unlocked);
-      btn.classList.toggle('is-new', !!(t.unlocked && t.fresh && [].concat(t.fresh).some(f => this.isUnlockFresh(f))));
+      btn.classList.toggle('is-new', !!(t.unlocked && (t.due || (t.fresh && [].concat(t.fresh).some(f => this.isUnlockFresh(f))))));
     });
   }
 
@@ -12992,9 +13065,9 @@ class Game {
   }
 
   async watchRewardedAd() {
-    if (this.adUsedThisRound) return;
-    this.analytics.track('ad_offer', { context: 'result_double_coins' });
     const btn = document.getElementById('btnWatchAd');
+    if (this.adUsedThisRound || btn.classList.contains('hidden')) return;
+    this.analytics.track('ad_offer', { context: 'result_double_coins' });
     btn.disabled = true;
     const ok = await this.monetization.rewarded('result_double_coins');
     if (!ok) { btn.disabled = false; return; }
@@ -13156,6 +13229,7 @@ class Game {
     this.state = GameState.RESULTS;
     const corePctBefore = this.save.hub.coreCharge || 0;
     const bestArenaScoreBefore = this.save.stats.bestArenaScore || 0;
+    const finishedBefore = (this.save.stats.recentArenaScores || []).length;
     const { ranked, place, coinsEarned } = this.finalizeRun();
     const corePctAfter = this.save.hub.coreCharge || 0;
 
@@ -13273,12 +13347,23 @@ class Game {
 
     document.getElementById('btnWatchAd').disabled = false;
     document.getElementById('btnWatchAd').textContent = '×2 MONET · REKLAMA';
+    // FTUE-1: the first Arena result in the player's history offers no ad
+    // (the round's coins are paid as usual); WYZWIJ ZNAJOMEGO fills the row.
+    // runsPlayed also counts a round left early (leaveRun()), so a new
+    // player's (newbieBonusApplied) first *finished* regular round is the
+    // one that just started recentArenaScores (finished rounds only) --
+    // unless this session already showed an ad-free result (a friend's
+    // challenge played first). Older saves without that history keep the ad.
+    const firstFinished = this.newbieBonusApplied && finishedBefore === 0 && (this.save.stats.recentArenaScores || []).length === 1 && !this.arenaResultShown;
+    const noAdResult = CONFIG.ftue.firstResultNoAd && (this.save.stats.runsPlayed === 1 || firstFinished);
+    this.arenaResultShown = true;
+    document.getElementById('btnWatchAd').classList.toggle('hidden', noAdResult);
 
     this.showScreen('gameOverScreen');
     this.sound.setIntensity(0);
     if (place <= 3 || isNewPb) this.sound.fanfare(place === 1); else this.sound.coin();
     this.updateCoinDisplays();
-    this.queueUnlockCelebrations();
+    this.queueUnlockCelebrations({ delay: CONFIG.ftue.resultCelebrationDelayMs, screen: 'gameOverScreen' });
 
     this.analytics.track('run_end', {
       runId: this.runId,
@@ -15464,7 +15549,7 @@ class DevPanel {
   announce() {
     const g = this.game, u = g.save.unlocks;
     if (this.celebrate) { g.queueUnlockCelebrations(); return; }
-    FEATURE_UNLOCKS.filter(f => f.isUnlocked(g.save) && !u.announced.includes(f.id)).forEach(f => {
+    FEATURE_UNLOCKS.filter(f => !f.hubIntro && f.isUnlocked(g.save) && !u.announced.includes(f.id)).forEach(f => {
       u.announced.push(f.id);
       if (!u.fresh.includes(f.id)) u.fresh.push(f.id);
     });
@@ -15907,6 +15992,7 @@ class DevPanel {
         saveGame(s);
         g.showScreen('mainMenu');
         clearTimeout(g.loginPopupTimer);
+        g.hubVisits = Math.max(g.hubVisits || 0, 2); // FTUE-1's first-visit pause doesn't apply to a test
         g.maybeShowLoginReward();
         return document.getElementById('loginRewardScreen').classList.contains('hidden') ? 'Kalendarz pokazuje się dopiero po pierwszej rozegranej rundzie albo misji.' : '';
       }
@@ -17884,6 +17970,9 @@ const I18N_EN = {
   "✓ nagroda odebrana": "✓ reward claimed",
   "GRAJ 2:00": "PLAY 2:00",
   "DRUGI TRYB": "SECOND MODE",
+  // FTUE-1: Miasto's campaign tile after the third Arena round.
+  "Kampania: {#0} misji": "Campaign: {0} missions",
+  "{#0} dzielnic · zagraj, kiedy chcesz": "{0} districts · play whenever you like",
   "KAMPANIA": "CAMPAIGN",
   "DO DZIELNIC": "TO DISTRICTS",
   "240 misji w 12 dzielnicach: cele, gwiazdki i wzmocnienia. Osobna droga rozwoju — rundy Areny i misje nie blokują się nawzajem.": "240 missions in 12 districts: goals, stars and boosters. A path of its own — Arena rounds and missions never block each other.",

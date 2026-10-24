@@ -4,6 +4,37 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## FTUE-1 „Druga runda” — pierwsze pięć minut (schemat zapisu nadal v13, balans bez zmian)
+Decyzja właścicielki: wariant D — Arena jako centrum + drabina trzech rund.
+
+- 1A: wynik pierwszej Areny bez automatycznych kart (karta „DRUGI TRYB ·
+  KAMPANIA” wjeżdżała po 650 ms, w trakcie liczenia wyniku). ZAGRAJ JESZCZE
+  RAZ zostaje głównym przyciskiem i od razu startuje drugą rundę.
+- 1B: kampania przedstawia się dopiero po 3. rundzie Areny, na kafelku
+  kampanii w Mieście (plakietka NOWE, także na zakładce Dzielnice), bez
+  okna; dotknięcie otwiera Dzielnice. Wizyta w Dzielnicach zapisuje
+  „kampania” w `save.unlocks.announced` (ten sam identyfikator i format co
+  dotąd); kto poznał kampanię wcześniej (ogłoszenie z poprzedniej wersji,
+  wizyta, rozpoczęta lub ukończona misja), nie widzi wstępu. Dzielnice
+  dostępne od pierwszej rundy jak dotąd.
+- 1C: bez „×2 MONET · REKLAMA” na wyniku pierwszej Areny w historii zapisu
+  (`stats.runsPlayed === 1`) — także na pierwszym *ukończonym* wyniku po
+  rundzie opuszczonej w pauzie (`leaveRun()` też liczy się do `runsPlayed`;
+  ukończone rundy rozpoznaje istniejące `stats.recentArenaScores`, tylko
+  u nowego gracza — `runsPlayed` < `CONFIG.economy.newbieRuns` przed rundą —
+  bez nowego pola zapisu; starszy zapis bez tej historii zachowuje
+  reklamę); nagroda, mnożniki i pozostałe reklamy bez zmian.
+- 1D: nowy gracz (sesja rozpoczęta od ekranu powitalnego) dostaje kalendarz
+  logowania przy drugiej wizycie w Mieście albo po ponownym uruchomieniu —
+  licznik wizyt tylko w pamięci, bez nowego pola w zapisie; nagrody,
+  seria i blokada podwójnego odbioru bez zmian.
+- 1E: karty „WARSZTAT” (po 2. rundzie) i „WYZWANIA” (po 3.) czekają na koniec
+  animacji wyniku (`CONFIG.ftue.resultCelebrationDelayMs` 2400 ms) i nie
+  pokazują się, gdy gracz już przeszedł dalej (bez serii kart przy kolejnym
+  wyniku; zostaje NOWE). Progi odblokowań bez zmian.
+- Testy: nowy `qa/ftue1.mjs` (w `run-all`), `qa/v22.mjs` „first launch”
+  zaktualizowany do nowego przebiegu.
+
 ## E2 + E3 — natywne moduły ES i bezpieczna publikacja (bez zmian w rozgrywce, schemat zapisu nadal v13)
 Decyzja właścicielki (18.10.2026): moduły ES, wiele plików JS dozwolone, bez
 bundlera i bez nowych zależności, bez zmian rozgrywki podczas podziału.
