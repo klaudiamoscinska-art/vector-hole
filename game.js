@@ -3573,6 +3573,15 @@ function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+/** FTUE-2: which layout a frame of w x h CSS px gets (Game.resize()) --
+ *  'phone' (portrait or nearly square: the bottom-nav column), 'wide'
+ *  (landscape with room for the nav rail and two columns) or 'compact'
+ *  (the same, on a short landscape frame: a phone on its side, a small
+ *  portal frame). */
+function screenLayout(w, h) {
+  if (w < 560 || w < h * 1.25) return 'phone';
+  return h < 620 ? 'compact' : 'wide';
+}
 function lerp(a, b, t) { return a + (b - a) * t; }
 /** Round/mission clock as m:ss (v12 HUD; was a bare "120 s"). */
 /** 27355 -> "27 355" (thin no-break space), for scores on the results UI. */
@@ -7953,7 +7962,7 @@ class Game {
     // Re-probe one level above the remembered one each session, so a
     // one-off slow session can't pin a device to low quality forever.
     this.applyGfx(clamp(Math.round(this.save.settings.gfxLevel != null ? this.save.settings.gfxLevel : 2) + 1, 0, 2));
-    window.addEventListener('resize', () => { this.resize(); this.updateStripEdges(); });
+    window.addEventListener('resize', () => { this.resize(); this.updateStripEdges(); this.reserveConsentSpace(); });
     this.bindDistrictStrip();
     this.bindInput();
     this.bindUI();
@@ -8017,12 +8026,26 @@ class Game {
     // v21: a wide landscape screen gets the two-column layout (body.wide),
     // scaled to about 1100 x 620 logical px (a small portal frame like
     // 960x540 shrinks it a little instead of cutting it off).
-    const wide = this.width >= 960 && this.width >= this.height * 1.25;
-    this.uiScale = wide ? clamp(Math.min(this.height / 620, this.width / 1100), 0.75, 1.6)
-      : clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
+    // FTUE-2: the layout follows the frame's shape, not just its width --
+    // a phone on its side (844x390), a Poki frame (640x360, 836x470) or a
+    // CrazyGames mobile frame (800x450) got the portrait phone layout cut
+    // off at ~400 px of height. Any landscape frame with room for a rail
+    // and two columns gets the landscape layout; one shorter than that
+    // layout's 620 px its compact variant (body.compact: smaller header/
+    // rail/HUD, laid out from 640 x 360 up). The UI never scales below 1
+    // (it was down to 0.75: 9 px labels became 7-8 px at 1031x580 or on a
+    // 1024x768 tablet) -- text stays readable at DPR 1, buttons tappable.
+    const layout = screenLayout(this.width, this.height);
+    const wide = layout !== 'phone';
+    const compact = layout === 'compact';
+    this.layout = layout;
+    this.uiScale = compact ? 1
+      : wide ? clamp(Math.min(this.height / 620, this.width / 1100), 1, 1.6)
+        : clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
     document.documentElement.style.setProperty('--ui-scale', this.uiScale.toFixed(3));
-    if (document.body.classList.contains('wide') !== wide) {
+    if (document.body.classList.contains('wide') !== wide || document.body.classList.contains('compact') !== compact) {
       document.body.classList.toggle('wide', wide);
+      document.body.classList.toggle('compact', compact);
       if (this.save) requestAnimationFrame(() => this.updateStripEdges && this.updateStripEdges());
     }
     // Minimap defaults to visible on every viewport — an earlier pass
@@ -9108,6 +9131,19 @@ class Game {
     // button.
     const onNavScreen = !document.getElementById('bottomNav').classList.contains('hidden');
     if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running || this.isFirstRun() || !onNavScreen);
+    this.reserveConsentSpace();
+  }
+
+  /** FTUE-2: the consent bar floats over the bottom of a nav screen -- it
+   *  covered Miasto's tiles / chest (and GRAJ on a phone on its side).
+   *  While it shows, the screens reserve its height (body.consent-open,
+   *  --consent-h). The bar lives in the zoomed layer, so its on-screen
+   *  height goes in divided by --ui-scale (like the thumb pad). */
+  reserveConsentSpace() {
+    const bar = document.getElementById('consentBar');
+    const open = !!bar && !bar.classList.contains('hidden');
+    document.body.classList.toggle('consent-open', open);
+    if (open) document.body.style.setProperty('--consent-h', Math.ceil(bar.getBoundingClientRect().height / (this.uiScale || 1)) + 'px');
   }
 
   setConsent(analytics) {
@@ -13774,9 +13810,11 @@ class Game {
       const age = 1 - b.life / b.maxLife;
       const pop = age < 0.12 ? 0.4 + (age / 0.12) * 0.8 : (age < 0.22 ? 1.2 - ((age - 0.12) / 0.1) * 0.2 : 1);
       const alpha = clamp(b.life / (b.maxLife * 0.3), 0, 1);
-      const size = Math.min(58, this.width * 0.1) * (b.scale || 1);
+      // FTUE-2: on a short landscape frame the banner is smaller and sits
+      // higher, so it never covers the vortex in the middle.
+      const size = Math.min(58, this.width * 0.1, this.height * 0.11) * (b.scale || 1);
       ctx.globalAlpha = alpha;
-      ctx.translate(this.width / 2, this.height * 0.3);
+      ctx.translate(this.width / 2, this.height * (this.layout === 'compact' ? 0.25 : 0.3));
       ctx.scale(pop, pop);
       ctx.rotate(-0.04);
       ctx.textAlign = 'center';
@@ -14691,8 +14729,10 @@ class Game {
   }
 
   /** v12: a smaller minimap on narrow phones (130 px was 36 % of a 360 px screen). */
-  minimapSize() { return (this.width < 400 ? 104 : 130) * (this.uiScale || 1); }
-  minimapMargin() { return 16 * (this.uiScale || 1); }
+  // FTUE-2: a short landscape frame (body.compact) gets a smaller one too
+  // (130 px was a third of an iPhone's 390 px height on its side).
+  minimapSize() { return (this.width < 400 ? 104 : this.layout === 'compact' ? 92 : 130) * (this.uiScale || 1); }
+  minimapMargin() { return (this.layout === 'compact' ? 10 : 16) * (this.uiScale || 1); }
 
   drawMinimap(ctx) {
     const size = this.minimapSize();
