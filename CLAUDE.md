@@ -28,7 +28,7 @@ Vanilla HTML/CSS/JS, zero dependencies, no bundler, no build step for developmen
 - **Economy:** prices, rewards, booster balance and the growth curve change only with the owner; booster balance → `node qa/v18.mjs`; mission changes → `node qa/calibrate.mjs 10 4`, paste `MISSION_BOT_TIME`, then `node qa/difficulty.mjs`.
 - `SeededRNG` seeds only a round's initial layout; any new layout step must consume the stream identically for every player and `computeDailyLayout()` must replay it (`qa/design.mjs`). Ranking is always by score (`rankHoles()`). `escapeHtml()` for every player string reaching `innerHTML`. `Analytics` sends nothing without consent; no backend.
 - **Text:** every new Polish UI string needs an `I18N_EN` entry (`node qa/v19.mjs`); Polish copy is gender-neutral (never "urosłaś/urosłeś", "gotowa/gotowy"; `qa/design.mjs`, GDD §1). Palette `--nc-*`/`--neon-*` from the asset bible; the old saturated neons (`#00f3ff`/`#ff007f`/`#39ff14`/`#ffd700`/`#b026ff`) are a regression. Use SVG/canvas glyphs, not emoji.
-- **Layout:** `#app` is `100dvh` (never plain `vh`), bottom UI pads `env(safe-area-inset-bottom)`; one obvious action per screen, reachable without scrolling on 375×667 (`qa/flow.mjs`); 0 floor chunk repaints over still frames (`qa/visual.mjs`); never read DOM rects inside a zoomed layer.
+- **Layout:** `#app` is `100dvh` (never plain `vh`), bottom UI pads `env(safe-area-inset-bottom)`; one obvious action per screen, reachable without scrolling on 375×667 (`qa/flow.mjs`); 0 floor chunk repaints over still frames (`qa/visual.mjs`); never read DOM rects inside a zoomed layer. FTUE-2: the layout follows the frame's shape (`screenLayout()`: phone / wide / compact, UI scale never < 1), every Poki/CrazyGames/phone/tablet frame in `qa/responsive.mjs` must fit, the portal page never scrolls under the game; no in-game fullscreen button (the portal provides it).
 - **Dev panel (v23):** only `DEV_CODE_HASH` is in the source — **never commit the dev code**; game hooks stay inert outside test mode; test mode uses its own save slot.
 - `Monetization` is the only path to ads/IAP (no fake checkout); `SoundEngine` synthesizes all audio (no audio files).
 - **Deliberately not built:** backend, bundled ad/IAP SDK, procedural districts, PWA/service worker, `og:image`, Core City prestige past LVL6 (GDD §7).
@@ -47,6 +47,7 @@ node qa/run-all.mjs              # every suite (outputs in git-ignored qa/out/),
 node qa/save-safety.mjs          # PX01 save guard     node qa/px02-isolation.mjs  # PX02 D+ isolation
 node qa/v22.mjs                  # two modes / no energy  node qa/ftue1.mjs     # FTUE-1
 node qa/leave-run.mjs            # leaving a round      node qa/release.mjs     # E3 artifact (+ release-recovery.mjs)
+node qa/responsive.mjs           # FTUE-2: every platform frame, iframe host, resize/turn/fullscreen, input
 ```
 
 Full suite list with what each checks, the bots (`ARENA_BOT` `casual` = the yardstick for design decisions), virtual time, seeds and Windows notes (false-PASS guard, CRLF, symlinks, `python3`): `qa/README.md`. Extend `qa/` when adding features; never add a test framework or dependency. Perf thresholds vary by machine — compare with the base on the same machine.

@@ -161,6 +161,15 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   (trzymany palec prowadzi dalej), nic się nie rusza przed pierwszym
   dotykiem, puszczenie palca zatrzymuje dziurę.
 - Opcjonalnie pływający joystick (Ustawienia) i WASD/strzałki.
+- **Portale (FTUE-2):** pauza klawiszem **Escape, P lub Spacją** (Poki:
+  „ESC albo spacja”; P, bo portal może używać Escape do wyjścia z pełnego
+  ekranu). Kursor wychodzący poza okno gry zatrzymuje dziurę (bez jazdy
+  „samej” do ostatniego punktu), a utrata fokusu (klik na stronie portalu,
+  przełączenie okna) zwalnia trzymane klawisze i pauzuje rundę. Strzałki,
+  spacja i kółko myszy nigdy nie przewijają strony portalu; pisanie w polu
+  tekstowym nie steruje. Bez własnego przycisku pełnego ekranu — pełny
+  ekran daje portal (CrazyGames go zakazuje w grze), gra tylko poprawnie
+  się do niego dopasowuje.
 
 ## 4. Kampania (Dzielnice) — v15 „Wyzwanie”
 
@@ -436,16 +445,32 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   tyle miasta co telefon (skala √(pole ekranu / 500 000), od 1 do 2,2), więc
   wir i obiekty są duże, a gracz na monitorze nie widzi dalej niż na
   telefonie. Telefony bez zmian.
-- **Układ poziomy na komputerze** (szeroki ekran w poziomie, od 960 px):
+- **Układ poziomy** (FTUE-2: każdy ekran w poziomie, szerszy niż 1,25×
+  wysokość i od 560 px — wcześniej tylko od 960 px, więc telefon obrócony
+  poziomo i małe ramki portali dostawały ucięty układ pionowy):
   nawigacja jako pasek po lewej, każdy ekran w dwóch kolumnach —
   Miasto: Core City | GRAJ, kafle i skrzynia; Dzielnice: wszystkie 12
   dzielnic naraz | następna misja i lista; Warsztat: duży podgląd |
   wiry w 2 kolumnach; Wyzwania: mapa dnia | ZAGRAJ, seria, misja dnia;
   wyniki: wynik i nagrody | ranking i przyciski. Pierwszy ekran to szeroka
-  scena z żywym demem. Wszystko mieści się bez przewijania, także w małym
-  oknie portalu 960×540. Samouczek na komputerze mówi o myszy, nie o palcu.
-- Menu, arkusze i HUD rosną z ekranem (do 1,6×); mapka w rogu rośnie
-  razem z nimi. Telefony i tablety w pionie mają dotychczasowy układ.
+  scena z żywym demem. Samouczek na komputerze mówi o myszy, nie o palcu.
+- **Wariant kompaktowy** (FTUE-2, ekran w poziomie niższy niż 620 px:
+  telefon obrócony, Poki 640×360 / 836×470 / 1031×580, CrazyGames
+  800×450): węższy pasek nawigacji, niższe nagłówki; pierwszy ekran = demo
+  po lewej, logo i GRAJ po prawej; Ewolucja — trzy karty obok siebie; w
+  rundzie ranking pokazuje lidera i gracza, mniejsza mapka, NELA i
+  podpowiedzi przy krawędziach, baner wyżej i mniejszy (nie zasłania wiru).
+  Okno, które mimo to się nie mieści, przewija się w środku, a jego główny
+  przycisk zostaje na ekranie.
+- Menu, arkusze i HUD rosną z ekranem (do 1,6×), **nigdy nie maleją
+  poniżej 1×** (FTUE-2: przy skali 0,75–0,94 etykiety 9 px miały 7–8 px);
+  mapka w rogu rośnie razem z nimi. Telefony i tablety w pionie mają
+  dotychczasowy układ. Zasięg widzenia i skala świata w rundzie bez zmian.
+- **Długie okna** (FTUE-2): POWRÓT w Profilu, START karty misji, DALEJ
+  wyniku misji i ZAGRAJ Wyzwania dnia zostają przy dolnej krawędzi, gdy
+  treść się przewija; tekst okien informacyjnych przewija się nad
+  przyciskami. Pasek zgody rezerwuje swoje miejsce (nie zasłania GRAJ ani
+  kafli).
 - Pasek dzielnic (wąskie okna) przewija się kółkiem myszy, a ucięta
   krawędź się rozmywa.
 
