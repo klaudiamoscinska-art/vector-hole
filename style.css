@@ -4856,3 +4856,135 @@ body:not(.wide) #btnPlayDaily { position: sticky; bottom: calc(86px + env(safe-a
 /* A narrow campaign HUD: TERAZ GRA goes to the bottom edge instead of
    under the goal box. */
 @media (max-width: 420px) { #hud:has(#hud-goal:not(.hidden)) .now-playing { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); } }
+
+/* ===================== FTUE-2 FIX: real devices (iPhone 13 Chrome,
+   iPhone 16 Pro home-screen app, a Windows laptop) =====================
+   Each rule fixes something the owner saw on a real screen; qa/devices.mjs
+   checks them. */
+
+/* Outside a round the game board is hidden (Game.setBoardLive()): a menu
+   fading in never shows the last round's frame through it. */
+body.board-idle #gameCanvas { visibility: hidden; }
+
+/* Themed thin scrollbars wherever a panel scrolls (Windows drew grey bars
+   with arrows in the middle of a sheet). :where() keeps it weaker than any
+   rule that hides a scrollbar. */
+:where(#app) * { scrollbar-width: thin; scrollbar-color: rgba(80, 240, 250, 0.32) transparent; }
+
+/* A HUD panel the vortex is under fades (Game.fadeHudUnderHole()). */
+#hud .under-hole { opacity: 0.3; transition: opacity 0.18s; }
+
+/* Daily reward: the claim burst flies inside the panel's own box -- its
+   particles made the panel scroll (a scrollbar for nothing). */
+.login-burst { left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; }
+.login-burst span { left: calc(50% - var(--s) / 2); top: calc(55% - var(--s) / 2); }
+
+/* Profil: header, the settings scrolling at full width (the scrollbar at the
+   screen's edge, not mid-screen) and POWRÓT as a footer under them. */
+#profileScreen { flex-direction: column; justify-content: flex-start; align-items: stretch; }
+#profileScreen > .screen-inner { flex: 1 1 auto; min-height: 0; width: 100%; max-width: none; max-height: none;
+  padding: 24px max(20px, calc((100% - 424px) / 2)) 20px; }
+.profile-footer { flex: none; position: relative; z-index: 1; display: flex; justify-content: center;
+  padding: 10px calc(20px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) calc(20px + env(safe-area-inset-left, 0px));
+  background: rgba(4, 16, 29, 0.94); border-top: 1px solid var(--nc-border); }
+.profile-footer #btnProfileBack { position: static; width: 100%; max-width: 320px; margin: 0; box-shadow: none; }
+body.compact #profileScreen > .screen-inner { padding-top: 14px; gap: 10px; }
+body.compact .profile-footer { padding-top: 7px; padding-bottom: calc(7px + env(safe-area-inset-bottom, 0px)); }
+body.compact .profile-footer #btnProfileBack { padding-top: 9px; padding-bottom: 9px; }
+
+/* Results: "Wróć do Miasta" is part of the action bar (it was under it on
+   a phone), and ZAGRAJ JESZCZE RAZ never breaks into three lines. */
+.result-actions { flex-wrap: wrap; }
+.result-actions #btnMenu { flex: none; width: 100%; max-width: 440px; margin: -2px 0 0; padding: 4px 8px; min-height: 32px; font-size: 13px; }
+body.wide:not(.compact) #gameOverScreen #btnMenu { order: 100; }
+body.compact .result-actions { flex-direction: column; align-items: stretch; gap: 6px; padding-top: 8px; }
+body.compact .result-actions > #btnPlayAgain { flex: none; font-size: 15px; padding: 10px 8px; white-space: nowrap; }
+body.compact .result-actions-row { flex: none; }
+body.compact .result-actions #btnMenu { min-height: 30px; padding: 2px 8px; }
+@media (max-height: 700px) { body:not(.compact) .result-actions > #btnPlayAgain { line-height: 1.15; letter-spacing: 0.04em; }
+  body:not(.compact) .result-actions #btnMenu { flex: 1 0 100%; } }
+
+/* Mission briefing: the story and goals scroll in their own box and GRAJ
+   sits under them (a sticky GRAJ covered the goals); a landscape frame
+   (body.wide) shows the story and the goals side by side. */
+.briefing-overlay > .briefing-sheet { display: flex; flex-direction: column; overflow: hidden; }
+.briefing-sheet #briefingCard { flex: 0 1 auto; min-height: 0; overflow: hidden; }
+#briefingCard .mc-scroll, #missionStartCard .mc-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; }
+#briefingCard .mc-col, #missionStartCard .mc-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.briefing-sheet #briefingCard > .mc-play { position: static; flex: none; box-shadow: 0 0 22px rgba(80, 240, 250, 0.3); }
+body.wide .briefing-overlay > .briefing-sheet { max-width: 780px; }
+body.compact #briefingCard { padding: 12px 14px; gap: 8px; }
+body.wide #briefingCard .mc-scroll, body.wide #missionStartCard .mc-scroll { flex-direction: row; align-items: flex-start; gap: 16px; }
+body.wide #briefingCard .mc-col, body.wide #missionStartCard .mc-col { flex: 1 1 0; gap: 8px; }
+body.wide #briefingCard .mc-col-b { padding-top: 34px; }
+body.wide #missionStartCard .mc-col-b { padding-top: 4px; }
+body.compact #briefingCard .mc-name, body.compact #missionStartCard .mc-name { font-size: 20px; }
+body.compact #briefingCard .mc-goal, body.compact #missionStartCard .mc-goal { padding: 6px 9px; }
+body.compact #briefingCard > .mc-play { font-size: 19px; padding: 11px 14px; }
+/* (the mission start card: the same, START + "Zegar ruszy…" + the way back under it) */
+#missionStartCard { display: flex; flex-direction: column; overflow: hidden; }
+#missionStartCard #btnMissionGo { position: static; flex: none; }
+#missionStartCard > .start-tap, #missionStartCard > .start-back { flex: none; }
+body.wide #missionStartCard { max-width: 780px; }
+body.compact #missionStartCard { padding: 12px 14px; gap: 8px; }
+body.compact #missionStartCard #btnMissionGo { font-size: 19px; padding: 11px 14px; }
+
+/* Dzielnice on a short landscape frame: two-line district names fit their
+   tile (they were cut at the top), the next mission's GRAJ is in view (its
+   star goals are in the briefing GRAJ opens). */
+body.compact #campaignScreen .district-tile { height: 58px; }
+body.compact #campaignScreen .district-tile-info { padding: 6px 8px 5px; gap: 1px; }
+body.compact #campaignScreen .district-tile .district-node-name { line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.compact #missionNextCard .mc-name { font-size: 19px; }
+body.compact #missionNextCard .mc-goal { padding: 5px 9px; }
+body.compact #missionNextCard .mc-stars { display: none; }
+
+/* Mission result on a short landscape frame: a smaller hero and stats, so
+   the stars, NELA and the reward fit with less scrolling. */
+body.compact #missionResultScreen .mission-hero { width: 34px; height: 34px; margin: 0 auto -6px; }
+body.compact #missionResultTitle { font-size: 20px; margin: 0; }
+body.compact #missionResultScreen .mr-stat { padding: 4px 6px; }
+body.compact #missionResultScreen .mission-result-medal { font-size: 11.5px; }
+body.compact #missionResultScreen .nela-bubble { padding: 8px 10px; }
+
+/* Unlock celebration on a short landscape frame: the icon left, the text
+   and the buttons right (the icon was cut at the top, PÓŹNIEJ below the
+   bottom). */
+body.compact .unlock-overlay { padding: 8px calc(16px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px)); }
+body.compact .unlock-panel { max-width: 680px; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 32px; row-gap: 6px;
+  align-items: center; justify-items: center; padding: 8px 30px; overflow: visible; }
+/* (laid out to fit; overflow: visible, or the spinning rays' box made it scroll) */
+body.compact .unlock-stage { --st: min(180px, calc(100dvh - 90px)); grid-column: 1; grid-row: 1 / span 7; width: var(--st); height: var(--st); margin: 0; }
+body.compact .unlock-panel > :not(.unlock-stage) { grid-column: 2; }
+body.compact .unlock-title { font-size: 26px; }
+body.compact .unlock-actions { width: 100%; }
+
+/* Wyzwania on a short portrait-layout frame: ZAGRAJ stays in the flow
+   instead of sticking over the day's map. */
+@media (max-height: 560px) { body:not(.wide) #btnPlayDaily { position: static; box-shadow: none; } }
+
+/* Results on a short landscape frame: the left column scrolls -- its
+   bottom edge fades so it reads as "more below", not as cut off. */
+body.compact #gameOverScreen .wide-col-a, body.compact #missionResultScreen .wide-col-a { padding-bottom: 22px;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
+
+/* The rail's "you are here" bar beside the icon, not over the label (it
+   crossed the D of "Dzielnice" on a phone on its side). */
+body.compact .nav-tab.active::after { top: 9px; left: 1px; transform: none; height: 22px; }
+
+/* The owner's TEST / DEV tab (only on a device with the dev code): clear of
+   the notch / Dynamic Island, quieter over a round's play field. */
+.dev-fab { right: env(safe-area-inset-right, 0px); }
+body:not(.board-idle) .dev-fab { opacity: 0.4; min-height: 48px; }
+
+/* Pause on a short landscape frame: two columns of buttons, so OPUŚĆ RUNDĘ
+   is in view (it was below the bottom edge of a 328 px high phone). */
+body.compact #pauseSheet .pause-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; column-gap: 8px; max-width: 640px; }
+body.compact #pauseSheet .pause-panel > :not(.pause-btn), body.compact #pauseSheet #btnResume { grid-column: 1 / -1; }
+body.compact #pauseSheet .pause-panel > .pause-btn { width: 100%; max-width: none; margin: 0; }
+
+/* Miasto on a short landscape frame with the consent bar or a friend's
+   challenge: the Core City sub-line and the tiles' second line go, so
+   nothing overlaps. */
+body.compact.consent-open #mainMenu .hub-city-pitch span, body.compact #mainMenu:has(#hubChallenge:not(.hidden)) .hub-city-pitch span { display: none; }
+body.compact.consent-open #mainMenu .hub-quick-text strong, body.compact #mainMenu:has(#hubChallenge:not(.hidden)) .hub-quick-text strong { -webkit-line-clamp: 1; }

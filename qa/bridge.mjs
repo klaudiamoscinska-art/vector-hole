@@ -35,6 +35,9 @@ const ADDED_SINCE_BASE = {
   // target for scroll keys, the host page never scrolls, focus lost.
   'el:mouseleave': 1, 'el:contextmenu': 1, 'document:gesturestart': 1,
   'window:keydown': 1, 'window:pointerdown': 1, 'window:wheel': 1, 'window:blur': 1,
+  // FTUE-2 FIX (real devices): re-measure after a turn once the app box
+  // settles (an iPhone home-screen app's resize came too early).
+  'window:orientationchange': 1,
 };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
 

@@ -152,7 +152,10 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 - **Wielki finisz:** ostatnie 12 s — losowo (z ziarna) Zaciemnienie albo
   Burza portali (10 bonusowych obiektów).
 - **Kamera:** oddala się z rozmiarem (1,08 → 0,58), a dalej tak, by dziura
-  zajmowała ≤ 24% krótszego boku ekranu.
+  zajmowała ≤ 24% krótszego boku ekranu. Przy krawędzi miasta zatrzymuje
+  jego brzeg na granicy obszaru bezpiecznego telefonu (notch, Dynamic
+  Island, pasek gestów), nie ekranu — wir nigdy nie chowa się pod
+  wycięciem (FTUE-2 FIX; widoczny kawałek miasta bez zmian).
 
 ## 3. Sterowanie
 
@@ -466,10 +469,14 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   poniżej 1×** (FTUE-2: przy skali 0,75–0,94 etykiety 9 px miały 7–8 px);
   mapka w rogu rośnie razem z nimi. Telefony i tablety w pionie mają
   dotychczasowy układ. Zasięg widzenia i skala świata w rundzie bez zmian.
-- **Długie okna** (FTUE-2): POWRÓT w Profilu, START karty misji, DALEJ
-  wyniku misji i ZAGRAJ Wyzwania dnia zostają przy dolnej krawędzi, gdy
-  treść się przewija; tekst okien informacyjnych przewija się nad
-  przyciskami. Pasek zgody rezerwuje swoje miejsce (nie zasłania GRAJ ani
+- **Długie okna** (FTUE-2, FTUE-2 FIX): DALEJ wyniku misji, akcje wyniku
+  rundy (z „Wróć do Miasta”) i ZAGRAJ Wyzwania dnia zostają przy dolnej
+  krawędzi, gdy treść się przewija; POWRÓT w Profilu to stopka pod
+  przewijanymi ustawieniami; w odprawie i na karcie startu misji cele
+  przewijają się nad GRAJ / START (przycisk nigdy nie leży na tekście, w
+  poziomie opowieść i cele obok siebie); tekst okien informacyjnych
+  przewija się nad przyciskami. Panel HUD lub mapka, pod którą jest wir,
+  przygasa. Pasek zgody rezerwuje swoje miejsce (nie zasłania GRAJ ani
   kafli).
 - Pasek dzielnic (wąskie okna) przewija się kółkiem myszy, a ucięta
   krawędź się rozmywa.
@@ -586,7 +593,8 @@ Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
 - Pacer to ukryte dopasowanie trudności (standard w grach casual); ekspert
   grający jak bot „greedy” nadal wygrywa wysoko — to celowe.
 - Kamera zatrzymuje się na krawędzi świata, więc przy brzegu dziura może
-  wjechać pod panel wyników lub minimapę (znane, do rozważenia).
+  wjechać pod panel wyników lub minimapę — od FTUE-2 FIX ten panel /
+  mapka przygasa, dopóki wir jest pod nim.
 - „Narożny azyl”: środek dziury jest trzymany o promień od krawędzi, więc
   mały rywal w rogu bywa poza zasięgiem dużej dziury.
 - Linki wyzwań wysłane z v12 otwierają w v13 inną mapę (ścieżki energii i
