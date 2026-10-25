@@ -213,7 +213,11 @@ const CONFIG = {
     // cards -- they paused it twice in its first 6-32 s with a 3-way choice
     // before the player knew the basics. They appear from this many
     // finished rounds on, the first offer marked as new.
-    evolutionFromRuns: 1
+    evolutionFromRuns: 1,
+    // ...and an Arena result says what the next round brings: a feature
+    // unlock (Warsztat, Wyzwania) or a Core City reward at most this many
+    // finished rounds away (Game.nextRoundHook()).
+    coreHookRounds: 2
   },
   // v22: no tutorial -- the first Arena round teaches the game (owner: "gracz
   // ma poznawać grę podczas pierwszej rozgrywki; gdy nie wie, co zrobić,
@@ -9819,6 +9823,31 @@ class Game {
     return Math.round(cc.arenaCompleteGain * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
   }
 
+  /** FTUE-3: what the next finished Arena rounds bring, for the result
+   *  screen -- the nearest Arena feature unlock (read from FEATURE_GATES, so
+   *  a Warsztat opened by the campaign is skipped) or else the next Core
+   *  City reward when a plain round's gain reaches it within
+   *  CONFIG.ftue.coreHookRounds rounds. null when neither is near. Reads
+   *  the save only; grants and stores nothing. */
+  nextRoundHook() {
+    const s = this.save, runs = arenaRunsOf(s), G = CONFIG.unlockGates;
+    const gates = [
+      { id: 'warsztat', at: G.warsztatRuns, text: 'Odblokujesz Warsztat · nowy wygląd wiru' },
+      { id: 'wyzwania', at: G.wyzwaniaRuns, text: 'Odblokujesz Wyzwania · nowa mapa każdego dnia' }
+    ];
+    for (const g of gates) {
+      if (FEATURE_GATES[g.id](s)) continue;
+      const f = FEATURE_UNLOCKS.find(u => u.id === g.id);
+      return { id: g.id, rounds: Math.max(1, g.at - runs), text: g.text, color: f.color, icon: UNLOCK_ICONS[g.id] };
+    }
+    const level = s.hub.coreLevel || 1;
+    const rounds = Math.max(1, Math.ceil((100 - (s.hub.coreCharge || 0)) / this.coreGainPerRound()));
+    if (rounds > CONFIG.ftue.coreHookRounds) return null;
+    const reward = CORE_CITY_LEVEL_REWARDS[level + 1];
+    const label = reward ? reward.label : `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    return { id: 'core', rounds, text: `Nagroda Core City: ${label}`, color: '#46D99A', icon: REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(reward)] };
+  }
+
   /** The campaign mission to do next: the first uncleared mission (whose
    *  predecessor is cleared) in the earliest unlocked district, or null
    *  once every unlocked mission is done. */
@@ -13586,6 +13615,18 @@ class Game {
     }
     hookLine.textContent = hook;
     hookLine.classList.toggle('hidden', !hook);
+    // FTUE-3: what the next round brings (an unlock or a Core City reward).
+    const next = this.nextRoundHook();
+    const nextLine = document.getElementById('resultNextLine');
+    nextLine.classList.toggle('hidden', !next);
+    if (next) {
+      nextLine.style.setProperty('--q', next.color);
+      nextLine.dataset.hook = next.id;
+      document.getElementById('resultNextIcon').innerHTML = next.icon;
+      document.getElementById('resultNextKicker').textContent = next.rounds === 1 ? 'NASTĘPNA RUNDA' : `ZA ${next.rounds} ${plural(next.rounds, ['RUNDĘ', 'RUNDY', 'RUND'])}`;
+      document.getElementById('resultNextText').textContent = next.text;
+      this.analytics.track('result_next', { hook: next.id, rounds: next.rounds, runs: arenaRunsOf(this.save) });
+    }
     document.getElementById('btnPlayAgain').textContent = this.challenge && !this.challengeBeaten ? 'REWANŻ — TA SAMA MAPA' : 'ZAGRAJ JESZCZE RAZ';
     if (place === 1 || isNewPb) this.monetization.happyTime();
 
@@ -17087,6 +17128,7 @@ const I18N_EN = {
   "NAGRODY": "REWARDS",
   "NAJPIERW {0}": "FIRST {0}",
   "NASTĘPNA MISJA": "NEXT MISSION",
+  "NASTĘPNA RUNDA": "NEXT ROUND",
   "NASTĘPNY": "NEXT",
   "NIE": "NO",
   "NIE TERAZ": "NOT NOW",
@@ -17101,6 +17143,7 @@ const I18N_EN = {
   "NOWOŚĆ W ODPRAWIE": "NEW IN THE BRIEFING",
   "NOWOŚĆ · EWOLUCJA": "NEW · EVOLUTION",
   "NOWY": "NEW",
+  "Nagroda Core City: {0}": "Core City reward: {0}",
   "NOWY BUDYNEK": "NEW BUILDING",
   "NOWY REKORD": "NEW RECORD",
   "NOWY REKORD DNIA": "NEW DAILY RECORD",
@@ -17179,6 +17222,8 @@ const I18N_EN = {
   "Odbij pierwsze miejsce!": "Take 1st place back!",
   "Odblokujesz ją, kończąc ostatnią misję poprzedniej dzielnicy:": "Unlock it by completing the last mission of the previous district:",
   "Odblokujesz ją, kończąc poprzednią dzielnicę.": "Unlock it by completing the previous district.",
+  "Odblokujesz Warsztat · nowy wygląd wiru": "Unlocks the Workshop · a new look for your vortex",
+  "Odblokujesz Wyzwania · nowa mapa każdego dnia": "Unlocks Challenges · a new map every day",
   "Odrzuć wyzwanie": "Decline challenge",
   "Ogrodnicy": "Gardeners",
   "Ogrodnicy nocy": "Night Gardeners",
@@ -17699,6 +17744,8 @@ const I18N_EN = {
   "WYNIK": "SCORE",
   "WYNIK {0}": "SCORE {0}",
   "WYZWANIA": "CHALLENGES",
+  "ZA {#0} RUNDY": "IN {0} ROUNDS",
+  "ZA {#0} RUND": "IN {0} ROUNDS",
   "WYZWANIE DNIA": "DAILY CHALLENGE",
   "WYZWANIE DNIA ukończone: +{0} monet (rekord dnia: {1})": "DAILY CHALLENGE complete: +{0} coins (today's best: {1})",
   "WYZWANIE DNIA ukończone: +{0} monet (rekord dnia: {1}) · seria: {2} dni": "DAILY CHALLENGE done: +{0} coins (daily best: {1}) · streak: {2} days",
