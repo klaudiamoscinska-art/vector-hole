@@ -45,9 +45,15 @@ export const MATRIX = [
   [1366, 768, 'desk', 'CrazyGames fullscreen'],
   [1536, 864, 'desk', 'CrazyGames fullscreen'],
   [1080, 607, 'tablet', 'CrazyGames tablet'],
+  // FTUE-2 FIX: the owner's real devices (2026-10-25), with their safe areas
+  // (5th field, CSS px; Chromium's safe-area override) and browser bars.
+  [775, 328, 'phone', 'iPhone 13 Chrome poziomo (paski, notch z lewej)', { left: 47, right: 0, top: 0, bottom: 21 }],
+  [390, 664, 'phone', 'iPhone 13 Chrome pionowo (paski przeglądarki)'],
+  [874, 402, 'phone', 'iPhone 16 Pro z ikonki poziomo (Dynamic Island)', { left: 62, right: 62, top: 0, bottom: 21 }],
+  [402, 812, 'phone', 'iPhone 16 Pro z ikonki pionowo', { left: 0, right: 0, top: 0, bottom: 34 }],
 ];
 // The whole screen catalogue runs in these (the main screens run everywhere).
-const FULL_CATALOGUE = ['320x568', '390x844', '844x390', '640x360', '800x450', '1280x720', '768x1024'];
+const FULL_CATALOGUE = ['320x568', '390x844', '844x390', '640x360', '800x450', '1280x720', '768x1024', '775x328', '390x664', '874x402', '402x812'];
 const MAIN_SCENES = ['welcome', 'hub', 'hubConsent', 'campaign', 'briefing', 'shop', 'challenges', 'arena', 'arenaLate', 'pause', 'evolution', 'results', 'mission', 'missionResult', 'login'];
 const EXTRA_SCENES = ['profile', 'leaveConfirm', 'resetConfirm', 'infoSheet', 'unlock', 'missionStart', 'revive', 'ad', 'quickEquip', 'resultsFailed', 'challengeHub'];
 
@@ -59,7 +65,7 @@ const argOf = (k) => { const a = args.find(x => x.startsWith(`--${k}=`)); return
    root = the layer the scene is about (a .screen, an overlay, the HUD);
    primary = its main action (must be in view without scrolling and hit by a
    tap at its centre); mustSee = elements that must be fully in view. */
-const AUDIT = function ({ root, primary, mustSee = [], mustPeek = [], overlapAllow = [], minTap = 24 }) {
+const AUDIT = function ({ root, primary, mustSee = [], mustPeek = [], overlapAllow = [], minTap = 24, ctaScrollsClear = false }) {
   const W = innerWidth, H = innerHeight;
   const vis = (el) => {
     if (!el) return false;
@@ -150,6 +156,46 @@ const AUDIT = function ({ root, primary, mustSee = [], mustPeek = [], overlapAll
     if (!p || !vis(p)) out.primary = { missing: primary };
     else { const b = p.getBoundingClientRect(); out.primary = { sel: primary, inView: inView(p), hit: hitOk(p), by: coveredBy(p), box: box(b), tap: Math.round(Math.min(b.width, b.height)) }; }
   }
+  // FTUE-2 FIX: the main action never lies over the screen's own text (a
+  // sticky GRAJ over the mission goals, POWRÓT over the settings, ZAGRAJ
+  // over the day's map) -- a visible text line half or more under it
+  // counts (text a scroll box clips away doesn't). A sticky action bar over
+  // a scrolling list (results) may cover it only while the list can still
+  // be scrolled clear of it: at the scroll's end nothing may be under it.
+  const pEl = primary && document.querySelector(primary);
+  const clipped = (el, x, y) => { for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue; const ar = a.getBoundingClientRect(); if (x < ar.left || x > ar.right || y < ar.top || y > ar.bottom) return true; } return false; };
+  const ctaCovered = () => {
+    const hits = [];
+    if (!pEl || !vis(pEl)) return hits;
+    const pr = pEl.getBoundingClientRect();
+    const tw = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
+    const seen = new Set();
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+      const el = n.parentElement;
+      if (!n.textContent.trim() || seen.has(el) || pEl.contains(el) || el.contains(pEl) || !vis(el)) continue;
+      seen.add(el);
+      const rg = document.createRange(); rg.selectNodeContents(n);
+      for (const r of rg.getClientRects()) {
+        if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > H) continue;
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        if (clipped(el, cx, cy)) continue;
+        const ix = Math.min(r.right, pr.right) - Math.max(r.left, pr.left), iy = Math.min(r.bottom, pr.bottom) - Math.max(r.top, pr.top);
+        if (ix > 0 && iy > 0 && ix * iy > 0.5 * r.width * r.height) { const top = document.elementFromPoint(cx, cy); if (top && (top === pEl || pEl.contains(top))) { hits.push(name(el)); break; } }
+      }
+    }
+    return hits;
+  };
+  out.ctaOver = ctaCovered();
+  if (out.ctaOver.length && ctaScrollsClear && pEl) {
+    let sc = null;
+    for (let a = pEl.parentElement; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (/auto|scroll/.test(cs.overflowY) && a.scrollHeight > a.clientHeight + 1) { sc = a; break; } }
+    if (sc && getComputedStyle(pEl.closest('.result-actions, .mission-result-actions') || pEl).position === 'sticky') {
+      const top0 = sc.scrollTop; sc.scrollTop = sc.scrollHeight;
+      const atEnd = ctaCovered(); sc.scrollTop = top0;
+      out.ctaOverNote = `${out.ctaOver.length} under the sticky bar, scrolls clear`;
+      out.ctaOver = atEnd.map(x => x + ' (at the scroll end)');
+    }
+  }
   // mustPeek: a long list whose start must show on screen (the rest scrolls)
   out.mustPeek = mustPeek.map(sel => { const el = document.querySelector(sel); if (!el || !vis(el)) return { sel, missing: true }; const r = el.getBoundingClientRect(); const top = document.elementFromPoint(r.left + 12, Math.min(r.top + 12, H - 1)); return { sel, peeks: r.top + 12 < H && !!top && (el.contains(top) || top === el), top: Math.round(r.top) }; });
   out.mustSee = mustSee.map(sel => { const el = document.querySelector(sel); if (!el || !vis(el)) return { sel, missing: true }; return { sel, inView: inView(el), box: box(el.getBoundingClientRect()) }; });
@@ -226,9 +272,9 @@ export const SCENES = {
   evolution: { stage: async (p) => { await veteran(p); await p.evaluate(() => { frozenRoundIn(); const gm = window.game; delete gm.checkEvolutionTriggers; gm.evolutionOffersTriggered = new Set(); gm.offerEvolution(); gm.render(performance.now() / 1000); }); await p.waitForTimeout(700); },
     audit: { root: '#evolutionOverlay', primary: '#evolutionCards > *', mustSee: ['#btnEvolutionSkip'] } },
   results: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.startRound({ seed: 777 }); cancelAnimationFrame(gm.rafId); gm.player.score = 4200; gm.endRound(); }); await p.waitForTimeout(3200); await p.evaluate(() => { window.game.unlockQueue = []; document.getElementById('unlockOverlay').classList.add('hidden'); }); },
-    audit: { root: '#gameOverScreen', primary: '#btnPlayAgain', mustSee: ['#finalScore'] } },
+    audit: { root: '#gameOverScreen', primary: '#btnPlayAgain', mustSee: ['#finalScore', '#btnMenu'], ctaScrollsClear: true } },
   resultsFailed: { stage: async (p) => { await veteran(p, { runsPlayed: 1 }); await p.evaluate(() => { const gm = window.game; gm.startRound({ seed: 778 }); cancelAnimationFrame(gm.rafId); gm.player.score = 50; gm.endRound(); }); await p.waitForTimeout(3200); await p.evaluate(() => { window.game.unlockQueue = []; document.getElementById('unlockOverlay').classList.add('hidden'); }); },
-    audit: { root: '#gameOverScreen', primary: '#btnPlayAgain', mustSee: ['#finalScore'] } },
+    audit: { root: '#gameOverScreen', primary: '#btnPlayAgain', mustSee: ['#finalScore', '#btnMenu'], ctaScrollsClear: true } },
   missionStart: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.startCampaignMission('M31'); }); await p.waitForTimeout(600); },
     audit: { root: '#missionStartOverlay', primary: '#missionStartCard .btn-primary' } },
   mission: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.startCampaignMission('M31'); if (gm.introPending) gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.hideNelaToast(); for (let i = 0; i < 30; i++) gm.updateCampaign(1 / 30); gm.renderCampaign(1); }); await p.waitForTimeout(300); },
@@ -236,12 +282,22 @@ export const SCENES = {
   revive: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.startCampaignMission('M02'); if (gm.introPending) gm.beginMissionPlay(); const m = gm.mission; const st = m.def.goal.steps || []; if (st[0] && st[0].eat) m.eatenByType[st[0].eat] = Math.ceil(gm.campaignGoalItems()[0].target * 0.7); m.elapsed = m.def.timeLimit; gm.updateCampaign(0.016); cancelAnimationFrame(gm.rafId); }); await p.waitForTimeout(600); },
     audit: { root: '#reviveOverlay', primary: '#btnReviveAd', mustSee: ['#btnReviveNo'] } },
   missionResult: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.startCampaignMission('M31'); if (gm.introPending) gm.beginMissionPlay(); cancelAnimationFrame(gm.rafId); gm.running = false; gm.endCampaignMission(true); }); await p.waitForTimeout(1800); await p.evaluate(() => { window.game.unlockQueue = []; document.getElementById('unlockOverlay').classList.add('hidden'); }); },
-    audit: { root: '#missionResultScreen', primary: '#btnMissionNext', mustSee: ['#missionResultTitle'] } },
+    audit: { root: '#missionResultScreen', primary: '#btnMissionNext', mustSee: ['#missionResultTitle'], ctaScrollsClear: true } },
   ad: { stage: async (p) => { await veteran(p); await p.evaluate(() => { window.game.monetization.demoAd(true); }); await p.waitForTimeout(400); },
     audit: { root: '#adOverlay', primary: null, mustSee: ['#adKind', '#adCountdown'] } },
 };
 // shared in-page helper for the scenes above
 const PAGE_HELPERS = `window.frozenRoundIn = ${frozenRound.toString()};`;
+
+/** FTUE-2 FIX: a notch / Dynamic Island / home bar -- env(safe-area-inset-*)
+ *  as an iPhone reports it (Chromium's override; the page reloads to pick
+ *  it up everywhere). */
+export async function safeArea(page, insets) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, right: 0, bottom: 0, left: 0, ...insets } });
+  await page.reload();
+  await page.waitForFunction(BOOT_WAIT);
+}
 
 function vpKind(kind) {
   if (kind === 'desk') return { mobile: false, deviceScaleFactor: 1 };
@@ -256,6 +312,7 @@ export function judge(scene, a, vp) {
   if (a.pageScroll) probs.push('page scrolls');
   if (a.unreachable.length) probs.push('unreachable: ' + a.unreachable.slice(0, 4).join(' | '));
   if (a.covered.length) probs.push('covered: ' + a.covered.slice(0, 3).join(' | '));
+  if (a.ctaOver && a.ctaOver.length) probs.push('main action over text: ' + a.ctaOver.slice(0, 3).join(' | '));
   if (a.overlaps.length) probs.push('overlap: ' + a.overlaps.slice(0, 3).join(' | '));
   if (a.primary) {
     if (a.primary.missing) probs.push('main action missing ' + a.primary.missing);
@@ -303,8 +360,9 @@ export async function auditScene(page, sceneName) {
   return a;
 }
 
-async function openVp(url, [w, h, kind]) {
+async function openVp(url, [w, h, kind, , insets]) {
   const g = await openGame(url, { viewport: { width: w, height: h }, ...vpKind(kind) });
+  if (insets) await safeArea(g.page, insets);
   await g.context.addInitScript(PAGE_HELPERS);
   await g.page.addScriptTag({ content: PAGE_HELPERS });
   return g;
