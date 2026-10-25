@@ -356,6 +356,24 @@ async function screenChecks(url) {
     out.push(report('laptop: no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
     await g.browser.close();
   }
+  // the daily reward on a Windows laptop at 125 % scaling: its claim burst
+  // made the panel scroll (reproduced on the base at 1000×610 / 1180×600)
+  {
+    const g = await openGame(url, { viewport: { width: 1000, height: 610 }, mobile: false, deviceScaleFactor: 1.25 });
+    const rows = [];
+    for (const [w, h] of [[1000, 610], [1180, 600], [1229, 560], [1300, 545]]) {
+      await g.page.setViewportSize({ width: w, height: h });
+      await veteran(g.page, { loginDue: true });
+      await g.page.evaluate(() => { const gm = window.game; gm.bootFirstRun = false; gm.maybeShowLoginReward(); });
+      await g.page.waitForTimeout(700);
+      await g.page.evaluate(() => document.getElementById('btnLoginClaim').click());
+      let worst = 0;
+      for (let i = 0; i < 8; i++) { await g.page.waitForTimeout(120); worst = Math.max(worst, await g.page.evaluate(() => { const el = document.querySelector('.login-panel'); return el.scrollHeight - el.clientHeight; })); }
+      rows.push({ at: `${w}x${h}`, overflow: worst });
+    }
+    out.push(report('daily reward on a 125 % Windows laptop (1000×610, 1180×600, 1229×560, 1300×545): the claim and its burst never make the panel scroll', rows.every(r => r.overflow <= 1), JSON.stringify(rows)));
+    await g.browser.close();
+  }
   // the owner's TEST panel: nothing a player can reach
   {
     const g = await open(url, 'i16p');
