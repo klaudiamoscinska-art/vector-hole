@@ -250,7 +250,7 @@ export const SCENES = {
   shop: { stage: async (p) => { await veteran(p); await p.evaluate(() => window.game.openWarsztatScreen()); await p.waitForTimeout(500); },
     audit: { root: '#shopScreen', primary: null, mustSee: ['#tabSkins', '#bottomNav'], mustPeek: ['#skinGrid'] } },
   challenges: { stage: async (p) => { await veteran(p); await p.evaluate(() => window.game.openChallengesScreen()); await p.waitForTimeout(500); },
-    audit: { root: '#challengesScreen', primary: '#btnPlayDaily', mustSee: ['#bottomNav'] } },
+    audit: { root: '#challengesScreen', primary: '#btnPlayDaily', mustSee: ['#bottomNav'], ctaScrollsClear: true } },
   profile: { stage: async (p) => { await veteran(p); await p.evaluate(() => window.game.openProfileScreen()); await p.waitForTimeout(400); },
     audit: { root: '#profileScreen', primary: '#btnProfileBack' } },
   resetConfirm: { stage: async (p) => { await veteran(p); await p.evaluate(() => { window.game.openProfileScreen(); document.getElementById('btnResetProfile').click(); }); await p.waitForTimeout(400); },
