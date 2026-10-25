@@ -36,6 +36,9 @@ są w historii gita (`git log -- docs/`).
   stronie-hoście, obrót, pełny ekran, zmiana rozmiaru, mysz, klawiatura,
   dotyk, fokus), w `run-all`. `qa/v21.mjs`: 844×390 ma teraz układ
   kompaktowy (zamierzona zmiana kontraktu).
+  `qa/bridge.mjs` (E2): 7 nowych listenerów sterowania jest zadeklarowanych
+  w `ADDED_SINCE_BASE` — start modułu musi mieć dokładnie listenery bazy
+  63b50d0 plus te, więc zdublowany lub zgubiony nadal oblewa test.
 
 ## R1: runda przerwana daje tylko częściowe monety i XP (decyzja właścicielki 24.10.2026; schemat zapisu nadal v13)
 Zmiana kontraktu rozgrywki zatwierdzona przez właścicielkę: pełne nagrody
