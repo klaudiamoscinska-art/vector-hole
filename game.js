@@ -207,7 +207,13 @@ const CONFIG = {
     // animation (count-ups 1.1 s, XP bar 0.35 s + 1.1 s) and a beat to read it.
     resultCelebrationDelayMs: 2400,
     // The very first Arena result offers no "×2 MONET · REKLAMA".
-    firstResultNoAd: true
+    firstResultNoAd: true,
+    // FTUE-3 "Pierwsze 5 minut": the first Arena round (no finished round
+    // yet, not a Daily or a friend's challenge) runs without the evolution
+    // cards -- they paused it twice in its first 6-32 s with a 3-way choice
+    // before the player knew the basics. They appear from this many
+    // finished rounds on, the first offer marked as new.
+    evolutionFromRuns: 1
   },
   // v22: no tutorial -- the first Arena round teaches the game (owner: "gracz
   // ma poznawać grę podczas pierwszej rozgrywki; gdy nie wie, co zrobić,
@@ -12206,7 +12212,8 @@ class Game {
    *  demo of the effect, a plain name, a WHEN tag and a one-line description
    *  with real numbers (player feedback: the old 3 tiny icon cards didn't
    *  say what you were picking). */
-  showPowerCards(cards, onPick, subtitle) {
+  showPowerCards(cards, onPick, subtitle, kicker = null) {
+    document.getElementById('evolutionKicker').textContent = kicker || 'EWOLUCJA';
     const grid = document.getElementById('evolutionCards');
     grid.innerHTML = '';
     cards.forEach((card, i) => {
@@ -13211,6 +13218,11 @@ class Game {
     this.activeMutations = new Set();
     this.evolutionOffersTriggered = new Set();
     this.evolutionPending = false;
+    // FTUE-3: no evolution cards in the first Arena round; the first offer
+    // of the round they arrive in says they are new.
+    const regularRound = !this.isDailyRun && !this.challenge;
+    this.evolutionQuiet = regularRound && arenaRunsOf(this.save) < CONFIG.ftue.evolutionFromRuns;
+    this.evolutionIntro = regularRound && arenaRunsOf(this.save) === CONFIG.ftue.evolutionFromRuns;
     clearTimeout(this.evolutionAutoPickTimer);
     this.magnetUntil = 0;
     this.speedBoostUntil = 0;
@@ -14412,7 +14424,8 @@ class Game {
     this.evolutionPending = true;
     const cards = this.pickMutationCards();
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id) });
-    this.showPowerCards(cards, id => this.pickMutation(id), 'Działa do końca tej rundy. Gra czeka, aż wybierzesz.');
+    this.showPowerCards(cards, id => this.pickMutation(id), 'Działa do końca tej rundy. Gra czeka, aż wybierzesz.', this.evolutionIntro ? 'NOWOŚĆ · EWOLUCJA' : null);
+    this.evolutionIntro = false;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionAutoPickTimer = setTimeout(() => {
       if (this.evolutionPending && cards[0]) this.pickMutation(cards[0].id);
@@ -14460,7 +14473,7 @@ class Game {
   }
 
   checkEvolutionTriggers() {
-    if (this.evolutionPending) return;
+    if (this.evolutionPending || this.evolutionQuiet) return;
     for (const r of CONFIG.evolution.triggerRadii) {
       if (this.player.radius >= r && !this.evolutionOffersTriggered.has(r)) {
         this.evolutionOffersTriggered.add(r);
@@ -17086,6 +17099,7 @@ const I18N_EN = {
   "NOWE": "NEW",
   "NOWE OBIEKTY DO POCHŁONIĘCIA": "NEW OBJECTS TO SWALLOW",
   "NOWOŚĆ W ODPRAWIE": "NEW IN THE BRIEFING",
+  "NOWOŚĆ · EWOLUCJA": "NEW · EVOLUTION",
   "NOWY": "NEW",
   "NOWY BUDYNEK": "NEW BUILDING",
   "NOWY REKORD": "NEW RECORD",
