@@ -464,10 +464,14 @@
         </div>
       </div>
 
-      <button id="btnProfileBack" class="btn btn-secondary">POWRÓT</button>
       <div class="profile-danger-zone">
         <button id="btnResetProfile" class="btn btn-danger">RESETUJ PROFIL</button>
       </div>
+    </div>
+    <!-- FTUE-2 FIX: the way back is the screen's footer, under the
+         scrolling settings (it floated over Muzyka / Szafa grająca). -->
+    <div class="profile-footer">
+      <button id="btnProfileBack" class="btn btn-secondary">POWRÓT</button>
     </div>
   </div>
 
@@ -897,8 +901,10 @@
           <button id="btnWatchAd" class="btn btn-gold">×2 MONET · REKLAMA</button>
           <button id="btnShare" class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> WYZWIJ ZNAJOMEGO</button>
         </div>
+        <!-- FTUE-2 FIX: in the action bar, so it is always in view (it
+             was under the sticky bar on a phone). -->
+        <button id="btnMenu" class="btn btn-link">Wróć do Miasta</button>
       </div>
-      <button id="btnMenu" class="btn btn-link">Wróć do Miasta</button>
       </div>
     </div>
   </div>

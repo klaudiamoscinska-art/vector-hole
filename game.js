@@ -5874,13 +5874,18 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   // Core City progress builds the remaining 15.
   const built = CITY_STARTER_COUNT + progress * (CITY_SLOT_COUNT - CITY_STARTER_COUNT);
   const slotW = w / CITY_SLOT_COUNT;
+  // FTUE-2 FIX: the buildings (and the next one's scaffold + crane) rise
+  // only up to opts.skyTop -- the bottom of the text over the canvas --
+  // so they never run behind the headline on a short card.
+  const skyTop = clamp(opts.skyTop || 14, 14, ground - 10);
+  let skyline = ground;
   // Draw back-to-front by height so tall towers don't hide behind houses.
   const sorted = slots.slice().sort((a, b) => b.h - a.h);
   let site = null;
   sorted.forEach(s => {
     const bw = slotW * s.w * 1.25;
     const x = s.x * w - bw / 2;
-    const fullH = s.h * (ground - 14);
+    const fullH = s.h * (ground - skyTop - (opts.skyTop ? 12 : 0));
     const col = CITY_PALETTE[s.buildRank % CITY_PALETTE.length];
     const state = s.buildRank < Math.floor(built) ? 'built' : (s.buildRank === Math.floor(built) ? 'building' : 'ghost');
     if (state === 'ghost') {
@@ -5895,6 +5900,7 @@ function drawCityScene(canvas, progress, t, opts = {}) {
     const frac = state === 'built' ? 1 : (built - Math.floor(built));
     const bh = Math.max(2, fullH * frac);
     const top = ground - bh;
+    skyline = Math.min(skyline, state === 'building' ? ground - fullH - 12 : top);
     const body = ctx.createLinearGradient(0, top, 0, ground);
     body.addColorStop(0, shadeColor(col, -0.55)); body.addColorStop(1, shadeColor(col, -0.85));
     ctx.fillStyle = body; ctx.fillRect(x, top, bw, bh);
@@ -5950,19 +5956,42 @@ function drawCityScene(canvas, progress, t, opts = {}) {
     ctx.font = `700 10px ${FONT_UI}`;
     const label = opts.siteLabel, tw = ctx.measureText(label).width;
     const bob = Math.sin(t * 2.4) * 2.5;
-    const pw = tw + 16, ph = 18, px = clamp(site.x - pw / 2, 6, w - pw - 6), py = site.y - ph - 12 + bob;
+    const pw = tw + 16, ph = 18, px = clamp(site.x - pw / 2, 6, w - pw - 6);
+    // FTUE-2 FIX: above the crane while that is clear of the headline;
+    // otherwise on the ground strip under the site, pointing up -- it ran
+    // over "Każda runda Areny…" on a phone on its side and a small window.
+    const above = !opts.skyTop || site.y - ph - 14 >= opts.skyTop;
+    const py = above ? site.y - ph - 12 + bob : ground - ph / 2 + 2;
     roundRectPath(ctx, px, py, pw, ph, 9);
     ctx.fillStyle = 'rgba(239, 203, 99, 0.95)'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(site.x - 5, py + ph); ctx.lineTo(site.x + 5, py + ph); ctx.lineTo(site.x, py + ph + 6); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    if (above) { ctx.moveTo(site.x - 5, py + ph); ctx.lineTo(site.x + 5, py + ph); ctx.lineTo(site.x, py + ph + 6); }
+    else { ctx.moveTo(site.x - 5, py); ctx.lineTo(site.x + 5, py); ctx.lineTo(site.x, py - 6 + bob * 0.6); }
+    ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#04101D'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(label, px + pw / 2, py + ph / 2 + 0.5);
     ctx.restore();
+    canvas.__siteLabel = { x: px, y: py - 3, w: pw, h: ph + 6, above }; // (QA: qa/devices.mjs)
   }
+  canvas.__skyline = { top: skyline, skyTop }; // (QA: the tallest building / crane vs the headline)
   // A slow scan line sweeping the skyline -- "the city is alive".
   const sx = ((t * 40) % (w + 80)) - 40;
   const scan = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0);
   scan.addColorStop(0, 'rgba(80,240,250,0)'); scan.addColorStop(0.5, 'rgba(80,240,250,0.07)'); scan.addColorStop(1, 'rgba(80,240,250,0)');
   ctx.fillStyle = scan; ctx.fillRect(sx - 30, 0, 60, ground);
+}
+
+/** FTUE-2 FIX: a mission card's story and goals scroll in their own box
+ *  (.mc-scroll: the story column, the goals column -- side by side on a
+ *  landscape frame) and its buttons (footerSel) stay under it -- a sticky
+ *  GRAJ / START covered the goals on a short screen. Returns the box. */
+function splitMissionCard(card, footerSel) {
+  const scroll = document.createElement('div'), colA = document.createElement('div'), colB = document.createElement('div');
+  scroll.className = 'mc-scroll'; colA.className = 'mc-col mc-col-a'; colB.className = 'mc-col mc-col-b';
+  [...card.children].forEach(el => { if (!el.matches(footerSel)) (el.matches('.mc-head, .mc-name, .mc-nela') ? colA : colB).appendChild(el); });
+  scroll.append(colA, colB);
+  card.prepend(scroll);
+  return scroll;
 }
 
 const DISTRICT_COLORS = { plac: '#50F0FA', park: '#46D99A', port: '#EFCB63', galeria: '#FF54AD', dachy: '#9875FF', rdzen: '#CBD5E1' };
@@ -7877,6 +7906,7 @@ class Game {
     this.hitStopUntil = 0;
     this.zoom = 1;
     this.viewScale = 1; // v21: big-screen world scale (see resize())
+    this.safe = { t: 0, r: 0, b: 0, l: 0 }; // FTUE-2 FIX: safe-area insets (see resize())
     this.difficultyT = 0;
     this.botTuning = { aggro: 320, prey: 420, objects: 480, decision: 0.5, passive: 0 };
     this.running = false;
@@ -7963,6 +7993,23 @@ class Game {
     // one-off slow session can't pin a device to low quality forever.
     this.applyGfx(clamp(Math.round(this.save.settings.gfxLevel != null ? this.save.settings.gfxLevel : 2) + 1, 0, 2));
     window.addEventListener('resize', () => { this.resize(); this.updateStripEdges(); this.reserveConsentSpace(); });
+    // FTUE-2 FIX: an iPhone home-screen app turned to landscape fired its
+    // resize while #app still had the old (portrait) height and never again
+    // once the box settled -- the game kept the portrait layout in a
+    // landscape frame and a canvas twice the screen's height, its middle
+    // (the vortex) at the bottom edge. Whatever changes the app box (a
+    // turn, a toolbar, a portal frame) now re-measures once it has settled.
+    this.relayoutSoon = () => {
+      if (this.relayoutRaf) return;
+      this.relayoutRaf = requestAnimationFrame(() => {
+        this.relayoutRaf = 0;
+        const box = document.getElementById('app').getBoundingClientRect();
+        if (Math.round(box.width) === this.width && Math.round(box.height) === this.height) return;
+        this.resize(); this.updateStripEdges(); this.reserveConsentSpace();
+      });
+    };
+    if (window.ResizeObserver) new ResizeObserver(this.relayoutSoon).observe(document.getElementById('app'));
+    window.addEventListener('orientationchange', () => { [0, 150, 400, 900].forEach(ms => setTimeout(this.relayoutSoon, ms)); });
     this.bindDistrictStrip();
     this.bindInput();
     this.bindUI();
@@ -8010,11 +8057,27 @@ class Game {
     const box = document.getElementById('app').getBoundingClientRect();
     this.width = Math.round(box.width) || window.innerWidth;
     this.height = Math.round(box.height) || window.innerHeight;
-    this.canvas.width = this.width * dpr;
-    this.canvas.height = this.height * dpr;
+    // (re-sizing a canvas clears it: only when the size really changed)
+    if (this.canvas.width !== this.width * dpr || this.canvas.height !== this.height * dpr) {
+      this.canvas.width = this.width * dpr;
+      this.canvas.height = this.height * dpr;
+    }
     this.canvas.style.width = this.width + 'px';
     this.canvas.style.height = this.height + 'px';
     this.dpr = dpr;
+    // FTUE-2 FIX: the notch / Dynamic Island / home bar, in CSS px -- what
+    // the canvas draws at an edge (minimap, edge arrows, banners) keeps
+    // clear of them like the DOM HUD does with env(safe-area-inset-*).
+    let probe = document.getElementById('safeAreaProbe');
+    if (!probe) {
+      probe = document.createElement('div');
+      probe.id = 'safeAreaProbe';
+      probe.setAttribute('aria-hidden', 'true');
+      probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+      document.body.appendChild(probe);
+    }
+    const ps = getComputedStyle(probe);
+    this.safe = { t: parseFloat(ps.paddingTop) || 0, r: parseFloat(ps.paddingRight) || 0, b: parseFloat(ps.paddingBottom) || 0, l: parseFloat(ps.paddingLeft) || 0 };
     const zc = CONFIG.juice.zoom;
     this.viewScale = clamp(Math.sqrt(this.width * this.height / zc.viewArea), 1, zc.viewScaleMax);
     if (this.mode === 'campaign') this.zoom = this.viewScale;
@@ -8043,6 +8106,7 @@ class Game {
       : wide ? clamp(Math.min(this.height / 620, this.width / 1100), 1, 1.6)
         : clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
     document.documentElement.style.setProperty('--ui-scale', this.uiScale.toFixed(3));
+    this.hudBoxes = null; // FTUE-2 FIX: HUD panel boxes are re-read (fadeHudUnderHole())
     if (document.body.classList.contains('wide') !== wide || document.body.classList.contains('compact') !== compact) {
       document.body.classList.toggle('wide', wide);
       document.body.classList.toggle('compact', compact);
@@ -8991,7 +9055,16 @@ class Game {
     this.hubCityLastT = t;
     // Ease toward the target (~1.5 s for any jump), never overshooting.
     if (this.hubCityShown < target) this.hubCityShown = Math.min(target, this.hubCityShown + Math.max(dt * 0.03, (target - this.hubCityShown) * dt * 2.2));
-    drawCityScene(document.getElementById('hubCityCanvas'), this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK' });
+    // FTUE-2 FIX: the skyline stays under the card's headline (the pitch);
+    // its height is re-read twice a second (layout px of the same layer --
+    // no DOM rects inside a zoomed layer).
+    const cv = document.getElementById('hubCityCanvas');
+    if (!this.hubCityReserveAt || t - this.hubCityReserveAt > 0.5 || t < this.hubCityReserveAt) {
+      const pitch = document.querySelector('#hubHeroStage .hub-city-pitch');
+      this.hubCityReserve = pitch && pitch.offsetHeight ? pitch.offsetTop + pitch.offsetHeight - cv.offsetTop + 6 : 0;
+      this.hubCityReserveAt = t;
+    }
+    drawCityScene(cv, this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK', skyTop: this.hubCityReserve });
   }
 
   renderDistrictTiles(t) {
@@ -10357,6 +10430,7 @@ class Game {
       document.getElementById(s).classList.toggle('hidden', s !== id);
     });
     document.getElementById('hud').classList.toggle('hidden', true);
+    if (!this.running) this.setBoardLive(false);
     document.getElementById('pauseSheet').classList.add('hidden');
     document.getElementById('leaveConfirm').classList.add('hidden');
     document.getElementById('resetProfileConfirm').classList.add('hidden');
@@ -10384,6 +10458,20 @@ class Game {
       if (id !== 'gameOverScreen' && id !== 'missionResultScreen') this.sound.setScene('menu');
     }
     this.renderConsentBar();
+  }
+
+  /** FTUE-2 FIX: the game board outside a round. Every menu screen fades
+   *  in from transparent (.screen's fade-in) while the one it replaces is
+   *  already gone, so for 0.25 s the canvas behind showed through -- still
+   *  holding the round's last frame (a huge vortex) on every tab switch
+   *  after a round. Off a round the board is cleared and hidden (the page
+   *  behind it has the menus' own background); a round shows it again. */
+  setBoardLive(live) {
+    document.body.classList.toggle('board-idle', !live);
+    if (!live) {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
   }
 
   hideAllOverlays() {
@@ -10752,6 +10840,7 @@ class Game {
     this.briefingBoosters = new Set((opts.preselect || []).filter(id => this.boostersUnlocked() && this.boosterUseful(id, def)));
     const card = document.getElementById('briefingCard');
     card.innerHTML = this.missionCardHtml(def, { nela: true, play: true, launch: true });
+    const scroll = splitMissionCard(card, '.mc-play');
     card.style.setProperty('--d-color', DISTRICT_COLORS[def.district] || '#50F0FA');
     const h = card.querySelector('.mc-name');
     if (h) h.id = 'briefingName';
@@ -10759,6 +10848,7 @@ class Game {
     document.getElementById('missionBriefing').classList.remove('hidden');
     const sheet = document.querySelector('#missionBriefing .briefing-sheet');
     if (sheet) sheet.scrollTop = 0;
+    scroll.scrollTop = 0;
     this.sound.ui();
     this.analytics.track('mission_briefing', { missionId });
   }
@@ -10950,6 +11040,7 @@ class Game {
       `<button type="button" class="btn btn-link start-back" id="btnMissionBack">` +
       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>` +
       `${this.boostersUnlocked() ? 'Zmień wzmocnienia' : 'Wróć do mapy'}</button>`;
+    splitMissionCard(card, '#btnMissionGo, .start-tap, .start-back');
     document.getElementById('missionStartOverlay').classList.remove('hidden');
     this.sound.nela();
   }
@@ -11562,6 +11653,7 @@ class Game {
 
     this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
+    this.setBoardLive(true);
     this.monetization.gameplayStart();
     this.state = GameState.PLAYING;
     // v15: every mission waits on a tap (owner: "rozpoczęcie levelu powinno
@@ -12402,12 +12494,7 @@ class Game {
     // use WORLD_W/H). This only changes how the camera frames the box --
     // movement extent is untouched.
     const cb = CONFIG.campaign.bounds;
-    const cbW = cb.maxX - cb.minX, cbH = cb.maxY - cb.minY;
-    const hw = this.viewHalfW, hh = this.viewHalfH;
-    this.camera.x = clamp(this.player.x, cb.minX + hw, cb.maxX - hw);
-    this.camera.y = clamp(this.player.y, cb.minY + hh, cb.maxY - hh);
-    if (cbW < hw * 2) this.camera.x = (cb.minX + cb.maxX) / 2;
-    if (cbH < hh * 2) this.camera.y = (cb.minY + cb.maxY) / 2;
+    this.followCamera(cb.minX, cb.minY, cb.maxX, cb.maxY);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
     this.updateCampaignHUD();
@@ -12811,6 +12898,7 @@ class Game {
 
     this.drawDarkness(ctx);
     if (this.showMinimap) this.drawCampaignMinimap(ctx);
+    this.fadeHudUnderHole();
     this.drawCampaignGoalArrow(ctx, time);
     this.drawJuiceScreen(ctx, this.mission ? this.mission.timeRemaining : undefined);
   }
@@ -12912,10 +13000,12 @@ class Game {
     let best = null, bd = Infinity;
     for (const e of targets) { const d = dist(p.x, p.y, e.x, e.y); if (d < bd) { bd = d; best = e; } }
     const sx = (best.x - this.camera.x) * z + this.width / 2, sy = (best.y - this.camera.y) * z + this.height / 2;
-    const cx = this.width / 2, cy = this.height / 2, margin = 46;
+    const cx = this.width / 2, cy = this.height / 2, margin = 30;
     const angle = Math.atan2(sy - cy, sx - cx);
-    const k = Math.min(Math.abs((cx - margin) / (Math.cos(angle) || 1e-6)), Math.abs((cy - margin) / (Math.sin(angle) || 1e-6)));
-    const ex = cx + Math.cos(angle) * k, ey = cy + Math.sin(angle) * k;
+    // FTUE-2 FIX: on the edge of what the player sees -- not under the HUD
+    // clock strip (it sat right below it on an iPhone, a stray cyan
+    // triangle), the goal panel, the minimap or a notch.
+    const { x: ex, y: ey } = this.edgeMarkerPos(angle, margin);
     const color = !(best instanceof CampaignEntity) ? '#46D99A' : best.type === 'gate' ? '#50F0FA' : this.campaignEntityColor(best);
     const bob = 4 * Math.sin(time * 6);
     ctx.save();
@@ -12978,13 +13068,14 @@ class Game {
   }
 
   drawCampaignMinimap(ctx) {
-    const size = this.minimapSize(), margin = this.minimapMargin();
-    const px = this.width - size - margin, py = this.height - size - margin;
+    const size = this.minimapSize();
+    const { l: px, t: py } = this.minimapRect();
     const b = CONFIG.campaign.bounds;
     const scaleX = size / (b.maxX - b.minX), scaleY = size / (b.maxY - b.minY);
 
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.globalAlpha = this.hudFade('minimap', this.minimapRect());
     ctx.drawImage(this.cityFloor.minimap(Math.round(size * this.dpr), this.campaignTheme(), b), px, py, size, size);
     ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
     ctx.lineWidth = 1;
@@ -13130,6 +13221,7 @@ class Game {
 
     this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
+    this.setBoardLive(true);
     this.monetization.gameplayStart();
     this.state = GameState.PLAYING;
 
@@ -13885,9 +13977,32 @@ class Game {
       const alpha = clamp(b.life / (b.maxLife * 0.3), 0, 1);
       // FTUE-2: on a short landscape frame the banner is smaller and sits
       // higher, so it never covers the vortex in the middle.
-      const size = Math.min(58, this.width * 0.1, this.height * 0.11) * (b.scale || 1);
+      let size = Math.min(58, this.width * 0.1, this.height * 0.11) * (b.scale || 1);
+      // FTUE-2 FIX: the whole line always fits between the safe edges, even
+      // at the pop's 1.2x peak ("ZŁOTY RDZEŃ!" ran off a 402 px iPhone);
+      // the sub-line shrinks the same way instead of reaching the edges.
+      // A HUD panel on the right at the banner's height (the standings, a
+      // mission goal on a short landscape frame) narrows the free band.
+      // (on a narrow portrait screen, where that band would be too thin,
+      // the banner moves below the panel instead).
+      const sf = this.safe || { l: 0, r: 0, t: 0 };
+      let by = Math.max(this.height * (this.layout === 'compact' ? 0.25 : 0.3), sf.t + size * 1.6);
+      let left = sf.l, right = this.width - sf.r, below = 0;
+      for (const h of this.hudBoxes || []) {
+        if (h.el.id === 'btnPause' || h.el.id === 'hud-tier-strip' || h.l < this.width / 2) continue;
+        if (h.t < by + size * 1.3 && h.b > by - size * 0.8) { right = Math.min(right, h.l - 6); below = Math.max(below, h.b); }
+      }
+      if (right - left < 0.6 * (this.width - sf.l - sf.r)) { right = this.width - sf.r; by = below + size * 0.9; }
+      const room = right - left - 28;
+      ctx.font = `${size}px ${FONT_DISPLAY}`;
+      const tw = ctx.measureText(b.text).width + 8;
+      if (tw * 1.2 > room) size *= room / (tw * 1.2);
       ctx.globalAlpha = alpha;
-      ctx.translate(this.width / 2, this.height * (this.layout === 'compact' ? 0.25 : 0.3));
+      const bx = (left + right) / 2;
+      ctx.font = `${size}px ${FONT_DISPLAY}`;
+      const bw = (ctx.measureText(b.text).width + 8) * 1.2;
+      this.lastBannerBox = { l: bx - bw / 2, r: bx + bw / 2, t: by - size * 0.72, b: by + size * 0.72, size }; // (QA: at the pop's 1.2x peak)
+      ctx.translate(bx, by);
       ctx.scale(pop, pop);
       ctx.rotate(-0.04);
       ctx.textAlign = 'center';
@@ -13902,7 +14017,12 @@ class Game {
       ctx.fillText(b.text, 0, 0);
       if (b.sub) {
         ctx.shadowBlur = 0;
-        ctx.font = `800 ${Math.max(12, size * 0.26)}px ${FONT_UI}`;
+        let subSize = Math.max(12, size * 0.26);
+        ctx.font = `800 ${subSize}px ${FONT_UI}`;
+        const sw = ctx.measureText(b.sub).width + 8;
+        if (sw * 1.2 > room) { subSize = Math.max(10, subSize * room / (sw * 1.2)); ctx.font = `800 ${subSize}px ${FONT_UI}`; }
+        const sw2 = (ctx.measureText(b.sub).width + 8) * 1.2;
+        Object.assign(this.lastBannerBox, { subL: bx - sw2 / 2, subR: bx + sw2 / 2, b: by + size * 0.72 + subSize });
         ctx.lineWidth = 4;
         ctx.strokeText(b.sub, 0, size * 0.72);
         ctx.fillStyle = '#f2f8ff';
@@ -14603,11 +14723,7 @@ class Game {
     targetZoom = Math.min(targetZoom, zc.holeScreenFrac * Math.min(this.width, this.height) / this.player.radius);
     targetZoom = Math.max(targetZoom, zc.floor, this.width / WORLD_W, this.height / WORLD_H);
     this.zoom += (targetZoom - this.zoom) * Math.min(1, dt * zc.lerp);
-    const hw = this.viewHalfW, hh = this.viewHalfH;
-    this.camera.x = clamp(this.player.x, hw, WORLD_W - hw);
-    this.camera.y = clamp(this.player.y, hh, WORLD_H - hh);
-    if (WORLD_W < hw * 2) this.camera.x = WORLD_W / 2;
-    if (WORLD_H < hh * 2) this.camera.y = WORLD_H / 2;
+    this.followCamera(0, 0, WORLD_W, WORLD_H);
 
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
@@ -14806,16 +14922,102 @@ class Game {
   // (130 px was a third of an iPhone's 390 px height on its side).
   minimapSize() { return (this.width < 400 ? 104 : this.layout === 'compact' ? 92 : 130) * (this.uiScale || 1); }
   minimapMargin() { return (this.layout === 'compact' ? 10 : 16) * (this.uiScale || 1); }
+  /** FTUE-2 FIX: the minimap's box on screen (CSS px), clear of the
+   *  home bar / a side notch (it sat under an iPhone's Dynamic Island). */
+  minimapRect() {
+    const size = this.minimapSize(), m = this.minimapMargin(), sf = this.safe || { r: 0, b: 0 };
+    const l = this.width - size - m - sf.r, t = this.height - size - m - sf.b;
+    return { l, t, r: l + size, b: t + size };
+  }
+
+  /** FTUE-2 FIX: the DOM HUD panels (standings, mission goal, the clock
+   *  strip) fade while the vortex is under one -- the same rule as the
+   *  minimap (hudFade()). Their boxes come from offset* (layout px in the
+   *  HUD's own zoomed space, times --ui-scale; no DOM rects inside a zoomed
+   *  layer), re-read a few times a second, not every frame. */
+  fadeHudUnderHole() {
+    if (!this.player) return;
+    this.hudFadeTick = (this.hudFadeTick || 0) + 1;
+    if (!this.hudBoxes || this.hudFadeTick % 20 === 0) {
+      const s = this.uiScale || 1;
+      this.hudBoxes = ['btnPause', 'hud-topright', 'hud-goal', 'hud-tier-strip'].map(id => {
+        const el = document.getElementById(id);
+        if (!el || el.classList.contains('hidden') || !el.offsetWidth) return null;
+        let x = 0, y = 0;
+        for (let a = el; a && a.id !== 'hud'; a = a.offsetParent) { x += a.offsetLeft; y += a.offsetTop; }
+        return { el, l: x * s, t: y * s, r: (x + el.offsetWidth) * s, b: (y + el.offsetHeight) * s };
+      }).filter(Boolean);
+    }
+    const c = this.playerScreenCircle();
+    this.hudBoxes.forEach(b => {
+      if (b.el.id === 'btnPause') return;
+      const under = !!c && c.x + c.r > b.l && c.x - c.r < b.r && c.y + c.r > b.t && c.y - c.r < b.b;
+      if (b.el.classList.contains('under-hole') !== under) b.el.classList.toggle('under-hole', under);
+    });
+  }
+
+  /** FTUE-2 FIX: where an edge arrow toward something off screen goes:
+   *  on the border of the visible field (inside the safe area), slid out
+   *  of any HUD panel or the minimap toward the middle of the screen. */
+  edgeMarkerPos(angle, margin) {
+    const sf = this.safe || { t: 0, r: 0, b: 0, l: 0 };
+    const l = sf.l + margin, r = this.width - sf.r - margin, t = sf.t + margin, b = this.height - sf.b - margin;
+    const cx = (l + r) / 2, cy = (t + b) / 2, cos = Math.cos(angle), sin = Math.sin(angle);
+    const k = Math.min(Math.abs((r - cx) / (cos || 1e-6)), Math.abs((b - cy) / (sin || 1e-6)));
+    let x = cx + cos * k, y = cy + sin * k;
+    const boxes = (this.hudBoxes || []).concat(this.showMinimap ? [this.minimapRect()] : []);
+    for (let pass = 0; pass < 2; pass++) {
+      for (const h of boxes) {
+        if (x > h.l - margin && x < h.r + margin && y > h.t - margin && y < h.b + margin) y = y < cy ? h.b + margin : h.t - margin;
+      }
+    }
+    return { x, y: clamp(y, t, b) };
+  }
+
+  /** The camera follows the player inside the box it may show (the city;
+   *  a mission's bounds). FTUE-2 FIX: the box's edge stops at the edge of
+   *  the safe area, not at the screen's -- at the city's edge the vortex
+   *  was under an iPhone's notch / Dynamic Island / home bar. How much of
+   *  the city is in view is unchanged (only what the notch hides moves). */
+  followCamera(x0, y0, x1, y1) {
+    const hw = this.viewHalfW, hh = this.viewHalfH, z = this.zoom, sf = this.safe || { t: 0, r: 0, b: 0, l: 0 };
+    const lx = x0 + hw - sf.l / z, hx = x1 - hw + sf.r / z, ly = y0 + hh - sf.t / z, hy = y1 - hh + sf.b / z;
+    this.camera.x = lx > hx ? (x0 + x1) / 2 - (sf.l - sf.r) / (2 * z) : clamp(this.player.x, lx, hx);
+    this.camera.y = ly > hy ? (y0 + y1) / 2 - (sf.t - sf.b) / (2 * z) : clamp(this.player.y, ly, hy);
+  }
+
+  /** FTUE-2 FIX: the player's vortex on screen (CSS px). */
+  playerScreenCircle() {
+    const p = this.player;
+    if (!p) return null;
+    return { x: (p.x - this.camera.x) * this.zoom + this.width / 2, y: (p.y - this.camera.y) * this.zoom + this.height / 2, r: p.radius * this.zoom };
+  }
+
+  /** FTUE-2 FIX: a HUD box the vortex is under fades (it never hides the
+   *  hole near an edge of the city -- the minimap, the standings, the
+   *  goal panel) and comes back once the vortex leaves it. Returns the
+   *  box's opacity for this frame, eased (key = which box). */
+  hudFade(key, box, low = 0.28) {
+    const c = this.playerScreenCircle();
+    const pad = 6;
+    const under = !!c && c.x + c.r > box.l - pad && c.x - c.r < box.r + pad && c.y + c.r > box.t - pad && c.y - c.r < box.b + pad;
+    const f = this.hudFades || (this.hudFades = {});
+    const now = performance.now();
+    const prev = f[key] || { a: 1, t: now };
+    const k = Math.min(1, (now - prev.t) / 180);
+    const a = prev.a + ((under ? low : 1) - prev.a) * k;
+    f[key] = { a, t: now };
+    return a;
+  }
 
   drawMinimap(ctx) {
     const size = this.minimapSize();
-    const margin = this.minimapMargin();
-    const px = this.width - size - margin;
-    const py = this.height - size - margin;
+    const { l: px, t: py } = this.minimapRect();
     const scale = size / WORLD_W;
 
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.globalAlpha = this.hudFade('minimap', this.minimapRect());
     ctx.drawImage(this.cityFloor.minimap(Math.round(size * this.dpr), null, { minX: 0, minY: 0, maxX: WORLD_W, maxY: WORLD_H }), px, py, size, size);
     ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
     ctx.lineWidth = 1;
@@ -14856,10 +15058,9 @@ class Game {
     const sx = (g.x - this.camera.x) * this.zoom + this.width / 2;
     const sy = (g.y - this.camera.y) * this.zoom + this.height / 2;
     if (sx >= 0 && sx <= this.width && sy >= 0 && sy <= this.height) return;
-    const cx = this.width / 2, cy = this.height / 2, margin = 40;
+    const cx = this.width / 2, cy = this.height / 2, margin = 30;
     const angle = Math.atan2(sy - cy, sx - cx);
-    const ex = clamp(cx + Math.cos(angle) * (cx - margin), margin, this.width - margin);
-    const ey = clamp(cy + Math.sin(angle) * (cy - margin), margin, this.height - margin);
+    const { x: ex, y: ey } = this.edgeMarkerPos(angle, margin); // FTUE-2 FIX: clear of the HUD
     const pulse = 1 + 0.15 * Math.sin(performance.now() / 150);
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -14992,6 +15193,7 @@ class Game {
     ctx.restore();
 
     if (this.showMinimap) this.drawMinimap(ctx);
+    this.fadeHudUnderHole();
     this.drawDangerIndicators(ctx);
     this.drawGoldenIndicator(ctx);
     this.drawJuiceScreen(ctx, this.timeRemaining);
