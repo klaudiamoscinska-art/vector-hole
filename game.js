@@ -23,7 +23,15 @@ const CONFIG = {
   arena: {
     trails: 10, trailLength: 8,
     feastFragments: 10, feastCapsules: 2,
-    roadRespawnChance: 0.5   // share of eaten fragments that respawn on a road lane
+    roadRespawnChance: 0.5,  // share of eaten fragments that respawn on a road lane
+    // FTUE-3: the vortex's centre stops a radius from the city's edge, so a
+    // big vortex pressed against a wall never reached what lay between it
+    // and the wall -- a smaller rival or a fragment in a corner sat out of
+    // reach for good (a casual bot lost 35-47 s of a first round to one).
+    // Pressed that far (its centre within this share of its radius of the
+    // closest point it may reach), the player's vortex pulls those in too
+    // (Game.edgeReach()). Bots are unchanged.
+    edgeReachSlack: 0.25
   },
   // maxRadius (v12): bot careers showed late-round holes snowballing past
   // r 1000 (once r 5800 -- bigger than the 3000x3000 world, sweeping every
@@ -14243,8 +14251,21 @@ class Game {
         continue;
       }
       const d = dist(hole.x, hole.y, obj.x, obj.y);
-      if (d < reach) obj.startEating(hole);
+      if (d < reach || (hole.isPlayer && this.edgeReach(hole, obj.x, obj.y, obj.radius))) obj.startEating(hole);
     }
+  }
+
+  /** FTUE-3: true when (x, y) lies in the strip along the city's edge that
+   *  the centre of `hole` can't enter (it is clamped a radius from the
+   *  wall) and the hole is pressed as far toward it as it can go -- what
+   *  lies there is pulled in (CONFIG.arena.edgeReachSlack). Elsewhere the
+   *  usual reach applies. Player only (handleObjectEating(),
+   *  handleHoleCollisions()). */
+  edgeReach(hole, x, y, extra) {
+    const cx = clamp(x, hole.radius, WORLD_W - hole.radius), cy = clamp(y, hole.radius, WORLD_H - hole.radius);
+    if (cx === x && cy === y) return false;
+    return dist(hole.x, hole.y, cx, cy) < hole.radius * CONFIG.arena.edgeReachSlack
+      && dist(hole.x, hole.y, x, y) < hole.radius * Math.SQRT2 + extra;
   }
 
   /** v13: rolling over something still too big used to do nothing at all
@@ -14268,7 +14289,7 @@ class Game {
         if (b.invulnerable) continue;
         if (a.radius <= b.radius * EAT_HOLE_RATIO) continue;
         const d = dist(a.x, a.y, b.x, b.y);
-        if (d < a.radius * 0.75) {
+        if (d < a.radius * 0.75 || (a.isPlayer && this.edgeReach(a, b.x, b.y, b.radius))) {
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
           const multiplier = a.isPlayer ? this.registerCombo() : (a.paceMult || 1);
           const isBounty = a.isPlayer && b === this.bountyTarget;
