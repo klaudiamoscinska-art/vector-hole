@@ -108,6 +108,23 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   (po 12 s rundy) → „Ten rywal jest mniejszy…”; pierwsze pochłonięcie
   przez większy wir → zasada o większych rywalach (raz). Kto gra od razu,
   nie widzi nic. Za duży obiekt objaśnia „ZA DUŻE · URÓŚNIJ DO Tn”.
+- **Pierwsze 5 minut (FTUE-3, `CONFIG.ftue.evolutionFromRuns` /
+  `coreHookRounds`):** pierwsza runda Areny (bez ukończonej rundy; nie
+  Wyzwanie dnia ani wyzwanie znajomego) idzie **bez kart Ewolucji** —
+  wcześniej zatrzymywały ją dwa razy w 6–32 s wyborem z trzech kart,
+  zanim gracz poznał sterowanie. Karty wchodzą od 2. rundy; pierwsza
+  oferta ma nagłówek „NOWOŚĆ · EWOLUCJA”. Runda opuszczona w pauzie nie
+  jest ukończona, więc następna nadal jest „pierwsza”. **Każdy wynik
+  Areny mówi, co da następna runda** (`nextRoundHook()`, linia pod
+  rozmiarem i miejscem, bez okna i bez dodatkowego dotknięcia): po 1.
+  rundzie „NASTĘPNA RUNDA · Odblokujesz Warsztat · nowy wygląd wiru”, po
+  2. — „… Wyzwania · nowa mapa każdego dnia” (Warsztat otwarty misją M02
+  → od razu Wyzwania, „ZA 2 RUNDY”), potem nagroda Core City, jeśli
+  zwykła runda doprowadzi do niej w ≤ 2 rundach („ZA 2 RUNDY · Nagroda
+  Core City: Smuga „Impuls””); dalej nic. Obietnica zawsze się spełnia
+  (progi i przyrost Core City liczone tak jak w grze; podium i rekord
+  tylko przyspieszają). Progi, nagrody, karty FTUE-1 i długość rund bez
+  zmian (2:00 — analiza FTUE-3: 3. runda startuje ok. 4:16).
 
 ## 2. Pętla rdzenia (Arena, GRAJ 2:00)
 
@@ -144,7 +161,16 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   polowanie na gracza z 0→560 px, pasywny wzrost). 2,5 s ochrony na starcie
   rundy, rywale startują ≥ 500 px od gracza. „Godzina szczytu” (szybsi rywale, 35% rund) nigdy przy t = 0.
   Ostatnie 40 s: rywale +10% prędkości.
-- **Ewolucja:** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
+- **Krawędź miasta (FTUE-3, `edgeReach()`, `CONFIG.arena.edgeReachSlack`):**
+  środek wiru zatrzymuje się o promień od brzegu miasta, więc duży wir nie
+  sięgał tego, co leżało między nim a brzegiem — mniejszy rywal albo
+  fragment w rogu był nie do zjedzenia („narożny azyl”; bot „casual”
+  tracił na taki pościg 35–47 s pierwszej rundy i spadał z podium). Wir
+  **gracza** dociśnięty do brzegu (środek ≤ ¼ promienia od najbliższego
+  punktu, do którego może dojechać) wciąga też to, co leży w tym pasie.
+  Boty bez zmian (mały gracz w rogu nadal jest przed nimi bezpieczny);
+  zasady rozmiaru (1,15× przy rywalach, progi T przy obiektach) bez zmian.
+- **Ewolucja (od 2. rundy Areny — FTUE-3):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
   (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala,
   Łowca) albo POMIŃ. Działają do końca rundy.
 - **Złoty Rdzeń:** po 10 s, potem co 20 s; kto zje — SZAŁ na 7 s
@@ -437,7 +463,8 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 - **Wynik misji:** wynik / czas / medal, NELA, nagroda, XP, karta następnej
   misji, „GRAJ Mxx”, POWTÓRZ / DZIELNICE, „Wróć do Miasta”.
 - **Wynik Areny:** wynik, rozmiar i miejsce, haczyk (rekord / wyzwanie),
-  jedna karta NAGRODY (monety, XP, Core City), tabela, pasek akcji.
+  linia „co da następna runda” (FTUE-3, §1a), jedna karta NAGRODY
+  (monety, XP, Core City), tabela, pasek akcji.
 - Usunięte jako szum: napisy „VECTOR HOLE” nad tytułami zakładek,
   przyciski POWRÓT/DO MIASTA tam, gdzie jest dolna nawigacja.
 
@@ -554,7 +581,19 @@ runda przerwana po zjedzeniu jednego obiektu i po większym wyniku płaci
 tylko częściowe monety i XP według formuł, bez Core City, premii, misji dnia
 i zaliczenia rundy (R1); ukończona runda płaci pełne nagrody; istniejący
 zapis, izolacja od kampanii, bramki po ukończonych rundach, Wyzwanie
-dnia).
+dnia),
+**pierwsze 5 minut FTUE-3** (`qa/ftue3.mjs`: świeży profil od ekranu
+powitalnego do 3. wyniku prawdziwymi przyciskami z botem „casual” na
+stałych ziarnach — dotknięcia, pauzy pełnoekranowe, pierwszy kęs, kęsy
+w 10 s, najdłuższa przerwa bez kęsa, miejsca, model osi czasu; pierwsza
+runda bez kart, „NOWOŚĆ · EWOLUCJA” w 2.; Wyzwanie dnia, wyzwanie
+znajomego i weterani bez zmian; krawędź miasta: rywal i fragment w rogu
+i przy ścianie, nic bez dociśnięcia, boty bez zmian, zasady rozmiaru,
+koszt; linia następnej rundy: obie bramki, Warsztat z kampanii, Core
+City blisko / daleko / po LVL 6, tylko odczyt zapisu, obietnica się
+spełnia, po angielsku; istniejący gracz, ponowne uruchomienie; wynik
+z linią w 17 ramkach telefonów, Poki, CrazyGames, tabletu i komputera;
+`--measure=N --root=DIR` porównuje pierwszą sesję z inną wersją).
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 odkleja się, gdy utknie (bram impulsu i portali nie używa celowo —
@@ -596,7 +635,10 @@ Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
   wjechać pod panel wyników lub minimapę — od FTUE-2 FIX ten panel /
   mapka przygasa, dopóki wir jest pod nim.
 - „Narożny azyl”: środek dziury jest trzymany o promień od krawędzi, więc
-  mały rywal w rogu bywa poza zasięgiem dużej dziury.
+  mały rywal w rogu bywał poza zasięgiem dużej dziury. Od FTUE-3 wir
+  gracza dociśnięty do brzegu wciąga to, co leży w rogu i przy ścianie
+  (§2); boty nadal nie — świadomie, żeby nie utrudniać gry (mały gracz
+  w rogu jest przed nimi bezpieczny).
 - Linki wyzwań wysłane z v12 otwierają w v13 inną mapę (ścieżki energii i
   uczty zużywają dodatkowe losowania z ziarna). Wyzwania i Wyzwanie dnia
   używają stałego „par” pacera (bez historii gracza), więc są porównywalne.
@@ -613,3 +655,10 @@ Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
   (`DISTRICT_FLOOR`), nie osobnej grafiki dzielnic. Bot „casual” jest
   przybliżeniem człowieka — prawdziwe testy z graczami mogą przesunąć
   krzywą (wystarczy zmienić `DIFFICULTY.timeFactor`).
+- **FTUE-3 — hipotezy do pomiaru (nie wynik):** pierwsza runda bez kart
+  i linia „NASTĘPNA RUNDA” mają podnieść odsetek graczy, którzy kończą
+  1. rundę i zaczynają 2. i 3. (`run_start` z `playCount`, `run_end`
+  `completed`, nowe zdarzenie `result_next` {hook, rounds, runs}; karty
+  w 2. rundzie: `evolution_offer` / `evolution_pick` / `evolution_skip`).
+  Porównać D1 i liczbę rund w pierwszej sesji przed i po wydaniu; bez
+  danych od graczy nie twierdzimy, że retencja wzrosła.

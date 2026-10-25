@@ -4,6 +4,37 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## FTUE-3 „Pierwsze 5 minut” (zapis nadal v13; ekonomia, ceny, nagrody, progi odblokowań i długość rund bez zmian)
+- **Analiza** (bot „casual” na świeżym profilu, prawdziwe przyciski, te
+  same ziarna przed i po): pierwszy kęs 0,5 s i ~19 kęsów w 10 s były
+  dobre, ale (1) pierwsza runda zatrzymywała się **dwa razy w 6–32 s**
+  na pełnoekranowy wybór z 3 kart Ewolucji, zanim gracz poznał
+  sterowanie; (2) duży wir **nie sięgał rywala ani fragmentu w rogu /
+  przy ścianie** (środek wiru stoi o promień od brzegu) — bot gonił taki
+  cel do 46 s, bez jednego kęsa, i potrafił spaść z podium; (3) wynik
+  nie mówił, po co grać dalej (Warsztat i Wyzwania pojawiały się bez
+  zapowiedzi). Porównano 4 warianty (szlif bez zmiany struktury,
+  krótsza 1. runda 90 s, samouczek scenariuszowy, rozgrzewka przed
+  Areną); wybrany szlif — trzecia runda i tak startuje przed 5:00.
+- **Pierwsza runda bez kart Ewolucji** (`CONFIG.ftue.evolutionFromRuns`):
+  karty od 2. rundy, pierwsza oferta „NOWOŚĆ · EWOLUCJA”. Wyzwanie dnia,
+  wyzwanie znajomego i dalsze rundy bez zmian.
+- **Wir gracza sięga brzegu miasta** (`edgeReach()`): dociśnięty do
+  ściany wciąga mniejszego rywala i obiekty z rogu i pasa przy ścianie.
+  Boty bez zmian, zasady rozmiaru bez zmian.
+- **Wynik mówi, co da następna runda** (`nextRoundHook()`): „NASTĘPNA
+  RUNDA · Odblokujesz Warsztat”, potem Wyzwania, potem nagroda Core
+  City, gdy jest ≤ 2 rundy dalej. Bez okna i dodatkowego dotknięcia;
+  obietnica zawsze się spełnia. Zdarzenie analityczne `result_next`.
+- **Zmierzone** (`node qa/ftue3.mjs --measure=12`, te same 12 ziaren,
+  baza produkcyjna `a24cbcf` → FTUE-3): pauzy pełnoekranowe w 1. rundzie
+  24 → 0; rundy z przerwą bez kęsa ≥ 20 s 4/36 → 1/36, najdłuższa
+  46,3 → 20,2 s; mediana wyniku 1. rundy 6552 → 8982; dotknięcia do
+  startu 3. rundy 8 → 6; model osi czasu: 3. runda startuje po 262 →
+  256 s; pierwszy kęs 0,5 s bez zmian. To pomiar botem, nie danymi
+  graczy — wpływ na retencję do sprawdzenia (GDD §7).
+- **QA:** nowy `qa/ftue3.mjs` (w `run-all`).
+
 ## FTUE-2 FIX: poprawki po testach na prawdziwych urządzeniach (iPhone 13 Chrome, iPhone 16 Pro z ikonki, laptop z Windows; zapis nadal v13, rozgrywka, ekonomia i balans bez zmian)
 - **iPhone z ikonki obrócony poziomo:** gra mierzyła ekran, zanim się
   ustalił (zdarzenie `resize` przychodziło za wcześnie i nie wracało) —
