@@ -4,6 +4,42 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## FTUE-2 „Platformy”: gra na Poki, CrazyGames, telefonach, tabletach i w pełnym ekranie (schemat zapisu nadal v13, rozgrywka i ekonomia bez zmian)
+- **Układ według kształtu ramki** (`screenLayout()`): poziomy (pasek po lewej,
+  dwie kolumny) dla każdej ramki szerszej niż 1,25× wysokość i od 560 px —
+  wcześniej od 960 px, więc telefon obrócony poziomo (844×390), Poki
+  640×360 / 836×470 i CrazyGames 800×450 dostawały ucięty układ pionowy
+  (kafel Kampanii pod dolną krawędzią, przyciski wyników i nagród poza
+  ekranem). Nowy wariant **kompaktowy** dla ramek niższych niż 620 px.
+  Skala UI nigdy poniżej 1× (etykiety miały 7–8 px przy 1031×580 i na
+  tablecie 1024×768); małe etykiety ≥ 9 px.
+- **Ekrany:** pierwszy ekran w poziomie = demo po lewej, logo i GRAJ po
+  prawej (logo nie nachodzi na demo przy 640×360); Miasto, Dzielnice,
+  Warsztat, Wyzwania, wyniki rundy i misji, Ewolucja (3 karty obok
+  siebie), pauza, kalendarz, start misji, okna informacyjne — wszystko
+  mieści się albo przewija w środku z głównym przyciskiem na ekranie.
+  Pasek zgody rezerwuje miejsce (nie zasłania GRAJ ani kafli). POWRÓT w
+  Profilu, START misji, DALEJ wyniku misji i ZAGRAJ Wyzwania dnia zostają
+  przy dolnej krawędzi.
+- **HUD w poziomie:** ranking = lider + gracz, mniejsza mapka, NELA i
+  podpowiedzi przy krawędziach, mniejszy baner wyżej (nie zasłania wiru);
+  nagłówek rankingu ma realne pole dotyku. Kamera, zasięg widzenia, skala
+  świata i balans bez zmian.
+- **Sterowanie w ramce portalu:** strzałki, spacja, PageUp/Down i kółko
+  myszy nie przewijają strony portalu (panele gry przewijają się dalej);
+  pauza Escape / P / Spacja; kursor poza ramką zatrzymuje dziurę; utrata
+  fokusu zwalnia klawisze i pauzuje rundę; pisanie w polu tekstowym nie
+  steruje; brak menu kontekstowego i zoomu gestem. Bez własnego przycisku
+  pełnego ekranu (CrazyGames go zakazuje) — pełny ekran portalu działa
+  (sprawdzone też prawdziwym Fullscreen API).
+- **Testy:** nowy `qa/responsive.mjs` (21 rozmiarów × ekrany, iframe na
+  stronie-hoście, obrót, pełny ekran, zmiana rozmiaru, mysz, klawiatura,
+  dotyk, fokus), w `run-all`. `qa/v21.mjs`: 844×390 ma teraz układ
+  kompaktowy (zamierzona zmiana kontraktu).
+  `qa/bridge.mjs` (E2): 7 nowych listenerów sterowania jest zadeklarowanych
+  w `ADDED_SINCE_BASE` — start modułu musi mieć dokładnie listenery bazy
+  63b50d0 plus te, więc zdublowany lub zgubiony nadal oblewa test.
+
 ## R1: runda przerwana daje tylko częściowe monety i XP (decyzja właścicielki 24.10.2026; schemat zapisu nadal v13)
 Zmiana kontraktu rozgrywki zatwierdzona przez właścicielkę: pełne nagrody
 i postęp tylko za ukończoną Arenę.

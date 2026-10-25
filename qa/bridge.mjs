@@ -4,7 +4,7 @@
 // - the module starts once: one <script type="module" src="game.js">,
 //   game.js fetched once, one Game, served as JavaScript;
 // - the same boot as the classic script it replaced: listeners added (by
-//   target and type), storage writes and the first screen match the base
+//   target and type; plus ADDED_SINCE_BASE), storage writes and the first screen match the base
 //   commit's classic build (read from git, never written -- or from the
 //   VH_QA_REVS snapshot, no git at all);
 // - the bridge works on the module's live bindings: reads follow the
@@ -26,6 +26,16 @@ import { serve, openGame, chromium, report, ROOT, OUT, QA_BRIDGE, QA_BRIDGE_NAME
 import { devCodeToken } from './dev-code.mjs';
 
 const BASE_REV = process.env.VH_E2_BASE || '63b50d0f470272aed8734c7854dda24b4f61e712';
+// Listeners a later stage added on purpose (by target and type -> count):
+// the module must boot with exactly the base's listeners plus these, so a
+// doubled or lost one still fails. Add a stage's new listeners here.
+const ADDED_SINCE_BASE = {
+  // FTUE-2 (portal iframe input): cursor leaves the frame, no context menu
+  // on the canvas, no iOS pinch zoom, pause on P/Space, the last pointer
+  // target for scroll keys, the host page never scrolls, focus lost.
+  'el:mouseleave': 1, 'el:contextmenu': 1, 'document:gesturestart': 1,
+  'window:keydown': 1, 'window:pointerdown': 1, 'window:wheel': 1, 'window:blur': 1,
+};
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
 
 /** game.js's export list (the one `export { ... };` statement) and any other export. */
@@ -225,10 +235,11 @@ export async function runBridgeChecks(url) {
     const b = await bootProfile(url);
     base.server.close();
     fs.rmSync(base.dir, { recursive: true, force: true });
-    const keys = [...new Set([...Object.keys(a.listeners), ...Object.keys(b.listeners)])].sort();
-    const diff = keys.filter(k => a.listeners[k] !== b.listeners[k]).map(k => `${k}: base ${a.listeners[k] || 0}, module ${b.listeners[k] || 0}`);
+    const keys = [...new Set([...Object.keys(a.listeners), ...Object.keys(b.listeners), ...Object.keys(ADDED_SINCE_BASE)])].sort();
+    const want = (k) => (a.listeners[k] || 0) + (ADDED_SINCE_BASE[k] || 0);
+    const diff = keys.filter(k => (b.listeners[k] || 0) !== want(k)).map(k => `${k}: base ${a.listeners[k] || 0} + added ${ADDED_SINCE_BASE[k] || 0}, module ${b.listeners[k] || 0}`);
     push(`boot: one Game, one dev panel, same first screen/state/language as the classic base (${BASE_REV.slice(0, 7)})`, a.games === 1 && b.games === 1 && b.devPanel && a.state === b.state && a.screen === b.screen && a.lang === b.lang, JSON.stringify({ base: { games: a.games, state: a.state, screen: a.screen, lang: a.lang }, module: { games: b.games, state: b.state, screen: b.screen, lang: b.lang } }));
-    push('boot: the same event listeners (per target and type) as the classic base -- none doubled or lost', diff.length === 0, diff.length ? diff.join('; ') : `${keys.length} kinds, ${Object.values(b.listeners).reduce((s, n) => s + n, 0)} listeners`);
+    push('boot: the same event listeners (per target and type) as the classic base plus the ones declared since -- none doubled or lost', diff.length === 0, diff.length ? diff.join('; ') : `${keys.length} kinds, ${Object.values(b.listeners).reduce((s, n) => s + n, 0)} listeners`);
     push('boot: the same storage writes and intervals as the classic base', JSON.stringify(a.writes) === JSON.stringify(b.writes) && a.intervals === b.intervals, JSON.stringify({ base: a.writes, module: b.writes, intervals: [a.intervals, b.intervals] }));
     push('boot: no page errors (base and module)', !a.errors.length && !b.errors.length, [...a.errors, ...b.errors].slice(0, 3).join(' | '));
   }

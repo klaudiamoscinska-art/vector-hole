@@ -3573,6 +3573,15 @@ function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+/** FTUE-2: which layout a frame of w x h CSS px gets (Game.resize()) --
+ *  'phone' (portrait or nearly square: the bottom-nav column), 'wide'
+ *  (landscape with room for the nav rail and two columns) or 'compact'
+ *  (the same, on a short landscape frame: a phone on its side, a small
+ *  portal frame). */
+function screenLayout(w, h) {
+  if (w < 560 || w < h * 1.25) return 'phone';
+  return h < 620 ? 'compact' : 'wide';
+}
 function lerp(a, b, t) { return a + (b - a) * t; }
 /** Round/mission clock as m:ss (v12 HUD; was a bare "120 s"). */
 /** 27355 -> "27 355" (thin no-break space), for scores on the results UI. */
@@ -7953,7 +7962,7 @@ class Game {
     // Re-probe one level above the remembered one each session, so a
     // one-off slow session can't pin a device to low quality forever.
     this.applyGfx(clamp(Math.round(this.save.settings.gfxLevel != null ? this.save.settings.gfxLevel : 2) + 1, 0, 2));
-    window.addEventListener('resize', () => { this.resize(); this.updateStripEdges(); });
+    window.addEventListener('resize', () => { this.resize(); this.updateStripEdges(); this.reserveConsentSpace(); });
     this.bindDistrictStrip();
     this.bindInput();
     this.bindUI();
@@ -8017,12 +8026,26 @@ class Game {
     // v21: a wide landscape screen gets the two-column layout (body.wide),
     // scaled to about 1100 x 620 logical px (a small portal frame like
     // 960x540 shrinks it a little instead of cutting it off).
-    const wide = this.width >= 960 && this.width >= this.height * 1.25;
-    this.uiScale = wide ? clamp(Math.min(this.height / 620, this.width / 1100), 0.75, 1.6)
-      : clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
+    // FTUE-2: the layout follows the frame's shape, not just its width --
+    // a phone on its side (844x390), a Poki frame (640x360, 836x470) or a
+    // CrazyGames mobile frame (800x450) got the portrait phone layout cut
+    // off at ~400 px of height. Any landscape frame with room for a rail
+    // and two columns gets the landscape layout; one shorter than that
+    // layout's 620 px its compact variant (body.compact: smaller header/
+    // rail/HUD, laid out from 640 x 360 up). The UI never scales below 1
+    // (it was down to 0.75: 9 px labels became 7-8 px at 1031x580 or on a
+    // 1024x768 tablet) -- text stays readable at DPR 1, buttons tappable.
+    const layout = screenLayout(this.width, this.height);
+    const wide = layout !== 'phone';
+    const compact = layout === 'compact';
+    this.layout = layout;
+    this.uiScale = compact ? 1
+      : wide ? clamp(Math.min(this.height / 620, this.width / 1100), 1, 1.6)
+        : clamp(Math.min(this.height / 700, this.width / 1000), 1, 1.6);
     document.documentElement.style.setProperty('--ui-scale', this.uiScale.toFixed(3));
-    if (document.body.classList.contains('wide') !== wide) {
+    if (document.body.classList.contains('wide') !== wide || document.body.classList.contains('compact') !== compact) {
       document.body.classList.toggle('wide', wide);
+      document.body.classList.toggle('compact', compact);
       if (this.save) requestAnimationFrame(() => this.updateStripEdges && this.updateStripEdges());
     }
     // Minimap defaults to visible on every viewport — an earlier pass
@@ -8085,7 +8108,8 @@ class Game {
     // itself to the world centre at round start and stop dead under a
     // finger that was still held down once the camera had followed it.
     this.pointerScreen = null;
-    const updateFromScreen = (sx, sy) => {
+    const updateFromScreen = (sx, sy, mouse = false) => {
+      this.pointerFromMouse = mouse;
       this.pointerScreen = { x: sx, y: sy };
       this.pointerWorld = {
         x: this.camera.x + (sx - this.width / 2) / this.zoom,
@@ -8097,7 +8121,15 @@ class Game {
     // v13: real mouse only -- a finger tap on a DOM button (coach card,
     // evolution card, resume) also fires an emulated mousemove, which would
     // otherwise leave a phantom steering point behind.
-    window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') updateFromScreen(e.clientX, e.clientY); });
+    window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') updateFromScreen(e.clientX, e.clientY, true); });
+    // FTUE-2: in a portal iframe the cursor can leave the game (to the
+    // host page); the vortex then stops instead of driving on toward the
+    // last point it saw (CrazyGames: no movement the player didn't ask
+    // for). It steers again from the next move inside the frame.
+    document.documentElement.addEventListener('mouseleave', () => { if (this.pointerFromMouse) this.pointerScreen = null; });
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    // iOS Safari ignores user-scalable=no: a pinch on a menu zoomed the page.
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
 
     // ---- Keyboard (desktop accessibility): WASD / arrow keys. ----
     const keyMap = {
@@ -8114,10 +8146,12 @@ class Game {
       const mag = Math.hypot(x, y);
       this.keyDir = mag > 0 ? { x: x / mag, y: y / mag } : { x: 0, y: 0 };
     };
+    // FTUE-2: typing in a text field (profile name, backup code, dev code)
+    // never steers or pauses.
+    const isTextField = (el) => !!el && el.nodeType === 1 && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
     window.addEventListener('keydown', (e) => {
       const dir = keyMap[e.code];
-      if (!dir) return;
-      if (e.code === 'Escape') return;
+      if (!dir || isTextField(e.target)) return;
       heldKeys.add(dir);
       recomputeKeyDir();
     });
@@ -8127,8 +8161,70 @@ class Game {
       heldKeys.delete(dir);
       recomputeKeyDir();
     });
+    // Pause: Escape (as before), P, and Space (Poki: "ESC or spacebar for
+    // pause/resume"). A portal may use Escape to leave fullscreen, so P and
+    // Space do the same. Space on a focused menu button keeps its click.
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Escape' && this.running) this.togglePause();
+      if (!this.running || e.repeat || isTextField(e.target)) return;
+      const onControl = e.target && e.target.closest && e.target.closest('button, a[href], [role="button"], [tabindex]') && !e.target.closest('#btnPause, #hud-rankBadge');
+      if (e.code === 'Escape' || e.code === 'KeyP' || (e.code === 'Space' && !onControl)) {
+        e.preventDefault();
+        this.togglePause();
+      }
+    });
+
+    // ---- FTUE-2: the host page never scrolls or zooms under the game ----
+    // In a Poki / CrazyGames iframe, arrow keys, Space, PageUp/Down and the
+    // mouse wheel that the game doesn't use scroll the PORTAL's page
+    // (Poki: "prevent game viewport scrolling from affecting the parent
+    // page"). The game's own scrolling panels keep scrolling; at their end
+    // (or anywhere else) the event stops here. Ctrl + wheel / trackpad
+    // pinch would zoom the host page.
+    let lastPointerTarget = null;
+    window.addEventListener('pointerdown', (e) => { lastPointerTarget = e.target; }, { passive: true, capture: true });
+    const canScrollToward = (el, dx, dy) => {
+      for (let a = el && el.nodeType === 1 ? el : null; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+        const cs = getComputedStyle(a);
+        if (dy && /auto|scroll/.test(cs.overflowY) && a.scrollHeight > a.clientHeight + 1
+          && (dy < 0 ? a.scrollTop > 0 : a.scrollTop + a.clientHeight < a.scrollHeight - 1)) return true;
+        if (dx && /auto|scroll/.test(cs.overflowX) && a.scrollWidth > a.clientWidth + 1
+          && (dx < 0 ? a.scrollLeft > 0 : a.scrollLeft + a.clientWidth < a.scrollWidth - 1)) return true;
+      }
+      return false;
+    };
+    window.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || !canScrollToward(e.target, e.deltaX, e.deltaY)) e.preventDefault();
+    }, { passive: false });
+    const SCROLL_KEYS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], PageUp: [0, -1], PageDown: [0, 1], Home: [0, -1], End: [0, 1], Space: [0, 1] };
+    window.addEventListener('keydown', (e) => {
+      const d = SCROLL_KEYS[e.code];
+      if (!d || e.defaultPrevented || isTextField(e.target)) return;
+      const t = e.target;
+      const focusedControl = t && t !== document.body && t.closest && t.closest('button, a[href], [role="button"], [tabindex], select');
+      // Space clicks a focused button (pause sheet, evolution card, menus).
+      if (e.code === 'Space' && focusedControl && !focusedControl.closest('#btnPause, #hud-rankBadge')) return;
+      if (this.running && !this.paused) { e.preventDefault(); return; } // in a round these keys steer / pause
+      const from = t && t !== document.body && t !== document.documentElement ? t : lastPointerTarget;
+      if (!canScrollToward(from, d[0], e.shiftKey && e.code === 'Space' ? -d[1] : d[1])) e.preventDefault();
+    });
+
+    // ---- FTUE-2: focus lost (a click on the portal page, alt-tab, the
+    // phone's notification shade) ---- the keys held at that moment never
+    // get their keyup here, so they are released (the vortex used to keep
+    // driving), steering stops, and a live round pauses -- the bots would
+    // otherwise play on against a player who isn't looking. Not while an
+    // ad is showing (the portal's ad takes focus; the ad flow resumes).
+    window.addEventListener('blur', () => {
+      heldKeys.clear();
+      recomputeKeyDir();
+      this.pointerScreen = null;
+      if (this.thumbpadTouchId !== null) {
+        this.thumbpadTouchId = null;
+        anchor = null;
+        this.moveVector = { x: 0, y: 0, magnitude: 0 };
+        hideThumbpad();
+      }
+      if (this.running && !this.paused && !this.monetization.busy) this.pauseGame();
     });
 
     // ---- Touch: Floating Thumb Pad (default) or legacy full-screen drag. ----
@@ -9108,6 +9204,19 @@ class Game {
     // button.
     const onNavScreen = !document.getElementById('bottomNav').classList.contains('hidden');
     if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running || this.isFirstRun() || !onNavScreen);
+    this.reserveConsentSpace();
+  }
+
+  /** FTUE-2: the consent bar floats over the bottom of a nav screen -- it
+   *  covered Miasto's tiles / chest (and GRAJ on a phone on its side).
+   *  While it shows, the screens reserve its height (body.consent-open,
+   *  --consent-h). The bar lives in the zoomed layer, so its on-screen
+   *  height goes in divided by --ui-scale (like the thumb pad). */
+  reserveConsentSpace() {
+    const bar = document.getElementById('consentBar');
+    const open = !!bar && !bar.classList.contains('hidden');
+    document.body.classList.toggle('consent-open', open);
+    if (open) document.body.style.setProperty('--consent-h', Math.ceil(bar.getBoundingClientRect().height / (this.uiScale || 1)) + 'px');
   }
 
   setConsent(analytics) {
@@ -13774,9 +13883,11 @@ class Game {
       const age = 1 - b.life / b.maxLife;
       const pop = age < 0.12 ? 0.4 + (age / 0.12) * 0.8 : (age < 0.22 ? 1.2 - ((age - 0.12) / 0.1) * 0.2 : 1);
       const alpha = clamp(b.life / (b.maxLife * 0.3), 0, 1);
-      const size = Math.min(58, this.width * 0.1) * (b.scale || 1);
+      // FTUE-2: on a short landscape frame the banner is smaller and sits
+      // higher, so it never covers the vortex in the middle.
+      const size = Math.min(58, this.width * 0.1, this.height * 0.11) * (b.scale || 1);
       ctx.globalAlpha = alpha;
-      ctx.translate(this.width / 2, this.height * 0.3);
+      ctx.translate(this.width / 2, this.height * (this.layout === 'compact' ? 0.25 : 0.3));
       ctx.scale(pop, pop);
       ctx.rotate(-0.04);
       ctx.textAlign = 'center';
@@ -14691,8 +14802,10 @@ class Game {
   }
 
   /** v12: a smaller minimap on narrow phones (130 px was 36 % of a 360 px screen). */
-  minimapSize() { return (this.width < 400 ? 104 : 130) * (this.uiScale || 1); }
-  minimapMargin() { return 16 * (this.uiScale || 1); }
+  // FTUE-2: a short landscape frame (body.compact) gets a smaller one too
+  // (130 px was a third of an iPhone's 390 px height on its side).
+  minimapSize() { return (this.width < 400 ? 104 : this.layout === 'compact' ? 92 : 130) * (this.uiScale || 1); }
+  minimapMargin() { return (this.layout === 'compact' ? 10 : 16) * (this.uiScale || 1); }
 
   drawMinimap(ctx) {
     const size = this.minimapSize();
