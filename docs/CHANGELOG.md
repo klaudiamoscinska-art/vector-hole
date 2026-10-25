@@ -4,6 +4,49 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## FTUE-2 FIX: poprawki po testach na prawdziwych urządzeniach (iPhone 13 Chrome, iPhone 16 Pro z ikonki, laptop z Windows; zapis nadal v13, rozgrywka, ekonomia i balans bez zmian)
+- **iPhone z ikonki obrócony poziomo:** gra mierzyła ekran, zanim się
+  ustalił (zdarzenie `resize` przychodziło za wcześnie i nie wracało) —
+  zostawał układ pionowy w poziomej ramce i płótno dwa razy wyższe od
+  ekranu, więc połowa wiru znikała pod dolną krawędzią. Teraz każda
+  zmiana ramki (`ResizeObserver` na `#app`, obrót) mierzy ją ponownie.
+- **Obszary bezpieczne:** mapka, strzałki do celów i duże komunikaty
+  omijają notch / Dynamic Island / pasek gestów; przy krawędzi miasta
+  kamera zatrzymuje jego brzeg na granicy obszaru bezpiecznego (wir nie
+  chowa się pod wycięciem; widoczny kawałek miasta bez zmian).
+- **HUD:** panel (ranking, cel misji, pasek czasu) lub mapka, pod którą
+  jest wir, przygasa; turkusowa strzałka do celu misji (to wskaźnik, nie
+  artefakt) stoi na brzegu pola gry, nie pod paskiem HUD; komunikaty
+  „ZŁOTY RDZEŃ!”, „T4 · WIELKI!” itd. zawsze mieszczą się w szerokości.
+- **Przebitki Areny w menu (laptop):** każdy ekran menu pojawia się
+  z przezroczystości, a pod spodem płótno trzymało ostatnią klatkę rundy
+  (wielki wir) — poza rundą plansza jest teraz czyszczona i ukryta.
+- **Miasto / Core City:** budynki, dźwig i „NOWY BUDYNEK” nigdy nie
+  wchodzą pod nagłówek (etykieta schodzi pod plac budowy, gdy nad nim nie
+  ma miejsca) — także po zmniejszeniu okna; z paskiem zgody lub
+  wyzwaniem znajomego w niskiej ramce znika dopisek pod nagłówkiem.
+- **Odprawa i start misji:** cele przewijają się w swoim polu, GRAJ /
+  START stoi pod nimi (nie na nich); w poziomie opowieść i cele obok
+  siebie. **Dzielnice:** nazwy dzielnic mieszczą się w kafelku, GRAJ
+  następnej misji widać bez przewijania. **Wynik misji / rundy:** lewa
+  kolumna przewija się z wyraźnym wygaszeniem dołu; „Wróć do Miasta” jest
+  w pasku akcji (zawsze widoczne), ZAGRAJ JESZCZE RAZ maks. w 2 liniach.
+- **Odblokowania:** w niskiej ramce ikona po lewej, tekst i przyciski po
+  prawej (ikona nie jest ucięta, PÓŹNIEJ na ekranie). **Pauza:** w
+  poziomie dwie kolumny przycisków. **Profil:** POWRÓT to stopka pod
+  przewijanymi ustawieniami, pasek przewijania przy krawędzi ekranu.
+  **Okna:** cienkie paski przewijania w kolorach gry; codzienna nagroda
+  nie przewija się już przez iskry animacji. **Wyzwania:** w niskiej
+  ramce pionowej ZAGRAJ nie przykleja się nad mapą.
+- **Panel TEST właścicielki:** nadal tylko z kodem twórcy; zakładka omija
+  Dynamic Island i w rundzie jest bledsza.
+- **QA:** nowy `qa/devices.mjs` (obrót ze spóźnionym `resize`, wir T1–T6
+  przy każdej krawędzi, strzałki, komunikaty, klatki w połowie przejścia
+  między zakładkami, Core City przy zmianie rozmiaru okna, stopka Profilu,
+  paski przewijania, powrót z wyników, panel TEST); `qa/responsive.mjs`
+  ma 4 ramki prawdziwych urządzeń z obszarami bezpiecznymi i sprawdza,
+  czy główny przycisk nie leży na tekście.
+
 ## FTUE-2 „Platformy”: gra na Poki, CrazyGames, telefonach, tabletach i w pełnym ekranie (schemat zapisu nadal v13, rozgrywka i ekonomia bez zmian)
 - **Układ według kształtu ramki** (`screenLayout()`): poziomy (pasek po lewej,
   dwie kolumny) dla każdej ramki szerszej niż 1,25× wysokość i od 560 px —
