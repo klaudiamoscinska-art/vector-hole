@@ -346,6 +346,13 @@ const CONFIG = {
     comboWindowSeconds: 1.5,   // GDD 07: "kolejne pożarcie w 1,5 s"
     comboMaxMultiplier: 2.0,   // GDD 07: "combo 1,0-2,0 mnoży punkty, nie wzrost"
     hitPenaltyFraction: 0.25,
+    // BALANCE-1: Magnes (the mission booster and the power card) pulls what
+    // the vortex may eat from up to `reach` px beyond its rim, `pull` px/s
+    // at the rim fading to 0 at the edge of its reach. It used to reach
+    // 1.4 x the radius from the centre with the pull already ~0 there --
+    // measured (qa/balance1.mjs), a fragment 1.5 x the radius away was
+    // never pulled at all, so the 40-coin booster did next to nothing.
+    magnet: { reach: 70, pull: 120 },
     // Campaign rivals don't grow, so their fixed size sets the difficulty
     // arc on CONFIG.growth's curve: a threat (bigger than player * holeRatio)
     // for the first ~5 fragments, harmless around T2 (30 px), and prey from
@@ -2229,13 +2236,18 @@ const SKINS = [
   // (speed, combo, magnet, XP, coins, start size, points, growth) are gone;
   // saves that owned a paid one got its list price back once
   // (settleLooksOnly(), LOOKS_ONLY_REFUND).
+  // BALANCE-1: the coin ladder (+ Smuga „Iskra”) was 5 370 in total and
+  // every simulated player (qa/balance1.mjs, weak to strong) owned all of
+  // it after 26-45 minutes, then had nothing to buy for coins. Now 9 900:
+  // Cyjan stays 100 (affordable the moment Warsztat opens), each next look
+  // is a further step of play. Owned looks and saved coins are untouched.
   { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, look: 'Tęczowy pryzmat — wir startowy' },
   { id: 'cyan', name: 'Cyjan', price: 100, color: '#50F0FA', look: 'Cyjanowe obwody' },
-  { id: 'pink', name: 'Gorący Róż', price: 220, color: '#FF54AD', look: 'Różowa plazma' },
-  { id: 'green', name: 'Toksyczna Zieleń', price: 450, color: '#46D99A', look: 'Toksyczne bąble' },
-  { id: 'purple', name: 'Ultrafiolet', price: 800, color: '#9875FF', look: 'Fioletowa galaktyka' },
-  { id: 'gold', name: 'Neonowe Złoto', price: 1300, color: '#EFCB63', look: 'Złote słońce' },
-  { id: 'white', name: 'Biała Plazma', price: 2000, color: '#ffffff', look: 'Biała burza z wyładowaniami' },
+  { id: 'pink', name: 'Gorący Róż', price: 300, color: '#FF54AD', look: 'Różowa plazma' },
+  { id: 'green', name: 'Toksyczna Zieleń', price: 700, color: '#46D99A', look: 'Toksyczne bąble' },
+  { id: 'purple', name: 'Ultrafiolet', price: 1500, color: '#9875FF', look: 'Fioletowa galaktyka' },
+  { id: 'gold', name: 'Neonowe Złoto', price: 2500, color: '#EFCB63', look: 'Złote słońce' },
+  { id: 'white', name: 'Biała Plazma', price: 3800, color: '#ffffff', look: 'Biała burza z wyładowaniami' },
   // GDD 4.0 §6 M24 (kampanii finał) reward: a skin that's never for sale,
   // only granted on the campaign's last mission clear (see reward.unlockSkin
   // in CAMPAIGN_MISSIONS + endCampaignMission()).
@@ -2247,7 +2259,8 @@ const SKINS = [
 ];
 
 // PX02 D+: the one-time refund for vortices whose Arena bonus was removed --
-// their list price (100+220+450+800+1300+2000 = 4870 for the set). The two
+// their list price at the time (100+220+450+800+1300+2000 = 4870 for the
+// set; kept as it was -- BALANCE-1's later prices never change it). The two
 // Core City rewards (Kryształ, Pryzmat) keep their look with no money back
 // (owner decision DEC-4); Tęcza and Aurora never had a bonus.
 const LOOKS_ONLY_REFUND = { cyan: 100, pink: 220, green: 450, purple: 800, gold: 1300, white: 2000 };
@@ -2258,7 +2271,7 @@ const LOOKS_ONLY_REFUND = { cyan: 100, pink: 220, green: 450, purple: 800, gold:
 // internally since it's the same following-glow render path (Hole's aura).
 const AURAS = [
   { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins' },
-  { id: 'spark', name: 'Iskra', priceCoins: 500, priceType: 'coins', color: '#50F0FA' },
+  { id: 'spark', name: 'Iskra', priceCoins: 1000, priceType: 'coins', color: '#50F0FA' },
   { id: 'ember', name: 'Żar', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD' },
   { id: 'vortex', name: 'Zawirowanie', pricePrisms: 30, priceType: 'prisms', color: '#9875FF' },
   { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#46D99A', unlockSource: { type: 'coreCity', level: 2 } },
@@ -2317,7 +2330,10 @@ const CORE_CITY_LEVEL_REWARDS = {
 const MISSION_BOOSTERS = [
   { id: 'time', name: 'Zegar', short: '+15 s', price: 60, color: '#50F0FA', icon: 'clock', desc: '+15 s do limitu czasu misji.' },
   { id: 'start', name: 'Turbo start', short: 'start od T2', price: 70, color: '#FF54AD', icon: 'bolt', desc: 'Wir startuje od razu z rozmiarem T2.' },
-  { id: 'magnet', name: 'Magnes', short: 'cała misja', price: 40, color: '#46D99A', icon: 'magnet', desc: 'Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.' },
+  // BALANCE-1: Magnes now really pulls (CONFIG.campaign.magnet) and lifts
+  // the casual pass rate about as much as Zegar (qa/balance1.mjs), so it
+  // costs what Zegar costs (was 40 while it did next to nothing).
+  { id: 'magnet', name: 'Magnes', short: 'cała misja', price: 60, color: '#46D99A', icon: 'magnet', desc: 'Przez całą misję obiekty, które możesz zjeść, same płyną do wiru.' },
   { id: 'shield', name: 'Tarcza', short: '2 zderzenia', price: 70, color: '#EFCB63', icon: 'shield', desc: 'Przyjmuje 2 zderzenia z większym rywalem albo strefą glitcha. Chroni też kruchy wir.' },
   // v18 (owner: "kupię toola, aby dał mi szybkość"): the counter to the
   // Złodziej and to far-apart goals.
@@ -3093,13 +3109,15 @@ function stepTier(step) {
   return 1;
 }
 
+// BALANCE-1: M180 and M226 re-measured (qa/calibrate.mjs 20 runs: the
+// expert cleared them in their old limits in only 2 of 10 seeded tries).
 // v15: the expert campaign bot's [median, p90] clear time per mission in
 // seconds (qa/calibrate.mjs: several runs per mission under an open time
 // limit). compileMission() derives the limit and the star times from these
 // and the mission's difficulty -- re-run the calibration after changing a
 // mission spec, the growth curve or the twists. Missing entries fall back
 // to an estimate.
-const MISSION_BOT_TIME = { M01: [8, 11], M02: [22, 25], M03: [16, 23], M04: [37, 43], M05: [23, 28], M06: [20, 23], M07: [20, 26], M08: [34, 50], M09: [21, 29], M10: [21, 24], M11: [38, 49], M12: [46, 95], M13: [21, 31], M14: [25, 32], M15: [29, 45], M16: [44, 73], M17: [23, 31], M18: [23, 28], M19: [42, 56], M20: [47, 74], M21: [22, 28], M22: [40, 131], M23: [41, 53], M24: [66, 128], M25: [35, 47], M26: [27, 40], M27: [37, 46], M28: [24, 31], M29: [37, 41], M30: [43, 60], M31: [27, 35], M32: [38, 45], M33: [17, 25], M34: [38, 47], M35: [41, 68], M36: [24, 34], M37: [36, 49], M38: [39, 52], M39: [25, 29], M40: [59, 128], M41: [44, 62], M42: [44, 49], M43: [45, 57], M44: [32, 37], M45: [45, 59], M46: [30, 36], M47: [81, 280], M48: [54, 63], M49: [46, 56], M50: [29, 49], M51: [38, 49], M52: [51, 61], M53: [121, 385], M54: [47, 69], M55: [50, 53], M56: [48, 132], M57: [47, 55], M58: [216, 305], M59: [44, 54], M60: [59, 61], M61: [27, 30], M62: [20, 24], M63: [39, 51], M64: [32, 39], M65: [45, 53], M66: [37, 47], M67: [20, 29], M68: [61, 79], M69: [45, 69], M70: [46, 53], M71: [55, 68], M72: [32, 42], M73: [58, 94], M74: [54, 108], M75: [30, 44], M76: [67, 93], M77: [33, 40], M78: [65, 79], M79: [47, 60], M80: [51, 64], M81: [81, 130], M82: [62, 120], M83: [86, 305], M84: [39, 52], M85: [91, 113], M86: [48, 52], M87: [27, 37], M88: [81, 101], M89: [101, 139], M90: [112, 243], M91: [18, 30], M92: [27, 36], M93: [18, 21], M94: [18, 29], M95: [26, 38], M96: [28, 33], M97: [49, 65], M98: [23, 29], M99: [29, 50], M100: [37, 46], M101: [39, 47], M102: [27, 42], M103: [24, 47], M104: [74, 88], M105: [45, 49], M106: [56, 68], M107: [47, 54], M108: [31, 48], M109: [52, 60], M110: [40, 72], M111: [20, 30], M112: [22, 29], M113: [72, 82], M114: [93, 140], M115: [62, 81], M116: [36, 47], M117: [50, 67], M118: [40, 53], M119: [41, 68], M120: [62, 88], M121: [29, 42], M122: [36, 55], M123: [31, 43], M124: [39, 71], M125: [46, 73], M126: [34, 88], M127: [44, 54], M128: [46, 84], M129: [25, 49], M130: [53, 123], M131: [76, 98], M132: [55, 81], M133: [37, 84], M134: [86, 181], M135: [50, 76], M136: [56, 66], M137: [46, 51], M138: [71, 87], M139: [48, 61], M140: [74, 213], M141: [67, 124], M142: [54, 66], M143: [75, 127], M144: [31, 53], M145: [60, 99], M146: [75, 115], M147: [58, 63], M148: [120, 174], M149: [63, 84], M150: [79, 140], M151: [22, 28], M152: [21, 26], M153: [25, 30], M154: [32, 37], M155: [45, 55], M156: [46, 59], M157: [22, 27], M158: [77, 118], M159: [13, 23], M160: [54, 135], M161: [45, 54], M162: [27, 32], M163: [52, 64], M164: [28, 37], M165: [58, 101], M166: [66, 87], M167: [55, 88], M168: [109, 155], M169: [32, 42], M170: [51, 61], M171: [69, 81], M172: [73, 86], M173: [22, 42], M174: [27, 49], M175: [123, 201], M176: [70, 96], M177: [49, 65], M178: [28, 32], M179: [85, 106], M180: [55, 86], M181: [29, 39], M182: [29, 37], M183: [22, 28], M184: [25, 32], M185: [32, 43], M186: [27, 36], M187: [47, 55], M188: [82, 185], M189: [47, 57], M190: [33, 37], M191: [45, 53], M192: [52, 60], M193: [23, 31], M194: [48, 58], M195: [56, 77], M196: [39, 52], M197: [30, 40], M198: [72, 316], M199: [22, 25], M200: [45, 72], M201: [74, 100], M202: [73, 102], M203: [80, 191], M204: [59, 79], M205: [61, 95], M206: [54, 94], M207: [153, 443], M208: [41, 52], M209: [48, 60], M210: [47, 57], M211: [24, 28], M212: [61, 72], M213: [35, 62], M214: [57, 67], M215: [76, 263], M216: [57, 82], M217: [57, 94], M218: [21, 37], M219: [59, 80], M220: [28, 30], M221: [36, 45], M222: [54, 78], M223: [32, 57], M224: [114, 163], M225: [67, 106], M226: [60, 174], M227: [21, 40], M228: [51, 88], M229: [62, 83], M230: [87, 397], M231: [51, 68], M232: [37, 44], M233: [61, 92], M234: [105, 223], M235: [89, 95], M236: [77, 84], M237: [67, 86], M238: [56, 183], M239: [36, 41], M240: [123, 201] };
+const MISSION_BOT_TIME = { M01: [8, 11], M02: [22, 25], M03: [16, 23], M04: [37, 43], M05: [23, 28], M06: [20, 23], M07: [20, 26], M08: [34, 50], M09: [21, 29], M10: [21, 24], M11: [38, 49], M12: [46, 95], M13: [21, 31], M14: [25, 32], M15: [29, 45], M16: [44, 73], M17: [23, 31], M18: [23, 28], M19: [42, 56], M20: [47, 74], M21: [22, 28], M22: [40, 131], M23: [41, 53], M24: [66, 128], M25: [35, 47], M26: [27, 40], M27: [37, 46], M28: [24, 31], M29: [37, 41], M30: [43, 60], M31: [27, 35], M32: [38, 45], M33: [17, 25], M34: [38, 47], M35: [41, 68], M36: [24, 34], M37: [36, 49], M38: [39, 52], M39: [25, 29], M40: [59, 128], M41: [44, 62], M42: [44, 49], M43: [45, 57], M44: [32, 37], M45: [45, 59], M46: [30, 36], M47: [81, 280], M48: [54, 63], M49: [46, 56], M50: [29, 49], M51: [38, 49], M52: [51, 61], M53: [121, 385], M54: [47, 69], M55: [50, 53], M56: [48, 132], M57: [47, 55], M58: [216, 305], M59: [44, 54], M60: [59, 61], M61: [27, 30], M62: [20, 24], M63: [39, 51], M64: [32, 39], M65: [45, 53], M66: [37, 47], M67: [20, 29], M68: [61, 79], M69: [45, 69], M70: [46, 53], M71: [55, 68], M72: [32, 42], M73: [58, 94], M74: [54, 108], M75: [30, 44], M76: [67, 93], M77: [33, 40], M78: [65, 79], M79: [47, 60], M80: [51, 64], M81: [81, 130], M82: [62, 120], M83: [86, 305], M84: [39, 52], M85: [91, 113], M86: [48, 52], M87: [27, 37], M88: [81, 101], M89: [101, 139], M90: [112, 243], M91: [18, 30], M92: [27, 36], M93: [18, 21], M94: [18, 29], M95: [26, 38], M96: [28, 33], M97: [49, 65], M98: [23, 29], M99: [29, 50], M100: [37, 46], M101: [39, 47], M102: [27, 42], M103: [24, 47], M104: [74, 88], M105: [45, 49], M106: [56, 68], M107: [47, 54], M108: [31, 48], M109: [52, 60], M110: [40, 72], M111: [20, 30], M112: [22, 29], M113: [72, 82], M114: [93, 140], M115: [62, 81], M116: [36, 47], M117: [50, 67], M118: [40, 53], M119: [41, 68], M120: [62, 88], M121: [29, 42], M122: [36, 55], M123: [31, 43], M124: [39, 71], M125: [46, 73], M126: [34, 88], M127: [44, 54], M128: [46, 84], M129: [25, 49], M130: [53, 123], M131: [76, 98], M132: [55, 81], M133: [37, 84], M134: [86, 181], M135: [50, 76], M136: [56, 66], M137: [46, 51], M138: [71, 87], M139: [48, 61], M140: [74, 213], M141: [67, 124], M142: [54, 66], M143: [75, 127], M144: [31, 53], M145: [60, 99], M146: [75, 115], M147: [58, 63], M148: [120, 174], M149: [63, 84], M150: [79, 140], M151: [22, 28], M152: [21, 26], M153: [25, 30], M154: [32, 37], M155: [45, 55], M156: [46, 59], M157: [22, 27], M158: [77, 118], M159: [13, 23], M160: [54, 135], M161: [45, 54], M162: [27, 32], M163: [52, 64], M164: [28, 37], M165: [58, 101], M166: [66, 87], M167: [55, 88], M168: [109, 155], M169: [32, 42], M170: [51, 61], M171: [69, 81], M172: [73, 86], M173: [22, 42], M174: [27, 49], M175: [123, 201], M176: [70, 96], M177: [49, 65], M178: [28, 32], M179: [85, 106], M180: [71, 109], M181: [29, 39], M182: [29, 37], M183: [22, 28], M184: [25, 32], M185: [32, 43], M186: [27, 36], M187: [47, 55], M188: [82, 185], M189: [47, 57], M190: [33, 37], M191: [45, 53], M192: [52, 60], M193: [23, 31], M194: [48, 58], M195: [56, 77], M196: [39, 52], M197: [30, 40], M198: [72, 316], M199: [22, 25], M200: [45, 72], M201: [74, 100], M202: [73, 102], M203: [80, 191], M204: [59, 79], M205: [61, 95], M206: [54, 94], M207: [153, 443], M208: [41, 52], M209: [48, 60], M210: [47, 57], M211: [24, 28], M212: [61, 72], M213: [35, 62], M214: [57, 67], M215: [76, 263], M216: [57, 82], M217: [57, 94], M218: [21, 37], M219: [59, 80], M220: [28, 30], M221: [36, 45], M222: [54, 78], M223: [32, 57], M224: [114, 163], M225: [67, 106], M226: [124, 288], M227: [21, 40], M228: [51, 88], M229: [62, 83], M230: [87, 397], M231: [51, 68], M232: [37, 44], M233: [61, 92], M234: [105, 223], M235: [89, 95], M236: [77, 84], M237: [67, 86], M238: [56, 183], M239: [36, 41], M240: [123, 201] };
 
 /** v15 twist hints (shown in the briefing, start card and as chips). */
 const TWIST_INFO = {
@@ -3768,11 +3786,17 @@ function previousDateKey(dateKey) {
 // hashing approach as the Daily Seed Challenge, so it needs no backend).
 // Progress is tracked live during a round and checked at round end —
 // this replaces the Hub's previous static, never-checked mission line.
+// BALANCE-1: three of the four tasks were met by any finished round (150
+// points, a 3-bite combo, T4 -- 96-100% of rounds even for the weak
+// simulated player) and the fourth almost never (5 rivals: 0-15%), while
+// the rewards ran the other way. Targets now ask for a good round
+// (qa/balance1.mjs: the average simulated player meets each in 37-96% of
+// rounds, the weak one in 0-78%); ids are unchanged (never stored).
 const MISSIONS = [
-  { id: 'eat_5_rivals', name: 'Zjedz 5 rywali w jednej rundzie', target: 5, rewardCoins: 80 },
-  { id: 'reach_size_60', name: 'Urośnij do rozmiaru T4', target: 66, rewardCoins: 60 },
-  { id: 'combo_x3', name: 'Zbuduj combo ×3', target: 3, rewardCoins: 50 },
-  { id: 'score_150', name: 'Zdobądź 150 punktów w jednej rundzie', target: 150, rewardCoins: 70 }
+  { id: 'eat_5_rivals', name: 'Zjedz 3 rywali w jednej rundzie', target: 3, rewardCoins: 80 },
+  { id: 'reach_size_60', name: 'Urośnij do rozmiaru T5', target: 90, rewardCoins: 50 },
+  { id: 'combo_x3', name: 'Zbuduj combo ×30', target: 30, rewardCoins: 60 },
+  { id: 'score_150', name: 'Zdobądź 4000 punktów w jednej rundzie', target: 4000, rewardCoins: 70 }
 ];
 
 function missionForDate(date) {
@@ -12823,7 +12847,9 @@ class Game {
    *  continuous ones (Magnes' pull, Skaner's ping). */
   updateMutationEffectsCampaign(dt) {
     if (this.activeMutations.has('magnes')) {
-      const range = this.player.radius * 1.4;
+      const M = CONFIG.campaign.magnet;
+      const rim = this.player.radius;
+      const range = rim + M.reach;
       const tier = this.campaignTierIndex(this.campaignPlayerTier().id);
       for (const e of this.campaignEntities) {
         if (e.consumed || e.eating || !e.live) continue;
@@ -12832,7 +12858,7 @@ class Game {
         if (tier < e.stats.minTier) continue;
         const d = dist(this.player.x, this.player.y, e.x, e.y);
         if (d > 0 && d < range) {
-          const pull = 140 * (1 - d / range);
+          const pull = M.pull * Math.min(1, 1 - (d - rim) / M.reach);
           e.x -= ((e.x - this.player.x) / d) * pull * dt;
           e.y -= ((e.y - this.player.y) / d) * pull * dt;
         }
@@ -18656,12 +18682,14 @@ const I18N_EN = {
   "Zbuduj combo ×22": "Build a ×22 combo",
   "Zbuduj combo ×22 · Urośnij do rozmiaru T6": "Build a ×22 combo · Grow to size T6",
   "Zbuduj combo ×3": "Build a ×3 combo",
+  "Zbuduj combo ×30": "Build a ×30 combo",
   "Zbuduj combo ×5": "Build a ×5 combo",
   "Zbuduj combo ×6": "Build a ×6 combo",
   "Zbuduj combo ×8": "Build a ×8 combo",
   "Zbuduj combo ×8 · Pochłoń 3 samochody": "Build a ×8 combo · Swallow 3 cars",
   "Zdobądź 1200 punktów": "Score 1200 points",
   "Zdobądź 150 punktów w jednej rundzie": "Score 150 points in one round",
+  "Zdobądź 4000 punktów w jednej rundzie": "Score 4000 points in one round",
   "Zdobądź 1500 punktów": "Score 1500 points",
   "Zdobądź 1800 punktów": "Score 1800 points",
   "Zdobądź 2000 punktów": "Score 2000 points",
@@ -18686,6 +18714,7 @@ const I18N_EN = {
   "Zielony Impuls": "Green Pulse",
   "Zjedz 3 rzeczy szybko po sobie, a dostaniesz +60% prędkości na 1,5 s.": "Eat 3 things in quick succession for +60% speed for 1.5 s.",
   "Zjedz 5 rywali w jednej rundzie": "Eat 5 rivals in one round",
+  "Zjedz 3 rywali w jednej rundzie": "Eat 3 rivals in one round",
   "Zjedz 5 rywali w jednej rundzie · nagroda +80 monet": "Eat 5 rivals in one round · reward +80 coins",
   "Zmiana kierownika": "Shift Change",
   "Zmieniaj wygląd swojej dziury: Wir, Smuga, Efekt pochłaniania i Finisz. Wydaj tu zebrane monety!": "Change your hole's look: Vortex, Trail, Swallow Effect and Finale. Spend your coins here!",
