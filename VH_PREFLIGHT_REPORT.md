@@ -1,56 +1,63 @@
-# VH_PREFLIGHT_REPORT — FTUE-3 „Pierwsze 5 minut” (P00-CORE + QA etapu)
+# VH_PREFLIGHT_REPORT — CONTENT-1 „Audyt 240 misji” (P00-CORE + QA etapu)
 
-**Data:** 2026-10-25/26 · **Repozytorium:** `klaudiamoscinska-art/vector-hole` (remote `origin`, jedyny)
-**Baza:** `a24cbcfe318c87db2bb5bc2b4f5100505ca5d58b` = `origin/main` (sprawdzone `git fetch origin main` przed pracą).
-**Gałąź:** `ftue3-first-five-minutes` (od `origin/main`), wypchnięta na `origin`. Commity:
-`9d65640` krawędź miasta · `6062528` 1. runda bez kart · `ea4da91` linia następnej rundy · `6a071a5` testy · `30e63e3` dokumentacja (+ ten raport).
-**Środowisko:** Windows 11 Pro, Node v22.23.4, Playwright 1.64.1, Chromium 156.0.8078.4 (headless, renderowanie programowe), Python 3.13 (`python`; `python3` to atrapa Microsoft Store). Brak fizycznego telefonu i SDK portali. Baza i kandydat mierzone na tej samej maszynie, jedno po drugim (baza w osobnym worktree `ftue3-base`).
+**Data:** 2026-10-26 · **Repozytorium:** `klaudiamoscinska-art/vector-hole` (remote `origin`, jedyny)
+**Baza:** `405994feb34d3865d5a1c1d1d59d7ca0114c1838` = `origin/main` (sprawdzone `git fetch origin main` przed pracą; drzewo czyste).
+**Gałąź:** `content1-campaign-audit-fixes` (od `origin/main`). Commity: `5a25c02` audyt (`qa/content.mjs`, `qa/content-shots.mjs`) · `4679677` ikony = obiekty, wygląd wież, pylony, nazwy · `7917e06` kamera Kampanii (M59) · `6a5766d` `run-all` · dokumentacja + raport (ten commit).
+**Środowisko:** Windows 11 Pro, Node v22.23.4, Playwright 1.64.1, Chromium 156.0.8078.4 (headless, renderowanie programowe), Python 3.13 (`python`; `python3` to atrapa Microsoft Store). Brak fizycznego telefonu i SDK portali. Baza i kandydat mierzone na tej samej maszynie, jedno po drugim (baza w osobnym worktree `vh-content1-base`).
+**Merge:** właścicielka w prompcie CONTENT-1 udzieliła **jednorazowej** zgody na samodzielny merge (merge commit) i wdrożenie po przejściu bramek, bez osobnego przeglądu GPT przed merge — wyjątek tylko dla tego etapu; reguła w `CLAUDE.md` bez zmian.
 
 ## 1. Bramki
 
 | Bramka | Wynik | Dowód |
 |---|---|---|
-| CORE-ENERGY | **PASS** | `qa/v22.mjs` w `run-all` (baza i kandydat): zero śladów energii, 15 rund / 6 Wyzwań / 15 misji pod rząd przy 0 monet |
-| CORE-ISOLATION | **PASS** | `qa/px02-isolation.mjs` + `qa/v22.mjs` (PASS na kandydacie). FTUE-3 zmienia tylko Arenę: `edgeReach()` nie działa w kampanii (osobna symulacja), linia następnej rundy czyta bramki Areny (`FEATURE_GATES`) |
-| CORE-LOOP | **PASS** | `qa/ftue3.mjs` (welcome → 3 rundy → wyniki prawdziwymi przyciskami, 4 + 3 sesje), `qa/ftue1.mjs`, `qa/flow.mjs`, `qa/leave-run.mjs` |
-| CORE-SAVE | **PASS** | `qa/save-safety.mjs` PASS; FTUE-3 nie dodaje pól zapisu (test „existing player”: te same klucze, `schemaVersion` 13); `nextRoundHook()` tylko czyta zapis (test) |
-| TOOLS-DEV | **bez zmian (FAIL wg pakietu, decyzja PX03 właścicielki)** | `qa/dev-panel.mjs` PASS; FTUE-3 nie dotyka panelu |
-| DEPLOY-PAGES | **PASS (statycznie)** | `python .claude/vertical-hole/tools/check_pages_workflow.py --repo .` → PASS; `git diff a24cbcf HEAD -- .github` puste; `qa/release.mjs` i `qa/release-recovery.mjs` PASS w `run-all` |
+| CORE-ENERGY | **PASS** | `qa/v22.mjs` w `run-all` (baza i kandydat) |
+| CORE-ISOLATION | **PASS** | `qa/px02-isolation.mjs`, `qa/v22.mjs` PASS. Zmiany tylko w Kampanii (`objectiveIconDef()`, `buildCampaignMission()`, `updateCampaign()`, `campaignTargetZoom()`); kamera Areny i jej balans nietknięte |
+| CORE-LOOP | **PASS** | `qa/content.mjs` (240/240 przejść bota-eksperta), `qa/flow.mjs`, `qa/campaign-bots.mjs`, `qa/ftue1.mjs`, `qa/ftue3.mjs`, `qa/leave-run.mjs` |
+| CORE-SAVE | **PASS** | `qa/save-safety.mjs` PASS; brak nowych pól zapisu, `SAVE_SCHEMA_VERSION` 13, id misji bez zmian (zmienione tylko 2 wyświetlane nazwy) |
+| TOOLS-DEV | **bez zmian (FAIL wg pakietu, decyzja PX03 właścicielki)** | `qa/dev-panel.mjs` PASS; CONTENT-1 nie dotyka panelu |
+| DEPLOY-PAGES | **PASS (statycznie)** | `python .claude/vertical-hole/tools/check_pages_workflow.py --repo .` → PASS; `git diff 405994f HEAD -- .github` puste; `qa/release.mjs`, `qa/release-recovery.mjs` PASS w `run-all` |
 
-**GO_CORE = GO** (cztery CORE PASS na `30e63e3`). GO_RELEASE wymaga merge'a i weryfikacji wdrożenia (poza tym raportem).
+**GO_CORE = GO.** GO_RELEASE: weryfikacja wdrożenia po merge (sekcja 6).
 
-## 2. Pełna regresja (`node qa/run-all.mjs`, logi `qa/out/run-all-*.log`)
+## 2. Audyt 240 misji (`node qa/content.mjs`, pełna tabela: `docs/CONTENT1_AUDIT.md`)
 
-| | Baza `a24cbcf` | Kandydat `30e63e3` |
+| | PRZED (`405994f`) | PO |
 |---|---|---|
-| Wynik | 1593/1597 | **1620/1623** (+26 nowych FTUE-3) |
-| Czas | 42 m 48 s | 42 m 48 s |
-| FAIL | workflow (python3), balans v18, EN „25 PAŹDZIERNIKA”, M11 pierwsza klatka | workflow (python3), balans v18, EN „25 PAŹDZIERNIKA” |
+| PASS / ISSUE / NOT VERIFIED | 75 / 165 / 0 | **240 / 0 / 0** |
+| misje ze złą ikoną celu | 157 (8 grup wspólnych ikon) | **0** |
+| misje z wirem > 30% krótszego boku telefonu | 66 (maks. 77%, M59) | **0** (maks. 28%) |
+| obiekt celu pod większym obiektem | losowo 1–3 misje na przebieg (pylony) | **0** |
+| złe liczby / brak obiektów / postęp / EN | 0 | 0 |
+| bot-ekspert w limicie / tylko bez limitu / nigdy | 220 / 20 / 0 | 220 / 20 / 0 |
 
-Wszystkie FAIL kandydata występują w bazie — **brak nowych regresji**:
-- *workflow* — test woła `python3` (atrapa Sklepu) → wynik pusty; ręcznie `python …check_pages_workflow.py` = PASS. Środowisko, nie kod.
-- *balans v18* — losowe ziarno, misje kampanii (FTUE-3 ich nie dotyka); w bazie też FAIL. Znana zmienność (±7 pkt).
-- *EN „25 PAŹDZIERNIKA”* — brak tłumaczenia daty z bieżącego dnia; istniejący problem, poza zakresem.
-- *M11* — w bazie FAIL, w kandydacie PASS (niestabilny test).
+Kontrola statyczna i rozgrywka są rozdzielone: PASS wymaga obu. Rozgrywka = bot w czasie wirtualnym, nie człowiek.
 
-Kariera Areny (`arena-bots`, 20 rund): podium 3/3, ściana trudności, perf update 0,147 → 0,168 ms (próg 4 ms), render gfx0 7,39 → 7,92 ms (próg 12), monety po 3 rundach 1473 → 1564.
+## 3. Pełna regresja (`node qa/run-all.mjs`, logi `qa/out/runall-{base,after}.log`)
 
-## 3. Pomiar pierwszej sesji (`node qa/ftue3.mjs --measure=12`, te same 12 ziaren)
-
-| | Baza | FTUE-3 |
+| | Baza `405994f` | Kandydat `6a5766d` (+ dokumenty) |
 |---|---|---|
-| Pauzy pełnoekranowe w 1. rundzie | 24 (2/runda) | **0** |
-| Rundy z przerwą bez kęsa ≥ 20 s | 4/36 | **1/36** |
-| Najdłuższa przerwa bez kęsa | 46,3 s | **20,2 s** |
-| Mediana wyniku 1. rundy | 6552 | 8982 |
-| Dotknięcia do startu 3. rundy | 8 | **6** |
-| Start 3. rundy (model osi czasu) | 262 s | 256 s |
-| Pierwszy kęs / kęsy w 10 s (mediana, 1. runda) | 0,5 s / 19 | 0,5 s / 17 |
-| Błędy konsoli | 0 | 0 |
+| Wynik | 1651/1654 | **1661/1665** (+11 nowych CONTENT-1) |
+| Czas | 53 min | 53 min |
+| FAIL | workflow (`python3`), perf gfx0 14,3 ms, EN „26 PAŹDZIERNIKA” | workflow (`python3`), balans v18, EN „26 PAŹDZIERNIKA”, difficulty casual EKSTREMALNA 56% |
 
-Bot „casual” to przybliżenie gracza; wpływu na retencję nie deklarujemy (hipotezy: GDD §7).
+Różnice sprawdzone sparowanie (te same ziarna, baza i kandydat):
+- *difficulty* — ziarno 1018968824: baza **57% FAIL**, kandydat 56% FAIL; ziarno 5332851: baza 53% PASS, kandydat 50% PASS. Zależne od ziarna, kandydat nie łatwiejszy.
+- *balans v18* — ziarno 46286753: **baza też FAIL** (ta sama asercja). Znana zmienność.
+- *perf gfx0* — FAIL w bazie, PASS w kandydacie (Arena; szum maszyny).
+- *workflow* — test woła `python3` (atrapa); bezpośrednio `python …` = PASS. Środowisko.
+- *EN data* — dzisiejsza data bez tłumaczenia; istniejący problem, poza zakresem.
 
-## 4. NOT RUN
-- Testy na fizycznych telefonach (odłożone decyzją właścicielki).
-- `check_evidence.py` / manifest odcisku drzewa (dowody = HEAD `30e63e3`, 0 zmienionych ścieżek w `run-all`).
-- Live (Pages) — dopiero po merge'u.
+**Brak nowych regresji.** Responsywność (`qa/responsive.mjs`, `qa/devices.mjs`), VISUAL-1, FTUE-1/2/2 FIX/3, SAVE/PX02/R1, E2/E3/L1, release + recovery — PASS w obu.
+
+## 4. Wydajność i rozmiar
+- `game.js` 1 030 253 → 1 044 750 B (+14,5 KB; gzip +3,3 KB). Zero nowych plików runtime i zależności.
+- Render Kampanii (M59, telefon 390×844, programowy GPU, 2 serie): start r18 bez zmian (~12–19 ms obie); późna faza r299 **baza 50–59 ms → kandydat 17–30 ms** (mniejszy wir na ekranie).
+
+## 5. NOT RUN
+- Testy na fizycznych telefonach (iPhone 13 / 16 Pro) — tylko emulowane ramki (`qa/responsive.mjs`, `qa/devices.mjs`, zrzuty M59 w 10 ramkach).
+- Ręczne przejście 240 misji przez człowieka — przejścia botem.
+- Poki Inspector / CrazyGames SDK — brak w środowisku.
+- `check_evidence.py` / manifest odcisku drzewa (dowody = HEAD `6a5766d` + zmiany tylko w dokumentach).
+
+## 6. Wdrożenie
+Uzupełniane w PR i w raporcie końcowym po merge (build → deploy → verify-live, SHA produkcji, smoke).

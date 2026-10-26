@@ -2351,17 +2351,19 @@ const CARD_ICONS = {
 const GOAL_ICONS = {
   fragment: '<path d="M12 3l8 9-8 9-8-9z" fill="currentColor"/>',
   capsule: '<rect x="7" y="2.5" width="10" height="19" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 12h10" stroke="currentColor" stroke-width="2"/>',
-  prop: '<path d="M4 8l8-4.5L20 8v9l-8 4.5L4 17z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 8l8 4.5M20 8l-8 4.5v9" stroke="currentColor" stroke-width="2" fill="none"/>',
+  prop: '<path d="M6 21V5h3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 5h3.5l-.9 2.6H9.3z" fill="currentColor"/><path d="M12.5 13.5h9M12.5 16.3h9M13.5 16.3V20M20.5 16.3V20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 21h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   vehicle: '<rect x="3" y="10" width="18" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 10a5 5 0 0110-0" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="7.5" cy="17" r="1.7" fill="currentColor"/><circle cx="16.5" cy="17" r="1.7" fill="currentColor"/>',
   marker: '<path d="M6 21V3M6 3h12l-3.5 4.5L18 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
-  node: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" stroke-width="2"/>',
+  node: '<path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M7.6 9.4a5.2 5.2 0 013.1-2.9M16.4 14.6a5.2 5.2 0 01-3.1 2.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
   pylon: '<path d="M12 8v13" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="2.2"/>',
-  landmark: CARD_ICONS.star,
+  // CONTENT-1: a monument, not the score star (a landmark goal and a
+  // score goal looked the same).
+  landmark: '<path d="M2.5 9L12 3l9.5 6z" fill="currentColor"/><path d="M5 11v7M9.7 11v7M14.3 11v7M19 11v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 20.5h18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
   gate: '<path d="M4 3v18M20 3v18M4 12h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
   // v10 classes + objective kinds.
   structure: '<path d="M3 10l9-6 9 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><rect x="5" y="10" width="14" height="10" fill="none" stroke="currentColor" stroke-width="2"/><rect x="10" y="14" width="4" height="6" fill="currentColor"/>',
-  heavy: '<rect x="2" y="6" width="20" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 11h20M7 6v5M12 6v5M17 6v5" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="18.5" r="1.8" fill="currentColor"/><circle cx="17" cy="18.5" r="1.8" fill="currentColor"/>',
-  tower: '<path d="M8 21V6l4-3 4 3v15M8 21h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10.5 9h3M10.5 13h3M10.5 17h3" stroke="currentColor" stroke-width="1.6"/>',
+  heavy: '<rect x="5.5" y="3" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><rect x="2" y="7" width="17" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18.6" r="1.8" fill="currentColor"/><circle cx="15" cy="18.6" r="1.8" fill="currentColor"/>',
+  tower: '<path d="M2.5 21V11h5v10M8.5 21V3.5h6V21M15.5 21V8h6v13M2 21h20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.8 7.5h1.4M10.8 11h1.4M10.8 14.5h1.4M17.8 11.5h1.4M17.8 15h1.4M4.3 14.5h1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
   tier: '<path d="M12 3l7 8h-4v9H9v-9H5z" fill="currentColor"/>',
   rival: '<circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="12" r="3" fill="currentColor"/>',
   impulse: '<path d="M5 6l6 6-6 6M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -2375,6 +2377,44 @@ const GOAL_ICONS = {
   dark: '<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" fill="currentColor"/>',
   glitch: '<path d="M3 6h7v3H3zM12 6h9v3h-9zM6 11h12v3H6zM3 16h5v3H3zM10 16h11v3H10z" fill="currentColor"/>',
   fragile: '<path d="M12 2l3 7-4 3 5 4-3 6M12 2L9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+};
+
+// CONTENT-1: one goal icon per board look, keyed by the OBJECT_ART kind a
+// CampaignEntity is drawn with (CampaignEntity.artKind()), so the briefing,
+// the HUD and the result show the object that really lies on the board
+// (the per-type icons drew a flag for every marker -- witryna, kryształ,
+// klucz, emiter... -- and a skyscraper for a maszt). GOAL_ICONS[type] is the
+// class icon for a goal that names no single object (random looks).
+// qa/content.mjs checks one icon per look and one look per icon.
+const GOAL_ART_ICONS = {
+  latarnia: '<path d="M8.5 21h6M11.5 21V5.5c0-1.6 1-2.5 2.6-2.5h1.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.5 5.5h6l-1.4 3.6h-3.2z" fill="currentColor"/><circle cx="16.5" cy="12.3" r="1.4" fill="currentColor"/>',
+  drzewo: '<path d="M12 2.5a4.6 4.6 0 014.4 3.3 4 4 0 01-.4 7.9H8a4 4 0 01-.4-7.9A4.6 4.6 0 0112 2.5z" fill="currentColor"/><path d="M12 13.5V21M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  lawka: '<path d="M3 6h18M3 9.3h18M5 6v13M19 6v13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="2.5" y="12" width="19" height="3" rx="1" fill="currentColor"/>',
+  kiosk: '<path d="M3 9.5L5 5h14l2 4.5zM9.2 5l-.8 4.5M12 5v4.5M14.8 5l.8 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><rect x="4.5" y="9.5" width="15" height="10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="12" width="10" height="4" rx=".5" fill="currentColor"/>',
+  skrzynia: '<rect x="3" y="4" width="18" height="16" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="6.2" y="7.2" width="11.6" height="9.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.6 16.4L17.4 7.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  modul_dachowy: '<rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 8v8M5 12h8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 9h3.5M15.5 12h3.5M15.5 15h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  znacznik: GOAL_ICONS.marker,
+  witryna: '<path d="M3 7.5L4.6 4h14.8L21 7.5z" fill="currentColor"/><rect x="3.5" y="7.5" width="17" height="12.5" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="11.3" r="1.6" fill="currentColor"/><path d="M10.4 18.5l.8-5h1.6l.8 5z" fill="currentColor"/>',
+  krysztal: '<path d="M12 2.5l3.2 4.5V20H8.8V7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.6 9.5L7.6 12v8h-4v-8zM18.4 9.5l2 2.5v8h-4v-8z" fill="currentColor"/>',
+  klucz_sektora: '<g transform="rotate(-12 12 14)"><rect x="5" y="8" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="7.5" y="12" width="4" height="3.5" rx=".6" fill="currentColor"/><path d="M13.6 12.6h3.4M13.6 15.4h2.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></g><circle cx="11" cy="4.6" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  emiter: '<path d="M3 5.5c1.2 6.5 7.5 8 12.5 4.5z" fill="currentColor"/><path d="M9.5 8.5l4.5-4.5M10 12v8M6.5 20.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="3.5" r="1.4" fill="currentColor"/><path d="M18 9.5a5 5 0 001.5-4M20.5 11a8 8 0 002-6.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  paleta: '<path d="M2.5 17.5h19M2.5 20.5h19M5 17.5v3M12 17.5v3M19 17.5v3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="3.5" y="10.5" width="7.5" height="7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="13" y="10.5" width="7.5" height="7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><rect x="7.5" y="3.5" width="8.5" height="7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  znacznik_ogrodu: '<path d="M7 21V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.2 4.2c6-1.6 11.2 0 10.2 5.6-3 2.6-6.6 3-10.2 2z" fill="currentColor"/><path d="M9.5 7.6c3 0 5.5.3 7.4 1.1" fill="none" stroke="#04101D" stroke-width="1.2" stroke-linecap="round"/>',
+  samochod: GOAL_ICONS.vehicle,
+  wezel: GOAL_ICONS.node,
+  zasilacz: '<rect x="4" y="3.5" width="16" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.2 6.5L8.5 13h3.2l-1.2 5 4.8-6.8h-3.1z" fill="currentColor"/>',
+  mostek: '<path d="M2 15.5c4-9 16-9 20 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 15.5h20M2 19h20M7 10.6v4.9M12 8.8v6.7M17 10.6v4.9M5 15.5V19M19 15.5V19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  pylon: GOAL_ICONS.pylon,
+  lustro: '<g transform="rotate(-14 12 9)"><rect x="7" y="2.5" width="10" height="13" rx="1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.6 12.4l4.8-6.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></g><path d="M12 15.5v5M8.5 20.5h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  pawilon: '<path d="M3 10.5Q12 1.5 21 10.5z" fill="currentColor"/><rect x="4" y="10.5" width="16" height="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12.8v4.6M12 12.8v4.6M16 12.8v4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  billboard: '<rect x="2.5" y="3.5" width="19" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 13.5v7M16.5 13.5v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="8.5" r="1.8" fill="currentColor"/><path d="M11 7h7M11 10h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  magazyn: '<path d="M3 20V9l4.5-4v4L12 5v4l4.5-4v4L21 5v15z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 20v-7h8v7M8 15.4h8M8 17.8h8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  autobus: '<rect x="2" y="6" width="20" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 9h2.6v3H4.5zM8.7 9h2.6v3H8.7zM12.9 9h2.6v3h-2.6zM17.1 9h2.4v3h-2.4z" fill="currentColor"/><circle cx="7" cy="18.2" r="1.8" fill="currentColor"/><circle cx="17" cy="18.2" r="1.8" fill="currentColor"/>',
+  tramwaj: '<path d="M9 6l3-3.5L15 6M10 2.5h5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="1.5" y="6" width="10" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><rect x="12.5" y="6" width="10" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h2v3H4zM7.5 9h2v3h-2zM15 9h2v3h-2zM18.5 9h2v3h-2z" fill="currentColor"/><path d="M1.5 20h21" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  ciezarowka: '<rect x="1.5" y="4.5" width="13.5" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5.5v10M8.3 5.5v10M11.6 5.5v10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 16.5V9h4l3 4v3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18.5" r="1.8" fill="currentColor"/><circle cx="18" cy="18.5" r="1.8" fill="currentColor"/>',
+  wiezowiec: '<path d="M6 21V9h3V5.5h2.5V2.5h1v3H15V9h3v12z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12.5h1.6M13.4 12.5H15M9 15.8h1.6M13.4 15.8H15M9 19h1.6M13.4 19H15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  maszt: '<path d="M7 21L11.4 3.5h1.2L17 21M8.3 15.8h7.4M9.6 10.6h4.8M8.3 15.8l6.1-5.2M15.7 15.8l-6.1-5.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="6.6" cy="9" rx="1.7" ry="2.5" transform="rotate(-20 6.6 9)" fill="currentColor"/><ellipse cx="17.4" cy="6" rx="1.7" ry="2.5" transform="rotate(20 17.4 6)" fill="currentColor"/><circle cx="12" cy="2.3" r="1.2" fill="currentColor"/>',
+  kopula: '<path d="M3.5 14a8.5 8.5 0 0117 0z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 5.5V14M8 7.2c1.3 2 1.8 4.3 1.8 6.8M16 7.2c-1.3 2-1.8 4.3-1.8 6.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="2.5" y="14" width="19" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 16.8h2M9.5 16.8h2M13.5 16.8h2M17.5 16.8h1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>'
 };
 
 // Fill color per CampaignEntity `type`, by size tier -- shared by
@@ -2530,6 +2570,18 @@ const LANDMARK_SIGNS = {
 // instance for street-scene variety.
 const PROP_STREET_GLYPHS = ['latarnia', 'lawka', 'drzewo', 'kiosk'];
 function randomStreetGlyph() { return PROP_STREET_GLYPHS[randInt(0, PROP_STREET_GLYPHS.length - 1)]; }
+// CONTENT-1: the looks a campaign object without a named glyph is laid in
+// (buildCampaignMission()). A generic "Pochłoń N wieże" goal laid a kopuła
+// (a dome hall) among the towers; the dome stays a named object (M56
+// „Kopuła”).
+const CAMPAIGN_RANDOM_LOOKS = { prop: PROP_STREET_GLYPHS, structure: TIERS.structure.subtypes, heavy: TIERS.heavy.subtypes, tower: TIERS.tower.subtypes.filter(g => g !== 'kopula') };
+/** The one OBJECT_ART look a goal's objects are drawn with, or null when
+ *  they come in random looks (then the goal shows its class icon). Reads
+ *  CampaignEntity.artKind(), the board's own source of truth. */
+function goalArtKind(type, glyph) {
+  if (!glyph && CAMPAIGN_RANDOM_LOOKS[type]) return null;
+  return CampaignEntity.prototype.artKind.call({ type, glyph });
+}
 
 // The GDD's "four powers are enough for the first test" (§08): a small,
 // campaign-only, run-only power pool distinct from Arena's 7-mutation
@@ -2674,7 +2726,7 @@ const CHAPTER_II = [
       ['Przegrzanie', 'a:pylon:4', 'Z4', 4],
       ['Brygadziści', 'r:3', 'H3 B50', 4],
       ['Złoty prototyp', 'b:5', 'Z3', 4],
-      ['Komin', 'e:tower:1:maszt', 'H1', 4],
+      ['Maszt nad halą', 'e:tower:1:maszt', 'H1', 4],
       ['Bez awarii', 'e:vehicle:8', 'F', 4],
       ['Nocna zmiana w hali', 'e:structure:3', 'D Z2', 5],
       ['Reaktor pikseli', 't:6', 'Z3', 4],
@@ -2683,7 +2735,7 @@ const CHAPTER_II = [
       ['Hala zero', 'e:heavy:4', 'H2', 5],
       ['Złomowisko', 'e:structure:5', 'Z4', 5],
       ['Precyzja', 'c:16 e:vehicle:5', 'F Z2', 5],
-      ['Wieże chłodnicze', 'e:tower:2:maszt', 'Z3', 5],
+      ['Maszty fabryki', 'e:tower:2:maszt', 'Z3', 5],
       ['Awaria w hali', 's:3000', 'D H2', 5],
       ['Wielki piec', 'e:heavy:3 e:tower:1', 'Z2', 4],
       ['Zmiana kierownika', 'r:4', 'H3 B60', 5],
@@ -8564,7 +8616,7 @@ class Game {
     this.safe = { t: parseFloat(ps.paddingTop) || 0, r: parseFloat(ps.paddingRight) || 0, b: parseFloat(ps.paddingBottom) || 0, l: parseFloat(ps.paddingLeft) || 0 };
     const zc = CONFIG.juice.zoom;
     this.viewScale = clamp(Math.sqrt(this.width * this.height / zc.viewArea), 1, zc.viewScaleMax);
-    if (this.mode === 'campaign') this.zoom = this.viewScale;
+    if (this.mode === 'campaign') this.zoom = this.campaignTargetZoom();
     // v21: menus, sheets and the in-round HUD grow on a big screen (CSS
     // zoom on every #app layer but the canvas, --ui-scale) so they fill a
     // laptop/monitor instead of a phone-sized strip. Phones stay at 1;
@@ -11359,6 +11411,15 @@ class Game {
   objectiveIconDef(st, setup) {
     if (st.landmark) return { icon: GOAL_ICONS.landmark, color: SIZE_TIER_COLORS[LANDMARK_TIERS[st.landmark]] };
     if (st.tier) return { icon: GOAL_ICONS.tier, color: CAMPAIGN_TIERS[st.tier - 1].color };
+    // CONTENT-1: an eat/activate goal shows the look its objects are drawn
+    // with on the board (goalArtKind()); a class icon only when the step
+    // names no single look (random street props / T4-T6 looks).
+    const type = st.eat || st.activate;
+    if (type && type !== 'runner') {
+      const art = goalArtKind(type, st.glyph || (setup && setup[GLYPH_KEY[type]]));
+      const base = this.campaignGoalIcon(type);
+      return art && GOAL_ART_ICONS[art] ? { icon: GOAL_ART_ICONS[art], color: base.color } : base;
+    }
     const kind = st.eat || st.activate || (st.combo && 'combo') ||
       (st.rival && 'rival') || (st.score && 'score');
     return this.campaignGoalIcon(kind);
@@ -11996,6 +12057,16 @@ class Game {
     const start = this.campaignSpawn || { x: cx, y: cy + 260 };
     this.campaignSpawn = start;
     taken.push({ x: start.x, y: start.y, r: 70 });
+    // Pylons stand on a fixed ring around the center. CONTENT-1: their spots
+    // are reserved before the food, so no vehicle or building is laid on top
+    // of a goal pylon (they were added last, wherever the ring fell).
+    const pylonSpots = [];
+    for (let i = 0; i < (s.pylons || 0); i++) {
+      const a = (i / s.pylons) * Math.PI * 2;
+      const ring = s.landmark ? 230 : 180;
+      pylonSpots.push({ x: cx + Math.cos(a) * ring, y: cy + Math.sin(a) * ring });
+    }
+    pylonSpots.forEach(p => taken.push({ x: p.x, y: p.y, r: CONFIG.campaign.entityRadius.pylon + 10 }));
     // v20: gates are helpers laid before the food, so nothing sits on them:
     // a linked pair of portals (near the start ↔ the far side), or impulse
     // pads on the roads.
@@ -12061,9 +12132,9 @@ class Game {
       });
     }
     const pickFrom = list => () => list[randInt(0, list.length - 1)];
-    if (s.structures) addMany('structure', s.structures, null, glyphOr('structureGlyph', pickFrom(TIERS.structure.subtypes)));
-    if (s.heavies) addMany('heavy', s.heavies, null, glyphOr('heavyGlyph', pickFrom(TIERS.heavy.subtypes)));
-    if (s.towers) addMany('tower', s.towers, null, glyphOr('towerGlyph', pickFrom(TIERS.tower.subtypes)));
+    if (s.structures) addMany('structure', s.structures, null, glyphOr('structureGlyph', pickFrom(CAMPAIGN_RANDOM_LOOKS.structure)));
+    if (s.heavies) addMany('heavy', s.heavies, null, glyphOr('heavyGlyph', pickFrom(CAMPAIGN_RANDOM_LOOKS.heavy)));
+    if (s.towers) addMany('tower', s.towers, null, glyphOr('towerGlyph', pickFrom(CAMPAIGN_RANDOM_LOOKS.tower)));
     // v15: golden bytes start away from the hole (they flee anyway).
     if (s.runners) addMany('runner', s.runners, () => {
       let p;
@@ -12096,11 +12167,7 @@ class Game {
     if (s.nodes) addMany('node', s.nodes, null, { glyph: s.nodeGlyph || 'wezel' });
     if (s.pylons) {
       const glyph = s.pylonGlyph || 'pylon';
-      for (let i = 0; i < s.pylons; i++) {
-        const a = (i / s.pylons) * Math.PI * 2;
-        const ring = s.landmark ? 230 : 180;
-        this.campaignEntities.push(new CampaignEntity('pylon', cx + Math.cos(a) * ring, cy + Math.sin(a) * ring, { glyph }));
-      }
+      pylonSpots.forEach(p => this.campaignEntities.push(new CampaignEntity('pylon', p.x, p.y, { glyph })));
     }
     if (s.landmark) {
       // A landmark with no activation step starts unlocked (a direct big eat).
@@ -13119,12 +13186,28 @@ class Game {
     // use WORLD_W/H). This only changes how the camera frames the box --
     // movement extent is untouched.
     const cb = CONFIG.campaign.bounds;
+    this.zoom += (this.campaignTargetZoom() - this.zoom) * Math.min(1, dt * CONFIG.juice.zoom.lerp);
     this.followCamera(cb.minX, cb.minY, cb.maxX, cb.maxY);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
     this.updateCampaignHUD();
 
     if (m.timeRemaining <= 0 && !m.finishing) this.onCampaignTimeout();
+  }
+
+  /** CONTENT-1: Campaign's camera. The framing stays fixed (viewScale)
+   *  until the vortex would span more than CONFIG.juice.zoom.holeScreenFrac
+   *  of the short screen side -- the same rule Arena's growth zoom uses --
+   *  then it pulls back so the hole stays that size (a score mission ended
+   *  with a hole 1.5x wider than a phone). Never further out than the
+   *  short side showing the whole mission box. Visual only: eating, sizes,
+   *  speeds and the box are world units and do not change. */
+  campaignTargetZoom() {
+    const zc = CONFIG.juice.zoom, b = CONFIG.campaign.bounds;
+    const short = Math.min(this.width, this.height);
+    if (!this.player || !short) return this.viewScale;
+    const floor = Math.min(this.viewScale, short / Math.min(b.maxX - b.minX, b.maxY - b.minY));
+    return Math.max(floor, Math.min(this.viewScale, zc.holeScreenFrac * short / this.player.radius));
   }
 
   /* ---- Golden Shot v11: "PRAWIE!" mission revive (rewarded ad) ---- */
@@ -17617,7 +17700,7 @@ const I18N_EN = {
   "Kolejny brzeg odzyskany.": "Another shore reclaimed.",
   "Kolejny taras do odzyskania.": "Another terrace to reclaim.",
   "Kolibry": "Hummingbirds",
-  "Komin": "Chimney",
+  "Maszt nad halą": "Mast over the Hall",
   "Komplet: nowy Wir, Smuga, Efekt pochłaniania i Finisz naraz, plus odznaka.": "Full set: a new Vortex, Trail, Swallow Effect and Finale at once, plus a badge.",
   "Konduktorzy": "Conductors",
   "Kontrabanda": "Contraband",
@@ -18384,7 +18467,7 @@ const I18N_EN = {
   "Wielka wystawa": "Grand Exhibition",
   "Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.": "The grand finale. Switch off three nodes and swallow the city core — a T6 object.",
   "Wielki piec": "Great Furnace",
-  "Wieże chłodnicze": "Cooling Towers",
+  "Maszty fabryki": "Factory Masts",
   "Wieżowce": "Skyscrapers",
   "Wieżowce Rdzenia rzucają cień na całe miasto. Pochłoń dwa.": "The Core's skyscrapers cast a shadow over the whole city. Swallow two.",
   "Wieżowiec nad tunelem": "Skyscraper over the Tunnel",

@@ -4,6 +4,55 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CONTENT-1 „Audyt 240 misji” (zapis nadal v13; cele, liczby, trudność, czasy, nagrody, ekonomia, Arena i kolejność odblokowań bez zmian)
+- **Audyt wszystkich 240 misji** (`qa/content.mjs`): dla każdej misji
+  prawdziwa plansza (`startCampaignMission`), odprawa i HUD — opisy celów,
+  ikona każdego celu, czy obiekty celu leżą na planszy (liczba, wygląd,
+  w obszarze gry, nie pod większym obiektem), czy plansza ma dość wzrostu
+  na wymagany rozmiar, czy postęp rośnie o 1 za właściwy obiekt i o 0 za
+  inny, tłumaczenie EN nazwy / celów / NELA, przejście botem-ekspertem
+  (limit misji, a przy porażce bez limitu) i największy wir na ekranie
+  telefonu. Raport misja po misji: `qa/out/content/<etykieta>/audit.md`.
+  Przed zmianą: 165 misji z problemem (ISSUE), 75 PASS; po zmianie:
+  wszystkie 240 sprawdzone, wynik w raporcie etapu.
+- **Ikony celów = obiekty z planszy** (`GOAL_ART_ICONS`, `goalArtKind()`,
+  `objectiveIconDef()`): ikona wynikała z typu obiektu, więc każdy
+  „znacznik” (witryna, kryształ, klucz sektora, emiter, paleta, znacznik
+  ogrodu) miał flagę — gracz widział flagę przy „Pochłoń 4 witryny” (M32)
+  — maszt, kopuła i wieżowiec miały ikonę wieżowca, magazyn / billboard /
+  pawilon jeden domek, autobus / tramwaj / ciężarówka jeden autobus,
+  zasilacz i mostek kółko z krzyżykiem węzła, lustro pylon, a cel
+  „pochłoń landmark” tę samą gwiazdkę co „zdobądź punkty”. Teraz ikona
+  pochodzi z wyglądu, jakim obiekt jest rysowany na planszy
+  (`CampaignEntity.artKind()`): 28 ikon obiektów, każda tylko dla jednego;
+  cel bez nazwanego obiektu (losowe wyglądy) ma ikonę klasy (elementy
+  uliczne, budowle, ciężkie pojazdy, wieże), landmark — budowlę z
+  kolumnami. Ta sama funkcja zasila odprawę, HUD, kartę następnej misji
+  i kafel na Mieście.
+- **Wir w późnej fazie misji (M59 „Rekord Rdzenia”)**: kamera Kampanii
+  była stała, a wir rośnie dalej po T6 (5000 pkt = r≈300 px) — na
+  telefonie zajmował 77% krótszego boku (średnica ~1,5 szerokości
+  ekranu), na iPhonie 13 w poziomie 91%, w ramce Poki 640×360 83%;
+  66 misji przekraczało 30%. Teraz kamera Kampanii oddala się tak jak
+  w Arenie (`campaignTargetZoom()`, ta sama zasada
+  `CONFIG.juice.zoom.holeScreenFrac` = 24% krótszego boku), nie dalej niż
+  cały obszar misji na krótszym boku. Tylko obraz: wzrost, progi,
+  rozmiary obiektów, prędkość, punkty i obszar misji bez zmian;
+  do T5 (r 90) na telefonie w pionie kadr się nie zmienia.
+- **Pylony nie leżą pod pojazdami**: pierścień pylonów był dokładany na
+  końcu, w dowolnym miejscu; teraz miejsca pylonów są rezerwowane przed
+  jedzeniem (M40, M58, M120, M208, M210, M238 losowo miały pylon celu pod ciężarówką,
+  autobusem lub masztem).
+- **„Pochłoń N wieże” pokazuje wieże**: cel bez nazwanego obiektu kładł
+  losowo także kopułę (halę pod kopułą); losowe wyglądy wież to teraz
+  wieżowiec i maszt (`CAMPAIGN_RANDOM_LOOKS`), kopuła zostaje obiektem
+  nazwanym (M55 „Kopuła”).
+- **Nazwy zgodne z obiektem**: M136 „Komin” → „Maszt nad halą” i M145
+  „Wieże chłodnicze” → „Maszty fabryki” (cel i plansza to maszty; EN
+  „Mast over the Hall”, „Factory Masts”). Pozostałe uwagi tekstowe audytu
+  przejrzane ręcznie — klimat dzielnicy (pociągi w metrze, kramy na
+  bazarze), liczby bram i rywali w zdaniach NELA — są zgodne z misją.
+
 ## VISUAL-1 „Miasto, Dzielnice, Warsztat” (zapis nadal v13; ekonomia, ceny, nagrody, mechanika, rundy i misje bez zmian)
 - **Analiza** (zrzuty z gry na bazie `4901499`): Core City na każdym
   poziomie to te same prostokąty — po LVL 6 nic się już nie zmienia,

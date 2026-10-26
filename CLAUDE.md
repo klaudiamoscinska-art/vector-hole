@@ -48,6 +48,7 @@ node qa/save-safety.mjs          # PX01 save guard     node qa/px02-isolation.mj
 node qa/v22.mjs                  # two modes / no energy  node qa/ftue1.mjs     # FTUE-1
 node qa/ftue3.mjs                # FTUE-3 first 5 minutes (--measure=N --root=DIR: a first session vs another checkout)
 node qa/leave-run.mjs            # leaving a round      node qa/release.mjs     # E3 artifact (+ release-recovery.mjs)
+node qa/content.mjs              # CONTENT-1: all 240 missions (goal copy, icons = board objects, progress, EN, bot clear, vortex size)
 node qa/responsive.mjs           # FTUE-2: every platform frame, iframe host, resize/turn/fullscreen, input
 ```
 
