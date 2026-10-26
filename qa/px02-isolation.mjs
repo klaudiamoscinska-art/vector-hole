@@ -393,13 +393,14 @@ export async function runPx02Checks(url) {
       if (gm.rafId) cancelAnimationFrame(gm.rafId);
       gm.running = false;
       out.paid = c0 - gm.save.coins;
+      out.price = MISSION_BOOSTERS.find(b => b.id === 'magnet').price;
       out.used = !!(gm.mission && gm.mission.boosters && gm.mission.boosters.includes('magnet'));
       gm.leaveCampaignMission();
       gm.state = GameState.MENU;
       return out;
     });
     push('ISO-D 3 Arena rounds change nothing in the campaign (missions, stars, unlocks, boosters)', d.campaignSame && d.boostersSame, JSON.stringify(d));
-    push('ISO-D shared coins reach the campaign only through a deliberate purchase (Magnes picked in the briefing: -40 coins, used in the mission)', d.chip && d.paid === 40 && d.used, JSON.stringify(d));
+    push('ISO-D shared coins reach the campaign only through a deliberate purchase (Magnes picked in the briefing: its price in coins, used in the mission)', d.chip && d.paid === d.price && d.price > 0 && d.used, JSON.stringify(d));
     // BOOST-01: buy (stock), use in a mission, reset -- Arena is unchanged each time.
     const b = await page.evaluate(() => {
       const gm = window.game, out = {};

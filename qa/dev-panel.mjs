@@ -522,9 +522,9 @@ export async function runDevPanelChecks(url) {
       document.getElementById('btnInfoSheetAction').click();
       gm.onCosmeticPick('aura', AURAS.find(x => x.id === 'ember'));
       document.getElementById('btnInfoSheetAction').click();
-      return { shown, sheet1, coins: s.coins, prisms: s.prisms, white: s.owned.includes('white') && s.selected === 'white', ember: s.auras.owned.includes('ember') && s.auras.selected === 'ember' };
+      return { shown, sheet1, coins: s.coins, price: SKINS.find(x => x.id === 'white').price, prisms: s.prisms, white: s.owned.includes('white') && s.selected === 'white', ember: s.auras.owned.includes('ember') && s.auras.selected === 'ember' };
     });
-    push('economy: coins set in the panel show in the hub and buy a Wir via the real "KUP I ZAŁÓŻ" (coins and ◆ spent, item worn)', econ.shown === '5000' && /KUP/.test(econ.sheet1) && econ.coins === 3000 && econ.prisms === 85 && econ.white && econ.ember, JSON.stringify(econ));
+    push('economy: coins set in the panel show in the hub and buy a Wir via the real "KUP I ZAŁÓŻ" (coins and ◆ spent, item worn)', econ.shown === '5000' && /KUP/.test(econ.sheet1) && econ.coins === 5000 - econ.price && econ.prisms === 85 && econ.white && econ.ember, JSON.stringify(econ));
     // Simulated purchases: exactly the real grant, one-time packs once, undo.
     const iap = await page.evaluate(async () => {
       const gm = window.game, s = gm.save;
