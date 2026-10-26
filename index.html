@@ -91,7 +91,7 @@
 
     <div id="evolutionOverlay" class="evolution-overlay hidden">
       <div class="evolution-panel">
-        <div class="evolution-kicker">EWOLUCJA</div>
+        <div id="evolutionKicker" class="evolution-kicker">EWOLUCJA</div>
         <div class="evolution-title">Wybierz 1 ulepszenie</div>
         <div id="evolutionSub" class="evolution-sub">Działa do końca tej rundy. Gra czeka, aż wybierzesz.</div>
         <div id="evolutionCards" class="evolution-cards"></div>
@@ -849,6 +849,11 @@
       </div>
 
       <p id="resultHookLine" class="result-hook hidden"></p>
+      <!-- FTUE-3: what the next round brings (Game.nextRoundHook()). -->
+      <div id="resultNextLine" class="result-next hidden">
+        <span id="resultNextIcon" class="result-next-icon" aria-hidden="true"></span>
+        <span class="result-next-body"><span id="resultNextKicker" class="result-next-kicker">NASTĘPNA RUNDA</span><span id="resultNextText" class="result-next-text"></span></span>
+      </div>
       <!-- v14: one "NAGRODY" card (was three separate cards for coins, XP
            and Core City stacked on top of each other). -->
       <div class="result-rewards">

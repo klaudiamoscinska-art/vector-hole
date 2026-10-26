@@ -23,7 +23,15 @@ const CONFIG = {
   arena: {
     trails: 10, trailLength: 8,
     feastFragments: 10, feastCapsules: 2,
-    roadRespawnChance: 0.5   // share of eaten fragments that respawn on a road lane
+    roadRespawnChance: 0.5,  // share of eaten fragments that respawn on a road lane
+    // FTUE-3: the vortex's centre stops a radius from the city's edge, so a
+    // big vortex pressed against a wall never reached what lay between it
+    // and the wall -- a smaller rival or a fragment in a corner sat out of
+    // reach for good (a casual bot lost 35-47 s of a first round to one).
+    // Pressed that far (its centre within this share of its radius of the
+    // closest point it may reach), the player's vortex pulls those in too
+    // (Game.edgeReach()). Bots are unchanged.
+    edgeReachSlack: 0.25
   },
   // maxRadius (v12): bot careers showed late-round holes snowballing past
   // r 1000 (once r 5800 -- bigger than the 3000x3000 world, sweeping every
@@ -199,7 +207,17 @@ const CONFIG = {
     // animation (count-ups 1.1 s, XP bar 0.35 s + 1.1 s) and a beat to read it.
     resultCelebrationDelayMs: 2400,
     // The very first Arena result offers no "×2 MONET · REKLAMA".
-    firstResultNoAd: true
+    firstResultNoAd: true,
+    // FTUE-3 "Pierwsze 5 minut": the first Arena round (no finished round
+    // yet, not a Daily or a friend's challenge) runs without the evolution
+    // cards -- they paused it twice in its first 6-32 s with a 3-way choice
+    // before the player knew the basics. They appear from this many
+    // finished rounds on, the first offer marked as new.
+    evolutionFromRuns: 1,
+    // ...and an Arena result says what the next round brings: a feature
+    // unlock (Warsztat, Wyzwania) or a Core City reward at most this many
+    // finished rounds away (Game.nextRoundHook()).
+    coreHookRounds: 2
   },
   // v22: no tutorial -- the first Arena round teaches the game (owner: "gracz
   // ma poznawać grę podczas pierwszej rozgrywki; gdy nie wie, co zrobić,
@@ -9805,6 +9823,31 @@ class Game {
     return Math.round(cc.arenaCompleteGain * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
   }
 
+  /** FTUE-3: what the next finished Arena rounds bring, for the result
+   *  screen -- the nearest Arena feature unlock (read from FEATURE_GATES, so
+   *  a Warsztat opened by the campaign is skipped) or else the next Core
+   *  City reward when a plain round's gain reaches it within
+   *  CONFIG.ftue.coreHookRounds rounds. null when neither is near. Reads
+   *  the save only; grants and stores nothing. */
+  nextRoundHook() {
+    const s = this.save, runs = arenaRunsOf(s), G = CONFIG.unlockGates;
+    const gates = [
+      { id: 'warsztat', at: G.warsztatRuns, text: 'Odblokujesz Warsztat · nowy wygląd wiru' },
+      { id: 'wyzwania', at: G.wyzwaniaRuns, text: 'Odblokujesz Wyzwania · nowa mapa każdego dnia' }
+    ];
+    for (const g of gates) {
+      if (FEATURE_GATES[g.id](s)) continue;
+      const f = FEATURE_UNLOCKS.find(u => u.id === g.id);
+      return { id: g.id, rounds: Math.max(1, g.at - runs), text: g.text, color: f.color, icon: UNLOCK_ICONS[g.id] };
+    }
+    const level = s.hub.coreLevel || 1;
+    const rounds = Math.max(1, Math.ceil((100 - (s.hub.coreCharge || 0)) / this.coreGainPerRound()));
+    if (rounds > CONFIG.ftue.coreHookRounds) return null;
+    const reward = CORE_CITY_LEVEL_REWARDS[level + 1];
+    const label = reward ? reward.label : `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    return { id: 'core', rounds, text: `Nagroda Core City: ${label}`, color: '#46D99A', icon: REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(reward)] };
+  }
+
   /** The campaign mission to do next: the first uncleared mission (whose
    *  predecessor is cleared) in the earliest unlocked district, or null
    *  once every unlocked mission is done. */
@@ -12198,7 +12241,8 @@ class Game {
    *  demo of the effect, a plain name, a WHEN tag and a one-line description
    *  with real numbers (player feedback: the old 3 tiny icon cards didn't
    *  say what you were picking). */
-  showPowerCards(cards, onPick, subtitle) {
+  showPowerCards(cards, onPick, subtitle, kicker = null) {
+    document.getElementById('evolutionKicker').textContent = kicker || 'EWOLUCJA';
     const grid = document.getElementById('evolutionCards');
     grid.innerHTML = '';
     cards.forEach((card, i) => {
@@ -13203,6 +13247,11 @@ class Game {
     this.activeMutations = new Set();
     this.evolutionOffersTriggered = new Set();
     this.evolutionPending = false;
+    // FTUE-3: no evolution cards in the first Arena round; the first offer
+    // of the round they arrive in says they are new.
+    const regularRound = !this.isDailyRun && !this.challenge;
+    this.evolutionQuiet = regularRound && arenaRunsOf(this.save) < CONFIG.ftue.evolutionFromRuns;
+    this.evolutionIntro = regularRound && arenaRunsOf(this.save) === CONFIG.ftue.evolutionFromRuns;
     clearTimeout(this.evolutionAutoPickTimer);
     this.magnetUntil = 0;
     this.speedBoostUntil = 0;
@@ -13566,6 +13615,18 @@ class Game {
     }
     hookLine.textContent = hook;
     hookLine.classList.toggle('hidden', !hook);
+    // FTUE-3: what the next round brings (an unlock or a Core City reward).
+    const next = this.nextRoundHook();
+    const nextLine = document.getElementById('resultNextLine');
+    nextLine.classList.toggle('hidden', !next);
+    if (next) {
+      nextLine.style.setProperty('--q', next.color);
+      nextLine.dataset.hook = next.id;
+      document.getElementById('resultNextIcon').innerHTML = next.icon;
+      document.getElementById('resultNextKicker').textContent = next.rounds === 1 ? 'NASTĘPNA RUNDA' : `ZA ${next.rounds} ${plural(next.rounds, ['RUNDĘ', 'RUNDY', 'RUND'])}`;
+      document.getElementById('resultNextText').textContent = next.text;
+      this.analytics.track('result_next', { hook: next.id, rounds: next.rounds, runs: arenaRunsOf(this.save) });
+    }
     document.getElementById('btnPlayAgain').textContent = this.challenge && !this.challengeBeaten ? 'REWANŻ — TA SAMA MAPA' : 'ZAGRAJ JESZCZE RAZ';
     if (place === 1 || isNewPb) this.monetization.happyTime();
 
@@ -14243,8 +14304,21 @@ class Game {
         continue;
       }
       const d = dist(hole.x, hole.y, obj.x, obj.y);
-      if (d < reach) obj.startEating(hole);
+      if (d < reach || (hole.isPlayer && this.edgeReach(hole, obj.x, obj.y, obj.radius))) obj.startEating(hole);
     }
+  }
+
+  /** FTUE-3: true when (x, y) lies in the strip along the city's edge that
+   *  the centre of `hole` can't enter (it is clamped a radius from the
+   *  wall) and the hole is pressed as far toward it as it can go -- what
+   *  lies there is pulled in (CONFIG.arena.edgeReachSlack). Elsewhere the
+   *  usual reach applies. Player only (handleObjectEating(),
+   *  handleHoleCollisions()). */
+  edgeReach(hole, x, y, extra) {
+    const cx = clamp(x, hole.radius, WORLD_W - hole.radius), cy = clamp(y, hole.radius, WORLD_H - hole.radius);
+    if (cx === x && cy === y) return false;
+    return dist(hole.x, hole.y, cx, cy) < hole.radius * CONFIG.arena.edgeReachSlack
+      && dist(hole.x, hole.y, x, y) < hole.radius * Math.SQRT2 + extra;
   }
 
   /** v13: rolling over something still too big used to do nothing at all
@@ -14268,7 +14342,7 @@ class Game {
         if (b.invulnerable) continue;
         if (a.radius <= b.radius * EAT_HOLE_RATIO) continue;
         const d = dist(a.x, a.y, b.x, b.y);
-        if (d < a.radius * 0.75) {
+        if (d < a.radius * 0.75 || (a.isPlayer && this.edgeReach(a, b.x, b.y, b.radius))) {
           a.growFromArea(Math.PI * b.radius * b.radius * GROW_K_HOLE);
           const multiplier = a.isPlayer ? this.registerCombo() : (a.paceMult || 1);
           const isBounty = a.isPlayer && b === this.bountyTarget;
@@ -14391,7 +14465,8 @@ class Game {
     this.evolutionPending = true;
     const cards = this.pickMutationCards();
     this.analytics.track('evolution_offer', { options: cards.map(c => c.id) });
-    this.showPowerCards(cards, id => this.pickMutation(id), 'Działa do końca tej rundy. Gra czeka, aż wybierzesz.');
+    this.showPowerCards(cards, id => this.pickMutation(id), 'Działa do końca tej rundy. Gra czeka, aż wybierzesz.', this.evolutionIntro ? 'NOWOŚĆ · EWOLUCJA' : null);
+    this.evolutionIntro = false;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionAutoPickTimer = setTimeout(() => {
       if (this.evolutionPending && cards[0]) this.pickMutation(cards[0].id);
@@ -14439,7 +14514,7 @@ class Game {
   }
 
   checkEvolutionTriggers() {
-    if (this.evolutionPending) return;
+    if (this.evolutionPending || this.evolutionQuiet) return;
     for (const r of CONFIG.evolution.triggerRadii) {
       if (this.player.radius >= r && !this.evolutionOffersTriggered.has(r)) {
         this.evolutionOffersTriggered.add(r);
@@ -17053,6 +17128,7 @@ const I18N_EN = {
   "NAGRODY": "REWARDS",
   "NAJPIERW {0}": "FIRST {0}",
   "NASTĘPNA MISJA": "NEXT MISSION",
+  "NASTĘPNA RUNDA": "NEXT ROUND",
   "NASTĘPNY": "NEXT",
   "NIE": "NO",
   "NIE TERAZ": "NOT NOW",
@@ -17065,7 +17141,9 @@ const I18N_EN = {
   "NOWE": "NEW",
   "NOWE OBIEKTY DO POCHŁONIĘCIA": "NEW OBJECTS TO SWALLOW",
   "NOWOŚĆ W ODPRAWIE": "NEW IN THE BRIEFING",
+  "NOWOŚĆ · EWOLUCJA": "NEW · EVOLUTION",
   "NOWY": "NEW",
+  "Nagroda Core City: {0}": "Core City reward: {0}",
   "NOWY BUDYNEK": "NEW BUILDING",
   "NOWY REKORD": "NEW RECORD",
   "NOWY REKORD DNIA": "NEW DAILY RECORD",
@@ -17144,6 +17222,8 @@ const I18N_EN = {
   "Odbij pierwsze miejsce!": "Take 1st place back!",
   "Odblokujesz ją, kończąc ostatnią misję poprzedniej dzielnicy:": "Unlock it by completing the last mission of the previous district:",
   "Odblokujesz ją, kończąc poprzednią dzielnicę.": "Unlock it by completing the previous district.",
+  "Odblokujesz Warsztat · nowy wygląd wiru": "Unlocks the Workshop · a new look for your vortex",
+  "Odblokujesz Wyzwania · nowa mapa każdego dnia": "Unlocks Challenges · a new map every day",
   "Odrzuć wyzwanie": "Decline challenge",
   "Ogrodnicy": "Gardeners",
   "Ogrodnicy nocy": "Night Gardeners",
@@ -17664,6 +17744,8 @@ const I18N_EN = {
   "WYNIK": "SCORE",
   "WYNIK {0}": "SCORE {0}",
   "WYZWANIA": "CHALLENGES",
+  "ZA {#0} RUNDY": "IN {0} ROUNDS",
+  "ZA {#0} RUND": "IN {0} ROUNDS",
   "WYZWANIE DNIA": "DAILY CHALLENGE",
   "WYZWANIE DNIA ukończone: +{0} monet (rekord dnia: {1})": "DAILY CHALLENGE complete: +{0} coins (today's best: {1})",
   "WYZWANIE DNIA ukończone: +{0} monet (rekord dnia: {1}) · seria: {2} dni": "DAILY CHALLENGE done: +{0} coins (daily best: {1}) · streak: {2} days",

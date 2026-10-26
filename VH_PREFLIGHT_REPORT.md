@@ -1,71 +1,56 @@
-# VH_PREFLIGHT_REPORT — FTUE-1 „Druga runda” (P00 + implementacja wariantu D)
+# VH_PREFLIGHT_REPORT — FTUE-3 „Pierwsze 5 minut” (P00-CORE + QA etapu)
 
-**Data:** 2026-10-23 · **Repozytorium:** `klaudiamoscinska-art/vector-hole` (remote `origin`, fetch = push = `https://github.com/klaudiamoscinska-art/vector-hole.git`; innych remotes brak)
-**Baza:** `810334f0bf3c38436cf1f1f1be3084f4071270c6` = `origin/main` (sprawdzone `git fetch origin main` 2026-10-23; PR #76). Lokalny `main` stał na `63b50d0` — nieużywany.
-**Gałąź robocza:** `ftue1-second-round` (lokalna, utworzona od zweryfikowanego `origin/main`, upstream odpięty, żeby żaden push nie trafił w `main`). Nazwa nie istniała ani lokalnie, ani na `origin`.
-**Stan git przed:** czyste drzewo na `main` (63b50d0). **Po:** HEAD `810334f`, zmiany niezatwierdzone (8 plików zmienionych + `qa/ftue1.mjs` nowy). **Bez commita, push, PR, merge, deployu, zmian na staging.**
+**Data:** 2026-10-25/26 · **Repozytorium:** `klaudiamoscinska-art/vector-hole` (remote `origin`, jedyny)
+**Baza:** `a24cbcfe318c87db2bb5bc2b4f5100505ca5d58b` = `origin/main` (sprawdzone `git fetch origin main` przed pracą).
+**Gałąź:** `ftue3-first-five-minutes` (od `origin/main`), wypchnięta na `origin`. Commity:
+`9d65640` krawędź miasta · `6062528` 1. runda bez kart · `ea4da91` linia następnej rundy · `6a071a5` testy · `30e63e3` dokumentacja (+ ten raport).
+**Środowisko:** Windows 11 Pro, Node v22.23.4, Playwright 1.64.1, Chromium 156.0.8078.4 (headless, renderowanie programowe), Python 3.13 (`python`; `python3` to atrapa Microsoft Store). Brak fizycznego telefonu i SDK portali. Baza i kandydat mierzone na tej samej maszynie, jedno po drugim (baza w osobnym worktree `ftue3-base`).
 
-**Odcisk drzewa (własna metoda — `check_evidence.py` NIE uruchomiony, brak Pythona):** `63f122ba14b2138fbbf5cab0f660bb27ccd8f2ae921933b47a9d300014acdd7e` = SHA-256 listy `sha256(treść LF)  ścieżka` dla 244 plików z `git ls-files -co --exclude-standard` (bez tego raportu); lista: `SNAPSHOT_FILES.txt` w paczce odbioru.
-**Pliki runtime (SHA-256 treści LF, jak zapisze git; drzewo robocze ma CRLF przez `core.autocrlf=true`):**
-- `game.js` `dfed72ea1299000e58f25f57aaf282551cfe8018386e7695a5c715a9ee370f39` (baza `3f837b5a…f386ca`)
-- `style.css` `374be9e77bfad25f9b3218f61fc03113ba2b6b21034d132ce436205c8836bb29` (baza `b5eb39fe…611b61`)
-- `index.html` `eb5170a426bfea149fd6eb6d0e3ec158013845abef4865f892767fe81921b871` (bez zmian)
+## 1. Bramki
 
-**Środowisko:** Windows 11 Pro, PowerShell 5.1 + Git Bash. **Brak Node.js, Pythona (tylko alias Microsoft Store) i Playwrighta** — nic nie instalowano. Dostępny systemowy **Microsoft Edge 155.0.4283.62** (headless) — użyty jako *zastępcze* środowisko testowe (harness poza repo, opis niżej). Brak fizycznego telefonu, brak SDK Poki/CrazyGames.
-
----
-
-## 1. Werdykt bramek
-
-| Bramka | Wynik | Dowód / powód |
+| Bramka | Wynik | Dowód |
 |---|---|---|
-| CORE-ENERGY | **PASS (statycznie)** | `grep energy game.js`: tylko czytnik migracji v12→v13 (`const { energy, ...rest } = data`), opisy grafiki i fabuły; brak timera/kosztu/chipu. Runtime: zastępczy harness — 3 rundy Areny pod rząd z przycisków bez czekania. |
-| CORE-ISOLATION | **NOT RUN (oficjalnie)** · statycznie bez zmian | `qa/px02-isolation.mjs` nieuruchomiony (brak Node). Statycznie: brak `perks`, `RUN_TOOLS`, `turbo_free`, `confirmRunSetup` w `game.js`; FTUE-1 nie dotyka startu rundy, nagród ani Dzielnic (diff). |
-| CORE-LOOP | **PASS (zastępczo, Edge headless)** · oficjalnie NOT RUN | Harness: welcome GRAJ → runda → wynik → ZAGRAJ JESZCZE RAZ → runda 2 → … na 390×844, 375×667, 844×390, 1280×720 (`ftue1r2-summary.log`). `qa/flow.mjs` / `qa/v22.mjs` nieuruchomione. |
-| CORE-SAVE | **NOT RUN (oficjalnie)** · zastępczo bez regresji | `qa/save-safety.mjs` nieuruchomiony. Zastępczo: 7 zapisów istniejących + 2 ponowne uruchomienia; start zmienia tylko sesję retencji L1 (`retention/meta/_sig`) identycznie jak baza; brak utraty/duplikatów w `unlocks.announced`; `schemaVersion` 13. |
-| TOOLS-DEV | **FAIL wg pakietu (bez zmian od P00)** | `class DevPanel` w publicznym `game.js` (decyzja projektu v23, PX03 = decyzja właścicielki). Nie blokuje FTUE. FTUE-1 dodał w panelu tylko 2 linie (patrz §3). |
-| DEPLOY-PAGES | **NOT RUN (`check_pages_workflow.py`)** · workflow nietknięty | `git diff origin/main -- .github` puste. Trigger: tylko `push` na `main` + `workflow_dispatch`, upload `path: release`. |
+| CORE-ENERGY | **PASS** | `qa/v22.mjs` w `run-all` (baza i kandydat): zero śladów energii, 15 rund / 6 Wyzwań / 15 misji pod rząd przy 0 monet |
+| CORE-ISOLATION | **PASS** | `qa/px02-isolation.mjs` + `qa/v22.mjs` (PASS na kandydacie). FTUE-3 zmienia tylko Arenę: `edgeReach()` nie działa w kampanii (osobna symulacja), linia następnej rundy czyta bramki Areny (`FEATURE_GATES`) |
+| CORE-LOOP | **PASS** | `qa/ftue3.mjs` (welcome → 3 rundy → wyniki prawdziwymi przyciskami, 4 + 3 sesje), `qa/ftue1.mjs`, `qa/flow.mjs`, `qa/leave-run.mjs` |
+| CORE-SAVE | **PASS** | `qa/save-safety.mjs` PASS; FTUE-3 nie dodaje pól zapisu (test „existing player”: te same klucze, `schemaVersion` 13); `nextRoundHook()` tylko czyta zapis (test) |
+| TOOLS-DEV | **bez zmian (FAIL wg pakietu, decyzja PX03 właścicielki)** | `qa/dev-panel.mjs` PASS; FTUE-3 nie dotyka panelu |
+| DEPLOY-PAGES | **PASS (statycznie)** | `python .claude/vertical-hole/tools/check_pages_workflow.py --repo .` → PASS; `git diff a24cbcf HEAD -- .github` puste; `qa/release.mjs` i `qa/release-recovery.mjs` PASS w `run-all` |
 
-**GO_CORE = NOT RUN** (brak oficjalnych CORE-ISOLATION i CORE-SAVE na tym snapshotcie) · **GO_TOOLS = NO GO** · **GO_RELEASE = STOP**.
-Zgodnie z PREFLIGHT_GATES naprawy FTUE nie są blokowane przez TOOLS; brak GO_CORE na tym snapshotcie oznacza, że **przed push/merge trzeba uruchomić `node qa/run-all.mjs`** na maszynie z Node + Playwright.
+**GO_CORE = GO** (cztery CORE PASS na `30e63e3`). GO_RELEASE wymaga merge'a i weryfikacji wdrożenia (poza tym raportem).
 
-## 2. Zakres FTUE-1 (zatwierdzony) i realizacja
+## 2. Pełna regresja (`node qa/run-all.mjs`, logi `qa/out/run-all-*.log`)
 
-| Punkt | Zmiana | Gdzie |
+| | Baza `a24cbcf` | Kandydat `30e63e3` |
 |---|---|---|
-| 1A | Karta „DRUGI TRYB · KAMPANIA” nie pokazuje się nad wynikiem (pozycja `kampania` z `hubIntro: true` pomijana w `queueUnlockCelebrations()`). ZAGRAJ JESZCZE RAZ bez zmian. | `game.js` FEATURE_UNLOCKS, `queueUnlockCelebrations()` |
-| 1B | Od 3. rundy Areny kafelek kampanii w Mieście w stanie „intro” (`DRUGI TRYB` / `Kampania: 240 misji` / `12 dzielnic · zagraj, kiedy chcesz`, plakietka NOWE; NOWE także na zakładce Dzielnice), tap → Dzielnice. Warunek wyliczany z zapisu: `campaignIntroDue()` = nie `knowsCampaign()` i ≥ `CONFIG.ftue.campaignIntroRuns` rund. Wizyta w Dzielnicach dopisuje `'kampania'` do `save.unlocks.announced` (ten sam identyfikator i format). Kafle odświeżają się przy każdym wejściu do Miasta. | `knowsCampaign()`, `campaignIntroDue()`, `updateHubQuickTiles()`, klik kafla, `showScreen()`, `renderBottomNav()`, CSS `.hub-quick-campaign.is-intro` |
-| 1C | `#btnWatchAd` ukryty, gdy `stats.runsPlayed === 1` po finalizacji (pierwsza Arena w historii zapisu); `watchRewardedAd()` ignoruje ukryty przycisk. Nagroda bez zmian. | `endRound()`, `watchRewardedAd()` |
-| 1D | `bootFirstRun` (sesja zaczęta od ekranu powitalnego) + `hubVisits` (licznik wejść do Miasta po pierwszej rozgrywce, **tylko w pamięci**): kalendarz od 2. wizyty; nowe uruchomienie = normalnie. Bez nowego pola w zapisie. | konstruktor `Game`, `adoptSave()`, `showScreen()`, `maybeShowLoginReward()` |
-| 1E | Karty na wyniku Areny po `CONFIG.ftue.resultCelebrationDelayMs` = 2400 ms (licznik 1100 ms, pasek XP 350 + 1100 ms) i tylko gdy wynik nadal widoczny; inaczej karty funkcji są porzucane (zostaje NOWE), karty nagród czekają. Progi bez zmian. | `queueUnlockCelebrations({ delay, screen })`, `endRound()` |
-| 1F | `docs/GAME_DESIGN.md`, `docs/CHANGELOG.md`, `CLAUDE.md`, `qa/README.md`. Liczba misji sprawdzona w kodzie: 6×10 + 6×30 = **240** w 12 dzielnicach — opisy w docs były poprawne; nie znaleziono bezspornie nieaktualnych liczb (pakiet skilli `vh-mission-content` mówi „M00–M240” — znany konflikt opisany w CLAUDE.md, pakiet aktualizuje się tylko z ZIP). | docs |
+| Wynik | 1593/1597 | **1620/1623** (+26 nowych FTUE-3) |
+| Czas | 42 m 48 s | 42 m 48 s |
+| FAIL | workflow (python3), balans v18, EN „25 PAŹDZIERNIKA”, M11 pierwsza klatka | workflow (python3), balans v18, EN „25 PAŹDZIERNIKA” |
 
-Teksty nowe: 2 wzorce w `I18N_EN` (`Kampania: {#0} misji`, `{#0} dzielnic · zagraj, kiedy chcesz`), plakietka EN `NEW` w CSS. Neutralne płciowo (tryb rozkazujący).
+Wszystkie FAIL kandydata występują w bazie — **brak nowych regresji**:
+- *workflow* — test woła `python3` (atrapa Sklepu) → wynik pusty; ręcznie `python …check_pages_workflow.py` = PASS. Środowisko, nie kod.
+- *balans v18* — losowe ziarno, misje kampanii (FTUE-3 ich nie dotyka); w bazie też FAIL. Znana zmienność (±7 pkt).
+- *EN „25 PAŹDZIERNIKA”* — brak tłumaczenia daty z bieżącego dnia; istniejący problem, poza zakresem.
+- *M11* — w bazie FAIL, w kandydacie PASS (niestabilny test).
 
-## 3. Czego NIE zmieniono
-`SAVE_SCHEMA_VERSION` 13, `migrateSave()`, `sanitizeSave()`, `defaultSave()`; ekonomia (formuła monet, mnożniki, ceny, kalendarz `CONFIG.loginRewards`); długość rundy (`CONFIG.round.duration` 120), boty, trudność, rozmiary dziury; progi `CONFIG.unlockGates`; `Monetization`, SDK, interstitial; workflow E3, retencja L1, recovery; architektura modułów (jeden `game.js`); `index.html`. Panel DEV: `announce()` pomija `hubIntro` (tak jak gra) i akcja „reward-login” ustawia `hubVisits ≥ 2` (tylko w trybie testowym). M32/M59, grafika, input, 16:9 — nie ruszane.
+Kariera Areny (`arena-bots`, 20 rund): podium 3/3, ściana trudności, perf update 0,147 → 0,168 ms (próg 4 ms), render gfx0 7,39 → 7,92 ms (próg 12), monety po 3 rundach 1473 → 1564.
 
-## 4. Testy na końcowym snapshotcie
+## 3. Pomiar pierwszej sesji (`node qa/ftue3.mjs --measure=12`, te same 12 ziaren)
 
-Pliki runtime ostatnio zmienione 14:30:43; seria r2 rozpoczęta 14:36:45 → dowody r2 dotyczą końcowego kodu. Seria r1 (14:2x) była przed ostatnią poprawką harnessu i jest tylko historią.
+| | Baza | FTUE-3 |
+|---|---|---|
+| Pauzy pełnoekranowe w 1. rundzie | 24 (2/runda) | **0** |
+| Rundy z przerwą bez kęsa ≥ 20 s | 4/36 | **1/36** |
+| Najdłuższa przerwa bez kęsa | 46,3 s | **20,2 s** |
+| Mediana wyniku 1. rundy | 6552 | 8982 |
+| Dotknięcia do startu 3. rundy | 8 | **6** |
+| Start 3. rundy (model osi czasu) | 262 s | 256 s |
+| Pierwszy kęs / kęsy w 10 s (mediana, 1. runda) | 0,5 s / 19 | 0,5 s / 17 |
+| Błędy konsoli | 0 | 0 |
 
-| Test | Wynik | Komenda | Dowód |
-|---|---|---|---|
-| `node qa/run-all.mjs` i każdy `qa/*.mjs` | **NOT RUN** | — | brak Node/Playwright |
-| `qa/ftue1.mjs` (nowy), `qa/v22.mjs` (zmieniony) — składnia + linkowanie modułu | PASS (to nie jest wykonanie testów) | Edge, import map z atrapami `./lib.mjs`, `node:*` | `syntax-qa.json` |
-| Zastępczy harness FTUE-1 — bieżący kod | **299/301 PASS** (2 FAIL: 844×390 kafel poniżej krawędzi — identycznie w bazie) | `tools/suite.ps1 -Port 8765 -Label ftue1r2 -Full` | `ftue1r2-summary.log` + JSON |
-| Zastępczy harness — baza 810334f, te same scenariusze | 224 PASS / 77 FAIL (FAIL = stare zachowania, które FTUE-1 zmienia + te same 2 przypadki 844×390) | `tools/suite.ps1 -Port 8766 -Label baser2 -Full` | `baser2-summary.log` |
-| Zrzuty 390×844, 375×667, 844×390, 1280×720 (+ EN) | wykonane, przegląd ręczny | `-Shot` | `07_ZRZUTY/` |
-| `check_evidence.py`, `check_pages_workflow.py`, `validate.py`, `check_prompts.py` | **NOT RUN** | — | brak Pythona |
-| Fizyczny telefon, iframe Poki/CrazyGames, prawdziwe SDK | **NOT RUN** | — | — |
+Bot „casual” to przybliżenie gracza; wpływu na retencję nie deklarujemy (hipotezy: GDD §7).
 
-Ograniczenia harnessu: wirtualny czas headless nie napędza `requestAnimationFrame` (liczniki wyniku i animacje CSS stoją na zrzutach) — koniec animacji sprawdzany przez czas opóźnienia, a nie obraz; brak emulacji dotyku; rundy skrócone do 10–20 s gry + koniec czasu.
-
-## 5. Otwarte ryzyka (szczegóły w paczce, `08_PROBLEMY_NIEROZWIAZANE.md`)
-1. Oficjalne QA nieuruchomione — możliwe regresje w zestawach, których harness nie pokrywa (flow, design, px02, save-safety, dev-panel, v19 i18n sweep).
-2. FTUE-2 (istniejące wcześniej): pasek zgody na statystyki od pierwszej wizyty w Mieście zasłania dolne kafle (375/390) i GRAJ (844×390); Miasto w poziomie 844×390 wymaga przewinięcia do kafli.
-3. Gracz, który zamknie grę po 1. wizycie w Mieście, zobaczy kalendarz przy następnym uruchomieniu (to „druga wizyta”) — zgodne z zadaniem, opisane.
-4. Karty Warsztatu/Wyzwań porzucane, gdy gracz w 2,4 s kliknie ZAGRAJ JESZCZE RAZ — informuje wtedy tylko plakietka NOWE.
-
-## 6. Następny krok
-Uruchomić `node qa/run-all.mjs` (+ `node qa/ftue1.mjs`) na maszynie z Node + Playwright na tym drzewie (patch z paczki na `810334f`), porównać z bazą `810334f` na tej samej maszynie; dopiero potem decyzja o commit/push/PR.
+## 4. NOT RUN
+- Testy na fizycznych telefonach (odłożone decyzją właścicielki).
+- `check_evidence.py` / manifest odcisku drzewa (dowody = HEAD `30e63e3`, 0 zmienionych ścieżek w `run-all`).
+- Live (Pages) — dopiero po merge'u.

@@ -46,6 +46,7 @@ python3 -m http.server 8000      # http://localhost:8000/index.html
 node qa/run-all.mjs              # every suite (outputs in git-ignored qa/out/), exit 1 on any failure
 node qa/save-safety.mjs          # PX01 save guard     node qa/px02-isolation.mjs  # PX02 D+ isolation
 node qa/v22.mjs                  # two modes / no energy  node qa/ftue1.mjs     # FTUE-1
+node qa/ftue3.mjs                # FTUE-3 first 5 minutes (--measure=N --root=DIR: a first session vs another checkout)
 node qa/leave-run.mjs            # leaving a round      node qa/release.mjs     # E3 artifact (+ release-recovery.mjs)
 node qa/responsive.mjs           # FTUE-2: every platform frame, iframe host, resize/turn/fullscreen, input
 ```
