@@ -411,7 +411,11 @@ window.__qaPlayArena = function (opts) {
       // v13 "casual human": only sees what is on screen, re-aims every
       // ~0.4 s (reaction time), goes for the NEAREST thing it can eat (not
       // the best value), notices a bigger rival only when it's close.
-      if (frames % 12 !== 0) return;
+      // BALANCE-1: opts.reactFrames (slower re-aim) and opts.distracted
+      // (share of re-aims spent wandering) model a weaker player; without
+      // them the casual player is unchanged (no extra Math.random draws).
+      if (frames % (opts.reactFrames || 12) !== 0) return;
+      if (opts.distracted && Math.random() < opts.distracted) { wanderA += (Math.random() - 0.5) * 1.2; g.keyDir = { x: Math.cos(wanderA), y: Math.sin(wanderA) }; return; }
       const vw = g.width / g.zoom / 2, vh = g.height / g.zoom / 2;
       const onScreen = (x, y) => Math.abs(x - p.x) < vw && Math.abs(y - p.y) < vh
         && Math.hypot(x - clamp(x, p.radius, WORLD_W - p.radius), y - clamp(y, p.radius, WORLD_H - p.radius)) < p.radius * 0.8;
@@ -470,7 +474,7 @@ window.__qaPlayArena = function (opts) {
     if (p.radius < lastR - 4) deaths++;
     if (p.score > lastScore) { if (firstEatSec === null) firstEatSec = +(frames * dt).toFixed(2); if (frames * dt <= 10) eats10++; lastScore = p.score; }
     lastR = p.radius;
-    if (frames % 15 === 0 && g.state === GameState.PLAYING) {
+    if (!opts.noRender && frames % 15 === 0 && g.state === GameState.PLAYING) {
       const r0 = realNow(); g.render(frames * dt); renderMs += realNow() - r0; renders++;
     }
     frames++;

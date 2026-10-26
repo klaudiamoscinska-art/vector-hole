@@ -4,6 +4,35 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## BALANCE-1 „Ekonomia i progresja” (zapis nadal v13; bez migracji, nic nie znika z zapisów; Arena, Core City, XP, nagrody rund i misji, R1, długość rund i fizyka bez zmian)
+- **Symulator kariery i audyt balansu** (`qa/balance1.mjs`, raport
+  `docs/BALANCE1_REPORT.md`): czterech graczy-botów (słaby, przeciętny,
+  ekspert, przerywający rundy — symulacje, nie obserwacje ludzi) gra
+  Arenę, Wyzwanie dnia i misje przez prawdziwy kod nagród, z modelem
+  czasu (1. dzień 60 min, potem 30 min dziennie); stan po 5, 15, 30,
+  60 min i 2, 5, 10 h, monety według źródła. Do tego działanie każdego
+  wzmocnienia, zasięg i wartość Magnesu, zapisy i wyposażenie, R1, 240
+  misji na 3 ziarnach eksperta. `--quick` w `run-all`.
+- **Drabinka Warsztatu za monety** (było 5370, każdy symulowany gracz
+  miał wszystko po 26–45 min, a po 10 h 50–100 tys. niewydanych monet):
+  Gorący Róż 220 → 300, Toksyczna Zieleń 450 → 700, Ultrafiolet 800 →
+  1500, Neonowe Złoto 1300 → 2500, Biała Plazma 2000 → 3800, Smuga
+  „Iskra” 500 → 1000; Cyjan zostaje 100. Razem 9900. Kupione rzeczy,
+  założony wygląd i zebrane monety bez zmian; jednorazowy zwrot PX02 D+
+  liczony dalej po starych cenach (4870).
+- **Magnes działa** (`CONFIG.campaign.magnet`): przyciągał tylko to, co
+  było w 1,2 × promieniu wiru (fragment 1,5 × promienia dalej nie ruszał
+  się wcale; +6 pkt przejść, w granicach szumu). Teraz pas 70 px poza
+  krawędzią wiru, 120 px/s: +12 pkt (Zegar +14). Cena 40 → 60 (jak
+  Zegar). Dotyczy też karty mocy „Magnes” w długich misjach.
+- **Misje dnia** z prawdziwym celem: 150 punktów, combo ×3 i T4 zaliczała
+  prawie każda runda (96–100% rund nawet słabego gracza), 5 rywali prawie
+  żadna (0–15%). Teraz: 3 rywali (80), 4000 punktów (70), combo ×30 (60),
+  rozmiar T5 (50). Teksty PL/EN.
+- **Kalibracja M180 i M226** (`MISSION_BOT_TIME`): bot-ekspert mieścił
+  się w limicie tylko 2 razy na 10 ziaren; czasy bota były nieaktualne
+  (55 → 71 s, 60 → 124 s z 20 przejść). Limity 70 → 90 s i 80 → 165 s.
+
 ## CONTENT-1 „Audyt 240 misji” (zapis nadal v13; cele, liczby, trudność, czasy, nagrody, ekonomia, Arena i kolejność odblokowań bez zmian)
 - **Audyt wszystkich 240 misji** (`qa/content.mjs`): dla każdej misji
   prawdziwa plansza (`startCampaignMission`), odprawa i HUD — opisy celów,
