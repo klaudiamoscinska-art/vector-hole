@@ -518,6 +518,45 @@ export async function runSaveChecks(url) {
   return results;
 }
 
+// --- Daily tasks, deterministic: each of the four rotates in (one per UTC
+// day), and through the game's own checkMissionProgress() + finalizeRun()
+// a round one short of the target does not complete it, a round at the
+// target does -- with its reward, once.
+export async function runDailyTaskChecks(url) {
+  const { browser, page, errors } = await openGame(url, { initScript: DATE_OFFSET_SCRIPT });
+  const rows = await page.evaluate(() => {
+    const g = window.game, seen = {}, out = [];
+    for (let d = 0; d < 40 && Object.keys(seen).length < 4; d++) {
+      window.__qaDateOffset = d * 86400000;
+      g.startRound({}); if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false;
+      const m = g.activeMission; g.stopRun();
+      if (seen[m.id]) continue;
+      seen[m.id] = d;
+      const play = (value) => {
+        g.startRound({}); if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false;
+        g.save.mission = { dateKey: g.save.mission.dateKey, completed: false };
+        const set = { eat_5_rivals: () => { g.rivalsEatenThisRun = value; }, reach_size_60: () => { g.player.radius = value; }, combo_x3: () => { g.comboCount = value; }, score_150: () => { g.player.score = value; } }[m.id];
+        set(); g.checkMissionProgress(); g.timeRemaining = 0;
+        const c0 = g.save.coins; g.finalizeRun();
+        const again = g.save.mission.completed && (() => { g.startRound({}); if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false; set(); g.checkMissionProgress(); g.timeRemaining = 0; g.finalizeRun(); return g.missionJustCompleted; })();
+        return { done: g.save.mission.completed, paidTask: c0 !== g.save.coins, again: !!again };
+      };
+      out.push({ id: m.id, name: m.name, target: m.target, reward: m.rewardCoins, below: play(m.target - 1), at: play(m.target) });
+    }
+    window.__qaDateOffset = 0;
+    return out;
+  });
+  const results = [];
+  results.push(expectAll('BALANCE-1 daily tasks: all four rotate in, and each completes exactly at its target (one short: not done; at it: done, its reward once)', {
+    four: is(rows.length, 4),
+    exact: holds(rows.every(r => !r.below.done && r.at.done && !r.at.again), rows.map(r => `${r.id}:${r.target}→${r.below.done ? 'x' : '-'}/${r.at.done ? 'ok' : 'x'}${r.at.again ? '+again' : ''}`).join(' '), 'below not done, at target done once'),
+    targets: is(rows.map(r => r.target).sort((a, b) => a - b).join(','), '3,30,90,4000')
+  }, JSON.stringify(rows.map(r => ({ id: r.id, name: r.name, target: r.target, reward: r.reward })))));
+  results.push(report('BALANCE-1 daily tasks: no runtime errors', errors.length === 0, errors.slice(0, 2).join(' | ')));
+  await browser.close();
+  return results;
+}
+
 // --- Gates ----------------------------------------------------------------
 const snapAt = (c, min) => c.snaps.find(s => s.min === min);
 export function careerGates(careers, minutes) {
@@ -532,8 +571,19 @@ export function careerGates(careers, minutes) {
   out.push(report('BALANCE-1 careers: a steady ladder -- by 60 min every player owns at least 4 of the 7 coin looks', careers.every(c => { const s = snapAt(c, 60); return s && s.coinItemsOwned >= 4; }), ladder));
   const tasks = (c) => { const ar = c.arena.filter(r => !r.left && r.kind === 'arena'); const f = (fn) => ar.filter(fn).length / Math.max(1, ar.length);
     return { score: f(r => r.tasks.score >= 4000), combo: f(r => r.tasks.combo >= 30), size: f(r => r.tasks.radius >= 90), rivals: f(r => r.tasks.rivals >= 3) }; };
-  const tw = by.weak ? tasks(by.weak) : null, ta = by.average ? tasks(by.average) : null;
-  if (tw && ta) out.push(report('BALANCE-1 daily tasks: none is met by >= 95% of the weak player\'s rounds, the hardest by some of the average player\'s (>= 20%)', Object.values(tw).every(v => v < 0.95) && Math.min(...Object.values(ta)) >= 0.2, JSON.stringify({ weak: tw, average: ta })));
+  // The first hour is only ~13 finished rounds per player, so a rate gate
+  // must leave room for sampling: points / combo / rivals fail only when
+  // the weak player meets them in >= 12 of 13 rounds (the old 150 points
+  // and combo x3 were 13/13; measured now 1-8/13). T5 is the deliberately
+  // easy day (docs/BALANCE1_REPORT.md) and is not rate-gated. Reachable =
+  // met in at least one round of the other players (~40 rounds pooled;
+  // the rarest, 3 rivals, in 4-9 of 13 of the average player's alone).
+  // That each task completes exactly at its target: runDailyTaskChecks().
+  const tw = by.weak ? tasks(by.weak) : null;
+  const pooled = careers.filter(c => c.profile !== 'weak').flatMap(c => c.arena.filter(r => !r.left && r.kind === 'arena'));
+  const reach = { score: pooled.filter(r => r.tasks.score >= 4000).length, combo: pooled.filter(r => r.tasks.combo >= 30).length, size: pooled.filter(r => r.tasks.radius >= 90).length, rivals: pooled.filter(r => r.tasks.rivals >= 3).length };
+  if (tw) out.push(report('BALANCE-1 daily tasks: points, combo and rivals are real challenges -- the weak player meets none of them in >= 12 of 13 rounds (T5 is the deliberately easy day)', ['score', 'combo', 'rivals'].every(k => tw[k] < 0.9), JSON.stringify({ weak: tw })));
+  if (pooled.length) out.push(report('BALANCE-1 daily tasks: every task is reachable -- met in at least one round of the average / strong / quitting players', Object.values(reach).every(n => n >= 1), `${JSON.stringify(reach)} of ${pooled.length} rounds`));
   out.push(report('BALANCE-1 careers: coins and prisms stay finite and non-negative, no runtime errors', careers.every(c => c.snaps.every(s => Number.isFinite(s.coins) && s.coins >= 0 && s.prisms >= 0) && !c.errors.length), careers.map(c => c.errors.join(' ')).join('') || 'ok'));
   return out;
 }
@@ -579,6 +629,7 @@ export async function runBalance1Checks(url, { full = false, base = BALANCE_DEFA
   fs.writeFileSync(path.join(dir, 'boosters.json'), JSON.stringify(b, null, 1));
   results.push(...boosterGates(b));
   results.push(...await runSaveChecks(url));
+  results.push(...await runDailyTaskChecks(url));
   if (full) {
     const a = await runMissionAudit(url, { base });
     fs.writeFileSync(path.join(dir, 'missions.json'), JSON.stringify(a, null, 1));
