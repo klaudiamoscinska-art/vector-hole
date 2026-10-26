@@ -62,9 +62,10 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   zaakceptowany wyjątek, `ARENA_DISTRICT_CONTRACT.md`); w drugą stronę nic
   nie płynie — postęp, nagrody i zakupy Dzielnic nie zmieniają Areny.
 - **Jednorazowy zwrot (D+, `settleLooksOnly()`):** zapis sprzed D+, który
-  ma płatne wiry z dawnym bonusem, dostaje raz ich cenę z cennika (Cyjan
-  100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800, Neonowe
-  Złoto 1300, Biała Plazma 2000 — komplet 4870). Wiry zostają (posiadane i
+  ma płatne wiry z dawnym bonusem, dostaje raz ich cenę z cennika z tamtego
+  czasu (Cyjan 100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800,
+  Neonowe Złoto 1300, Biała Plazma 2000 — komplet 4870; nowe ceny z
+  BALANCE-1 nie zmieniają zwrotu, `LOOKS_ONLY_REFUND`). Wiry zostają (posiadane i
   założone). Kryształ i Pryzmat (nagrody Core City) tracą bonus bez zwrotu;
   Tęcza i Aurora nigdy go nie miały. Zwrot i znacznik `economy.looksOnly`
   trafiają do zapisu w tym samym `saveGame()` (oryginał najpierw pod
@@ -224,6 +225,11 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   (`qa/difficulty.mjs`, bot „casual”: widzi ekran, reaguje co 0,4 s,
   celuje z rozrzutem ±12°): **100% → 99% → 89% → 60% → 53%** przejść za
   pierwszym razem od ŁATWEJ do EKSTREMALNEJ; ekspert ~90% ogółem.
+  BALANCE-1 (`qa/balance1.mjs`, 3 ziarna eksperta na misję + 10 ziaren
+  dla podejrzanych): żadna misja nie jest dla eksperta nie do przejścia
+  w limicie; M180 (boss Zatoki) i M226 przechodził tylko 2 razy na 10 —
+  ich czasy bota były nieaktualne (55 → 71 s i 60 → 124 s, 20 przejść),
+  limity po ponownej kalibracji 90 s i 165 s (ekspert 8/10 i 9/10).
 - **Zwroty akcji (twisty)** — chip + wskazówka w odprawie, NELA tłumaczy
   zwrot przy jego pierwszym pojawieniu się w dzielnicy:
   - **Łowcy** (`hunters`): więksi rywale gonią gracza seriami (3 s pościgu,
@@ -247,7 +253,9 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   „PERFEKCYJNIE!”.
 - **Wzmocnienia** (`MISSION_BOOSTERS`, po M04 + po jednym w prezencie):
   Zegar +15 s (60), Turbo start od T2 (70), **Sprint +15% prędkości**
-  (70, v18), Magnes na całą misję (40), Tarcza na 2 zderzenia (70 monet;
+  (70, v18), Magnes na całą misję (60 — BALANCE-1: przyciąga to, co wir
+  może zjeść, z pasa 70 px wokół jego krawędzi, `CONFIG.campaign.magnet`),
+  Tarcza na 2 zderzenia (70 monet;
   chroni też kruchy wir). Wybiera się je w odprawie (najpierw z zapasu,
   resztę za monety — koszt widać na GRAJ, nic nie znika jednym
   dotknięciem). Po 3 porażkach z rzędu NELA pożycza jeden Zegar (raz na
@@ -268,6 +276,14 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   70; Turbo start dawał najmniej przy najwyższej cenie, więc 80 → 70;
   Magnes 50 → 40. Żadne nie robi z EKSTREMALNEJ pewniaka (≤ 77%). Szum
   pomiaru przy ~50 próbach to ±7 pkt.
+- **Magnes (BALANCE-1, `qa/balance1.mjs`)**: dawny zasięg 1,4 × promień
+  od środka z siłą spadającą do zera na brzegu — fragment oddalony o
+  1,5 × promień nie ruszał się wcale, a na sparowanych układach (32 misje
+  ŚREDNIE–EKSTREMALNE × 2, bot „casual”) Magnes dawał +6 pkt (w granicach
+  szumu). Teraz przyciąga z pasa 70 px poza krawędzią wiru (120 px/s przy
+  krawędzi, maleje do 0): +12 pkt — tyle co Zegar (+14), Turbo start
+  (+11) i Sprint (+11) — więc kosztuje tyle co Zegar (60). Ta sama siła
+  działa w karcie mocy „Magnes” w długich misjach.
 - **Start na dotknięcie (v15)**: po GRAJ misja otwiera się zamrożona
   z kartą startu (dzielnica, trudność, NELA, cele, zwroty akcji
   z wyjaśnieniem, wzmocnienia, czasy gwiazdek) — zegar rusza dopiero po
@@ -341,10 +357,15 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
 - **Poziom gracza (XP):** każda runda/misja; nagroda w monetach,
   co 3. poziom pryzmaty — pokazywana na karcie XP wyniku (bez osobnej
   planszy pełnoekranowej; te zostają dla nowych funkcji i kosmetyków).
-- **Warsztat (ceny v13 ×~3,3, bo 20-rundowa kariera kończyła się z 8 000
-  niewydanych monet):** Wiry Cyjan 100, Gorący Róż 220, Toksyczna Zieleń 450, Ultrafiolet 800,
-  Neonowe Złoto 1300, Biała Plazma 2000 monet (PX02 D+: sam wygląd, bez
-  bonusu w rundzie), Smuga „Iskra” 500 monet, „Żar” 15 i
+- **Warsztat (BALANCE-1, `qa/balance1.mjs`):** Wiry Cyjan 100, Gorący Róż
+  300, Toksyczna Zieleń 700, Ultrafiolet 1500, Neonowe Złoto 2500, Biała
+  Plazma 3800 monet (PX02 D+: sam wygląd, bez bonusu w rundzie), Smuga
+  „Iskra” 1000 monet — razem 9900 (było 5370: każdy symulowany gracz,
+  od słabego po eksperta, miał wszystko po 26–45 min i potem nie miał
+  na co wydawać monet; teraz komplet po 54–95 min, kolejne zakupy
+  przeciętnego gracza w 5., 7., 13., 27., 46. i 80. minucie). Cyjan zostaje za 100 — stać na niego od razu po
+  otwarciu Warsztatu. Kupione wcześniej rzeczy i zebrane monety bez
+  zmian. Pryzmaty: „Żar” 15 i
   „Zawirowanie” 30 pryzmatów; v22: Efekty „Neonowa Róża” 20 i „Fioletowa
   Szczelina” 35, Finisze „Złoty Szczyt” 25 i „Zielona Burza” 40 pryzmatów
   (wcześniej w tych kategoriach nie było nic do kupienia). Dodatków na
@@ -372,7 +393,11 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   go przy pierwszej wizycie w Mieście po pierwszej rozgrywce, tylko przy
   drugiej albo po ponownym uruchomieniu; nagrody i seria bez zmian),
   darmowa skrzynia co 4 h,
-  Misja dnia + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
+  Misja dnia (jedna z czterech, raz dziennie, sprawdzana po ukończonej
+  rundzie Areny; BALANCE-1: „Zjedz 3 rywali” 80, „Zdobądź 4000 punktów”
+  70, „Zbuduj combo ×30” 60, „Urośnij do rozmiaru T5” 50 monet — wcześniej
+  150 punktów, combo ×3 i T4 zaliczała prawie każda runda, a 5 rywali
+  prawie żadna) + Wyzwanie dnia (ta sama mapa dla wszystkich, seria dni),
   wyzwania znajomych (link z ziarnem i wynikiem, karta do udostępnienia).
 - **Monetyzacja (`Monetization`):** tylko reklamy z nagrodą (×2 monety,
   +20 s misji, skrzynia, ×2 logowanie, pryzmaty, wzmocnienie misji przy
@@ -391,6 +416,14 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   ujściem monet, a pryzmaty/sklep dostały drogę do wzmocnień (pakiety).
   Wzmocnienia płaci się monetami, nie pryzmatami, celowo: kampania ma
   pozostać do przejścia bez płacenia (sklep tylko przyspiesza).
+- **Przegląd BALANCE-1 (symulacje, nie obserwacje ludzi —
+  `docs/BALANCE1_REPORT.md`)**: czterech graczy-botów (słaby, przeciętny,
+  ekspert, przerywający rundy) przez 10 h (1. dzień 60 min, potem 30 min
+  dziennie). Po 10 h zostaje 42–90 tys. niewydanych monet (przed zmianą 51–102 tys.) i ~300
+  pryzmatów; komplet kosmetyków za pryzmaty jest po ~3,5 h. Nowe ceny
+  Warsztatu wydłużają drabinkę monet z 26–45 do 54–95 min gry, ale długofalowego
+  ujścia monet i pryzmatów (nowe przedmioty, sezony) nie ma — decyzja
+  właścicielki, poza zakresem etapu.
 - **Prywatność:** zapis tylko lokalny; statystyki wyłącznie po zgodzie.
   Pasek zgody pojawia się po pierwszej rundzie (na ekranie powitalnym zasłaniał
   przycisk startu); do decyzji nic nie jest wysyłane.
