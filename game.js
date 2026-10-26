@@ -8616,7 +8616,7 @@ class Game {
     this.safe = { t: parseFloat(ps.paddingTop) || 0, r: parseFloat(ps.paddingRight) || 0, b: parseFloat(ps.paddingBottom) || 0, l: parseFloat(ps.paddingLeft) || 0 };
     const zc = CONFIG.juice.zoom;
     this.viewScale = clamp(Math.sqrt(this.width * this.height / zc.viewArea), 1, zc.viewScaleMax);
-    if (this.mode === 'campaign') this.zoom = this.viewScale;
+    if (this.mode === 'campaign') this.zoom = this.campaignTargetZoom();
     // v21: menus, sheets and the in-round HUD grow on a big screen (CSS
     // zoom on every #app layer but the canvas, --ui-scale) so they fill a
     // laptop/monitor instead of a phone-sized strip. Phones stay at 1;
@@ -13186,12 +13186,28 @@ class Game {
     // use WORLD_W/H). This only changes how the camera frames the box --
     // movement extent is untouched.
     const cb = CONFIG.campaign.bounds;
+    this.zoom += (this.campaignTargetZoom() - this.zoom) * Math.min(1, dt * CONFIG.juice.zoom.lerp);
     this.followCamera(cb.minX, cb.minY, cb.maxX, cb.maxY);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 30);
 
     this.updateCampaignHUD();
 
     if (m.timeRemaining <= 0 && !m.finishing) this.onCampaignTimeout();
+  }
+
+  /** CONTENT-1: Campaign's camera. The framing stays fixed (viewScale)
+   *  until the vortex would span more than CONFIG.juice.zoom.holeScreenFrac
+   *  of the short screen side -- the same rule Arena's growth zoom uses --
+   *  then it pulls back so the hole stays that size (a score mission ended
+   *  with a hole 1.5x wider than a phone). Never further out than the
+   *  short side showing the whole mission box. Visual only: eating, sizes,
+   *  speeds and the box are world units and do not change. */
+  campaignTargetZoom() {
+    const zc = CONFIG.juice.zoom, b = CONFIG.campaign.bounds;
+    const short = Math.min(this.width, this.height);
+    if (!this.player || !short) return this.viewScale;
+    const floor = Math.min(this.viewScale, short / Math.min(b.maxX - b.minX, b.maxY - b.minY));
+    return Math.max(floor, Math.min(this.viewScale, zc.holeScreenFrac * short / this.player.radius));
   }
 
   /* ---- Golden Shot v11: "PRAWIE!" mission revive (rewarded ad) ---- */
