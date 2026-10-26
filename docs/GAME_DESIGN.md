@@ -292,6 +292,24 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 - W misji: pole celu rozbłyska na starcie, „CEL ZALICZONY”, strzałka na
   krawędzi ekranu do najbliższego celu; skupiska combo nigdy tuż przy
   starcie; nic nie chowa się w rogu poza zasięgiem wiru.
+- **Ikona celu = obiekt z planszy (CONTENT-1):** odprawa, HUD, karta
+  następnej misji i wynik pokazują przy celu ikonę tego wyglądu, jakim
+  obiekt jest rysowany na planszy (witryna, kryształ, maszt, kopuła,
+  tramwaj, zasilacz, lustro… — 28 ikon, każda tylko dla jednego
+  obiektu). Cel bez nazwanego obiektu („Pochłoń 3 budowle”) ma ikonę
+  klasy, a jego obiekty mają tylko pasujące wyglądy (wieże = wieżowiec
+  albo maszt; kopuła tylko jako obiekt nazwany). Landmark ma ikonę
+  budowli z kolumnami, nie gwiazdkę wyniku. Pylony celu nigdy nie leżą
+  pod pojazdem ani budowlą.
+- **Kamera misji (CONTENT-1):** kadr stały, dopóki wir nie przekroczy
+  24% krótszego boku ekranu (ta sama zasada co w Arenie,
+  `holeScreenFrac`); dalej kamera się oddala, ale nie dalej niż cały
+  obszar misji na krótszym boku. Na telefonie w pionie do T5 kadr się
+  nie zmienia; w misjach na punkty wir rósł do ~77% ekranu (M59).
+  Wzrost, progi, rozmiary obiektów i obszar misji bez zmian.
+- **Audyt treści:** `node qa/content.mjs` sprawdza każdą z 240 misji
+  (cele, ikony, obiekty na planszy, postęp, EN, przejście botem,
+  wielkość wiru) — uruchamiać po każdej zmianie misji.
 - **Misje nigdy nie napełniają Core City** — tylko Arena i Wyzwanie dnia.
 
 ### Pierwsza misja (v22)
