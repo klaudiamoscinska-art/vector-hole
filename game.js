@@ -5819,6 +5819,31 @@ function drawWelcomeScene(canvas, t) {
 const CITY_SLOT_COUNT = 18;
 const CITY_STARTER_COUNT = 3;
 
+/** VISUAL-1: what each Core City level adds to the skyline -- a look only,
+ *  read from the saved coreLevel/coreCharge (hubCityTargetProgress()), no
+ *  new save data. A level's buildings keep rising with its charge; its
+ *  stage layer (streets, signs, bridges, lights, the Core tower) stands
+ *  from the moment the level is reached. The roadmap (openCoreCityRoadmap())
+ *  shows each stage next to its level reward. */
+const CITY_STAGES = {
+  1: { name: 'Fundamenty', line: 'Pierwsze budynki i dźwig' },
+  2: { name: 'Ulice', line: 'Latarnie i ruch na ulicach' },
+  3: { name: 'Neony', line: 'Neonowe szyldy na budynkach' },
+  4: { name: 'Kładki', line: 'Kładki i kolejka nad ulicami' },
+  5: { name: 'Reflektory', line: 'Reflektory i drony nad miastem' },
+  6: { name: 'Wieża Rdzenia', line: 'Wieża Rdzenia rozświetla miasto' }
+};
+
+/** True when the player asked the system for less motion. */
+function prefersReducedMotion() {
+  try { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+}
+
+/** The Core City level a 0..1 skyline progress stands for (LVL6 = 1). */
+function cityStageLevel(progress) {
+  return progress >= 1 ? 6 : Math.floor(progress * 5 + 1e-6) + 1;
+}
+
 /** Deterministic Core City layout: slot x/width/height plus the order the
  *  buildings get built in. Later builds are taller, so the skyline grows
  *  both denser and higher as Core City levels up. */
@@ -5833,6 +5858,9 @@ function cityLayout() {
     slots.push({ x: (i + 0.5) / CITY_SLOT_COUNT, w: 0.65 + rng.next() * 0.5, seed: rng.next() * 1000, antenna: rng.next() < 0.35 });
   }
   order.forEach((slotIdx, k) => { slots[slotIdx].buildRank = k; slots[slotIdx].h = 0.2 + 0.68 * (k / (CITY_SLOT_COUNT - 1)) * (0.8 + rng.next() * 0.25); });
+  // VISUAL-1: a roof per building (0 flat, 1 setback, 2 spire, 3 dome,
+  // 4 slant), from its seed -- the rng stream above is unchanged.
+  slots.forEach(s => { s.roof = Math.floor(s.seed) % 5; });
   const stars = [];
   for (let i = 0; i < 40; i++) stars.push({ x: rng.next(), y: rng.next() * 0.55, s: 0.6 + rng.next() * 1.2, p: rng.next() * 6 });
   cityLayout.cache = { slots, stars };
@@ -5840,15 +5868,143 @@ function cityLayout() {
 }
 
 const CITY_PALETTE = ['#50F0FA', '#9875FF', '#FF54AD', '#46D99A', '#EFCB63'];
+// Windows lit per stage: the city glows brighter as it grows.
+const CITY_WINDOW_ON = [0, 0.25, 0.05, -0.15, -0.3, -0.45, -0.6];
+
+/** One standing building: body, roof, windows and (stage 3+) a neon sign. */
+function drawCityBuilding(ctx, s, x, bw, top, ground, col, t, finished, stage, signAlpha) {
+  const bh = ground - top;
+  const capH = finished && s.roof ? Math.min(bh * 0.16, 16) : 0;
+  const bodyTop = top + capH;
+  const body = ctx.createLinearGradient(0, top, 0, ground);
+  body.addColorStop(0, shadeColor(col, -0.55)); body.addColorStop(1, shadeColor(col, -0.85));
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  if (!capH) ctx.rect(x, top, bw, bh);
+  else if (s.roof === 1) { // setback: a narrower crown block
+    const cw = bw * 0.62, cx = x + (bw - cw) / 2;
+    ctx.moveTo(x, ground); ctx.lineTo(x, bodyTop); ctx.lineTo(cx, bodyTop); ctx.lineTo(cx, top); ctx.lineTo(cx + cw, top); ctx.lineTo(cx + cw, bodyTop); ctx.lineTo(x + bw, bodyTop); ctx.lineTo(x + bw, ground);
+  } else if (s.roof === 2) { // spire: a pointed crown
+    ctx.moveTo(x, ground); ctx.lineTo(x, bodyTop); ctx.lineTo(x + bw * 0.3, bodyTop); ctx.lineTo(x + bw / 2, top); ctx.lineTo(x + bw * 0.7, bodyTop); ctx.lineTo(x + bw, bodyTop); ctx.lineTo(x + bw, ground);
+  } else if (s.roof === 3) { // dome
+    ctx.moveTo(x, ground); ctx.lineTo(x, bodyTop); ctx.ellipse(x + bw / 2, bodyTop, bw / 2, capH, 0, Math.PI, 0); ctx.lineTo(x + bw, ground);
+  } else { // slant
+    ctx.moveTo(x, ground); ctx.lineTo(x, bodyTop); ctx.lineTo(x + bw, top); ctx.lineTo(x + bw, ground);
+  }
+  ctx.closePath();
+  ctx.fill();
+  // A lighter facade split gives the block some depth.
+  ctx.fillStyle = rgbaColor(col, 0.08);
+  ctx.fillRect(x + bw * 0.66, bodyTop, bw * 0.34, ground - bodyTop);
+  ctx.save();
+  ctx.shadowBlur = 8; ctx.shadowColor = col;
+  ctx.strokeStyle = col; ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.restore();
+  // Windows: a seeded grid, each window flickering on its own phase; more
+  // of them are lit at every stage.
+  const rows = Math.floor((ground - bodyTop) / 7), cols = Math.max(1, Math.floor(bw / 6));
+  const th = CITY_WINDOW_ON[stage] || 0;
+  for (let r = 0; r < rows; r++) {
+    for (let k = 0; k < cols; k++) {
+      const ph = (s.seed + r * 7.3 + k * 3.1);
+      if (!(Math.sin(ph) > th && Math.sin(t * 0.7 + ph * 1.3) > -0.85)) continue;
+      ctx.fillStyle = Math.sin(ph * 2.1) > 0.6 ? '#ffffff' : shadeColor(col, 0.35);
+      ctx.globalAlpha = 0.55 + 0.35 * Math.sin(ph * 0.9);
+      ctx.fillRect(x + 2 + k * (bw - 3) / cols, bodyTop + 4 + r * 7, Math.max(1.5, (bw - 3) / cols - 2.5), 3);
+    }
+  }
+  ctx.globalAlpha = 1;
+  if (finished && s.antenna && bh > 40 && s.roof !== 2) {
+    ctx.strokeStyle = col; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + bw / 2, top); ctx.lineTo(x + bw / 2, top - Math.min(9, top - 1)); ctx.stroke();
+    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 3 + s.seed);
+    ctx.fillStyle = '#ff3860'; ctx.beginPath(); ctx.arc(x + bw / 2, Math.max(2, top - 10), 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // Stage 3: neon signs -- a vertical blade on every third tower, a lit
+  // billboard band on the wide ones.
+  if (signAlpha > 0 && finished && bh > 44) {
+    const sc = CITY_PALETTE[(s.buildRank + 2) % CITY_PALETTE.length];
+    const flicker = Math.sin(t * 9 + s.seed) > -0.93 ? 1 : 0.35;
+    ctx.globalAlpha = signAlpha * flicker;
+    if (s.buildRank % 3 === 1) {
+      const sw = Math.max(4, bw * 0.24), sh = Math.min(bh * 0.34, 34), sx = x + bw - sw - 2, sy = bodyTop + 4;
+      ctx.fillStyle = rgbaColor(sc, 0.22); ctx.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+      ctx.fillStyle = sc; ctx.fillRect(sx, sy, sw, sh);
+      ctx.fillStyle = 'rgba(4, 16, 29, 0.75)';
+      for (let yy = sy + 3; yy < sy + sh - 3; yy += 6) ctx.fillRect(sx + 1.2, yy, sw - 2.4, 2.4);
+    } else if (s.buildRank % 3 === 2 && bw > 20) {
+      const by = bodyTop + 3, bwid = bw - 6;
+      ctx.fillStyle = rgbaColor(sc, 0.2); ctx.fillRect(x + 1, by - 2, bw - 2, 11);
+      ctx.fillStyle = shadeColor(sc, -0.35); ctx.fillRect(x + 3, by, bwid, 7);
+      ctx.fillStyle = sc;
+      const dot = (t * 18 + s.seed) % bwid;
+      ctx.fillRect(x + 3, by, bwid, 1.2); ctx.fillRect(x + 3, by + 5.8, bwid, 1.2);
+      ctx.fillRect(x + 3 + dot, by + 2, Math.min(6, bwid - dot), 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+/** Stage 6's landmark: the Core tower in the middle of the skyline -- a
+ *  dashed outline (the goal) until LVL6, then lit with its turning ring. */
+function drawCoreTower(ctx, cx, ground, topY, unit, t, lit) {
+  const H = ground - topY, baseW = unit * 2.3, neckW = unit * 0.7, neckY = topY + H * 0.2, ringY = topY + H * 0.16;
+  ctx.beginPath();
+  ctx.moveTo(cx - baseW / 2, ground); ctx.lineTo(cx - neckW / 2, neckY); ctx.lineTo(cx - 1.5, topY + H * 0.06);
+  ctx.lineTo(cx, topY); ctx.lineTo(cx + 1.5, topY + H * 0.06); ctx.lineTo(cx + neckW / 2, neckY); ctx.lineTo(cx + baseW / 2, ground);
+  ctx.closePath();
+  if (!lit) {
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = 'rgba(152, 117, 255, 0.28)'; ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, ringY, unit * 1.3, unit * 0.36, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    return;
+  }
+  const body = ctx.createLinearGradient(0, topY, 0, ground);
+  body.addColorStop(0, '#2a1d5c'); body.addColorStop(1, '#0b0a24');
+  ctx.fillStyle = body; ctx.fill();
+  ctx.save();
+  ctx.shadowBlur = 12; ctx.shadowColor = '#9875FF';
+  ctx.strokeStyle = '#c9b8ff'; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.restore();
+  // A light running up the tower's spine.
+  const run = (t * 0.6) % 1;
+  ctx.fillStyle = 'rgba(80, 240, 250, 0.85)';
+  ctx.fillRect(cx - 0.8, ground - H * run - 10, 1.6, 10);
+  // The Core: a pulsing vortex ring, turning (two tilted ellipses).
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
+  const halo = ctx.createRadialGradient(cx, ringY, 0, cx, ringY, unit * 2.4);
+  halo.addColorStop(0, `rgba(80, 240, 250, ${0.35 + 0.2 * pulse})`); halo.addColorStop(1, 'rgba(80, 240, 250, 0)');
+  ctx.fillStyle = halo; ctx.fillRect(cx - unit * 2.4, ringY - unit * 2.4, unit * 4.8, unit * 4.8);
+  ctx.lineWidth = 1.6;
+  for (let k = 0; k < 2; k++) {
+    ctx.strokeStyle = k ? '#FF54AD' : '#50F0FA';
+    ctx.beginPath(); ctx.ellipse(cx, ringY, unit * 1.3, unit * 0.36, Math.sin(t * 0.9 + k * 1.6) * 0.35, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(cx, ringY, 2 + pulse, 0, Math.PI * 2); ctx.fill();
+}
 
 /** Draws the Core City skyline. `progress` is 0..1 of the full city (one
- *  sixth of the way per Core City level, LVL6 = every building standing). */
+ *  fifth of the way per Core City level, LVL6 = every building standing).
+ *  opts: siteLabel (the crane's tag), skyTop (nothing rises above it),
+ *  reveal ({ level, age } -- a stage just reached, see renderHubCity()),
+ *  mini (a still roadmap thumbnail: no labels, no sweep). */
 function drawCityScene(canvas, progress, t, opts = {}) {
   const c = prepCanvas(canvas);
   if (!c) return;
   const { ctx, w, h } = c;
   const { slots, stars } = cityLayout();
-  const ground = h - 18;
+  const mini = !!opts.mini;
+  const streetH = mini ? 7 : 18;
+  const ground = h - streetH;
+  const stage = cityStageLevel(progress);
+  const reveal = opts.reveal && opts.reveal.level === stage ? opts.reveal : null;
+  // A stage's layer is fully there once reached; the one just reached fades in.
+  const layer = (L) => (stage < L ? 0 : (reveal && L === stage ? clamp(reveal.age / 0.9, 0, 1) : 1));
 
   const sky = ctx.createLinearGradient(0, 0, 0, h);
   sky.addColorStop(0, '#030b16'); sky.addColorStop(0.75, '#0a1d33'); sky.addColorStop(1, '#0d2a40');
@@ -5861,8 +6017,49 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   ctx.globalAlpha = 1;
   // City glow on the horizon grows with the city itself.
   const glow = ctx.createRadialGradient(w / 2, ground, 0, w / 2, ground, w * 0.7);
-  glow.addColorStop(0, `rgba(80, 240, 250, ${0.12 + 0.25 * progress})`); glow.addColorStop(1, 'rgba(80, 240, 250, 0)');
+  glow.addColorStop(0, `rgba(80, 240, 250, ${0.1 + 0.3 * progress})`); glow.addColorStop(1, 'rgba(80, 240, 250, 0)');
   ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+
+  // FTUE-2 FIX: the buildings (and the next one's scaffold + crane) rise
+  // only up to opts.skyTop -- the bottom of the text over the canvas --
+  // so they never run behind the headline on a short card. VISUAL-1: the
+  // sky effects (aurora, searchlights, drones) are clipped to it too.
+  const skyTop = clamp(opts.skyTop || (mini ? 2 : 14), mini ? 2 : 14, ground - 10);
+  const pad = opts.skyTop ? 12 : 0;
+  const skyH = ground - skyTop;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, skyTop, w, ground - skyTop); ctx.clip();
+  // Stage 6: an aurora over the finished city.
+  const aur = layer(6);
+  if (aur > 0) {
+    for (let k = 0; k < 2; k++) {
+      const base = skyTop + skyH * (0.12 + k * 0.14);
+      const g = ctx.createLinearGradient(0, base - 14, 0, base + 22);
+      const colA = k ? '152, 117, 255' : '70, 217, 154';
+      g.addColorStop(0, `rgba(${colA}, 0)`); g.addColorStop(0.5, `rgba(${colA}, ${0.16 * aur})`); g.addColorStop(1, `rgba(${colA}, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      for (let i = 0; i <= 16; i++) { const x = (i / 16) * w; ctx.lineTo(x, base - 10 + Math.sin(i * 0.8 + t * 0.5 + k * 2) * 7); }
+      for (let i = 16; i >= 0; i--) { const x = (i / 16) * w; ctx.lineTo(x, base + 18 + Math.sin(i * 0.7 + t * 0.4 + k) * 6); }
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  // Stage 5: searchlights sweeping the sky from the street.
+  const beams = layer(5);
+  if (beams > 0) {
+    [[0.2, 0], [0.8, 2.1], [0.5, 4.2]].forEach(([fx, ph], i) => {
+      if (mini && i === 2) return;
+      const bx = w * fx, a = -Math.PI / 2 + 0.42 * Math.sin(t * 0.45 + ph), len = skyH * 1.4, spread = 0.07;
+      const g = ctx.createLinearGradient(bx, ground, bx + Math.cos(a) * len, ground + Math.sin(a) * len);
+      g.addColorStop(0, `rgba(200, 245, 255, ${0.2 * beams})`); g.addColorStop(1, 'rgba(200, 245, 255, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(bx, ground);
+      ctx.lineTo(bx + Math.cos(a - spread) * len, ground + Math.sin(a - spread) * len);
+      ctx.lineTo(bx + Math.cos(a + spread) * len, ground + Math.sin(a + spread) * len);
+      ctx.closePath(); ctx.fill();
+    });
+  }
+  ctx.restore();
 
   // v12: a dark far skyline on the horizon -- the city waiting to be
   // rebuilt, so a LVL 1 Core City reads as a city at night, not an empty sky.
@@ -5877,6 +6074,7 @@ function drawCityScene(canvas, progress, t, opts = {}) {
     const bx = b.x * w, bw = b.bw * w, bh = b.bh * (ground - 14);
     ctx.fillStyle = '#0a1a2c';
     ctx.fillRect(bx, ground - bh, bw, bh);
+    if (mini) return;
     ctx.fillStyle = 'rgba(120, 190, 230, 0.16)';
     for (let wy = ground - bh + 5; wy < ground - 4; wy += 7) {
       for (let wx = bx + 2; wx < bx + bw - 2; wx += 5) {
@@ -5888,22 +6086,24 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   haze.addColorStop(0, 'rgba(10, 29, 51, 0)'); haze.addColorStop(1, 'rgba(10, 29, 51, 0.55)');
   ctx.fillStyle = haze; ctx.fillRect(0, ground - (ground - 14) * 0.45, w, (ground - 14) * 0.45);
 
+  const slotW = w / CITY_SLOT_COUNT;
+  // The Core tower stands behind the skyline: an outline until LVL6.
+  const towerTop = skyTop + pad;
+  drawCoreTower(ctx, w / 2, ground, towerTop, slotW, t, stage >= 6);
+  let skyline = stage >= 6 ? towerTop : ground;
+
   // Three starter buildings always stand, so a brand-new city isn't empty;
   // Core City progress builds the remaining 15.
   const built = CITY_STARTER_COUNT + progress * (CITY_SLOT_COUNT - CITY_STARTER_COUNT);
-  const slotW = w / CITY_SLOT_COUNT;
-  // FTUE-2 FIX: the buildings (and the next one's scaffold + crane) rise
-  // only up to opts.skyTop -- the bottom of the text over the canvas --
-  // so they never run behind the headline on a short card.
-  const skyTop = clamp(opts.skyTop || 14, 14, ground - 10);
-  let skyline = ground;
+  const signs = layer(3);
+  const standing = [];
   // Draw back-to-front by height so tall towers don't hide behind houses.
   const sorted = slots.slice().sort((a, b) => b.h - a.h);
   let site = null;
   sorted.forEach(s => {
     const bw = slotW * s.w * 1.25;
     const x = s.x * w - bw / 2;
-    const fullH = s.h * (ground - skyTop - (opts.skyTop ? 12 : 0));
+    const fullH = s.h * (ground - skyTop - pad);
     const col = CITY_PALETTE[s.buildRank % CITY_PALETTE.length];
     const state = s.buildRank < Math.floor(built) ? 'built' : (s.buildRank === Math.floor(built) ? 'building' : 'ghost');
     if (state === 'ghost') {
@@ -5919,27 +6119,8 @@ function drawCityScene(canvas, progress, t, opts = {}) {
     const bh = Math.max(2, fullH * frac);
     const top = ground - bh;
     skyline = Math.min(skyline, state === 'building' ? ground - fullH - 12 : top);
-    const body = ctx.createLinearGradient(0, top, 0, ground);
-    body.addColorStop(0, shadeColor(col, -0.55)); body.addColorStop(1, shadeColor(col, -0.85));
-    ctx.fillStyle = body; ctx.fillRect(x, top, bw, bh);
-    ctx.save();
-    ctx.shadowBlur = 8; ctx.shadowColor = col;
-    ctx.strokeStyle = col; ctx.lineWidth = 1.2;
-    ctx.strokeRect(x + 0.5, top + 0.5, bw - 1, bh - 1);
-    ctx.restore();
-    // Windows: a seeded grid, each window flickering on its own phase.
-    const cols = Math.max(1, Math.floor(bw / 6)), rows = Math.floor(bh / 7);
-    for (let r = 0; r < rows; r++) {
-      for (let k = 0; k < cols; k++) {
-        const ph = (s.seed + r * 7.3 + k * 3.1);
-        const on = Math.sin(ph) > -0.2 && Math.sin(t * 0.7 + ph * 1.3) > -0.85;
-        if (!on) continue;
-        ctx.fillStyle = Math.sin(ph * 2.1) > 0.6 ? '#ffffff' : shadeColor(col, 0.35);
-        ctx.globalAlpha = 0.55 + 0.35 * Math.sin(ph * 0.9);
-        ctx.fillRect(x + 2 + k * (bw - 3) / cols, top + 4 + r * 7, Math.max(1.5, (bw - 3) / cols - 2.5), 3);
-      }
-    }
-    ctx.globalAlpha = 1;
+    drawCityBuilding(ctx, s, x, bw, top, ground, col, t, state === 'built', stage, signs);
+    if (state === 'built') standing.push({ x, bw, top, col });
     if (state === 'building') {
       // Scaffold outline of the final height + a crane with a blinking light.
       ctx.setLineDash([3, 2]);
@@ -5953,14 +6134,61 @@ function drawCityScene(canvas, progress, t, opts = {}) {
       const hookY = cTop + 6 + 4 * Math.sin(t * 2);
       ctx.beginPath(); ctx.moveTo(cx + bw, cTop); ctx.lineTo(cx + bw, hookY); ctx.stroke();
       if (Math.sin(t * 6) > 0) { ctx.fillStyle = '#ff3860'; ctx.beginPath(); ctx.arc(cx, cTop - 2, 2, 0, Math.PI * 2); ctx.fill(); }
-    } else if (s.antenna && bh > 40) {
-      ctx.strokeStyle = col; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x + bw / 2, top); ctx.lineTo(x + bw / 2, top - 9); ctx.stroke();
-      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 3 + s.seed);
-      ctx.fillStyle = '#ff3860'; ctx.beginPath(); ctx.arc(x + bw / 2, top - 10, 1.8, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
     }
   });
+
+  // Stage 4: sky bridges between towers and a monorail over the street.
+  const bridges = layer(4);
+  if (bridges > 0) {
+    ctx.globalAlpha = bridges;
+    standing.sort((a, b) => a.x - b.x);
+    let made = 0;
+    for (let i = 0; i + 2 < standing.length && made < 3; i++) {
+      const A = standing[i], B = standing[i + 2], mid = standing[i + 1];
+      const y = Math.max(A.top, B.top) + 12;
+      if (y > ground - 30 || mid.top < y + 6) continue;
+      const x0 = A.x + A.bw, x1 = B.x;
+      if (x1 - x0 < 6) continue;
+      ctx.fillStyle = 'rgba(8, 22, 38, 0.95)'; ctx.fillRect(x0, y, x1 - x0, 5);
+      ctx.strokeStyle = rgbaColor(A.col, 0.9); ctx.lineWidth = 1;
+      ctx.strokeRect(x0 + 0.5, y + 0.5, x1 - x0 - 1, 4);
+      ctx.fillStyle = '#ffffff';
+      const p = ((t * 0.35 + i * 0.3) % 1) * (x1 - x0);
+      ctx.fillRect(x0 + p, y + 2, 2, 1.5);
+      made++;
+      i++;
+    }
+    const railY = ground - skyH * 0.28;
+    ctx.strokeStyle = 'rgba(160, 200, 230, 0.22)'; ctx.lineWidth = 1;
+    for (let px = 24; px < w; px += 64) { ctx.beginPath(); ctx.moveTo(px, railY + 2); ctx.lineTo(px, ground); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(80, 240, 250, 0.38)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0, railY + 1.5); ctx.lineTo(w, railY + 1.5); ctx.stroke();
+    const trainLen = Math.min(54, w * 0.22), period = (w + trainLen) / 70 + 2.5;
+    const tx = mini ? w * 0.55 : ((t % period) * 70) - trainLen;
+    for (let k = 0; k < 3; k++) {
+      const cx0 = tx + k * (trainLen / 3), cw = trainLen / 3 - 2;
+      if (cx0 + cw < 0 || cx0 > w) continue;
+      roundRectPath(ctx, cx0, railY - 5, cw, 6, 2.5);
+      ctx.fillStyle = '#0f2a3f'; ctx.fill();
+      ctx.fillStyle = '#50F0FA'; ctx.fillRect(cx0 + 2, railY - 3.5, cw - 4, 1.6);
+    }
+    if (!mini) { ctx.fillStyle = '#ffffff'; ctx.fillRect(tx + trainLen - 2, railY - 3, 2, 2); }
+    ctx.globalAlpha = 1;
+  }
+  // Stage 5: drones blinking over the towers (clipped under the headline).
+  if (beams > 0 && !mini) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, skyTop, w, skyH); ctx.clip();
+    ctx.globalAlpha = beams;
+    for (let k = 0; k < 4; k++) {
+      const dx = w * (0.15 + 0.7 * (0.5 + 0.5 * Math.sin(t * (0.21 + k * 0.05) + k * 1.7)));
+      const dy = skyTop + skyH * (0.18 + 0.22 * (0.5 + 0.5 * Math.sin(t * (0.33 + k * 0.04) + k)));
+      ctx.fillStyle = 'rgba(200, 230, 255, 0.8)'; ctx.fillRect(dx - 3, dy, 6, 1.4);
+      ctx.fillStyle = Math.sin(t * 5 + k) > 0 ? '#FF54AD' : '#50F0FA';
+      ctx.fillRect(dx - 1, dy + 1.4, 2, 2);
+    }
+    ctx.restore();
+  }
 
   // Ground + reflection strip.
   const g2 = ctx.createLinearGradient(0, ground, 0, h);
@@ -5968,8 +6196,38 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   ctx.fillStyle = g2; ctx.fillRect(0, ground, w, h - ground);
   ctx.strokeStyle = 'rgba(80, 240, 250, 0.8)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, ground + 0.5); ctx.lineTo(w, ground + 0.5); ctx.stroke();
-  // v17.1: the building a round grows, called out -- the hook made visible.
-  if (site && opts.siteLabel) {
+  // Stage 2: the streets come alive -- lamps and light trails of traffic.
+  const street = layer(2);
+  if (street > 0) {
+    ctx.globalAlpha = street;
+    ctx.fillStyle = 'rgba(4, 16, 29, 0.55)'; ctx.fillRect(0, ground + 1, w, streetH - 1);
+    for (let lx = 14; lx < w; lx += mini ? 18 : 34) {
+      ctx.strokeStyle = 'rgba(160, 200, 230, 0.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(lx, ground); ctx.lineTo(lx, ground - (mini ? 4 : 9)); ctx.stroke();
+      ctx.fillStyle = 'rgba(239, 203, 99, 0.16)'; ctx.beginPath(); ctx.arc(lx, ground - (mini ? 4 : 9), mini ? 2 : 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#EFCB63'; ctx.fillRect(lx - 1, ground - (mini ? 5 : 10), 2, 2);
+    }
+    if (!mini) {
+      ctx.fillStyle = 'rgba(160, 200, 230, 0.25)';
+      for (let dx = ((t * 12) % 16) - 16; dx < w; dx += 16) ctx.fillRect(dx, ground + streetH * 0.48, 8, 1);
+    }
+    const cars = mini ? 3 : 7;
+    for (let i = 0; i < cars; i++) {
+      const dir = i % 2 ? -1 : 1, sp = 24 + (i % 3) * 10, lane = ground + streetH * (dir > 0 ? 0.3 : 0.68);
+      let x = mini ? ((i + 0.5) / cars) * w : ((t * sp + i * 97) % (w + 40)) - 20;
+      if (dir < 0) x = w - x;
+      const tail = ctx.createLinearGradient(x, 0, x - dir * 16, 0);
+      tail.addColorStop(0, dir > 0 ? 'rgba(255, 84, 173, 0.7)' : 'rgba(80, 240, 250, 0.7)'); tail.addColorStop(1, 'rgba(255, 84, 173, 0)');
+      ctx.fillStyle = tail; ctx.fillRect(Math.min(x, x - dir * 16), lane - 0.8, 16, 1.6);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, lane - 1, 2.5, 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  canvas.__siteLabel = null;
+  // v17.1: the building a round grows, called out -- the hook made visible
+  // (not while a new stage's banner has the stage).
+  if (site && opts.siteLabel && !reveal) {
     ctx.save();
     ctx.font = `700 10px ${FONT_UI}`;
     const label = opts.siteLabel, tw = ctx.measureText(label).width;
@@ -5991,12 +6249,73 @@ function drawCityScene(canvas, progress, t, opts = {}) {
     ctx.restore();
     canvas.__siteLabel = { x: px, y: py - 3, w: pw, h: ph + 6, above }; // (QA: qa/devices.mjs)
   }
-  canvas.__skyline = { top: skyline, skyTop }; // (QA: the tallest building / crane vs the headline)
+  canvas.__skyline = { top: skyline, skyTop, stage }; // (QA: the tallest building / crane vs the headline)
+  if (reveal) drawCityReveal(ctx, w, h, ground, skyTop, reveal);
+  canvas.__reveal = reveal ? reveal.level : 0;
+  if (mini) return;
   // A slow scan line sweeping the skyline -- "the city is alive".
   const sx = ((t * 40) % (w + 80)) - 40;
   const scan = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0);
   scan.addColorStop(0, 'rgba(80,240,250,0)'); scan.addColorStop(0.5, 'rgba(80,240,250,0.07)'); scan.addColorStop(1, 'rgba(80,240,250,0)');
   ctx.fillStyle = scan; ctx.fillRect(sx - 30, 0, 60, ground);
+}
+
+/** VISUAL-1: a Core City level just reached -- a flash from the street, a
+ *  light sweep over the skyline, sparks rising, and the stage's name on a
+ *  banner under the headline (~3 s; reduced motion keeps only the banner). */
+const CITY_REVEAL_SECONDS = 3.2;
+function drawCityReveal(ctx, w, h, ground, skyTop, reveal) {
+  const a = reveal.age, still = !!reveal.still;
+  ctx.save();
+  if (!still) {
+    if (a < 0.7) {
+      const f = ctx.createRadialGradient(w / 2, ground, 0, w / 2, ground, w * 0.8);
+      f.addColorStop(0, `rgba(255, 255, 255, ${0.4 * (1 - a / 0.7)})`); f.addColorStop(1, 'rgba(80, 240, 250, 0)');
+      ctx.fillStyle = f; ctx.fillRect(0, 0, w, h);
+    }
+    if (a < 1.2) {
+      const sx = (a / 1.2) * (w + 60) - 30;
+      const g = ctx.createLinearGradient(sx - 26, 0, sx + 26, 0);
+      g.addColorStop(0, 'rgba(239, 203, 99, 0)'); g.addColorStop(0.5, 'rgba(239, 203, 99, 0.35)'); g.addColorStop(1, 'rgba(239, 203, 99, 0)');
+      ctx.fillStyle = g; ctx.fillRect(sx - 26, skyTop, 52, ground - skyTop);
+    }
+    if (a < 2.2) {
+      for (let i = 0; i < 16; i++) {
+        const p = (a / 2.2 + (i * 0.37) % 1 * 0.25);
+        if (p > 1) continue;
+        const x = ((i * 0.618) % 1) * w, y = ground - p * (ground - skyTop);
+        ctx.globalAlpha = 1 - p;
+        ctx.fillStyle = CITY_PALETTE[i % CITY_PALETTE.length];
+        ctx.fillRect(x, y, 2.5, 2.5);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  const st = CITY_STAGES[reveal.level];
+  if (st) {
+    const fadeIn = still ? 1 : clamp(a / 0.3, 0, 1), fadeOut = clamp((CITY_REVEAL_SECONDS - a) / 0.5, 0, 1);
+    const pop = still ? 1 : 0.85 + 0.15 * (1 - Math.pow(1 - fadeIn, 3));
+    ctx.globalAlpha = Math.min(fadeIn, fadeOut);
+    const title = `NOWY ETAP · ${st.name.toUpperCase()}`, line = st.line;
+    let fs = 13;
+    ctx.font = `${fs}px ${FONT_DISPLAY}`;
+    while (fs > 9 && ctx.measureText(title).width > w - 40) { fs--; ctx.font = `${fs}px ${FONT_DISPLAY}`; }
+    const tw = ctx.measureText(title).width;
+    ctx.font = `600 10px ${FONT_UI}`;
+    const lw = ctx.measureText(line).width;
+    const pw = Math.min(w - 12, Math.max(tw, lw) + 24), ph = 36;
+    const cx = w / 2, cy = skyTop + 6 + ph / 2;
+    ctx.translate(cx, cy); ctx.scale(pop, pop);
+    roundRectPath(ctx, -pw / 2, -ph / 2, pw, ph, 10);
+    ctx.fillStyle = 'rgba(4, 16, 29, 0.9)'; ctx.fill();
+    ctx.strokeStyle = '#EFCB63'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#EFCB63'; ctx.font = `${fs}px ${FONT_DISPLAY}`;
+    ctx.fillText(title, 0, -7);
+    ctx.fillStyle = '#d7e6f5'; ctx.font = `600 10px ${FONT_UI}`;
+    ctx.fillText(line, 0, 9);
+  }
+  ctx.restore();
 }
 
 /** FTUE-2 FIX: a mission card's story and goals scroll in their own box
@@ -6022,10 +6341,157 @@ function districtLandmarkId(district) {
   return id;
 }
 
-/** One district tile: a small skyline that lights up building by building
- *  as missions clear, with the district's boss landmark in front (dim and
- *  padlocked until the district is fully rebuilt). */
-function drawDistrictTile(canvas, district, done, total, unlocked, t) {
+/** VISUAL-1: each district's own skyline on its tile -- what you rebuild
+ *  there, recognisable at a glance (cranes and containers in the port,
+ *  chimneys in the factory, domes in the gardens...). Every painter draws
+ *  its pieces left to right; `lit(fx)` says whether the piece at 0..1 of
+ *  the width is rebuilt yet (missions cleared light the district up). */
+function districtTower(ctx, x, bw, bh, ground, col, on, t, roof) {
+  const top = ground - bh;
+  ctx.fillStyle = on ? shadeColor(col, -0.6) : 'rgba(26, 44, 64, 0.85)';
+  ctx.beginPath();
+  if (roof === 'spire') { ctx.moveTo(x, ground); ctx.lineTo(x, top + 6); ctx.lineTo(x + bw / 2, top); ctx.lineTo(x + bw, top + 6); ctx.lineTo(x + bw, ground); }
+  else if (roof === 'dome') { ctx.moveTo(x, ground); ctx.lineTo(x, top + bw / 2); ctx.arc(x + bw / 2, top + bw / 2, bw / 2, Math.PI, 0); ctx.lineTo(x + bw, ground); }
+  else ctx.rect(x, top, bw, bh);
+  ctx.closePath(); ctx.fill();
+  if (!on) return;
+  ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = shadeColor(col, 0.4);
+  for (let y = top + (roof ? 8 : 4); y < ground - 3; y += 6) {
+    for (let xx = x + 2; xx < x + bw - 3; xx += 5) if (Math.sin(xx * 1.7 + y * 0.9 + t * 0.8) > -0.3) ctx.fillRect(xx, y, 2, 2);
+  }
+}
+
+const DISTRICT_PAINTERS = {
+  plac(ctx, w, h, g, col, lit, t) { // a square of cinemas and signs
+    [[0.02, 0.1, 0.42], [0.13, 0.09, 0.3], [0.78, 0.1, 0.36], [0.89, 0.1, 0.5]].forEach(([fx, fw, fh]) => {
+      const on = lit(fx);
+      districtTower(ctx, fx * w, fw * w, fh * h, g, col, on, t);
+      if (on) { ctx.fillStyle = Math.sin(t * 6 + fx * 9) > -0.8 ? '#FF54AD' : 'rgba(255,84,173,0.3)'; ctx.fillRect(fx * w + 2, g - fh * h + 3, fw * w - 4, 3); }
+    });
+    for (let fx = 0.27; fx < 0.75; fx += 0.12) { const on = lit(fx); ctx.fillStyle = on ? '#EFCB63' : 'rgba(120,140,160,0.3)'; ctx.fillRect(fx * w, g - 7, 1, 7); ctx.fillRect(fx * w - 1, g - 8, 3, 2); }
+  },
+  park(ctx, w, h, g, col, lit, t) { // trees and fireflies
+    [[0.06, 0.13], [0.17, 0.1], [0.82, 0.12], [0.93, 0.09], [0.28, 0.07], [0.71, 0.08]].forEach(([fx, r]) => {
+      const on = lit(fx), x = fx * w, rr = r * h;
+      ctx.fillStyle = on ? shadeColor(col, -0.45) : 'rgba(26, 44, 64, 0.85)';
+      ctx.fillRect(x - 1, g - rr, 2, rr);
+      ctx.beginPath(); ctx.arc(x, g - rr * 1.6, rr, 0, Math.PI * 2); ctx.fill();
+      if (on) { ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = '#EFCB63'; ctx.fillRect(x + Math.sin(t * 1.3 + fx * 20) * rr, g - rr * 2 + Math.cos(t + fx * 7) * rr * 0.6, 1.5, 1.5); }
+    });
+  },
+  port(ctx, w, h, g, col, lit, t) { // cranes, containers and the water line
+    const cols = ['#EFCB63', '#FF54AD', '#50F0FA', '#46D99A'];
+    for (let i = 0; i < 6; i++) {
+      const fx = i < 3 ? 0.03 + i * 0.075 : 0.75 + (i - 3) * 0.075, on = lit(fx);
+      for (let k = 0; k < 1 + (i % 3); k++) { ctx.fillStyle = on ? shadeColor(cols[(i + k) % 4], -0.35) : 'rgba(26,44,64,0.85)'; ctx.fillRect(fx * w, g - 6 - k * 6, w * 0.065, 5); }
+    }
+    [0.18, 0.86].forEach(fx => {
+      const on = lit(fx), x = fx * w;
+      ctx.strokeStyle = on ? col : 'rgba(80,100,120,0.6)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, g); ctx.lineTo(x, g - h * 0.55); ctx.lineTo(x + (fx < 0.5 ? 1 : -1) * w * 0.14, g - h * 0.55); ctx.stroke();
+      if (on) { ctx.beginPath(); ctx.moveTo(x + (fx < 0.5 ? 1 : -1) * w * 0.11, g - h * 0.55); ctx.lineTo(x + (fx < 0.5 ? 1 : -1) * w * 0.11, g - h * 0.38 + Math.sin(t * 1.5) * 3); ctx.stroke(); }
+    });
+  },
+  galeria(ctx, w, h, g, col, lit, t) { // glass pyramids and arcades
+    [[0.02, 0.14, 0.4], [0.82, 0.16, 0.48], [0.18, 0.09, 0.26]].forEach(([fx, fw, fh]) => {
+      const on = lit(fx), x = fx * w, bw = fw * w, top = g - fh * h;
+      ctx.fillStyle = on ? shadeColor(col, -0.6) : 'rgba(26, 44, 64, 0.85)';
+      ctx.beginPath(); ctx.moveTo(x, g); ctx.lineTo(x + bw / 2, top); ctx.lineTo(x + bw, g); ctx.closePath(); ctx.fill();
+      if (on) { ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + bw / 2, top); ctx.lineTo(x + bw / 2, g); ctx.moveTo(x + bw * 0.25, (g + top) / 2); ctx.lineTo(x + bw * 0.75, (g + top) / 2); ctx.stroke(); }
+    });
+    districtTower(ctx, 0.71 * w, 0.09 * w, 0.32 * h, g, col, lit(0.71), t, 'dome');
+  },
+  dachy(ctx, w, h, g, col, lit, t) { // tall towers with masts
+    [[0.02, 0.07, 0.6], [0.1, 0.06, 0.44], [0.17, 0.07, 0.7], [0.76, 0.07, 0.62], [0.84, 0.06, 0.46], [0.91, 0.07, 0.74]].forEach(([fx, fw, fh]) => {
+      const on = lit(fx), x = fx * w, bw = fw * w;
+      districtTower(ctx, x, bw, fh * h, g, col, on, t);
+      ctx.strokeStyle = on ? col : 'rgba(80,100,120,0.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x + bw / 2, g - fh * h); ctx.lineTo(x + bw / 2, g - fh * h - 6); ctx.stroke();
+      if (on && Math.sin(t * 4 + fx * 30) > 0) { ctx.fillStyle = '#ff3860'; ctx.fillRect(x + bw / 2 - 1, g - fh * h - 8, 2, 2); }
+    });
+  },
+  rdzen(ctx, w, h, g, col, lit, t) { // heavy towers around the city's core
+    [[0.02, 0.11, 0.55, 'spire'], [0.14, 0.09, 0.4], [0.77, 0.09, 0.45], [0.87, 0.11, 0.66, 'spire']].forEach(([fx, fw, fh, roof]) => districtTower(ctx, fx * w, fw * w, fh * h, g, col, lit(fx), t, roof));
+  },
+  metro(ctx, w, h, g, col, lit, t) { // an elevated line with a train
+    const ry = g - h * 0.32;
+    [[0.02, 0.1, 0.26], [0.85, 0.12, 0.3]].forEach(([fx, fw, fh]) => districtTower(ctx, fx * w, fw * w, fh * h, g, col, lit(fx), t));
+    ctx.strokeStyle = lit(0.5) ? col : 'rgba(80,100,120,0.6)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(w, ry); ctx.stroke();
+    for (let fx = 0.12; fx < 1; fx += 0.2) { ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(fx * w, ry); ctx.lineTo(fx * w, g); ctx.stroke(); }
+    if (lit(0.5)) {
+      const tx = ((t * 30) % (w + 50)) - 50;
+      for (let k = 0; k < 3; k++) { ctx.fillStyle = '#0f2a3f'; ctx.fillRect(tx + k * 16, ry - 6, 14, 5); ctx.fillStyle = col; ctx.fillRect(tx + k * 16 + 2, ry - 5, 10, 1.5); }
+    }
+  },
+  bazar(ctx, w, h, g, col, lit, t) { // stalls under awnings, a string of lanterns
+    [0.02, 0.13, 0.76, 0.87].forEach((fx, i) => {
+      const on = lit(fx), x = fx * w, bw = w * 0.1, top = g - h * 0.22;
+      ctx.fillStyle = on ? shadeColor(col, -0.6) : 'rgba(26, 44, 64, 0.85)'; ctx.fillRect(x, top, bw, g - top);
+      ctx.fillStyle = on ? (i % 2 ? '#FF54AD' : col) : 'rgba(60, 80, 100, 0.8)';
+      ctx.beginPath(); ctx.moveTo(x - 2, top); ctx.lineTo(x + bw / 2, top - 7); ctx.lineTo(x + bw + 2, top); ctx.closePath(); ctx.fill();
+    });
+    ctx.strokeStyle = 'rgba(160, 180, 200, 0.4)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, h * 0.18); ctx.quadraticCurveTo(w / 2, h * 0.42, w, h * 0.18); ctx.stroke();
+    for (let i = 1; i < 12; i++) {
+      const f = i / 12, x = f * w, y = (1 - f) * (1 - f) * h * 0.18 + 2 * (1 - f) * f * h * 0.42 + f * f * h * 0.18;
+      ctx.fillStyle = lit(f) ? (i % 2 ? '#EFCB63' : '#FF54AD') : 'rgba(90, 110, 130, 0.5)';
+      ctx.globalAlpha = lit(f) ? 0.7 + 0.3 * Math.sin(t * 3 + i) : 1;
+      ctx.fillRect(x - 1.5, y + 1, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+  },
+  fabryka(ctx, w, h, g, col, lit, t) { // sawtooth halls and smoking chimneys
+    [[0.02, 0.2], [0.76, 0.22]].forEach(([fx, fw]) => {
+      const on = lit(fx), x = fx * w, bw = fw * w, top = g - h * 0.22;
+      ctx.fillStyle = on ? shadeColor(col, -0.6) : 'rgba(26, 44, 64, 0.85)';
+      ctx.beginPath(); ctx.moveTo(x, g); ctx.lineTo(x, top);
+      for (let k = 0; k < 3; k++) { ctx.lineTo(x + bw * (k + 1) / 3, top - 6); ctx.lineTo(x + bw * (k + 1) / 3, top); }
+      ctx.lineTo(x + bw, g); ctx.closePath(); ctx.fill();
+      if (on) { ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke(); }
+      const cx = x + bw * 0.5, ch = h * 0.52;
+      ctx.fillStyle = on ? shadeColor(col, -0.5) : 'rgba(26, 44, 64, 0.85)'; ctx.fillRect(cx - 2.5, g - ch, 5, ch);
+      if (on) for (let k = 0; k < 3; k++) { const p = (t * 0.4 + k / 3) % 1; ctx.fillStyle = `rgba(200, 210, 225, ${0.35 * (1 - p)})`; ctx.beginPath(); ctx.arc(cx + p * 8, g - ch - 3 - p * 14, 2 + p * 4, 0, Math.PI * 2); ctx.fill(); }
+    });
+  },
+  zatoka(ctx, w, h, g, col, lit, t) { // a bay under a suspension bridge
+    const wy = g - 4;
+    ctx.fillStyle = lit(0.5) ? rgbaColor(col, 0.25) : 'rgba(26, 44, 64, 0.6)'; ctx.fillRect(0, wy, w, 4);
+    [0.12, 0.88].forEach(fx => { const on = lit(fx); ctx.fillStyle = on ? shadeColor(col, -0.4) : 'rgba(26,44,64,0.9)'; ctx.fillRect(fx * w - 2, g - h * 0.62, 4, h * 0.62); });
+    ctx.strokeStyle = lit(0.5) ? col : 'rgba(80,100,120,0.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, g - h * 0.25); ctx.lineTo(w, g - h * 0.25); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w * 0.12, g - h * 0.62); ctx.quadraticCurveTo(w * 0.5, g - h * 0.12, w * 0.88, g - h * 0.62); ctx.stroke();
+    if (lit(0.5)) for (let k = 0; k < 5; k++) { const x = ((t * 20 + k * w / 5) % w); ctx.fillStyle = k % 2 ? '#FF54AD' : '#ffffff'; ctx.fillRect(x, g - h * 0.25 - 2, 2, 1.5); }
+  },
+  ogrody(ctx, w, h, g, col, lit, t) { // greenhouse domes among trees
+    [[0.1, 0.11], [0.88, 0.13], [0.27, 0.07]].forEach(([fx, r]) => {
+      const on = lit(fx), x = fx * w, rr = r * w;
+      ctx.fillStyle = on ? shadeColor(col, -0.62) : 'rgba(26, 44, 64, 0.85)';
+      ctx.beginPath(); ctx.arc(x, g, rr, Math.PI, 0); ctx.closePath(); ctx.fill();
+      if (on) { ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke(); for (let k = 1; k < 3; k++) { ctx.beginPath(); ctx.arc(x, g, rr * k / 3, Math.PI, 0); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(x, g - rr); ctx.lineTo(x, g); ctx.stroke(); }
+    });
+    [0.72, 0.8].forEach(fx => { const on = lit(fx); ctx.fillStyle = on ? shadeColor(col, -0.4) : 'rgba(26,44,64,0.85)'; ctx.beginPath(); ctx.arc(fx * w, g - h * 0.2, h * 0.09, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(fx * w - 1, g - h * 0.12, 2, h * 0.12); });
+  },
+  chmura(ctx, w, h, g, col, lit, t) { // floating islands among clouds
+    [[0.1, 0.35], [0.86, 0.48], [0.28, 0.6]].forEach(([fx, fy], i) => {
+      const on = lit(fx), x = fx * w, y = h * fy + Math.sin(t * 0.8 + i) * 1.5, rw = w * 0.09;
+      ctx.fillStyle = on ? shadeColor(col, -0.5) : 'rgba(26, 44, 64, 0.85)';
+      ctx.beginPath(); ctx.moveTo(x - rw, y); ctx.lineTo(x + rw, y); ctx.lineTo(x, y + rw * 0.8); ctx.closePath(); ctx.fill();
+      districtTower(ctx, x - rw * 0.5, rw * 0.6, h * 0.16, y, col, on, t);
+      if (on) { ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - rw, y); ctx.lineTo(x + rw, y); ctx.stroke(); }
+    });
+    ctx.fillStyle = 'rgba(200, 220, 240, 0.12)';
+    for (let k = 0; k < 3; k++) { const x = ((t * 6 + k * w / 3) % (w + 40)) - 20; ctx.beginPath(); ctx.ellipse(x, h * (0.25 + k * 0.2), 16, 4, 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+};
+
+/** One district tile: the district's own skyline lighting up piece by
+ *  piece as missions clear, its boss landmark in front (dim until the
+ *  district is rebuilt). VISUAL-1 opts: next (the district the current
+ *  boss unlocks -- a light runs over its silhouette), reveal ({ age } --
+ *  just unlocked: a flash and a sweep, ~1.4 s). */
+function drawDistrictTile(canvas, district, done, total, unlocked, t, opts = {}) {
   const c = prepCanvas(canvas);
   if (!c) return;
   const { ctx, w, h } = c;
@@ -6034,27 +6500,11 @@ function drawDistrictTile(canvas, district, done, total, unlocked, t) {
   bg.addColorStop(0, unlocked ? shadeColor(col, -0.86) : '#060d16');
   bg.addColorStop(1, unlocked ? shadeColor(col, -0.7) : '#09131f');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-  const rng = new SeededRNG(district.order * 977);
   const ground = h - 8;
-  const n = 9;
   const frac = total ? done / total : 0;
-  for (let i = 0; i < n; i++) {
-    const bw = w / n * (0.7 + rng.next() * 0.25);
-    const bx = (i + 0.5) * w / n - bw / 2;
-    const bh = (0.25 + rng.next() * 0.45) * h;
-    const lit = unlocked && (i + 0.5) / n <= frac + 0.001;
-    ctx.fillStyle = lit ? shadeColor(col, -0.55) : 'rgba(30, 50, 70, 0.6)';
-    ctx.fillRect(bx, ground - bh, bw, bh);
-    if (lit) {
-      ctx.strokeStyle = col; ctx.lineWidth = 1;
-      ctx.strokeRect(bx + 0.5, ground - bh + 0.5, bw - 1, bh - 1);
-      for (let y = ground - bh + 4; y < ground - 3; y += 6) {
-        for (let x = bx + 2; x < bx + bw - 3; x += 5) {
-          if (Math.sin(x * 1.7 + y * 0.9 + t * 0.8) > -0.3) { ctx.fillStyle = shadeColor(col, 0.4); ctx.fillRect(x, y, 2, 2); }
-        }
-      }
-    }
-  }
+  const lit = (fx) => unlocked && fx <= frac + 0.02;
+  const paint = DISTRICT_PAINTERS[district.id];
+  if (paint) paint(ctx, w, h, ground, col, lit, t);
   ctx.fillStyle = unlocked ? rgbaColor(col, 0.5) : 'rgba(120,140,160,0.2)';
   ctx.fillRect(0, ground, w, 1);
   const lm = districtLandmarkId(district);
@@ -6072,6 +6522,22 @@ function drawDistrictTile(canvas, district, done, total, unlocked, t) {
   }
   if (!unlocked) {
     ctx.fillStyle = 'rgba(4, 16, 29, 0.55)'; ctx.fillRect(0, 0, w, h);
+    if (opts.next) {
+      // The district coming next: a light runs over what you will rebuild.
+      const sx = ((t * 0.5) % 1.6) * w - w * 0.3;
+      const g = ctx.createLinearGradient(sx - 24, 0, sx + 24, 0);
+      g.addColorStop(0, rgbaColor(col, 0)); g.addColorStop(0.5, rgbaColor(col, 0.28)); g.addColorStop(1, rgbaColor(col, 0));
+      ctx.fillStyle = g; ctx.fillRect(sx - 24, 0, 48, h);
+    }
+    drawLockGlyph(ctx, w - 13, 14, Math.min(13, h * 0.2));
+  }
+  if (opts.reveal && unlocked) {
+    const a = opts.reveal.age;
+    if (a < 0.5) { ctx.fillStyle = `rgba(255, 255, 255, ${0.45 * (1 - a / 0.5)})`; ctx.fillRect(0, 0, w, h); }
+    const sx = (a / 1.4) * (w + 40) - 20;
+    const g = ctx.createLinearGradient(sx - 18, 0, sx + 18, 0);
+    g.addColorStop(0, rgbaColor(col, 0)); g.addColorStop(0.5, rgbaColor('#ffffff', 0.5)); g.addColorStop(1, rgbaColor(col, 0));
+    ctx.fillStyle = g; ctx.fillRect(sx - 18, 0, 36, h);
   }
 }
 
@@ -8670,6 +9136,14 @@ class Game {
       const selected = pendingId === item.id;
       const card = document.createElement('div');
       card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
+      // VISUAL-1: a card says at a glance what it is -- worn, owned, for
+      // sale and affordable now, for sale but out of reach, or a reward.
+      const sale = !owned && !item.unlockSource;
+      const prisms = item.priceType === 'prisms';
+      const price = prisms ? item.pricePrisms : (item.priceCoins != null ? item.priceCoins : (item.price || 0));
+      const state = owned ? (selected ? 'worn' : 'owned') : (!sale ? 'reward' : ((prisms ? (this.save.prisms || 0) : this.save.coins) >= price ? 'buyable' : 'short'));
+      card.classList.add('is-' + state);
+      card.dataset.item = item.id;
 
       // Rdzeń/Trail cards show the real in-round hole (Hole.draw() via
       // renderWarsztatCanvases()) instead of a CSS color dot, so what you
@@ -8706,10 +9180,16 @@ class Game {
       }
 
       const meta = document.createElement('div');
-      meta.className = owned ? 'skin-owned-badge' : 'skin-price';
+      meta.className = owned ? 'skin-owned-badge' : 'skin-price' + (state === 'buyable' ? ' skin-price-buy' : '');
       meta.textContent = owned ? (selected ? 'ZAŁOŻONE' : 'ZAŁÓŻ') : this.cosmeticLockLabel(item);
       body.appendChild(meta);
       card.appendChild(body);
+      if (state === 'reward' || state === 'short') {
+        const lock = document.createElement('span');
+        lock.className = 'skin-card-lock';
+        lock.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
+        card.appendChild(lock);
+      }
 
       if (selected) {
         const check = document.createElement('span');
@@ -8790,9 +9270,11 @@ class Game {
     }[cat];
     this.sound.ui();
     if (C.owned.includes(item.id)) {
+      const was = this.pendingLoadout[cat];
       this.pendingLoadout[cat] = item.id;
       this.onEquipClick();
       this.updateWarsztatPreview();
+      if (was !== item.id) this.celebrateEquip(cat, item, 'equip');
       return;
     }
     const equipped = { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected, overdriveSkin: this.save.overdriveSkins.selected }[cat];
@@ -8839,9 +9321,23 @@ class Game {
         this.sound.coin();
         this.updateCoinDisplays();
         this.updateWarsztatPreview();
+        this.celebrateEquip(cat, item, 'buy');
       } },
       onClose: revert, closeLabel: 'NIE TERAZ', bottom: true
     });
+  }
+
+  /** VISUAL-1: feedback for putting an item on (cyan) or buying it (gold):
+   *  rings and sparks burst from the showroom vortex, its card pops and
+   *  the name plate flashes. A look only -- nothing about the item changes. */
+  celebrateEquip(cat, item, kind) {
+    this.warsztatFx = { t0: performance.now() / 1000, kind, color: kind === 'buy' ? '#EFCB63' : (item.color || '#50F0FA') };
+    const grid = { skin: 'skinGrid', aura: 'auraGrid', effect: 'effectGrid', overdriveSkin: 'overdriveSkinGrid' }[cat];
+    const card = document.querySelector(`#${grid} .skin-card[data-item="${item.id}"]`);
+    if (card) card.classList.add(kind === 'buy' ? 'just-bought' : 'just-equipped');
+    const name = document.getElementById('warsztatPreviewName');
+    name.classList.remove('flash'); void name.offsetWidth; name.classList.add('flash');
+    if (kind === 'equip') this.sound.pick();
   }
 
   /** Commits the pending loadout to the save (Warsztat picks and the
@@ -9068,7 +9564,7 @@ class Game {
    *  after a round, the new buildings rise in front of you. */
   renderHubCity(t) {
     const target = this.hubCityTargetProgress();
-    if (this.hubCityShown == null || target < this.hubCityShown) this.hubCityShown = target;
+    if (this.hubCityShown == null || target < this.hubCityShown) { this.hubCityShown = target; this.hubCityStageSeen = null; }
     const dt = this.hubCityLastT ? Math.min(0.05, t - this.hubCityLastT) : 0;
     this.hubCityLastT = t;
     // Ease toward the target (~1.5 s for any jump), never overshooting.
@@ -9082,14 +9578,34 @@ class Game {
       this.hubCityReserve = pitch && pitch.offsetHeight ? pitch.offsetTop + pitch.offsetHeight - cv.offsetTop + 6 : 0;
       this.hubCityReserveAt = t;
     }
-    drawCityScene(cv, this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK', skyTop: this.hubCityReserve });
+    // VISUAL-1: a save opens on its city as it stands; a level reached in
+    // this session (the skyline easing past it) plays the stage's reveal.
+    const stage = cityStageLevel(this.hubCityShown);
+    if (this.hubCityStageSeen == null) this.hubCityStageSeen = stage;
+    else if (stage > this.hubCityStageSeen) {
+      this.hubCityStageSeen = stage;
+      this.hubCityReveal = { level: stage, t0: t };
+      this.sound.tierUp();
+      this.vibrate(40);
+    }
+    let reveal = null;
+    if (this.hubCityReveal) {
+      const age = t - this.hubCityReveal.t0;
+      if (age >= 0 && age < CITY_REVEAL_SECONDS) reveal = { level: this.hubCityReveal.level, age, still: prefersReducedMotion() };
+      else this.hubCityReveal = null;
+    }
+    drawCityScene(cv, this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK', skyTop: this.hubCityReserve, reveal });
   }
 
   renderDistrictTiles(t) {
+    const rv = this.districtReveal;
+    if (rv && rv.t0 == null) rv.t0 = t;
+    if (rv && t - rv.t0 > 1.4) this.districtReveal = null;
     document.querySelectorAll('#districtMap canvas.district-tile-canvas').forEach(cv => {
       const d = DISTRICTS.find(x => x.id === cv.dataset.district);
       const done = d.missions.filter(id => this.save.campaign.completed[id]).length;
-      drawDistrictTile(cv, d, done, d.missions.length, this.save.campaign.unlockedDistricts.includes(d.id), t);
+      const reveal = rv && rv.id === d.id && !prefersReducedMotion() ? { age: t - rv.t0 } : null;
+      drawDistrictTile(cv, d, done, d.missions.length, this.save.campaign.unlockedDistricts.includes(d.id), t, { next: cv.dataset.next === '1', reveal });
     });
   }
 
@@ -9125,8 +9641,11 @@ class Game {
     const effectColor = (effect && effect.color) || TIERS.fragment.color;
     const skin = SKINS.find(sk => sk.id === p.skin);
     const glowColor = (skin && skin.color) || '#9875FF';
+    const fx = this.warsztatFx && !prefersReducedMotion() ? this.warsztatFx : null;
+    const fxAge = fx ? performance.now() / 1000 - fx.t0 : 9;
+    if (fx && fxAge > 1.2) this.warsztatFx = null;
     this.drawHoleThumb(document.getElementById('warsztatPreviewCanvas'), p.skin, p.aura, time,
-      (ctx, R) => this.drawPreviewEat(ctx, R, time, effectColor),
+      (ctx, R) => { this.drawPreviewEat(ctx, R, time, effectColor); if (fxAge < 1.2) this.drawEquipBurst(ctx, R, fxAge, fx); },
       (ctx, w, h) => this.drawWarsztatStage(ctx, w, h, glowColor, time), 0.62);
     document.querySelectorAll('#shopScreen canvas.hole-swatch').forEach(cv => {
       if (!cv.offsetParent) return; // inactive tab
@@ -9177,6 +9696,27 @@ class Game {
     ctx.strokeStyle = rgbaColor(color, 0.55); ctx.lineWidth = 3;
     ctx.setLineDash([14, 10]); ctx.lineDashOffset = -t * 30;
     ctx.beginPath(); ctx.arc(0, 0, Math.min(w, h) * 0.42, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  /** VISUAL-1: the burst of celebrateEquip() around the showroom vortex. */
+  drawEquipBurst(ctx, R, age, fx) {
+    const f = age / 1.2;
+    ctx.save();
+    for (let k = 0; k < 3; k++) {
+      const p = clamp(f * 1.6 - k * 0.18, 0, 1);
+      if (p <= 0 || p >= 1) continue;
+      ctx.globalAlpha = (1 - p) * 0.9;
+      ctx.strokeStyle = k === 1 ? '#ffffff' : fx.color; ctx.lineWidth = 3 * (1 - p) + 0.6;
+      ctx.beginPath(); ctx.arc(0, 0, R * (1 + p * 1.4), 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = fx.color;
+    for (let i = 0; i < (fx.kind === 'buy' ? 18 : 12); i++) {
+      const a = i * 2.39996, d = R * (1.05 + f * (1.3 + (i % 3) * 0.25));
+      ctx.globalAlpha = 1 - f;
+      const s = fx.kind === 'buy' && i % 2 ? 3.5 : 2.5;
+      ctx.fillRect(Math.cos(a) * d - s / 2, Math.sin(a) * d - s / 2, s, s);
+    }
     ctx.restore();
   }
 
@@ -10089,21 +10629,30 @@ class Game {
       const def = CORE_CITY_LEVEL_REWARDS[n];
       const state = n <= level ? 'done' : (n === level + 1 ? 'next' : '');
       const mark = n <= level ? '✓' : (n === level + 1 ? `${pct}%` : '');
+      // VISUAL-1: each level shows the city it builds (a still thumbnail of
+      // the real skyline at that level) and names what it adds.
+      const stage = CITY_STAGES[n];
       return `<li class="info-roadmap-row ${state}">` +
-        `<span class="info-roadmap-icon">${REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(def)]}</span>` +
-        `<span class="info-roadmap-main"><span class="info-roadmap-level">LVL ${n}</span>${def.label} · +${def.coins} ◇</span>` +
+        `<canvas class="info-roadmap-city" data-city-level="${n}" aria-hidden="true"></canvas>` +
+        `<span class="info-roadmap-main"><span class="info-roadmap-level">LVL ${n}${stage ? ' · ' + stage.line : ''}</span>` +
+        `<span class="info-roadmap-reward"><span class="info-roadmap-icon">${REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(def)]}</span>${def.label} · +${def.coins} ◇</span></span>` +
         `<span class="info-roadmap-mark">${mark}</span></li>`;
     }).join('');
+    const now = CITY_STAGES[Math.min(level, 6)];
     this.openInfoSheet({
       icon: REWARD_CATEGORY_ICONS.bundle,
       title: 'Nagrody Core City',
       body: [
-        `Core City to pasek postępu całego miasta. Każde 100% to nowy poziom i nagroda. Teraz: <strong>LVL ${level} · ${pct}%</strong>.`,
+        `Core City to pasek postępu całego miasta. Każde 100% to nowy poziom, nagroda i nowy wygląd miasta. Teraz: <strong>LVL ${level} · ${pct}%</strong>. Etap miasta: <strong>${now.name}</strong>.`,
         `<ul class="info-roadmap">${rows}</ul>`,
         'Jak ładować:',
         this.coreCityHowToFillHtml(),
         'Misje kampanii (Dzielnice) nie ładują Core City — dają własne nagrody.'
       ]
+    });
+    document.querySelectorAll('#infoSheet canvas.info-roadmap-city').forEach(cv => {
+      const n = Number(cv.dataset.cityLevel);
+      drawCityScene(cv, clamp((n - 1) / 5, 0, 1), 7.3, { mini: true });
     });
   }
 
@@ -11219,6 +11768,9 @@ class Game {
   openCampaignScreen() {
     this.renderCampaignMap();
     this.showScreen('campaignScreen');
+    // VISUAL-1: the strip had no width while the screen was hidden -- bring
+    // the picked (current) district into view now that it has.
+    this.scrollDistrictStripTo(this.selectedDistrictId);
   }
 
   /** v21: the district strip scrolls sideways. A mouse wheel scrolls it
@@ -11235,6 +11787,19 @@ class Game {
     strip.addEventListener('scroll', () => this.updateStripEdges(), { passive: true });
   }
 
+  /** v21: the picked district is never hidden past the strip's edge. */
+  scrollDistrictStripTo(districtId) {
+    const act = document.querySelectorAll('#districtMap .district-node')[DISTRICTS.findIndex(d => d.id === districtId)];
+    const strip = document.getElementById('districtMap');
+    if (act && strip.clientWidth) {
+      const l = act.offsetLeft - strip.offsetLeft, r = l + act.offsetWidth;
+      // (VISUAL-1: both ways to the tile's own start -- the strip snaps to
+      // tile starts, and a stop short of it snapped back to the tile before.)
+      if (l < strip.scrollLeft || r > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = l - 2;
+    }
+    requestAnimationFrame(() => this.updateStripEdges());
+  }
+
   updateStripEdges() {
     const strip = document.getElementById('districtMap');
     if (!strip) return;
@@ -11246,6 +11811,13 @@ class Game {
   renderCampaignMap() {
     const wrap = document.getElementById('districtMap');
     wrap.innerHTML = '';
+    // VISUAL-1: the district you play now (its next mission) and the one
+    // its boss opens next are marked on the strip.
+    const nextId = this.nextCampaignMissionId();
+    const nextMission = nextId && campaignMissionById(nextId);
+    const currentId = nextMission ? nextMission.district : null;
+    const nextLocked = DISTRICTS.find(d => !this.save.campaign.unlockedDistricts.includes(d.id));
+    this.districtRevealed = this.districtRevealed || new Set();
     DISTRICTS.forEach(d => {
       const unlocked = this.save.campaign.unlockedDistricts.includes(d.id);
       const node = document.createElement('button');
@@ -11258,7 +11830,20 @@ class Game {
       const isNew = unlocked && this.isUnlockFresh('district:' + d.id);
       node.classList.toggle('is-new', isNew);
       const pctDone = Math.round(doneCount / d.missions.length * 100);
-      node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"></canvas>` +
+      const isCurrent = unlocked && d.id === currentId;
+      const isNext = !unlocked && nextLocked && d.id === nextLocked.id;
+      node.classList.toggle('current', isCurrent);
+      node.classList.toggle('next-up', !!isNext);
+      // A district opened since its last visit lights up once (a sweep on
+      // its skyline, a pop of the tile) the first time the strip shows it.
+      if (isNew && !this.districtRevealed.has(d.id)) {
+        this.districtRevealed.add(d.id);
+        this.districtReveal = { id: d.id, t0: null };
+      }
+      // (still pending while selecting it re-renders the strip at once)
+      if (this.districtReveal && this.districtReveal.id === d.id && this.districtReveal.t0 == null) node.classList.add('just-unlocked');
+      const chip = isCurrent ? '<span class="district-tile-chip">TERAZ</span>' : (isNext ? '<span class="district-tile-chip next">NASTĘPNA</span>' : '');
+      node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"${isNext ? ' data-next="1"' : ''}></canvas>` + chip +
         `<span class="district-tile-info"><span class="district-node-name">${d.name}</span>` +
         `<span class="district-node-status">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : 'ZABLOKOWANA')}</span>` +
         `<span class="district-tile-bar"><span style="width:${unlocked ? pctDone : 0}%"></span></span></span>`;
@@ -11267,7 +11852,10 @@ class Game {
     });
     const playableUnlocked = DISTRICTS.filter(d => this.save.campaign.unlockedDistricts.includes(d.id));
     const remembered = this.selectedDistrictId && playableUnlocked.find(d => d.id === this.selectedDistrictId);
-    this.selectCampaignDistrict(remembered ? this.selectedDistrictId : playableUnlocked[0].id);
+    // VISUAL-1: with nothing remembered, Dzielnice opens on the district
+    // you play now (TERAZ), not on the first one long rebuilt.
+    const current = currentId && playableUnlocked.find(d => d.id === currentId);
+    this.selectCampaignDistrict(remembered ? this.selectedDistrictId : (current || playableUnlocked[0]).id);
   }
 
   openLockedDistrictInfo(district) {
@@ -11299,14 +11887,7 @@ class Game {
     const nodes = document.querySelectorAll('#districtMap .district-node');
     const districtIdx = DISTRICTS.findIndex(d => d.id === districtId);
     nodes.forEach((el, i) => el.classList.toggle('active', i === districtIdx));
-    // v21: the picked district is never hidden past the strip's edge.
-    const act = nodes[districtIdx], strip = document.getElementById('districtMap');
-    if (act && strip.clientWidth) {
-      const l = act.offsetLeft - strip.offsetLeft, r = l + act.offsetWidth;
-      if (l < strip.scrollLeft) strip.scrollLeft = l - 8;
-      else if (r > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = r - strip.clientWidth + 8;
-    }
-    requestAnimationFrame(() => this.updateStripEdges());
+    this.scrollDistrictStripTo(districtId);
 
     const district = DISTRICTS.find(d => d.id === districtId);
     // GDD 4.0 §8.4 anti-confusion: this header shows the district's OWN
@@ -13573,6 +14154,15 @@ class Game {
     // instead of one bar simply overdrawing the other.
     const barBefore = document.getElementById('resultCoreBarBefore');
     const barAfter = document.getElementById('resultCoreBar');
+    // VISUAL-1: a new Core City level is a moment -- its number on the card
+    // and the city stage it adds, waiting in Miasto.
+    const coreLevelNow = this.save.hub.coreLevel || 1;
+    const newStage = leveledUp && CITY_STAGES[coreLevelNow];
+    document.querySelector('#gameOverScreen .result-core-card').classList.toggle('leveled', leveledUp);
+    document.getElementById('resultCoreLvl').textContent = `LVL ${coreLevelNow}`;
+    document.getElementById('resultCoreLvl').classList.toggle('hidden', !leveledUp);
+    document.getElementById('resultCoreStage').textContent = newStage ? `Nowy etap miasta: ${newStage.line}` : '';
+    document.getElementById('resultCoreStage').classList.toggle('hidden', !newStage);
     if (leveledUp) {
       barBefore.style.width = '100%';
       barAfter.style.left = '0%';
@@ -16820,6 +17410,8 @@ const I18N_EN = {
   "Codzienna misja i Wyzwanie dnia: ta sama mapa dla wszystkich, walka o rekord i serię dni z rzędu.": "Daily mission and Daily Challenge: the same map for everyone, a fight for the high score and a streak of days in a row.",
   "Codzienne zadania:": "Daily tasks:",
   "Core City to pasek postępu całego miasta. Każde 100% to nowy poziom i nagroda. Teraz:": "Core City is the whole city's progress bar. Every 100% is a new level and a reward. Now:",
+  "Core City to pasek postępu całego miasta. Każde 100% to nowy poziom, nagroda i nowy wygląd miasta. Teraz:": "Core City is the whole city's progress bar. Every 100% is a new level, a reward and a new look for the city. Now:",
+  ". Etap miasta:": ". City stage:",
   "Core City — poziomy i nagrody": "Core City — levels and rewards",
   "Cyjan": "Cyan",
   "Czas": "Time",
@@ -17145,6 +17737,24 @@ const I18N_EN = {
   "NOWY": "NEW",
   "Nagroda Core City: {0}": "Core City reward: {0}",
   "NOWY BUDYNEK": "NEW BUILDING",
+  // VISUAL-1: Core City stages (drawCityScene(), the roadmap).
+  "NOWY ETAP · {0}": "NEW STAGE · {0}",
+  "TERAZ": "NOW",
+  "Nowy etap miasta: {0}": "New city stage: {0}",
+  "NASTĘPNA": "NEXT",
+  "LVL {#0} · {1}": "LVL {0} · {1}",
+  "Fundamenty": "Foundations",
+  "Ulice": "Streets",
+  "Neony": "Neon signs",
+  "Kładki": "Sky bridges",
+  "Reflektory": "Searchlights",
+  "Wieża Rdzenia": "Core Tower",
+  "Pierwsze budynki i dźwig": "The first buildings and a crane",
+  "Latarnie i ruch na ulicach": "Street lamps and traffic",
+  "Neonowe szyldy na budynkach": "Neon signs on the buildings",
+  "Kładki i kolejka nad ulicami": "Sky bridges and a monorail",
+  "Reflektory i drony nad miastem": "Searchlights and drones over the city",
+  "Wieża Rdzenia rozświetla miasto": "The Core Tower lights up the city",
   "NOWY REKORD": "NEW RECORD",
   "NOWY REKORD DNIA": "NEW DAILY RECORD",
   "NOWY TRYB": "NEW MODE",

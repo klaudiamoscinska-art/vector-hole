@@ -4,6 +4,51 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## VISUAL-1 „Miasto, Dzielnice, Warsztat” (zapis nadal v13; ekonomia, ceny, nagrody, mechanika, rundy i misje bez zmian)
+- **Analiza** (zrzuty z gry na bazie `4901499`): Core City na każdym
+  poziomie to te same prostokąty — po LVL 6 nic się już nie zmienia,
+  awans poziomu widać tylko jako „95% → 22%” w wyniku; kafle Dzielnic
+  rysowały tę samą losową panoramę (różnił się tylko kolor), bez
+  wskazania bieżącej i następnej dzielnicy, a ekran otwierał się na
+  dawno odbudowanym Placu; w Warsztacie przedmiot, na który gracza
+  stać, wyglądał jak zablokowany, a założenie nie dawało informacji
+  zwrotnej. Porównano 3 kierunki (proceduralne „Żywe Miasto” w canvasie,
+  ilustrowane miasto izometryczne z zasobów SVG, sam szlif interfejsu
+  CSS); wybrane Żywe Miasto + szlif stanów — zero zasobów, wynika z
+  zapisu, tani w rysowaniu.
+- **Miasto rośnie etapami** (`CITY_STAGES`, `cityStageLevel()`,
+  `drawCityScene()`): budynki mają dachy (uskok, iglica, kopuła, skos),
+  z każdym poziomem pali się więcej okien, a każdy LVL dodaje warstwę:
+  2 latarnie i ruch na ulicy, 3 neonowe szyldy, 4 kładki i kolejka,
+  5 reflektory i drony, 6 Wieża Rdzenia (wcześniej przerywany kontur —
+  cel) i zorza. Wszystko z `hub.coreLevel/coreCharge` — istniejący
+  zapis od razu widzi swoje miasto, bez migracji.
+- **Awans Core City to moment**: po powrocie do Miasta błysk, przejście
+  światła, iskry i pasek „NOWY ETAP · NEONY” pod nagłówkiem (~3 s,
+  raz; przy ograniczonym ruchu tylko pasek); w wyniku rundy znacznik
+  „LVL 3” i „Nowy etap miasta: …”. Mapa nagród Core City pokazuje
+  miniaturę miasta na każdym poziomie i to, co poziom dodaje.
+- **Dzielnice**: każda ma własną panoramę (kino i szyldy, drzewa,
+  dźwigi i kontenery, piramidy, maszty, wieże, kolejka, kramy z
+  lampionami, kominy, most nad zatoką, szklarnie, latające wyspy),
+  która rozświetla się z misjami; „TERAZ” na dzielnicy, w której grasz,
+  „NASTĘPNA” na tej, którą otworzy jej boss (z przebiegającym światłem);
+  świeżo otwarta dzielnica raz „wskakuje” z błyskiem. Ekran otwiera się
+  na bieżącej dzielnicy i przewija do niej pasek.
+- **Warsztat**: karta mówi, czym jest przedmiot — założony, posiadany,
+  do kupienia teraz (pełny kolor, złota cena), poza zasięgiem
+  (przygaszony, kłódka), nagroda (kłódka + źródło); założenie = pierścienie
+  i iskry wokół wiru na podglądzie, „wskoczenie” karty i błysk nazwy,
+  zakup = to samo na złoto. Ceny, zakupy i przebieg „KUP I ZAŁÓŻ”
+  bez zmian.
+- **Wydajność**: miasto LVL 6 rysuje się w ~1 ms na klatkę (telefon,
+  `qa/visual1.mjs`); bez nowych plików i zasobów.
+- **QA**: `node qa/visual1.mjs` (etapy z zapisu, odsłonięcie raz i pod
+  nagłówkiem, ograniczony ruch, mapa z miniaturami, TERAZ/NASTĘPNA,
+  stany kart Warsztatu i zakup bez zmiany ceny, wynik z LVL, zapis
+  nietknięty, koszt klatki); `node qa/visual1-shots.mjs [--root DIR]
+  [--label X]` = zrzuty PRZED/PO (raport, nie test).
+
 ## FTUE-3 „Pierwsze 5 minut” (zapis nadal v13; ekonomia, ceny, nagrody, progi odblokowań i długość rund bez zmian)
 - **Analiza** (bot „casual” na świeżym profilu, prawdziwe przyciski, te
   same ziarna przed i po): pierwszy kęs 0,5 s i ~19 kęsów w 10 s były

@@ -335,6 +335,9 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a arkusz
   pyta „KUP I ZAŁÓŻ · cena” (zamknięcie = powrót do założonego, nic nie
   wydane); przedmiot z nagrody mówi, skąd go zdobyć (`onCosmeticPick()`).
+  VISUAL-1: karta pokazuje stan — założony, posiadany, do kupienia teraz
+  (złota cena), poza zasięgiem (przygaszony, kłódka), nagroda (kłódka);
+  założenie i zakup wybuchają pierścieniami na podglądzie (zakup na złoto).
 - **Bez limitu grania (v22):** energia z v15 (5 punktów, +1 co 20 min,
   koszt rundy/próby) usunięta w całości — chip, arkusz „BRAK ENERGII”,
   odnawianie, reklama „+1 energia”, IAP „Godzina bez limitu”; zapisy
@@ -453,10 +456,22 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   wszystkie nagrody → GRAJ w treści ekranu, nigdy przyklejony („runda 2:00
   · +16% budowy miasta”) → kafle **Kampania** (następna misja, pełna nazwa
   w dwóch liniach → odprawa) i **Wyzwanie dnia** → skrzynia. Bez pustych
-  pasów i bez przewijania (375×667). Żywa scena Areny z v17 zeszła z Miasta
+  pasów i bez przewijania (375×667). **VISUAL-1:** miasto na karcie
+  pokazuje etap z zapisanego poziomu Core City — LVL 1 fundamenty
+  (3 budynki, dźwig, przerywany kontur Wieży Rdzenia jako cel), LVL 2
+  latarnie i ruch na ulicy, LVL 3 neonowe szyldy, LVL 4 kładki i
+  kolejka, LVL 5 reflektory i drony, LVL 6 Wieża Rdzenia i zorza; z
+  każdym poziomem pali się więcej okien, a ładowanie poziomu dalej
+  stawia kolejne budynki. Poziom zdobyty w tej sesji odsłania etap raz
+  (błysk, światło, „NOWY ETAP · …” pod nagłówkiem); mapa nagród ma
+  miniaturę miasta przy każdym poziomie. Po LVL 6 wygląd się nie
+  zmienia (§7: bez prestiżu). Żywa scena Areny z v17 zeszła z Miasta
   (dwa duże, ruchome panele to był nieporządek i zabierały miastu rolę
   haczyka); mini-runda została na ekranie powitalnym.
-- **Dzielnice:** poziomy pasek dzielnic → nazwa i postęp → karta
+- **Dzielnice:** poziomy pasek dzielnic (VISUAL-1: każda dzielnica ma
+  własną panoramę, rozświetlaną misjami; „TERAZ” = dzielnica następnej
+  misji, „NASTĘPNA” = ta, którą otworzy jej boss; ekran otwiera się na
+  „TERAZ”; świeżo otwarta raz „wskakuje”) → nazwa i postęp → karta
   „NASTĘPNA MISJA” z GRAJ → historia dzielnicy (NELA) → lista misji
   (kod, nazwa, pierwszy cel z ikoną, gwiazdka medalu). Dotknięcie misji =
   odprawa; zablokowana mówi, którą misję najpierw ukończyć.
@@ -464,7 +479,8 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   misji, „GRAJ Mxx”, POWTÓRZ / DZIELNICE, „Wróć do Miasta”.
 - **Wynik Areny:** wynik, rozmiar i miejsce, haczyk (rekord / wyzwanie),
   linia „co da następna runda” (FTUE-3, §1a), jedna karta NAGRODY
-  (monety, XP, Core City), tabela, pasek akcji.
+  (monety, XP, Core City — przy awansie znacznik „LVL n” i „Nowy etap
+  miasta: …”), tabela, pasek akcji.
 - Usunięte jako szum: napisy „VECTOR HOLE” nad tytułami zakładek,
   przyciski POWRÓT/DO MIASTA tam, gdzie jest dolna nawigacja.
 

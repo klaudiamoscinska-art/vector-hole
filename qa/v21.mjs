@@ -183,7 +183,7 @@ export async function runV21Checks(url) {
       gm.openCampaignScreen();
       await new Promise(res => setTimeout(res, 400));
       const strip = document.getElementById('districtMap');
-      const start = { left: strip.classList.contains('more-left'), right: strip.classList.contains('more-right'), x: strip.scrollLeft };
+      const start = { left: strip.classList.contains('more-left'), right: strip.classList.contains('more-right'), x: strip.scrollLeft, max: strip.scrollWidth - strip.clientWidth };
       const b = strip.getBoundingClientRect();
       return { start, box: [b.left + b.width / 2, b.top + b.height / 2] };
     });
@@ -203,7 +203,10 @@ export async function runV21Checks(url) {
       if (act) { const a = act.getBoundingClientRect(), s = strip.getBoundingClientRect(); out.activeInView = a.left >= s.left - 1 && a.right <= s.right + 1; }
       return out;
     });
-    results.push(report('district strip: cut off on the right → it fades there (more districts that way)', r.start.right && !r.start.left, JSON.stringify(r.start)));
+    // VISUAL-1: Dzielnice opens scrolled to the district played now, so a
+    // left fade is right too when tiles sit off to the left -- each fade
+    // must match exactly where the strip is cut off.
+    results.push(report('district strip: cut off on the right → it fades there (more districts that way); each fade matches its cut-off edge', r.start.right && r.start.right === (r.start.x < r.start.max - 6) && r.start.left === (r.start.x > 6), JSON.stringify(r.start)));
     results.push(report('district strip: a mouse wheel scrolls it sideways (no swipe on a desktop)', after.x > r.start.x + 100 && after.left, JSON.stringify(after)));
     results.push(report('district strip: the picked district is scrolled into view', after.activeInView === true, JSON.stringify(after)));
     results.push(report('district strip: no runtime errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
