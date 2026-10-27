@@ -684,7 +684,12 @@ function compare(baseTag, candTag) {
     const a = A.realtime[id].reps, b = ((B.realtime || {})[id] || {}).reps; if (!b) continue;
     const m = (reps, f) => { const v = reps.map(f).filter(x => x != null).sort((p, q) => p - q); return v.length ? v[Math.floor(v.length / 2)] : null; };
     if (a[0].idle) {
-      for (const s of Object.keys(a[0].idle)) lines.push(`| ${id} | CPU zajęty % — ${s} | ${m(a, r => r.idle[s].busyPct)} | ${m(b, r => r.idle[s].busyPct)} | ${pct(m(a, r => r.idle[s].busyPct), m(b, r => r.idle[s].busyPct))} |`);
+      for (const s of Object.keys(a[0].idle)) {
+        lines.push(`| ${id} | CPU zajęty % — ${s} | ${m(a, r => r.idle[s].busyPct)} | ${m(b, r => r.idle[s].busyPct)} | ${pct(m(a, r => r.idle[s].busyPct), m(b, r => r.idle[s].busyPct))} |`);
+        lines.push(`| ${id} | layouty / 2,5 s — ${s} | ${m(a, r => r.idle[s].layouts)} | ${m(b, r => r.idle[s].layouts)} | ${pct(m(a, r => r.idle[s].layouts), m(b, r => r.idle[s].layouts))} |`);
+        lines.push(`| ${id} | skrypt ms / 2,5 s — ${s} | ${m(a, r => r.idle[s].scriptMs)} | ${m(b, r => r.idle[s].scriptMs)} | ${pct(m(a, r => r.idle[s].scriptMs), m(b, r => r.idle[s].scriptMs))} |`);
+        lines.push(`| ${id} | klatki RAF / 2,5 s — ${s} | ${m(a, r => r.idle[s].probeRafs)} | ${m(b, r => r.idle[s].probeRafs)} | ${pct(m(a, r => r.idle[s].probeRafs), m(b, r => r.idle[s].probeRafs))} |`);
+      }
       continue;
     }
     for (const [label, f] of [['RAF p50 ms', r => r.raf && r.raf.median], ['RAF p95 ms', r => r.raf && r.raf.p95], ['RAF p99 ms', r => r.raf && r.raf.p99], ['RAF >33 ms', r => r.raf && r.raf.over33], ['FPS', r => r.fps], ['praca/klatkę p50 ms', r => r.work && r.work.median], ['praca/klatkę p95 ms', r => r.work && r.work.p95], ['layouty/8 s', r => r.blink.layouts], ['przeliczenia stylu/8 s', r => r.blink.styleRecalcs], ['layout ms/8 s', r => r.blink.layoutMs], ['styl ms/8 s', r => r.blink.styleMs], ['CPU zajęty %', r => r.blink.busyPct]]) {
