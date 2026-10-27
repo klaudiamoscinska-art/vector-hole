@@ -50,6 +50,7 @@ node qa/ftue3.mjs                # FTUE-3 first 5 minutes (--measure=N --root=DI
 node qa/leave-run.mjs            # leaving a round      node qa/release.mjs     # E3 artifact (+ release-recovery.mjs)
 node qa/content.mjs              # CONTENT-1: all 240 missions (goal copy, icons = board objects, progress, EN, bot clear, vortex size)
 node qa/balance1.mjs             # BALANCE-1: simulated careers (5 min-10 h), boosters, saves, 240 missions (--quick = run-all part)
+node qa/perf1.mjs                # MOBILE-PERF-1 gates (--bench paired before/after, --equiv base vs candidate, --gpu, --profile)
 node qa/responsive.mjs           # FTUE-2: every platform frame, iframe host, resize/turn/fullscreen, input
 ```
 
