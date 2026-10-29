@@ -37,10 +37,18 @@ approval given for one PR or stage never carries over to another.
    never uses `mode: recovery` (owner only). A merge outside those paths
    (docs, `.claude/`, `qa/*.mjs`, the PR template) deploys nothing — the live
    release stays the previous one.
-8. **Production check** — after an authorized merge: the run's three jobs are
-   green, the live `index.html` loads `v/<first 12 hex of the merge>/`
-   (`docs/E3_ROLLBACK_PLAN.md` "Słownik"), a short live smoke test; a red run
-   or a broken game → stop and report, recovery only by the plan and the owner.
+8. **Production check** — after an authorized merge, depending on what it changed:
+   - *A merge that starts a deployment* (it touches the deploy paths): the run
+     "Deploy to GitHub Pages" for the merge commit's SHA has `build`, `deploy`
+     and `verify-live` green; the live `index.html` loads the new release
+     `v/<first 12 hex of the merge commit>/` (`docs/E3_ROLLBACK_PLAN.md`
+     "Słownik"); a short live smoke test.
+   - *A documentation-only merge* (nothing on the deploy paths): no new
+     deployment is expected — confirm the merge commit is `main`'s tip and
+     that the live `index.html` still loads the same release `v/<id>/` as
+     before the merge (no new `github-pages` deployment record).
+   A red run, an unexpected deployment or a broken game → stop and report;
+   recovery only by the plan and the owner.
 
 `.github/workflows/deploy-pages.yml` deploys GitHub Pages from `main` only (a push to `main` touching the deploy paths — `index.html`, `style.css`, `game.js`, any `**.js`/`**.css`, `.github/scripts/**`, the workflow — or `workflow_dispatch` on `main`; only main's tip is deployed, a re-run of a superseded commit deploys nothing). E3: it runs `.github/scripts/assemble-release.mjs` (Node, no dependencies, `--experimental-vm-modules`), which builds `release/` from the git checkout (`fetch-depth: 0`) and publishes only that folder — never the repo root, so `.claude/`, `docs/`, `qa/`, `design/` and other dev files are not served:
 - `index.html` — the release's own, with only its `<script src>` and stylesheet `href` rewritten to `v/<id>/…`;
