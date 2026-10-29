@@ -14,11 +14,11 @@ instalacji — na telefonie i komputerze.
 > Ciebie. Złap Złoty Rdzeń, by wpaść w SZAŁ — podwójne punkty i obiekty
 > o rozmiar większe!
 >
-> - **Żywe neonowe miasto** — 6 dzielnic z ulicami, placami, portem i dachami;
->   wszystko, co zjesz, z wirem wpada w głąb dziury
+> - **Żywe neonowe miasto** — ulice, place, port i dachy; wszystko, co
+>   zjesz, z wirem wpada w głąb dziury
 > - **Rundy 2:00** — pierwszy kęs w pół sekundy, ścieżki energii wzdłuż
 >   ulic, combo, wyścig z rywalem do ostatnich sekund i wielki finisz
-> - **60 misji kampanii** w 6 dzielnicach z wielkimi budowlami do pochłonięcia
+> - **240 misji kampanii** w 12 dzielnicach z wielkimi budowlami do pochłonięcia
 > - **Wyzwanie dnia** — ta sama mapa dla wszystkich, codziennie nowa
 > - **Pojedynki ze znajomymi** — wyślij link, pobij wynik na tej samej mapie
 > - **Wiry do kolekcji** (sam wygląd — w Arenie liczy się gra), smugi, efekty i odbudowa Core City
@@ -35,7 +35,7 @@ Zero zależności, bez kroku budowania (natywne moduły ES — potrzebny serwer 
 python3 -m http.server 8000   # potem http://localhost:8000/index.html
 ```
 
-Push na `main` zmieniający pliki gry (`index.html`, `style.css`, `game.js`, inne `.js`/`.css`), skrypt wydania lub workflow publikuje grę na GitHub Pages (`.github/workflows/deploy-pages.yml`). Publikowany jest wyłącznie katalog `release/` składany w CI przez `.github/scripts/assemble-release.mjs`: pliki gry w niezmiennym katalogu `v/<commit>/` (plus wcześniejsze wydania z ostatnich 30 dni) i zamrożona klasyczna wersja dla starych kopii strony w pamięci przeglądarki — nie całe repo. Adres gry i zapisy graczy się nie zmieniają.
+Push na `main` zmieniający pliki gry (`index.html`, `style.css`, `game.js`, inne `.js`/`.css`), skrypt wydania lub workflow publikuje grę na GitHub Pages (`.github/workflows/deploy-pages.yml`). Publikowany jest wyłącznie katalog `release/` składany w CI przez `.github/scripts/assemble-release.mjs`: pliki gry w niezmiennym katalogu `v/<commit>/` (plus wcześniejsze wydania zachowane według historii publikacji: ostatnie 30 dni i 5 ostatnich wydań) i zamrożona klasyczna wersja dla starych kopii strony w pamięci przeglądarki — nie całe repo. Adres gry i zapisy graczy się nie zmieniają. Zmiana samej dokumentacji (`docs/`, `.claude/`, `*.md`) niczego nie publikuje. Kolejne kroki od gałęzi do produkcji: `docs/claude/DEPLOYMENT.md`.
 
 ## Testy (boty QA)
 
@@ -44,13 +44,16 @@ node qa/run-all.mjs
 ```
 
 Szczegóły: `qa/README.md`. Wymaga zainstalowanego Playwrighta. `node qa/screens.mjs`
-zapisuje 16 zrzutów ekranu telefonu do `qa/out/screens/` (przegląd wizualny).
+zapisuje ok. 35 zrzutów ekranu telefonu (także iPhone SE) do `qa/out/screens/` (przegląd wizualny).
 
 ## Dokumentacja
 
 - `docs/GAME_DESIGN.md` — jak działa gra dziś (zasady, liczby, ton tekstów)
 - `docs/CHANGELOG.md` — historia wersji
-- `CLAUDE.md` — architektura kodu
+- `CLAUDE.md` — zasady pracy dla Claude Code (ładowany w każdej sesji)
+- `docs/claude/ARCHITECTURE.md` — architektura kodu; `docs/claude/DEPLOYMENT.md` — publikacja
+- `qa/README.md` — boty QA i testy
+- raporty etapów: `docs/CONTENT1_AUDIT.md`, `docs/BALANCE1_REPORT.md`, `docs/MOBILE_PERF1_REPORT.md`, `docs/DOCS1_AUDIT_REPORT.md`
 - `design/` — oryginalne makiety i paleta
 
 ## Lista kontrolna przed premierą
@@ -59,8 +62,11 @@ zapisuje 16 zrzutów ekranu telefonu do `qa/out/screens/` (przegląd wizualny).
    polityki prywatności.
 2. Wybierz kanał przychodu:
    - **Portal (CrazyGames / Poki):** wgraj zawartość złożonego katalogu
-     `release/` (`node --experimental-vm-modules .github/scripts/assemble-release.mjs assemble …`, opis w `qa/README.md` E3) — SDK portalu ładuje
-     się automatycznie, reklamy z nagrodą i między rundami działają od razu.
+     `release/` (`node --experimental-vm-modules .github/scripts/assemble-release.mjs assemble …`, opis w `qa/README.md` E3). Gra nie zawiera SDK:
+     adapter `Monetization` rozpoznaje portal po adresie i dopiero wtedy
+     dociąga jego skrypt. Integracja nie była jeszcze sprawdzona w Poki
+     Inspector ani w narzędziach CrazyGames (etap PORTAL-1) — do tego czasu
+     nie zakładaj, że reklamy na portalu działają.
    - **Własna domena + AdSense H5 Games Ads:** dodaj tag AdSense
      (`adsbygoogle.js` + `adBreak/adConfig`) i certyfikowany przez Google CMP
      dla EOG.

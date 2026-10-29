@@ -1,8 +1,8 @@
-# Vector Hole — jak działa gra (stan v22)
+# Vector Hole — jak działa gra (stan v23 + etapy do MOBILE-PERF-1, zapis v13)
 
 Jedyny aktualny opis projektowy gry. Liczby pochodzą z `CONFIG` i tabel w
 `game.js` — przy zmianie balansu poprawiaj **ten** plik razem z kodem.
-Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `CLAUDE.md`.
+Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `docs/claude/ARCHITECTURE.md`.
 
 ## 1. Premisa i ton
 
@@ -661,6 +661,11 @@ City blisko / daleko / po LVL 6, tylko odczyt zapisu, obietnica się
 spełnia, po angielsku; istniejący gracz, ponowne uruchomienie; wynik
 z linią w 17 ramkach telefonów, Poki, CrazyGames, tabletu i komputera;
 `--measure=N --root=DIR` porównuje pierwszą sesję z inną wersją).
+Późniejsze zestawy w `run-all` — platformy FTUE-2 (`qa/responsive.mjs`,
+`qa/devices.mjs`), VISUAL-1 (`qa/visual1.mjs`), 240 misji CONTENT-1
+(`qa/content.mjs`), symulacje BALANCE-1 (`qa/balance1.mjs --quick`),
+wydajność MOBILE-PERF-1 (`qa/perf1.mjs`), instrukcje (`qa/instructions.mjs`)
+— pełna lista z opisem: `qa/README.md`.
 Wspólny bot kampanii (`CAMPAIGN_BOT` w `qa/lib.mjs`) omija strefy
 glitcha, w ciemności widzi tylko krąg światła i idzie za strzałką,
 odkleja się, gdy utknie (bram impulsu i portali nie używa celowo —

@@ -187,3 +187,5 @@ NOT RUN: testy z prawdziwymi ludźmi i na fizycznych urządzeniach; produkcyjny 
 ## 11. Merge i wdrożenie
 
 CLAUDE.md wymaga przed merge na produkcję niezależnego przeglądu GPT i zgody właścicielki; przegląd nie został wykonany, więc etap kończy się na gotowym PR (bez merge i deploymentu).
+
+> **Aktualizacja statusu (DOCS-1, 2026-10-29):** po przeglądzie GPT i korekcie testu PR #83 scalono 2026-10-26 (merge `aa4bc7dd0a743987eba04eb2c2f00734da63e626`); wdrożenie `github-pages` dla tego commita ma status `success` (GitHub API). Treść raportu powyżej to stan z chwili otwarcia PR.

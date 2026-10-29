@@ -47,7 +47,7 @@ zasadą palety: żółty zarezerwowany dla nagród/rzadkich momentów.
 ## 3. Generyczne obiekty planszy (nie-landmarki)
 
 Zasady wspólne dla wszystkich obiektów T1–T4 (latarnia, ławka, samochód,
-kiosk, drzewo, skrzynia, portal — patrz osobny plik `vector_hole_asset_bible.svg`
+kiosk, drzewo, skrzynia, portal — patrz osobny plik `design/reference/asset_bible.svg`
 dla pełnego katalogu kształtów):
 
 - **T1** — drobny fragment energii, najliczniejszy, niski hitbox, pochłaniany

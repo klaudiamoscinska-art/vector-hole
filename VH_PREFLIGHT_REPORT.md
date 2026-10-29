@@ -1,5 +1,7 @@
 # VH_PREFLIGHT_REPORT — CONTENT-1 „Audyt 240 misji” (P00-CORE + QA etapu)
 
+> **Status (DOCS-1, 2026-10-29): raport historyczny.** Dotyczy bazy `405994f` i etapu CONTENT-1 (scalony jako `321c561`). Późniejsze etapy podały wyniki tych samych zestawów (bez etykiet bramek P00) we własnych raportach: BALANCE-1 → `docs/BALANCE1_REPORT.md`, MOBILE-PERF-1 → `docs/MOBILE_PERF1_REPORT.md`. Aktualny `main`: `9f92a2df53492030a7c12c6127a08df0c25eff59`. Dowodów stąd nie przenosi się na nowszą rewizję (`.claude/vertical-hole/EVIDENCE_FRESHNESS.md`). Jak budować tabelę P00 w etapie: `docs/claude/SKILLS_PACK.md` „P00 inside a stage”.
+
 **Data:** 2026-10-26 · **Repozytorium:** `klaudiamoscinska-art/vector-hole` (remote `origin`, jedyny)
 **Baza:** `405994feb34d3865d5a1c1d1d59d7ca0114c1838` = `origin/main` (sprawdzone `git fetch origin main` przed pracą; drzewo czyste).
 **Gałąź:** `content1-campaign-audit-fixes` (od `origin/main`). Commity: `5a25c02` audyt (`qa/content.mjs`, `qa/content-shots.mjs`) · `4679677` ikony = obiekty, wygląd wież, pylony, nazwy · `7917e06` kamera Kampanii (M59) · `6a5766d` `run-all` · dokumentacja + raport (ten commit).

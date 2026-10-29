@@ -6,6 +6,8 @@ Narzędzie: `qa/perf1.mjs` (bramki w `run-all` + tryby raportu `--bench --pair`,
 
 ## Werdykt: **PR GOTOWY DO ODBIORU** (bez merge i deploymentu przed odbiorem GPT i decyzją właścicielki)
 
+> **Aktualizacja statusu (DOCS-1, 2026-10-29):** po odbiorze GPT i jawnej zgodzie właścicielki PR #84 scalono 2026-10-29 (merge `9f92a2df53492030a7c12c6127a08df0c25eff59`); wdrożenie ma status `success` (GitHub API), żywy `index.html` ładuje `v/9f92a2df5349/`. Lista z §9 na fizycznych urządzeniach — nadal do wykonania (DEVICE-QA). Reszta raportu to stan z chwili otwarcia PR.
+
 1. **Rzeczywiste problemy:** animacja blasku przycisków robiła layout całego ekranu co
    klatkę (menu i **arkusz pauzy**), pasek Miasta przemalowywał się co klatkę, Miasto
    liczyło co klatkę ~3000 sinusów i parsowało kolory, Arena liczyła `Math.hypot` dla
