@@ -20,10 +20,12 @@ Narzędzie: `qa/perf1.mjs` (bramki w `run-all` + tryby raportu `--bench --pair`,
 4. **Pogorszenia:** brak potwierdzonych. Rozmiar wydania +0,4% gzip (komentarze, nowe
    funkcje). CPU Miasta na prawdziwym GPU — bez rozstrzygającej zmiany (6 par, ±10 pp).
 5. **Pełne QA:** `run-all` 1704/1709; 5 FAIL = 1 brak pliku raportu w chwili startu (po
-   dodaniu 4/4 PASS) + 4 zastane, potwierdzone na bazie lub znane (§6); `perf1` 25/25.
+   dodaniu 4/4 PASS) + 4 zastane, potwierdzone na bazie lub znane (§6); `perf1` 25/25;
+   kluczowe zestawy powtórzone na końcowym HEAD — PASS (§6).
 6. **SAVE i mechanika:** SAVE v13 bez zmian; Arena, Kampania (M01, M59, bossowie), menu —
    identyczne skróty stanu i pikseli; zapis po rundzie i misjach identyczny bit w bit.
-7. **PR, HEAD, baza:** patrz HANDOFF (`qa/out/perf1/odbior/HANDOFF_GPT.md`); baza `aa4bc7d`.
+7. **PR, HEAD, baza:** gałąź `mobile-perf1-optimization`, PR do `main` (numer i końcowy SHA
+   w opisie PR i HANDOFF); baza `aa4bc7d`.
 8. **Ryzyka i NOT RUN:** §8 (Safari/iPhone fizyczne, GPU-czas, 120 Hz — NOT RUN /
    NOT MEASURABLE).
 9. **Lista kontrolna urządzeń:** §9.
@@ -216,6 +218,14 @@ PX01 (`save-safety`), PX02, R1 (`leave-run`), E2 (`bridge`), E3/L1 (`release`),
 `release-recovery`, `trace`, `difficulty`, `arena-bots` (gfx0), `perf1` 25/25 — PASS poza
 tabelą powyżej. NOT RUN (środowisko, jak na bazie): 2 negatywy symlinków (Windows bez
 Developer Mode), ścieżka gita/realnego CI w `release.mjs`, żywe GitHub Pages.
+
+**Kontrola na końcowym HEAD (2026-10-29).** Po `04e6bb5` zmieniły się wyłącznie dokumenty i
+tryb raportu `--compare` w `qa/perf1.mjs` (`game.js`, `style.css`, `index.html` identyczne
+bit w bit), więc pełnego `run-all` nie powtarzano. Powtórzone na końcowym kodzie (logi w
+`qa/out/perf1/final/`): `instructions` **4/4 PASS** (FAIL z tabeli zamknięty), `perf1`
+**25/25 PASS**, `balance1 --quick` **19/19 PASS** (FAIL rotacji misji dnia z 2026-10-27 dziś
+nie występuje — potwierdza zależność od daty), `save-safety` **107/107 PASS**, `px02-isolation`
+**95/95 PASS**, `check_pages_workflow.py` **PASS**, `node --check` `game.js`/`qa/perf1.mjs` OK.
 
 ## 7. Platformy: Poki i CrazyGames (zweryfikowane 2026-10-27)
 
