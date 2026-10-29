@@ -54,6 +54,19 @@ const CAN_SYMLINK = (() => {
   try { fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true }); fs.symlinkSync('a', path.join(d, 'b')); return true; }
   catch (e) { return false; } finally { fs.rmSync(d, { recursive: true, force: true }); }
 })();
+// The pack's Pages checker runs under the first real Python 3 found:
+// $VH_PYTHON, then python3, python, py -3. (On Windows `python3` is often the
+// Microsoft Store alias: no spawn error, exit 9009/49 and no output -- it used
+// to make the checker FAIL with an empty result instead of running.) None ->
+// NOT RUN, never a PASS.
+const PYTHON = (() => {
+  const cands = [...(process.env.VH_PYTHON ? [[process.env.VH_PYTHON]] : []), ['python3'], ['python'], ['py', '-3']];
+  for (const [cmd, ...pre] of cands) {
+    const r = spawnSync(cmd, [...pre, '-I', '-c', 'import sys; print(sys.version_info[0])'], { encoding: 'utf8' });
+    if (!r.error && r.status === 0 && String(r.stdout).trim() === '3') return { cmd, pre, label: [cmd, ...pre].join(' ') };
+  }
+  return null;
+})();
 const REL = await import(pathToFileURL(SCRIPT).href); // a bare Windows path (C:\...) is not an ESM URL
 const BASE = REL.FROZEN.rev;
 const W = path.join(OUT, 'release');
@@ -941,15 +954,15 @@ export async function runReleaseChecks() {
     }
     push('workflow (L1): the ledger step reads with github.token only in its own env (the only token in the file), the assembly always gets --ledger (never --no-ledger or a test flag)', ledgerStep, String(ledgerStep));
     const checker = path.join(ROOT, '.claude/vertical-hole/tools/check_pages_workflow.py');
-    const py = spawnSync('python3', ['-I', checker, '--repo', ROOT], { encoding: 'utf8' });
-    if (py.error) notRun('workflow: check_pages_workflow.py', 'python3 not available');
+    const py = PYTHON && spawnSync(PYTHON.cmd, [...PYTHON.pre, '-I', checker, '--repo', ROOT], { encoding: 'utf8' });
+    if (!PYTHON) notRun('workflow: check_pages_workflow.py', 'no Python 3 interpreter (VH_PYTHON, python3, python, py -3)');
     else {
       const neg = path.join(W, 'wf-neg');
       fs.mkdirSync(path.join(neg, '.github/workflows'), { recursive: true });
       const negWf = wf.replace(/(upload-pages-artifact@v3\n\s+with:\n\s+path: )release\n/, '$1.\n');
       fs.writeFileSync(path.join(neg, '.github/workflows/deploy-pages.yml'), negWf);
-      const pyNeg = spawnSync('python3', ['-I', checker, '--repo', neg], { encoding: 'utf8' });
-      push('workflow: the pack\'s static Pages checker passes the new workflow (and still fails it with path: . in the Pages upload)', py.status === 0 && /PASS/.test(py.stdout) && negWf !== wf && pyNeg.status === 1, JSON.stringify({ pass: firstLine(py.stdout), neg: firstLine(pyNeg.stdout) }));
+      const pyNeg = spawnSync(PYTHON.cmd, [...PYTHON.pre, '-I', checker, '--repo', neg], { encoding: 'utf8' });
+      push('workflow: the pack\'s static Pages checker passes the new workflow (and still fails it with path: . in the Pages upload)', py.status === 0 && /PASS/.test(py.stdout) && negWf !== wf && pyNeg.status === 1, JSON.stringify({ python: PYTHON.label, pass: firstLine(py.stdout), neg: firstLine(pyNeg.stdout) }));
     }
     // The bash check catches what the script could get wrong.
     const tamper = (label, fn) => { const d = copyDir(rel, path.join(W, 'wft-' + label, 'release')); fn(d); return runWorkflowCheck(d, MAIN_SHA).code; };
