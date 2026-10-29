@@ -2,7 +2,9 @@
 
 Moved verbatim from `CLAUDE.md` (OPT-2, 2026-10-24). `CLAUDE.md` keeps the
 gate rules, the hard rules and the precedence list. Read this before
-updating the packs or running P00.
+updating the packs or running P00. DOCS-1 (2026-10-29) added the conflicts
+marked (DOCS-1), "Choosing skills", "P00 inside a stage" and the prompt-queue
+status; the pack files themselves are unchanged.
 
 ## Skills pack „Vertical Hole” (`.claude/skills/vh-*`, skills v1.4.3 · prompts v1.4.4)
 
@@ -20,3 +22,71 @@ Hard rules (from the pack, consistent with v22): Arena First; Arena independent 
 - `vh-mission-content` mentions M00–M240 — `M00` was removed in v22; the campaign is M01–M240.
 - Generic advice on tests (Playwright, unit runners) maps to the existing `qa/*.mjs` bots; extend those instead of adding a test framework or dependency. The pack's Python helpers are dev-only audit tools, not game runtime.
 - Platform/monetization facts in `PLATFORM_RULES.md` are dated 2026-10-16 — re-verify against official docs before a release.
+- (DOCS-1, 2026-10-29) `CHANGE_SAFETY.md` "nie rób automatycznego commitu ani push" — a stage prompt from the owner that orders commits and a push of the stage branch overrides it (never `main`; the flow is `docs/claude/DEPLOYMENT.md` "Stage flow").
+- (DOCS-1) `vh-release-manager` "Twarde veto GitHub Pages (2026-10-17)" and `PREFLIGHT_GATES.md` veto 4 describe the pre-PX04 workflow (`claude/**`, `path: "."`); today the workflow deploys only from `main` and only `release/` — still run `check_pages_workflow.py`, but the described FAIL is history. `PREFLIGHT_GATES.md` vetoes 2–3 (`SKINS.perks`/`RUN_TOOLS` in Arena, `loadSave()` writing on read) and `vh-progression-economy`'s `SKINS.perks` note are fixed (PX02 D+, PX01) — confirm, don't re-fix.
+- (DOCS-1) `vh-director` says "21" skills (there are 22) and proposes a `decision-log.md` under `docs/`, which does not exist — owner decisions live in `docs/GAME_DESIGN.md` §7, `docs/CHANGELOG.md` and the stage reports; don't create a parallel log.
+
+## Choosing skills (DOCS-1)
+
+Pick 1–3 per task; the slash command of the main one first, helpers only when
+the task really reaches their area. Typical sets:
+
+| Task | Main | Helpers (only if needed) |
+|---|---|---|
+| Arena rules, feel, rivals | `vh-arena-gameplay` | `vh-ux-gamefeel`, `vh-qa-automation` |
+| Engine code, refactor (E4) | `vh-game-engineer` | `vh-qa-automation`, `vh-performance` |
+| Missions, campaign content | `vh-mission-content` | `vh-narrative-localization` |
+| Economy, prices, boosters | `vh-progression-economy` | `vh-save-security` (any save field) |
+| Saves, migration, XSS | `vh-save-security` | `vh-qa-automation` |
+| Phone layout, input, frames | `vh-mobile-accessibility` | `vh-ux-gamefeel` |
+| Performance | `vh-performance` | `vh-qa-automation` |
+| Portal SDK, ads (PORTAL-1) | `vh-portal-integrations` | `vh-monetization`, `vh-legal-risk` |
+| Device QA (DEVICE-QA) | `vh-qa-automation` | `vh-mobile-accessibility` |
+| Release, PR, deploy (RELEASE) | `vh-release-manager` | `vh-qa-automation` |
+| Docs / instructions only | none needed | — |
+
+Token rule: a skill's entry contract (`PROJECT_CHARTER.md`, `PREFLIGHT_GATES.md`,
+`ARENA_DISTRICT_CONTRACT.md`, `WORKFLOW.md`, `CHANGE_SAFETY.md`,
+`EVIDENCE_FRESHNESS.md` — together ~32 KB, measured 2026-10-29) is read once per
+session, not again for every further skill, and only by tasks that change
+code or saves. The invariants in `CLAUDE.md` always apply.
+
+## P00 inside a stage (DOCS-1, codifies the CONTENT-1 practice)
+
+A stage's P00-CORE / DEPLOY gate table is built from the stage's own runs on
+the base and the candidate (same machine, paired seeds) — no extra full run:
+
+| Gate | Evidence |
+|---|---|
+| CORE-ENERGY | `qa/v22.mjs` |
+| CORE-ISOLATION | `qa/px02-isolation.mjs`, `qa/v22.mjs` |
+| CORE-LOOP | `qa/flow.mjs`, `qa/ftue1.mjs`, `qa/ftue3.mjs`, `qa/leave-run.mjs`, `qa/campaign-bots.mjs` |
+| CORE-SAVE | `qa/save-safety.mjs` (+ `SAVE_SCHEMA_VERSION` = 13, every new field in `defaultSave()`) |
+| TOOLS-DEV | `qa/dev-panel.mjs` (the pack's FAIL stays until the owner decides PX03) |
+| DEPLOY-PAGES | `python .claude/vertical-hole/tools/check_pages_workflow.py --repo .`, `qa/release.mjs`, `qa/release-recovery.mjs` |
+
+The table goes into the stage report (as in CONTENT-1's `VH_PREFLIGHT_REPORT.md`;
+BALANCE-1 and MOBILE-PERF-1 listed the same suites without the gate labels); a
+standalone P00 run writes `VH_PREFLIGHT_REPORT.md`. A stage
+that changes only documentation or instructions (no `game.js`, `style.css`,
+`index.html`, `qa/`, `.github/scripts/`, workflow) needs no P00 and no game
+QA: run `node qa/instructions.mjs`, `python .claude/vertical-hole-prompts/check_prompts.py`,
+a link/path check and a diff review proving no runtime file changed.
+
+## Status of the pack's prompt queue (2026-10-29)
+
+The pack's prompts were written on 2026-10-17, before the owner's own stage
+prompts. Their descriptions of the game may be stale; before running one,
+read the `docs/CHANGELOG.md` entry of the stage that already touched its area:
+
+| Pack prompt | Area already touched by (CHANGELOG / git history) |
+|---|---|
+| PX01 save · PX02 isolation · PX04 Pages | PX01, PX02 D+, PX04 (then E2 + E3) — done |
+| PX03 dev panel | open — owner decision |
+| PX05 live production | partly: the workflow's `verify-live` + live smoke tests after merges; a full PX05 belongs to RELEASE |
+| P04-05 first 5 minutes · P08 result screen | FTUE-1, FTUE-3 |
+| P14A portrait · P14B pause / focus | FTUE-2, FTUE-2 FIX |
+| P06A M32 icon · P06B M59 · P09 goal icons · P10 names | CONTENT-1 |
+| P11 boosters · P12 rewards / Warsztat · P13 difficulty | BALANCE-1 (and VISUAL-1 for Warsztat) |
+| P14E prisms | v22 (prism uses: a booster for 4 ◆, prism looks) |
+| P07 rival size vs ranking · P14C restore purchases · P14D first-session analytics | no stage yet — check the current code first |
