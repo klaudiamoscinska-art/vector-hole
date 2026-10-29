@@ -2,12 +2,12 @@
 
 > **STATUS: oryginalna specyfikacja z v6 (zaimplementowana).** Zostaje jako
 > zapis znaczenia obiektów (Portal, Mostek, Pas przelotu — kod się do niej
-> odwołuje). Kampania ma dziś 60 misji, a numery misji poniżej to stare id
-> wewnętrzne. Aktualny stan gry: `docs/GAME_DESIGN.md` §4.
+> odwołuje). Kampania ma dziś 240 misji w 12 dzielnicach, a numery misji poniżej to
+> stare id wewnętrzne. Aktualny stan gry: `docs/GAME_DESIGN.md` §4.
 
 Dokument towarzyszący plikowi `vector_hole_full_object_catalog.svg`.
-Uzupełnia (nie zastępuje) `MISSION_BOARD_SPEC.md` (landmarki i sekwencja finału)
-oraz `vector_hole_asset_bible.svg` (bazowe kształty ogólne).
+Uzupełnia (nie zastępuje) `design/gameplay/MISSION_BOARD_SPEC.md` (landmarki i sekwencja finału)
+oraz `design/reference/asset_bible.svg` (bazowe kształty ogólne).
 
 Źródło: GDD 4.0, sekcja 6 (lista 24 misji) — każdy wiersz tabeli poniżej
 odpowiada jednemu obiektowi wspomnianemu explicite w opisie celu misji.
@@ -127,7 +127,7 @@ miejsca, gdzie faktycznie potrzebna jest osobna logika poza prostym
 ## 3. Zasady wspólne dla wszystkich obiektów (z GDD sekcji 10.4 i 11)
 
 - Każdy obiekt na planszy, który jest **celem misji**, musi mieć wizualne
-  oznaczenie zgodne z systemem z `vector_hole_asset_bible.svg`: ramka
+  oznaczenie zgodne z systemem z `design/reference/asset_bible.svg`: ramka
   narożna, pulsujący obrys, znacznik sektora, licznik czasu lub numeracja
   łańcucha celów.
 - Instrukcja tekstowa w brief barze (np. "Naładuj 3 pylony") musi używać
