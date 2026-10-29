@@ -2733,16 +2733,31 @@ body.touch-input #gameCanvas {
 }
 
 .hub-city-progress-fill {
+  position: relative;
+  overflow: hidden;
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, #50F0FA, #9875FF, #50F0FA);
-  background-size: 200% 100%;
   box-shadow: 0 0 10px rgba(80, 240, 250, 0.6);
-  animation: hub-bar-flow 3s linear infinite;
   transition: width 0.8s ease-out;
 }
+/* MOBILE-PERF-1: the flowing gradient is a wider strip slid by transform
+   (the compositor) instead of an animated background-position (a repaint
+   of Miasto every frame). Same picture: the 2x-wide gradient tile (50% of
+   the 4x strip) starts at the bar's left edge and moves one tile to the
+   right every 3 s, as background-position 0 -> -200% did. */
+.hub-city-progress-fill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -200%;
+  width: 400%;
+  background: linear-gradient(90deg, #50F0FA, #9875FF, #50F0FA) 0 0 / 50% 100% repeat-x;
+  animation: hub-bar-flow 3s linear infinite;
+  pointer-events: none;
+}
 
-@keyframes hub-bar-flow { from { background-position: 0 0; } to { background-position: -200% 0; } }
+@keyframes hub-bar-flow { from { transform: translateX(0); } to { transform: translateX(50%); } }
 
 /* Milestone road (renderHubLevelDots()). */
 
@@ -3330,9 +3345,14 @@ body.touch-input #gameCanvas {
   pointer-events: none;
 }
 .btn-primary:disabled::after { display: none; }
+/* MOBILE-PERF-1: the sweep moves by transform (the compositor) instead of
+   `left`, which laid out and repainted the whole screen every frame (also
+   under the pause sheet, and it forced a layout inside every menu canvas
+   frame). Same path and timing: 475% of the streak's own width (40% of the
+   button) = the old 190% of the button's width (left -60% -> 130%). */
 @keyframes v8-shine {
-  0%, 60% { left: -60%; }
-  100% { left: 130%; }
+  0%, 60% { transform: translateX(0) skewX(-20deg); }
+  100% { transform: translateX(475%) skewX(-20deg); }
 }
 #btnStart:not(:disabled), .btn-mega {
   font-size: 18px;

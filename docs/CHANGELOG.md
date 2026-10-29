@@ -4,6 +4,27 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## MOBILE-PERF-1 „Wydajność i stabilność” (zapis nadal v13; rozgrywka, grafika, misje, ekonomia i balans bez zmian — te same liczby i piksele, `qa/perf1.mjs --equiv`)
+- **Menu i pauza bez layoutu co klatkę:** blask przycisków głównych
+  (`v8-shine`) przesuwał się przez `left` — layout i przemalowanie
+  całego ekranu w każdej klatce (Miasto, Wyzwania, Profil, wyniki, też
+  arkusz pauzy) i wymuszony layout w każdej klatce płócien menu. Teraz
+  `transform` (kompozytor), ta sama droga i czas. Pasek budowy Miasta
+  (`hub-bar-flow`) — przesuwany pas zamiast animowanego
+  `background-position`.
+- **Miasto (Core City):** okna dalekiej panoramy i stałe dane okien
+  budynków liczone raz na rozmiar obrazu zamiast ~3000 sinusów i
+  parsowania koloru na okno w każdej klatce; `hexToRgb()`/`shadeColor()`
+  zapamiętują wyniki.
+- **Jedzenie w Arenie:** `handleObjectEating()` pomija `Math.hypot`, gdy
+  już odstęp na jednej osi wyklucza kęs (ten sam test, dokładnie).
+- **Poprawka:** obrót telefonu / zmiana rozmiaru okna na arkuszu pauzy
+  czyściły płótno — pod arkuszem zostawała czarna plansza do wznowienia.
+  Wstrzymana runda rysuje teraz zamrożoną planszę raz w nowej ramce.
+- **`qa/perf1.mjs`** (w `run-all`): bramki wydajności i stabilności
+  oraz tryby raportu `--bench` / `--compare` / `--equiv` / `--profile`
+  / `--gpu`; raport `docs/MOBILE_PERF1_REPORT.md`.
+
 ## BALANCE-1 „Ekonomia i progresja” (zapis nadal v13; bez migracji, nic nie znika z zapisów; Arena, Core City, XP, nagrody rund i misji, R1, długość rund i fizyka bez zmian)
 - **Symulator kariery i audyt balansu** (`qa/balance1.mjs`, raport
   `docs/BALANCE1_REPORT.md`): czterech graczy-botów (słaby, przeciętny,

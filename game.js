@@ -4574,16 +4574,31 @@ class Ripple {
    drawn live on top by drawObjectLive(). Shared by WorldObject (Arena) and
    CampaignEntity (Campaign) so an object looks identical in both modes. */
 
+// MOBILE-PERF-1: the palette is small and these run inside every frame's
+// drawing (holes, the city, previews) -- each parse/mix is remembered
+// (same strings out; bounded so a stray dynamic color can't grow them).
+const HEX_RGB_CACHE = new Map();
+const SHADE_CACHE = new Map();
 function hexToRgb(hex) {
+  let rgb = HEX_RGB_CACHE.get(hex);
+  if (rgb) return rgb;
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  if (HEX_RGB_CACHE.size < 512) HEX_RGB_CACHE.set(hex, rgb);
+  return rgb;
 }
 /** Mix a #hex color toward white (t > 0) or black (t < 0). */
 function shadeColor(hex, t) {
+  let byT = SHADE_CACHE.get(hex);
+  const hit = byT && byT.get(t);
+  if (hit) return hit;
   const [r, g, b] = hexToRgb(hex);
   const target = t > 0 ? 255 : 0, k = Math.abs(t);
-  return `rgb(${Math.round(r + (target - r) * k)}, ${Math.round(g + (target - g) * k)}, ${Math.round(b + (target - b) * k)})`;
+  const out = `rgb(${Math.round(r + (target - r) * k)}, ${Math.round(g + (target - g) * k)}, ${Math.round(b + (target - b) * k)})`;
+  if (!byT && SHADE_CACHE.size < 512) SHADE_CACHE.set(hex, byT = new Map());
+  if (byT && byT.size < 64) byT.set(t, out);
+  return out;
 }
 function rgbaColor(hex, a) {
   const [r, g, b] = hexToRgb(hex);
@@ -5947,6 +5962,31 @@ const CITY_PALETTE = ['#50F0FA', '#9875FF', '#FF54AD', '#46D99A', '#EFCB63'];
 // Windows lit per stage: the city glows brighter as it grows.
 const CITY_WINDOW_ON = [0, 0.25, 0.05, -0.15, -0.3, -0.45, -0.6];
 
+/** MOBILE-PERF-1: a building's window data for a rows x cols grid -- the
+ *  same numbers drawCityBuilding() used to work out for every window on
+ *  every frame (phase, sin(phase), white or tinted, brightness) -- kept on
+ *  its slot per grid size (the big and the small city pictures differ). */
+function cityWindowGrid(s, rows, cols) {
+  const key = rows * 4096 + cols;
+  const grids = s.windowGrids || (s.windowGrids = new Map());
+  let g = grids.get(key);
+  if (g) return g;
+  const n = Math.max(0, rows * cols) || 0;
+  g = { sinPh: new Float64Array(n), ph13: new Float64Array(n), white: new Uint8Array(n), alpha: new Float64Array(n) };
+  for (let r = 0, i = 0; r < rows; r++) {
+    for (let k = 0; k < cols; k++, i++) {
+      const ph = (s.seed + r * 7.3 + k * 3.1);
+      g.sinPh[i] = Math.sin(ph);
+      g.ph13[i] = ph * 1.3;
+      g.white[i] = Math.sin(ph * 2.1) > 0.6 ? 1 : 0;
+      g.alpha[i] = 0.55 + 0.35 * Math.sin(ph * 0.9);
+    }
+  }
+  if (grids.size >= 8) grids.clear(); // a building rising (its rows grow) mustn't pile up grids
+  grids.set(key, g);
+  return g;
+}
+
 /** One standing building: body, roof, windows and (stage 3+) a neon sign. */
 function drawCityBuilding(ctx, s, x, bw, top, ground, col, t, finished, stage, signAlpha) {
   const bh = ground - top;
@@ -5978,15 +6018,18 @@ function drawCityBuilding(ctx, s, x, bw, top, ground, col, t, finished, stage, s
   ctx.stroke();
   ctx.restore();
   // Windows: a seeded grid, each window flickering on its own phase; more
-  // of them are lit at every stage.
+  // of them are lit at every stage. MOBILE-PERF-1: what doesn't move (a
+  // window's phase, whether it can light, its color and brightness) is
+  // worked out once per grid size (cityWindowGrid()), not every frame.
   const rows = Math.floor((ground - bodyTop) / 7), cols = Math.max(1, Math.floor(bw / 6));
   const th = CITY_WINDOW_ON[stage] || 0;
-  for (let r = 0; r < rows; r++) {
-    for (let k = 0; k < cols; k++) {
-      const ph = (s.seed + r * 7.3 + k * 3.1);
-      if (!(Math.sin(ph) > th && Math.sin(t * 0.7 + ph * 1.3) > -0.85)) continue;
-      ctx.fillStyle = Math.sin(ph * 2.1) > 0.6 ? '#ffffff' : shadeColor(col, 0.35);
-      ctx.globalAlpha = 0.55 + 0.35 * Math.sin(ph * 0.9);
+  const grid = cityWindowGrid(s, rows, cols);
+  const litCol = shadeColor(col, 0.35);
+  for (let r = 0, n = 0; r < rows; r++) {
+    for (let k = 0; k < cols; k++, n++) {
+      if (!(grid.sinPh[n] > th && Math.sin(t * 0.7 + grid.ph13[n]) > -0.85)) continue;
+      ctx.fillStyle = grid.white[n] ? '#ffffff' : litCol;
+      ctx.globalAlpha = grid.alpha[n];
       ctx.fillRect(x + 2 + k * (bw - 3) / cols, bodyTop + 4 + r * 7, Math.max(1.5, (bw - 3) / cols - 2.5), 3);
     }
   }
@@ -6146,18 +6189,31 @@ function drawCityScene(canvas, progress, t, opts = {}) {
     while (x < 1.02) { const bw = 0.025 + rng.next() * 0.045; out.push({ x, bw, bh: 0.12 + rng.next() * 0.3, seed: rng.next() * 100 }); x += bw * (0.75 + rng.next() * 0.4); }
     return out;
   })());
-  far.forEach(b => {
+  // MOBILE-PERF-1: the far windows never change for a given picture size
+  // (a sine per window spot, ~3000 a frame) -- listed once per size.
+  const farKey = w + 'x' + ground;
+  let farWin = !mini && cityLayout.farWin && cityLayout.farWin.key === farKey ? cityLayout.farWin.rects : null;
+  const farList = !mini && !farWin ? [] : null;
+  far.forEach((b, bi) => {
     const bx = b.x * w, bw = b.bw * w, bh = b.bh * (ground - 14);
     ctx.fillStyle = '#0a1a2c';
     ctx.fillRect(bx, ground - bh, bw, bh);
     if (mini) return;
     ctx.fillStyle = 'rgba(120, 190, 230, 0.16)';
+    if (farWin) {
+      const list = farWin[bi];
+      for (let q = 0; q < list.length; q += 2) ctx.fillRect(list[q], list[q + 1], 2, 2);
+      return;
+    }
+    const list = [];
     for (let wy = ground - bh + 5; wy < ground - 4; wy += 7) {
       for (let wx = bx + 2; wx < bx + bw - 2; wx += 5) {
-        if (Math.sin(wx * 12.9 + wy * 7.3 + b.seed) > 0.55) ctx.fillRect(wx, wy, 2, 2);
+        if (Math.sin(wx * 12.9 + wy * 7.3 + b.seed) > 0.55) { ctx.fillRect(wx, wy, 2, 2); list.push(wx, wy); }
       }
     }
+    farList.push(list);
   });
+  if (farList) cityLayout.farWin = { key: farKey, rects: farList };
   const haze = ctx.createLinearGradient(0, ground - (ground - 14) * 0.45, 0, ground);
   haze.addColorStop(0, 'rgba(10, 29, 51, 0)'); haze.addColorStop(1, 'rgba(10, 29, 51, 0.55)');
   ctx.fillStyle = haze; ctx.fillRect(0, ground - (ground - 14) * 0.45, w, (ground - 14) * 0.45);
@@ -8678,6 +8734,14 @@ class Game {
     // explicit "off" now hides it; "auto"/"on" both show it.
     const pref = this.save ? this.save.settings.minimap : 'auto';
     this.showMinimap = pref !== 'off';
+    // MOBILE-PERF-1: re-sizing the canvas clears it, and a paused round's
+    // loop is stopped -- a phone turned (or a window resized) on the pause
+    // sheet left a black board under it until the round resumed. Draw the
+    // frozen board once in the new frame (no update: nothing moves).
+    if (this.running && this.paused && this.player) {
+      const t = (this.lastTime || performance.now()) / 1000;
+      if (this.mode === 'campaign') this.renderCampaign(t); else this.render(t);
+    }
   }
 
   applyGfx(level) {
@@ -15001,6 +15065,16 @@ class Game {
           this.lockedBump(obj, CONFIG.sizeTiers[m].shortId, CONFIG.sizeTiers[m].color, hole);
         }
         continue;
+      }
+      // MOBILE-PERF-1: most of the city is far from any hole -- an axis gap
+      // already as long as the reach rules the bite out (the distance is
+      // never shorter than either gap), without a Math.hypot for each of
+      // the ~300 objects x every hole x every frame. The same test, exactly.
+      const gx = Math.abs(obj.x - hole.x), gy = Math.abs(obj.y - hole.y);
+      if (gx >= reach || gy >= reach) {
+        if (!hole.isPlayer) continue;
+        const edge = hole.radius * Math.SQRT2 + obj.radius; // edgeReach()'s outer bound
+        if (gx >= edge || gy >= edge) continue;
       }
       const d = dist(hole.x, hole.y, obj.x, obj.y);
       if (d < reach || (hole.isPlayer && this.edgeReach(hole, obj.x, obj.y, obj.radius))) obj.startEating(hole);
