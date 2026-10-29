@@ -35,7 +35,8 @@ node qa/content-shots.mjs  # CONTENT-1 evidence, not a test: goal icons next to 
 node qa/devices.mjs        # FTUE-2 FIX real devices (iPhone 13 Chrome, iPhone 16 Pro home-screen app, Poki 640x360, a 1536x730 laptop): a turn whose resize event comes too early (layout, canvas and vortex follow the real frame), the vortex fully inside the safe area at T1-T6 up to the largest radius at every city edge/corner, a HUD panel / the minimap it is under fades, edge arrows on the visible field clear of the HUD, big in-round messages fit, frames caught mid-transition between tabs after a round never show the round, Core City's skyline / NOWY BUDYNEK under the headline (also while a window is resized), Profil's POWRÓT never over a setting, modals that fit show no scrollbar, results' way back in view, the TEST panel out of a player's reach. Screenshots -> qa/out/devices/
 node qa/leave-run.mjs      # leaving an Arena round (R1): at score 0 nothing is granted or counted -- save unchanged, also 5x and after a relaunch; left after one bite / a bigger score: exactly the partial coins (coinsSqrtK*sqrt(score), newbie x) and XP (xpSqrtK*sqrt(score)), no Core City, run count, PB, prisms, daily mission or Daily bonus; finished rounds pay in full and open Warsztat/Wyzwania as before; existing save, Arena/campaign isolation
 node qa/v21.mjs            # v21: big screens -- phones keep their framing; 1366×768/1440×900/1920×1080 see about a phone's worth of city with a bigger vortex, cursor steering through the zoom, bigger HUD/minimap; desktop layout (body.wide): nav rail + two columns on Miasto/Dzielnice/Warsztat/Wyzwania/results at 960×540…1920×1080 and 1180×820, all 12 districts in view, nothing sideways; portrait phones/tablets keep the phone layout; district strip mouse wheel + edge fades
-node qa/v20.mjs            # v20: gates are helpers -- no mission asks to go through a gate/portal, impulse pad (+50% speed, recharge), two-way portal pair, M11 „Pierwszy impuls” shows a pad + food on its first frame, EN chips
+node qa/v20.mjs            # v20: gates are helpers -- no mission asks to go through a gate/portal, impulse pad (+50% speed, recharge), two-way portal pair, M11 „Pierwszy impuls” shows a pad on its first frame in every one of 200 fixed-seed layouts and 3+ fragments of food on average (the food is random: one layout alone was a flaky check), EN chips
+node qa/gameready1.mjs     # GAME-READY-1: the Daily's date in Polish / English on 13 days across the year (the month name was Polish in English); English on 16 FTUE-2 screens at 375x667, 360x640, 844x390, 836x470 -- the qa/responsive.mjs fit audit plus no text clipped in English that Polish shows in full; the page head (240 missions / 12 districts, a web game in PL + EN, no app-store / ads / SDK claims, the viewport unchanged). `--only=date,screens,head`; shots -> qa/out/gameready1/<lang>/<WxH>/
 node qa/v19.mjs            # v19: English (a full sweep in an en-US browser with ?i18n=log: nothing Polish reaches the screen), language switch, cloud save restore/mirror (mocked CrazyGames SDK), backup code
 node qa/v18.mjs 3          # (E1: seeded, --seed=N replays, --calibrate=K [--paired] = diagnostic over K seeds) v18: Sprint booster, defeat -> suggested booster pre-picked in the briefing, booster for an ad when short on coins, store booster packs, booster balance (casual bot, hard missions, with/without each booster)
 node qa/v17.mjs            # v17: first screen = live mini round (eats, tiers, rival, loop), Miasto (v17.1) = one Core City hero card with its hook in words above GRAJ, no empty band, no scrolling, labels layered over live canvases
@@ -265,6 +266,9 @@ from a multi-file tree, `dev-code.mjs` finding `DEV_CODE_SALT` outside
 - Symlinks need Developer Mode or admin rights: without them the two symlink
   negatives of `release.mjs` print `NOT RUN` (not counted as PASS) instead
   of crashing the suite; run them on Linux/CI or with Developer Mode.
-- `check_pages_workflow.py` is called as `python3`; the Windows Store alias
-  is not Python -- put a real `python3.exe` (e.g. a venv's `python.exe`
-  copied as `python3.exe`) first on `PATH`.
+- `check_pages_workflow.py` runs under the first real Python 3 found:
+  `$VH_PYTHON`, then `python3`, `python`, `py -3` (each asked for its major
+  version first). On Windows `python3` is often the Microsoft Store alias
+  (exit 9009/49, no output) -- before GAME-READY-1 that made the check FAIL
+  with an empty result; now it is skipped for `python` / `py -3`. No Python 3
+  at all prints `NOT RUN`, never a PASS.
