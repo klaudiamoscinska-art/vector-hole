@@ -4,6 +4,27 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GAME-READY-1 „Przed testami zewnętrznymi” (zapis nadal v13; rozgrywka, misje, ekonomia, grafika i wydajność bez zmian)
+- **Data Wyzwania dnia po angielsku:** etykieta była zawsze formatowana
+  po polsku (`pl-PL`), a słownik znał tylko jedną datę — po angielsku
+  pokazywało się np. „27 PAŹDZIERNIKA”. Teraz `formatDayMonth()` pisze
+  datę w języku gry (`29 PAŹDZIERNIKA` / `OCTOBER 29`, dzień UTC jak
+  ziarno wyzwania), niezależnie od dnia miesiąca i od nazw miesięcy
+  przeglądarki.
+- **Opis strony (`index.html`):** „60 misji” → „240 misji kampanii
+  w 12 dzielnicach” (meta description i JSON-LD); JSON-LD bez „Android”
+  / „iOS” w `gamePlatform` (nie ma aplikacji natywnych — gra działa
+  w przeglądarce), `inLanguage` = polski i angielski. Viewport bez zmian
+  (uzasadnienie: `docs/GAME_READY1_REPORT.md`).
+- **QA:** `qa/v20.mjs` M11 — losowy układ jedzenia sprawdzany na jednej
+  próbce był niestabilny (ok. 1 FAIL na 3 przebiegi); teraz brama w kadrze
+  w każdym z 200 układów o stałych ziarnach i średnio ≥ 3 fragmenty.
+  `qa/release.mjs` uruchamia checker Pages pierwszym prawdziwym
+  Pythonem 3 (`$VH_PYTHON`, `python3`, `python`, `py -3`) — na
+  Windows `python3` bywa aliasem Sklepu i dawał pusty FAIL. Nowy
+  `qa/gameready1.mjs` (w `run-all`): data PL/EN, ekrany FTUE-2 po
+  angielsku, metadane. Raport `docs/GAME_READY1_REPORT.md`.
+
 ## MOBILE-PERF-1 „Wydajność i stabilność” (zapis nadal v13; rozgrywka, grafika, misje, ekonomia i balans bez zmian — te same liczby i piksele, `qa/perf1.mjs --equiv`)
 - **Menu i pauza bez layoutu co klatkę:** blask przycisków głównych
   (`v8-shine`) przesuwał się przez `left` — layout i przemalowanie
