@@ -700,6 +700,19 @@ function i18nStart(lang) {
   }
 }
 
+/** GAME-READY-1: the Daily's date ("29 PAŹDZIERNIKA" / "OCTOBER 29", UTC like
+ *  its seed) written in the game's language. A date can't go through the
+ *  output dictionary (one entry per day), and the browser's own month
+ *  names follow its locale and ICU build, not the game's language. */
+const MONTH_NAMES = {
+  pl: ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+};
+function formatDayMonth(date, lang = I18N.lang) {
+  const day = date.getUTCDate(), month = date.getUTCMonth();
+  return (lang === 'en' ? `${MONTH_NAMES.en[month]} ${day}` : `${day} ${MONTH_NAMES.pl[month]}`).toUpperCase();
+}
+
 function moderateName(name) {
   if (!name) return '';
   const lower = name.toLowerCase();
@@ -10429,8 +10442,7 @@ class Game {
       d.textContent = i < Math.min(streak, 7) ? '✓' : String(i + 1);
       streakWrap.appendChild(d);
     }
-    document.getElementById('dailyDateLabel').textContent =
-      new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', timeZone: 'UTC' }).toUpperCase();
+    document.getElementById('dailyDateLabel').textContent = formatDayMonth(new Date());
 
     const goalText = document.getElementById('dailyGoalText');
     if (this.save.daily.lastSeedDate === dateKey) {
@@ -17490,7 +17502,6 @@ const I18N_EN = {
   ". Dotknij, aby posłuchać i ustawić na stałe — w Mieście, rundach i misjach.": ". Tap to listen and keep it on — in the City, rounds and missions.",
   ". Kupujesz je za monety i pryzmaty, a nagrody z Core City trafiają tu same.": ". You buy them with coins and prisms, and Core City rewards land here automatically.",
   "1 / 10 ODBLOKOWANE": "1 / 10 UNLOCKED",
-  "12 PAŹDZIERNIKA": "OCTOBER 12",
   "1500 monet · 60 pryzmatów · 3× każde wzmocnienie misji · ekskluzywna Smuga „Zorza Startu”": "1500 coins · 60 prisms · 3× every mission booster · exclusive “Starter Glow” Trail",
   "2 zderzenia": "2 collisions",
   "200 pryzmatów (+25% gratis)": "200 prisms (+25% free)",

@@ -582,7 +582,9 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   Język przełącza i zapamiętuje. Tłumaczenie to warstwa na wyjściu
   (`I18N_EN`), więc nowy polski tekst wymaga wpisu w słowniku (pilnuje
   `qa/v19.mjs`). Nazwy dzielnic, utworów i misji mają angielskie odpowiedniki
-  (Plac Neonów → Neon Square, Wir Neonów → Neon Vortex…).
+  (Plac Neonów → Neon Square, Wir Neonów → Neon Vortex…). Daty (Wyzwanie
+  dnia) nie idą przez słownik: `formatDayMonth()` pisze je w języku gry
+  („29 PAŹDZIERNIKA” / „OCTOBER 29”, GAME-READY-1).
 - ~~Energia per platforma~~ — v22: energii nie ma nigdzie (§5).
 - **Zapis:** lokalnie w przeglądarce (jak dotąd) + na CrazyGames w module
   danych portalu (konto gracza, synchronizacja urządzeń; przy różnicy wygrywa
