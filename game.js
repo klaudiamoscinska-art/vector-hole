@@ -3670,6 +3670,10 @@ function rankHoles(holes) {
   return holes.slice().sort((a, b) => (b.score - a.score) || (b.radius - a.radius) || a.name.localeCompare(b.name));
 }
 
+/** Board draw order (Game.visibleByDrawOrder()): biggest first, then back
+ *  to front. */
+const DRAW_ORDER = (a, b) => (b.radius - a.radius) || (a.y - b.y);
+
 function rand(min, max) { return Math.random() * (max - min) + min; }
 function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
 function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
@@ -9432,8 +9436,11 @@ class Game {
     }
     const equipped = { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected, overdriveSkin: this.save.overdriveSkins.selected }[cat];
     this.pendingLoadout[cat] = item.id;
+    // DEVICE-QA-1 (playtest 005): the preview names and shows the item
+    // being looked at (it kept the equipped vortex's name and no Finisz).
+    this.warsztatFocus = { cat, item, noun: C.noun };
     this.updateWarsztatPreview();
-    const revert = () => { this.pendingLoadout[cat] = equipped; this.updateWarsztatPreview(); };
+    const revert = () => { this.pendingLoadout[cat] = equipped; if (this.warsztatFocus && this.warsztatFocus.item === item) this.warsztatFocus = null; this.updateWarsztatPreview(); };
     const title = `${C.noun} „${item.name}”`;
     // PX02 D+: a vortex is a look only -- the sheet says so, never a bonus.
     const perk = cat === 'skin' ? ['Sam wygląd — w rundzie działa tak samo jak każdy inny wir.'] : [];
@@ -9470,6 +9477,7 @@ class Game {
         if (cat === 'skin' && eco.looksOnly < 1 && LOOKS_ONLY_REFUND[item.id] && !eco.boughtAfter.includes(item.id)) eco.boughtAfter.push(item.id);
         this.analytics.track('soft_purchase', { [C.key]: item.id, price, currency: prisms ? 'prisms' : 'coins' });
         this.pendingLoadout[cat] = item.id;
+        this.warsztatFocus = null;
         this.onEquipClick();
         this.sound.coin();
         this.updateCoinDisplays();
@@ -9673,8 +9681,12 @@ class Game {
 
     // The preview canvas itself is redrawn every frame from pendingLoadout
     // by renderWarsztatCanvases(); this just refreshes the text labels.
-    document.getElementById('warsztatPreviewName').textContent = skin.name;
-    document.getElementById('warsztatLookValue').textContent = skin.look || '—';
+    // DEVICE-QA-1: a Smuga / Efekt / Finisz being previewed names itself.
+    const f = this.warsztatFocus && this.warsztatFocus.cat !== 'skin' ? this.warsztatFocus : null;
+    const what = f ? { aura: 'Ślad za wirem w ruchu', effect: 'Błysk przy połykaniu', overdriveSkin: 'Kolor banera na finiszu rundy' }[f.cat] : null;
+    document.getElementById('warsztatPreviewName').textContent = f ? f.item.name : skin.name;
+    document.querySelector('#warsztatLook .warsztat-look-label').textContent = f ? `PODGLĄD · ${f.noun.toUpperCase()} · BEZ BONUSU W RUNDZIE` : 'WYGLĄD WIRU · BEZ BONUSU W RUNDZIE';
+    document.getElementById('warsztatLookValue').textContent = f ? what : (skin.look || '—');
     document.getElementById('warsztatPreviewLoadout').textContent =
       `Smuga: ${(aura && aura.name) || 'Brak'} · Efekt: ${(effect && effect.name) || 'Klasyczny'} · Finisz: ${(overdrive && overdrive.name) || 'Klasyczny'}`;
   }
@@ -9800,6 +9812,8 @@ class Game {
     this.drawHoleThumb(document.getElementById('warsztatPreviewCanvas'), p.skin, p.aura, time,
       (ctx, R) => { this.drawPreviewEat(ctx, R, time, effectColor); if (fxAge < 1.2) this.drawEquipBurst(ctx, R, fxAge, fx); },
       (ctx, w, h) => this.drawWarsztatStage(ctx, w, h, glowColor, time), 0.62);
+    const focus = this.warsztatFocus;
+    if (focus && focus.cat === 'overdriveSkin') this.drawFinishPreview(document.getElementById('warsztatPreviewCanvas'), focus.item.color || '#9875FF', time);
     document.querySelectorAll('#shopScreen canvas.hole-swatch').forEach(cv => {
       if (!cv.offsetParent) return; // inactive tab
       this.drawHoleThumb(cv, cv.dataset.skin || p.skin, cv.dataset.aura || 'none', time);
@@ -9825,6 +9839,31 @@ class Game {
     hole.radius = R;
     hole.draw(ctx, time);
     if (extras) extras(ctx, R, hole);
+    ctx.restore();
+  }
+
+  /** DEVICE-QA-1 (playtest 005): a Finisz is the color of the round's
+   *  "WIELKI FINISZ!" banner (checkOverdriveTrigger()) -- the preview shows
+   *  that banner over the showroom vortex in the previewed color. */
+  drawFinishPreview(canvas, color, t) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.translate(w / 2, h * 0.2);
+    ctx.rotate(-0.06);
+    const k = prefersReducedMotion() ? 1 : 1 + 0.03 * Math.sin(t * 4);
+    ctx.scale(k, k);
+    ctx.font = `${Math.round(Math.min(h * 0.14, w * 0.09))}px ${FONT_DISPLAY}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
+    ctx.strokeText('WIELKI FINISZ!', 0, 0);
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = color;
+    ctx.fillStyle = color;
+    ctx.fillText('WIELKI FINISZ!', 0, 0);
     ctx.restore();
   }
 
@@ -10407,13 +10446,23 @@ class Game {
     const nextReward = CORE_CITY_LEVEL_REWARDS[level + 1];
     const nextRewardLabel = nextReward ? nextReward.label : 'Premia';
     const nextRewardCoins = nextReward ? nextReward.coins : CONFIG.hub.milestoneFallbackCoins;
-    document.getElementById('hubRewardChip1').textContent = nextReward ? `${nextRewardLabel} + ${nextRewardCoins} monet` : `+${nextRewardCoins} monet`;
+    // DEVICE-QA-1 (playtest 023): past LVL6 the fallback pays prisms too.
+    document.getElementById('hubRewardChip1').textContent = nextReward ? `${nextRewardLabel} + ${nextRewardCoins} monet` : `+${nextRewardCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
     document.getElementById('hubRewardChip1Icon').innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(nextReward)];
     // v17.1 (owner: "budowa miasta była hakiem, a teraz nie czuję, czemu to
     // fajne"): say what one round adds and how close the next reward is.
+    // DEVICE-QA-1 (playtest 019): the range a round really adds (a plain
+    // round .. podium + first place + a record), and the reward comes at
+    // the latest in `rounds` (counted at the plain round's gain).
     const gain = this.coreGainPerRound();
     const rounds = Math.max(1, Math.ceil((100 - pct) / gain));
-    document.getElementById('hubCityPitchSub').textContent = `+${gain}% za rundę · nagroda za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
+    // ... and (023: "i co, koniec rozbudowy miasta?") a LVL6 city is built:
+    // the card says so and what each further 100% pays.
+    const built = level >= 6;
+    document.getElementById('hubCityPitchTitle').textContent = built ? 'Miasto zbudowane w całości' : 'Każda runda Areny buduje Twoje miasto';
+    document.getElementById('hubCityPitchSub').textContent = built
+      ? `${this.coreGainRangeText()} za rundę · co 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`
+      : `${this.coreGainRangeText()} za rundę · nagroda najpóźniej za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
 
     this.updateHubQuickTiles();
     // First-run welcome: until the first finished play, Miasto shows only
@@ -10505,7 +10554,7 @@ class Game {
       : (streak > 0 ? `Seria: ${streak} ${plural(streak, ['dzień', 'dni', 'dni'])} z rzędu` : `+${CONFIG.daily.completionBonusCoins} monet za ukończenie`);
     // v17.1: GRAJ says what it builds (the city above it). v22: and which
     // mode it is -- Core City is Arena's own progression.
-    document.getElementById('hubPlaySub').textContent = `Arena · runda 2:00 · +${this.coreGainPerRound()}% budowy miasta`;
+    document.getElementById('hubPlaySub').textContent = `Arena · runda 2:00 · ${this.coreGainRangeText()} budowy miasta`;
   }
 
   /** Core City % a plain finished Arena round adds at the current level
@@ -10513,6 +10562,34 @@ class Game {
   coreGainPerRound() {
     const cc = CONFIG.hub.coreCity;
     return Math.round(cc.arenaCompleteGain * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
+  }
+
+  /** DEVICE-QA-1 (playtest 019): the most one finished Arena round adds --
+   *  podium, first place and a record on top of the plain round. The copy
+   *  states the range, so 67% -> 82% no longer contradicts "+10%". */
+  coreGainMaxPerRound() {
+    const cc = CONFIG.hub.coreCity;
+    const top = cc.arenaCompleteGain + cc.arenaTop3Gain + cc.arenaFirstGain + cc.arenaNewPbGain;
+    return Math.round(top * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
+  }
+
+  coreGainRangeText() { return `+${this.coreGainPerRound()}–${this.coreGainMaxPerRound()}%`; }
+
+  /** The result screen's line under POSTĘP CORE CITY: every part of this
+   *  round's gain (finalizeRun()'s lastCoreGain), one span each so every
+   *  part translates on its own. */
+  fillCoreGainParts(el, g) {
+    el.textContent = '';
+    if (!g || !g.parts.length) return;
+    const cc = CONFIG.hub.coreCity;
+    const bits = g.parts.map(([label, pct]) => `${label} +${pct}%`);
+    if (g.early) bits.push(`×${String(cc.earlyLevelMult).replace('.', ',')} na LVL 1–${cc.earlyLevelMax}`);
+    bits.forEach((b, i) => {
+      if (i) el.appendChild(document.createTextNode(' · '));
+      const s = document.createElement('span');
+      s.textContent = b;
+      el.appendChild(s);
+    });
   }
 
   /** FTUE-3: what the next finished Arena rounds bring, for the result
@@ -10650,14 +10727,23 @@ class Game {
     document.querySelector('#unlockOverlay .unlock-kicker').textContent = item.kicker || 'ODBLOKOWANO!';
     const shown = this.unlockQueueTotal - this.unlockQueue.length;
     const counter = document.getElementById('unlockCounter');
-    counter.textContent = `${shown} / ${this.unlockQueueTotal}`;
+    // DEVICE-QA-1 (playtest 008/009: "co znaczy 1/2?"): the counter says
+    // what it counts -- this card of the cards queued now.
+    counter.textContent = `Nowość ${shown} z ${this.unlockQueueTotal}`;
     counter.classList.toggle('hidden', this.unlockQueueTotal < 2);
 
+    // A CTA only when it goes somewhere (Wzmocnienia's "ŚWIETNIE" did the
+    // same as DALEJ beside it). Without one, the card is an acknowledgement:
+    // its reward is already credited, so it never says "PÓŹNIEJ" (006/012:
+    // a star chest read as something to open later).
     const goBtn = document.getElementById('btnUnlockGo');
-    const cta = item.noCta ? null : (item.kind === 'reward' ? (this.isWarsztatUnlocked() ? 'ZAŁÓŻ W WARSZTACIE' : null) : item.cta);
+    const cta = item.noCta || item.id === 'boosters' ? null : (item.kind === 'reward' ? (this.isWarsztatUnlocked() ? 'ZAŁÓŻ W WARSZTACIE' : null) : item.cta);
     goBtn.classList.toggle('hidden', !cta);
     if (cta) goBtn.textContent = cta;
-    document.getElementById('btnUnlockLater').textContent = this.unlockQueue.length ? 'DALEJ' : 'PÓŹNIEJ';
+    const laterBtn = document.getElementById('btnUnlockLater');
+    laterBtn.textContent = this.unlockQueue.length ? 'DALEJ' : (cta ? 'PÓŹNIEJ' : 'ŚWIETNIE');
+    laterBtn.classList.toggle('btn-primary', !cta);
+    laterBtn.classList.toggle('btn-secondary', !!cta);
 
     // Fresh burst particles each time, at random angles/distances.
     const burst = document.getElementById('unlockBurst');
@@ -10769,6 +10855,8 @@ class Game {
     return '<ul class="info-sheet-list">' +
       `<li>Runda GRAJ 2:00: +${c.arenaCompleteGain}% (top 3: +${c.arenaTop3Gain}%, 1. miejsce: +${c.arenaFirstGain}%, rekord: +${c.arenaNewPbGain}%)</li>` +
       `<li>Wyzwanie dnia: +${c.dailyFirstClearGain}% za pierwsze dziś, +${c.dailyNewBestGain}% za nowy rekord</li>` +
+      `<li>Na LVL 1–${c.earlyLevelMax} całość ×${String(c.earlyLevelMult).replace('.', ',')}. Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
+      '<li>Runda opuszczona przed końcem nie ładuje miasta.</li>' +
       '</ul>';
   }
 
@@ -10780,7 +10868,7 @@ class Game {
     const rows = Object.keys(CORE_CITY_LEVEL_REWARDS).map(Number).sort((a, b) => a - b).map(n => {
       const def = CORE_CITY_LEVEL_REWARDS[n];
       const state = n <= level ? 'done' : (n === level + 1 ? 'next' : '');
-      const mark = n <= level ? '✓' : (n === level + 1 ? `${pct}%` : '');
+      const mark = n <= level ? '✓' : (n === level + 1 ? `${Math.round(pct)}%` : '');
       // VISUAL-1: each level shows the city it builds (a still thumbnail of
       // the real skyline at that level) and names what it adds.
       const stage = CITY_STAGES[n];
@@ -11156,7 +11244,7 @@ class Game {
       kicker: jackpot ? 'JACKPOT ×3!' : 'SKRZYNIA OTWARTA!', eyebrow: 'DARMOWA SKRZYNIA',
       title: `+${coins} monet${prisms ? ` · +${prisms} ◆` : ''}`, color: jackpot ? '#FF54AD' : '#EFCB63',
       icon: REWARD_CATEGORY_ICONS.bundle, noCta: true,
-      desc: 'Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!'
+      desc: 'Już na Twoim koncie. Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!'
     });
     this.queueUnlockCelebrations();
     this.updateCoinDisplays();
@@ -11652,7 +11740,18 @@ class Game {
     if (note) {
       const short = cost > this.save.coins;
       const miss = cost - this.save.coins;
-      note.textContent = short ? `Brakuje ${miss} ${plural(miss, ['monety', 'monet', 'monet'])} na wybrane wzmocnienia.` : (sel.size ? 'Wybrane wzmocnienia zużyjesz w tej próbie — także jeśli się nie uda.' : 'Wzmocnienia są opcjonalne — dotknij, aby wybrać.');
+      // DEVICE-QA-1 (playtest 017: "nie widzę waluty na ekranie"): the
+      // balance stands in front of the line, the sheet dims the top bar's.
+      const wallet = card.querySelector('.mc-boost-wallet');
+      if (wallet) wallet.textContent = `Masz ${this.save.coins} ◇`;
+      note.textContent = '';
+      const shieldOff = !this.boosterUseful('shield', campaignMissionById(this.selectedMissionId));
+      const msg = document.createElement('span');
+      msg.textContent = short ? `Brakuje ${miss} ${plural(miss, ['monety', 'monet', 'monet'])} na wybrane wzmocnienia.`
+        : sel.size ? 'Wybrane wzmocnienia zużyjesz w tej próbie — także jeśli się nie uda.'
+        : shieldOff ? 'Wzmocnienia są opcjonalne. Tarcza się tu nie przyda — w tej misji nic Ci nie zagraża.'
+        : 'Wzmocnienia są opcjonalne — dotknij, aby wybrać.';
+      note.appendChild(msg);
       note.classList.toggle('warn', short);
       // v18: never a dead end -- one of the unpaid boosters for an ad.
       const adFor = short && this.monetization.placementLeft('booster_ad') > 0
@@ -11753,9 +11852,11 @@ class Game {
     const tiles = MISSION_BOOSTERS.map(b => {
       const have = this.save.boosters[b.id] || 0;
       if (!this.boosterUseful(b.id, def)) {
+        // DEVICE-QA-1 (playtest 016): "brak zagrożeń" was cut off in the
+        // tile; a short "tu zbędna" there, the reason in the note below.
         return `<button type="button" class="mc-boost off" disabled style="--b-color:${b.color}" aria-label="${b.name}: brak zagrożeń w tej misji">` +
           `<span class="mc-boost-icon"><svg viewBox="0 0 24 24">${CARD_ICONS[b.icon]}</svg></span>` +
-          `<span class="mc-boost-name">${b.name}</span><span class="mc-boost-short">brak zagrożeń</span>` +
+          `<span class="mc-boost-name">${b.name}</span><span class="mc-boost-short">tu zbędna</span>` +
           `<span class="mc-boost-badge${have ? ' owned' : ''}">${have ? `×${have}` : `${b.price} ◇`}</span></button>`;
       }
       return `<button type="button" class="mc-boost${sel.has(b.id) ? ' selected' : ''}" data-booster="${b.id}" style="--b-color:${b.color}" aria-pressed="${sel.has(b.id)}" aria-label="${b.name}: ${b.desc}">` +
@@ -11763,7 +11864,7 @@ class Game {
         `<span class="mc-boost-name">${b.name}</span><span class="mc-boost-short">${b.short}</span>` +
         `<span class="mc-boost-badge${have ? ' owned' : ''}">${have ? `×${have}` : `${b.price} ◇`}</span></button>`;
     }).join('');
-    return `<div class="mc-label">WZMOCNIENIA</div><div class="mc-boosts">${tiles}</div><p class="mc-boost-note"></p>`;
+    return `<div class="mc-label mc-boost-head">WZMOCNIENIA<span class="mc-boost-wallet"></span></div><div class="mc-boosts">${tiles}</div><p class="mc-boost-note"></p>`;
   }
 
   /* ---------- v15: the tap-to-start card ---------- */
@@ -11908,7 +12009,7 @@ class Game {
   /** Which campaign entity type(s) the *current* mission goal is about --
    *  used to visually tie board objects to the goal text (player feedback:
    *  elements on the board should make it obvious what to look for). */
-  campaignGoalEntityTypes() {
+  campaignGoalEntityTypes({ openOnly = false } = {}) {
     const g = this.mission.def.goal;
     const types = new Set();
     if (g.type === 'eatCount') types.add(g.entityType);
@@ -11916,6 +12017,10 @@ class Game {
     if (g.type === 'activateAndDevour') { types.add(g.activator); types.add('landmark'); }
     if (g.type === 'objectives') {
       for (const st of g.steps) {
+        // DEVICE-QA-1 (playtest 024): the edge arrow pointed at a gold
+        // byte after "Złap 4 złote bajty 4/4" -- a finished step's objects
+        // are no longer something to steer to.
+        if (openOnly) { const [progress, target] = this.objectiveProgress(st); if (progress >= target) continue; }
         if (st.eat) types.add(st.eat);
         if (st.activate) types.add(st.activate);
         if (st.landmark) types.add('landmark');
@@ -12883,6 +12988,7 @@ class Game {
       const d = dist(this.player.x, this.player.y, bot.x, bot.y);
       const touchDist = Math.max(this.player.radius, bot.radius) * 0.75;
       if (d >= touchDist) continue;
+      this.neutralRivalBump(bot);
       if (bot.radius > this.player.radius * EAT_HOLE_RATIO) {
         // GDD 07: contact with a bigger bot costs a fraction of current
         // growth and breaks combo, with brief safe invulnerability — not
@@ -13525,10 +13631,13 @@ class Game {
       this.save.coins += S.chest.coins;
       this.save.prisms = (this.save.prisms || 0) + S.chest.prisms;
       this.save.boosters[booster.id] = (this.save.boosters[booster.id] || 0) + S.chest.booster;
+      // DEVICE-QA-1 (playtest 006/012: "jak otworzyć skrzynię i gdzie
+      // jest?"): it opens by itself and its reward is already credited --
+      // the card says so, and where the next one is.
       this.queueRewardCelebration({
-        kicker: 'SKRZYNIA GWIAZD', eyebrow: `${c.starChests * S.chestEvery} GWIAZDEK`, title: 'Skrzynia gwiazd!', color: '#EFCB63',
+        kicker: 'SKRZYNIA GWIAZD OTWARTA', eyebrow: `${c.starChests * S.chestEvery} GWIAZDEK Z MISJI`, title: 'Skrzynia gwiazd!', color: '#EFCB63',
         icon: REWARD_CATEGORY_ICONS.bundle, noCta: true,
-        desc: `+${S.chest.coins} monet · +${S.chest.prisms} pryzmaty · wzmocnienie „${booster.name}”. Następna za ${S.chestEvery} gwiazdek.`
+        desc: `Już na Twoim koncie: +${S.chest.coins} monet · +${S.chest.prisms} pryzmaty · wzmocnienie „${booster.name}”. Skrzynia otwiera się sama co ${S.chestEvery} gwiazdek — następna przy ${(c.starChests + 1) * S.chestEvery}.`
       });
       this.analytics.track('star_chest', { n: c.starChests });
     }
@@ -13684,13 +13793,14 @@ class Game {
     const goalTypes = this.campaignGoalEntityTypes();
     const playerTier = this.campaignTierIndex(this.campaignPlayerTier().id);
     const goalGlyph = this.mission ? this.mission.goalGlyph : null;
-    for (const e of this.campaignEntities) {
-      if (!this.isInView(e.x, e.y, e.radius * 2)) continue;
+    const vis = this.visibleByDrawOrder(this.campaignEntities);
+    for (const e of vis) {
       // The goal ring only marks goal objects the hole can eat right now --
       // a ring around a still-too-big object read as "eat this" (QA).
       const isGoal = goalTypes.has(e.type) && (!goalGlyph || e.glyph === goalGlyph) && playerTier >= e.stats?.minTier;
       e.draw(ctx, isGoal);
     }
+    vis.length = 0;
     this.drawScannerTarget(ctx);
     this.drawDangerHalos(ctx);
     this.drawPreyRings(ctx);
@@ -13701,6 +13811,7 @@ class Game {
     holes.sort((a, b) => a.radius - b.radius);
     const swallowed = this.collectSwallowed();
     for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
+    this.drawNeutralRings(ctx);
     this.drawPlayerOverlapMarker(ctx, holes, 1);
 
     for (const f of this.floatTexts) f.draw(ctx);
@@ -13776,7 +13887,7 @@ class Game {
     if (!m) return [];
     const g = m.def.goal;
     const tier = this.campaignTierIndex(this.campaignPlayerTier().id);
-    const types = this.campaignGoalEntityTypes();
+    const types = this.campaignGoalEntityTypes({ openOnly: true });
     const glyph = m.goalGlyph;
     const goals = this.campaignEntities.filter(e => {
       if (e.consumed || e.eating || e.live === false || !types.has(e.type)) return false;
@@ -13791,8 +13902,15 @@ class Game {
     // v15: nothing in the goal is within reach yet (too small) -- point at
     // food that grows the hole instead of leaving the arrow dark (in a
     // blackout there was no way to find it).
-    return this.campaignEntities.filter(e => !e.consumed && !e.eating && e.live !== false && e.stats && e.type !== 'gate'
+    const food = this.campaignEntities.filter(e => !e.consumed && !e.eating && e.live !== false && e.stats && e.type !== 'gate'
       && e.type !== 'landmark' && e.type !== 'node' && e.type !== 'pylon' && tier >= e.stats.minTier);
+    // DEVICE-QA-1 (playtest 024): ... but not at a finished step's objects
+    // (a gold byte after "Złap 4 złote bajty 4/4" read as "go there") while
+    // other food is on the board.
+    const done = this.campaignGoalEntityTypes();
+    types.forEach(t => done.delete(t));
+    const other = food.filter(e => !done.has(e.type));
+    return other.length ? other : food;
   }
 
   drawCampaignGoalArrow(ctx, time) {
@@ -14229,13 +14347,22 @@ class Game {
     // => 100% grants the LVL reward, and the new level starts at 12%).
     const cc = CONFIG.hub.coreCity;
     let coreGain;
+    // DEVICE-QA-1 (playtest 019: "+10% za rundę" but 67% -> 82%): the parts
+    // of this round's gain, for the result screen to name (display only).
+    const coreParts = [];
     if (this.isDailyRun) {
       coreGain = cc.dailyFirstClearGain + (this.dailyResult.isNewBest ? cc.dailyNewBestGain : 0);
+      coreParts.push(['Wyzwanie dnia', cc.dailyFirstClearGain]);
+      if (this.dailyResult.isNewBest) coreParts.push(['rekord dnia', cc.dailyNewBestGain]);
     } else {
       coreGain = cc.arenaCompleteGain + (place <= 3 ? cc.arenaTop3Gain : 0) + (place === 1 ? cc.arenaFirstGain : 0);
+      coreParts.push(['runda', cc.arenaCompleteGain]);
+      if (place <= 3) coreParts.push(['podium', cc.arenaTop3Gain]);
+      if (place === 1) coreParts.push(['1. miejsce', cc.arenaFirstGain]);
       if (this.player.score > (this.save.stats.bestArenaScore || 0)) {
         this.save.stats.bestArenaScore = this.player.score;
         coreGain += cc.arenaNewPbGain;
+        coreParts.push(['rekord', cc.arenaNewPbGain]);
       }
       // v13: the pacer's par comes from finished rounds only (an early
       // "leave run" would drag it down).
@@ -14244,7 +14371,9 @@ class Game {
         this.save.stats.recentArenaScores = recent.slice(-CONFIG.rival.history);
       }
     }
-    if ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax) coreGain = Math.round(coreGain * cc.earlyLevelMult);
+    const early = (this.save.hub.coreLevel || 1) <= cc.earlyLevelMax;
+    if (early) coreGain = Math.round(coreGain * cc.earlyLevelMult);
+    this.lastCoreGain = { parts: coreParts, early, total: coreGain };
     this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + coreGain;
     this.hubMilestoneReached = false;
     this.hubMilestoneRewards = [];
@@ -14334,6 +14463,7 @@ class Game {
     const leveledUp = corePctAfter < corePctBefore; // crossed 100% at least once
     const coreGainPct = Math.max(0, Math.round(corePctAfter - corePctBefore + (leveledUp ? 100 : 0)));
     document.getElementById('resultCoreGain').textContent = '+' + coreGainPct + '%';
+    this.fillCoreGainParts(document.getElementById('resultCoreParts'), this.lastCoreGain);
     // Two-tone delta bar: a dim "before" segment plus a bright "gained"
     // segment stacked right after it, so the gain itself stays visible
     // instead of one bar simply overdrawing the other.
@@ -15118,7 +15248,24 @@ class Game {
     if (hole && hole.isPlayer) this.sound.bump();
   }
 
+  /** DEVICE-QA-1 (playtest 020: "wygląda na większego i nie mogę go
+   *  zjeść"): touching a rival within EAT_HOLE_RATIO of the player's size,
+   *  where neither can eat the other, did nothing. A tag says why --
+   *  throttled like lockedBump(). Display only. */
+  neutralRivalBump(bot) {
+    const p = this.player;
+    if (!p || bot.invulnerable || p.invulnerable) return;
+    if (p.radius > bot.radius * EAT_HOLE_RATIO || bot.radius > p.radius * EAT_HOLE_RATIO) return;
+    if (dist(p.x, p.y, bot.x, bot.y) >= Math.max(p.radius, bot.radius) * 0.75) return;
+    const now = performance.now();
+    if ((this.lockHintAt != null && now - this.lockHintAt < 2500) || (bot.lockHintAt != null && now - bot.lockHintAt < 7000)) return;
+    this.lockHintAt = bot.lockHintAt = now;
+    this.addFloatText(bot.x, bot.y - bot.radius - 10, 'PODOBNY ROZMIAR · URÓŚNIJ, BY ZJEŚĆ', '#f2f8ff', 13, 1.1);
+    this.sound.bump();
+  }
+
   handleHoleCollisions() {
+    for (const bot of this.bots) this.neutralRivalBump(bot);
     const holes = [this.player, ...this.bots];
     for (let i = 0; i < holes.length; i++) {
       for (let j = 0; j < holes.length; j++) {
@@ -16014,9 +16161,9 @@ class Game {
     ctx.translate(-this.camera.x, -this.camera.y);
 
     this.drawCityFloor(ctx, time);
-    for (const obj of this.objects) {
-      if (this.isInView(obj.x, obj.y, obj.radius * 2)) obj.draw(ctx, this.canEatHighlight(obj));
-    }
+    const vis = this.visibleByDrawOrder(this.objects);
+    for (const obj of vis) obj.draw(ctx, this.canEatHighlight(obj));
+    vis.length = 0;
     this.drawDangerHalos(ctx);
     this.drawPreyRings(ctx);
     this.drawScannerTarget(ctx);
@@ -16032,6 +16179,7 @@ class Game {
       h.labelScale = labelScale;
       if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
     }
+    this.drawNeutralRings(ctx, labelScale);
     this.drawPlayerOverlapMarker(ctx, holes, labelScale);
     if (this.frenzyActive) {
       ctx.save();
@@ -16204,11 +16352,45 @@ class Game {
       && Math.abs(y - this.camera.y) < this.viewHalfH + r + 30;
   }
 
+  /** DEVICE-QA-1 (playtest 021: "elementy nachodzą, ciężko zobaczyć
+   *  najmniejsze"): board objects drew in spawn order, so a building could
+   *  cover a small object (or a goal) next to it. The ones in view now draw
+   *  biggest first and equal sizes back to front (lower on screen in
+   *  front), so nothing small hides under something big. Drawing only --
+   *  positions, eating and the RNG are untouched. One reused array. */
+  visibleByDrawOrder(list) {
+    const vis = this.drawOrderList || (this.drawOrderList = []);
+    vis.length = 0;
+    for (const o of list) if (this.isInView(o.x, o.y, o.radius * 2)) vis.push(o);
+    vis.sort(DRAW_ORDER);
+    return vis;
+  }
+
   canEatHighlight(obj) {
     if (obj.radius <= CONFIG.juice.eatTiers.tinyMaxRadius) return 0;
     if (!this.holeCanEat(this.player, obj)) return 0;
     if (obj.radius >= this.player.radius && !this.frenzyActive) return 0;
     return 1;
+  }
+
+  /** DEVICE-QA-1 (playtest 020: "wygląda na większego i nie mogę go
+   *  zjeść"): a rival within EAT_HOLE_RATIO of the player's size -- neither
+   *  can eat the other -- whose rim (a sun's spikes, an orbit) reaches past
+   *  its real edge. A still, grey dashed ring on top of it marks its real
+   *  edge and "not yet" (green = prey, red halo = danger); only near the
+   *  player, after the holes are drawn. */
+  drawNeutralRings(ctx, ls = 1) {
+    const p = this.player;
+    for (const bot of this.bots) {
+      if (bot.invulnerable || p.radius > bot.radius * EAT_HOLE_RATIO || bot.radius > p.radius * EAT_HOLE_RATIO) continue;
+      if (dist(bot.x, bot.y, p.x, p.y) > (bot.radius + p.radius) * 2.5 || !this.isInView(bot.x, bot.y, bot.radius + 20)) continue;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(242, 248, 255, 0.7)';
+      ctx.lineWidth = 2 * ls;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath(); ctx.arc(bot.x, bot.y, bot.radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
   }
 
   /** v10: a green dashed "prey" ring around rivals the player can eat now
@@ -19265,6 +19447,36 @@ const I18N_EN = {
   "Złoty Szczyt": "Golden Peak",
   "oraz": "and",
   "Zielona Burza": "Green Storm",
+  // DEVICE-QA-1 (the owner's playtest, 2026-10-30)
+  "Nowość {#0} z {#1}": "New {0} of {1}",
+  "SKRZYNIA GWIAZD OTWARTA": "STAR CHEST OPENED",
+  "{#0} GWIAZDEK Z MISJI": "{0} STARS FROM MISSIONS",
+  "Już na Twoim koncie: +{#0} monet · +{#1} pryzmaty · wzmocnienie „{2}”. Skrzynia otwiera się sama co {#3} gwiazdek — następna przy {#4}.": "Already in your account: +{0} coins · +{1} prisms · “{2}” booster. The chest opens by itself every {3} stars — the next one at {4}.",
+  "Już na Twoim koncie. Kolejna skrzynia za 4 godziny. Wydaj monety w Warsztacie albo na wzmocnienia misji!": "Already in your account. Next chest in 4 hours. Spend coins in the Workshop or on mission boosters!",
+  "runda +{#0}%": "round +{0}%",
+  "podium +{#0}%": "podium +{0}%",
+  "1. miejsce +{#0}%": "1st place +{0}%",
+  "rekord +{#0}%": "record +{0}%",
+  "Wyzwanie dnia +{#0}%": "Daily Challenge +{0}%",
+  "rekord dnia +{#0}%": "daily record +{0}%",
+  "×{0} na LVL 1–{#1}": "×{0} at LVL 1–{1}",
+  "Miasto zbudowane w całości": "Your city is fully built",
+  "+{#0}–{#1}% za rundę · co 100%: +{#2} monet i +{#3} pryzmatów": "+{0}–{1}% per round · every 100%: +{2} coins and +{3} prisms",
+  "+{#0}–{#1}% za rundę · nagroda najpóźniej za {#2} {3}": "+{0}–{1}% per round · reward in {2} {3} at most",
+  "Arena · runda 2:00 · +{#0}–{#1}% budowy miasta": "Arena · round 2:00 · +{0}–{1}% city build",
+  "+{#0} monet + {#1} pryzmatów": "+{0} coins + {1} prisms",
+  "Na LVL 1–{#0} całość ×{1}. Po LVL 6 każde 100%: +{#2} monet i +{#3} pryzmatów.": "At LVL 1–{0} everything ×{1}. After LVL 6 every 100%: +{2} coins and +{3} prisms.",
+  "Runda opuszczona przed końcem nie ładuje miasta.": "A round left before the end doesn't charge the city.",
+  "PUNKTY": "POINTS",
+  "Miejsce liczy się według punktów, nie rozmiaru wiru.": "Places go by points, not by vortex size.",
+  "PODOBNY ROZMIAR · URÓŚNIJ, BY ZJEŚĆ": "SIMILAR SIZE · GROW TO EAT IT",
+  "Masz {#0} ◇": "You have {0} ◇",
+  "Wzmocnienia są opcjonalne. Tarcza się tu nie przyda — w tej misji nic Ci nie zagraża.": "Boosters are optional. The Shield won't help here — nothing in this mission can hurt you.",
+  "tu zbędna": "not needed",
+  "Ślad za wirem w ruchu": "A trail behind the moving vortex",
+  "Błysk przy połykaniu": "A flash as you swallow",
+  "Kolor banera na finiszu rundy": "The banner color at a round's finale",
+  "PODGLĄD · {0} · BEZ BONUSU W RUNDZIE": "PREVIEW · {0} · NO IN-ROUND BONUS",
 };
 
 window.addEventListener('DOMContentLoaded', () => {
