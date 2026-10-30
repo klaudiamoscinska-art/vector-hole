@@ -171,6 +171,17 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   punktu, do którego może dojechać) wciąga też to, co leży w tym pasie.
   Boty bez zmian (mały gracz w rogu nadal jest przed nimi bezpieczny);
   zasady rozmiaru (1,15× przy rywalach, progi T przy obiektach) bez zmian.
+- **Rywal podobnej wielkości (DEVICE-QA-1):** w pasie 1,15× żaden z dwóch
+  wirów nie zje drugiego. Taki rywal blisko gracza ma szary przerywany
+  okrąg na swojej prawdziwej krawędzi (ozdoby obręczy, np. kolce „słońca”,
+  sięgają dalej), a zetknięcie pokazuje „PODOBNY ROZMIAR · URÓŚNIJ, BY
+  ZJEŚĆ” (jak „ZA DUŻE” przy obiektach). Zielony przerywany = ofiara,
+  czerwona poświata = zagrożenie. Ranking na żywo nazywa się **PUNKTY**
+  (miejsce = punkty, nie rozmiar — 1. miejsce może mieć mniejszy wir),
+  wyniki mówią to samo pod tabelą.
+- **Kolejność rysowania planszy (DEVICE-QA-1):** obiekty w kadrze rysują
+  się od największych, równe od tyłu do przodu — mały obiekt nigdy nie
+  chowa się pod budynkiem. Pozycje, jedzenie i RNG bez zmian.
 - **Ewolucja (od 2. rundy Areny — FTUE-3):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
   (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala,
   Łowca) albo POMIŃ. Działają do końca rundy.
@@ -249,7 +260,9 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 - **Trzy gwiazdki** zamiast medalu: ★ ukończ, ★★ szybki czas, ★★★ czas
   eksperta albo specjalne wyzwanie misji (np. bez zderzenia). Każda
   gwiazdka liczy się z najlepszej próby; co 15 gwiazdek **Skrzynia
-  gwiazd** (120 monet, 3 pryzmaty, wzmocnienie). Trzy gwiazdki = tytuł
+  gwiazd** (120 monet, 3 pryzmaty, wzmocnienie) — otwiera się sama,
+  nagroda jest na koncie od razu, a karta mówi „Już na Twoim koncie” i
+  przy ilu gwiazdkach będzie następna (bez „PÓŹNIEJ”). Trzy gwiazdki = tytuł
   „PERFEKCYJNIE!”.
 - **Wzmocnienia** (`MISSION_BOOSTERS`, po M04 + po jednym w prezencie):
   Zegar +15 s (60), Turbo start od T2 (70), **Sprint +15% prędkości**
@@ -292,7 +305,12 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   wzmocnienia się odblokują (przed ukończeniem M04) — „Wróć do mapy”.
 - Najwyżej 3–10 misji EKSTREMALNYCH na dzielnicę Rozdziału II
   (`EXTREME_CAP`; boss i ostatnie misje), reszta oznaczonych 5 staje się
-  BARDZO TRUDNA. Tarcza jest wyłączona w misjach bez zagrożeń.
+  BARDZO TRUDNA. Tarcza jest wyłączona w misjach bez zagrożeń (bez rywali,
+  glitchu i Złodzieja): kafel „tu zbędna”, notka wyjaśnia dlaczego.
+  W odprawie przy „WZMOCNIENIA” stoi saldo („Masz N ◇”); brak monet —
+  złota notka „Brakuje N monet…” i (gdy dostępne) jedno wzmocnienie za
+  reklamę lub za 4 ◆; GRAJ pokazuje łączny koszt i bez monet niczego nie
+  pobiera.
 - **Odprawa**: każda misja startuje przez arkusz odprawy
   (`openMissionBriefing()`): z Dzielnic, z kafla na Mieście, z wyniku
   („GRAJ Mxx”, „SPRÓBUJ PONOWNIE”, „POWTÓRZ”) i z pauzy („zacznij od
@@ -351,7 +369,11 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   niczego. Pełne nagrody i postęp — tylko za rundę dograną do końca czasu.
 - **Core City (LVL):** ukończona runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
   rekord), Wyzwanie dnia +20% (+10% rekord); LVL 1–2 ×1,6. Nadwyżka
-  przechodzi dalej. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
+  przechodzi dalej. DEVICE-QA-1: Miasto i GRAJ podają zakres
+  („+10–17% za rundę · nagroda najpóźniej za N rund”, na LVL 1–2
+  „+16–27%”), wynik rundy rozpisuje przyrost („runda +10% · podium +2% ·
+  1. miejsce +3%…”); od LVL 6 karta mówi „Miasto zbudowane w całości” i
+  co daje każde dalsze 100%. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
   „Pikselowy Wybuch”, Finisz „Fala”, zestaw „Pryzmat”; potem 100 monet + 10
   pryzmatów.
 - **Poziom gracza (XP):** każda runda/misja; nagroda w monetach,
@@ -501,11 +523,11 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 - **Miasto (v17.1 — jeden bohater, jeden haczyk):** nagłówek (pierścień
   poziomu gracza z XP, nazwa, monety, pryzmaty, ustawienia) → **karta Core
   City** zajmująca wolną wysokość: LVL, w niebie hasło „Każda runda buduje
-  Twoje miasto” i konkret „+16% za rundę · nagroda za 7 rund”, nad dźwigiem
+  Twoje miasto” i konkret „+16–27% za rundę · nagroda najpóźniej za 7 rund” (zakres od DEVICE-QA-1), nad dźwigiem
   złoty znacznik „NOWY BUDYNEK”, kontury kolejnych budynków (miasto, które
   nadejdzie), w stopce następna nagroda, procent i pasek; dotknięcie =
   wszystkie nagrody → GRAJ w treści ekranu, nigdy przyklejony („runda 2:00
-  · +16% budowy miasta”) → kafle **Kampania** (następna misja, pełna nazwa
+  · +16–27% budowy miasta”) → kafle **Kampania** (następna misja, pełna nazwa
   w dwóch liniach → odprawa) i **Wyzwanie dnia** → skrzynia. Bez pustych
   pasów i bez przewijania (375×667). **VISUAL-1:** miasto na karcie
   pokazuje etap z zapisanego poziomu Core City — LVL 1 fundamenty
@@ -531,7 +553,19 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 - **Wynik Areny:** wynik, rozmiar i miejsce, haczyk (rekord / wyzwanie),
   linia „co da następna runda” (FTUE-3, §1a), jedna karta NAGRODY
   (monety, XP, Core City — przy awansie znacznik „LVL n” i „Nowy etap
-  miasta: …”), tabela, pasek akcji.
+  miasta: …”, pod paskiem części przyrostu), tabela (pod nią „Miejsce
+  liczy się według punktów…”), pasek akcji: ZAGRAJ JESZCZE RAZ, pod nim
+  ×2 MONET · REKLAMA i WYZWIJ ZNAJOMEGO tej samej szerokości, „Wróć do
+  Miasta”.
+- **Karty nagród i odblokowań (DEVICE-QA-1):** jeden komponent; przyciski
+  na osi tekstu (na szerokim ekranie ikona z lewej, tekst i przyciski
+  wspólnie wyśrodkowane), licznik „Nowość n z N”, przycisk z akcją tylko
+  wtedy, gdy prowadzi dalej (WARSZTAT, DZIELNICA, WYZWANIA); karta bez
+  akcji (skrzynia, wzmocnienia) ma jeden przycisk DALEJ / ŚWIETNIE.
+- **Warsztat:** arkusz zakupu na poziomym ekranie stoi na środku wysokości
+  nad siatką (podgląd z lewej widoczny), na telefonie u dołu; podglądana
+  Smuga / Efekt / Finisz podpisuje podgląd swoją nazwą, Finisz pokazuje
+  baner „WIELKI FINISZ!” w swoim kolorze.
 - Usunięte jako szum: napisy „VECTOR HOLE” nad tytułami zakładek,
   przyciski POWRÓT/DO MIASTA tam, gdzie jest dolna nawigacja.
 

@@ -4,6 +4,46 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## DEVICE-QA-1 „Ogrywanie 30.10” (zapis nadal v13; ekonomia, ceny, nagrody, zasady jedzenia i trudność bez zmian — poprawki tekstu, układu i czytelności)
+- **Core City (019, 023):** naliczanie było poprawne (+10% runda, +2% podium,
+  +3% 1. miejsce, +2% rekord, ×1,6 na LVL 1–2 — 67% → 82% to 10 + 2 + 3),
+  mylił tekst „+10% za rundę”. Miasto i GRAJ podają zakres („+10–17% za
+  rundę · nagroda najpóźniej za N rund”), wynik rundy rozpisuje przyrost
+  („runda +10% · podium +2% · 1. miejsce +3%”). Od LVL 6: „Miasto
+  zbudowane w całości” i co daje każde dalsze 100% (+100 monet i +10
+  pryzmatów — tyle, ile przyznaje gra); instrukcja ładowania mówi o ×1,6
+  i o tym, że runda opuszczona nie ładuje miasta.
+- **Ranking i rozmiar (020, 022):** ranking był i jest punktowy; tabela
+  na żywo nazywa się PUNKTY, pod wynikami „Miejsce liczy się według
+  punktów, nie rozmiaru wiru”. Rywal w pasie 1,15× (żaden nie zje
+  drugiego — test potwierdza brak błędu kolizji) ma przy graczu szary
+  przerywany okrąg na prawdziwej krawędzi, zetknięcie pokazuje „PODOBNY
+  ROZMIAR · URÓŚNIJ, BY ZJEŚĆ”.
+- **Wzmocnienia (016, 017):** saldo „Masz N ◇” przy WZMOCNIENIA, brak
+  monet złotą (nie różową) notką; Tarcza w misji bez zagrożeń: „tu
+  zbędna” (było ucięte „brak zagrożeń”) i wyjaśnienie w notce. Ceny,
+  efekty, blokada GRAJ i zakup za pryzmaty bez zmian.
+- **Karty nagród i odblokowań (003, 006–010, 012, 014, 015, 018):** jeden
+  komponent — przyciski na osi tekstu (wisiały przy lewej krawędzi
+  kolumny: `.btn` ma maks. 320 px), tekst nad promieniami ikony (007: ucięta
+  pierwsza litera), licznik „Nowość 1 z 2” zamiast „1 / 2”. Skrzynia
+  gwiazd i darmowa skrzynia mówią „Już na Twoim koncie” (nagroda jest
+  przyznana przy otwarciu) i nie mają „PÓŹNIEJ”; Wzmocnienia mają jeden
+  przycisk (ŚWIETNIE robiło to samo co DALEJ).
+- **Wyniki (002, 011):** ×2 MONET · REKLAMA i WYZWIJ ZNAJOMEGO mają
+  szerokość ZAGRAJ JESZCZE RAZ (rząd był węższy i przesunięty).
+- **Warsztat (004, 005):** arkusz zakupu na poziomym ekranie na środku
+  wysokości nad siatką (był przyklejony do dołu); podglądana Smuga /
+  Efekt / Finisz podpisuje podgląd swoją nazwą, Finisz pokazuje baner
+  „WIELKI FINISZ!” w swoim kolorze.
+- **Plansza (021, 024):** obiekty w kadrze rysują się od największych —
+  mały nie chowa się pod budynkiem (pozycje i RNG bez zmian); strzałka
+  celu misji nie wskazuje obiektów ukończonego kroku (M73: bajty po
+  „4/4”), także w awaryjnym „jedzeniu do wzrostu”.
+- **QA:** nowy `qa/deviceqa1.mjs` (w `run-all`; baza 9826baf: 3/18 i 9/32,
+  kandydat 18/18 i 32/32); `qa/v17.mjs` — asercja tekstu Miasta na zakres.
+  Raport `docs/DEVICE_QA1_PLAYTEST_20261030.md`.
+
 ## GAME-READY-1 „Przed testami zewnętrznymi” (zapis nadal v13; rozgrywka, misje, ekonomia, grafika i wydajność bez zmian)
 - **Data Wyzwania dnia po angielsku:** etykieta była zawsze formatowana
   po polsku (`pl-PL`), a słownik znał tylko jedną datę — po angielsku
