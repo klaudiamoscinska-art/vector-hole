@@ -65,7 +65,7 @@ export async function runV17Checks(url) {
     });
     results.push(report(`Miasto ${W}×${H}: one hero -- the Core City card above GRAJ, no second live panel`, hub.cityAbovePlay && hub.noStage && hub.cityH >= 176, JSON.stringify(hub)));
     results.push(report(`Miasto ${W}×${H}: no empty band -- the content reaches the nav (gap ≤ 40 px) without scrolling`, hub.gapBelowChest >= 0 && hub.gapBelowChest <= 40, `${hub.gapBelowChest} px`));
-    results.push(report(`Miasto ${W}×${H}: the card says why it is fun (+% per round, rounds to the reward) and GRAJ says what it builds`, /Każda runda Areny buduje Twoje miasto/.test(hub.pitch) && /\+\d+% za rundę · nagroda za \d+ rund/.test(hub.pitch) && hub.pitchInCard && /\+\d+% budowy miasta/.test(hub.sub) && hub.titleFull, JSON.stringify({ pitch: hub.pitch, sub: hub.sub })));
+    results.push(report(`Miasto ${W}×${H}: the card says why it is fun (+% per round as a range -- DEVICE-QA-1, rounds to the reward) and GRAJ says what it builds`, /Każda runda Areny buduje Twoje miasto/.test(hub.pitch) && /\+\d+–\d+% za rundę · nagroda najpóźniej za \d+ rund/.test(hub.pitch) && hub.pitchInCard && /\+\d+–\d+% budowy miasta/.test(hub.sub) && hub.titleFull, JSON.stringify({ pitch: hub.pitch, sub: hub.sub })));
     results.push(report(`Miasto ${W}×${H}: no runtime errors`, g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
     await g.browser.close();
   }
