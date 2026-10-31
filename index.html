@@ -43,7 +43,7 @@
 
     <div id="hud-topright" class="hud-panel hud-standings">
       <button id="hud-rankBadge" class="standings-header" aria-label="Zwiń/rozwiń pełny ranking">
-        <span class="leaderboard-title"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/></svg> NA ŻYWO</span>
+        <span class="leaderboard-title"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/></svg> PUNKTY</span>
         <span id="rankValue" class="hud-value rank">#1/6</span>
       </button>
       <ol id="leaderboardList"></ol>
@@ -303,7 +303,7 @@
         <canvas id="hubCityCanvas" class="hub-city-canvas"></canvas>
         <div class="hub-city-badge"><span class="hub-city-sub">CORE CITY</span><span id="hubLevelLabel" class="hub-city-lvl">LVL 1</span></div>
         <!-- v17.1: the hook in words, in the sky above the skyline. -->
-        <div class="hub-city-pitch"><strong>Każda runda Areny buduje Twoje miasto</strong><span id="hubCityPitchSub">Nowa nagroda za kilka rund</span></div>
+        <div class="hub-city-pitch"><strong id="hubCityPitchTitle">Każda runda Areny buduje Twoje miasto</strong><span id="hubCityPitchSub">Nowa nagroda za kilka rund</span></div>
         <div class="hub-city-foot">
           <div class="hub-city-next">
             <span id="hubRewardChip1Icon" class="hub-city-next-icon" aria-hidden="true"></span>
@@ -886,6 +886,7 @@
           <div id="resultCoreBarBefore" class="result-core-bar-before"></div>
           <div id="resultCoreBar" class="result-core-bar-after"></div>
         </div>
+        <span id="resultCoreParts" class="result-core-parts"></span>
         <span id="resultCoreStage" class="result-core-stage hidden"></span>
       </div>
       </div>
@@ -893,6 +894,8 @@
       </div>
       <div class="wide-col wide-col-b">
       <ol id="finalLeaderboard" class="final-leaderboard"></ol>
+      <!-- DEVICE-QA-1 (playtest 022): first place is the most points, not the biggest vortex. -->
+      <p class="result-rank-note">Miejsce liczy się według punktów, nie rozmiaru wiru.</p>
 
       <p id="dailyResultLine" class="hint-text daily-result hidden"></p>
       <p id="missionResultLine" class="hint-text mission-result hidden"></p>
