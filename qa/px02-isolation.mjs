@@ -275,9 +275,9 @@ export async function runPx02Checks(url) {
       gm.openWarsztatScreen();
       for (const sk of SKINS.filter(s => s.price > 0)) {
         gm.onCosmeticPick('skin', sk);
-        const btn = document.getElementById('btnInfoSheetAction');
+        const btn = document.getElementById('btnWarsztatBuy');
         if (btn && !btn.classList.contains('hidden')) btn.click();
-        gm.closeInfoSheet();
+        gm.clearWarsztatFocus();
         out.bought.push(sk.id + ':' + (gm.save.owned.includes(sk.id) && gm.save.selected === sk.id));
         for (const [m, round] of Object.entries(modes)) (out.modes[m] = out.modes[m] || {})['bought:' + sk.id] = window.__px02Sig(round);
       }
@@ -304,13 +304,13 @@ export async function runPx02Checks(url) {
       const head = document.querySelector('.warsztat-preview-labels') ? document.querySelector('.warsztat-preview-labels').innerText : '';
       const sheets = [];
       gm.save.owned = ['rainbow']; gm.save.coins = 0;
-      for (const sk of SKINS.filter(s => s.id !== 'rainbow')) { gm.onCosmeticPick('skin', sk); sheets.push(document.getElementById('infoSheetBody').innerText); gm.closeInfoSheet(); }
+      for (const sk of SKINS.filter(s => s.id !== 'rainbow')) { gm.onCosmeticPick('skin', sk); sheets.push(document.querySelector('.warsztat-preview').innerText); gm.clearWarsztatFocus(); }
       return { grid, head, sheets: sheets.join(' || ') };
     });
     const bonusWords = /bonus|prędko|monet za rundę|XP|punktów|mini-magnes|wzrostu|Start od T2|combo/i;
     // "BEZ BONUSU" (the preview label saying there is none) is not a promise.
     const promise = (t) => bonusWords.test(t.replace(/bez bonusu/gi, ''));
-    push('ISO-B Warsztat copy: no vortex promises a bonus (grid, preview label, every info sheet)', !promise(copy.grid) && !promise(copy.head) && !promise(copy.sheets), [copy.grid, copy.head, copy.sheets].join(' ## ').replace(/\s+/g, ' ').slice(0, 400));
+    push('ISO-B Warsztat copy: no vortex promises a bonus (grid, preview label, every item looked at)', !promise(copy.grid) && !promise(copy.head) && !promise(copy.sheets), [copy.grid, copy.head, copy.sheets].join(' ## ').replace(/\s+/g, ' ').slice(0, 400));
     noErr(g.errors, 'ISO-B');
     await g.browser.close();
   }
@@ -583,7 +583,7 @@ export async function runPx02Checks(url) {
       const t = await sheetTitle(page);
       const disk = await rawOf(page);
       // Spending the refund is impossible (it isn't there); a purchase attempt fails for lack of coins.
-      const spend = await page.evaluate(() => { const gm = window.game; gm.save.owned = gm.save.owned.filter(id => id !== 'purple'); gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'purple')); const b = document.getElementById('btnInfoSheetAction'); const buyable = /KUP/.test(b.textContent) && !b.classList.contains('hidden'); gm.closeInfoSheet(); gm.save.owned.push('purple'); return buyable; });
+      const spend = await page.evaluate(() => { const gm = window.game; gm.save.owned = gm.save.owned.filter(id => id !== 'purple'); gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'purple')); const b = document.getElementById('btnWarsztatBuy'); const buyable = /KUP/.test(b.textContent) && !b.classList.contains('hidden'); gm.clearWarsztatFocus(); gm.save.owned.push('purple'); return buyable; });
       push(`LEGACY-04 quota (${label}): the refund is rolled back in memory (37 coins, marker 0), disk keeps the original bytes, no card, nothing to spend`, r.coins === 37 && r.looksOnly === 0 && disk === raw && !REFUND_TITLE.test(t || '') && !spend, JSON.stringify({ ...r, diskSame: disk === raw, title: t, spend }));
       // Storage frees up mid-session: an autosave writes the unsettled save; the next load refunds once.
       const mid = await page.evaluate(() => { localStorage.setItem('__qaQuota', '0'); const res = window.__qaPlayArena({ style: 'greedy' }); return { coins: window.game.save.coins, earned: res.coinsEarned }; });
@@ -641,8 +641,8 @@ export async function runPx02Checks(url) {
         const gm = window.game;
         const r = { guard: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', eco: gm.save.economy, coins: gm.save.coins };
         gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'purple'));
-        const b = document.getElementById('btnInfoSheetAction'); if (b && !b.classList.contains('hidden')) b.click();
-        gm.closeInfoSheet();
+        const b = document.getElementById('btnWarsztatBuy'); if (b && !b.classList.contains('hidden')) b.click();
+        gm.clearWarsztatFocus();
         window.__qaPlayArena({ style: 'greedy' });
         saveGame(gm.save);
         r.after = gm.save.coins; r.owned = gm.save.owned.join(',');
@@ -671,7 +671,7 @@ export async function runPx02Checks(url) {
       const r = { eco: JSON.stringify(gm.save.economy) };
       gm.save.coins = 300; saveGame(gm.save);
       gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'cyan'));
-      const b = document.getElementById('btnInfoSheetAction'); b.click(); gm.closeInfoSheet();
+      const b = document.getElementById('btnWarsztatBuy'); b.click(); gm.clearWarsztatFocus();
       r.coins = gm.save.coins;
       return r;
     });
@@ -705,7 +705,7 @@ export async function runPx02Checks(url) {
         gm.closeInfoSheet();
         gm.openWarsztatScreen();
         gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'cyan'));
-        document.getElementById('btnInfoSheetAction').click();
+        document.getElementById('btnWarsztatBuy').click();
         out.bought = gm.save.owned.includes('cyan'); out.after = (gm.save.economy.boughtAfter || []).join(',');
         gm.saveGuardShown = null; gm.showSaveGuardNotice('invalid'); document.getElementById('btnInfoSheetAction').click();
         return out;
