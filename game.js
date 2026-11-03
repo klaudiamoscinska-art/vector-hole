@@ -1854,6 +1854,16 @@ class SoundEngine {
    Portal SDK scripts are only fetched when the page is actually running on
    that portal (hostname/referrer match, or ?portal=… for local testing),
    so the default build makes no third-party requests. */
+/* CRAZYGAMES-BASIC-1: one source, one game. tools/export-crazygames-basic.mjs
+   stamps data-distribution="crazygames-basic" on the package's <html>; the
+   repo's index.html and every GitHub Pages release carry no such attribute
+   ('web'). It lives in the packaged file, never in a URL parameter. On Basic
+   Launch the portal disables ads and rejects rewarded buttons that do nothing,
+   so this package loads no SDK and offers no ad (real or demo), no challenge
+   link to its own file host and no statistics. Rewards other than ads stay. */
+const DISTRIBUTION = document.documentElement.getAttribute('data-distribution') || 'web';
+const PORTAL_BASIC = DISTRIBUTION === 'crazygames-basic';
+
 const PORTAL_SDKS = {
   crazygames: { match: /(^|\.)crazygames\.[a-z.]+$/, src: 'https://sdk.crazygames.com/crazygames-sdk-v3.js' },
   poki: { match: /(^|\.)poki(-gdn)?\.(com|net|io)$/, src: 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js' }
@@ -1896,6 +1906,7 @@ class Monetization {
     this.lastInterstitialAt = 0;
     this.prices = {};
     this.busy = false;
+    if (PORTAL_BASIC) { this.provider = 'none'; return; }
     const portal = this.detectPortal();
     if (portal) this.ready = this.loadPortal(portal);
     else this.attachProvider();
@@ -2003,6 +2014,9 @@ class Monetization {
 
   get canPurchase() { return this.provider === 'native' && !!(this.sdk && this.sdk.purchase); }
   get isDemo() { return this.provider === 'demo'; }
+  /** No provider can show an ad (Basic package, or a portal's SDK failed):
+   *  every offer stays off the screen -- never a button that does nothing. */
+  get adsAvailable() { return this.provider !== 'none'; }
   price(sku) { return this.prices[sku] || (IAP_PRODUCTS.find(p => p.sku === sku) || {}).price || ''; }
 
   /** Portals pause their own ads during gameplay and use these markers for
@@ -2062,6 +2076,7 @@ class Monetization {
   }
 
   placementLeft(placement) {
+    if (!this.adsAvailable) return 0;
     const def = AD_PLACEMENTS[placement];
     if (!def || !def.dailyCap) return Infinity;
     const st = this.game.save.ads || {};
@@ -2120,6 +2135,7 @@ class Monetization {
     const A = CONFIG.ads;
     const save = this.game.save;
     if (DEV.sandbox) return; // v23: no real ad breaks in test mode
+    if (!this.adsAvailable) return;
     if (save.entitlements && save.entitlements.noAds) return;
     if ((save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns) return;
     if (Date.now() - this.lastInterstitialAt < A.interstitialMinGapMs) return;
@@ -8598,7 +8614,7 @@ class Game {
 
     this.sessionId = generateId('session');
     this.analytics = new Analytics();
-    this.analytics.consent = () => !!(this.save.privacy && this.save.privacy.analytics);
+    this.analytics.consent = () => !PORTAL_BASIC && !!(this.save.privacy && this.save.privacy.analytics);
     this.sessionStartedAt = Date.now();
     // Golden Shot v11: synthesized SFX + adaptive music (see SoundEngine).
     this.sound = new SoundEngine(this.save.settings);
@@ -9185,6 +9201,12 @@ class Game {
       this.requestPlayAgain();
     });
     document.getElementById('btnShare').addEventListener('click', () => this.shareResult());
+    if (PORTAL_BASIC) {
+      // No portal link to share yet (the raw file URL is not one), and the row
+      // also held the ×2 offer. No statistics either, so nothing to consent to.
+      document.getElementById('btnShare').parentElement.classList.add('hidden');
+      document.querySelector('[data-consent]').closest('.control-row').classList.add('hidden');
+    }
     document.getElementById('btnMenu').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'menu' });
       this.updateCoinDisplays();
@@ -9668,6 +9690,9 @@ class Game {
    *  packs only render when the provider can actually take a payment
    *  (Monetization.canPurchase) -- never a fake checkout. */
   renderStore() {
+    const freeOffer = this.monetization.adsAvailable;
+    document.querySelector('#shopScreen .store-free').classList.toggle('hidden', !freeOffer);
+    document.querySelector('#shopScreen .store-card').classList.toggle('hidden', !freeOffer && !this.monetization.canPurchase);
     const left = this.monetization.placementLeft('free_prisms');
     const btn = document.getElementById('btnFreePrisms');
     btn.disabled = left <= 0;
@@ -10092,7 +10117,7 @@ class Game {
     // v14: only over the nav tabs -- on a result screen it covered the main
     // button.
     const onNavScreen = !document.getElementById('bottomNav').classList.contains('hidden');
-    if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running || this.isFirstRun() || !onNavScreen);
+    if (bar) bar.classList.toggle('hidden', PORTAL_BASIC || !!this.save.privacy.decided || this.running || this.isFirstRun() || !onNavScreen);
     this.reserveConsentSpace();
   }
 
@@ -10132,8 +10157,8 @@ class Game {
       body: [
         `<strong>Administrator:</strong> ${escapeHtml(L.publisher)}${L.contact ? ` · kontakt: ${escapeHtml(L.contact)}` : ''}.`,
         '<strong>Co zapisujemy:</strong> postęp gry, ustawienia i losowy identyfikator gościa — wyłącznie w pamięci Twojej przeglądarki (localStorage) na tym urządzeniu. Nie zakładasz konta, nie podajesz e-maila. Nazwa gracza jest opcjonalna.',
-        '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
-        '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
+        PORTAL_BASIC ? '<strong>Co wysyłamy:</strong> gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.' : '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
+        PORTAL_BASIC ? '<strong>Reklamy i zakupy:</strong> ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.' : '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
         '<strong>Czcionki:</strong> wbudowane w grę — bez pobierania z Google.',
         '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
       ]
@@ -11174,7 +11199,7 @@ class Game {
     this.updateCoinDisplays();
     // Golden Shot v11: opt-in "double it" right at the moment of reward.
     this.lastLoginReward = reward;
-    document.getElementById('btnLoginDouble').classList.remove('hidden');
+    document.getElementById('btnLoginDouble').classList.toggle('hidden', !this.monetization.adsAvailable);
     document.getElementById('btnLoginClose').classList.remove('hidden');
     document.getElementById('btnLoginDouble').disabled = false;
     this.analytics.track('ad_offer', { context: 'login_double' });
@@ -14638,7 +14663,7 @@ class Game {
     const firstFinished = this.newbieBonusApplied && finishedBefore === 0 && (this.save.stats.recentArenaScores || []).length === 1 && !this.arenaResultShown;
     const noAdResult = CONFIG.ftue.firstResultNoAd && (this.save.stats.runsPlayed === 1 || firstFinished);
     this.arenaResultShown = true;
-    document.getElementById('btnWatchAd').classList.toggle('hidden', noAdResult);
+    document.getElementById('btnWatchAd').classList.toggle('hidden', noAdResult || !this.monetization.adsAvailable);
 
     this.showScreen('gameOverScreen');
     this.sound.setIntensity(0);
@@ -18558,6 +18583,8 @@ const I18N_EN = {
   "Rejs bez kolizji": "Collision-Free Cruise",
   "Rejs nocny": "Night Cruise",
   "Reklamy i zakupy:": "Ads and purchases:",
+  "gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.": "the game has no server, sends nothing and collects no statistics. The portal you play on has its own privacy policy.",
+  "ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.": "this version of the game shows no ads and sells nothing for real money.",
   "Reklamy w zieleni": "Ads in the Green",
   "Rekord Rdzenia": "Core Record",
   "Rekord chmury": "Cloud Record",
