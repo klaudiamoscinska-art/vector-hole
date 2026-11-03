@@ -3,8 +3,9 @@
 // nothing sped up. The player is a bot (it steers by keys, the rules are the game's);
 // sections of the round are joined by plain cuts; the first frames are the static cover.
 //   node tools/crazygames-video.mjs --game=DIR --cover=FILE --out=FILE.mp4 --ffmpeg=EXE
-//        --size=1920x1080 --dpr=1 --seed=N [--windows=1-7,40-46,100-105.5] [--hold=0.6]
+//        --size=1920x1080 --dpr=1 --seed=N [--windows=6-11,28-32,87-91] [--mission=M38:8-12.5] [--hold=0.4]
 //   Without --windows it only prints the round second by second, to choose them.
+//   --mission appends a section of a real Campaign mission (the bot plays it from its start).
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -50,6 +51,43 @@ function setupRound(seed) {
     if (best) { const m = Math.hypot(best.x - p.x, best.y - p.y) || 1; g.keyDir = { x: (best.x - p.x) / m, y: (best.y - p.y) / m }; }
     else { wander += 0.05; g.keyDir = { x: Math.cos(wander), y: Math.sin(wander) }; }
   };
+  // A Campaign mission after the round: the same bot's priorities, goal objects first.
+  window.__vStartMission = (id) => {
+    g.stopRun();
+    g.missionBoosters = [];
+    g.startCampaignMission(id);
+    if (g.introPending) g.beginMissionPlay();
+    cancelAnimationFrame(g.rafId);
+    g.running = false;
+  };
+  window.__vStepMission = (n, doRender) => {
+    let hp = g.player;
+    for (let i = 0; i < n && g.mission && !g.mission.ended && !g.mission.finishing; i++) {
+      if (g.evolutionPending) { const card = document.querySelector('#evolutionCards .evolution-card'); if (card) card.click(); else g.skipEvolutionOffer(); }
+      if (g.introPending) g.beginMissionPlay();
+      if (g.revivePending) { g.declineRevive(); break; }
+      hp = g.player;
+      const tier = g.campaignTierIndex(g.campaignPlayerTier().id), goals = g.campaignGoalEntityTypes();
+      let fx = 0, fy = 0, best = null, bs = -1;
+      for (const b of g.bots) { const d = Math.hypot(b.x - hp.x, b.y - hp.y); if (b.radius > hp.radius * 1.1 && d < 170 + b.radius) { fx -= (b.x - hp.x) / (d + 1); fy -= (b.y - hp.y) / (d + 1); } }
+      if (fx || fy) { const m = Math.hypot(fx, fy); g.keyDir = { x: fx / m, y: fy / m }; } else {
+        for (const e of g.campaignEntities) {
+          if (e.consumed || e.eating || !e.live || e.type === 'gate' || tier < e.stats.minTier) continue;
+          if ((e.type === 'node' || e.type === 'pylon') && !e.active) continue;
+          if (e.type === 'landmark' && !e.unlocked) continue;
+          const d = Math.hypot(e.x - hp.x, e.y - hp.y), sc = (goals.has(e.type) ? 4 : 1) * ((e.stats && e.stats.growth) || 2) / (d + 60);
+          if (sc > bs) { bs = sc; best = e; }
+        }
+        if (best) { const m = Math.hypot(best.x - hp.x, best.y - hp.y) || 1; g.keyDir = { x: (best.x - hp.x) / m, y: (best.y - hp.y) / m }; }
+      }
+      vnow += dt * 1000;
+      if (!g.evolutionPending && !g.introPending) g.updateCampaign(dt);
+      if (doRender !== false) g.renderCampaign(vnow / 1000);
+      window.__vClockAdvance(dt * 1000);
+    }
+    const m = g.mission;
+    return { playing: !!m && !m.ended && !m.finishing, r: +hp.radius.toFixed(1), score: hp.score || 0, goals: g.campaignGoalItems().map(it => `${it.label} ${it.progress}/${it.target}`).join(' | ') };
+  };
   window.__vStep = (n, doRender) => {
     for (let i = 0; i < n && g.state === GameState.PLAYING; i++) {
       if (g.evolutionPending) {
@@ -67,7 +105,7 @@ function setupRound(seed) {
   };
 }
 
-export async function makeVideo({ gameDir, cover, out, ffmpeg, width, height, dpr = 1, seed, windows, hold = 0.6 }) {
+export async function makeVideo({ gameDir, cover, out, ffmpeg, width, height, dpr = 1, seed, windows, mission = null, hold = 0.4 }) {
   const site = await serve({ root: gameDir });
   const init = QA_RANDOM + frozenDateScript('2026-11-03T12:00:00Z') + CLOCK;
   const g = await openGame(site.url, { viewport: { width, height }, mobile: false, deviceScaleFactor: dpr, locale: 'en-US', initScript: init });
@@ -92,7 +130,7 @@ export async function makeVideo({ gameDir, cover, out, ffmpeg, width, height, dp
       await g.page.evaluate(() => document.getElementById('__cover').remove());
     }
     await g.page.evaluate(setupRound, seed);
-    const last = windows ? Math.max(...windows.map(w => w[1])) : 200;
+    const last = windows ? Math.max(...windows.map(w => w[1])) : (mission ? 2 : 200);
     let f = 0, shots = 0, lastInfo = null;
     const inWin = (sec) => windows && windows.some(([a, b]) => sec >= a && sec < b);
     while (f / FPS < last) {
@@ -114,6 +152,27 @@ export async function makeVideo({ gameDir, cover, out, ffmpeg, width, height, dp
       }
       if (windows && shots && shots % 300 === 0) console.log(`  ${shots} frames, t=${(f / FPS).toFixed(1)} s, r=${lastInfo.r}, ${lastInfo.tier}`);
     }
+    if (mission) {
+      await g.page.evaluate((id) => window.__vStartMission(id), mission.id);
+      let mf = 0;
+      while (mf / FPS < mission.to) {
+        const sec = mf / FPS;
+        if (enc && sec >= mission.from) {
+          lastInfo = await g.page.evaluate(() => window.__vStepMission(1));
+          if (!lastInfo.playing) break;
+          const shot = await g.page.screenshot({ type: 'jpeg', quality: 95 });
+          if (!enc.stdin.write(shot)) await new Promise(r => enc.stdin.once('drain', r));
+          shots++;
+          mf++;
+        } else {
+          const n = Math.max(1, Math.min(60, Math.round((Math.min(mission.from, sec + 1) - sec) * FPS)) || 60);
+          lastInfo = await g.page.evaluate((k) => window.__vStepMission(k, false), n);
+          mf += n;
+          if (!enc) log.push({ missionSec: +(mf / FPS).toFixed(1), ...lastInfo });
+          if (!lastInfo.playing) break;
+        }
+      }
+    }
     if (g.errors.length) console.log('page errors:', g.errors.slice(0, 3).join(' | '));
     if (enc) {
       await new Promise((res, rej) => { enc.on('close', (c) => (c === 0 ? res() : rej(new Error('ffmpeg exit ' + c)))); enc.stdin.end(); });
@@ -129,11 +188,13 @@ export async function makeVideo({ gameDir, cover, out, ffmpeg, width, height, dp
 if (process.argv[1] && path.basename(process.argv[1]) === 'crazygames-video.mjs') {
   const [width, height] = arg('size', '1920x1080').split('x').map(Number);
   const win = arg('windows', null);
+  const ms = arg('mission', null);
   const r = await makeVideo({
     gameDir: path.resolve(arg('game', 'qa/out/crazygames-basic/game')), cover: arg('cover', null), out: arg('out', null), ffmpeg: arg('ffmpeg', null),
-    width, height, dpr: Number(arg('dpr', 1)), seed: Number(arg('seed', 4242)), hold: Number(arg('hold', 0.6)),
+    width, height, dpr: Number(arg('dpr', 1)), seed: Number(arg('seed', 4242)), hold: Number(arg('hold', 0.4)),
+    mission: ms ? { id: ms.split(':')[0], from: Number(ms.split(':')[1].split('-')[0]), to: Number(ms.split(':')[1].split('-')[1]) } : null,
     windows: win ? win.split(',').map(s => s.split('-').map(Number)) : null
   });
-  if (r.log) r.log.filter((e, i) => i % 5 === 4 || !e.playing).forEach(e => console.log(JSON.stringify(e)));
+  if (r.log) r.log.filter((e, i) => e.missionSec != null || i % 5 === 4 || !e.playing).forEach(e => console.log(JSON.stringify(e)));
   else console.log(`frames ${r.shots}, ${r.seconds.toFixed(2)} s, end ${JSON.stringify(r.lastInfo)}`);
 }

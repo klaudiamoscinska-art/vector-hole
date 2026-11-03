@@ -1,7 +1,7 @@
 // CRAZYGAMES-BASIC-1: the three submission covers + the 2:3 first video frame, drawn
 // by the game's own art (its Hole.draw(), its world objects' drawObjectArt(), its fonts
 // and palette) on one canvas: no screenshot, no third-party image, no text but the title.
-//   node tools/crazygames-covers.mjs --game=DIR --out=DIR [--title="VECTOR HOLE"]
+//   node tools/crazygames-covers.mjs --game=DIR --out=DIR
 // Needs the Playwright install the QA suites use. Same sources = same pictures.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,16 +13,17 @@ const { chromium } = require('playwright');
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
 
 // sizes: docs.crazygames.com/requirements/game-covers/ (read 2026-11-03)
+const TALL = { hero: [0.5, 0.625], heroR: 0.27, spread: 1, title: { x: 0.5, y: 0.17, size: 0.205 } };
 export const COVERS = [
-  { file: 'landscape-1920x1080.png', w: 1920, h: 1080, hero: [0.715, 0.5], heroR: 0.325, spread: 0.72, title: { x: 0.262, y: 0.5, size: 0.17, align: 'center' } },
-  { file: 'portrait-800x1200.png', w: 800, h: 1200, hero: [0.5, 0.635], heroR: 0.215, title: { x: 0.5, y: 0.215, size: 0.185, align: 'center' } },
-  { file: 'square-800x800.png', w: 800, h: 800, hero: [0.5, 0.66], heroR: 0.235, title: { x: 0.5, y: 0.235, size: 0.2, align: 'center' } },
+  { file: 'landscape-1920x1080.png', w: 1920, h: 1080, hero: [0.705, 0.52], heroR: 0.335, spread: 0.92, title: { x: 0.25, y: 0.5, size: 0.175 } },
+  { file: 'portrait-800x1200.png', w: 800, h: 1200, ...TALL },
+  { file: 'square-800x800.png', w: 800, h: 800, hero: [0.5, 0.655], heroR: 0.25, spread: 0.92, title: { x: 0.5, y: 0.2, size: 0.2 } },
   // The portrait video's opening frame: the same picture as the portrait cover at the video's size.
-  { file: 'video-first-frame-portrait-1080x1620.png', w: 1080, h: 1620, hero: [0.5, 0.635], heroR: 0.215, title: { x: 0.5, y: 0.215, size: 0.185, align: 'center' }, source: true }
+  { file: 'video-first-frame-portrait-1080x1620.png', w: 1080, h: 1620, ...TALL, source: true }
 ];
 
 /** Runs in the game's page: the picture is a pure function of the size and a fixed RNG. */
-function drawCover(spec, titleText) {
+function drawCover(spec) {
   const { w: W, h: H, hero, heroR, title } = spec;
   const U = Math.min(W, H);
   const cv = document.createElement('canvas');
@@ -30,7 +31,7 @@ function drawCover(spec, titleText) {
   const c = cv.getContext('2d');
   let seed = 90210;
   const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-  const hx = hero[0] * W, hy = hero[1] * H, hr = heroR * U, spread = spec.spread || 1;
+  const hx = hero[0] * W, hy = hero[1] * H, hr = heroR * U, spread = spec.spread;
 
   // Night city floor in the game's palette: a tilted street grid, its blocks and crossings.
   const bg = c.createLinearGradient(0, 0, W, H);
@@ -51,90 +52,113 @@ function drawCover(spec, titleText) {
   c.setLineDash([]);
   c.restore();
 
-  // The city's own objects, standing on the floor further from the pull.
-  const Obj = window.game.objects[0].constructor;
-  const art = (kind, color, x, y, r, rot, alpha) => {
-    const o = Object.create(Obj.prototype);
-    Object.assign(o, window.game.objects[0], { subtype: kind, color, radius: r, x: 0, y: 0, eating: false, swSeed: 1 });
-    c.save(); c.translate(x, y); c.rotate(rot); c.globalAlpha = alpha;
-    try { window.__coverArt(c, kind, color, r); } catch (e) { /* art kind missing */ }
-    c.restore();
-  };
-
-  // Suction: glow under the vortex and streaks spiralling into it.
-  const glow = c.createRadialGradient(hx, hy, hr * 0.5, hx, hy, hr * 3.2);
-  glow.addColorStop(0, 'rgba(152,117,255,0.60)'); glow.addColorStop(0.42, 'rgba(255,84,173,0.17)'); glow.addColorStop(0.72, 'rgba(80,240,250,0.07)'); glow.addColorStop(1, 'rgba(80,240,250,0)');
+  // Suction: a cyan and violet glow under the vortex, and streaks spiralling into it.
+  const glow = c.createRadialGradient(hx, hy, hr * 0.8, hx, hy, hr * 3);
+  glow.addColorStop(0, 'rgba(80,240,250,0.42)'); glow.addColorStop(0.26, 'rgba(152,117,255,0.26)'); glow.addColorStop(0.6, 'rgba(255,84,173,0.09)'); glow.addColorStop(1, 'rgba(80,240,250,0)');
   c.fillStyle = glow; c.fillRect(0, 0, W, H);
-  const NEON = ['#50F0FA', '#FF54AD', '#9875FF', '#EFCB63', '#68F5FC'];
+  const NEON = ['#50F0FA', '#50F0FA', '#FF54AD', '#9875FF', '#68F5FC'];
   c.lineCap = 'round';
-  for (let i = 0; i < 170; i++) {
-    const a0 = rnd() * Math.PI * 2, rad0 = hr * (1.05 + rnd() * rnd() * 3.1), sweep = 0.35 + rnd() * 0.75, col = NEON[Math.floor(rnd() * NEON.length)];
-    c.strokeStyle = col; c.globalAlpha = (0.10 + rnd() * 0.38) * Math.min(1, hr * 2.6 / rad0);
-    c.lineWidth = U * (0.0012 + rnd() * 0.0034);
+  for (let i = 0; i < 150; i++) {
+    const a0 = rnd() * Math.PI * 2, rad0 = hr * (1.05 + rnd() * rnd() * 2.9), sweep = 0.35 + rnd() * 0.75, col = NEON[Math.floor(rnd() * NEON.length)];
+    c.strokeStyle = col; c.globalAlpha = (0.14 + rnd() * 0.42) * Math.min(1, hr * 2.4 / rad0);
+    c.lineWidth = U * (0.0014 + rnd() * 0.0036);
     c.beginPath();
-    for (let k = 0; k <= 22; k++) { const f = k / 22, a = a0 + f * sweep * 1.6, rr = rad0 * (1 - f * 0.20); const px = hx + Math.cos(a) * rr, py = hy + Math.sin(a) * rr; if (k) c.lineTo(px, py); else c.moveTo(px, py); }
+    for (let k = 0; k <= 26; k++) { const f = k / 26, a = a0 + f * sweep * 1.6, rr = rad0 * (1 - f * 0.22); const px = hx + Math.cos(a) * rr, py = hy + Math.sin(a) * rr; if (k) c.lineTo(px, py); else c.moveTo(px, py); }
     c.stroke();
   }
   c.globalAlpha = 1;
 
-  // City objects dragged along the spiral: outer ones large, inner ones small; ghosts behind each.
-  const items = [
-    ['autobus', '#50F0FA', 2.95, 3.55, 0.22], ['pawilon', '#9875FF', 2.65, 5.35, 0.25], ['samochod', '#EFCB63', 2.2, 0.55, 0.165], ['latarnia', '#FF54AD', 2.05, 2.35, 0.135],
-    ['samochod', '#50F0FA', 2.15, 4.4, 0.155], ['kapsula', '#50F0FA', 1.72, 1.45, 0.115], ['pawilon', '#FF54AD', 2.8, 1.55, 0.2], ['latarnia', '#50F0FA', 1.72, 5.95, 0.105],
-    ['kapsula', '#FF54AD', 1.5, 3.25, 0.095], ['fragment', '#50F0FA', 1.36, 4.85, 0.07], ['fragment', '#EFCB63', 1.32, 0.2, 0.07], ['fragment', '#FF54AD', 1.42, 2.25, 0.07],
-    ['fragment', '#68F5FC', 1.85, 3.0, 0.075], ['fragment', '#9875FF', 2.25, 5.9, 0.08], ['fragment', '#50F0FA', 2.55, 2.6, 0.085], ['fragment', '#FF54AD', 2.5, 0.05, 0.08], ['kapsula', '#EFCB63', 2.55, 4.1, 0.13]
-  ];
   // The title's calm ground: nothing dragged across it.
-  const titleW = (W > H ? W * 0.47 : W * 0.86) / 2, titleH = title.size * U * 1.25;
-  for (const [kind, col, rr, ang, size] of items) {
-    const rad = Math.max(1.28, rr * spread) * hr, s = size * hr * 1.5;
+  const landscape = W > H;
+  const titleW = (landscape ? W * 0.44 : W * 0.86) / 2, titleH = title.size * U * 1.15;
+  const clearOfTitle = (x, y, s) => !(Math.abs(x - title.x * W) < titleW + s * 0.7 && Math.abs(y - title.y * H) < titleH + s * 0.7);
+
+  // One object of the city, as the game draws it, stretched along the pull.
+  const art = (ctx, kind, color, x, y, r, rot, stretch, alpha) => {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(1 / stretch, stretch); ctx.globalAlpha = alpha;
+    try { window.__coverArt(ctx, kind, color, r); } catch (e) { /* art kind missing */ }
+    ctx.restore();
+  };
+
+  // Small debris far out, then the hole's own art, then the big objects going over its lip.
+  const debris = [['fragment', '#50F0FA', 2.3, 0.3], ['kapsula', '#50F0FA', 1.95, 1.5], ['fragment', '#68F5FC', 2.6, 2.5], ['kapsula', '#FF54AD', 2.1, 3.3], ['fragment', '#9875FF', 1.8, 4.2], ['fragment', '#50F0FA', 2.5, 5.0], ['kapsula', '#EFCB63', 2.25, 5.8], ['fragment', '#FF54AD', 1.65, 0.95], ['latarnia', '#FF54AD', 2.45, 4.6], ['drzewo', '#FF54AD', 2.7, 1.1], ['kiosk', '#FF54AD', 2.55, 3.85]];
+  for (const [kind, col, rr, ang] of debris) {
+    const rad = rr * spread * hr, s = (kind === 'fragment' ? 0.1 : kind === 'kapsula' ? 0.13 : 0.2) * hr;
     const px = hx + Math.cos(ang) * rad, py = hy + Math.sin(ang) * rad;
-    if (Math.abs(px - title.x * W) < titleW + s && Math.abs(py - title.y * H) < titleH + s) continue;
-    for (let g = 3; g >= 1; g--) {
-      const back = ang - g * 0.05 * (hr * 2 / rad + 0.4), gr = rad * (1 + g * 0.012);
-      art(kind, col, hx + Math.cos(back) * gr, hy + Math.sin(back) * gr, s, back + Math.PI / 2 + 0.3, 0.11 * (4 - g));
-    }
-    art(kind, col, px, py, s, ang + Math.PI / 2 + 0.3, 1);
+    if (!clearOfTitle(px, py, s)) continue;
+    for (let g = 3; g >= 1; g--) { const back = ang - g * 0.055; art(c, kind, col, hx + Math.cos(back) * rad * (1 + g * 0.02), hy + Math.sin(back) * rad * (1 + g * 0.02), s, back + 1.9, 1, 0.1 * (4 - g)); }
+    art(c, kind, col, px, py, s, ang + 1.9, 1, 1);
   }
 
-  // The hero: the game's own default vortex.
   const Hole = window.game.player.constructor;
   const hole = new Hole('', 0, 0, true);
   hole.skin = 'rainbow'; hole.radius = hr; hole.auraId = null;
   c.save(); c.translate(hx, hy); hole.draw(c, 1.3); c.restore();
+
+  // The big ones: cars, a truck, a bus and a warehouse, one by one over the rim. Each sits on
+  // its own layer so its inner part can fade out into the black, as the game's objects do.
+  const bigs = landscape ? [
+    ['ciezarowka', '#CBD5E1', 1.13, 3.05, 0.46, 1.2], ['samochod', '#EFCB63', 1.0, 2.15, 0.36, 1.28], ['magazyn', '#9875FF', 1.16, 4.75, 0.42, 1.15],
+    ['samochod', '#50F0FA', 0.99, 0.35, 0.34, 1.3], ['autobus', '#CBD5E1', 1.16, 1.2, 0.42, 1.2]
+  ] : [
+    ['ciezarowka', '#CBD5E1', 1.2, 3.1, 0.47, 1.2], ['samochod', '#EFCB63', 1.03, 2.05, 0.36, 1.28], ['magazyn', '#9875FF', 1.2, 4.2, 0.44, 1.15],
+    ['samochod', '#50F0FA', 1.02, 5.5, 0.35, 1.28], ['autobus', '#CBD5E1', 1.2, 0.75, 0.44, 1.2]
+  ];
+  const layer = document.createElement('canvas');
+  layer.width = W; layer.height = H;
+  const l = layer.getContext('2d');
+  for (const [kind, col, rr, ang, size, stretch] of bigs) {
+    const rad = rr * spread * hr, s = size * hr;
+    const px = hx + Math.cos(ang) * rad, py = hy + Math.sin(ang) * rad;
+    if (!clearOfTitle(px, py, s * 0.8)) continue;
+    l.setTransform(1, 0, 0, 1, 0, 0);
+    l.clearRect(0, 0, W, H);
+    for (let g = 3; g >= 1; g--) { const back = ang - g * 0.05, gr = rad * (1 + g * 0.03); art(l, kind, col, hx + Math.cos(back) * gr, hy + Math.sin(back) * gr, s, back + 1.25, stretch, 0.11 * (4 - g)); }
+    art(l, kind, col, px, py, s, ang + 1.25, stretch, 1);
+    l.globalCompositeOperation = 'destination-out';
+    const sink = l.createRadialGradient(hx, hy, hr * 0.42, hx, hy, hr * 0.98);
+    sink.addColorStop(0, 'rgba(0,0,0,1)'); sink.addColorStop(0.55, 'rgba(0,0,0,0.82)'); sink.addColorStop(1, 'rgba(0,0,0,0)');
+    l.fillStyle = sink; l.fillRect(0, 0, W, H);
+    l.globalCompositeOperation = 'source-over';
+    c.drawImage(layer, 0, 0);
+  }
 
   // Vignette, so the title stands on calm ground.
   const vig = c.createRadialGradient(W / 2, H / 2, U * 0.45, W / 2, H / 2, Math.hypot(W, H) * 0.62);
   vig.addColorStop(0, 'rgba(4,16,29,0)'); vig.addColorStop(1, 'rgba(4,16,29,0.82)');
   c.fillStyle = vig; c.fillRect(0, 0, W, H);
 
-  // The title: two stacked words, as on the game's own logo.
-  const parts = titleText.split(' ');
-  const main = parts.pop(), top = parts.join(' ');
-  const size = title.size * U * (W > H ? 1.6 : 1), tx = title.x * W, ty = title.y * H;
-  c.textAlign = title.align; c.textBaseline = 'alphabetic';
+  // The logo: GLITCH stacked on GULP, as on the game's welcome card, with the glitch's
+  // split colours and cut-out slices. The only text on the cover.
+  const size = title.size * U * (landscape ? 1.75 : 1), tx = title.x * W, ty = title.y * H;
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
   const shade = c.createRadialGradient(tx, ty, size * 0.3, tx, ty, size * 2.5);
-  shade.addColorStop(0, 'rgba(4,16,29,0.70)'); shade.addColorStop(1, 'rgba(4,16,29,0)');
+  shade.addColorStop(0, 'rgba(4,16,29,0.74)'); shade.addColorStop(1, 'rgba(4,16,29,0)');
   c.fillStyle = shade; c.fillRect(0, 0, W, H);
-  const fitWord = (word, px, maxW, spacing) => { c.font = `${px}px 'Russo One'`; c.letterSpacing = spacing + 'px'; const m = c.measureText(word).width; return m > maxW ? px * maxW / m : px; };
+  const fit = (word, px, maxW, sp) => { c.font = `${px}px 'Russo One'`; c.letterSpacing = (px * sp) + 'px'; const m = c.measureText(word).width; return m > maxW ? px * maxW / m : px; };
   const maxW = titleW * 2;
-  const mainPx = fitWord(main, size, maxW, size * 0.03);
-  const topPx = fitWord(top, mainPx * 0.5, maxW, mainPx * 0.5 * 0.2);
-  const mainY = ty + mainPx * 0.42, topY = mainY - mainPx * 0.98;
-  c.font = `${topPx}px 'Russo One'`; c.letterSpacing = (topPx * 0.2) + 'px';
-  c.shadowColor = '#50F0FA'; c.shadowBlur = topPx * 0.55; c.fillStyle = '#68F5FC'; c.fillText(top, tx + topPx * 0.1, topY);
-  c.shadowBlur = topPx * 0.2; c.fillText(top, tx + topPx * 0.1, topY);
-  c.font = `${mainPx}px 'Russo One'`; c.letterSpacing = (mainPx * 0.03) + 'px';
-  c.shadowColor = 'rgba(152,117,255,0.95)'; c.shadowBlur = 0; c.shadowOffsetY = mainPx * 0.05; c.fillStyle = '#9875FF'; c.fillText(main, tx, mainY);
-  c.shadowOffsetY = 0; c.shadowColor = 'rgba(80,240,250,0.85)'; c.shadowBlur = mainPx * 0.22;
+  const mainPx = fit('GULP', size, maxW, 0.03);
+  const topPx = fit('GLITCH', mainPx * 0.62, maxW, 0.1);
+  const mainY = ty + mainPx * 0.5, topY = mainY - mainPx * 0.92;
+  const word = (text, px, sp, x, y, fill, blur, glow) => { c.font = `${px}px 'Russo One'`; c.letterSpacing = (px * sp) + 'px'; c.shadowColor = glow || 'transparent'; c.shadowBlur = blur || 0; c.fillStyle = fill; c.fillText(text, x, y); c.shadowBlur = 0; };
+  const shift = topPx * 0.045;
+  word('GLITCH', topPx, 0.1, tx - shift, topY, '#FF54AD');
+  word('GLITCH', topPx, 0.1, tx + shift, topY + shift * 0.3, '#50F0FA', topPx * 0.32, '#50F0FA');
+  word('GLITCH', topPx, 0.1, tx, topY, '#E6FEFF');
+  // One slice of the top word knocked sideways, inside the word only.
+  const sy = topY - topPx * 0.42, sh = topPx * 0.1;
+  c.save(); c.beginPath(); c.rect(tx - maxW * 0.5, sy, maxW, sh); c.clip();
+  word('GLITCH', topPx, 0.1, tx + topPx * 0.05, topY, '#50F0FA');
+  c.restore();
+  word('GULP', mainPx, 0.03, tx, mainY + mainPx * 0.05, '#7B5CE0');
   const grad = c.createLinearGradient(0, mainY - mainPx * 0.8, 0, mainY);
   grad.addColorStop(0, '#FFFFFF'); grad.addColorStop(0.5, '#68F5FC'); grad.addColorStop(1, '#9875FF');
-  c.fillStyle = grad; c.fillText(main, tx, mainY);
-  c.shadowBlur = 0; c.fillText(main, tx, mainY);
+  word('GULP', mainPx, 0.03, tx, mainY, grad, mainPx * 0.2, 'rgba(80,240,250,0.85)');
+  word('GULP', mainPx, 0.03, tx, mainY, grad);
   return cv.toDataURL('image/png');
 }
 
-export async function renderCovers({ gameDir, out, title = 'VECTOR HOLE', only = null }) {
+export async function renderCovers({ gameDir, out, only = null }) {
   fs.mkdirSync(out, { recursive: true });
   const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
   const server = http.createServer((req, res) => {
@@ -146,11 +170,11 @@ export async function renderCovers({ gameDir, out, title = 'VECTOR HOLE', only =
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, locale: 'en-US' });
-  // drawObjectArt is module-private: a world object's own draw() reaches it. The
-  // hook stands the object at the origin with the wanted art kind.
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.waitForFunction(() => window.game && window.game.state);
-  await page.evaluate(() => document.fonts.load("120px 'Russo One'", 'VECTORHLE').then(() => document.fonts.ready));
+  await page.evaluate(() => document.fonts.load("120px 'Russo One'", 'GLITCHUP').then(() => document.fonts.ready));
+  // drawObjectArt is module-private: a world object's own draw() reaches it. The
+  // hook stands the object at the origin with the wanted art kind.
   await page.evaluate(() => {
     window.game.startRound({ seed: 4242 });
     cancelAnimationFrame(window.game.rafId);
@@ -158,14 +182,14 @@ export async function renderCovers({ gameDir, out, title = 'VECTOR HOLE', only =
     const sample = window.game.objects[0], Obj = sample.constructor;
     window.__coverArt = (c, kind, color, r) => {
       const o = Object.create(Obj.prototype);
-      Object.assign(o, sample, { subtype: kind, color, radius: r, x: 0, y: 0, eating: false, eatT: 0, spawnT: 1 });
+      Object.assign(o, sample, { subtype: kind, color, radius: r, x: 0, y: 0, eating: false, eatT: 0, spawnFlash: 0, tier: 'prop' });
       o.draw(c, false);
     };
   });
   const written = [];
   for (const spec of COVERS) {
     if (only && !only.includes(spec.file)) continue;
-    const url = await page.evaluate(([fn, s, t]) => { const f = new Function('return ' + fn)(); return f(s, t); }, [drawCover.toString(), spec, title]);
+    const url = await page.evaluate(([fn, s]) => { const f = new Function('return ' + fn)(); return f(s); }, [drawCover.toString(), spec]);
     const p = path.join(out, spec.file);
     fs.writeFileSync(p, Buffer.from(url.split(',')[1], 'base64'));
     written.push(p);
@@ -178,6 +202,6 @@ export async function renderCovers({ gameDir, out, title = 'VECTOR HOLE', only =
 if (process.argv[1] && path.basename(process.argv[1]) === 'crazygames-covers.mjs') {
   const gameDir = path.resolve(arg('game', 'qa/out/crazygames-basic/game'));
   const out = path.resolve(arg('out', 'qa/out/crazygames-basic/covers'));
-  const written = await renderCovers({ gameDir, out, title: arg('title', 'VECTOR HOLE') });
+  const written = await renderCovers({ gameDir, out });
   written.forEach(p => console.log(p));
 }

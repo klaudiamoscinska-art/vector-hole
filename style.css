@@ -22,7 +22,7 @@
 }
 
 /* =========================================================
-   VECTOR HOLE: EAT THE NEON CITY — Stylesheet
+   GLITCH GULP (until 2026-11: Vector Hole) — Stylesheet
    ========================================================= */
 
 :root {
@@ -87,6 +87,47 @@ html, body {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+/* CrazyGames package: the pointer while the mouse is locked, and the offer to lock it. */
+.lock-cursor {
+  position: fixed;
+  left: -11px;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #50F0FA;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(80, 240, 250, 0.8), inset 0 0 0 1px rgba(4, 16, 29, 0.7);
+  pointer-events: none;
+  z-index: 9000;
+  will-change: transform;
+}
+.lock-cursor::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #D6FCFF;
+}
+.lock-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 6px 12px;
+  border: 1px solid rgba(80, 240, 250, 0.45);
+  border-radius: 999px;
+  background: rgba(4, 16, 29, 0.82);
+  color: #f2f8ff;
+  font: 600 12px/1.3 var(--font-ui);
+  text-align: center;
+  pointer-events: none;
+  z-index: 9000;
 }
 
 /* Safari cannot type into a field that inherits user-select: none. */

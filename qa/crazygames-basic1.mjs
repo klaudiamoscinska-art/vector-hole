@@ -11,7 +11,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
-import { chromium, serve, openGame, veteranSave, installQaBridge, report, ARENA_BOT, CAMPAIGN_BOT, QA_RANDOM, frozenDateScript, OUT, ROOT, isMain } from './lib.mjs';
+import { chromium, revisionFile, serve, openGame, veteranSave, installQaBridge, report, ARENA_BOT, CAMPAIGN_BOT, QA_RANDOM, frozenDateScript, OUT, ROOT, isMain } from './lib.mjs';
 import { exportPackage, LIMITS } from '../tools/export-crazygames-basic.mjs';
 
 const WORK = path.join(OUT, 'cg-basic1');
@@ -52,7 +52,7 @@ function structureChecks(pkg) {
   const refs = [...page.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)="([^"]+)"/g)].map(m => m[1]).filter(u => !u.startsWith('data:'));
   r.push(report('package: every script and stylesheet is referenced by a relative path', refs.length === 2 && refs.every(u => /^[\w.-]+$/.test(u)), refs.join(', ')));
   r.push(report('package: the page carries the distribution marker, the source and its GitHub Pages release do not', /<html[^>]*data-distribution="crazygames-basic"/.test(page) && !/data-distribution/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))));
-  r.push(report('metadata: English title and description, no link or structured data naming the GitHub Pages site', /<title>Vector Hole: Eat the Neon City<\/title>/.test(page) && /name="description" content="Steer/.test(page) && !/github\.io|og:|ld\+json|twitter:/.test(page)));
+  r.push(report('metadata: English title and description, no link or structured data naming the GitHub Pages site', /<title>GLITCH GULP<\/title>/.test(page) && /name="description" content="Steer/.test(page) && !/github\.io|og:|ld\+json|twitter:/.test(page)));
   for (const f of ['game.js', 'style.css']) {
     r.push(report(`one source: ${f} in the package has the same bytes as the source file`, sha256(fs.readFileSync(path.join(pkg.gameDir, f))) === sha256(Buffer.from(lf(fs.readFileSync(path.join(ROOT, f), 'utf8')), 'utf8'))));
   }
@@ -78,9 +78,9 @@ async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch =
   await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => {
     const u = new URL(route.request().url());
     if (u.hostname === 'www.crazygames.com') {
-      return route.fulfill({ contentType: 'text/html', body: `<!doctype html><html><body style="margin:0;background:#111;height:2400px"><iframe id="frame" src="https://vector-hole.game-files.crazygames.com/index.html" style="border:0;width:${width}px;height:${height}px;display:block" allow="autoplay; fullscreen"></iframe></body></html>` });
+      return route.fulfill({ contentType: 'text/html', body: `<!doctype html><html><body style="margin:0;background:#111;height:2400px"><iframe id="frame" src="https://glitch-gulp.game-files.crazygames.com/index.html" style="border:0;width:${width}px;height:${height}px;display:block" allow="autoplay; fullscreen"></iframe></body></html>` });
     }
-    if (u.hostname === 'vector-hole.game-files.crazygames.com') {
+    if (u.hostname === 'glitch-gulp.game-files.crazygames.com') {
       const file = path.join(gameDir, u.pathname === '/' ? 'index.html' : u.pathname);
       if (fs.existsSync(file) && fs.statSync(file).isFile()) return route.fulfill({ contentType: SITE_MEDIA_TYPES[path.extname(file)] || 'application/octet-stream', body: fs.readFileSync(file) });
       external.push('MISSING ' + u.href);
@@ -92,7 +92,7 @@ async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch =
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + (e.stack || e.message)));
   page.on('console', (m) => { if (m.type() === 'error' && !/net::ERR_FAILED|Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
-  await page.goto('https://www.crazygames.com/game/vector-hole');
+  await page.goto('https://www.crazygames.com/game/glitch-gulp');
   const frame = page.frames().find(f => f.url().includes('game-files')) || await new Promise((res) => page.on('frameattached', res));
   await frame.waitForFunction(() => window.game && window.game.state !== undefined && window.__qaBridge && window.__qaBridge.ready, null, { timeout: 20000 });
   return { browser, context, page, frame, external, errors };
@@ -549,6 +549,260 @@ async function installedBrowserChecks(url) {
   return r;
 }
 
+/** Real Pointer Lock of real Chromium in the portal iframe, driven by automated input. That
+ *  is not a physical mouse: Esc pressed on a keyboard is handled by the browser itself and
+ *  cannot be sent from here, so a lock ended from outside stands in for it. */
+async function pointerLockChecks(gameDir, url, webUrl) {
+  const r = [];
+  const state = (f) => f.evaluate(() => {
+    const gm = window.game, cur = document.getElementById('lockCursor'), hint = document.getElementById('lockHint');
+    return { locked: !!document.pointerLockElement, flag: !!gm.pointerLocked, running: gm.running, paused: gm.paused, x: gm.player.x, y: gm.player.y, ps: gm.pointerScreen,
+      cursor: !!cur && !cur.classList.contains('hidden'), hint: !!hint && !hint.classList.contains('hidden'), hintText: hint ? hint.textContent : '', w: gm.width, h: gm.height, vt: cur ? cur.style.transform : '' };
+  });
+  const g = await portalHost(gameDir, { width: 1216, height: 684 });
+  const f = g.frame;
+  await clickIn(g.page, f, '#btnWelcomePlay');
+  await f.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await g.page.waitForTimeout(150);
+  const start = await state(f);
+  r.push(report('lock: no lock from the click that started the round', !start.locked && !start.flag, JSON.stringify(start)));
+  await g.page.mouse.move(700, 340);
+  await g.page.waitForTimeout(250);
+  const before = await state(f);
+  r.push(report('lock: before the opt-in the plain cursor steers, with the offer on screen', !before.locked && before.hint && /lock the cursor/i.test(before.hintText), JSON.stringify(before)));
+  await g.page.mouse.down(); await g.page.mouse.up();
+  await f.waitForFunction(() => !!document.pointerLockElement, null, { timeout: 4000 });
+  const locked = await state(f);
+  r.push(report('lock: a click on the board locks the mouse, shows the pointer, hides the offer', locked.locked && locked.flag && locked.cursor && !locked.hint, JSON.stringify(locked)));
+
+  // Steering in every direction from relative moves (mouse.move sends the deltas).
+  const moves = { right: [300, 0], left: [-600, 0], down: [300, 250], up: [0, -500] };
+  const dirs = {};
+  let px = 700, py = 340;
+  for (const [name, [dx, dy]] of Object.entries(moves)) {
+    const a = await state(f);
+    px += dx; py += dy;
+    await g.page.mouse.move(px, py);
+    await g.page.waitForTimeout(450);
+    const b = await state(f);
+    dirs[name] = [Math.round(b.x - a.x), Math.round(b.y - a.y), b.ps && Math.round(b.ps.x), b.ps && Math.round(b.ps.y)];
+  }
+  r.push(report('lock: the hole follows the locked pointer in all four directions', dirs.right[0] > 0 && dirs.left[0] < 0 && dirs.down[1] > 0 && dirs.up[1] < 0, JSON.stringify(dirs)));
+
+  // Edges: far beyond the frame the pointer stays inside it.
+  await g.page.mouse.move(px + 5000, py + 5000);
+  await g.page.waitForTimeout(60);
+  const edge1 = await state(f);
+  await g.page.mouse.move(px - 9000, py - 9000);
+  await g.page.waitForTimeout(60);
+  const edge2 = await state(f);
+  r.push(report('lock: the virtual pointer stops at the frame on every edge', edge1.ps.x === edge1.w && edge1.ps.y === edge1.h && edge2.ps.x === 0 && edge2.ps.y === 0, JSON.stringify({ a: edge1.ps, b: edge2.ps })));
+  await g.page.mouse.move(px - 8500, py - 8700);
+  await g.page.waitForTimeout(60);
+
+  // The pause button under the virtual pointer answers a click.
+  const pauseBox = await f.locator('#btnPause').boundingBox();
+  const at = await state(f);
+  await g.page.mouse.move(px - 8500 + (pauseBox.x + pauseBox.width / 2 - at.ps.x), py - 8700 + (pauseBox.y + pauseBox.height / 2 - at.ps.y));
+  await g.page.waitForTimeout(60);
+  await g.page.mouse.down(); await g.page.mouse.up();
+  await g.page.waitForTimeout(350);
+  const paused = await state(f);
+  r.push(report('UI: the pause button is clickable with the locked pointer, and the menu frees the cursor', paused.paused && !paused.locked && !paused.cursor, JSON.stringify(paused)));
+
+  // The menu takes real clicks; closing it locks again (no second opt-in).
+  await clickIn(g.page, f, '#pauseSheet button');
+  await f.waitForFunction(() => !window.game.paused, null, { timeout: 3000 }).catch(() => {});
+  await g.page.waitForTimeout(500);
+  const back = await state(f);
+  r.push(report('recovery: leaving the pause menu locks the mouse again', !back.paused && back.locked && back.cursor, JSON.stringify(back)));
+
+  // P pauses and frees the cursor, P resumes and locks again.
+  await g.page.keyboard.press('KeyP');
+  await g.page.waitForTimeout(250);
+  const p1 = await state(f);
+  await g.page.keyboard.press('KeyP');
+  await g.page.waitForTimeout(500);
+  const p2 = await state(f);
+  r.push(report('keys: P pauses with the cursor free and resumes with the lock back', p1.paused && !p1.locked && !p2.paused && p2.locked, JSON.stringify({ p1: [p1.paused, p1.locked], p2: [p2.paused, p2.locked] })));
+
+  // WASD while locked.
+  const k0 = await state(f);
+  await g.page.keyboard.down('KeyD');
+  await g.page.waitForTimeout(350);
+  await g.page.keyboard.up('KeyD');
+  const k1 = await state(f);
+  r.push(report('keys: WASD still works while the mouse is locked', k1.locked && k1.x !== k0.x, JSON.stringify([k0.x, k1.x])));
+
+  // A lock ended from outside (what Esc or a lost focus does): pause, no driving on, no resume by a late Esc.
+  await f.evaluate(() => document.exitPointerLock());
+  await g.page.waitForTimeout(120);
+  const esc = await state(f);
+  await g.page.keyboard.press('Escape');
+  await g.page.waitForTimeout(40);
+  const esc2 = await state(f);
+  r.push(report('Esc: a lock lost from outside pauses, frees the cursor, and an Esc delivered right after does not resume', esc.paused && !esc.locked && !esc.cursor && esc.ps === null && esc2.paused, JSON.stringify({ esc: [esc.paused, esc.locked, esc.ps], esc2: esc2.paused })));
+  const still0 = await state(f);
+  await g.page.waitForTimeout(400);
+  const still1 = await state(f);
+  r.push(report('leaving: paused and unlocked, the hole does not move by itself', still0.x === still1.x && still0.y === still1.y));
+  // Resume right after Esc: the browser's refusal must not leave the player stuck.
+  await clickIn(g.page, f, '#pauseSheet button');
+  await g.page.waitForTimeout(1900);
+  const relock = await state(f);
+  r.push(report('recovery: after Esc and resume the game plays on, locked or offering the lock', !relock.paused && relock.running && (relock.locked || relock.hint), JSON.stringify(relock)));
+
+  // The next round after a finished one locks without a new opt-in; the result screen is free.
+  await f.addScriptTag({ content: ARENA_BOT });
+  const res = await f.evaluate(() => { window.__qaPlayArena({ style: 'afk' }); return String(window.game.state); });
+  await g.page.waitForTimeout(350);
+  const after = await state(f);
+  r.push(report('menu: the result screen has a free cursor', !after.locked && !after.cursor, JSON.stringify({ res, locked: after.locked })));
+  r.push(report('lock: no errors in the iframe', g.errors.length === 0 && g.external.length === 0, g.errors.slice(0, 2).join(' | ')));
+  await g.browser.close();
+
+  // Focus lost while unlocked or locked: the existing rule still pauses.
+  const b = await portalHost(gameDir, { width: 1216, height: 684 });
+  await clickIn(b.page, b.frame, '#btnWelcomePlay');
+  await b.frame.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await b.page.mouse.move(700, 340);
+  await b.page.waitForTimeout(200);
+  await b.page.mouse.down(); await b.page.mouse.up();
+  await b.frame.waitForFunction(() => !!document.pointerLockElement, null, { timeout: 4000 });
+  await b.frame.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await b.page.waitForTimeout(300);
+  const blur = await state(b.frame);
+  r.push(report('focus: losing focus pauses and frees the cursor, the round stays', blur.paused && blur.running && !blur.locked && blur.ps === null, JSON.stringify([blur.paused, blur.locked, blur.ps])));
+  await b.browser.close();
+
+  // Unsupported API and a frame that refuses: the plain cursor keeps working, no offer forever.
+  const none = await openGame(url, { viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, initScript: 'delete HTMLElement.prototype.requestPointerLock; delete Element.prototype.requestPointerLock;' });
+  await none.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
+  await none.page.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await none.page.waitForTimeout(300);
+  const n0 = await none.page.evaluate(() => ({ x: window.game.player.x, hint: !!document.getElementById('lockHint'), cursor: !!document.getElementById('lockCursor') }));
+  await none.page.mouse.move(1100, 340);
+  await none.page.waitForTimeout(450);
+  const n1 = await none.page.evaluate(() => window.game.player.x);
+  r.push(report('no API: the game runs, no offer, the plain cursor steers', !n0.hint && !n0.cursor && n1 !== n0.x && none.errors.length === 0, JSON.stringify({ n0, n1, errors: none.errors.slice(0, 1) })));
+  await none.browser.close();
+
+  const refuse = await openGame(url, { viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, initScript: "Element.prototype.requestPointerLock = function () { setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0); return Promise.reject(new DOMException('no', 'SecurityError')); };" });
+  await refuse.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
+  await refuse.page.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await refuse.page.mouse.move(800, 340);
+  await refuse.page.waitForTimeout(250);
+  for (let i = 0; i < 4; i++) { await refuse.page.mouse.down(); await refuse.page.mouse.up(); await refuse.page.waitForTimeout(40); }
+  await refuse.page.waitForTimeout(250);
+  const x0 = await refuse.page.evaluate(() => window.game.player.x);
+  await refuse.page.mouse.move(1150, 340);
+  await refuse.page.waitForTimeout(450);
+  const ref = await refuse.page.evaluate(() => ({ x: window.game.player.x, hint: !document.getElementById('lockHint').classList.contains('hidden'), running: window.game.running, paused: window.game.paused }));
+  r.push(report('refused: a frame that refuses the lock leaves the plain cursor steering, and the offer goes away', ref.x !== x0 && !ref.hint && ref.running && !ref.paused && refuse.errors.length === 0, JSON.stringify({ x0, ref, errors: refuse.errors.slice(0, 1) })));
+  await refuse.browser.close();
+
+  // Touch: no lock, no offer.
+  const t = await openGame(url, { viewport: { width: 800, height: 450 }, mobile: true, deviceScaleFactor: 2 });
+  await t.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
+  await t.page.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await t.page.touchscreen.tap(600, 220);
+  await t.page.waitForTimeout(250);
+  const ts = await t.page.evaluate(() => ({ locked: !!document.pointerLockElement, hint: !document.getElementById('lockHint').classList.contains('hidden') }));
+  r.push(report('touch: a tap never locks and never shows the offer', !ts.locked && !ts.hint, JSON.stringify(ts)));
+  await t.browser.close();
+
+  // Web build: nothing of this exists.
+  const w = await openGame(webUrl, { viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1 });
+  await w.page.evaluate(() => document.getElementById('btnWelcomePlay').click());
+  await w.page.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await w.page.mouse.move(800, 340);
+  await w.page.mouse.down(); await w.page.mouse.up();
+  await w.page.waitForTimeout(300);
+  const ws = await w.page.evaluate(() => ({ locked: !!document.pointerLockElement, parts: !!document.getElementById('lockCursor') || !!document.getElementById('lockHint'), flag: window.game.pointerLocked }));
+  r.push(report('GitHub Pages build: no Pointer Lock, no pointer, no offer', !ws.locked && !ws.parts && !ws.flag, JSON.stringify(ws)));
+  await w.browser.close();
+  return r;
+}
+
+/** The starter hole: a black hole with a cyan rim that turns; every other look byte-equal to the base. */
+async function holeChecks(url, webUrl) {
+  const r = [];
+  const g = await openGame(webUrl, { viewport: { width: 800, height: 600 }, mobile: false, deviceScaleFactor: 1 });
+  await g.page.evaluate(() => { const gm = window.game; gm.startRound({ seed: 4242 }); cancelAnimationFrame(gm.rafId); gm.running = false; });
+  const pic = await g.page.evaluate(() => {
+    const Hole = window.game.player.constructor;
+    const paint = (skin, radius, t, bg) => { const c = document.createElement('canvas'); c.width = c.height = 400; const x = c.getContext('2d'); x.fillStyle = bg; x.fillRect(0, 0, 400, 400); x.translate(200, 200); const h = new Hole('', 0, 0, true); h.skin = skin; h.radius = radius; h.auraId = 'none'; h.draw(x, t); return x.getImageData(0, 0, 400, 400).data; };
+    const stats = (d, r) => { let dark = 0, n = 0, sum = 0, sq = 0, cyan = 0, hot = 0; for (let y = 0; y < 400; y++) for (let x = 0; x < 400; x++) { const dd = Math.hypot(x - 200, y - 200); if (dd > r * 1.04) continue; const i = (y * 400 + x) * 4, R = d[i], G = d[i + 1], B = d[i + 2], l = (R + G + B) / 3; n++; sum += l; sq += l * l; if (dd < r * 0.3 && l < 40) dark++; if (G > 170 && B > 170 && R < 170) cyan++; if (Math.max(R, G, B) - Math.min(R, G, B) > 120 && !(B >= R && G >= R)) hot++; } return { core: dark / (Math.PI * (r * 0.3) ** 2), std: Math.sqrt(sq / n - (sum / n) ** 2), cyan: cyan / n, hot: hot / n }; };
+    const a = paint('rainbow', 120, 1, '#0A1626'), b = paint('rainbow', 120, 1.4, '#0A1626'), prism = paint('pryzmat', 120, 1, '#0A1626'), small = paint('rainbow', 14, 1, '#0A1626');
+    let diff = 0; for (let i = 0; i < a.length; i += 4) diff += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+    return { hole: stats(a, 120), prism: stats(prism, 120), small: stats(small, 14), motion: diff / 160000 };
+  });
+  r.push(report('hole: deep black centre, not a flat disc (spread of brightness), a visible turn between frames', pic.hole.core > 0.85 && pic.hole.std > 15 && pic.motion > 1, JSON.stringify(pic)));
+  r.push(report('hole: cyan accent present, no warm rainbow hues left in the starter look', pic.hole.cyan > 0.01 && pic.hole.hot < 0.002, JSON.stringify(pic.hole)));
+  r.push(report('hole: at phone size (r = 14) the cyan rim still reads', pic.small.cyan > 0.02, JSON.stringify(pic.small)));
+  r.push(report('hole: Pryzmat, the Core City reward, keeps its rainbow', pic.prism.hot > 0.02, JSON.stringify(pic.prism)));
+  const names = await g.page.evaluate(() => SKINS.find(k => k.id === 'rainbow').name);
+  r.push(report('hole: same save id and price, new name in the Warsztat', names === 'Horyzont', names));
+  await g.browser.close();
+
+  // Every other skin, bot style and aura: pixel-equal to the base commit at a fixed time.
+  const BASE = '727b8bdbf93a4033aea0b213d6572f22260384cd';
+  const dir = path.join(WORK, 'base-site');
+  fs.mkdirSync(dir, { recursive: true });
+  for (const f of ['index.html', 'game.js', 'style.css']) fs.writeFileSync(path.join(dir, f), revisionFile(BASE, f));
+  const base = await serve({ root: dir });
+  const sample = async (u) => {
+    const b = await openGame(u, { viewport: { width: 800, height: 600 }, mobile: false, deviceScaleFactor: 1 });
+    const out = await b.page.evaluate(() => {
+      const gm = window.game; gm.startRound({ seed: 4242 }); cancelAnimationFrame(gm.rafId); gm.running = false;
+      const Hole = gm.player.constructor, hash = (d) => { let h = 2166136261; for (let i = 0; i < d.length; i += 3) { h ^= d[i]; h = Math.imul(h, 16777619); } return h >>> 0; };
+      const res = {};
+      const paint = (opt) => { const c = document.createElement('canvas'); c.width = c.height = 260; const x = c.getContext('2d'); x.translate(130, 130); const h = new Hole('', 0, 0, true); Object.assign(h, { radius: 70 }, opt); h.draw(x, 1.25); return hash(x.getImageData(0, 0, 260, 260).data); };
+      for (const k of SKINS) if (k.id !== 'rainbow') res['skin:' + k.id] = paint({ skin: k.id, auraId: 'none' });
+      for (const a of AURAS) res['aura:' + a.id] = paint({ skin: 'cyan', auraId: a.id });
+      for (const st of ['tech', 'plasma', 'toxic', 'galaxy', 'crystal', 'sun']) res['bot:' + st] = paint({ skin: 'custom', edgeColor: '#FF54AD', styleOverride: st, isPlayer: false });
+      return res;
+    });
+    await b.browser.close();
+    return out;
+  };
+  const [was, now] = [await sample(base.url), await sample(webUrl)];
+  base.server.close();
+  const changed = Object.keys(was).filter(k => was[k] !== now[k]);
+  r.push(report(`hole: all ${Object.keys(was).length} other skins, auras and bot styles draw the same pixels as the base`, Object.keys(was).length > 15 && changed.length === 0, changed.join(', ')));
+  return r;
+}
+
+/** The coordinator's checks on what the marker isolates. */
+async function isolationChecks(gameDir, url, webUrl) {
+  const r = [];
+  // The web build on a crazygames host (no marker): it asks for the SDK, which is the Full Launch path, and survives its failure.
+  const site = path.join(WORK, 'no-marker');
+  fs.rmSync(site, { recursive: true, force: true });
+  fs.cpSync(gameDir, site, { recursive: true });
+  fs.writeFileSync(path.join(site, 'index.html'), fs.readFileSync(path.join(site, 'index.html'), 'utf8').replace(' data-distribution="crazygames-basic"', ''));
+  const un = await portalHost(site, { width: 1216, height: 684 });
+  await un.frame.waitForFunction(() => window.game.monetization.provider === 'none', null, { timeout: 12000 });
+  const u = await un.frame.evaluate(() => { const vis = (id) => document.getElementById(id).offsetParent !== null; return { left: window.game.monetization.placementLeft('free_prisms'), sharePresent: !document.getElementById('btnShare').parentElement.classList.contains('hidden'), consentRow: !document.querySelector('[data-consent]').closest('.control-row').classList.contains('hidden'), lockParts: !!document.getElementById('lockHint'), vis: vis('adOverlay') }; });
+  r.push(report('marker: without it (wrong upload) the SDK is requested, its failure hides the ad offers, and package-only changes stay off', un.external.some(x => /sdk.crazygames/.test(x)) && u.left === 0 && u.sharePresent && u.consentRow && !u.lockParts, JSON.stringify({ ...u, external: un.external })));
+  await un.browser.close();
+  // user-select: typing and selecting in fields, on both builds.
+  for (const [name, addr] of [['package', url], ['web build', webUrl]]) {
+    const g = await veteran(addr, { runsPlayed: 10 });
+    const res = await g.page.evaluate(() => { window.game.openProfileScreen(); const i = document.getElementById('displayNameInput'); i.scrollIntoView(); return { body: getComputedStyle(document.body).userSelect, input: getComputedStyle(i).userSelect, vis: i.offsetParent !== null }; });
+    await g.page.click('#displayNameInput');
+    await g.page.keyboard.press('Control+A');
+    await g.page.keyboard.type('QA Name');
+    const typed = await g.page.evaluate(() => { const i = document.getElementById('displayNameInput'); i.select(); return { value: i.value, selected: i.value.substring(i.selectionStart, i.selectionEnd) }; });
+    r.push(report(`user-select (${name}): the page does not select, the name field types and selects`, res.body === 'none' && res.input !== 'none' && typed.value === 'QA Name' && typed.selected === 'QA Name', JSON.stringify({ ...res, ...typed })));
+    await g.browser.close();
+  }
+  // The release assembler has no idea of the marker or the tools.
+  const asm = fs.readFileSync(path.join(ROOT, '.github/scripts/assemble-release.mjs'), 'utf8'), wf = fs.readFileSync(path.join(ROOT, '.github/workflows/deploy-pages.yml'), 'utf8');
+  r.push(report('release: the assembler and the workflow know nothing of the package or tools/', !/data-distribution|crazygames|tools[/]/i.test(asm + wf)));
+  return r;
+}
+
 async function languageChecks(url) {
   const r = [];
   const g = await openGame(url, { locale: 'de-DE', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, query: '?i18n=log' });
@@ -671,6 +925,19 @@ function mediaChecks(delivery) {
     const dur = /Duration: (\d+):(\d+):([\d.]+)/.exec(info);
     const secs = dur ? +dur[1] * 3600 + +dur[2] * 60 + +dur[3] : 0;
     r.push(report(`media: video ${f}: ${w}x${h}, 15-20 s, no audio track`, info.includes(`${w}x${h}`) && secs >= 15 && secs <= 20 && !/Audio:/.test(info), `${secs} s, ${(/Video: [^\n]*/.exec(info) || [''])[0].slice(0, 110)}`));
+    const raw = (input, at) => execFileSync(ff, ['-hide_banner', '-loglevel', 'error', ...(at != null ? ['-ss', String(at)] : []), '-i', input, '-frames:v', '1', '-vf', 'scale=64:64', '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], { maxBuffer: 1 << 20 });
+    const cover = w > h ? 'landscape-1920x1080.png' : 'video-first-frame-portrait-1080x1620.png';
+    const coverFile = fs.existsSync(path.join(delivery, 'covers', cover)) ? path.join(delivery, 'covers', cover) : path.join(delivery, 'covers', 'portrait-800x1200.png');
+    const first = raw(p, 0.05), ref = raw(coverFile);
+    let d0 = 0; for (let i = 0; i < first.length; i++) d0 += Math.abs(first[i] - ref[i]);
+    r.push(report(`media: video ${f}: the first frame is the static cover`, d0 / first.length < 6, `mean difference ${(d0 / first.length).toFixed(2)} of 255`));
+    const bars = [];
+    for (const at of [0.05, secs * 0.25, secs * 0.5, secs * 0.75, secs - 0.2]) {
+      const fr = raw(p, at), row = (y) => { let m = 0; for (let x = 0; x < 64; x++) m = Math.max(m, fr[y * 64 + x]); return m; };
+      if (row(0) < 12 || row(63) < 12) bars.push(at.toFixed(1));
+      for (let x = 0; x < 2; x++) { let m = 0; for (let y = 0; y < 64; y++) m = Math.max(m, fr[y * 64 + (x ? 63 : 0)]); if (m < 12) bars.push('side ' + at.toFixed(1)); }
+    }
+    r.push(report(`media: video ${f}: no black bars on any sampled frame`, bars.length === 0, bars.join(', ')));
   }
   const m = path.join(delivery, 'manifest.sha256');
   if (fs.existsSync(m)) {
@@ -690,7 +957,7 @@ export async function runCrazyGamesBasic1Checks({ delivery = null, shots = false
   try {
     for (const step of [
       () => hostSdkChecks(pkg.gameDir, site.url), () => adChecks(site.url), () => rewardParity(site.url, web.url), () => deadButtonChecks(site.url),
-      () => frameChecks(pkg.gameDir, shots), () => inputChecks(pkg.gameDir), () => saveChecks(pkg.gameDir, site.url), () => campaignFrameChecks(pkg.gameDir), () => languageChecks(site.url), () => installedBrowserChecks(site.url),
+      () => frameChecks(pkg.gameDir, shots), () => inputChecks(pkg.gameDir), () => saveChecks(pkg.gameDir, site.url), () => campaignFrameChecks(pkg.gameDir), () => pointerLockChecks(pkg.gameDir, site.url, web.url), () => holeChecks(site.url, web.url), () => isolationChecks(pkg.gameDir, site.url, web.url), () => languageChecks(site.url), () => installedBrowserChecks(site.url),
       () => refreshRateChecks(site.url), () => webChecks(web.url)
     ]) {
       try { all.push(...await step()); } catch (e) { all.push(report(`crazygames-basic1: step crashed (${step.toString().slice(6, 40)})`, false, String(e && e.stack || e))); }

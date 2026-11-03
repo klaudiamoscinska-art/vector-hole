@@ -18,7 +18,7 @@ export const DISTRIBUTION = 'crazygames-basic';
 // docs.crazygames.com/requirements/technical/ (read 2026-11-03), Basic Implementation
 // without the SDK: the total file size is the initial download.
 export const LIMITS = { files: 1500, bytes: 50 * 1024 * 1024, mobileHomepageBytes: 20 * 1024 * 1024 };
-const TITLE = 'Vector Hole: Eat the Neon City';
+const TITLE = 'GLITCH GULP';
 const DESCRIPTION = 'Steer a vortex through a neon city and swallow everything smaller. 2-minute Arena rounds against bots and a 240-mission Campaign.';
 
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
