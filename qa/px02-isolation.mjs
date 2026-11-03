@@ -641,8 +641,9 @@ export async function runPx02Checks(url) {
         const gm = window.game;
         const r = { guard: typeof SAVE_GUARD === 'object' ? SAVE_GUARD.state : 'none', eco: gm.save.economy, coins: gm.save.coins };
         gm.onCosmeticPick('skin', SKINS.find(s => s.id === 'purple'));
-        const b = document.getElementById('btnWarsztatBuy'); if (b && !b.classList.contains('hidden')) b.click();
-        gm.clearWarsztatFocus();
+        // (A release before WORKSHOP-BUY asks in the info sheet.)
+        const b = document.getElementById('btnWarsztatBuy') || document.getElementById('btnInfoSheetAction'); if (b && !b.classList.contains('hidden')) b.click();
+        if (gm.clearWarsztatFocus) gm.clearWarsztatFocus(); else gm.closeInfoSheet();
         window.__qaPlayArena({ style: 'greedy' });
         saveGame(gm.save);
         r.after = gm.save.coins; r.owned = gm.save.owned.join(',');
