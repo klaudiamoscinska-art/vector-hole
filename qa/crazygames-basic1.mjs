@@ -58,6 +58,10 @@ function structureChecks(pkg) {
   }
   const zip = parseZip(fs.readFileSync(path.join(pkg.out, 'game.zip')));
   r.push(report('zip: index.html at the root, every file identical to game/', zip.has('index.html') && list.every(f => zip.get(f) && zip.get(f).equals(fs.readFileSync(path.join(pkg.gameDir, f)))), [...zip.keys()].join()));
+  const js = fs.readFileSync(path.join(pkg.gameDir, 'game.js'), 'utf8'), css = fs.readFileSync(path.join(pkg.gameDir, 'style.css'), 'utf8');
+  r.push(report('links: no link or window.open out of the game, no fetch, beacon or socket in the code', !/href="https?:/.test(page) && !/window.open|target=.?_blank|fetch(|sendBeacon|XMLHttpRequest|new WebSocket/.test(js)));
+  r.push(report('fullscreen: no in-game fullscreen button or request (the portal provides it)', !/requestFullscreen/.test(js + page)));
+  r.push(report('mobile: body has all the user-select: none forms the requirements list, text fields stay usable', ['-webkit-user-select: none', '-moz-user-select: none', '-ms-user-select: none', 'user-select: none'].every(x => css.includes(x)) && /input, textarea {s*-webkit-user-select: text/.test(css)));
   const again = exportPackage({ out: path.join(WORK, 'export-again') });
   r.push(report('export: repeatable (same sources give the same zip)', again.zip.sha256 === pkg.zip.sha256, `${again.zip.sha256.slice(0, 12)} vs ${pkg.zip.sha256.slice(0, 12)}`));
   r.push(report('export: writes nothing to the release or the repo root (no v/ or release/ folder appears)', !fs.existsSync(path.join(ROOT, 'v')) && !fs.existsSync(path.join(ROOT, 'release'))));
@@ -104,6 +108,8 @@ async function clickIn(page, frame, selector) {
 async function hostSdkChecks(gameDir, url) {
   const r = [];
   const g = await portalHost(gameDir, { width: 1216, height: 684 });
+  const load = await g.page.evaluate(() => { const f = document.getElementById('frame'), t = f.contentWindow.performance.getEntriesByType('navigation')[0]; return t ? Math.round(t.domContentLoadedEventEnd) : null; });
+  r.push(report('load: the page is ready within the 10 s benchmark (local server, not the portal CDN)', load != null && load < 10000, `${load} ms`));
   const st = await g.frame.evaluate(() => ({ provider: window.game.monetization.provider, ads: window.game.monetization.adsAvailable, host: location.hostname, sdk: !!(window.CrazyGames || window.PokiSDK), lang: I18N.lang }));
   await g.page.waitForTimeout(500);
   r.push(report('no SDK: on a crazygames.com host the package requests no SDK, no external file, and boots', st.host.endsWith('crazygames.com') && !st.sdk && g.external.length === 0 && st.provider === 'none' && !st.ads, JSON.stringify({ ...st, external: g.external })));

@@ -82,7 +82,19 @@ html, body {
   background: linear-gradient(180deg, var(--nc-bg) 0%, var(--nc-bg-2) 100%);
   font-family: var(--font-ui);
   color: var(--text-main);
+  /* CrazyGames technical requirements: no magnifier or context menu on a long press. */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
+}
+
+/* Safari cannot type into a field that inherits user-select: none. */
+input, textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
 
 #app {

@@ -630,6 +630,11 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   zapis z większym postępem) + **kopia zapasowa** w Profilu: kod `VH1.…` do
   skopiowania i wczytania na innym urządzeniu. Gra prosi przeglądarkę
   o trwałe przechowywanie danych.
+- **Paczka CrazyGames Basic (CRAZYGAMES-BASIC-1):** ta sama gra z tych samych plików;
+  `tools/export-crazygames-basic.mjs` stawia znak dystrybucji w stronie paczki. W paczce
+  nie ma SDK, reklam (także demonstracyjnej), ofert za reklamę, WYZWIJ ZNAJOMEGO, pytania
+  o statystyki ani zapisu w chmurze: tylko zapis lokalny. Nagrody i balans bez zmian.
+  Na Full Launch dochodzi SDK z osobną decyzją; GitHub Pages działa jak dotąd.
 - **Ochrona zapisu (PX01):** gra nigdy po cichu nie nadpisuje zapisu, którego
   nie umie w pełni odczytać — ani przy wczytaniu, ani żadnym późniejszym
   autozapisem. Zapis z nowszej wersji gry („Zapis z nowszej wersji gry” →
