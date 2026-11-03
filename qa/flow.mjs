@@ -205,23 +205,23 @@ export async function runFlowChecks(url) {
       const target = SKINS.find(s => !gm.save.owned.includes(s.id) && !s.unlockSource && s.price > 0);
       card(target.id).click();
       await new Promise(res => setTimeout(res, 50));
-      const afterTap = { coins: gm.save.coins, owned: gm.save.owned.includes(target.id), sheet: !document.getElementById('infoSheet').classList.contains('hidden'), preview: gm.pendingLoadout.skin === target.id };
-      // close without buying -> preview reverts, nothing spent
-      gm.closeInfoSheet();
+      const afterTap = { coins: gm.save.coins, owned: gm.save.owned.includes(target.id), offer: !document.getElementById('btnWarsztatBuy').classList.contains('hidden'), preview: gm.pendingLoadout.skin === target.id };
+      // NIE TERAZ -> preview reverts, nothing spent
+      document.getElementById('btnWarsztatCancel').click();
       const reverted = gm.pendingLoadout.skin === gm.save.selected && gm.save.coins === coins0;
       card(target.id).click();
       await new Promise(res => setTimeout(res, 50));
-      document.getElementById('btnInfoSheetAction').click();
+      document.getElementById('btnWarsztatBuy').click();
       await new Promise(res => setTimeout(res, 50));
       const bought = { coins: gm.save.coins, owned: gm.save.owned.includes(target.id), equipped: gm.save.selected === target.id };
       // an owned one is worn with a single tap
       card(SKINS[0].id).click();
       await new Promise(res => setTimeout(res, 50));
-      const worn = gm.save.selected === SKINS[0].id && document.getElementById('infoSheet').classList.contains('hidden');
+      const worn = gm.save.selected === SKINS[0].id && document.getElementById('btnWarsztatBuy').classList.contains('hidden');
       const equipBtn = !!document.getElementById('btnEquip');
       return { price: target.price, coins0, afterTap, reverted, bought, worn, equipBtn };
     });
-    results.push(report('flow: Warsztat — a tap on an item for sale previews it and asks, spends nothing', r.afterTap.coins === r.coins0 && !r.afterTap.owned && r.afterTap.sheet && r.afterTap.preview && r.reverted, JSON.stringify(r)));
+    results.push(report('flow: Warsztat — a tap on an item for sale previews it and asks, spends nothing', r.afterTap.coins === r.coins0 && !r.afterTap.owned && r.afterTap.offer && r.afterTap.preview && r.reverted, JSON.stringify(r)));
     results.push(report('flow: Warsztat — KUP I ZAŁÓŻ buys and wears it', r.bought.owned && r.bought.equipped && r.bought.coins === r.coins0 - r.price, JSON.stringify(r.bought)));
     results.push(report('flow: Warsztat — an owned item is worn with one tap (no ZAŁÓŻ button at the bottom)', r.worn && !r.equipBtn));
     await done(g, `Warsztat`);

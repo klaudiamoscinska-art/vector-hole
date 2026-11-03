@@ -518,10 +518,10 @@ export async function runDevPanelChecks(url) {
       gm.devPanel.close();
       gm.openWarsztatScreen();
       gm.onCosmeticPick('skin', SKINS.find(x => x.id === 'white'));
-      const sheet1 = document.getElementById('btnInfoSheetAction').textContent;
-      document.getElementById('btnInfoSheetAction').click();
+      const sheet1 = document.getElementById('btnWarsztatBuy').textContent;
+      document.getElementById('btnWarsztatBuy').click();
       gm.onCosmeticPick('aura', AURAS.find(x => x.id === 'ember'));
-      document.getElementById('btnInfoSheetAction').click();
+      document.getElementById('btnWarsztatBuy').click();
       return { shown, sheet1, coins: s.coins, price: SKINS.find(x => x.id === 'white').price, prisms: s.prisms, white: s.owned.includes('white') && s.selected === 'white', ember: s.auras.owned.includes('ember') && s.auras.selected === 'ember' };
     });
     push('economy: coins set in the panel show in the hub and buy a Wir via the real "KUP I ZAŁÓŻ" (coins and ◆ spent, item worn)', econ.shown === '5000' && /KUP/.test(econ.sheet1) && econ.coins === 5000 - econ.price && econ.prisms === 85 && econ.white && econ.ember, JSON.stringify(econ));

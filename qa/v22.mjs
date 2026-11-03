@@ -442,8 +442,8 @@ export async function runV22Checks(url) {
       gm.save.prisms = 30;
       gm.openWarsztatScreen();
       gm.onCosmeticPick('effect', EAT_EFFECTS.find(e => e.id === 'neon_rose'));
-      out.buyLabel = document.getElementById('btnInfoSheetAction').textContent;
-      document.getElementById('btnInfoSheetAction').click();
+      out.buyLabel = document.getElementById('btnWarsztatBuy').textContent;
+      document.getElementById('btnWarsztatBuy').click();
       out.bought = gm.save.effects.owned.includes('neon_rose') && gm.save.effects.selected === 'neon_rose' && gm.save.prisms === 10;
       gm.openCurrencyInfo(true);
       out.info = document.getElementById('infoSheetBody').textContent;

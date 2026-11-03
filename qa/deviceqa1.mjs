@@ -11,8 +11,8 @@
 //  - Reward / unlock cards: the buttons sit centred under the text on every
 //    frame, nothing is clipped, the counter is spelled out, a chest whose
 //    reward is already credited says so (no "PÓŹNIEJ").
-//  - Warsztat: the purchase sheet sits in the middle of a landscape frame,
-//    and a previewed item names itself on the preview.
+//  - Warsztat: a previewed item names itself on the preview (buying and its
+//    layout: qa/workshop-buy.mjs).
 //  - Campaign: the edge arrow never points at a finished step's objects;
 //    small objects are drawn over big ones.
 //  - Results: the secondary actions line up with the main one.
@@ -313,7 +313,7 @@ async function behaviourChecks(url) {
     const gm = window.game; gm.openWarsztatScreen(); const skinName = document.getElementById('warsztatPreviewName').textContent;
     gm.onCosmeticPick('overdriveSkin', OVERDRIVE_SKINS.find(o => o.id === 'zloty_szczyt'));
     const o = { skinName, name: document.getElementById('warsztatPreviewName').textContent, label: document.querySelector('#warsztatLook .warsztat-look-label').textContent };
-    gm.closeInfoSheet();
+    document.getElementById('btnWarsztatCancel').click();
     o.after = document.getElementById('warsztatPreviewName').textContent; o.owned = gm.save.overdriveSkins.owned.includes('zloty_szczyt'); o.selected = gm.save.overdriveSkins.selected;
     return o;
   });
@@ -373,13 +373,11 @@ const LAYOUT = function (kind) {
     o.stacked = row.t >= pa.b - 1;
     o.widthDiff = Math.round(Math.abs(pa.w - row.w));
     o.leftDiff = Math.round(Math.abs(pa.l - row.l));
-  } else if (kind === 'sheet') {
-    const sheet = R(document.querySelector('#infoSheet .info-sheet-panel')), prev = R(document.getElementById('warsztatPreviewCanvas'));
-    o.layout = document.body.classList.contains('wide') ? 'wide' : document.body.classList.contains('compact') ? 'compact' : 'phone';
-    o.centerOff = Math.round(Math.abs((sheet.t + sheet.b) / 2 - H / 2));
-    o.coversPreview = Math.max(0, Math.min(sheet.r, prev.r) - Math.max(sheet.l, prev.l)) * Math.max(0, Math.min(sheet.b, prev.b) - Math.max(sheet.t, prev.t)) > 0.25 * prev.w * prev.h;
-    o.inView = sheet.t >= -1 && sheet.b <= H + 1 && sheet.l >= -1 && sheet.r <= W + 1;
-    o.buttons = [...document.querySelectorAll('#infoSheet button')].filter(visible).every(b => { const r = R(b); return r.t >= 0 && r.b <= H && r.l >= 0 && r.r <= W; });
+  } else if (kind === 'shopBuy') {
+    const prev = R(document.getElementById('warsztatPreviewCanvas'));
+    o.noSheet = document.getElementById('infoSheet').classList.contains('hidden');
+    o.previewInView = prev.t >= -1 && prev.b <= H + 1;
+    o.buttons = [...document.querySelectorAll('.warsztat-action button')].filter(visible).every(b => { const r = R(b); return r.t >= 0 && r.b <= H && r.l >= 0 && r.r <= W; });
   } else if (kind === 'briefing') {
     const w = document.querySelector('#briefingCard .mc-boost-wallet');
     o.wallet = w ? w.textContent : '';
@@ -406,9 +404,8 @@ async function layoutChecks(url) {
     const rs = await p.evaluate(LAYOUT, 'results');
     out.push(report(`Results ${tag}: the secondary actions line up with ZAGRAJ JESZCZE RAZ (same width and left edge when stacked)`, !rs.stacked || (rs.widthDiff <= 2 && rs.leftDiff <= 2), JSON.stringify(rs)));
     await SCENES.shopBuy(p);
-    const sb = await p.evaluate(LAYOUT, 'sheet');
-    const sheetOk = sb.inView && sb.buttons && (sb.layout === 'phone' || (sb.centerOff <= Math.max(24, h * 0.06) && !sb.coversPreview));
-    out.push(report(`Warsztat ${tag}: the purchase sheet ${sb.layout === 'phone' ? 'in view (phone: bottom sheet)' : 'centred in height, beside the live preview'}, every button in view`, sheetOk, JSON.stringify(sb)));
+    const sb = await p.evaluate(LAYOUT, 'shopBuy');
+    out.push(report(`Warsztat ${tag}: buying asks in the showroom card -- no sheet over the grid, the preview and every button in view`, sb.noSheet && sb.previewInView && sb.buttons, JSON.stringify(sb)));
     await SCENES.briefingShort(p);
     const bf = await p.evaluate(LAYOUT, 'briefing');
     out.push(report(`Briefing ${tag}: the coin balance is shown with the boosters`, bf.walletVisible && bf.wallet === 'Masz 179 ◇', JSON.stringify(bf)));

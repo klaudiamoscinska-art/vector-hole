@@ -484,12 +484,12 @@ export async function runSaveChecks(url) {
   const buy = await page.evaluate(() => {
     const g = window.game, w = SKINS.find(x => x.id === 'white');
     g.openWarsztatScreen(); g.onCosmeticPick('skin', w);
-    const btn = document.getElementById('btnInfoSheetAction'); const label = btn && !btn.classList.contains('hidden') ? btn.textContent : '';
-    const body = (document.querySelector('#infoSheet') || document.body).textContent;
-    g.closeInfoSheet();
-    return { coins: g.save.coins, owned: g.save.owned.includes('white'), label, short: /brakuje jeszcze 1800/.test(body), price: w.price };
+    const btn = document.getElementById('btnWarsztatBuy'); const label = btn && !btn.classList.contains('hidden') ? btn.textContent : '';
+    const body = document.getElementById('warsztatPreviewLoadout').textContent;
+    g.clearWarsztatFocus();
+    return { coins: g.save.coins, owned: g.save.owned.includes('white'), label, short: /Brakuje 1800/.test(body), price: w.price };
   });
-  results.push(expectAll('BALANCE-1 save: coins short of a new price buy nothing and lose nothing (Biała Plazma 3 800, 2 000 saved: "brakuje jeszcze 1800")', {
+  results.push(expectAll('BALANCE-1 save: coins short of a new price buy nothing and lose nothing (Biała Plazma 3 800, 2 000 saved: "Brakuje 1800")', {
     coins: is(buy.coins, 2000), notOwned: falsy(buy.owned), short: truthy(buy.short), price: is(buy.price, 3800), loaded: is(short.coins, 2000)
   }, JSON.stringify(buy)));
   await page.addScriptTag({ content: ARENA_BOT });

@@ -176,7 +176,7 @@ export async function runVisual1Checks(url) {
       const item = SKINS.find(s => !gm.save.owned.includes(s.id) && !s.unlockSource && (s.priceCoins != null ? s.priceCoins : s.price) <= coins);
       document.querySelector(`#skinGrid .skin-card[data-item="${item.id}"]`).click();
       await new Promise(r => setTimeout(r, 60));
-      document.getElementById('btnInfoSheetAction').click();
+      document.getElementById('btnWarsztatBuy').click();
       await new Promise(r => setTimeout(r, 60));
       const price = item.priceCoins != null ? item.priceCoins : item.price;
       return { id: item.id, price, paid: coins - gm.save.coins, owned: gm.save.owned.includes(item.id), worn: gm.save.selected === item.id, bought: !!document.querySelector(`#skinGrid .skin-card[data-item="${item.id}"].just-bought`), gold: gm.warsztatFx && gm.warsztatFx.kind === 'buy' };

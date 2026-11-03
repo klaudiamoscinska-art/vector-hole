@@ -9165,9 +9165,20 @@ class Game {
           document.getElementById(t).classList.toggle('active', t === tab);
           document.getElementById(g).classList.toggle('hidden', g !== grid);
         });
+        this.clearWarsztatFocus();
         this.updateCosmeticUnlockedCount();
       });
     });
+    document.getElementById('btnWarsztatBuy').addEventListener('click', () => this.onWarsztatAction());
+    document.getElementById('btnWarsztatCancel').addEventListener('click', () => { this.sound.ui(); this.clearWarsztatFocus(); });
+    document.getElementById('btnWarsztatEarn').addEventListener('click', () => {
+      const f = this.warsztatFocus;
+      if (f) this.openCurrencyInfo(f.item.priceType === 'prisms');
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && this.warsztatFocus && document.getElementById('infoSheet').classList.contains('hidden')) this.clearWarsztatFocus();
+    });
+    this.setupWarsztatStickyCard();
 
     document.getElementById('btnPlayAgain').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'play_again' });
@@ -9292,7 +9303,7 @@ class Game {
       if (item.unlockSource && item.unlockSource.type === 'iap' && !owned && !this.monetization.canPurchase) return;
       const selected = pendingId === item.id;
       const card = document.createElement('div');
-      card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '');
+      card.className = 'skin-card' + (selected ? ' selected' : '') + (!owned ? ' locked' : '') + (this.warsztatFocus && this.warsztatFocus.item === item ? ' looking' : '');
       // VISUAL-1: a card says at a glance what it is -- worn, owned, for
       // sale and affordable now, for sale but out of reach, or a reward.
       const sale = !owned && !item.unlockSource;
@@ -9387,7 +9398,7 @@ class Game {
   }
 
   populateShop() {
-    this.renderCosmeticGrid('skinGrid', SKINS, this.save.owned, this.pendingLoadout.skin, skin => this.onCosmeticPick('skin', skin));
+    this.renderCosmeticGrid('skinGrid', SKINS, this.save.owned, this.warsztatWorn('skin'), skin => this.onCosmeticPick('skin', skin));
     this.updateCosmeticUnlockedCount();
   }
 
@@ -9395,37 +9406,35 @@ class Game {
    *  sink alongside Coins (GDD 10.1/10.2). Renamed "Trail" in the Warsztat
    *  UI per GDD 4.0 §5.3, same following-glow render path underneath. */
   populateAuras() {
-    this.renderCosmeticGrid('auraGrid', AURAS, this.save.auras.owned, this.pendingLoadout.aura, aura => this.onCosmeticPick('aura', aura));
+    this.renderCosmeticGrid('auraGrid', AURAS, this.save.auras.owned, this.warsztatWorn('aura'), aura => this.onCosmeticPick('aura', aura));
     this.updateCosmeticUnlockedCount();
   }
 
   /** GDD 4.0 §5.3 category 3: "Efekt pochłaniania" — see the color override
    *  in triggerEatFeedback(). 'classic' (free, color: null) is always owned. */
   populateEffects() {
-    this.renderCosmeticGrid('effectGrid', EAT_EFFECTS, this.save.effects.owned, this.pendingLoadout.effect, effect => this.onCosmeticPick('effect', effect));
+    this.renderCosmeticGrid('effectGrid', EAT_EFFECTS, this.save.effects.owned, this.warsztatWorn('effect'), effect => this.onCosmeticPick('effect', effect));
     this.updateCosmeticUnlockedCount();
   }
 
   /** GDD 4.0 §5.3 category 4: "Overdrive" — a cosmetic tint on Arena's
    *  existing seeded Overdrive finish, see checkOverdriveTrigger(). */
   populateOverdriveSkins() {
-    this.renderCosmeticGrid('overdriveSkinGrid', OVERDRIVE_SKINS, this.save.overdriveSkins.owned, this.pendingLoadout.overdriveSkin, skin => this.onCosmeticPick('overdriveSkin', skin));
+    this.renderCosmeticGrid('overdriveSkinGrid', OVERDRIVE_SKINS, this.save.overdriveSkins.owned, this.warsztatWorn('overdriveSkin'), skin => this.onCosmeticPick('overdriveSkin', skin));
     this.updateCosmeticUnlockedCount();
   }
 
   /** v14 Warsztat: one handler for every category. An owned item is put on
    *  at once (the ZAŁÓŻ button sat below the whole grid); anything else is
-   *  previewed on the live hole while a sheet says what it costs or where
-   *  it comes from -- a purchase always needs that confirming tap (a single
-   *  tap used to spend the coins). */
+   *  previewed on the live hole -- a purchase always needs a confirming tap
+   *  (a single tap used to spend the coins). WORKSHOP-BUY: that tap lives in
+   *  the showroom card's fixed action slot (renderWarsztatAction()), not in a
+   *  sheet over the grid, so the rest of the screen stays live: another card
+   *  simply replaces the one being looked at. */
   onCosmeticPick(cat, item) {
-    const C = {
-      skin: { owned: this.save.owned, noun: 'Wir', key: 'skinId' },
-      aura: { owned: this.save.auras.owned, noun: 'Smuga', key: 'auraId' },
-      effect: { owned: this.save.effects.owned, noun: 'Efekt pochłaniania', key: 'effectId' },
-      overdriveSkin: { owned: this.save.overdriveSkins.owned, noun: 'Finisz', key: 'overdriveSkinId' }
-    }[cat];
+    const C = this.cosmeticCategory(cat);
     this.sound.ui();
+    this.clearWarsztatFocus();
     if (C.owned.includes(item.id)) {
       const was = this.pendingLoadout[cat];
       this.pendingLoadout[cat] = item.id;
@@ -9434,58 +9443,113 @@ class Game {
       if (was !== item.id) this.celebrateEquip(cat, item, 'equip');
       return;
     }
-    const equipped = { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected, overdriveSkin: this.save.overdriveSkins.selected }[cat];
+    const worn = { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected, overdriveSkin: this.save.overdriveSkins.selected }[cat];
     this.pendingLoadout[cat] = item.id;
     // DEVICE-QA-1 (playtest 005): the preview names and shows the item
     // being looked at (it kept the equipped vortex's name and no Finisz).
-    this.warsztatFocus = { cat, item, noun: C.noun };
+    this.warsztatFocus = { cat, item, noun: C.noun, worn };
+    const offer = this.warsztatOffer(item);
+    if (offer.state === 'reward') this.analytics.track('cosmetic_preview', { [C.key]: item.id, locked: true });
+    else if (offer.state === 'short') this.analytics.track('cosmetic_preview', { [C.key]: item.id, price: offer.price, affordable: false });
     this.updateWarsztatPreview();
-    const revert = () => { this.pendingLoadout[cat] = equipped; if (this.warsztatFocus && this.warsztatFocus.item === item) this.warsztatFocus = null; this.updateWarsztatPreview(); };
-    const title = `${C.noun} „${item.name}”`;
-    // PX02 D+: a vortex is a look only -- the sheet says so, never a bonus.
-    const perk = cat === 'skin' ? ['Sam wygląd — w rundzie działa tak samo jak każdy inny wir.'] : [];
-    const icon = REWARD_CATEGORY_ICONS[cat === 'overdriveSkin' ? 'overdrive' : cat];
-    if (item.unlockSource) {
-      this.analytics.track('cosmetic_preview', { [C.key]: item.id, locked: true });
-      const src = item.unlockSource.type === 'iap' ? 'w Pakiecie startowym' : `jako nagrodę: ${this.cosmeticLockLabel(item)}`;
-      this.openInfoSheet({ icon, title, body: [...perk, `Tego nie kupisz za monety — zdobędziesz ${src}. Na podglądzie widać, jak wygląda.`], onClose: revert, bottom: true });
-      return;
-    }
+  }
+
+  cosmeticCategory(cat) {
+    return {
+      skin: { owned: this.save.owned, noun: 'Wir', key: 'skinId' },
+      aura: { owned: this.save.auras.owned, noun: 'Smuga', key: 'auraId' },
+      effect: { owned: this.save.effects.owned, noun: 'Efekt pochłaniania', key: 'effectId' },
+      overdriveSkin: { owned: this.save.overdriveSkins.owned, noun: 'Finisz', key: 'overdriveSkinId' }
+    }[cat];
+  }
+
+  /** What an item not owned asks for, read from the wallet every time. */
+  warsztatOffer(item) {
+    if (item.unlockSource) return { state: 'reward' };
     const prisms = item.priceType === 'prisms';
     const price = prisms ? item.pricePrisms : (item.priceCoins != null ? item.priceCoins : (item.price || 0));
     const have = prisms ? (this.save.prisms || 0) : this.save.coins;
-    const sym = prisms ? '◆' : '◇';
-    if (have < price) {
-      this.analytics.track('cosmetic_preview', { [C.key]: item.id, price, affordable: false });
-      this.openInfoSheet({
-        icon, title,
-        body: [...perk, `Cena: <strong>${price} ${sym}</strong> — brakuje jeszcze ${price - have} ${sym}.`,
-          prisms ? 'Pryzmaty dostajesz w Arenie (co 3. runda, rekordy w Wyzwaniu dnia), w Skrzyniach gwiazd w Dzielnicach, za awanse i za reklamę „Darmowe pryzmaty”.' : 'Monety zdobywasz w każdej rundzie Areny, w Wyzwaniu dnia i za misje w Dzielnicach.'],
-        action: { label: 'ZAGRAJ RUNDĘ', onClick: () => this.startArenaRound() },
-        onClose: revert, closeLabel: 'NIE TERAZ', bottom: true
-      });
-      return;
+    return { state: have < price ? 'short' : 'buy', prisms, price, have, sym: prisms ? '◆' : '◇' };
+  }
+
+  /** Back to what is worn; nothing was spent. Every way off the item ends
+   *  here (NIE TERAZ, another card or tab, any screen change): a preview left
+   *  in pendingLoadout would be committed by the next onEquipClick(). */
+  clearWarsztatFocus() {
+    const f = this.warsztatFocus;
+    if (!f) return;
+    this.warsztatFocus = null;
+    this.pendingLoadout[f.cat] = f.worn;
+    this.updateWarsztatPreview();
+  }
+
+  /** The item worn in a category, whatever the preview is showing. */
+  warsztatWorn(cat) {
+    const f = this.warsztatFocus;
+    return f && f.cat === cat ? f.worn : this.pendingLoadout[cat];
+  }
+
+  /** WORKSHOP-BUY: the showroom card's action slot -- the hint when nothing is
+   *  being looked at, otherwise the offer. It keeps its place and height, so
+   *  a tap on a card moves nothing on the screen. */
+  renderWarsztatAction() {
+    const f = this.warsztatFocus, offer = f ? this.warsztatOffer(f.item) : null;
+    const buy = document.getElementById('btnWarsztatBuy');
+    document.getElementById('warsztatHint').classList.toggle('hidden', !!f);
+    document.getElementById('btnWarsztatCancel').classList.toggle('hidden', !f);
+    buy.classList.toggle('hidden', !offer || offer.state === 'reward');
+    document.getElementById('btnWarsztatEarn').classList.toggle('hidden', !offer || offer.state !== 'short');
+    document.querySelectorAll('#shopScreen .skin-card.looking').forEach(c => c.classList.remove('looking'));
+    if (!f) return;
+    const card = document.querySelector(`#shopScreen .skin-card[data-item="${f.item.id}"]`);
+    if (card && !card.closest('.hidden')) card.classList.add('looking');
+    const line = document.getElementById('warsztatPreviewLoadout');
+    if (offer.state === 'buy') {
+      line.textContent = `Cena: ${offer.price} ${offer.sym} · masz ${offer.have} ${offer.sym}`;
+      buy.textContent = `KUP I ZAŁÓŻ · ${offer.price} ${offer.sym}`;
+    } else if (offer.state === 'short') {
+      line.textContent = `Brakuje ${offer.price - offer.have} ${offer.sym}`;
+      buy.textContent = 'ZAGRAJ RUNDĘ';
+    } else {
+      const src = f.item.unlockSource.type;
+      line.textContent = src === 'iap' ? 'W Pakiecie startowym' : src === 'coreCity' ? `Nagroda: ${this.cosmeticLockLabel(f.item)}` : this.cosmeticLockLabel(f.item);
     }
-    this.openInfoSheet({
-      icon, title,
-      body: [...perk, `Cena: <strong>${price} ${sym}</strong> (masz ${have} ${sym}). Na podglądzie widać, jak wygląda.`],
-      action: { label: `KUP I ZAŁÓŻ · ${price} ${sym}`, onClick: () => {
-        if (prisms) this.save.prisms -= price; else this.save.coins -= price;
-        C.owned.push(item.id);
-        // PX02 D+: bought after D+ on a line not settled yet -- never refunded.
-        const eco = this.save.economy;
-        if (cat === 'skin' && eco.looksOnly < 1 && LOOKS_ONLY_REFUND[item.id] && !eco.boughtAfter.includes(item.id)) eco.boughtAfter.push(item.id);
-        this.analytics.track('soft_purchase', { [C.key]: item.id, price, currency: prisms ? 'prisms' : 'coins' });
-        this.pendingLoadout[cat] = item.id;
-        this.warsztatFocus = null;
-        this.onEquipClick();
-        this.sound.coin();
-        this.updateCoinDisplays();
-        this.updateWarsztatPreview();
-        this.celebrateEquip(cat, item, 'buy');
-      } },
-      onClose: revert, closeLabel: 'NIE TERAZ', bottom: true
-    });
+  }
+
+  onWarsztatAction() {
+    const f = this.warsztatFocus;
+    if (!f) return;
+    const C = this.cosmeticCategory(f.cat), item = f.item, cat = f.cat, offer = this.warsztatOffer(item);
+    if (offer.state === 'reward' || C.owned.includes(item.id)) { this.clearWarsztatFocus(); return; }
+    if (offer.state === 'short') { this.clearWarsztatFocus(); this.startArenaRound(); return; }
+    if (offer.prisms) this.save.prisms -= offer.price; else this.save.coins -= offer.price;
+    C.owned.push(item.id);
+    // PX02 D+: bought after D+ on a line not settled yet -- never refunded.
+    const eco = this.save.economy;
+    if (cat === 'skin' && eco.looksOnly < 1 && LOOKS_ONLY_REFUND[item.id] && !eco.boughtAfter.includes(item.id)) eco.boughtAfter.push(item.id);
+    this.analytics.track('soft_purchase', { [C.key]: item.id, price: offer.price, currency: offer.prisms ? 'prisms' : 'coins' });
+    this.pendingLoadout[cat] = item.id;
+    this.warsztatFocus = null;
+    this.onEquipClick();
+    this.sound.coin();
+    this.updateCoinDisplays();
+    this.updateWarsztatPreview();
+    this.celebrateEquip(cat, item, 'buy');
+  }
+
+  /** WORKSHOP-BUY: on a phone the showroom card stays pinned above a scrolled
+   *  list (a card tapped low in the list was bought unseen) and slims down
+   *  while pinned; the margin keeps the list exactly where it was. */
+  setupWarsztatStickyCard() {
+    const screen = document.querySelector('#shopScreen .nav-screen');
+    const card = screen.querySelector('.warsztat-preview');
+    new IntersectionObserver(([e]) => {
+      const stuck = !e.isIntersecting && !!e.rootBounds && e.rootBounds.height > 0 && this.layout === 'phone';
+      if (stuck === card.classList.contains('stuck')) return;
+      const full = card.offsetHeight;
+      card.classList.toggle('stuck', stuck);
+      card.style.marginBottom = stuck ? `${full - card.offsetHeight}px` : '';
+    }, { root: screen }).observe(screen.querySelector('.app-header'));
   }
 
   /** VISUAL-1: feedback for putting an item on (cyan) or buying it (gold):
@@ -9578,6 +9642,7 @@ class Game {
 
   openWarsztatScreen() {
     this.analytics.track('shop_view', {});
+    this.warsztatFocus = null;
     // Reset the pending preview to whatever is actually equipped -- any
     // unconfirmed taps from a previous visit are discarded, matching the
     // ZAŁÓŻ button's "this is a preview until you confirm it" contract.
@@ -9689,6 +9754,7 @@ class Game {
     document.getElementById('warsztatLookValue').textContent = f ? what : (skin.look || '—');
     document.getElementById('warsztatPreviewLoadout').textContent =
       `Smuga: ${(aura && aura.name) || 'Brak'} · Efekt: ${(effect && effect.name) || 'Klasyczny'} · Finisz: ${(overdrive && overdrive.name) || 'Klasyczny'}`;
+    this.renderWarsztatAction();
   }
 
   /** Keeps the Warsztat hole canvases animated while the screen is open
@@ -10425,6 +10491,7 @@ class Game {
       });
     }
     this._lastWalletShown = total;
+    if (this.warsztatFocus) this.renderWarsztatAction(); // e.g. a rewarded ad while short of prisms
     this.updatePlayerLevelRow();
     this.updateFreeChestRow();
     document.getElementById('coinCountMenu').textContent = this.save.coins;
@@ -10781,13 +10848,10 @@ class Game {
   /** Generic "what is this?" popup (#infoSheet). `body` is a list of
    *  paragraphs/HTML snippets (authored strings only, never user input);
    *  `action` optionally adds a primary button ({label, onClick}). */
-  openInfoSheet({ icon = '', title, body = [], action = null, onClose = null, closeLabel = 'ROZUMIEM', bottom = false }) {
+  openInfoSheet({ icon = '', title, body = [], action = null, onClose = null, closeLabel = 'ROZUMIEM' }) {
     this.closeInfoSheet();
     this.infoSheetOnClose = onClose;
     document.getElementById('btnInfoSheetClose').textContent = closeLabel;
-    // v14: a bottom sheet over a light scrim (Warsztat purchases keep the
-    // live preview visible above it).
-    document.getElementById('infoSheet').classList.toggle('info-sheet-bottom', bottom);
     document.getElementById('infoSheetIcon').innerHTML = icon;
     document.getElementById('infoSheetIcon').classList.toggle('hidden', !icon);
     document.getElementById('infoSheetTitle').textContent = title;
@@ -11251,6 +11315,7 @@ class Game {
   }
 
   showScreen(id) {
+    this.clearWarsztatFocus();
     // A restored save lands on Miasto -- never on a result screen of the
     // save it replaced (whose buttons would then act on the new one).
     if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
@@ -17635,7 +17700,11 @@ const I18N_EN = {
   "Park znów pulsuje energią. Zbierz fragmenty z całego parku — świecące bramy Cię podrzucą.": "The park is pulsing with energy again. Collect fragments all over it — the glowing gates will give you a boost.",
   "Postęp z kodu działa w tej sesji, ale przeglądarka go nie zapisała (np. brak miejsca na dane albo gra otwarta w innej karcie).": "The progress from the code works in this session, but the browser did not save it (for example, no storage space left or the game is open in another tab).",
   "Różowa plazma": "Pink plasma",
-  "Sam wygląd — w rundzie działa tak samo jak każdy inny wir.": "Looks only — in a round it plays exactly like every other vortex.",
+  "Cena: {0} {1} · masz {2} {3}": "Price: {0} {1} · you have {2} {3}",
+  "Brakuje {0} {1}": "You're {0} {1} short",
+  "Skąd je wziąć?": "How to get them?",
+  "W Pakiecie startowym": "In the Starter Pack",
+  "Nagroda: {0}": "Reward: {0}",
   "Toksyczne bąble": "Toxic bubbles",
   "Trzy bramy impulsu na alejkach. Rozpędź się i posprzątaj park.": "Three impulse gates on the paths. Pick up speed and clean up the park.",
   "Kryształy leżą po drugiej stronie galerii. Portal przeniesie Cię tam w mgnieniu oka — i z powrotem.": "The crystals lie on the far side of the gallery. The portal takes you there in a blink — and back.",
@@ -17657,7 +17726,6 @@ const I18N_EN = {
   "Złote słońce": "Golden sun",
   "Świecąca brama daje impuls: przejedź przez nią, a wir na chwilę przyspieszy. Potem brama się ładuje.": "A glowing gate gives a boost: drive through it and the vortex speeds up for a moment. Then the gate recharges.",
   "Dwa portale są połączone: wjedź w jeden, wyjedziesz z drugiego. Działają w obie strony.": "The two portals are linked: go into one, come out of the other. They work both ways.",
-  "(masz {0} {1}). Na podglądzie widać, jak wygląda.": "(you have {0} {1}). The preview shows how it looks.",
   "(wcześniej)": "(earlier)",
   "({0}).": "({0}).",
   "+15 s do limitu czasu misji.": "+15 s to the mission time limit.",
@@ -18611,7 +18679,6 @@ const I18N_EN = {
   "Taśma zatrzymana.": "Tape stopped.",
   "Taśmociąg": "Conveyor Belt",
   "Taśmy jadą, prasy biją, Glitch rośnie.": "Belts rolling, presses pounding, Glitch growing.",
-  "Tego nie kupisz za monety — zdobędziesz {0}. Na podglądzie widać, jak wygląda.": "You can't buy this with coins — you earn it {0}. The preview shows how it looks.",
   "Tej operacji nie można cofnąć. Stracisz bezpowrotnie: cały postęp kampanii i odblokowane dzielnice, poziom Core City, monety i pryzmaty, kupione kosmetyki, statystyki i rekordy Areny.": "This can't be undone. You will permanently lose: all Campaign progress and unlocked districts, your Core City level, coins and prisms, purchased cosmetics, and your Arena stats and records.",
   "Ten kod ma mniej postępu": "This code has less progress",
   "Teraz to Ty decydujesz, co wisi w galerii.": "Now you decide what hangs in the gallery.",
@@ -19435,8 +19502,6 @@ const I18N_EN = {
   "Ten rywal jest mniejszy od Ciebie — najedź na niego i go pochłoń!": "This rival is smaller than you — roll over it and swallow it!",
   "Większy wir Cię pochłonął — wynik zostaje. Omijaj większych rywali, aż ich przerośniesz.": "A bigger vortex swallowed you — your score stays. Avoid bigger rivals until you outgrow them.",
   "{0} rzuca Ci wyzwanie: {#1} pkt! GRAJ — ta sama mapa.": "{0} challenges you: {1} pts! PLAY — same map.",
-  "Monety zdobywasz w każdej rundzie Areny, w Wyzwaniu dnia i za misje w Dzielnicach.": "You earn coins in every Arena round, in the Daily Challenge and for missions in Districts.",
-  "Pryzmaty dostajesz w Arenie (co 3. runda, rekordy w Wyzwaniu dnia), w Skrzyniach gwiazd w Dzielnicach, za awanse i za reklamę „Darmowe pryzmaty”.": "You get prisms in the Arena (every 3rd round, Daily Challenge records), in Star Chests in Districts, for level-ups and for the “Free prisms” ad.",
   "Arena: +{#0} za co {#1}. rundę, +{#2} za rekord w Wyzwaniu dnia": "Arena: +{0} for every {1}rd round, +{2} for a Daily Challenge record",
   "Dzielnice: +{#0} w każdej Skrzyni gwiazd": "Districts: +{0} in every Star Chest",
   "Awans poziomu, kalendarz logowania, darmowa skrzynia": "Level-ups, the login calendar, the free chest",
