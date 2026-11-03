@@ -4,6 +4,20 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## WORKSHOP-BUY „Zakup w karcie podglądu” (zapis nadal v13; ceny, ekonomia i nagrody bez zmian)
+- **Warsztat bez okna zakupu (zgłoszenie właścicielki, ocena `vh-ux-gamefeel`):**
+  okno zasłaniało karty, gdziekolwiek stało. „KUP I ZAŁÓŻ · cena” i „NIE TERAZ”
+  mają stałe miejsce w karcie podglądu, która i tak pokazuje nazwę, opis
+  i animację. Dotknięcie karty niczego nie przesuwa, a oglądana karta dostaje
+  złote obramowanie. Inna karta od razu zastępuje podgląd.
+- **Gdy brakuje waluty:** „Brakuje N · Skąd je wziąć?” (opis źródeł na żądanie)
+  i „ZAGRAJ RUNDĘ”; „Darmowe pryzmaty” zostają widoczne, a reklama od razu
+  zmienia ofertę na „KUP I ZAŁÓŻ”.
+- **Telefon:** karta zostaje przypięta nad przewijaną listą (po przewinięciu
+  podgląd znikał z ekranu na 375×667, 360×640 i 320×568) i zwęża się na ten czas;
+  na 320 px zakładki mieszczą się w jednym rzędzie.
+- `qa/workshop-buy.mjs`: wszystkie ramki platform + laptop właścicielki.
+
 ## DEVICE-QA-1 „Ogrywanie 30.10” (zapis nadal v13; ekonomia, ceny, nagrody, zasady jedzenia i trudność bez zmian — poprawki tekstu, układu i czytelności)
 - **Core City (019, 023):** naliczanie było poprawne (+10% runda, +2% podium,
   +3% 1. miejsce, +2% rekord, ×1,6 na LVL 1–2 — 67% → 82% to 10 + 2 + 3),

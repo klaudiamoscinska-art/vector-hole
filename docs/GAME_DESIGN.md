@@ -393,9 +393,12 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   (wcześniej w tych kategoriach nie było nic do kupienia). Dodatków na
   rundę Areny (Tarcza 45, Magnes 25, Turbo start 70) nie ma od PX02 D+.
 - **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go
-  zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a arkusz
-  pyta „KUP I ZAŁÓŻ · cena” (zamknięcie = powrót do założonego, nic nie
-  wydane); przedmiot z nagrody mówi, skąd go zdobyć (`onCosmeticPick()`).
+  zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a stałe miejsce
+  w karcie podglądu pyta „KUP I ZAŁÓŻ · cena” (WORKSHOP-BUY: bez okna nad
+  siatką; „NIE TERAZ”, inna zakładka lub wyjście z ekranu = powrót do
+  założonego, nic nie wydane; inna karta od razu zastępuje podgląd); przedmiot
+  z nagrody mówi, skąd go zdobyć; gdy brakuje waluty: „Brakuje N · Skąd je
+  wziąć?” i „ZAGRAJ RUNDĘ” (`onCosmeticPick()`, `renderWarsztatAction()`).
   VISUAL-1: karta pokazuje stan — założony, posiadany, do kupienia teraz
   (złota cena), poza zasięgiem (przygaszony, kłódka), nagroda (kłódka);
   założenie i zakup wybuchają pierścieniami na podglądzie (zakup na złoto).
@@ -562,8 +565,10 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   wspólnie wyśrodkowane), licznik „Nowość n z N”, przycisk z akcją tylko
   wtedy, gdy prowadzi dalej (WARSZTAT, DZIELNICA, WYZWANIA); karta bez
   akcji (skrzynia, wzmocnienia) ma jeden przycisk DALEJ / ŚWIETNIE.
-- **Warsztat:** arkusz zakupu na poziomym ekranie stoi na środku wysokości
-  nad siatką (podgląd z lewej widoczny), na telefonie u dołu; podglądana
+- **Warsztat:** zakup w stałym miejscu karty podglądu, nic nie zasłania kart
+  (WORKSHOP-BUY); na telefonie karta zostaje przypięta nad przewijaną listą
+  i na ten czas się zwęża; na najciaśniejszych ramkach (niski ekran poziomy,
+  szerokość do 340 px) karta nie ma ramki z opisem; podglądana
   Smuga / Efekt / Finisz podpisuje podgląd swoją nazwą, Finisz pokazuje
   baner „WIELKI FINISZ!” w swoim kolorze.
 - Usunięte jako szum: napisy „VECTOR HOLE” nad tytułami zakładek,
