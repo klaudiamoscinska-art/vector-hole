@@ -4219,9 +4219,6 @@ body[data-gfx="0"] #hud::before { display: none; }
 @media (max-width: 400px) { .hub-city-next-prefix { display: none; } }
 .hub-quick-text strong { -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis; display: block; }
 
-/* Info sheet as a bottom sheet (Warsztat: the preview stays visible). */
-#infoSheet.info-sheet-bottom { align-items: flex-end !important; background: linear-gradient(to bottom, rgba(4, 16, 29, 0) 0%, rgba(4, 16, 29, 0.35) 35%, rgba(4, 16, 29, 0.85) 100%) !important; }
-#infoSheet.info-sheet-bottom > .info-sheet-panel { margin: 0 auto calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 460px; animation: briefing-up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
 
 /* Mission result: score tile only when it matters; three equal exits. */
 .mission-result-stats { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
@@ -5108,10 +5105,34 @@ body.compact .result-actions > .result-actions-row { max-width: none; }
 .mc-boost-wallet { display: inline-block; padding: 1px 8px; letter-spacing: 0.02em; font-size: 11px; border-radius: 999px; background: rgba(239, 203, 99, 0.12); border: 1px solid rgba(239, 203, 99, 0.35); color: var(--nc-gold); font-weight: 800; white-space: nowrap; }
 .mc-boost-note.warn { color: var(--nc-gold); font-weight: 700; }
 
-/* Warsztat purchase sheet on a landscape frame (playtest 004: "dlaczego
-   okno nisko"): centred in height over the right half (the grid), so the
-   live preview on the left stays in view; a phone keeps the bottom sheet
-   under its preview. */
-body.wide #infoSheet.info-sheet-bottom, body.compact #infoSheet.info-sheet-bottom { align-items: center !important; justify-content: flex-end !important;
-  padding-right: max(16px, 4%, env(safe-area-inset-right, 0px)); background: linear-gradient(to right, rgba(4, 16, 29, 0) 0%, rgba(4, 16, 29, 0.35) 40%, rgba(4, 16, 29, 0.8) 100%) !important; }
-body.wide #infoSheet.info-sheet-bottom > .info-sheet-panel, body.compact #infoSheet.info-sheet-bottom > .info-sheet-panel { margin: 0; max-width: min(460px, calc(50% - 24px)); }
+/* WORKSHOP-BUY: no sheet over the grid -- the purchase is the showroom card's
+   own action slot. The slot and the status line keep their height whichever
+   state they show, so a tap on a card moves nothing. */
+.warsztat-action { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px; }
+#shopScreen .warsztat-action .btn { flex: 1 1 0; width: auto; min-width: 0; max-width: none; min-height: 44px; margin: 0; padding: 6px 8px; font-size: 12.5px; line-height: 1.15; }
+#shopScreen .warsztat-action #btnWarsztatBuy { flex-grow: 1.8; }
+.warsztat-action .warsztat-hint { flex: 1; margin: 0; text-align: center; }
+.warsztat-preview-loadout { min-height: calc(2 * 1.45em); }
+.warsztat-earn { padding: 6px 2px; margin: -6px 0; border: 0; background: none; font: inherit; font-weight: 700; color: var(--nc-cyan); text-decoration: underline; cursor: pointer; }
+.skin-card.looking { outline: 2px solid var(--nc-gold); outline-offset: 1px; }
+/* Phone: pinned above a scrolled list, slimmer while pinned (setupWarsztatStickyCard()). */
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview { position: sticky; top: 0; z-index: 5; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck { box-shadow: 0 -24px 0 var(--nc-bg); }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-look { display: none; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-preview-stage { height: 96px; }
+/* The tightest frames: the name and the status line stay, the description goes,
+   so the preview alone sets the row's height and a long name moves nothing. */
+@media (max-height: 480px) { body.compact #shopScreen .warsztat-look { display: none; } }
+@media (max-width: 340px) {
+  body:not(.wide):not(.compact) #shopScreen .warsztat-look { display: none; }
+  body:not(.wide):not(.compact) #shopScreen .shop-tabs { flex-wrap: nowrap; }
+  body:not(.wide):not(.compact) #shopScreen .shop-tabs .toggle-btn { flex: 1 1 0; min-width: 0; }
+}
+/* A low landscape frame: the tabs fit one row. */
+@media (max-height: 430px) {
+  body.compact #shopScreen .warsztat-preview { padding: 8px; }
+  body.compact #shopScreen .warsztat-preview-stage { height: 92px; }
+  body.compact #shopScreen .warsztat-action { margin-top: 6px; }
+  body.compact #shopScreen .shop-tabs { flex-wrap: nowrap; }
+  body.compact #shopScreen .shop-tabs .toggle-btn { flex: 1 1 0; min-width: 0; padding: 6px 2px; }
+}

@@ -672,8 +672,14 @@
               <span class="warsztat-look-label">WYGLĄD WIRU · BEZ BONUSU W RUNDZIE</span>
               <strong id="warsztatLookValue">—</strong>
             </div>
-            <div class="warsztat-preview-loadout" id="warsztatPreviewLoadout">—</div>
+            <div class="warsztat-preview-loadout" aria-live="polite"><span id="warsztatPreviewLoadout">—</span> <button id="btnWarsztatEarn" class="warsztat-earn hidden" type="button">Skąd je wziąć?</button></div>
           </div>
+        </div>
+        <!-- WORKSHOP-BUY: the hint, or the offer on the item being looked at. -->
+        <div class="warsztat-action">
+          <p id="warsztatHint" class="hint-text warsztat-hint">Dotknij, żeby założyć. Zablokowane obejrzysz na podglądzie.</p>
+          <button id="btnWarsztatBuy" class="btn btn-primary hidden">—</button>
+          <button id="btnWarsztatCancel" class="btn btn-secondary hidden">NIE TERAZ</button>
         </div>
       </div>
       <div class="shop-tabs">
@@ -695,7 +701,6 @@
         </button>
       </div>
 
-      <p class="hint-text warsztat-hint">Dotknij, żeby założyć. Zablokowane obejrzysz na podglądzie.</p>
       </div>
       <div class="wide-col wide-col-b">
       <div class="skin-grid-header">
