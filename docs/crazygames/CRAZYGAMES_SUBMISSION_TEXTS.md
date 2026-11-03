@@ -9,7 +9,7 @@ oglądany (`NOT RUN`). Dokumentacja wymaga opisu, sterowania, okładek i filmów
 
 | Pole | Co jest potrzebne | Uwaga |
 |---|---|---|
-| Nazwa gry | **Decyzja: „Vector Hole” czy „Vertical Hole”** | Gra, jej logo, strona i kod używają „Vector Hole”; „Vertical Hole” występuje w poleceniach i pakiecie skilli. Rekomendacja: **Vector Hole**, bo inaczej nazwa w formularzu nie zgadza się z ekranem gry. Okładki z drugą nazwą są w `covers/alt-title-vertical-hole/`, ale wybór „Vertical Hole” wymaga też zmiany w grze i nowych filmów. |
+| Znak towarowy GLITCH GULP | Formalna weryfikacja | Nazwę wybrała właścicielka; badanie znaków pozostaje otwarte. |
 | Developer / studio | Nazwa wyświetlana publicznie | Nie wpisano żadnych danych osobowych. |
 | Kontakt | Adres dla CrazyGames i ewentualnie graczy | Nie trafia do repozytorium. |
 | Polityka prywatności | URL lub decyzja, że wystarcza tekst w grze | Projekt: `PRIVACY_POLICY_DRAFT.md`. |
@@ -20,27 +20,25 @@ oglądany (`NOT RUN`). Dokumentacja wymaga opisu, sterowania, okładek i filmów
 ## Game title
 
 ```
-Vector Hole
+GLITCH GULP
 ```
-
-Wariant, jeśli pole dopuszcza podtytuł: `Vector Hole: Eat the Neon City`
 
 ## Short description
 
 ```
-Steer a vortex through a neon city, swallow everything smaller and outgrow your rivals in fast 2-minute rounds.
+Steer a black hole through a neon city, swallow everything smaller and clear 240 missions or outgrow AI rivals in 2-minute rounds.
 ```
 
 ## Long description
 
 ```
-Vector Hole puts you in control of a growing vortex in a glowing neon city. Start small enough to swallow crystals and capsules, then move on to cars, buses, billboards and towers. The bigger you get, the more of the city you can eat.
-
-ARENA
-Face five AI rivals in 2-minute rounds. Swallow smaller rivals, stay away from bigger ones and finish with the highest score. Grow through six size tiers in every round.
+GLITCH GULP puts you in control of a growing black hole in a glowing neon city. Start small enough to swallow crystals and capsules, then move on to cars, buses, billboards and towers. The bigger you get, the more of the city you can eat.
 
 CAMPAIGN
-Play 240 missions across 12 districts, with five difficulty levels, three stars to earn on each mission and optional boosters for the hard ones.
+Play 240 missions across 12 districts, each with its own goal, five difficulty levels, three stars to earn and optional boosters for the hard ones.
+
+ARENA
+Face five AI rivals in 2-minute rounds. Swallow smaller rivals, stay away from bigger ones, pick upgrades as you grow and finish with the most points. Grow through six size tiers in every round.
 
 MORE TO DO
 - A daily challenge on a map that is new every day
@@ -54,7 +52,7 @@ No account, no energy and no wait between rounds. Press play and start swallowin
 ## Gameplay description
 
 ```
-You steer a vortex seen from above. Anything small enough falls in and makes you bigger, which opens up larger objects. In Arena you compete with five AI rivals for points until the 2-minute timer ends; rivals smaller than you can be swallowed, and bigger ones can swallow you. In Campaign each mission has its own goal, such as swallowing certain objects within the time limit.
+You steer a black hole seen from above. Anything small enough falls in and makes you bigger, which opens up larger objects. In Arena you compete with five AI rivals for points until the 2-minute timer ends; rivals smaller than you can be swallowed, and bigger ones can swallow you. In Campaign each mission has its own goal, such as swallowing certain objects within the time limit.
 ```
 
 ## Genre and tags
@@ -73,6 +71,8 @@ Nie zaznaczaj Multiplayer ani `.io`: rywale są botami i gra nie ma trybu online
 ```
 Desktop
 Move: mouse, or WASD / arrow keys
+Lock the mouse to the game: click the board during a round
+Unlock the mouse and pause: Esc
 Pause: Esc, P or Space
 
 Mobile
@@ -114,7 +114,7 @@ The game does not use the CrazyGames SDK in this build and shows no ads. It has 
 ## Czego nie pisać
 
 Prawdziwy multiplayer, gra ze znajomymi online, natywna aplikacja, CrazyGames SDK, zapis
-w chmurze, reklamy z nagrodą, zakupy. Nie używaj nazw innych gier ani porównań do nich.
+w chmurze, reklamy z nagrodą, zakupy, wyzwania znajomych. Nie używaj nazw innych gier ani porównań do nich.
 
 ## Jak wypełnić zgłoszenie
 
@@ -123,7 +123,9 @@ w chmurze, reklamy z nagrodą, zakupy. Nie używaj nazw innych gier ani porówna
 2. Wgraj `game.zip` albo zawartość folderu `game/`, zależnie od tego, co pokaże portal.
    `index.html` jest w głównym katalogu paczki.
 3. Uruchom Preview i QA Tool. Sprawdź Arenę, Dzielnice, pauzę, ponowne wejście (zapis)
-   i brak ofert reklam. Tych kroków nie dało się wykonać lokalnie.
+   i brak ofert reklam, a **fizyczną myszą**: kliknięcie planszy blokuje kursor, ruch we
+   wszystkie strony, Esc odblokowuje i pauzuje, wznowienie blokuje ponownie. Tych kroków nie
+   dało się wykonać lokalnie.
 4. Wgraj trzy okładki z `covers/` i dwa filmy z `videos/`.
 5. Wklej teksty z tego pliku i uzupełnij pola OWNER INPUT REQUIRED.
 6. Dopiero po odbiorze GPT, scaleniu PR i Twojej decyzji wyślij zgłoszenie. Decyzję

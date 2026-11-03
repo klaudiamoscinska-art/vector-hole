@@ -4,7 +4,14 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
-## CRAZYGAMES-BASIC-1 „Paczka na Basic Launch” (zapis nadal v13; ceny, nagrody, trudność i panel TEST bez zmian)
+## CRAZYGAMES-BASIC-1 „GLITCH GULP i paczka na Basic Launch” (zapis nadal v13; ceny, nagrody, trudność i panel TEST bez zmian)
+- **Nowa nazwa: GLITCH GULP**, bez podtytułu, w logo, tytule, metadanych, karcie wyniku i nazwach
+  pobieranych plików. Adresy, repozytorium, klucz zapisu i kod kopii zapasowej zostają.
+- **Nowy wir startowy „Horyzont”:** czarna dziura z grafitowymi i stalowymi ramionami oraz
+  cyjanowym pierścieniem. Identyfikator w zapisie bez zmian; pozostałe wyglądy co do piksela jak wcześniej.
+- **Blokada myszy w paczce** (`docs.crazygames.com/resources/mouse-control/`): kliknięcie planszy
+  blokuje kursor, wirtualny wskaźnik steruje jak zwykły, menu zwalniają kursor, Esc pauzuje.
+  GitHub Pages bez zmian.
 - **Jedna gra, osobna paczka:** `tools/export-crazygames-basic.mjs` buduje z tych samych
   plików paczkę HTML5 (`index.html`, `game.js`, `style.css`, ZIP powtarzalny bajt w bajt).
   Znak `data-distribution="crazygames-basic"` stoi tylko w stronie paczki, nigdy w repo,

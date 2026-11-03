@@ -38,22 +38,20 @@ if (ffmpeg) {
   }
 }
 const coverTags = COVERS.map(f => `<figure><img src="../covers/${f}" alt="${f}"><figcaption>${f}</figcaption></figure>`).join('');
-const altTags = COVERS.filter(f => fs.existsSync(path.join(out, 'covers/alt-title-vertical-hole', f))).map(f => `<figure><img src="../covers/alt-title-vertical-hole/${f}" alt="${f}"><figcaption>${f}</figcaption></figure>`).join('');
 const videoTags = VIDEOS.map(f => `<figure><video src="../videos/${f}" controls muted loop playsinline></video><figcaption>${f}</figcaption></figure>`).join('');
 const frameTags = frames.map(f => `<figure><img src="../${f}" alt="" loading="lazy"><figcaption>${path.basename(f)}</figcaption></figure>`).join('');
 fs.mkdirSync(path.join(out, 'previews'), { recursive: true });
-fs.writeFileSync(path.join(out, 'previews/index.html'), `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vector Hole: materiały CrazyGames</title>
+fs.writeFileSync(path.join(out, 'previews/index.html'), `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GLITCH GULP: materiały CrazyGames</title>
 <style>body{margin:0;padding:24px;background:#04101D;color:#e6faff;font:16px/1.5 system-ui,sans-serif}h1,h2{font-weight:600}section{margin:0 0 40px}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}figure{margin:0}img,video{width:100%;display:block;border-radius:8px;background:#000}figcaption{font-size:13px;opacity:.75;margin-top:6px;overflow-wrap:anywhere}a{color:#68F5FC}</style></head><body>
-<h1>Vector Hole: materiały do zatwierdzenia</h1>
+<h1>GLITCH GULP: materiały do zatwierdzenia</h1>
 <section><h2>Okładki</h2><div class="g">${coverTags}</div></section>
-${altTags ? `<section><h2>Okładki z tytułem „Vertical Hole” (wariant na wypadek innej decyzji o nazwie)</h2><div class="g">${altTags}</div></section>` : ''}
 <section><h2>Filmy</h2><div class="g">${videoTags}</div></section>
 <section><h2>Klatki kontrolne</h2><div class="g">${frameTags}</div></section>
 <p><a href="../game/index.html">Paczka gry</a> wymaga serwera HTTP (moduły ES nie działają z file://); instrukcja w README.md.</p>
 </body></html>
 `);
 
-fs.writeFileSync(path.join(out, 'README.md'), `# CrazyGames Basic: paczka dostawcza Vector Hole
+fs.writeFileSync(path.join(out, 'README.md'), `# CrazyGames Basic: paczka dostawcza GLITCH GULP
 
 Źródło: \`${pkg.sourceHead}\`${pkg.sourceDirty ? ' + niezatwierdzone zmiany' : ''}.
 Pliki: ${pkg.fileCount}, ${(pkg.totalBytes / 1048576).toFixed(2)} MB; ZIP ${(pkg.zip.bytes / 1048576).toFixed(2)} MB.
@@ -62,7 +60,7 @@ Pliki: ${pkg.fileCount}, ${(pkg.totalBytes / 1048576).toFixed(2)} MB; ZIP ${(pkg
 |---|---|
 | Podgląd okładek i filmów | \`previews/index.html\` (dwuklik, otwiera się w przeglądarce) |
 | Paczka do wgrania | \`game.zip\` albo folder \`game/\` |
-| Okładki | \`covers/\` (wariant nazwy: \`covers/alt-title-vertical-hole/\`) |
+| Okładki | \`covers/\` |
 | Filmy | \`videos/\` |
 | Teksty formularza i polityka prywatności | \`submission/\` |
 | Raport i logi | \`reports/\` |

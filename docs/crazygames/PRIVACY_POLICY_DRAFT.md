@@ -2,7 +2,7 @@
 
 **To projekt, a nie porada prawna.** Pola `[OWNER INPUT REQUIRED]` uzupełnia właścicielka;
 prywatne dane nie trafiają do repozytorium. Opis dotyczy paczki CrazyGames Basic i wynika
-z kodu `727b8bd` + tego etapu.
+z kodu bazy `727b8bd` i tego etapu.
 
 ## Co gra faktycznie robi (ustalone w kodzie i testach)
 
@@ -23,7 +23,7 @@ jeśli formularz o niego zapyta.
 ## Tekst polityki (angielski, do publikacji po uzupełnieniu)
 
 ```
-Privacy Policy — Vector Hole
+Privacy Policy — GLITCH GULP
 
 Publisher: [OWNER INPUT REQUIRED: publisher name]
 Contact: [OWNER INPUT REQUIRED: contact address]
@@ -56,7 +56,7 @@ If the game starts to process other data, for example through ads or accounts, t
 
 ## Do decyzji właścicielki
 
-1. Dane wydawcy i kontakt. W grze widnieje dziś neutralne „Wydawca gry Vector Hole”
+1. Dane wydawcy i kontakt. W grze widnieje dziś neutralne „Wydawca gry GLITCH GULP”
    (`CONFIG.legal`) i pusty kontakt. Nie zmieniałam tego bez Twoich danych.
 2. Gdzie opublikować politykę, jeśli formularz poprosi o adres. Publiczny plik
    w repozytorium ujawni wpisane dane, więc wybierz adres kontaktowy, który może być publiczny.

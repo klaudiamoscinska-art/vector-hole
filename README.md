@@ -1,6 +1,8 @@
-# Vector Hole — pochłoń neonowe miasto
+# GLITCH GULP
 
-**Darmowa gra .io w przeglądarce.** Sterujesz czarną dziurą w neonowym
+(Do listopada 2026 „Vector Hole”; adresy, repozytorium i klucz zapisu zachowały starą nazwę.)
+
+**Darmowa gra w przeglądarce.** Sterujesz czarną dziurą w neonowym
 mieście: pochłaniasz wszystko, co mniejsze od Ciebie, rośniesz z każdym
 kęsem, zjadasz mniejszych rywali i w 2 minuty walczysz o podium. Bez
 instalacji — na telefonie i komputerze.
