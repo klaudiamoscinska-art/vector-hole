@@ -59,9 +59,9 @@ function structureChecks(pkg) {
   const zip = parseZip(fs.readFileSync(path.join(pkg.out, 'game.zip')));
   r.push(report('zip: index.html at the root, every file identical to game/', zip.has('index.html') && list.every(f => zip.get(f) && zip.get(f).equals(fs.readFileSync(path.join(pkg.gameDir, f)))), [...zip.keys()].join()));
   const js = fs.readFileSync(path.join(pkg.gameDir, 'game.js'), 'utf8'), css = fs.readFileSync(path.join(pkg.gameDir, 'style.css'), 'utf8');
-  r.push(report('links: no link or window.open out of the game, no fetch, beacon or socket in the code', !/href="https?:/.test(page) && !/window.open|target=.?_blank|fetch(|sendBeacon|XMLHttpRequest|new WebSocket/.test(js)));
+  r.push(report('links: no link or window.open out of the game, no fetch, beacon or socket in the code', !/href="https?:/.test(page) && !/window\.open|target=.?_blank|\bfetch\(|sendBeacon|XMLHttpRequest|new WebSocket/.test(js)));
   r.push(report('fullscreen: no in-game fullscreen button or request (the portal provides it)', !/requestFullscreen/.test(js + page)));
-  r.push(report('mobile: body has all the user-select: none forms the requirements list, text fields stay usable', ['-webkit-user-select: none', '-moz-user-select: none', '-ms-user-select: none', 'user-select: none'].every(x => css.includes(x)) && /input, textarea {s*-webkit-user-select: text/.test(css)));
+  r.push(report('mobile: body has all the user-select: none forms the requirements list, text fields stay usable', ['-webkit-user-select: none', '-moz-user-select: none', '-ms-user-select: none', 'user-select: none'].every(x => css.includes(x)) && /input, textarea \{\s*-webkit-user-select: text/.test(css)));
   const again = exportPackage({ out: path.join(WORK, 'export-again') });
   r.push(report('export: repeatable (same sources give the same zip)', again.zip.sha256 === pkg.zip.sha256, `${again.zip.sha256.slice(0, 12)} vs ${pkg.zip.sha256.slice(0, 12)}`));
   r.push(report('export: writes nothing to the release or the repo root (no v/ or release/ folder appears)', !fs.existsSync(path.join(ROOT, 'v')) && !fs.existsSync(path.join(ROOT, 'release'))));
@@ -108,7 +108,7 @@ async function clickIn(page, frame, selector) {
 async function hostSdkChecks(gameDir, url) {
   const r = [];
   const g = await portalHost(gameDir, { width: 1216, height: 684 });
-  const load = await g.page.evaluate(() => { const f = document.getElementById('frame'), t = f.contentWindow.performance.getEntriesByType('navigation')[0]; return t ? Math.round(t.domContentLoadedEventEnd) : null; });
+  const load = await g.frame.evaluate(() => { const t = performance.getEntriesByType('navigation')[0]; return t ? Math.round(t.domContentLoadedEventEnd) : null; });
   r.push(report('load: the page is ready within the 10 s benchmark (local server, not the portal CDN)', load != null && load < 10000, `${load} ms`));
   const st = await g.frame.evaluate(() => ({ provider: window.game.monetization.provider, ads: window.game.monetization.adsAvailable, host: location.hostname, sdk: !!(window.CrazyGames || window.PokiSDK), lang: I18N.lang }));
   await g.page.waitForTimeout(500);
@@ -495,6 +495,60 @@ async function saveChecks(gameDir, url) {
   return r;
 }
 
+/** Campaign in the portal iframe: a real click on the mission's launch button, the bot
+ *  plays it, the result screen has its actions and no ad offer. */
+async function campaignFrameChecks(gameDir) {
+  const r = [];
+  const g = await portalHost(gameDir, { width: 1216, height: 684 });
+  await g.frame.addScriptTag({ content: VISIBLE_AD_OFFERS });
+  await g.frame.addScriptTag({ content: CAMPAIGN_BOT });
+  await g.frame.evaluate(() => { const gm = window.game; gm.openCampaignScreen(); gm.openMissionBriefing('M01'); });
+  await g.page.waitForTimeout(200);
+  await clickIn(g.page, g.frame, '[data-mc-launch]');
+  await g.frame.waitForFunction(() => window.game.running && window.game.mode === 'campaign', null, { timeout: 8000 });
+  const out = await g.frame.evaluate(async () => {
+    const gm = window.game, res = window.__qaPlayMission('M01', { style: 'expert', clock0: 9e6 });
+    await new Promise(r => setTimeout(r, 200));
+    const screen = document.getElementById('missionResultScreen') || document.querySelector('.screen:not(.hidden)');
+    const buttons = [...document.querySelectorAll('.screen:not(.hidden) button')].filter(b => b.offsetParent !== null).map(b => (b.innerText || '').trim()).filter(Boolean);
+    return { stars: res.stars, completed: !!gm.save.campaign.completed.M01, screen: screen && screen.id, buttons, offers: window.__adOffers(), raw: JSON.parse(localStorage.getItem('vectorHoleSave_v1')).campaign.completed.M01 };
+  });
+  r.push(report('Campaign in the iframe: launched by a real click, played, result shown with its actions and no ad offer, saved', out.completed && !!out.raw && out.buttons.length > 0 && out.offers.length === 0 && g.errors.length === 0, JSON.stringify({ ...out, errors: g.errors.slice(0, 1) })));
+  await g.browser.close();
+  return r;
+}
+
+/** Real installed browsers, not the bundled Chromium: boot, first round, English, no errors. */
+async function installedBrowserChecks(url) {
+  const r = [];
+  for (const [channel, name] of [['chrome', 'Chrome'], ['msedge', 'Edge']]) {
+    let browser;
+    try { browser = await chromium.launch({ channel }); } catch (e) { r.push({ name: `browser: ${name} NOT RUN (${String(e.message || e).split('\n')[0].slice(0, 90)})`, ok: true, notRun: true }); continue; }
+    try {
+      const context = await browser.newContext({ viewport: { width: 1216, height: 684 }, deviceScaleFactor: 1, locale: 'en-US' });
+      const page = await context.newPage();
+      const errors = [], external = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+      await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (rt) => { external.push(rt.request().url()); rt.abort(); });
+      await page.goto(url);
+      await page.waitForFunction(() => window.game && window.game.state);
+      const box = await page.locator('#btnWelcomePlay').boundingBox();
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+      await page.mouse.move(1100, 340);
+      await page.waitForTimeout(1500);
+      const st = await page.evaluate(() => ({ ua: navigator.userAgent.match(/(Edg|Chrome)\/[\d.]+/g).join(' '), t: window.game.timeRemaining, frames: window.game.frameCount ?? null, x: window.game.player.x, provider: window.game.monetization.provider }));
+      await page.keyboard.press('KeyP');
+      await page.waitForTimeout(100);
+      const paused = await page.evaluate(() => window.game.paused);
+      r.push(report(`browser: ${name} runs the package: first round, clock moving, pause, no errors, nothing external`, st.t < 120 && paused && st.provider === 'none' && !errors.length && !external.length, JSON.stringify({ ...st, errors: errors.slice(0, 2), external })));
+    } catch (e) { r.push(report(`browser: ${name} runs the package`, false, String(e.message || e).slice(0, 300))); }
+    await browser.close();
+  }
+  return r;
+}
+
 async function languageChecks(url) {
   const r = [];
   const g = await openGame(url, { locale: 'de-DE', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, query: '?i18n=log' });
@@ -636,7 +690,7 @@ export async function runCrazyGamesBasic1Checks({ delivery = null, shots = false
   try {
     for (const step of [
       () => hostSdkChecks(pkg.gameDir, site.url), () => adChecks(site.url), () => rewardParity(site.url, web.url), () => deadButtonChecks(site.url),
-      () => frameChecks(pkg.gameDir, shots), () => inputChecks(pkg.gameDir), () => saveChecks(pkg.gameDir, site.url), () => languageChecks(site.url),
+      () => frameChecks(pkg.gameDir, shots), () => inputChecks(pkg.gameDir), () => saveChecks(pkg.gameDir, site.url), () => campaignFrameChecks(pkg.gameDir), () => languageChecks(site.url), () => installedBrowserChecks(site.url),
       () => refreshRateChecks(site.url), () => webChecks(web.url)
     ]) {
       try { all.push(...await step()); } catch (e) { all.push(report(`crazygames-basic1: step crashed (${step.toString().slice(6, 40)})`, false, String(e && e.stack || e))); }
