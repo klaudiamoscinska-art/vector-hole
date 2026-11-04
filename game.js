@@ -1,7 +1,7 @@
 'use strict';
 
 /* =========================================================
-   VECTOR HOLE: EAT THE NEON CITY
+   GLITCH GULP (until 2026-11: Vector Hole)
    Vanilla Canvas game — classes: Game, Hole, Bot, WorldObject, Particle
    ========================================================= */
 
@@ -300,7 +300,7 @@ const CONFIG = {
   },
   // Golden Shot v11: shown in the in-game privacy notice. Fill in the
   // publisher's legal name + contact before a commercial launch.
-  legal: { publisher: 'Wydawca gry Vector Hole', contact: '' },
+  legal: { publisher: 'Wydawca gry GLITCH GULP', contact: '' },
   // Golden Shot v11 ad pacing (see Monetization). Rewarded ads are always
   // opt-in; interstitials only between rounds, never in the newbie runs,
   // never more often than every interstitialMinGapMs, never with "Bez reklam".
@@ -1854,6 +1854,16 @@ class SoundEngine {
    Portal SDK scripts are only fetched when the page is actually running on
    that portal (hostname/referrer match, or ?portal=… for local testing),
    so the default build makes no third-party requests. */
+/* CRAZYGAMES-BASIC-1: one source, one game. tools/export-crazygames-basic.mjs
+   stamps data-distribution="crazygames-basic" on the package's <html>; the
+   repo's index.html and every GitHub Pages release carry no such attribute
+   ('web'). It lives in the packaged file, never in a URL parameter. On Basic
+   Launch the portal disables ads and rejects rewarded buttons that do nothing,
+   so this package loads no SDK and offers no ad (real or demo), no challenge
+   link to its own file host and no statistics. Rewards other than ads stay. */
+const DISTRIBUTION = document.documentElement.getAttribute('data-distribution') || 'web';
+const PORTAL_BASIC = DISTRIBUTION === 'crazygames-basic';
+
 const PORTAL_SDKS = {
   crazygames: { match: /(^|\.)crazygames\.[a-z.]+$/, src: 'https://sdk.crazygames.com/crazygames-sdk-v3.js' },
   poki: { match: /(^|\.)poki(-gdn)?\.(com|net|io)$/, src: 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js' }
@@ -1896,6 +1906,7 @@ class Monetization {
     this.lastInterstitialAt = 0;
     this.prices = {};
     this.busy = false;
+    if (PORTAL_BASIC) { this.provider = 'none'; return; }
     const portal = this.detectPortal();
     if (portal) this.ready = this.loadPortal(portal);
     else this.attachProvider();
@@ -2003,6 +2014,9 @@ class Monetization {
 
   get canPurchase() { return this.provider === 'native' && !!(this.sdk && this.sdk.purchase); }
   get isDemo() { return this.provider === 'demo'; }
+  /** No provider can show an ad (Basic package, or a portal's SDK failed):
+   *  every offer stays off the screen -- never a button that does nothing. */
+  get adsAvailable() { return this.provider !== 'none'; }
   price(sku) { return this.prices[sku] || (IAP_PRODUCTS.find(p => p.sku === sku) || {}).price || ''; }
 
   /** Portals pause their own ads during gameplay and use these markers for
@@ -2062,6 +2076,7 @@ class Monetization {
   }
 
   placementLeft(placement) {
+    if (!this.adsAvailable) return 0;
     const def = AD_PLACEMENTS[placement];
     if (!def || !def.dailyCap) return Infinity;
     const st = this.game.save.ads || {};
@@ -2120,6 +2135,7 @@ class Monetization {
     const A = CONFIG.ads;
     const save = this.game.save;
     if (DEV.sandbox) return; // v23: no real ad breaks in test mode
+    if (!this.adsAvailable) return;
     if (save.entitlements && save.entitlements.noAds) return;
     if ((save.stats.runsPlayed || 0) < CONFIG.economy.newbieRuns) return;
     if (Date.now() - this.lastInterstitialAt < A.interstitialMinGapMs) return;
@@ -2254,7 +2270,7 @@ const SKINS = [
   // it after 26-45 minutes, then had nothing to buy for coins. Now 9 900:
   // Cyjan stays 100 (affordable the moment Warsztat opens), each next look
   // is a further step of play. Owned looks and saved coins are untouched.
-  { id: 'rainbow', name: 'Tęcza', price: 0, rainbow: true, look: 'Tęczowy pryzmat — wir startowy' },
+  { id: 'rainbow', name: 'Horyzont', price: 0, rainbow: true, look: 'Czarna dziura — wir startowy' },
   { id: 'cyan', name: 'Cyjan', price: 100, color: '#50F0FA', look: 'Cyjanowe obwody' },
   { id: 'pink', name: 'Gorący Róż', price: 300, color: '#FF54AD', look: 'Różowa plazma' },
   { id: 'green', name: 'Toksyczna Zieleń', price: 700, color: '#46D99A', look: 'Toksyczne bąble' },
@@ -5628,8 +5644,8 @@ function drawObjectLive(ctx, kind, color, r, t, seed) {
 
 /** Rotating spiral arms inside a circle of radius r (portal swirl and the
  *  hole vortex share this). colors cycle per arm. */
-function drawSpiralArms(ctx, r, colors, angle, arms) {
-  const turns = 1.15, steps = 22;
+function drawSpiralArms(ctx, r, colors, angle, arms, steps = 22) {
+  const turns = 1.15;
   ctx.save();
   const baseAlpha = ctx.globalAlpha;
   ctx.lineCap = 'round';
@@ -8045,6 +8061,10 @@ class Hole {
     }
   }
 
+  /** The starter look: a black hole, not a rainbow portal (save id stays
+   *  'rainbow'; Pryzmat, the Core City reward, keeps the rainbow). */
+  isHorizon() { return this.skin === 'rainbow' && !this.styleOverride; }
+
   /** The ring color for a solid skin (null for the rainbow skin). */
   skinColor() {
     if (this.skin === 'rainbow' || this.skin === 'pryzmat') return null;
@@ -8060,8 +8080,9 @@ class Hole {
   drawVortex(ctx, time) {
     const r = this.radius;
     const solid = this.skinColor();
-    const base = solid || '#9875FF';
-    const colors = solid
+    const horizon = this.isHorizon();
+    const base = horizon ? '#1D4258' : solid || '#9875FF';
+    const colors = horizon ? HORIZON_ARMS : solid
       ? [shadeColor(solid, 0.5), solid, shadeColor(solid, -0.2), shadeColor(solid, 0.25)]
       : [0, 1, 2, 3].map(i => `hsl(${(i * 90 + time * 60) % 360}, 100%, 65%)`);
     ctx.save();
@@ -8075,7 +8096,7 @@ class Hole {
     ctx.fillRect(-r, -r, r * 2, r * 2);
     // Bots spin a touch slower/offset so a crowd doesn't turn in lockstep.
     const spin = this.isPlayer ? 2.4 : 1.9;
-    drawSpiralArms(ctx, r * 1.02, colors, -time * spin + (this.isPlayer ? 0 : r), 4);
+    drawSpiralArms(ctx, r * 1.02, colors, -time * spin + (this.isPlayer ? 0 : r), 4, horizon ? 44 : undefined);
     const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
     core.addColorStop(0, 'rgba(0,0,0,1)');
     core.addColorStop(0.45, 'rgba(0,0,0,0.85)');
@@ -8111,8 +8132,10 @@ class Hole {
     }
 
     const r = this.radius;
-    const style = this.holeStyle();
+    const horizon = this.isHorizon();
+    const style = horizon ? 'horizon' : this.holeStyle();
     const solid = this.skinColor();
+    const tint = horizon ? '#50F0FA' : solid || '#9875FF';
     const rimColor = solid || `hsl(${(time * 60) % 360}, 100%, 62%)`;
     ctx.save();
     if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
@@ -8122,12 +8145,12 @@ class Hole {
     // the skin color fades out -- the hole reads as a dent, not a disc.
     const well = ctx.createRadialGradient(this.x, this.y, r * 0.9, this.x, this.y, r * 1.7);
     well.addColorStop(0, 'rgba(0, 0, 0, 0.66)');
-    well.addColorStop(0.42, rgbaColor(solid || '#9875FF', 0.2));
-    well.addColorStop(1, rgbaColor(solid || '#9875FF', 0));
+    well.addColorStop(0.42, rgbaColor(tint, 0.2));
+    well.addColorStop(1, rgbaColor(tint, 0));
     ctx.fillStyle = well;
     ctx.beginPath(); ctx.arc(this.x, this.y, r * 1.7, 0, Math.PI * 2); ctx.fill();
 
-    drawAccretionDisk(ctx, this.x, this.y, r, solid, time, this.isPlayer ? 14 : 7);
+    drawAccretionDisk(ctx, this.x, this.y, r, horizon ? '#A9EEF4' : solid, time, this.isPlayer ? 14 : 7);
 
     ctx.beginPath();
     ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
@@ -8204,6 +8227,9 @@ const SKIN_STYLES = {
   gold: 'sun', white: 'storm', aurora: 'aurora', krysztal: 'crystal', pryzmat: 'prism'
 };
 const BOT_STYLES = ['tech', 'plasma', 'toxic', 'galaxy', 'crystal', 'sun'];
+// The starter hole: graphite, dark navy and steel arms sinking into black, one cyan arm
+// for the turn; drawn on the floor's dark blues, so the cyan rim is what stands out.
+const HORIZON_ARMS = ['#3B5266', '#16283C', '#6E8497', '#2FB7C6'];
 
 /** Motes of matter orbiting just outside the rim and spiraling in. */
 function drawAccretionDisk(ctx, x, y, r, color, t, count) {
@@ -8362,6 +8388,21 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
         ctx.fillStyle = rgbaColor(c, 0.85);
         ctx.shadowBlur = 10; ctx.shadowColor = c; ctx.fill();
         ctx.restore();
+      }
+      break;
+    }
+    case 'horizon': {
+      // A steel lip with a cyan photon ring on it, and bright arcs running
+      // round it: the motion a player can read on a phone at r = 12 px.
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.strokeStyle = '#25384A'; ctx.lineWidth = lw * 1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+      glowStroke('#50F0FA', Math.max(1.5, lw * 0.42), Math.max(6, r * 0.22));
+      const arcs = detailed ? 3 : 2;
+      for (let i = 0; i < arcs; i++) {
+        const a0 = -t * 1.5 + (i / arcs) * Math.PI * 2;
+        ctx.beginPath(); ctx.arc(0, 0, r, a0, a0 + 0.8);
+        ctx.strokeStyle = '#D6FCFF'; ctx.lineWidth = Math.max(2, lw * 0.6); ctx.stroke();
       }
       break;
     }
@@ -8598,7 +8639,7 @@ class Game {
 
     this.sessionId = generateId('session');
     this.analytics = new Analytics();
-    this.analytics.consent = () => !!(this.save.privacy && this.save.privacy.analytics);
+    this.analytics.consent = () => !PORTAL_BASIC && !!(this.save.privacy && this.save.privacy.analytics);
     this.sessionStartedAt = Date.now();
     // Golden Shot v11: synthesized SFX + adaptive music (see SoundEngine).
     this.sound = new SoundEngine(this.save.settings);
@@ -8794,6 +8835,98 @@ class Game {
     this.analytics.track('gfx_downgrade', { level: this.gfxLevel });
   }
 
+  /** CRAZYGAMES-BASIC-1, docs.crazygames.com/resources/mouse-control/ (top-view mouse
+   *  games: lock the mouse, show a pointer, a key to unlock, buttons stay clickable).
+   *  Package only. A click on the board in a live round opts in; from then on this
+   *  session locks whenever a round is live. The locked pointer is virtual: it feeds
+   *  the same updateFromScreen() the real cursor does, so the steering is unchanged.
+   *  Any open menu frees the cursor. Esc (the browser ends the lock) or a lost lock
+   *  pauses. No API, or a frame that refuses: the plain cursor, as on the web build. */
+  bindPointerLock(updateFromScreen) {
+    const canvas = this.canvas;
+    if (typeof canvas.requestPointerLock !== 'function' || typeof document.exitPointerLock !== 'function') return;
+    const cursor = document.createElement('div');
+    cursor.id = 'lockCursor';
+    cursor.className = 'lock-cursor hidden';
+    const hint = document.createElement('div');
+    hint.id = 'lockHint';
+    hint.className = 'lock-hint hidden';
+    hint.textContent = 'Kliknij planszę, aby zablokować kursor · Esc odblokowuje';
+    document.body.append(cursor, hint);
+    const COOLDOWN_MS = 1300; // Chrome refuses a new lock for about a second after Esc
+    let optIn = false, releasing = false, tried = false, refused = 0, sawMouse = false, vx = 0, vy = 0, realX = null, realY = null;
+    const live = () => this.running && !this.paused && this.state === GameState.PLAYING
+      && !this.evolutionPending && !this.introPending && !this.revivePending;
+    let pendingClick = false;
+    const refuse = () => { if (pendingClick) refused++; pendingClick = false; };
+    const request = (fromClick) => {
+      pendingClick = fromClick;
+      try {
+        const p = canvas.requestPointerLock();
+        if (p && p.catch) p.catch(refuse);
+      } catch (e) { refuse(); }
+    };
+    const place = () => { cursor.style.transform = `translate(${vx}px, ${vy}px)`; };
+    window.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      sawMouse = true;
+      if (!this.pointerLocked) { realX = e.clientX; realY = e.clientY; return; }
+      vx = clamp(vx + e.movementX, 0, this.width);
+      vy = clamp(vy + e.movementY, 0, this.height);
+      place();
+      updateFromScreen(vx, vy, true);
+    });
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      if (this.pointerLocked) {
+        // Clicks go to the locked canvas: pass them to the button under the pointer.
+        const under = document.elementFromPoint(vx, vy);
+        const button = under && under !== canvas && under.closest('button, [role="button"]');
+        if (button && !button.disabled) button.click();
+        return;
+      }
+      if (!live() || refused >= 3) return;
+      optIn = true;
+      tried = true;
+      request(true);
+    });
+    document.addEventListener('pointerlockerror', refuse);
+    document.addEventListener('pointerlockchange', () => {
+      const locked = document.pointerLockElement === canvas;
+      const asked = releasing;
+      releasing = false;
+      this.pointerLocked = locked;
+      cursor.classList.toggle('hidden', !locked);
+      if (locked) {
+        refused = 0;
+        hint.classList.add('hidden');
+        vx = clamp(realX != null ? realX : this.width / 2, 0, this.width);
+        vy = clamp(realY != null ? realY : this.height / 2, 0, this.height);
+        place();
+        return;
+      }
+      // The hole never drives on toward a point the player no longer sees.
+      this.pointerScreen = null;
+      if (asked) return;
+      this.lockLostAt = performance.now();
+      if (this.running && !this.paused && !this.monetization.busy) this.pauseGame();
+    });
+    setInterval(() => {
+      const want = live();
+      if (this.pointerLocked && !want) {
+        releasing = true;
+        document.exitPointerLock();
+      } else if (!this.pointerLocked && want && optIn && !tried && !(performance.now() - this.lockLostAt < COOLDOWN_MS)) {
+        // Back in a live round (a closed menu, the next round): lock again; if the
+        // browser wants a fresh click, the hint below asks for it.
+        tried = true;
+        request(false);
+      }
+      if (!want) tried = false;
+      hint.classList.toggle('hidden', !want || this.pointerLocked || !sawMouse || refused >= 3);
+    }, 100);
+  }
+
   /** True while the Floating Thumb Pad should handle touch (feature flag is
    *  the global kill switch; the player's own setting picks the mode). */
   get useThumbpad() {
@@ -8826,7 +8959,8 @@ class Game {
     // v13: real mouse only -- a finger tap on a DOM button (coach card,
     // evolution card, resume) also fires an emulated mousemove, which would
     // otherwise leave a phantom steering point behind.
-    window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') updateFromScreen(e.clientX, e.clientY, true); });
+    window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && !this.pointerLocked) updateFromScreen(e.clientX, e.clientY, true); });
+    if (PORTAL_BASIC) this.bindPointerLock(updateFromScreen);
     // FTUE-2: in a portal iframe the cursor can leave the game (to the
     // host page); the vortex then stops instead of driving on toward the
     // last point it saw (CrazyGames: no movement the player didn't ask
@@ -8871,6 +9005,7 @@ class Game {
     // Space do the same. Space on a focused menu button keeps its click.
     window.addEventListener('keydown', (e) => {
       if (!this.running || e.repeat || isTextField(e.target)) return;
+      if (e.code === 'Escape' && performance.now() - this.lockLostAt < 250) return;
       const onControl = e.target && e.target.closest && e.target.closest('button, a[href], [role="button"], [tabindex]') && !e.target.closest('#btnPause, #hud-rankBadge');
       if (e.code === 'Escape' || e.code === 'KeyP' || (e.code === 'Space' && !onControl)) {
         e.preventDefault();
@@ -9185,6 +9320,12 @@ class Game {
       this.requestPlayAgain();
     });
     document.getElementById('btnShare').addEventListener('click', () => this.shareResult());
+    if (PORTAL_BASIC) {
+      // No portal link to share yet (the raw file URL is not one), and the row
+      // also held the ×2 offer. No statistics either, so nothing to consent to.
+      document.getElementById('btnShare').parentElement.classList.add('hidden');
+      document.querySelector('[data-consent]').closest('.control-row').classList.add('hidden');
+    }
     document.getElementById('btnMenu').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'menu' });
       this.updateCoinDisplays();
@@ -9668,6 +9809,9 @@ class Game {
    *  packs only render when the provider can actually take a payment
    *  (Monetization.canPurchase) -- never a fake checkout. */
   renderStore() {
+    const freeOffer = this.monetization.adsAvailable;
+    document.querySelector('#shopScreen .store-free').classList.toggle('hidden', !freeOffer);
+    document.querySelector('#shopScreen .store-card').classList.toggle('hidden', !freeOffer && !this.monetization.canPurchase);
     const left = this.monetization.placementLeft('free_prisms');
     const btn = document.getElementById('btnFreePrisms');
     btn.disabled = left <= 0;
@@ -10092,7 +10236,7 @@ class Game {
     // v14: only over the nav tabs -- on a result screen it covered the main
     // button.
     const onNavScreen = !document.getElementById('bottomNav').classList.contains('hidden');
-    if (bar) bar.classList.toggle('hidden', !!this.save.privacy.decided || this.running || this.isFirstRun() || !onNavScreen);
+    if (bar) bar.classList.toggle('hidden', PORTAL_BASIC || !!this.save.privacy.decided || this.running || this.isFirstRun() || !onNavScreen);
     this.reserveConsentSpace();
   }
 
@@ -10132,8 +10276,8 @@ class Game {
       body: [
         `<strong>Administrator:</strong> ${escapeHtml(L.publisher)}${L.contact ? ` · kontakt: ${escapeHtml(L.contact)}` : ''}.`,
         '<strong>Co zapisujemy:</strong> postęp gry, ustawienia i losowy identyfikator gościa — wyłącznie w pamięci Twojej przeglądarki (localStorage) na tym urządzeniu. Nie zakładasz konta, nie podajesz e-maila. Nazwa gracza jest opcjonalna.',
-        '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
-        '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
+        PORTAL_BASIC ? '<strong>Co wysyłamy:</strong> gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.' : '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
+        PORTAL_BASIC ? '<strong>Reklamy i zakupy:</strong> ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.' : '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
         '<strong>Czcionki:</strong> wbudowane w grę — bez pobierania z Google.',
         '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
       ]
@@ -10145,7 +10289,7 @@ class Game {
     const blob = new Blob([JSON.stringify(this.save, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = T('vector-hole-moje-dane.json');
+    a.download = T('glitch-gulp-moje-dane.json');
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -10266,7 +10410,7 @@ class Game {
     c.save(); c.translate(W / 2, 560); hole.draw(c, 1.3); c.restore();
     c.textAlign = 'center';
     c.fillStyle = '#50F0FA'; c.font = `44px ${FONT_DISPLAY}`;
-    c.fillText('VECTOR HOLE', W / 2, 120);
+    c.fillText('GLITCH GULP', W / 2, 120);
     c.fillStyle = 'rgba(230, 250, 255, 0.6)'; c.font = `600 28px ${FONT_UI}`;
     c.fillText(info.headline, W / 2, 170);
     c.shadowColor = '#EFCB63'; c.shadowBlur = 40;
@@ -10291,7 +10435,7 @@ class Game {
     const score = this.player ? this.player.score : 0;
     const tier = this.player ? CONFIG.sizeTiers[getSizeTierIndex(this.player.radius)].shortId : 'T1';
     const url = await this.monetization.shareUrl(this.runSeed, score, this.save.displayName || '');
-    const text = T(`Vector Hole: ${formatNum(score)} pkt, ${place}. miejsce. Ta sama mapa czeka — dasz radę więcej?`);
+    const text = T(`GLITCH GULP: ${formatNum(score)} pkt, ${place}. miejsce. Ta sama mapa czeka — dasz radę więcej?`);
     this.analytics.track('share_click', { score, place });
     const btn = document.getElementById('btnShare');
     const label = btn.innerHTML;
@@ -10300,14 +10444,14 @@ class Game {
     try {
       const cv = this.buildShareCanvas({ score, headline: place === 1 ? 'ZWYCIĘSTWO W NEONOWYM MIEŚCIE' : 'MÓJ WYNIK W NEONOWYM MIEŚCIE', sub: `${place}. miejsce · ${tier} · ${this.isDailyRun ? 'Wyzwanie dnia' : 'Runda 2:00'}` });
       const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.9));
-      if (blob) file = new File([blob], T('vector-hole-wynik.jpg'), { type: 'image/jpeg' });
+      if (blob) file = new File([blob], T('glitch-gulp-wynik.jpg'), { type: 'image/jpeg' });
     } catch (e) { file = null; }
     try {
       if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Vector Hole', text: `${text} ${url}` });
+        await navigator.share({ files: [file], title: 'GLITCH GULP', text: `${text} ${url}` });
         this.analytics.track('share_success', { via: 'files' });
       } else if (navigator.share) {
-        await navigator.share({ title: 'Vector Hole', text, url });
+        await navigator.share({ title: 'GLITCH GULP', text, url });
         this.analytics.track('share_success', { via: 'link' });
       } else if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(`${text} ${url}`);
@@ -10468,7 +10612,7 @@ class Game {
     };
     const reload = () => location.reload();
     const sheets = {
-      future: { title: 'Zapis z nowszej wersji gry', body: ['Twój postęp zapisała nowsza wersja Vector Hole. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.', keep], action: { label: 'ODŚWIEŻ', onClick: reload } },
+      future: { title: 'Zapis z nowszej wersji gry', body: ['Twój postęp zapisała nowsza wersja GLITCH GULP. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.', keep], action: { label: 'ODŚWIEŻ', onClick: reload } },
       corrupt: { title: 'Zapis jest uszkodzony', body: ['Nie udało się odczytać zapisanego postępu. Gra go nie usunęła i nic na nim nie zapisze bez Twojej decyzji.', 'Możesz wczytać kod kopii zapasowej (Profil → Kopia zapasowa) albo zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.', keep], action: { label: 'ZACZNIJ OD NOWA', onClick: repair } },
       invalid: { title: 'Część zapisu jest uszkodzona', body: ['Postęp jest wczytany, ale część danych zapisu ma zły format. Gra niczego nie nadpisze bez Twojej decyzji.', 'NAPRAW ZAPIS zachowa wczytany postęp, a oryginał odłoży jako kopię.', keep], action: { label: 'NAPRAW ZAPIS', onClick: repair } },
       unavailable: { title: 'Zapis nie działa', body: ['Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie usunie ani nie nadpisze.', keep, 'Zezwól tej stronie na przechowywanie danych w ustawieniach przeglądarki i odśwież stronę.'], action: { label: 'ODŚWIEŻ', onClick: reload } },
@@ -11174,7 +11318,7 @@ class Game {
     this.updateCoinDisplays();
     // Golden Shot v11: opt-in "double it" right at the moment of reward.
     this.lastLoginReward = reward;
-    document.getElementById('btnLoginDouble').classList.remove('hidden');
+    document.getElementById('btnLoginDouble').classList.toggle('hidden', !this.monetization.adsAvailable);
     document.getElementById('btnLoginClose').classList.remove('hidden');
     document.getElementById('btnLoginDouble').disabled = false;
     this.analytics.track('ad_offer', { context: 'login_double' });
@@ -14638,7 +14782,7 @@ class Game {
     const firstFinished = this.newbieBonusApplied && finishedBefore === 0 && (this.save.stats.recentArenaScores || []).length === 1 && !this.arenaResultShown;
     const noAdResult = CONFIG.ftue.firstResultNoAd && (this.save.stats.runsPlayed === 1 || firstFinished);
     this.arenaResultShown = true;
-    document.getElementById('btnWatchAd').classList.toggle('hidden', noAdResult);
+    document.getElementById('btnWatchAd').classList.toggle('hidden', noAdResult || !this.monetization.adsAvailable);
 
     this.showScreen('gameOverScreen');
     this.sound.setIntensity(0);
@@ -17716,7 +17860,7 @@ const I18N_EN = {
   "PORTALE": "PORTALS",
   "IMPULS!": "BOOST!",
   "Tęczowy pryzmat — nagroda Core City": "Rainbow prism — Core City reward",
-  "Tęczowy pryzmat — wir startowy": "Rainbow prism — starter vortex",
+  "Czarna dziura — wir startowy": "Black hole — starter vortex",
   "W Arenie liczy się to, jak grasz: żaden wir nie daje już bonusu w rundzie i przed rundą nie ma płatnych dodatków.": "In the Arena what counts is how you play: no vortex gives an in-round bonus any more, and there are no paid power-ups before a round.",
   "WYGLĄD WIRU · BEZ BONUSU W RUNDZIE": "VORTEX LOOK · NO IN-ROUND BONUS",
   "Wiry są teraz tylko wyglądem": "Vortices are now looks only",
@@ -18558,6 +18702,9 @@ const I18N_EN = {
   "Rejs bez kolizji": "Collision-Free Cruise",
   "Rejs nocny": "Night Cruise",
   "Reklamy i zakupy:": "Ads and purchases:",
+  "Kliknij planszę, aby zablokować kursor · Esc odblokowuje": "Click the board to lock the cursor · Esc unlocks it",
+  "gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.": "the game has no server, sends nothing and collects no statistics. The portal you play on has its own privacy policy.",
+  "ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.": "this version of the game shows no ads and sells nothing for real money.",
   "Reklamy w zieleni": "Ads in the Green",
   "Rekord Rdzenia": "Core Record",
   "Rekord chmury": "Cloud Record",
@@ -18716,7 +18863,7 @@ const I18N_EN = {
   "Twój rekord dziś: {0} pkt. Pobij go: +{1} monet i +{2} ◆.": "Your best today: {0} pts. Beat it: +{1} coins and +{2} ◆.",
   "Ty": "You",
   "Tym razem Glitch był szybszy. Zacznij od najbliższych celów, a reszta pójdzie sama.": "Glitch was faster this time. Start with the nearest targets and the rest will follow.",
-  "Tęcza": "Rainbow",
+  "Horyzont": "Horizon",
   "Tłum kramów, a w nim Twój cel.": "A crowd of stalls, and your target is in it.",
   "Tłum w alejce": "Alley Crowd",
   "USTAWIENIA": "SETTINGS",
@@ -18770,9 +18917,8 @@ const I18N_EN = {
   "Ustawienia i profil": "Settings and profile",
   "Utwory:": "Tracks:",
   "Uważaj — podłoga iskrzy.": "Careful — the floor is sparking.",
-  "Vector Hole potrzebuje włączonej obsługi JavaScript.": "Vector Hole needs JavaScript to be enabled.",
-  "Vector Hole – pochłoń neonowe miasto | darmowa gra .io online": "Vector Hole – swallow the neon city | free .io game online",
-  "Vector Hole: {0} pkt, {1}. miejsce. Ta sama mapa czeka — dasz radę więcej?": "Vector Hole: {0} pts, #{1}. Same map is waiting — can you beat it?",
+  "GLITCH GULP potrzebuje włączonej obsługi JavaScript.": "GLITCH GULP needs JavaScript to be enabled.",
+  "GLITCH GULP: {0} pkt, {1}. miejsce. Ta sama mapa czeka — dasz radę więcej?": "GLITCH GULP: {0} pts, #{1}. Same map is waiting — can you beat it?",
   "W Fabryce Pikseli Glitch produkuje sam siebie. Hale pełne są stref skażenia, a nadzorcy pilnują taśm. Zatrzymaj produkcję.": "In the Pixel Factory, Glitch manufactures itself. The halls are full of corruption zones, and overseers guard the belts. Shut down production.",
   "W Fabryce Pikseli Glitch produkuje sam siebie. Hale pełne są stref skażenia, a nadzorcy pilnują taśm. Zatrzymaj produkcję. Czeka 30 nowych misji.": "In the Pixel Factory, Glitch manufactures itself. The halls are full of corruption zones, and overseers guard the belts. Shut down production. 30 new missions await.",
   "W kodzie": "In the code",
@@ -18860,8 +19006,8 @@ const I18N_EN = {
   "Wybrane wzmocnienia zużyjesz w tej próbie — także jeśli się nie uda.": "Selected boosters are used up on this attempt — even if you fail.",
   "Wyciek danych": "Data Leak",
   "Wydajesz je w": "You spend them in the",
-  "Wydawca gry Vector Hole": "Vector Hole publisher",
-  "Wydawca gry Vector Hole.": "Vector Hole publisher.",
+  "Wydawca gry GLITCH GULP": "GLITCH GULP publisher",
+  "Wydawca gry GLITCH GULP.": "GLITCH GULP publisher.",
   "Wyjątkowy wygląd dziury za ukończenie całej kampanii. Załóż go w Warsztacie.": "A unique hole look for completing the whole Campaign. Equip it in the Workshop.",
   "Wynik": "Score",
   "Wynik do pobicia: {0} ({1}) — brakuje {2} pkt. Rewanż na tej samej mapie?": "Score to beat: {0} ({1}) — {2} pts to go. Rematch on the same map?",
@@ -18903,7 +19049,7 @@ const I18N_EN = {
   "Graj bez zapisu": "Play without saving",
   "Do tego czasu możesz grać, ale nowy postęp nie jest zapisywany.": "Until then you can play, but new progress is not saved.",
   "Zapis z nowszej wersji gry": "Save from a newer version of the game",
-  "Twój postęp zapisała nowsza wersja Vector Hole. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.": "Your progress was saved by a newer version of Vector Hole. This version won't change it — reload the page to load the current game.",
+  "Twój postęp zapisała nowsza wersja GLITCH GULP. Ta wersja go nie zmieni — odśwież stronę, aby wczytać aktualną grę.": "Your progress was saved by a newer version of GLITCH GULP. This version won't change it — reload the page to load the current game.",
   "Zapis jest uszkodzony": "The save is damaged",
   "Nie udało się odczytać zapisanego postępu. Gra go nie usunęła i nic na nim nie zapisze bez Twojej decyzji.": "The saved progress couldn't be read. The game hasn't deleted it and won't write over it without your decision.",
   "Możesz wczytać kod kopii zapasowej (Profil → Kopia zapasowa) albo zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.": "You can load a backup code (Profile → Backup) or start over — the damaged save is then set aside as a copy.",
@@ -19249,8 +19395,8 @@ const I18N_EN = {
   "tramwajów": "trams",
   "tylko po Twojej zgodzie": "only with your consent",
   "ukończ": "clear",
-  "vector-hole-moje-dane.json": "vector-hole-my-data.json",
-  "vector-hole-wynik.jpg": "vector-hole-score.jpg",
+  "glitch-gulp-moje-dane.json": "glitch-gulp-my-data.json",
+  "glitch-gulp-wynik.jpg": "glitch-gulp-score.jpg",
   "w Pakiecie startowym": "in the Starter Pack",
   "wbudowane w grę — bez pobierania z Google.": "built into the game — nothing downloaded from Google.",
   "wież": "towers",

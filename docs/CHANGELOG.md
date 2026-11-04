@@ -4,6 +4,30 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CRAZYGAMES-BASIC-1 „GLITCH GULP i paczka na Basic Launch” (zapis nadal v13; ceny, nagrody, trudność i panel TEST bez zmian)
+- **Nowa nazwa: GLITCH GULP**, bez podtytułu, w logo, tytule, metadanych, karcie wyniku i nazwach
+  pobieranych plików. Adresy, repozytorium, klucz zapisu i kod kopii zapasowej zostają.
+- **Nowy wir startowy „Horyzont”:** czarna dziura z grafitowymi i stalowymi ramionami oraz
+  cyjanowym pierścieniem. Identyfikator w zapisie bez zmian; pozostałe wyglądy co do piksela jak wcześniej.
+- **Blokada myszy w paczce** (`docs.crazygames.com/resources/mouse-control/`): kliknięcie planszy
+  blokuje kursor, wirtualny wskaźnik steruje jak zwykły, menu zwalniają kursor, Esc pauzuje.
+  GitHub Pages bez zmian.
+- **Jedna gra, osobna paczka:** `tools/export-crazygames-basic.mjs` buduje z tych samych
+  plików paczkę HTML5 (`index.html`, `game.js`, `style.css`, ZIP powtarzalny bajt w bajt).
+  Znak `data-distribution="crazygames-basic"` stoi tylko w stronie paczki, nigdy w repo,
+  na GitHub Pages ani w adresie URL.
+- **W paczce nie ma reklam:** bez SDK, bez reklamy demonstracyjnej, bez ofert ×2 MONET,
+  darmowych pryzmatów, skrzyni za reklamę, ×2 nagrody dnia, wzmocnienia i +20 s za reklamę
+  (+20 s za pryzmaty zostaje). Normalne nagrody są identyczne jak w wersji webowej.
+- **Bez WYZWIJ ZNAJOMEGO w paczce** (nie ma jeszcze adresu gry na portalu) i bez pytania
+  o statystyki (nic nie jest zbierane). Tekst prywatności w paczce mówi to wprost.
+- **Dla wszystkich wersji:** gdy SDK portalu się nie załaduje, gra nie pokazuje ofert
+  reklam; `body` ma też formy `-webkit-/-moz-/-ms-user-select`, a pola tekstowe pozostają
+  zaznaczalne. Reszta wersji GitHub Pages działa jak dotąd.
+- **Materiały i testy:** generator okładek i filmów (`tools/crazygames-covers.mjs`,
+  `tools/crazygames-video.mjs`), `qa/crazygames-basic1.mjs`, teksty i projekt polityki
+  w `docs/crazygames/`, raport `docs/CRAZYGAMES_BASIC1_REPORT.md`.
+
 ## WORKSHOP-BUY „Zakup w karcie podglądu” (zapis nadal v13; ceny, ekonomia i nagrody bez zmian)
 - **Warsztat bez okna zakupu (zgłoszenie właścicielki, ocena `vh-ux-gamefeel`):**
   okno zasłaniało karty, gdziekolwiek stało. „KUP I ZAŁÓŻ · cena” i „NIE TERAZ”

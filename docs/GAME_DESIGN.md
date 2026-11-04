@@ -1,8 +1,13 @@
-# Vector Hole — jak działa gra (stan v23 + etapy do MOBILE-PERF-1, zapis v13)
+# GLITCH GULP (dawniej Vector Hole) — jak działa gra (stan v23 + etapy do MOBILE-PERF-1, zapis v13)
 
 Jedyny aktualny opis projektowy gry. Liczby pochodzą z `CONFIG` i tabel w
 `game.js` — przy zmianie balansu poprawiaj **ten** plik razem z kodem.
 Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `docs/claude/ARCHITECTURE.md`.
+
+**Wir startowy „Horyzont” (CRAZYGAMES-BASIC-1):** czarna dziura, nie tęczowy portal: czarny
+środek, ramiona w grafit, ciemny granat i stal, jedno cyjanowe, cyjanowy pierścień z jasnymi
+łukami, które pokazują obrót nawet przy małej dziurze na telefonie. W zapisie to nadal `rainbow`,
+więc postęp i zakupy zostają. Pryzmat (nagroda Core City) i pozostałe wyglądy są bez zmian.
 
 ## 1. Premisa i ton
 
@@ -26,7 +31,7 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `docs/claude/ARCHITECTU
   (`qa/design.mjs` pilnuje listy zakazanych form).
 - Polski interfejs bez angielskiego żargonu. Kategorie Warsztatu: **Wir**
   (wygląd dziury), **Smuga** (ślad), **Efekt pochłaniania**, **Finisz**
-  (kolor wielkiego finału). Marki zostają: Vector Hole, Core City, COMBO,
+  (kolor wielkiego finału). Marki zostają: GLITCH GULP, Core City, COMBO,
   GRAJ 2:00, LVL (tylko dla Core City — poziom gracza to „POZIOM”).
 - Miejsca w zdaniach: „2. miejsce”, nie „#2” (wyjątek: zwarte tabele HUD).
 
@@ -67,7 +72,7 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   Neonowe Złoto 1300, Biała Plazma 2000 — komplet 4870; nowe ceny z
   BALANCE-1 nie zmieniają zwrotu, `LOOKS_ONLY_REFUND`). Wiry zostają (posiadane i
   założone). Kryształ i Pryzmat (nagrody Core City) tracą bonus bez zwrotu;
-  Tęcza i Aurora nigdy go nie miały. Zwrot i znacznik `economy.looksOnly`
+  Horyzont (dawniej Tęcza) i Aurora nigdy go nie miały. Zwrot i znacznik `economy.looksOnly`
   trafiają do zapisu w tym samym `saveGame()` (oryginał najpierw pod
   `.bak`); przy zablokowanym zapisie (`SAVE_GUARD`) zwrotu nie ma, a przy
   nieudanym zapisie jest cofany w pamięci (następne uruchomienie próbuje
@@ -202,6 +207,14 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   (trzymany palec prowadzi dalej), nic się nie rusza przed pierwszym
   dotykiem, puszczenie palca zatrzymuje dziurę.
 - Opcjonalnie pływający joystick (Ustawienia) i WASD/strzałki.
+- **Mysz w paczce CrazyGames (CRAZYGAMES-BASIC-1):** portal wymaga blokady myszy w grach
+  z widokiem z góry. Tylko w paczce: kliknięcie planszy w trwającej rundzie blokuje kursor
+  (Pointer Lock), a wir jedzie za wirtualnym wskaźnikiem tak samo jak za zwykłym kursorem.
+  Do tego czasu steruje zwykły kursor, a mały napis proponuje blokadę. Każde menu
+  (pauza, karty, wynik) zwalnia kursor; po powrocie do rundy blokada wraca sama lub
+  po kliknięciu. **Esc lub utrata blokady pauzuje grę;** przycisk pauzy działa też
+  wirtualnym wskaźnikiem. Gdy przeglądarka nie ma API albo odmawia, zostaje zwykły kursor.
+  WASD, strzałki i dotyk bez zmian; GitHub Pages bez blokady.
 - **Portale (FTUE-2):** pauza klawiszem **Escape, P lub Spacją** (Poki:
   „ESC albo spacja”; P, bo portal może używać Escape do wyjścia z pełnego
   ekranu). Kursor wychodzący poza okno gry zatrzymuje dziurę (bez jazdy
@@ -630,6 +643,12 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   zapis z większym postępem) + **kopia zapasowa** w Profilu: kod `VH1.…` do
   skopiowania i wczytania na innym urządzeniu. Gra prosi przeglądarkę
   o trwałe przechowywanie danych.
+- **Paczka CrazyGames Basic (CRAZYGAMES-BASIC-1):** ta sama gra z tych samych plików;
+  `tools/export-crazygames-basic.mjs` stawia znak dystrybucji w stronie paczki. W paczce
+  nie ma SDK, reklam (także demonstracyjnej), ofert za reklamę, WYZWIJ ZNAJOMEGO, pytania
+  o statystyki ani zapisu w chmurze: tylko zapis lokalny. Mysz blokuje się po kliknięciu
+  planszy (§3). Nagrody i balans bez zmian.
+  Na Full Launch dochodzi SDK z osobną decyzją; GitHub Pages działa jak dotąd.
 - **Ochrona zapisu (PX01):** gra nigdy po cichu nie nadpisuje zapisu, którego
   nie umie w pełni odczytać — ani przy wczytaniu, ani żadnym późniejszym
   autozapisem. Zapis z nowszej wersji gry („Zapis z nowszej wersji gry” →
