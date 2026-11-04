@@ -1,6 +1,6 @@
 # CRAZYGAMES-BASIC-1 — raport
 
-**Werdykt: READY WITH BLOCKERS** (gotowe do odbioru GPT; zgłoszenie wstrzymują trzy rzeczy z §18)****
+**Werdykt: READY WITH BLOCKERS** (gotowe do odbioru GPT; zgłoszenie wstrzymują trzy rzeczy z §18)
 
 Zgłoszenia nie wysłano. Decyzję o przyjęciu podejmuje CrazyGames. Żaden test nie odbył się
 w prawdziwym CrazyGames Preview, bo wymaga on konta właścicielki, ani na fizycznej myszy,
