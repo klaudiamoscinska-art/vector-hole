@@ -70,7 +70,7 @@ function structureChecks(pkg) {
 
 /** A local stand-in for the portal: the page and the game's file host are fake https
  *  origins answered here, every other request is logged and refused (nothing leaves). */
-async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch = false } = {}) {
+async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch = false, frameW = width, frameH = height } = {}) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, locale, hasTouch });
   await installQaBridge(context);
@@ -78,7 +78,7 @@ async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch =
   await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => {
     const u = new URL(route.request().url());
     if (u.hostname === 'www.crazygames.com') {
-      return route.fulfill({ contentType: 'text/html', body: `<!doctype html><html><body style="margin:0;background:#111;height:2400px"><iframe id="frame" src="https://glitch-gulp.game-files.crazygames.com/index.html" style="border:0;width:${width}px;height:${height}px;display:block" allow="autoplay; fullscreen"></iframe></body></html>` });
+      return route.fulfill({ contentType: 'text/html', body: `<!doctype html><html><body style="margin:0;background:#111;height:2400px"><iframe id="frame" src="https://glitch-gulp.game-files.crazygames.com/index.html" style="border:0;width:${frameW}px;height:${frameH}px;display:block" allow="autoplay; fullscreen"></iframe></body></html>` });
     }
     if (u.hostname === 'glitch-gulp.game-files.crazygames.com') {
       const file = path.join(gameDir, u.pathname === '/' ? 'index.html' : u.pathname);
@@ -399,10 +399,11 @@ async function frameChecks(gameDir, shots) {
       await g.frame.evaluate(() => { window.__qaPlayArena({ style: 'greedy' }); });
       await g.page.waitForTimeout(250);
       const res = await g.frame.evaluate(() => {
-        const vis = (id) => { const e = document.getElementById(id); if (!e || e.offsetParent === null) return null; const b = e.getBoundingClientRect(); return { b: b.bottom, r: b.right }; };
+        const vis = (id) => { const e = document.getElementById(id); if (!e || e.offsetParent === null) return null; const b = e.getBoundingClientRect(); return { b: b.bottom, r: b.right, w: b.width, h: b.height }; };
         return { again: vis('btnPlayAgain'), ad: vis('btnWatchAd'), share: vis('btnShare'), h: innerHeight, w: innerWidth };
       });
-      if (!res.again || res.again.b > res.h + 1 || res.again.r > res.w + 1 || res.ad || res.share) bad.push(`${tag} result ${JSON.stringify(res)}`);
+      // The main action must be a real button, not only inside the frame: a row layout crushed it to 35 px wide once.
+      if (!res.again || res.again.b > res.h + 1 || res.again.r > res.w + 1 || res.again.w < 160 || res.again.h < 36 || res.ad || res.share) bad.push(`${tag} result ${JSON.stringify(res)}`);
       if (shots) await g.page.screenshot({ path: path.join(WORK, `${tag}-3-result.png`) });
       if (g.errors.length) bad.push(`${tag} errors ${g.errors[0]}`);
       if (g.external.length) bad.push(`${tag} external ${g.external[0]}`);
@@ -726,6 +727,91 @@ async function pointerLockChecks(gameDir, url, webUrl) {
   return r;
 }
 
+/** What the general platform suites can only check with the plain cursor: before the opt-in
+ *  the cursor can leave a frame smaller than the page; after it, modals still stop the hole. */
+async function portalFlowChecks(gameDir, url) {
+  const r = [];
+  const pos = (f) => f.evaluate(() => ({ x: window.game.player.x, y: window.game.player.y, ptr: window.game.pointerScreen, paused: window.game.paused, kx: window.game.keyDir.x, locked: !!document.pointerLockElement && window.game.pointerLocked, pending: !!window.game.evolutionPending }));
+  const a = await portalHost(gameDir, { width: 1216, height: 684, frameW: 900, frameH: 506 });
+  await clickIn(a.page, a.frame, '#btnWelcomePlay');
+  await a.frame.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await a.page.mouse.move(600, 380);
+  await a.page.waitForTimeout(150);
+  const inside = await pos(a.frame);
+  await a.page.mouse.move(1050, 300);
+  await a.page.waitForTimeout(150);
+  const out1 = await pos(a.frame);
+  await a.page.waitForTimeout(600);
+  const out2 = await pos(a.frame);
+  r.push(report('before the opt-in: the cursor leaving the frame stops the hole, it does not drive on', !!inside.ptr && !inside.locked && out1.ptr === null && Math.hypot(out2.x - out1.x, out2.y - out1.y) < 3, JSON.stringify({ inside: inside.ptr, after: out1.ptr, drift: Math.hypot(out2.x - out1.x, out2.y - out1.y) })));
+  await a.page.mouse.move(600, 380);
+  await a.page.keyboard.down('ArrowRight');
+  await a.page.waitForTimeout(150);
+  const held = await pos(a.frame);
+  await a.page.mouse.click(1050, 300); // the portal page takes the focus
+  await a.page.waitForTimeout(250);
+  const blurred = await pos(a.frame);
+  await a.page.keyboard.up('ArrowRight');
+  r.push(report('before the opt-in: a click on the portal page releases the held key, stops steering and pauses, no lock', held.kx > 0 && blurred.kx === 0 && blurred.paused && blurred.ptr === null && !blurred.locked, JSON.stringify({ held: held.kx, blurred })));
+  await a.browser.close();
+
+  const b = await portalHost(gameDir, { width: 1216, height: 684 });
+  await clickIn(b.page, b.frame, '#btnWelcomePlay');
+  await b.frame.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+  await b.page.mouse.move(700, 340);
+  await b.page.waitForTimeout(200);
+  await b.page.mouse.down(); await b.page.mouse.up();
+  await b.frame.waitForFunction(() => !!document.pointerLockElement && window.game.pointerLocked, null, { timeout: 4000 });
+  await b.page.keyboard.press('KeyP');
+  await b.page.waitForTimeout(200);
+  const p0 = await pos(b.frame);
+  await b.page.mouse.move(300, 200); await b.page.mouse.move(1000, 500);
+  await b.page.waitForTimeout(350);
+  const p1 = await pos(b.frame);
+  r.push(report('modal: the pause sheet frees the cursor and the hole stays put while the mouse moves', p0.paused && !p0.locked && p1.x === p0.x && p1.y === p0.y, JSON.stringify([p0.x, p1.x, p0.locked])));
+  await b.page.keyboard.press('KeyP');
+  await b.page.waitForTimeout(500);
+  await b.frame.evaluate(() => { const gm = window.game; gm.evolutionOffersTriggered = new Set(); gm.offerEvolution(); });
+  await b.page.waitForTimeout(250);
+  const e0 = await pos(b.frame);
+  await b.page.mouse.move(400, 300); await b.page.mouse.move(800, 400);
+  await b.page.waitForTimeout(300);
+  const e1 = await pos(b.frame);
+  r.push(report('modal: the evolution cards free the cursor and the hole stays put', e0.pending && !e0.locked && e1.x === e0.x && e1.y === e0.y, JSON.stringify([e0.pending, e0.locked, e0.x, e1.x])));
+  await clickIn(b.page, b.frame, '#evolutionCards .evolution-card');
+  await b.page.waitForTimeout(600);
+  const e2 = await pos(b.frame);
+  r.push(report('modal: a real click picks a card and the mouse locks again', !e2.pending && e2.locked, JSON.stringify([e2.pending, e2.locked])));
+  r.push(report('modal: no errors', b.errors.length === 0, b.errors.slice(0, 2).join(' | ')));
+  await b.browser.close();
+
+  // +20 s for prisms, the one offer left on that screen, at every portal size.
+  const g = await veteran(url, {});
+  const bad = [];
+  for (const [width, height] of CG_FRAMES) {
+    await g.page.setViewportSize({ width, height });
+    await g.page.waitForTimeout(120);
+    const m = await g.page.evaluate(() => {
+      const gm = window.game;
+      gm.save.prisms = CONFIG.ads.revivePrisms;
+      gm.startCampaignMission('M05');
+      gm.introPending = false;
+      gm.campaignGoalFraction = () => 0.9;
+      gm.onCampaignTimeout();
+      const fit = (id) => { const e = document.getElementById(id); if (!e || e.offsetParent === null) return false; const r = e.getBoundingClientRect(); return r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1 && r.height >= 30; };
+      const out = { prisms: fit('btnRevivePrisms'), no: fit('btnReviveNo'), ad: document.getElementById('btnReviveAd').offsetParent !== null };
+      gm.hideReviveOffer();
+      delete gm.campaignGoalFraction;
+      gm.stopRun();
+      return out;
+    });
+    if (!m.prisms || !m.no || m.ad) bad.push(`${width}x${height} ${JSON.stringify(m)}`);
+  }
+  r.push(report(`+20 s: both remaining buttons fit at all ${CG_FRAMES.length} portal sizes, no ad button`, bad.length === 0, bad.join(' ; ')));
+  await g.browser.close();
+  return r;
+}
+
 /** The starter hole: a black hole with a cyan rim that turns; every other look byte-equal to the base. */
 async function holeChecks(url, webUrl) {
   const r = [];
@@ -959,7 +1045,7 @@ export async function runCrazyGamesBasic1Checks({ delivery = null, shots = false
   try {
     for (const step of [
       () => hostSdkChecks(pkg.gameDir, site.url), () => adChecks(site.url), () => rewardParity(site.url, web.url), () => deadButtonChecks(site.url),
-      () => frameChecks(pkg.gameDir, shots), () => inputChecks(pkg.gameDir), () => saveChecks(pkg.gameDir, site.url), () => campaignFrameChecks(pkg.gameDir), () => pointerLockChecks(pkg.gameDir, site.url, web.url), () => holeChecks(site.url, web.url), () => isolationChecks(pkg.gameDir, site.url, web.url), () => languageChecks(site.url), () => installedBrowserChecks(site.url),
+      () => frameChecks(pkg.gameDir, shots), () => inputChecks(pkg.gameDir), () => saveChecks(pkg.gameDir, site.url), () => campaignFrameChecks(pkg.gameDir), () => pointerLockChecks(pkg.gameDir, site.url, web.url), () => portalFlowChecks(pkg.gameDir, site.url), () => holeChecks(site.url, web.url), () => isolationChecks(pkg.gameDir, site.url, web.url), () => languageChecks(site.url), () => installedBrowserChecks(site.url),
       () => refreshRateChecks(site.url), () => webChecks(web.url)
     ]) {
       try { all.push(...await step()); } catch (e) { all.push(report(`crazygames-basic1: step crashed (${step.toString().slice(6, 40)})`, false, String(e && e.stack || e))); }
