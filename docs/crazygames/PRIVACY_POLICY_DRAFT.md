@@ -57,7 +57,7 @@ If the game starts to process other data, for example through ads or accounts, t
 ## Do decyzji właścicielki
 
 1. Dane wydawcy i kontakt. W grze widnieje dziś neutralne „Wydawca gry GLITCH GULP”
-   (`CONFIG.legal`) i pusty kontakt. Nie zmieniałam tego bez Twoich danych.
+   (`CONFIG.legal`) i pusty kontakt. Bez Twoich danych to pozostaje bez zmian.
 2. Gdzie opublikować politykę, jeśli formularz poprosi o adres. Publiczny plik
    w repozytorium ujawni wpisane dane, więc wybierz adres kontaktowy, który może być publiczny.
 3. Przed Full Launch (SDK, reklamy, konto) polityka i tekst w grze wymagają aktualizacji.
