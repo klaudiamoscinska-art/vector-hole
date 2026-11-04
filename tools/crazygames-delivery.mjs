@@ -33,7 +33,7 @@ if (ffmpeg) {
   fs.mkdirSync(path.join(out, 'previews'), { recursive: true });
   for (const v of VIDEOS) for (const t of [0.2, 5, 10, 14, 18.5]) {
     const name = `${v.replace('.mp4', '')}-${t}s.jpg`;
-    execFileSync(ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-ss', String(t), '-i', path.join(out, 'videos', v), '-frames:v', '1', '-q:v', '3', path.join(out, 'previews', name)]);
+    execFileSync(ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-ss', String(t), '-i', path.join(out, 'videos', v), '-frames:v', '1', '-vf', 'scale=in_range=tv:out_range=pc,format=yuvj420p', '-q:v', '3', path.join(out, 'previews', name)]);
     frames.push(`previews/${name}`);
   }
 }

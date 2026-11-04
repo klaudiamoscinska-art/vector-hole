@@ -537,12 +537,14 @@ async function installedBrowserChecks(url) {
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
       await page.waitForFunction(() => window.game.running, null, { timeout: 8000 });
       await page.mouse.move(1100, 340);
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(800);
+      const t0 = await page.evaluate(() => window.game.timeRemaining);
+      await page.waitForTimeout(3000);
       const st = await page.evaluate(() => ({ ua: navigator.userAgent.match(/(Edg|Chrome)\/[\d.]+/g).join(' '), t: window.game.timeRemaining, frames: window.game.frameCount ?? null, x: window.game.player.x, provider: window.game.monetization.provider }));
       await page.keyboard.press('KeyP');
       await page.waitForTimeout(100);
       const paused = await page.evaluate(() => window.game.paused);
-      r.push(report(`browser: ${name} runs the package: first round, clock moving, pause, no errors, nothing external`, st.t < 120 && paused && st.provider === 'none' && !errors.length && !external.length, JSON.stringify({ ...st, errors: errors.slice(0, 2), external })));
+      r.push(report(`browser: ${name} runs the package: first round, the clock counts real seconds, pause, no errors, nothing external`, Math.abs(t0 - st.t - 3) < 0.6 && paused && st.provider === 'none' && !errors.length && !external.length, JSON.stringify({ ...st, ran: +(t0 - st.t).toFixed(2), errors: errors.slice(0, 2), external })));
     } catch (e) { r.push(report(`browser: ${name} runs the package`, false, String(e.message || e).slice(0, 300))); }
     await browser.close();
   }
@@ -571,7 +573,7 @@ async function pointerLockChecks(gameDir, url, webUrl) {
   const before = await state(f);
   r.push(report('lock: before the opt-in the plain cursor steers, with the offer on screen', !before.locked && before.hint && /lock the cursor/i.test(before.hintText), JSON.stringify(before)));
   await g.page.mouse.down(); await g.page.mouse.up();
-  await f.waitForFunction(() => !!document.pointerLockElement, null, { timeout: 4000 });
+  await f.waitForFunction(() => !!document.pointerLockElement && window.game.pointerLocked, null, { timeout: 4000 });
   const locked = await state(f);
   r.push(report('lock: a click on the board locks the mouse, shows the pointer, hides the offer', locked.locked && locked.flag && locked.cursor && !locked.hint, JSON.stringify(locked)));
 
@@ -668,7 +670,7 @@ async function pointerLockChecks(gameDir, url, webUrl) {
   await b.page.mouse.move(700, 340);
   await b.page.waitForTimeout(200);
   await b.page.mouse.down(); await b.page.mouse.up();
-  await b.frame.waitForFunction(() => !!document.pointerLockElement, null, { timeout: 4000 });
+  await b.frame.waitForFunction(() => !!document.pointerLockElement && window.game.pointerLocked, null, { timeout: 4000 });
   await b.frame.evaluate(() => window.dispatchEvent(new Event('blur')));
   await b.page.waitForTimeout(300);
   const blur = await state(b.frame);
