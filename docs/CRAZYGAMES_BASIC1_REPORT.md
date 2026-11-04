@@ -256,7 +256,7 @@ Paczka działała z własnego folderu, w ramce na udawanym hoście `crazygames.c
 | 10 ramek portalu, DPR 1: pierwszy ekran, pierwsza runda prawdziwym kliknięciem, mysz, pauza, wynik | PASS |
 | Strona hosta nie przewija się; obrót i zmiana rozmiaru ramki w trakcie rundy | PASS |
 | Kampania w ramce: start kliknięciem, wynik, zapis | PASS |
-| Warsztat, Wyzwania, Miasto, Profil: każdy widoczny przycisk reaguje (62 kliknięte) | PASS |
+| Warsztat, Wyzwania, Miasto, Profil: każdy widoczny przycisk reaguje (57 klikniętych w ostatnim przebiegu) | PASS |
 | Blokada myszy: zgoda, cztery kierunki, krawędzie, pauza wskaźnikiem, odzyskanie, fokus, brak API, odmowa, dotyk, GitHub Pages bez blokady | PASS (automat), NOT RUN (fizyczna mysz) |
 | Przed zgodą: kursor poza ramką zatrzymuje dziurę; klik na stronie portalu pauzuje i puszcza klawisz | PASS |
 | Modale przy blokadzie: pauza i karty zwalniają kursor, dziura stoi | PASS |
