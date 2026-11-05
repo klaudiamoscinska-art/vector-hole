@@ -93,6 +93,9 @@ html, body {
    row (primary + that row) would crush the primary next to the full-width back link. */
 html[data-distribution="crazygames-basic"] .result-actions { flex-direction: column; align-items: stretch; }
 html[data-distribution="crazygames-basic"] .result-actions > #btnPlayAgain { flex: none; }
+/* CrazyGames package: the page's static text is Polish until game.js has picked the language;
+   on a slow connection an English player would read a dead Polish menu for seconds. */
+html[data-distribution="crazygames-basic"]:not(.i18n-ready) #app { visibility: hidden; }
 
 /* CrazyGames package: the pointer while the mouse is locked, and the offer to lock it. */
 .lock-cursor {

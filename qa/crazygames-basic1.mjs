@@ -923,6 +923,97 @@ async function languageChecks(url) {
   return r;
 }
 
+/** CRAZYGAMES-PREFLIGHT-2: the language decision's edges, and the strings ?i18n=log cannot see
+ *  (no Polish hint word, or drawn only in a canvas frame the bots do not render). */
+async function englishEdgeChecks(url, webUrl) {
+  const r = [];
+  const noInfo = await openGame(url, { locale: 'de-DE', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, initScript: "Object.defineProperty(navigator, 'languages', { get: () => [] }); Object.defineProperty(navigator, 'language', { get: () => '' });" });
+  r.push(report('language: a browser giving no language at all gets English', await noInfo.page.evaluate(() => I18N.lang) === 'en'));
+  await noInfo.browser.close();
+  const throws = await openGame(url, { locale: 'de-DE', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, initScript: "Object.defineProperty(navigator, 'languages', { get() { throw new Error('blocked'); } });" });
+  r.push(report('language: a browser refusing the language API gets English', await throws.page.evaluate(() => I18N.lang) === 'en'));
+  await throws.browser.close();
+
+  // The static page is Polish until game.js has run.
+  const staticPage = async (base, locale) => {
+    const browser = await chromium.launch();
+    const context = await browser.newContext({ viewport: { width: 1216, height: 684 }, deviceScaleFactor: 1, locale });
+    const page = await context.newPage();
+    let release;
+    const held = new Promise(res => { release = res; });
+    await page.route('**/game.js*', async (route) => { await held; await route.continue(); });
+    await page.goto(base, { waitUntil: 'commit' });
+    await page.waitForSelector('#btnStart', { state: 'attached' });
+    await page.waitForTimeout(500);
+    const during = await page.evaluate(() => ({ shown: getComputedStyle(document.getElementById('btnStart')).visibility !== 'hidden', text: document.getElementById('btnStart').innerText }));
+    release();
+    await page.waitForFunction(() => window.game && window.game.state !== undefined, null, { timeout: 15000 });
+    await page.waitForTimeout(250);
+    const after = await page.evaluate(() => ({ shown: getComputedStyle(document.getElementById('app')).visibility !== 'hidden', lang: document.documentElement.lang }));
+    await browser.close();
+    return { during, after };
+  };
+  const en = await staticPage(url, 'en-US');
+  r.push(report('English: no Polish menu is painted while game.js is still on its way, and the menu appears once it has run', !en.during.shown && en.after.shown && en.after.lang === 'en', JSON.stringify(en)));
+  const pl = await staticPage(url, 'pl-PL');
+  r.push(report('Polish browser in the package: the menu appears once game.js has run', pl.after.shown && pl.after.lang === 'pl', JSON.stringify(pl.after)));
+  const web = await staticPage(webUrl, 'en-US');
+  r.push(report('web build: the static page paints as before (no marker, nothing hidden)', web.during.shown && web.after.shown, JSON.stringify(web.during)));
+
+  // Every entry through the real translation layer, with real values.
+  const g = await veteran(url, { runsPlayed: 10, missions: 12 }, { locale: 'en-US' });
+  const table = [
+    ['NOWY ROZMIAR!', 'NEW SIZE!'], ['CEL ZALICZONY', 'GOAL COMPLETE'], ['Teraz: Zbierz 3 zasilacze', 'Next: Collect 3 power cells'],
+    ['SKRZYNIA OTWARTA!', 'CHEST OPENED!'], ['Darmowa skrzynia', 'Free chest'], ['ZAGRAJ PONOWNIE', 'PLAY AGAIN'],
+    ['PODIUM · 2. MIEJSCE', 'PODIUM · #2'], ['PODIUM · 3. MIEJSCE', 'PODIUM · #3'], ['RYWAL', 'RIVAL'], ['RYWAL ZJEDZONY! +250', 'RIVAL EATEN! +250'],
+    ['Zbieraj gwiazdki: ★ 512', 'Collect stars: ★ 512'], ['Wydawca gry GLITCH GULP · kontakt: a@b.example.', 'GLITCH GULP publisher · contact: a@b.example.'],
+    ['Silnik: wstrzymany · 48 kHz', 'Engine: paused · 48 kHz'], ['Silnik: przerwany przez system · 48 kHz', 'Engine: interrupted by the system · 48 kHz'],
+    ['Silnik: działa · 48 kHz · tryb iOS: otoczenie', 'Engine: running · 48 kHz · iOS mode: ambient'], ['Silnik: działa · 48 kHz · tryb iOS: odtwarzanie', 'Engine: running · 48 kHz · iOS mode: playback'],
+    ['JUTRO', 'TOMORROW'], ['POBITE ✓', 'BEATEN ✓'], ['Cel 1 200 pkt (Ola) przebity!', 'Target 1 200 pts (Ola) beaten!'], ['NAJLEPSZA OFERTA', 'BEST OFFER'], ['KUPIONO ✓', 'OWNED ✓'], ['ZAKUP UDANY', 'PURCHASE COMPLETE'],
+    ['PODWOJONO ✓', 'DOUBLED ✓'], ['ODEBRANO ×2 ✓', 'CLAIMED ×2 ✓'], ['LINK SKOPIOWANY ✓', 'LINK COPIED ✓'], ['KARTA ZAPISANA ✓', 'CARD SAVED ✓'], ['PRZERWA REKLAMOWA · DEMO', 'AD BREAK · DEMO'], ['2. miejsce · T4 · Runda 2:00', '#2 · T4 · Round 2:00']
+  ];
+  const seen = await g.page.evaluate(async (rows) => {
+    const box = document.createElement('div'); box.hidden = true; document.body.appendChild(box);
+    const spans = rows.map(([pl]) => { const el = document.createElement('span'); el.textContent = pl; box.appendChild(el); return el; });
+    await new Promise(res => setTimeout(res, 200));
+    const out = spans.map(el => el.textContent); box.remove(); return out;
+  }, table);
+  const wrong = table.filter(([, want], i) => seen[i] !== want).map(([pl, want], i) => pl + ' -> ' + seen[table.findIndex(t => t[0] === pl)] + ' (want ' + want + ')');
+  r.push(report('English: the strings the ?i18n=log net cannot see are translated', wrong.length === 0, wrong.slice(0, 6).join(' | ')));
+  await g.browser.close();
+
+  // The same strings where a player meets them.
+  const live = await veteran(url, { runsPlayed: 10, missions: 12 }, { locale: 'en-US', initScript: "window.__drawn = new Set(); for (const fn of ['fillText']) { const C = CanvasRenderingContext2D.prototype, o = C[fn]; C[fn] = function (t, ...a) { if (typeof t === 'string') window.__drawn.add(t); return o.call(this, t, ...a); }; }" });
+  await live.page.addScriptTag({ content: ARENA_BOT });
+  const flows = await live.page.evaluate(async () => {
+    const gm = window.game, wait = (ms) => new Promise(res => setTimeout(res, ms)), out = {};
+    gm.showScreen('mainMenu');
+    gm.save.freeChest.nextAt = Date.now() + 3600e3; gm.openFreeChest(); await wait(230);
+    out.chestWait = document.getElementById('infoSheetTitle') && document.getElementById('infoSheetTitle').innerText;
+    gm.closeInfoSheet();
+    window.__qaPlayArena({ style: 'greedy' }); try { gm.endRound(); } catch (e) { /* the bot ended it */ } await wait(50);
+    out.place = document.getElementById('finalPlace').textContent;
+    gm.startCampaignMission('M33'); gm.beginMissionPlay(); await wait(120);
+    gm.showBanner('X', 'NOWY ROZMIAR!', '#46D99A', 1.3, 9); await wait(350);
+    out.drawn = [...window.__drawn].filter(t => /ROZMIAR|NEW SIZE/.test(t));
+    gm.running = false; gm.showScreen('mainMenu');
+    return out;
+  });
+  r.push(report('English: the place on the result reads #N, not the Polish ordinal', /^#d$/.test(flows.place || ''), flows.place));
+  r.push(report('English: the sheet of a chest that is not ready yet', flows.chestWait === 'Free chest', flows.chestWait));
+  r.push(report('English: a mission tier-up banner reaches the canvas in English', flows.drawn.includes('NEW SIZE!') && !flows.drawn.some(t => /ROZMIAR/.test(t)), JSON.stringify(flows.drawn)));
+  await live.browser.close();
+
+  // The multiplier's decimal sign follows the language.
+  for (const [locale, want] of [['en-US', /×1\.6/], ['pl-PL', /×1,6/]]) {
+    const c = await veteran(url, { runsPlayed: 0 }, { locale });
+    const text = await c.page.evaluate(async () => { window.game.openCoreCityRoadmap(); await new Promise(res => setTimeout(res, 230)); return document.getElementById('infoSheetBody').innerText; });
+    r.push(report('language: the Core City multiplier uses the decimal sign of ' + locale, want.test(text), (text.match(/×\d[.,]\d/) || [''])[0]));
+    await c.browser.close();
+  }
+  return r;
+}
+
 /** Physics by refresh rate: the same input, simulated seconds, at each frame time.
  *  Emulated frame times, not a physical monitor. */
 async function refreshRateChecks(url) {
@@ -1046,7 +1137,7 @@ export async function runCrazyGamesBasic1Checks({ delivery = null, shots = false
     for (const step of [
       () => hostSdkChecks(pkg.gameDir, site.url), () => adChecks(site.url), () => rewardParity(site.url, web.url), () => deadButtonChecks(site.url),
       () => frameChecks(pkg.gameDir, shots), () => inputChecks(pkg.gameDir), () => saveChecks(pkg.gameDir, site.url), () => campaignFrameChecks(pkg.gameDir), () => pointerLockChecks(pkg.gameDir, site.url, web.url), () => portalFlowChecks(pkg.gameDir, site.url), () => holeChecks(site.url, web.url), () => isolationChecks(pkg.gameDir, site.url, web.url), () => languageChecks(site.url), () => installedBrowserChecks(site.url),
-      () => refreshRateChecks(site.url), () => webChecks(web.url)
+      () => englishEdgeChecks(site.url, web.url), () => refreshRateChecks(site.url), () => webChecks(web.url)
     ]) {
       try { all.push(...await step()); } catch (e) { all.push(report(`crazygames-basic1: step crashed (${step.toString().slice(6, 40)})`, false, String(e && e.stack || e))); }
     }
