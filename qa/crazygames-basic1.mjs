@@ -999,7 +999,7 @@ async function englishEdgeChecks(url, webUrl) {
     gm.running = false; gm.showScreen('mainMenu');
     return out;
   });
-  r.push(report('English: the place on the result reads #N, not the Polish ordinal', /^#d$/.test(flows.place || ''), flows.place));
+  r.push(report('English: the place on the result reads #N, not the Polish ordinal', /^#\d$/.test(flows.place || ''), flows.place));
   r.push(report('English: the sheet of a chest that is not ready yet', flows.chestWait === 'Free chest', flows.chestWait));
   r.push(report('English: a mission tier-up banner reaches the canvas in English', flows.drawn.includes('NEW SIZE!') && !flows.drawn.some(t => /ROZMIAR/.test(t)), JSON.stringify(flows.drawn)));
   await live.browser.close();
