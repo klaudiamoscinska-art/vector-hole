@@ -4,6 +4,15 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CRAZYGAMES-PREFLIGHT-2 „Pełny angielski dla nowego gracza” (zapis nadal v13; polskie teksty, ekonomia i panel TEST bez zmian)
+- **27 brakujących tekstów po angielsku**, których nie wyłapywał `?i18n=log` (bez polskiego słowa
+  z listy albo rysowane tylko na planszy): m.in. baner wzrostu w misji, „PODIUM · 2. MIEJSCE”,
+  otwarta skrzynia, „RYWAL” w pokazie na pierwszym ekranie.
+- **Brak informacji o języku = angielski** (wcześniej polski). Zapisany wybór i `pl-*` działają jak dotąd.
+- **W paczce nic nie maluje się, zanim `game.js` wybierze język:** przy wolnym łączu gracz
+  angielski widział przez kilka sekund martwe polskie menu. GitHub Pages bez zmian.
+- **Separator dziesiętny i miejsce na wyniku** zależą od języka (×1.6, #2 po angielsku; ×1,6, 2. po polsku).
+
 ## CRAZYGAMES-BASIC-1 „GLITCH GULP i paczka na Basic Launch” (zapis nadal v13; ceny, nagrody, trudność i panel TEST bez zmian)
 - **Nowa nazwa: GLITCH GULP**, bez podtytułu, w logo, tytule, metadanych, karcie wyniku i nazwach
   pobieranych plików. Adresy, repozytorium, klucz zapisu i kod kopii zapasowej zostają.
