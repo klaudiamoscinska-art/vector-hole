@@ -3,7 +3,7 @@
 Teksty po angielsku są gotowe do skopiowania. Opisują tylko to, co gra ma dziś.
 Nazwy pól w Developer Portalu mogą się różnić: formularz jest za logowaniem i nie był
 oglądany (`NOT RUN`). Dokumentacja wymaga opisu, sterowania, okładek i filmów
-(`docs.crazygames.com/requirements/intro/`, sprawdzone 2026-11-03).
+(`docs.crazygames.com/requirements/intro/`, sprawdzone ponownie 2026-11-05).
 
 ## OWNER INPUT REQUIRED
 

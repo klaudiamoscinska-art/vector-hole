@@ -589,8 +589,8 @@ const PL_HINT = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(nie|się|jest|misj\w*
 
 function detectLang(setting) {
   if (setting === 'pl' || setting === 'en') return setting;
-  let l = 'pl';
-  try { l = (navigator.languages && navigator.languages[0]) || navigator.language || 'pl'; } catch (e) { /* no navigator */ }
+  let l = 'en';
+  try { l = (navigator.languages && navigator.languages[0]) || navigator.language || 'en'; } catch (e) { /* no navigator */ }
   return /^pl\b/i.test(l) ? 'pl' : 'en';
 }
 
@@ -10794,7 +10794,7 @@ class Game {
     if (!g || !g.parts.length) return;
     const cc = CONFIG.hub.coreCity;
     const bits = g.parts.map(([label, pct]) => `${label} +${pct}%`);
-    if (g.early) bits.push(`×${String(cc.earlyLevelMult).replace('.', ',')} na LVL 1–${cc.earlyLevelMax}`);
+    if (g.early) bits.push(`×${I18N.lang === 'pl' ? String(cc.earlyLevelMult).replace('.', ',') : cc.earlyLevelMult} na LVL 1–${cc.earlyLevelMax}`);
     bits.forEach((b, i) => {
       if (i) el.appendChild(document.createTextNode(' · '));
       const s = document.createElement('span');
@@ -11063,7 +11063,7 @@ class Game {
     return '<ul class="info-sheet-list">' +
       `<li>Runda GRAJ 2:00: +${c.arenaCompleteGain}% (top 3: +${c.arenaTop3Gain}%, 1. miejsce: +${c.arenaFirstGain}%, rekord: +${c.arenaNewPbGain}%)</li>` +
       `<li>Wyzwanie dnia: +${c.dailyFirstClearGain}% za pierwsze dziś, +${c.dailyNewBestGain}% za nowy rekord</li>` +
-      `<li>Na LVL 1–${c.earlyLevelMax} całość ×${String(c.earlyLevelMult).replace('.', ',')}. Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
+      `<li>Na LVL 1–${c.earlyLevelMax} całość ×${I18N.lang === 'pl' ? String(c.earlyLevelMult).replace('.', ',') : c.earlyLevelMult}. Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
       '<li>Runda opuszczona przed końcem nie ładuje miasta.</li>' +
       '</ul>';
   }
@@ -14636,7 +14636,7 @@ class Game {
     const { ranked, place, coinsEarned } = this.finalizeRun();
     const corePctAfter = this.save.hub.coreCharge || 0;
 
-    document.getElementById('finalPlace').textContent = `${place}.`;
+    document.getElementById('finalPlace').textContent = I18N.lang === 'pl' ? `${place}.` : `#${place}`;
     // Golden Shot v8 triumph screen: count-ups, place-based headline, confetti.
     this.animateNumber(document.getElementById('finalScore'), this.player.score, 1100, '', formatNum);
     this.animateNumber(document.getElementById('finalCoins'), coinsEarned, 1100);
@@ -19682,6 +19682,35 @@ const I18N_EN = {
   "Miejsce liczy się według punktów, nie rozmiaru wiru.": "Places go by points, not by vortex size.",
   "PODOBNY ROZMIAR · URÓŚNIJ, BY ZJEŚĆ": "SIMILAR SIZE · GROW TO EAT IT",
   "Masz {#0} ◇": "You have {0} ◇",
+  // CRAZYGAMES-PREFLIGHT-2: found by pushing every literal of game.js through T().
+  "NOWY ROZMIAR!": "NEW SIZE!",
+  "CEL ZALICZONY": "GOAL COMPLETE",
+  "Teraz: {0}": "Next: {0}",
+  "SKRZYNIA OTWARTA!": "CHEST OPENED!",
+  "Darmowa skrzynia": "Free chest",
+  "ZAGRAJ PONOWNIE": "PLAY AGAIN",
+  "PODIUM · {#0}. MIEJSCE": "PODIUM · #{0}",
+  "RYWAL": "RIVAL",
+  "RYWAL ZJEDZONY! +250": "RIVAL EATEN! +250",
+  "Zbieraj gwiazdki: ★ {#0}": "Collect stars: ★ {0}",
+  "{0} · kontakt: {1}.": "{0} · contact: {1}.",
+  "wstrzymany": "paused",
+  "przerwany przez system": "interrupted by the system",
+  "tryb iOS: {0}": "iOS mode: {0}",
+  "odtwarzanie": "playback",
+  "otoczenie": "ambient",
+  "JUTRO": "TOMORROW",
+  "POBITE ✓": "BEATEN ✓",
+  "Cel {0} pkt ({1}) przebity!": "Target {0} pts ({1}) beaten!",
+  "NAJLEPSZA OFERTA": "BEST OFFER",
+  "KUPIONO ✓": "OWNED ✓",
+  "ZAKUP UDANY": "PURCHASE COMPLETE",
+  "PODWOJONO ✓": "DOUBLED ✓",
+  "ODEBRANO ×2 ✓": "CLAIMED ×2 ✓",
+  "LINK SKOPIOWANY ✓": "LINK COPIED ✓",
+  "KARTA ZAPISANA ✓": "CARD SAVED ✓",
+  "PRZERWA REKLAMOWA · DEMO": "AD BREAK · DEMO",
+  "{#0}. miejsce · {1} · {2}": "#{0} · {1} · {2}",
   "Wzmocnienia są opcjonalne. Tarcza się tu nie przyda — w tej misji nic Ci nie zagraża.": "Boosters are optional. The Shield won't help here — nothing in this mission can hurt you.",
   "tu zbędna": "not needed",
   "Ślad za wirem w ruchu": "A trail behind the moving vortex",
@@ -19696,6 +19725,7 @@ window.addEventListener('DOMContentLoaded', () => {
   devBoot();
   try { const raw = localStorage.getItem(SAVE_SLOT); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
   i18nStart(lang);
+  document.documentElement.classList.add('i18n-ready');
   window.game = new Game();
   window.game.devPanel = new DevPanel(window.game);
 });
