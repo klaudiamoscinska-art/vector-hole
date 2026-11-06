@@ -631,7 +631,8 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 
 - **Języki:** polski (źródłowy) i angielski. Gra wybiera język przeglądarki
   (polski dla `pl-*`, angielski dla pozostałych i gdy przeglądarka nie podaje języka); Profil → Ustawienia →
-  Język przełącza i zapamiętuje. Tłumaczenie to warstwa na wyjściu
+  Język przełącza i zapamiętuje. Paczka CrazyGames zaczyna zawsze po angielsku, także w polskiej
+  przeglądarce; polski wraca tylko z wyboru w Profilu (GitHub Pages bez zmian). Tłumaczenie to warstwa na wyjściu
   (`I18N_EN`), więc nowy polski tekst wymaga wpisu w słowniku (pilnuje
   `qa/v19.mjs`). Nazwy dzielnic, utworów i misji mają angielskie odpowiedniki
   (Plac Neonów → Neon Square, Wir Neonów → Neon Vortex…). Daty (Wyzwanie

@@ -4,6 +4,11 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CRAZYGAMES-EN-DEFAULT „Paczka CrazyGames zaczyna po angielsku” (zapis nadal v13; GitHub Pages, rozgrywka i ekonomia bez zmian)
+- **W paczce CrazyGames język „auto” to zawsze angielski**, także w polskiej przeglądarce i systemie.
+  Polski wraca tylko z wyboru Profil → Polski, zapamiętanego w zapisie; zapis nie jest przepisywany.
+- Strona paczki ma `<html lang="en">` i angielski komunikat `<noscript>`. GitHub Pages dalej idzie za przeglądarką.
+
 ## CRAZYGAMES-PREFLIGHT-2 „Pełny angielski dla nowego gracza” (zapis nadal v13; polskie teksty, ekonomia i panel TEST bez zmian)
 - **28 brakujących tekstów po angielsku**, których nie wyłapywał `?i18n=log` (bez polskiego słowa
   z listy albo rysowane tylko na planszy): m.in. baner wzrostu w misji, „PODIUM · 2. MIEJSCE”,

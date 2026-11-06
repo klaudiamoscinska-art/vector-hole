@@ -85,7 +85,7 @@ Pause: on-screen pause button
 ```
 Platforms: Desktop browsers and mobile browsers
 Orientation: Landscape and portrait
-Languages: English, Polish (follows the browser's language; can be changed in the profile)
+Languages: English, Polish (starts in English; Polish can be chosen in the profile)
 ```
 
 Uwaga do pól technicznych: Chrome i Edge są sprawdzone automatycznie, Safari i prawdziwe

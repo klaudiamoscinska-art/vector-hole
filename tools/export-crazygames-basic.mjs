@@ -43,7 +43,9 @@ export function packagePage(html) {
   };
   once(/<title>[^<]*<\/title>/, `<title>${TITLE}</title>`, '<title>');
   once(/<meta name="description"[^>]*>/, `<meta name="description" content="${DESCRIPTION}">`, 'meta description');
-  once(/<html\b([^>]*)>/, `<html$1 data-distribution="${DISTRIBUTION}">`, '<html>');
+  // The package starts in English (game.js detectLang), so the static page says so too.
+  once(/<html\b([^>]*)>/, (_, attrs) => `<html${attrs.replace(/\s+lang="[^"]*"/, '')} lang="en" data-distribution="${DISTRIBUTION}">`, '<html>');
+  once(/(<noscript><p\b[^>]*>)[^<]*(<\/p><\/noscript>)/, '$1GLITCH GULP needs JavaScript turned on.$2', '<noscript>');
   return out;
 }
 
