@@ -4,6 +4,18 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-DATA-1 „Zapis paczki CrazyGames przez Data Module” (zapis nadal v13, klucz bez zmian; GitHub Pages, rozgrywka, ekonomia i FTUE bez zmian)
+- **Paczka CrazyGames zapisuje postęp przez Data Module CrazyGames SDK v3**: gość w przeglądarce,
+  zalogowany gracz na koncie CrazyGames (synchronizacja urządzeń). Bez logowania w grze, bez backendu.
+  Oficjalny skrypt SDK w `<head>` paczki; z SDK używany jest tylko zapis (reklam nadal nie ma).
+- **Ten sam strażnik zapisu (PX01)** działa na Data Module: zapis nowszej wersji, uszkodzony, druga
+  karta, `.bak`/`.rescue`, migracje. Paczka nie dotyka już własnego klucza w `localStorage`.
+- **Konta się nie mieszają:** po zalogowaniu strona nic więcej nie zapisuje, dopóki CrazyGames jej nie
+  przeładuje (postęp gościa nie nadpisze konta, które ma swój postęp).
+- **SDK, które nie działa, nie jest „brakiem zapisu”:** gra czeka na SDK (maks. 20 s), a gdy się nie uda,
+  gra z pamięci, nic nie zapisuje ani nie usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”.
+- Prywatność w paczce opisuje zapis przez CrazyGames. Nowy zestaw `qa/cg-data1.mjs` (mock SDK + opcjonalnie prawdziwe SDK w trybie lokalnym).
+
 ## CRAZYGAMES-EN-DEFAULT „Paczka CrazyGames zaczyna po angielsku” (zapis nadal v13; GitHub Pages, rozgrywka i ekonomia bez zmian)
 - **W paczce CrazyGames język „auto” to zawsze angielski**, także w polskiej przeglądarce i systemie.
   Polski wraca tylko z wyboru Profil → Polski, zapamiętanego w zapisie; zapis nie jest przepisywany.

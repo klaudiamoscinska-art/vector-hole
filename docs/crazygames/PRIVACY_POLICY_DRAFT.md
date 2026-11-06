@@ -9,10 +9,10 @@ z kodu bazy `727b8bd` i tego etapu.
 | Obszar | Stan | Dowód |
 |---|---|---|
 | Serwer gry | Brak | w kodzie nie ma `fetch`, `XMLHttpRequest`, `sendBeacon`, `WebSocket` (`qa/crazygames-basic1.mjs`) |
-| Zapis | `localStorage` w przeglądarce: postęp, ustawienia, losowy identyfikator gościa, opcjonalna nazwa gracza | `defaultSave()`, Profil → „Pobierz moje dane” |
+| Zapis | Data Module CrazyGames SDK (CG-DATA-1): gość — w przeglądarce (przez SDK), zalogowany — na koncie CrazyGames; treść: postęp, ustawienia, losowy identyfikator gościa, opcjonalna nazwa gracza | `defaultSave()`, `saveStore()`, Profil → „Pobierz moje dane” |
 | Statystyki | W paczce wyłączone; kolejka zdarzeń zostaje w pamięci strony i nigdzie nie wychodzi | `Analytics.consent` = fałsz przy `PORTAL_BASIC` |
 | Reklamy, zakupy, logowanie | Brak w paczce | `qa/crazygames-basic1.mjs` |
-| Pliki zewnętrzne | 0 żądań poza paczką, czcionki wbudowane | test na udawanym hoście CrazyGames |
+| Pliki zewnętrzne | Tylko oficjalny skrypt CrazyGames SDK v3 (zapis); czcionki wbudowane | `qa/crazygames-basic1.mjs`, `qa/cg-data1.mjs` |
 | Portal | CrazyGames ma własne zasady i własne dane o ruchu | dokumentacja: pomiar KPI jest automatyczny, bez SDK |
 
 Wymóg CrazyGames: informacja o prywatności jest potrzebna, gdy gra zbiera dane osobowe poza
@@ -30,10 +30,10 @@ Contact: [OWNER INPUT REQUIRED: contact address]
 Last updated: [OWNER INPUT REQUIRED: date]
 
 What the game stores
-Your progress, settings, a random guest identifier and, if you enter one, a player name. This data stays in your browser's local storage on your device. The game has no accounts and does not ask for your email.
+Your progress, settings, a random guest identifier and, if you enter one, a player name. The game saves this data through the CrazyGames save system (the CrazyGames SDK Data Module): as a guest it stays in your browser on your device; when you are logged in to CrazyGames it is stored in your CrazyGames account, so it is available on your other devices. CrazyGames handles that storage under its own privacy policy. The game has no accounts of its own and does not ask for your email.
 
 What the game sends
-Nothing. The game has no server, collects no statistics and sends no data to the publisher or to third parties.
+The game has no server, collects no statistics and sends no data to the publisher. The only data that leaves your browser is the save described above, through CrazyGames when you are logged in.
 
 Ads and purchases
 This version of the game shows no ads and sells nothing for real money.
@@ -60,6 +60,7 @@ If the game starts to process other data, for example through ads or accounts, t
    (`CONFIG.legal`) i pusty kontakt. Bez Twoich danych to pozostaje bez zmian.
 2. Gdzie opublikować politykę, jeśli formularz poprosi o adres. Publiczny plik
    w repozytorium ujawni wpisane dane, więc wybierz adres kontaktowy, który może być publiczny.
-3. Przed Full Launch (SDK, reklamy, konto) polityka i tekst w grze wymagają aktualizacji.
-4. Zapisy są osobne: iPhone (ekran główny), GitHub Pages i CrazyGames to różne magazyny
-   przeglądarki. Etap ich nie synchronizuje, zgodnie z poleceniem.
+3. Przed Full Launch (reklamy, zdarzenia SDK) polityka i tekst w grze wymagają aktualizacji. Zapis przez Data Module jest już opisany (CG-DATA-1).
+4. Zapisy są osobne: iPhone (ekran główny), GitHub Pages i CrazyGames to różne magazyny.
+   GitHub Pages i CrazyGames nie są synchronizowane; na CrazyGames konto synchronizuje tylko
+   zapis paczki między urządzeniami.

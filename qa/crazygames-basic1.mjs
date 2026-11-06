@@ -1,6 +1,7 @@
 // CRAZYGAMES-BASIC-1: the real HTML5 package (tools/export-crazygames-basic.mjs), run
 // from its own folder over HTTP, and the requirements of docs.crazygames.com/requirements
-// (read 2026-11-03) that can be checked without the portal: structure and limits, no SDK,
+// (read 2026-11-03) that can be checked without the portal: structure and limits, only the
+// CrazyGames SDK from outside (CG-DATA-1, its Data Module save; qa/cg-data1.mjs tests it),
 // no ad or reward without an ad, normal rewards equal to the web build, the portal's iframe
 // sizes, input in the iframe, English, SAVE v13, reload, links, metadata, refresh rates,
 // the GitHub Pages build unchanged. A local fake host is not the CrazyGames Preview.
@@ -11,8 +12,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
-import { chromium, revisionFile, serve, openGame, veteranSave, installQaBridge, report, ARENA_BOT, CAMPAIGN_BOT, QA_RANDOM, frozenDateScript, OUT, ROOT, isMain } from './lib.mjs';
-import { exportPackage, LIMITS } from '../tools/export-crazygames-basic.mjs';
+import { chromium, revisionFile, serve, openGame as openGameRaw, veteranSave, installQaBridge, report, ARENA_BOT, CAMPAIGN_BOT, QA_RANDOM, frozenDateScript, OUT, ROOT, isMain, CG_SDK_URL, CG_SDK_MOCK } from './lib.mjs';
+import { exportPackage, LIMITS, CG_SDK_SRC } from '../tools/export-crazygames-basic.mjs';
+
+// CG-DATA-1: the package loads the CrazyGames SDK. Here it gets the QA stand-in in
+// 'passthrough' mode (its Data Module keeps each key as a plain localStorage key), so
+// these suites still seed and read 'vectorHoleSave_v1'; only package URLs get it.
+const PKG_SDK = `window.__cgMock = window.__cgMock || { mode: 'passthrough' };\n${CG_SDK_MOCK}`;
+let PKG_BASE = null;
+const openGame = (u, o = {}) => openGameRaw(u, PKG_BASE && u.startsWith(PKG_BASE) ? { cgSdk: PKG_SDK, ...o } : o);
 
 const WORK = path.join(OUT, 'cg-basic1');
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
@@ -50,7 +58,8 @@ function structureChecks(pkg) {
   r.push(report('package: total size within 50 MB without the SDK and 20 MB for the mobile homepage', pkg.totalBytes <= LIMITS.bytes && pkg.withinMobileHomepageLimit, `${(pkg.totalBytes / 1048576).toFixed(2)} MB`));
   const page = fs.readFileSync(path.join(pkg.gameDir, 'index.html'), 'utf8');
   const refs = [...page.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)="([^"]+)"/g)].map(m => m[1]).filter(u => !u.startsWith('data:'));
-  r.push(report('package: every script and stylesheet is referenced by a relative path', refs.length === 2 && refs.every(u => /^[\w.-]+$/.test(u)), refs.join(', ')));
+  const local = refs.filter(u => u !== CG_SDK_SRC);
+  r.push(report('package: every script and stylesheet is referenced by a relative path, apart from the official CrazyGames SDK (once, in <head>, before game.js)', local.length === 2 && local.every(u => /^[\w.-]+$/.test(u)) && refs.length === 3 && CG_SDK_SRC === CG_SDK_URL && page.indexOf(CG_SDK_SRC) < page.indexOf('</head>') && page.indexOf(CG_SDK_SRC) < page.indexOf('src="game.js"'), refs.join(', ')));
   r.push(report('package: the page carries the distribution marker, the source and its GitHub Pages release do not', /<html[^>]*data-distribution="crazygames-basic"/.test(page) && !/data-distribution/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'))));
   r.push(report('metadata: English title and description, no link or structured data naming the GitHub Pages site', /<title>GLITCH GULP<\/title>/.test(page) && /name="description" content="Steer/.test(page) && !/github\.io|og:|ld\+json|twitter:/.test(page)));
   for (const f of ['game.js', 'style.css']) {
@@ -70,13 +79,15 @@ function structureChecks(pkg) {
 
 /** A local stand-in for the portal: the page and the game's file host are fake https
  *  origins answered here, every other request is logged and refused (nothing leaves). */
-async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch = false, frameW = width, frameH = height } = {}) {
+async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch = false, frameW = width, frameH = height, cgSdk = PKG_SDK } = {}) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, locale, hasTouch });
   await installQaBridge(context);
-  const external = [], errors = [];
+  const external = [], errors = [], sdk = [];
   await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => {
     const u = new URL(route.request().url());
+    // CG-DATA-1: the SDK's official URL answers with the stand-in (cgSdk null: refused).
+    if (u.href === CG_SDK_URL && cgSdk) { sdk.push(u.href); return route.fulfill({ contentType: 'text/javascript', body: cgSdk }); }
     if (u.hostname === 'www.crazygames.com') {
       return route.fulfill({ contentType: 'text/html', body: `<!doctype html><html><body style="margin:0;background:#111;height:2400px"><iframe id="frame" src="https://glitch-gulp.game-files.crazygames.com/index.html" style="border:0;width:${frameW}px;height:${frameH}px;display:block" allow="autoplay; fullscreen"></iframe></body></html>` });
     }
@@ -95,7 +106,7 @@ async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch =
   await page.goto('https://www.crazygames.com/game/glitch-gulp');
   const frame = page.frames().find(f => f.url().includes('game-files')) || await new Promise((res) => page.on('frameattached', res));
   await frame.waitForFunction(() => window.game && window.game.state !== undefined && window.__qaBridge && window.__qaBridge.ready, null, { timeout: 20000 });
-  return { browser, context, page, frame, external, errors };
+  return { browser, context, page, frame, external, errors, sdk };
 }
 
 /** A real mouse click on an element inside the frame (no synthetic .click()). */
@@ -110,10 +121,10 @@ async function hostSdkChecks(gameDir, url) {
   const g = await portalHost(gameDir, { width: 1216, height: 684 });
   const load = await g.frame.evaluate(() => { const t = performance.getEntriesByType('navigation')[0]; return t ? Math.round(t.domContentLoadedEventEnd) : null; });
   r.push(report('load: the page is ready within the 10 s benchmark (local server, not the portal CDN)', load != null && load < 10000, `${load} ms`));
-  const st = await g.frame.evaluate(() => ({ provider: window.game.monetization.provider, ads: window.game.monetization.adsAvailable, host: location.hostname, sdk: !!(window.CrazyGames || window.PokiSDK), lang: I18N.lang }));
+  const st = await g.frame.evaluate(() => ({ provider: window.game.monetization.provider, ads: window.game.monetization.adsAvailable, host: location.hostname, cg: !!window.CrazyGames, poki: !!window.PokiSDK, lang: I18N.lang }));
   await g.page.waitForTimeout(500);
-  r.push(report('no SDK: on a crazygames.com host the package requests no SDK, no external file, and boots', st.host.endsWith('crazygames.com') && !st.sdk && g.external.length === 0 && st.provider === 'none' && !st.ads, JSON.stringify({ ...st, external: g.external })));
-  r.push(report('no SDK: no console errors while booting in the portal iframe', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+  r.push(report('SDK: on a crazygames.com host the package requests only the CrazyGames SDK (once, for the Data Module), no other external file, no ad provider, and boots', st.host.endsWith('crazygames.com') && st.cg && !st.poki && g.sdk.length === 1 && g.external.length === 0 && st.provider === 'none' && !st.ads, JSON.stringify({ ...st, sdk: g.sdk, external: g.external })));
+  r.push(report('SDK: no console errors while booting in the portal iframe', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
   await g.browser.close();
   // A URL parameter (untrusted) cannot switch the SDK or the demo ad back on.
   const forced = await openGame(url, { query: '?portal=crazygames', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1 });
@@ -532,6 +543,7 @@ async function installedBrowserChecks(url) {
       page.on('pageerror', (e) => errors.push(e.message));
       page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
       await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (rt) => { external.push(rt.request().url()); rt.abort(); });
+      await context.route(CG_SDK_URL, (rt) => rt.fulfill({ contentType: 'text/javascript', body: PKG_SDK }));
       await page.goto(url);
       await page.waitForFunction(() => window.game && window.game.state);
       const box = await page.locator('#btnWelcomePlay').boundingBox();
@@ -869,7 +881,7 @@ async function isolationChecks(gameDir, url, webUrl) {
   fs.rmSync(site, { recursive: true, force: true });
   fs.cpSync(gameDir, site, { recursive: true });
   fs.writeFileSync(path.join(site, 'index.html'), fs.readFileSync(path.join(site, 'index.html'), 'utf8').replace(' data-distribution="crazygames-basic"', ''));
-  const un = await portalHost(site, { width: 1216, height: 684 });
+  const un = await portalHost(site, { width: 1216, height: 684, cgSdk: null });
   await un.frame.waitForFunction(() => window.game.monetization.provider === 'none', null, { timeout: 12000 });
   const u = await un.frame.evaluate(() => { const vis = (id) => document.getElementById(id).offsetParent !== null; return { left: window.game.monetization.placementLeft('free_prisms'), sharePresent: !document.getElementById('btnShare').parentElement.classList.contains('hidden'), consentRow: !document.querySelector('[data-consent]').closest('.control-row').classList.contains('hidden'), lockParts: !!document.getElementById('lockHint'), vis: vis('adOverlay') }; });
   r.push(report('marker: without it (wrong upload) the SDK is requested, its failure hides the ad offers, and package-only changes stay off', un.external.some(x => /sdk.crazygames/.test(x)) && u.left === 0 && u.sharePresent && u.consentRow && !u.lockParts, JSON.stringify({ ...u, external: un.external })));
@@ -1146,6 +1158,7 @@ export async function runCrazyGamesBasic1Checks({ delivery = null, shots = false
   const all = [...structureChecks(pkg)];
   const site = await serve({ root: pkg.gameDir });
   const web = await serve();
+  PKG_BASE = new URL(site.url).origin + '/';
   try {
     for (const step of [
       () => hostSdkChecks(pkg.gameDir, site.url), () => adChecks(site.url), () => rewardParity(site.url, web.url), () => deadButtonChecks(site.url),

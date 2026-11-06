@@ -3590,6 +3590,78 @@ const SAVE_SCHEMA_VERSION = 13;
 // at a separate key, so test progress never touches the real save.
 let SAVE_SLOT = SAVE_KEY;
 
+/* ----------------------- CG-DATA-1: CrazyGames Data Module -----------------------
+   The CrazyGames package (PORTAL_BASIC) keeps the save in the CrazyGames SDK's
+   Data Module (docs.crazygames.com/sdk/data, HTML5 SDK v3), never in its own
+   localStorage key: for a guest the SDK stores it in this browser, for a
+   logged-in player in their CrazyGames account (synced across devices). On a
+   login CrazyGames reloads the game with the account's data (an account with
+   none takes over the guest's); a logout reloads the page as a guest. Once
+   SDK.init() resolved, getItem/setItem/removeItem work like localStorage, so
+   the save code (PX01 guard, .bak/.rescue, migrations) runs on it unchanged
+   through saveStore(). If the SDK can't be used (script blocked, init failed
+   or timed out, not on CrazyGames, Data Module disabled) the save is
+   'unavailable': the game plays from memory and writes nothing -- a failed
+   read is never taken for "no save". The web build is untouched (localStorage). */
+const CG_SDK_INIT_TIMEOUT_MS = 20000;
+const CG_DATA = { store: null, error: null, login: false };
+
+async function cgDataBoot() {
+  const sdk = window.CrazyGames && window.CrazyGames.SDK;
+  try {
+    if (!sdk || typeof sdk.init !== 'function') throw new Error('SDK script not loaded');
+    let timer;
+    await Promise.race([sdk.init(), new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('SDK init timed out')), CG_SDK_INIT_TIMEOUT_MS); })]).finally(() => clearTimeout(timer));
+    if (sdk.environment !== 'crazygames' && sdk.environment !== 'local') throw new Error('SDK environment ' + sdk.environment);
+    // Every call goes through SDK.data, which follows the SDK's own switch to
+    // the account's data after a login.
+    const data = () => window.CrazyGames.SDK.data;
+    data().getItem(SAVE_KEY); // throws when the Data Module is off (dataModuleDisabled)
+    CG_DATA.store = {
+      getItem: (k) => data().getItem(k),
+      // Over the 1 MB limit the SDK throws after taking the value into memory:
+      // put the previous value back, so memory matches what is stored.
+      setItem: (k, v) => {
+        const prev = data().getItem(k);
+        try { data().setItem(k, v); } catch (e) {
+          try { if (prev === null) data().removeItem(k); else data().setItem(k, prev); } catch (e2) { /* still refused */ }
+          throw e;
+        }
+      },
+      removeItem: (k) => data().removeItem(k)
+    };
+    // A login while playing: from now on SDK.data may hold another player's
+    // save, so this page writes nothing more (CrazyGames reloads it).
+    try { sdk.user.addAuthListener(() => { CG_DATA.login = true; markSaveStale(); }); } catch (e) { /* no user module */ }
+  } catch (e) {
+    CG_DATA.error = (e && (e.code || e.message)) || String(e);
+    console.warn('GLITCH GULP: CrazyGames Data Module unavailable, progress is not saved this session:', CG_DATA.error);
+  }
+}
+
+/** The storage holding the player's save keys: localStorage on the web, the
+ *  CrazyGames Data Module in the CrazyGames package -- which throws while it is
+ *  unavailable (callers already treat a throwing storage as unreadable). */
+function playerSaveStore() {
+  if (!PORTAL_BASIC) return localStorage;
+  if (!CG_DATA.store) throw new Error('CrazyGames Data Module unavailable: ' + CG_DATA.error);
+  return CG_DATA.store;
+}
+/** Where loadSave()/saveGame() go: the dev panel's test save always stays in
+ *  this browser's localStorage, never in a player's CrazyGames account. */
+function saveStore() { return DEV.sandbox ? localStorage : playerSaveStore(); }
+
+/** Another tab of the package stored the save (inside the SDK's own
+ *  localStorage keys): the same PX01 'stale' rule as the web build's key. */
+function cgSaveChangedElsewhere(e) {
+  if (!CG_DATA.store || e.storageArea !== localStorage || !/^SDK_DATA_/.test(e.key || '')) return false;
+  try {
+    const v = JSON.parse(e.newValue || 'null');
+    const raw = v && v.data && v.data[SAVE_SLOT];
+    return typeof raw === 'string' && raw !== SAVE_GUARD.seen;
+  } catch (err) { return false; }
+}
+
 /* ----------------------- v23 dev / QA panel: access + test mode -----------------------
    The panel (DevPanel, near the end of this file) exists only for someone
    who knows the dev code: 7 quick taps on the guest ID line in Profil (or
@@ -4222,7 +4294,7 @@ function saveWritable() { return SAVE_GUARD.state === 'ok'; }
 
 /** Stores `raw` under `key` and reads it back -- true only if it's there. */
 function storeCopy(key, raw) {
-  try { localStorage.setItem(key, raw); return localStorage.getItem(key) === raw; } catch (e) { return false; }
+  try { const store = saveStore(); store.setItem(key, raw); return store.getItem(key) === raw; } catch (e) { return false; }
 }
 
 /** Classifies a parsed save: { save, status, issues }. Never writes. */
@@ -4286,7 +4358,7 @@ function verifyMigration(before, after) {
 function loadSave() {
   SAVE_GUARD.state = 'ok'; SAVE_GUARD.issues = []; SAVE_GUARD.seen = null; SAVE_GUARD.backupPending = false;
   let raw;
-  try { raw = localStorage.getItem(SAVE_SLOT); } catch (e) {
+  try { raw = saveStore().getItem(SAVE_SLOT); } catch (e) {
     // Can't see what is stored, so nothing may be written over it.
     SAVE_GUARD.state = 'unavailable';
     return defaultSave();
@@ -4332,7 +4404,7 @@ function sealSave(save) {
 function saveGame(save, opts = {}) {
   if (!saveWritable()) return false;
   let current;
-  try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
+  try { current = saveStore().getItem(SAVE_SLOT); } catch (e) { return false; }
   if (current !== SAVE_GUARD.seen) { markSaveStale(); return false; }
   if (SAVE_GUARD.backupPending) {
     if (current !== null && !storeCopy(saveBackupKey(), current)) return false;
@@ -4342,7 +4414,7 @@ function saveGame(save, opts = {}) {
   let sealed = null, stored = false;
   try {
     sealed = sealSave(save);
-    localStorage.setItem(SAVE_SLOT, sealed);
+    saveStore().setItem(SAVE_SLOT, sealed);
     SAVE_GUARD.seen = sealed;
     stored = true;
   } catch (e) { /* storage unavailable / full: the old bytes stay */ }
@@ -4364,7 +4436,7 @@ function markSaveStale() {
 function releaseSaveGuard() {
   if (SAVE_GUARD.state === 'ok') return true;
   let current;
-  try { current = localStorage.getItem(SAVE_SLOT); } catch (e) { return false; }
+  try { current = saveStore().getItem(SAVE_SLOT); } catch (e) { return false; }
   if (current !== null && !storeCopy(saveRescueKey(), current)) return false;
   SAVE_GUARD.state = 'ok';
   SAVE_GUARD.issues = [];
@@ -8539,6 +8611,8 @@ class Game {
     // PX01: another tab saving newer progress stops this one from saving.
     SAVE_GUARD.notify = () => { if (!this.running && this.state !== GameState.BOOT) this.showSaveGuardNotice(); };
     window.addEventListener('storage', (e) => {
+      // CG-DATA-1: the package's save lives inside the SDK's own keys.
+      if (PORTAL_BASIC && !DEV.sandbox) { if (cgSaveChangedElsewhere(e)) markSaveStale(); return; }
       if ((e.key === SAVE_SLOT || e.key === null) && e.storageArea === localStorage && e.newValue !== SAVE_GUARD.seen) markSaveStale();
     });
     // v19: ask the browser to keep this site's storage (Chrome/Safari decide
@@ -10198,7 +10272,7 @@ class Game {
     this.analytics.track('profile_reset', {});
     // v23: in the dev panel's test mode only the test save goes.
     if (!DEV.sandbox) this.monetization.clearCloudSave();
-    localStorage.removeItem(SAVE_SLOT);
+    saveStore().removeItem(SAVE_SLOT);
     location.reload();
   }
 
@@ -10279,11 +10353,12 @@ class Game {
       title: 'Prywatność',
       body: [
         `<strong>Administrator:</strong> ${escapeHtml(L.publisher)}${L.contact ? ` · kontakt: ${escapeHtml(L.contact)}` : ''}.`,
-        '<strong>Co zapisujemy:</strong> postęp gry, ustawienia i losowy identyfikator gościa — wyłącznie w pamięci Twojej przeglądarki (localStorage) na tym urządzeniu. Nie zakładasz konta, nie podajesz e-maila. Nazwa gracza jest opcjonalna.',
+        // CG-DATA-1: the package saves through the CrazyGames Data Module.
+        PORTAL_BASIC ? '<strong>Co zapisujemy:</strong> postęp gry, ustawienia i losowy identyfikator gościa — przez zapis CrazyGames: jako gość w pamięci Twojej przeglądarki na tym urządzeniu, a po zalogowaniu na konto CrazyGames na tym koncie (wtedy postęp jest też na Twoich innych urządzeniach). Gra nie ma własnych kont i nie prosi o e-mail. Nazwa gracza jest opcjonalna.' : '<strong>Co zapisujemy:</strong> postęp gry, ustawienia i losowy identyfikator gościa — wyłącznie w pamięci Twojej przeglądarki (localStorage) na tym urządzeniu. Nie zakładasz konta, nie podajesz e-maila. Nazwa gracza jest opcjonalna.',
         PORTAL_BASIC ? '<strong>Co wysyłamy:</strong> gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.' : '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
         PORTAL_BASIC ? '<strong>Reklamy i zakupy:</strong> ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.' : '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
         '<strong>Czcionki:</strong> wbudowane w grę — bez pobierania z Google.',
-        '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
+        PORTAL_BASIC ? '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry, także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.' : '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
       ]
     });
   }
@@ -10623,6 +10698,11 @@ class Game {
       stale: { title: 'Gra jest otwarta w innej karcie', body: ['Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.', 'Odśwież stronę, aby grać dalej z aktualnym postępem.'], action: { label: 'ODŚWIEŻ', onClick: reload } },
       rescueFailed: { title: 'Brak miejsca na kopię', body: ['Przeglądarka nie pozwoliła odłożyć kopii obecnego zapisu, więc nic nie zostało zmienione. Zwolnij miejsce i spróbuj ponownie.'] }
     };
+    // CG-DATA-1: in the CrazyGames package the save is the SDK's, not the browser's.
+    if (PORTAL_BASIC && !DEV.sandbox) {
+      sheets.unavailable.body = ['Nie udało się połączyć z zapisem CrazyGames, więc gra nie odczytała Twojego postępu. Niczego nie usunie ani nie nadpisze.', keep, 'Odśwież stronę, aby spróbować ponownie.'];
+      if (CG_DATA.login) sheets.stale = { title: 'Zalogowano na konto CrazyGames', body: ['Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.', 'Odśwież stronę, aby grać dalej z postępem z konta.'], action: { label: 'ODŚWIEŻ', onClick: reload } };
+    }
     const sh = sheets[kind];
     if (!sh) return;
     this.openInfoSheet({ title: sh.title, body: sh.body, action: sh.action || null, closeLabel: sh.action && kind !== 'stale' ? 'GRAJ BEZ ZAPISU' : 'ROZUMIEM' });
@@ -17311,7 +17391,7 @@ class DevPanel {
       case 'sandbox-copy': case 'sandbox-fresh': case 'sandbox-resume': {
         if (g.running) this.stopPlay();
         if (act !== 'sandbox-resume' || !this.sandboxSaveExists()) {
-          const start = act === 'sandbox-fresh' ? defaultSave() : (() => { try { return parseSaveString(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return defaultSave(); } })();
+          const start = act === 'sandbox-fresh' ? defaultSave() : (() => { try { return parseSaveString(playerSaveStore().getItem(SAVE_KEY) || 'null'); } catch (e) { return defaultSave(); } })();
           if (act === 'sandbox-fresh') start.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
           start.meta.devSandbox = true;
           localStorage.setItem(DEV_SANDBOX_SAVE_KEY, sealSave(start));
@@ -19063,6 +19143,13 @@ const I18N_EN = {
   "Gra jest otwarta w innej karcie": "The game is open in another tab",
   "Postęp zmienił się w innej karcie lub oknie. Ta karta nic nie zapisze, żeby nie nadpisać nowszego postępu.": "Progress changed in another tab or window. This tab won't save anything, so the newer progress isn't overwritten.",
   "Odśwież stronę, aby grać dalej z aktualnym postępem.": "Reload the page to keep playing with your current progress.",
+  "Nie udało się połączyć z zapisem CrazyGames, więc gra nie odczytała Twojego postępu. Niczego nie usunie ani nie nadpisze.": "Couldn't connect to CrazyGames saving, so the game didn't read your progress. It won't delete or overwrite anything.",
+  "Odśwież stronę, aby spróbować ponownie.": "Reload the page to try again.",
+  "Zalogowano na konto CrazyGames": "Signed in to CrazyGames",
+  "Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.": "This page won't save anything more, so guest progress doesn't mix with the account's progress.",
+  "Odśwież stronę, aby grać dalej z postępem z konta.": "Reload the page to keep playing with your account's progress.",
+  "postęp gry, ustawienia i losowy identyfikator gościa — przez zapis CrazyGames: jako gość w pamięci Twojej przeglądarki na tym urządzeniu, a po zalogowaniu na konto CrazyGames na tym koncie (wtedy postęp jest też na Twoich innych urządzeniach). Gra nie ma własnych kont i nie prosi o e-mail. Nazwa gracza jest opcjonalna.": "game progress, settings and a random guest ID — through CrazyGames saving: as a guest in your browser's memory on this device, and when you're signed in to CrazyGames, in that account (then your progress is on your other devices too). The game has no accounts of its own and doesn't ask for your email. Player name is optional.",
+  "dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry, także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.": "access and data portability — the “Download my data” button; deletion — “Reset profile” (erases the game save, also from your CrazyGames account). You can also lodge a complaint with the President of UODO (Polish Data Protection Office).",
   "Brak miejsca na kopię": "No room for a copy",
   "Zapis nie działa": "Saving doesn't work",
   "Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie usunie ani nie nadpisze.": "The browser doesn't allow the saved progress to be read (e.g. private mode or blocked site data). The game won't delete or overwrite anything.",
@@ -19724,14 +19811,19 @@ const I18N_EN = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  // The language is decided before the first screen renders.
-  let lang = 'pl';
-  devBoot();
-  try { const raw = localStorage.getItem(SAVE_SLOT); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
-  i18nStart(lang);
-  document.documentElement.classList.add('i18n-ready');
-  window.game = new Game();
-  window.game.devPanel = new DevPanel(window.game);
+  const start = () => {
+    // The language is decided before the first screen renders.
+    let lang = 'pl';
+    devBoot();
+    try { const raw = saveStore().getItem(SAVE_SLOT); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
+    i18nStart(lang);
+    document.documentElement.classList.add('i18n-ready');
+    window.game = new Game();
+    window.game.devPanel = new DevPanel(window.game);
+  };
+  // CG-DATA-1: the CrazyGames package reads its save only once the SDK is
+  // ready (#app stays hidden until .i18n-ready); the web build starts at once.
+  if (PORTAL_BASIC) cgDataBoot().then(start); else start();
 });
 
 /* E2: game.js runs as an ES module (index.html: <script type="module">), so
