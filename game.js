@@ -176,7 +176,7 @@ const CONFIG = {
       arenaTop3Gain: 2,     // place 1-3 (additive with completeGain)
       arenaFirstGain: 3,    // place 1 only (additive on top of the Top3 bonus)
       arenaNewPbGain: 2,    // new personal-best score this run, max once per round
-      dailyFirstClearGain: 20, // first Daily completion of the UTC day
+      dailyFirstClearGain: 20, // every finished Daily run (finalizeRun(); GDD: "Wyzwanie dnia +20%")
       dailyNewBestGain: 10     // "premium/gold" bonus: a new Daily best this run
     },
     // Fallback reward once level 6 (and every skin/aura/effect/overdrive
@@ -587,6 +587,17 @@ const SEAL_SALT = 'vh-neon-core-v11';
    ?i18n=log collects untranslated Polish in I18N.misses (qa/v19.mjs). */
 const I18N = { lang: 'pl', dict: Object.create(null), upper: Object.create(null), patterns: [], cache: new Map(), log: false, misses: new Set(), outputs: new Set() };
 const PL_HINT = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(nie|się|jest|misj\w*|rund\w*|wir\w*|dzielnic\w*|monet\w*|pryzmat\w*|graj|dalej|wynik|czas|nagrod\w*|poziom|twój|twoja|twoje|zbierz|dotknij|wróć|anuluj|zamknij|kup|wyzwani\w*|miasto|sklep|reklam\w*|ustawieni\w*|muzyk\w*|energi\w*|za|na|do|od|po|bez|dla|albo|oraz|tak)\b/i;
+
+/** CG-QA-05: the CrazyGames package's language switch hands its choice over the
+ *  reload in the page's own URL (#lang=en), read and cleared once at boot. */
+const LANG_HANDOFF = 'lang=';
+function takeLangHandoff() {
+  let m = null;
+  try { m = new RegExp('^#' + LANG_HANDOFF + '(pl|en)$').exec(location.hash); } catch (e) { /* no location */ }
+  if (!m) return null;
+  try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* stays in the URL */ }
+  return m[1];
+}
 
 function detectLang(setting) {
   if (setting === 'pl' || setting === 'en') return setting;
@@ -2023,6 +2034,16 @@ class Monetization {
   get adsAvailable() { return this.provider !== 'none'; }
   price(sku) { return this.prices[sku] || (IAP_PRODUCTS.find(p => p.sku === sku) || {}).price || ''; }
 
+  /** The CrazyGames SDK that gets the gameplay markers: the ad provider's, or
+   *  (CG-QA-07) in the CrazyGames package the SDK it already loads for saving --
+   *  no ads there, but docs.crazygames.com/requirements/technical: with the SDK
+   *  integrated, a Basic Launch needs "Gameplay start" when the player reaches
+   *  game state, and the initial download size is measured up to the first one. */
+  crazySdk() {
+    if (this.provider === 'crazygames') return this.sdk;
+    return PORTAL_BASIC ? CG_DATA.sdk : null;
+  }
+
   /** Portals pause their own ads during gameplay and use these markers for
    *  their engagement metrics (CrazyGames/Poki both require them). */
   gameplayStart() {
@@ -2030,7 +2051,8 @@ class Monetization {
     this.inGameplay = true;
     if (DEV.sandbox) return; // v23: test play is not portal engagement
     try {
-      if (this.provider === 'crazygames') this.sdk.game.gameplayStart();
+      const cg = this.crazySdk();
+      if (cg) cg.game.gameplayStart();
       else if (this.provider === 'poki') this.sdk.gameplayStart();
     } catch (e) { /* SDK hiccup -- never block the game */ }
   }
@@ -2040,7 +2062,8 @@ class Monetization {
     this.inGameplay = false;
     if (DEV.sandbox) return;
     try {
-      if (this.provider === 'crazygames') this.sdk.game.gameplayStop();
+      const cg = this.crazySdk();
+      if (cg) cg.game.gameplayStop();
       else if (this.provider === 'poki') this.sdk.gameplayStop();
     } catch (e) { /* ignore */ }
   }
@@ -3604,7 +3627,8 @@ let SAVE_SLOT = SAVE_KEY;
    'unavailable': the game plays from memory and writes nothing -- a failed
    read is never taken for "no save". The web build is untouched (localStorage). */
 const CG_SDK_INIT_TIMEOUT_MS = 20000;
-const CG_DATA = { store: null, error: null, login: false };
+// sdk: the initialised SDK on CrazyGames (gameplay markers, Monetization.crazySdk()).
+const CG_DATA = { store: null, error: null, login: false, sdk: null };
 
 async function cgDataBoot() {
   const sdk = window.CrazyGames && window.CrazyGames.SDK;
@@ -3613,6 +3637,8 @@ async function cgDataBoot() {
     let timer;
     await Promise.race([sdk.init(), new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('SDK init timed out')), CG_SDK_INIT_TIMEOUT_MS); })]).finally(() => clearTimeout(timer));
     if (sdk.environment !== 'crazygames' && sdk.environment !== 'local') throw new Error('SDK environment ' + sdk.environment);
+    // CG-QA-07: the markers need only the Game module, even if the Data Module is off.
+    CG_DATA.sdk = sdk;
     // Every call goes through SDK.data, which follows the SDK's own switch to
     // the account's data after a login.
     const data = () => window.CrazyGames.SDK.data;
@@ -9266,7 +9292,8 @@ class Game {
   /** Short vibration if haptics are enabled and the browser supports it.
    *  Feature-detected — never assumed available (GDD 5.1). */
   vibrate(ms) {
-    if (this.save.settings.haptics && navigator.vibrate) navigator.vibrate(ms);
+    // R2-03: never where it can't work (a blocked call in a portal frame only warns).
+    if (this.canVibrate && this.save.settings.haptics && navigator.vibrate) navigator.vibrate(ms);
   }
 
   bindUI() {
@@ -9436,7 +9463,26 @@ class Game {
       // also held the ×2 offer. No statistics either, so nothing to consent to.
       document.getElementById('btnShare').parentElement.classList.add('hidden');
       document.querySelector('[data-consent]').closest('.control-row').classList.add('hidden');
+      // CG-QA-04 (owner's decision 2026-11-07): "Reset profile" didn't work in
+      // CrazyGames Preview, so the package doesn't offer it (resetProfile() and
+      // the save stay as they are; GitHub Pages keeps its button).
+      document.querySelector('.profile-danger-zone').classList.add('hidden');
     }
+    // CG-QA-06 / R2-03: vibration only where it can shake something -- the
+    // browser has navigator.vibrate, the main input is a finger (coarse pointer,
+    // no hover: desktop Chrome, touch laptops included, has the API and nothing to
+    // shake) and the page is not in another site's frame: Chrome (55+) blocks
+    // vibrate() in a frame cross-origin to the top page, which is how CrazyGames
+    // always runs the package (Firefox for Android: API without vibration; iPhone
+    // Safari: no API). The saved setting stays as it is.
+    let touchFirst = false, foreignFrame = false;
+    try { touchFirst = matchMedia('(pointer: coarse) and (hover: none)').matches; } catch (e) { /* no media queries */ }
+    try { foreignFrame = window.top !== window.self && window.top.location.origin !== location.origin; } catch (e) { foreignFrame = true; }
+    this.canVibrate = !PORTAL_BASIC && !foreignFrame && typeof navigator.vibrate === 'function' && touchFirst;
+    document.getElementById('hapticsRow').classList.toggle('hidden', !this.canVibrate);
+    // R2-02: the thumb pad only changes how touch steers (bindInput()), so the
+    // control mode is offered only where the device has touch input.
+    document.getElementById('inputModeRow').classList.toggle('hidden', !(('ontouchstart' in window) || navigator.maxTouchPoints > 0));
     document.getElementById('btnMenu').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'menu' });
       this.updateCoinDisplays();
@@ -9467,7 +9513,8 @@ class Game {
       document.getElementById('pauseSheet').classList.add('hidden');
       document.getElementById('leaveConfirm').classList.remove('hidden');
     });
-    document.getElementById('btnQuickEquip').addEventListener('click', () => this.openQuickEquip());
+    // R2-01 (owner's decision): no ZMIEŃ WYGLĄD in the pause sheet any more -- looks
+    // change in Warsztat between rounds; the popup below is no longer reachable.
     document.getElementById('quickEquipAura').addEventListener('click', () => this.cycleQuickEquip('aura'));
     document.getElementById('quickEquipEffect').addEventListener('click', () => this.cycleQuickEquip('effect'));
     document.getElementById('quickEquipOverdrive').addEventListener('click', () => this.cycleQuickEquip('overdriveSkin'));
@@ -10399,7 +10446,7 @@ class Game {
         PORTAL_BASIC ? '<strong>Co wysyłamy:</strong> gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.' : '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
         PORTAL_BASIC ? '<strong>Reklamy i zakupy:</strong> ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.' : '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
         '<strong>Czcionki:</strong> wbudowane w grę — bez pobierania z Google.',
-        PORTAL_BASIC ? '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry razem z jego kopiami zapasowymi z zapisu CrazyGames: jako gość na tym urządzeniu, po zalogowaniu także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.' : '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
+        PORTAL_BASIC ? '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — dane gościa usuniesz z tego urządzenia, czyszcząc dane strony w przeglądarce; w sprawie danych zapisanych na koncie CrazyGames skontaktuj się z CrazyGames. Masz też prawo skargi do Prezesa UODO.' : '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
       ]
     });
   }
@@ -10596,7 +10643,13 @@ class Game {
     this.save.settings.lang = lang;
     saveGame(this.save);
     this.analytics.track('language', { lang });
-    if (lang !== I18N.lang) location.reload();
+    if (lang === I18N.lang) return;
+    // CG-QA-05: in the CrazyGames package the save reaches a signed-in player's
+    // account later (the Data Module debounces saving 1-30 s), so the reload
+    // right after saveGame() could read the old language back -- the choice
+    // rides on the reload itself (takeLangHandoff() at boot).
+    if (PORTAL_BASIC) { try { history.replaceState(history.state, '', '#' + LANG_HANDOFF + lang); } catch (e) { /* the save still has it */ } }
+    location.reload();
   }
 
   async copyBackupCode() {
@@ -10903,18 +10956,24 @@ class Game {
 
   /** Core City % a plain finished Arena round adds at the current level
    *  (podium, first place and a record add more -- see finalizeRun()). */
-  coreGainPerRound() {
-    const cc = CONFIG.hub.coreCity;
-    return Math.round(cc.arenaCompleteGain * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
-  }
+  coreGainPerRound() { return this.coreGainRange().min; }
 
   /** DEVICE-QA-1 (playtest 019): the most one finished Arena round adds --
    *  podium, first place and a record on top of the plain round. The copy
    *  states the range, so 67% -> 82% no longer contradicts "+10%". */
-  coreGainMaxPerRound() {
+  coreGainMaxPerRound() { return this.coreGainRange().max; }
+
+  /** CG-QA-08: the least and most Core City % one finished round of `kind`
+   *  ('arena' | 'daily') adds at the current level -- finalizeRun()'s sums and
+   *  rounding, the one source of every range the copy states. */
+  coreGainRange(kind = 'arena') {
     const cc = CONFIG.hub.coreCity;
-    const top = cc.arenaCompleteGain + cc.arenaTop3Gain + cc.arenaFirstGain + cc.arenaNewPbGain;
-    return Math.round(top * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
+    const early = (this.save.hub.coreLevel || 1) <= cc.earlyLevelMax;
+    const [lo, hi] = kind === 'daily'
+      ? [cc.dailyFirstClearGain, cc.dailyFirstClearGain + cc.dailyNewBestGain]
+      : [cc.arenaCompleteGain, cc.arenaCompleteGain + cc.arenaTop3Gain + cc.arenaFirstGain + cc.arenaNewPbGain];
+    const at = (pct) => (early ? Math.round(pct * cc.earlyLevelMult) : pct);
+    return { min: at(lo), max: at(hi), base: { min: lo, max: hi }, early };
   }
 
   coreGainRangeText() { return `+${this.coreGainPerRound()}–${this.coreGainMaxPerRound()}%`; }
@@ -11198,10 +11257,17 @@ class Game {
 
   coreCityHowToFillHtml() {
     const c = CONFIG.hub.coreCity;
+    // CG-QA-08: the parts add up, then LVL 1-2 multiply the whole (finalizeRun());
+    // the totals come from coreGainRange(), like GRAJ's "+16–27%".
+    const arena = this.coreGainRange('arena'), daily = this.coreGainRange('daily');
+    const mult = I18N.lang === 'pl' ? String(c.earlyLevelMult).replace('.', ',') : String(c.earlyLevelMult);
     return '<ul class="info-sheet-list">' +
-      `<li>Runda GRAJ 2:00: +${c.arenaCompleteGain}% (top 3: +${c.arenaTop3Gain}%, 1. miejsce: +${c.arenaFirstGain}%, rekord: +${c.arenaNewPbGain}%)</li>` +
-      `<li>Wyzwanie dnia: +${c.dailyFirstClearGain}% za pierwsze dziś, +${c.dailyNewBestGain}% za nowy rekord</li>` +
-      `<li>Na LVL 1–${c.earlyLevelMax} całość ×${I18N.lang === 'pl' ? String(c.earlyLevelMult).replace('.', ',') : c.earlyLevelMult}. Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
+      `<li>Runda Areny (GRAJ 2:00): +${c.arenaCompleteGain}% za ukończenie; podium (1.–3. miejsce) +${c.arenaTop3Gain}%, zwycięstwo jeszcze +${c.arenaFirstGain}%, nowy rekord +${c.arenaNewPbGain}% — razem +${arena.base.min}–${arena.base.max}% za rundę.</li>` +
+      `<li>Wyzwanie dnia: +${c.dailyFirstClearGain}% za każde ukończenie, +${c.dailyNewBestGain}% za nowy rekord dnia — razem +${daily.base.min}–${daily.base.max}%.</li>` +
+      (arena.early
+        ? `<li>Teraz (LVL ${this.save.hub.coreLevel || 1}) cały przyrost ×${mult}: runda Areny +${arena.min}–${arena.max}%, Wyzwanie dnia +${daily.min}–${daily.max}%.</li>`
+        : `<li>Na LVL 1–${c.earlyLevelMax} cały przyrost jest ×${mult}.</li>`) +
+      `<li>Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
       '<li>Runda opuszczona przed końcem nie ładuje miasta.</li>' +
       '</ul>';
   }
@@ -14882,11 +14948,17 @@ class Game {
       this.analytics.track('result_next', { hook: next.id, rounds: next.rounds, runs: arenaRunsOf(this.save) });
     }
     document.getElementById('btnPlayAgain').textContent = this.challenge && !this.challengeBeaten ? 'REWANŻ — TA SAMA MAPA' : 'ZAGRAJ JESZCZE RAZ';
+    // CG-QA-01: a new player last saw that screen as the welcome card, not as
+    // Miasto -- "Wróć do Miasta" only once they know it (a visit after a round,
+    // the campaign tile's round count, a cleared mission).
+    const knowsCity = (this.hubVisits || 0) > 0 || arenaRunsOf(this.save) >= CONFIG.ftue.campaignIntroRuns || missionsClearedOf(this.save) > 0;
+    document.getElementById('btnMenu').textContent = knowsCity ? 'Wróć do Miasta' : 'Menu główne';
     if (place === 1 || isNewPb) this.monetization.happyTime();
 
     const missionLine = document.getElementById('missionResultLine');
     if (this.missionJustCompleted) {
-      missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}” — +${this.activeMission.rewardCoins} monet`;
+      document.getElementById('dailyMissionName').textContent = this.activeMission.name;
+      document.getElementById('dailyMissionReward').textContent = `+${this.activeMission.rewardCoins} monet`;
       missionLine.classList.remove('hidden');
     } else {
       missionLine.classList.add('hidden');
@@ -18404,7 +18476,7 @@ const I18N_EN = {
   "MIEJSCE": "PLACE",
   "MIESZANKA": "SHUFFLE",
   "MISJA DNIA": "DAILY MISSION",
-  "MISJA DNIA UKOŃCZONA: „{0}” — +{1} monet": "DAILY MISSION COMPLETE: “{0}” — +{1} coins",
+  "MISJA DNIA UKOŃCZONA": "DAILY MISSION COMPLETE",
   "MISJA UKOŃCZONA": "MISSION COMPLETE",
   "MONET": "COINS",
   "Magazyn części": "Parts Warehouse",
@@ -18858,7 +18930,6 @@ const I18N_EN = {
   "Rozkład jazdy": "Timetable",
   "Rozkład jazdy wrócił do normy.": "The timetable is back to normal.",
   "Runda 2:00": "Round 2:00",
-  "Runda GRAJ 2:00: +{0}% (top 3: +{1}%, 1. miejsce: +{2}%, rekord: +{3}%)": "PLAY round 2:00: +{0}% (top 3: +{1}%, 1st place: +{2}%, record: +{3}%)",
   "Runda: {0} XP + punkty wyniku + premia za podium (do +{1} XP za 1. miejsce). Misja: +{2} XP za ukończenie.": "Round: {0} XP + score points + podium bonus (up to +{1} XP for 1st place). Mission: +{2} XP for completing it.",
   "Ruszaj dalej: {0} czeka.": "Move on: {0} awaits.",
   "Rytm kwiatów": "Flower Rhythm",
@@ -19157,7 +19228,6 @@ const I18N_EN = {
   "Wystawa otwarta z hukiem.": "The exhibition opened with a bang.",
   "Wyzwania": "Challenges",
   "Wyzwanie dnia": "Daily Challenge",
-  "Wyzwanie dnia: +{0}% za pierwsze dziś, +{1}% za nowy rekord": "Daily Challenge: +{0}% for the first today, +{1}% for a new record",
   "Wył.": "Off",
   "Wyłącz": "Switch off",
   "Wyłącz 2 węzły": "Switch off 2 nodes",
@@ -19205,7 +19275,7 @@ const I18N_EN = {
   "Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.": "This page won't save anything more, so guest progress doesn't mix with the account's progress.",
   "Odśwież stronę, aby grać dalej z postępem z konta.": "Reload the page to keep playing with your account's progress.",
   "postęp gry, ustawienia i losowy identyfikator gościa — przez zapis CrazyGames: jako gość w pamięci Twojej przeglądarki na tym urządzeniu, a po zalogowaniu na konto CrazyGames na tym koncie (wtedy postęp jest też na Twoich innych urządzeniach). Gra nie ma własnych kont i nie prosi o e-mail. Nazwa gracza jest opcjonalna.": "game progress, settings and a random guest ID — through CrazyGames saving: as a guest in your browser's memory on this device, and when you're signed in to CrazyGames, in that account (then your progress is on your other devices too). The game has no accounts of its own and doesn't ask for your email. Player name is optional.",
-  "dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry razem z jego kopiami zapasowymi z zapisu CrazyGames: jako gość na tym urządzeniu, po zalogowaniu także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.": "access and data portability — the “Download my data” button; deletion — “Reset profile” (erases the game save together with its backup copies from CrazyGames saving: as a guest on this device, when signed in also from your CrazyGames account). You can also lodge a complaint with the President of UODO (Polish Data Protection Office).",
+  "dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — dane gościa usuniesz z tego urządzenia, czyszcząc dane strony w przeglądarce; w sprawie danych zapisanych na koncie CrazyGames skontaktuj się z CrazyGames. Masz też prawo skargi do Prezesa UODO.": "access and data portability — the “Download my data” button; deletion — clear this site’s data in your browser to delete a guest’s data on this device; for data saved in your CrazyGames account, contact CrazyGames. You can also lodge a complaint with the President of UODO (Polish Data Protection Office).",
   "Profil nie został zresetowany": "The profile wasn't reset",
   "Zapis jest teraz zablokowany — na przykład gra jest otwarta w innej karcie albo nie ma połączenia z zapisem CrazyGames — więc gra niczego nie usunęła.": "Saving is blocked right now — for example the game is open in another tab or there is no connection to CrazyGames saving — so the game deleted nothing.",
   "Odśwież stronę i spróbuj ponownie.": "Reload the page and try again.",
@@ -19829,7 +19899,6 @@ const I18N_EN = {
   "+{#0}–{#1}% za rundę · nagroda najpóźniej za {#2} {3}": "+{0}–{1}% per round · reward in {2} {3} at most",
   "Arena · runda 2:00 · +{#0}–{#1}% budowy miasta": "Arena · round 2:00 · +{0}–{1}% city build",
   "+{#0} monet + {#1} pryzmatów": "+{0} coins + {1} prisms",
-  "Na LVL 1–{#0} całość ×{1}. Po LVL 6 każde 100%: +{#2} monet i +{#3} pryzmatów.": "At LVL 1–{0} everything ×{1}. After LVL 6 every 100%: +{2} coins and +{3} prisms.",
   "Runda opuszczona przed końcem nie ładuje miasta.": "A round left before the end doesn't charge the city.",
   "PUNKTY": "POINTS",
   "Miejsce liczy się według punktów, nie rozmiaru wiru.": "Places go by points, not by vortex size.",
@@ -19870,6 +19939,15 @@ const I18N_EN = {
   "Błysk przy połykaniu": "A flash as you swallow",
   "Kolor banera na finiszu rundy": "The banner color at a round's finale",
   "PODGLĄD · {0} · BEZ BONUSU W RUNDZIE": "PREVIEW · {0} · NO IN-ROUND BONUS",
+  // CG-QA-01/03/08 (CrazyGames Preview QA R1)
+  "Menu główne": "Main menu",
+  "Polski": "Polish",
+  "Angielski": "English",
+  "Runda Areny (GRAJ 2:00): +{#0}% za ukończenie; podium (1.–3. miejsce) +{#1}%, zwycięstwo jeszcze +{#2}%, nowy rekord +{#3}% — razem +{#4}–{#5}% za rundę.": "Arena round (PLAY 2:00): +{0}% for finishing; podium (1st–3rd place) +{1}%, a win another +{2}%, a new record +{3}% — +{4}–{5}% per round in total.",
+  "Wyzwanie dnia: +{#0}% za każde ukończenie, +{#1}% za nowy rekord dnia — razem +{#2}–{#3}%.": "Daily Challenge: +{0}% for every finish, +{1}% for a new daily record — +{2}–{3}% in total.",
+  "Teraz (LVL {#0}) cały przyrost ×{1}: runda Areny +{#2}–{#3}%, Wyzwanie dnia +{#4}–{#5}%.": "Now (LVL {0}) every gain ×{1}: Arena round +{2}–{3}%, Daily Challenge +{4}–{5}%.",
+  "Na LVL 1–{#0} cały przyrost jest ×{1}.": "On LVL 1–{0} every gain is ×{1}.",
+  "Po LVL 6 każde 100%: +{#0} monet i +{#1} pryzmatów.": "After LVL 6 every 100%: +{0} coins and +{1} prisms.",
 };
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -19877,10 +19955,14 @@ window.addEventListener('DOMContentLoaded', () => {
     // The language is decided before the first screen renders.
     let lang = 'pl';
     devBoot();
+    const handed = PORTAL_BASIC ? takeLangHandoff() : null;
     try { const raw = saveStore().getItem(SAVE_SLOT); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
+    if (handed) lang = handed;
     i18nStart(lang);
     document.documentElement.classList.add('i18n-ready');
     window.game = new Game();
+    // CG-QA-05: the save read at boot may predate the switch -- it keeps the choice.
+    if (handed && window.game.save.settings.lang !== handed) { window.game.save.settings.lang = handed; saveGame(window.game.save); }
     window.game.devPanel = new DevPanel(window.game);
   };
   // CG-DATA-1: the CrazyGames package reads its save only once the SDK is

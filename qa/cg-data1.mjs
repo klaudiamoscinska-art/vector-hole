@@ -563,11 +563,12 @@ async function resetChecks(url, webUrl) {
   r.push(report('[mock] G7 partial failure at the first copy: nothing deleted (byte-equal), no reload, "Couldn\'t reset the profile"', g7.stayed && a7 === b7 && /Couldn't reset the profile/.test(g7.sheet), JSON.stringify({ ...g7, sheet: g7.sheet.slice(0, 80), unchanged: a7 === b7 })));
   await d.close();
 
-  // G8: the privacy text says what the reset does.
+  // G8: the privacy text says how to delete the data -- CG-QA-04: the package no longer
+  // offers "Reset profile" (its code path above stays), so the text doesn't promise it.
   d = await device(url);
   p = await d.open();
   const priv = await p.evaluate(async () => { window.game.openPrivacyPolicy(); await new Promise(r => setTimeout(r, 300)); const s = document.getElementById('infoSheet'); return s.classList.contains('hidden') ? '' : s.innerText; });
-  r.push(report('[mock] G8 privacy (English): "Reset profile" erases the save with its backup copies from CrazyGames saving', /backup copies from CrazyGames saving/.test(priv) && noPolish(priv), priv.slice(0, 300) || '(privacy sheet not opened)'));
+  r.push(report('[mock] G8 privacy (English): deletion = clearing the site data (guest) or asking CrazyGames (account); no "Reset profile" promised (CG-QA-04)', /clear this site’s data in your browser to delete a guest’s data/.test(priv) && /contact CrazyGames/.test(priv) && !/Reset profile/i.test(priv) && noPolish(priv), priv.slice(-300) || '(privacy sheet not opened)'));
   await d.close();
 
   // G9: the web build's reset is unchanged -- the save goes, .bak/.rescue stay (PX01), no SDK.
