@@ -4,8 +4,8 @@ Data: 2026-11-06. Baza: `fd47b731ab2baaab3c0da9cbe6aaaf6cd1e162d3` (= `origin/ma
 Gałąź: `cg-data1-module`. Kod etapu: commit `d228b2e16ec4be8c5e5e3e11b1cd3132e5edb235`.
 
 > **CG-DATA-2 (2026-11-07)** — niezależny audyt i poprawki: sekcja **CG-DATA-2** na końcu raportu.
-> Aktualna paczka: `C:\Users\Piotrus\Desktop\Repo\crazygames-data2-delivery\game.zip`
-> (SHA-256 `e262407da8babeee51b6befecd4df86ce06ca2bc1e908834b67453449bfdbea4`); paczka z §E jest nieaktualna.
+> Aktualna paczka (CG-DATA-2 R1): `C:\Users\Piotrus\Desktop\Repo\crazygames-data2r1-delivery\game.zip`
+> (SHA-256 `d47aa02220ffb1e70483087dfcaca4127c985f2f4cae851493f401febf8c7050`); paczki z §E i z sekcji CG-DATA-2 są nieaktualne.
 
 ## A. Werdykt
 
@@ -332,10 +332,20 @@ i częściowym błędzie reset kasował dane albo milczał), G9 (web) PASS na ob
 | Reset przez prawdziwe SDK 3.8.0 (`SDK_DATA_local`) | real SDK local | PASS |
 | Reset zalogowanego gracza na prawdziwym CrazyGames, synchronizacja usunięcia z chmurą, drugie urządzenie | portal | **NOT RUN / NOT VERIFIED** |
 
-Regresja kandydata: REGRESJA_R1
+Regresja kandydata `286aca7` (baza `fd47b73` z tej samej maszyny i dnia, tabela CG-DATA-2): save-safety 107/107,
+px02-isolation 95/95, v19 16/16, v22 49/49, boot 9/9, bridge 20/20, leave-run 22/22, ftue1 78/78, edge-cases PASS,
+design 29/29, flow 35/35, features PASS, ftue3 26/26, instructions 4/4, release 93/93, crazygames-basic1 105/105
+(NOT RUN 1 = media bez `--delivery`) — wszystko jak baza. workshop-buy 72/73 w serii (2560×1440 „tap moves nothing”,
+znana niestabilność dużej ramki) → solo **73/73** = FLAKY. NOT RUN: visual, release-recovery (bez zmian od CG-DATA-2:
+81/81), pełne run-all, responsive, devices, perf1, balance1, difficulty, content, dev-panel.
 
 ### Paczka
-PACZKA_R1
+`C:\Users\Piotrus\Desktop\Repo\crazygames-data2r1-delivery\game.zip` — SHA-256
+`d47aa02220ffb1e70483087dfcaca4127c985f2f4cae851493f401febf8c7050` (3 pliki w katalogu głównym ZIP; `<html lang="en">`,
+SDK raz w `<head>`, ekran ładowania; 1,34 MB, ZIP 0,41 MB; dwa eksporty = ten sam SHA-256; źródło `0827168` = kod
+`286aca7`). `crazygames-basic1 --delivery`: **117/117**, NOT RUN 0 (z ffmpeg; manifest). Okładki, filmy i podglądy
+bajt w bajt jak w poprzednich dostawach; `crazygames-data2-delivery` (`e262407d…`) i `crazygames-data1-delivery`
+(`9d3d547b…`) nietknięte i nieaktualne.
 
 ### Ryzyka
 - **NOT VERIFIED:** czy usunięcie u zalogowanego gracza dociera do chmury CrazyGames przed przeładowaniem (debounce
