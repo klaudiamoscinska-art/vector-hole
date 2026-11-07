@@ -4,6 +4,21 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-PREVIEW-QA-1 R3 (R3-01–04, 06–08) (zapis nadal v13, klucz bez zmian, bez nowych pól; jedyna zmiana ekonomii: R3-07)
+- **Wyzwanie dnia ładuje Core City raz dziennie (R3-07, decyzja właścicielki):** +20% za pierwsze ukończenie dnia i
+  +10% za pierwszy nowy rekord dnia (×1,6 na LVL 1–2); kolejne podejścia poprawiają rekord bez kolejnych procentów.
+  Znaczniki to istniejące daty w zapisie, więc zapis sprzed zmiany nie dostaje dzisiejszej nagrody drugi raz.
+- **Wartości Core City wszędzie takie, jakie wpadną (R3-06):** okno nagród, GRAJ, karta Miasta, panel Wyzwania i wynik
+  rundy podają liczby z premią już wliczoną, nazywają „Premię startową +60%” na LVL 1–2 i wartości od LVL 3;
+  panel Wyzwania pokazuje „Odebrane dziś”. Mnożnik ×1,6 i jego warunki bez zmian.
+- **Ekran wyników (R3-02):** „Main menu / Back to City” wyśrodkowane pod PLAY AGAIN w każdym układzie (w paczce było
+  przy lewej krawędzi), karty pod rankingiem tej samej szerokości i kształtu co przyciski.
+- **Paczka CrazyGames:** bez „Wibracje” w Ustawieniach (R3-01) i bez panelu KOPIA ZAPASOWA (R3-03); GitHub Pages bez zmian.
+- **Profil (R3-08):** zamiast „ID gościa: guest_…” — „Grasz jako: Gość” (albo nazwa), statystyki jako cztery kafelki.
+- **Zdarzenia SDK (R3-04):** `gameplayStart` w misji dopiero po START na karcie startowej; oferta przedłużenia misji
+  to przerwa (`gameplayStop`), przedłużenie — `gameplayStart`; wznowienie do karty / oferty nie wysyła startu.
+- `qa/cg-preview-qa3.mjs` (R3; `--legacy-root` sprawdza prawdziwy zapis poprzedniej paczki).
+
 ## CG-PREVIEW-QA-1 „Zgłoszenia z CrazyGames Preview” (R1: 8, R2: 3) (zapis nadal v13, klucz bez zmian; ekonomia, balans i FTUE bez zmian)
 - **Zdarzenia SDK w paczce (CG-QA-07):** paczka nie wysyłała `gameplayStart/Stop` (reklamowy dostawca był „none”),
   a CrazyGames mierzy rozmiar i czas ładowania do pierwszego `gameplayStart`. Teraz idą przez SDK ładowane dla zapisu:

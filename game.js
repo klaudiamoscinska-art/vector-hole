@@ -176,8 +176,8 @@ const CONFIG = {
       arenaTop3Gain: 2,     // place 1-3 (additive with completeGain)
       arenaFirstGain: 3,    // place 1 only (additive on top of the Top3 bonus)
       arenaNewPbGain: 2,    // new personal-best score this run, max once per round
-      dailyFirstClearGain: 20, // every finished Daily run (finalizeRun(); GDD: "Wyzwanie dnia +20%")
-      dailyNewBestGain: 10     // "premium/gold" bonus: a new Daily best this run
+      dailyFirstClearGain: 20, // the day's first finished Daily run (R3-07: once per UTC day)
+      dailyNewBestGain: 10     // "premium/gold" bonus: the day's first new Daily best (R3-07: once per day)
     },
     // Fallback reward once level 6 (and every skin/aura/effect/overdrive
     // skin from the ladder) is already owned -- GDD §8.2's own disclaimer
@@ -3813,6 +3813,12 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function screenLayout(w, h) {
   if (w < 560 || w < h * 1.25) return 'phone';
   return h < 620 ? 'compact' : 'wide';
+}
+/** Core City: a round's summed gain `pct` as it lands on the bar -- × the
+ *  starting bonus on LVL 1..earlyLevelMax, rounded (finalizeRun(); R3-06: the
+ *  one formula every reward the copy states goes through as well). */
+function coreGainScaled(pct, early) {
+  return early ? Math.round(pct * CONFIG.hub.coreCity.earlyLevelMult) : pct;
 }
 function lerp(a, b, t) { return a + (b - a) * t; }
 /** Round/mission clock as m:ss (v12 HUD; was a bare "120 s"). */
@@ -9467,6 +9473,13 @@ class Game {
       // CrazyGames Preview, so the package doesn't offer it (resetProfile() and
       // the save stay as they are; GitHub Pages keeps its button).
       document.querySelector('.profile-danger-zone').classList.add('hidden');
+      // R3-01 (owner's decision): no vibration switch anywhere in the package --
+      // this.canVibrate is never true here (portal frame), so it would do nothing.
+      document.getElementById('vibrationRow').classList.add('hidden');
+      // R3-03 (owner's decision): the Data Module saves on its own (guest and
+      // account), so no manual backup code here; the code paths and the save
+      // format stay, and GitHub Pages keeps the panel.
+      document.getElementById('backupBlock').classList.add('hidden');
     }
     // CG-QA-06 / R2-03: vibration only where it can shake something -- the
     // browser has navigator.vibrate, the main input is a finger (coarse pointer,
@@ -10308,7 +10321,10 @@ class Game {
 
   openProfileScreen() {
     document.getElementById('displayNameInput').value = this.save.displayName || '';
-    document.getElementById('guestIdLabel').textContent = this.save.guestId;
+    // R3-08: the player's name, or "Gość" (translated) -- never the technical guest ID.
+    const who = document.getElementById('profileIdentity');
+    who.textContent = this.save.displayName || 'Gość';
+    if (this.save.displayName) who.setAttribute('translate', 'no'); else who.removeAttribute('translate');
     this.syncControlsPanel();
     this.syncPrivacyPanel();
     this.updateSoundStatus();
@@ -10429,9 +10445,12 @@ class Game {
   syncPrivacyPanel() {
     const on = !!this.save.privacy.analytics;
     document.querySelectorAll('[data-consent]').forEach(btn => btn.classList.toggle('active', (btn.dataset.consent === '1') === on));
-    const st = document.getElementById('profileStats');
-    if (st && this.retention) {
-      st.textContent = `Dni w grze: ${this.retention.activeDays} · sesje: ${this.retention.sessions} · rundy: ${this.save.stats.runsPlayed || 0} · misje: ${Object.keys(this.save.campaign.completed).length}`;
+    // R3-08: the same four numbers, one tile each (labels are static text).
+    if (this.retention) {
+      document.getElementById('profileStatDays').textContent = formatNum(this.retention.activeDays);
+      document.getElementById('profileStatSessions').textContent = formatNum(this.retention.sessions);
+      document.getElementById('profileStatRounds').textContent = formatNum(this.save.stats.runsPlayed || 0);
+      document.getElementById('profileStatMissions').textContent = formatNum(Object.keys(this.save.campaign.completed).length);
     }
   }
 
@@ -10799,6 +10818,8 @@ class Game {
     // CG-DATA-1: in the CrazyGames package the save is the SDK's, not the browser's.
     if (PORTAL_BASIC && !DEV.sandbox) {
       sheets.unavailable.body = ['Nie udało się połączyć z zapisem CrazyGames, więc gra nie odczytała Twojego postępu. Niczego nie usunie ani nie nadpisze.', keep, 'Odśwież stronę, aby spróbować ponownie.'];
+      // R3-03: no backup code in the package, so the broken-save sheet doesn't point to one.
+      sheets.corrupt.body = [sheets.corrupt.body[0], 'Możesz zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.', keep];
       // No "play without saving" here: the page can't tell whose save SDK.data holds now.
       sheets.login = { title: 'Zalogowano na konto CrazyGames', body: ['Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.', 'Odśwież stronę, aby grać dalej z postępem z konta.'], action: { label: 'ODŚWIEŻ', onClick: reload }, locked: true };
       // CG-DATA-2 R1: a reset that deleted nothing, or not everything (cgEraseSave()).
@@ -10859,7 +10880,8 @@ class Game {
     document.getElementById('hubCityPitchTitle').textContent = built ? 'Miasto zbudowane w całości' : 'Każda runda Areny buduje Twoje miasto';
     document.getElementById('hubCityPitchSub').textContent = built
       ? `${this.coreGainRangeText()} za rundę · co 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`
-      : `${this.coreGainRangeText()} za rundę · nagroda najpóźniej za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
+      // R3-06: on LVL 1-2 the range already holds the starting bonus -- say so.
+      : `${this.coreGainRangeText()} za rundę${this.coreEarlyBonus() ? ' z premią startową' : ''} · nagroda najpóźniej za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
 
     this.updateHubQuickTiles();
     // First-run welcome: until the first finished play, Miasto shows only
@@ -10897,8 +10919,23 @@ class Game {
       goalText.textContent = `Jedna mapa dla wszystkich graczy. Za ukończenie: +${CONFIG.daily.completionBonusCoins} monet.`;
     }
     document.getElementById('dailyStreakValue').textContent = this.save.daily.streak || 0;
-    document.getElementById('dailyRewardFirst').textContent = `+${CONFIG.hub.coreCity.dailyFirstClearGain}% Core City`;
-    document.getElementById('dailyRewardBest').textContent = `+${CONFIG.hub.coreCity.dailyNewBestGain}% Core City`;
+    // R3-06/07: what each reward is worth at today's level (×1.6 already in on
+    // LVL 1-2) or that it was claimed today -- the two Daily Core City gains
+    // are paid once a day.
+    const rv = this.coreRewardValues();
+    const rewardBox = (id, value, claimed) => {
+      const el = document.getElementById(id);
+      el.textContent = claimed ? 'Odebrane dziś' : `+${value}% Core City`;
+      el.closest('.daily-reward-box').classList.toggle('claimed', claimed);
+    };
+    rewardBox('dailyRewardFirst', rv.daily.first, rv.daily.paid.first);
+    rewardBox('dailyRewardBest', rv.daily.best, rv.daily.paid.best);
+    const cc = CONFIG.hub.coreCity, note = document.getElementById('dailyRewardNote');
+    note.textContent = rv.daily.paid.first && rv.daily.paid.best
+      ? 'Dzisiejsze nagrody Core City odebrane. Graj dalej o rekord — nowa mapa i nagrody jutro.'
+      : (rv.early
+        ? `Premia startowa: +${this.coreEarlyBonusPct()}% postępu miasta na LVL 1–${cc.earlyLevelMax} (już wliczona). Od LVL ${cc.earlyLevelMax + 1}: +${cc.dailyFirstClearGain}% i +${cc.dailyNewBestGain}%. Każda nagroda raz dziennie.`
+        : 'Każda nagroda Core City raz dziennie; rekord możesz poprawiać dalej.');
   }
 
   /** Which REWARD_CATEGORY_ICONS entry matches a CORE_CITY_LEVEL_REWARDS
@@ -10968,12 +11005,50 @@ class Game {
    *  rounding, the one source of every range the copy states. */
   coreGainRange(kind = 'arena') {
     const cc = CONFIG.hub.coreCity;
-    const early = (this.save.hub.coreLevel || 1) <= cc.earlyLevelMax;
+    const early = this.coreEarlyBonus();
     const [lo, hi] = kind === 'daily'
       ? [cc.dailyFirstClearGain, cc.dailyFirstClearGain + cc.dailyNewBestGain]
       : [cc.arenaCompleteGain, cc.arenaCompleteGain + cc.arenaTop3Gain + cc.arenaFirstGain + cc.arenaNewPbGain];
-    const at = (pct) => (early ? Math.round(pct * cc.earlyLevelMult) : pct);
+    const at = (pct) => coreGainScaled(pct, early);
     return { min: at(lo), max: at(hi), base: { min: lo, max: hi }, early };
+  }
+
+  /** R3-06: the starting bonus (×earlyLevelMult) applies to a round that
+   *  ends while the city is at LVL 1..earlyLevelMax -- the level before the
+   *  round's gain is added, so the round that finishes LVL 2 still has it. */
+  coreEarlyBonus() { return (this.save.hub.coreLevel || 1) <= CONFIG.hub.coreCity.earlyLevelMax; }
+
+  /** R3-06: what each Core City reward is worth right now (coreGainScaled(),
+   *  the rounding finalizeRun() applies), part by part: every part is what it
+   *  adds on top of the ones before it, so the parts add up to the real total.
+   *  Daily: `paid` says which of the two today's save has already had (R3-07). */
+  coreRewardValues() {
+    const cc = CONFIG.hub.coreCity, early = this.coreEarlyBonus();
+    const steps = (parts) => { let sum = 0; return parts.map(p => { const before = coreGainScaled(sum, early); sum += p; return coreGainScaled(sum, early) - before; }); };
+    const [complete, podium, win, record] = steps([cc.arenaCompleteGain, cc.arenaTop3Gain, cc.arenaFirstGain, cc.arenaNewPbGain]);
+    const [first, best] = steps([cc.dailyFirstClearGain, cc.dailyNewBestGain]);
+    const paid = this.dailyCoreRewardsPaid(dailySeedForDate(new Date()).dateKey);
+    return { early, arena: { complete, podium, win, record, ...this.coreGainRange('arena') }, daily: { first, best, total: first + best, paid } };
+  }
+
+  /** R3-06: "+60%" for the starting bonus (earlyLevelMult 1.6). */
+  coreEarlyBonusPct() { return Math.round((CONFIG.hub.coreCity.earlyLevelMult - 1) * 100); }
+
+  /** R3-07 (owner's decision 2026-11-07): the Daily Challenge fills Core City
+   *  once per UTC day -- the base gain for the day's first finished run and
+   *  the record gain for the day's first new daily best -- later runs can
+   *  still beat the record but add nothing to the city. Read from the save
+   *  fields finalizeRun() always wrote with those gains: every finished Daily
+   *  run set lastPlayedDate (and paid the base), and only a new daily best set
+   *  lastSeedDate (and paid the record gain). So the same two dates are the
+   *  "paid today" markers for saves from before R3-07 too: a player who
+   *  finished today's Daily before the update is not paid twice, and nothing
+   *  new is stored (save v13, its .bak/.rescue copies and the CrazyGames Data
+   *  Module keep the same shape). A payout and its marker are written in the
+   *  same saveGame(), so a save that didn't persist loses both together. */
+  dailyCoreRewardsPaid(dateKey) {
+    const d = this.save.daily || {};
+    return { first: d.lastPlayedDate === dateKey, best: d.lastSeedDate === dateKey };
   }
 
   coreGainRangeText() { return `+${this.coreGainPerRound()}–${this.coreGainMaxPerRound()}%`; }
@@ -10983,10 +11058,20 @@ class Game {
    *  part translates on its own. */
   fillCoreGainParts(el, g) {
     el.textContent = '';
-    if (!g || !g.parts.length) return;
-    const cc = CONFIG.hub.coreCity;
-    const bits = g.parts.map(([label, pct]) => `${label} +${pct}%`);
-    if (g.early) bits.push(`×${I18N.lang === 'pl' ? String(cc.earlyLevelMult).replace('.', ',') : cc.earlyLevelMult} na LVL 1–${cc.earlyLevelMax}`);
+    if (!g) return;
+    // R3-07: a Daily replay after today's Core City rewards were paid.
+    const bits = g.dailyClaimed ? ['Wyzwanie dnia: nagrody Core City odebrane dziś'] : [];
+    // R3-06: each part as it really landed (×1.6 and rounding already in, the
+    // parts add up to the gain shown above), the starting bonus named, not a
+    // multiplier left for the player to apply.
+    let sum = 0;
+    for (const [label, pct] of g.parts) {
+      const before = coreGainScaled(sum, g.early);
+      sum += pct;
+      bits.push(`${label} +${coreGainScaled(sum, g.early) - before}%`);
+    }
+    if (g.early && g.parts.length) bits.push(`z premią startową +${this.coreEarlyBonusPct()}%`);
+    if (!bits.length) return;
     bits.forEach((b, i) => {
       if (i) el.appendChild(document.createTextNode(' · '));
       const s = document.createElement('span');
@@ -11257,16 +11342,17 @@ class Game {
 
   coreCityHowToFillHtml() {
     const c = CONFIG.hub.coreCity;
-    // CG-QA-08: the parts add up, then LVL 1-2 multiply the whole (finalizeRun());
-    // the totals come from coreGainRange(), like GRAJ's "+16–27%".
-    const arena = this.coreGainRange('arena'), daily = this.coreGainRange('daily');
-    const mult = I18N.lang === 'pl' ? String(c.earlyLevelMult).replace('.', ',') : String(c.earlyLevelMult);
+    // R3-06: every number is what the reward is worth at the current level
+    // (coreRewardValues(): ×1.6 and rounding already in on LVL 1-2, the parts
+    // add up to the totals, like GRAJ's "+16–27%"); the starting bonus is named
+    // and the LVL 3+ values are given while it applies.
+    const v = this.coreRewardValues(), a = v.arena, d = v.daily, bonus = this.coreEarlyBonusPct();
     return '<ul class="info-sheet-list">' +
-      `<li>Runda Areny (GRAJ 2:00): +${c.arenaCompleteGain}% za ukończenie; podium (1.–3. miejsce) +${c.arenaTop3Gain}%, zwycięstwo jeszcze +${c.arenaFirstGain}%, nowy rekord +${c.arenaNewPbGain}% — razem +${arena.base.min}–${arena.base.max}% za rundę.</li>` +
-      `<li>Wyzwanie dnia: +${c.dailyFirstClearGain}% za każde ukończenie, +${c.dailyNewBestGain}% za nowy rekord dnia — razem +${daily.base.min}–${daily.base.max}%.</li>` +
-      (arena.early
-        ? `<li>Teraz (LVL ${this.save.hub.coreLevel || 1}) cały przyrost ×${mult}: runda Areny +${arena.min}–${arena.max}%, Wyzwanie dnia +${daily.min}–${daily.max}%.</li>`
-        : `<li>Na LVL 1–${c.earlyLevelMax} cały przyrost jest ×${mult}.</li>`) +
+      `<li>Runda Areny (GRAJ 2:00): +${a.complete}% za ukończenie; podium (1.–3. miejsce) +${a.podium}%, zwycięstwo jeszcze +${a.win}%, nowy rekord +${a.record}% — razem +${a.min}–${a.max}% za rundę.</li>` +
+      `<li>Wyzwanie dnia: +${d.first}% za pierwsze ukończenie dnia, +${d.best}% za pierwszy nowy rekord dnia — razem do +${d.total}%. Raz dziennie: kolejne podejścia mogą poprawić rekord, ale nie ładują już miasta.</li>` +
+      (v.early
+        ? `<li>Premia startowa: +${bonus}% postępu miasta na LVL 1–${c.earlyLevelMax}, już wliczona w liczby powyżej (także w rundzie, która kończy LVL ${c.earlyLevelMax}). Od LVL ${c.earlyLevelMax + 1} premia nie obowiązuje: runda Areny +${a.base.min}–${a.base.max}%, Wyzwanie dnia +${c.dailyFirstClearGain}% i +${c.dailyNewBestGain}% za rekord.</li>`
+        : `<li>Premia startowa (+${bonus}% na LVL 1–${c.earlyLevelMax}) już nie obowiązuje — liczby powyżej są bez niej.</li>`) +
       `<li>Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
       '<li>Runda opuszczona przed końcem nie ładuje miasta.</li>' +
       '</ul>';
@@ -12349,6 +12435,7 @@ class Game {
     el.classList.add('hidden');
     this.introPending = false;
     this.pointerScreen = null;
+    this.monetization.gameplayStart(); // R3-04: the clock starts now
     this.lastTime = performance.now();
     this.showBanner('START!', this.mission ? this.mission.def.name : '', '#46D99A', 0.9, 3);
     this.sound.missionStart();
@@ -12965,7 +13052,9 @@ class Game {
     this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
     this.setBoardLive(true);
-    this.monetization.gameplayStart();
+    // R3-04: no gameplayStart yet -- the world is frozen behind the start card
+    // until START (beginMissionPlay()); CrazyGames: "when the user enters in a
+    // playable state, so excludes menus".
     this.state = GameState.PLAYING;
     // v15: every mission waits on a tap (owner: "rozpoczęcie levelu powinno
     // być na kliknięcie, aby gracz miał czas przeczytać komunikat") -- the
@@ -13856,6 +13945,7 @@ class Game {
       return;
     }
     this.revivePending = true;
+    this.monetization.gameplayStop(); // R3-04: time's up, the offer is a break
     this.hideNelaToast();
     m.reviveDeclined = true; // one offer per attempt, whatever the answer
     const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
@@ -13910,6 +14000,7 @@ class Game {
     this.player.invulnerableUntil = performance.now() + 2000;
     this.showBanner(`+${CONFIG.ads.reviveSeconds} S!`, 'Dokończ misję!', '#46D99A', 1.3, 4);
     this.sound.fanfare(false);
+    if (!this.paused) this.monetization.gameplayStart(); // R3-04: revived
     this.lastTime = performance.now();
   }
 
@@ -13929,6 +14020,7 @@ class Game {
     this.showBanner(`+${A.reviveSeconds} S!`, 'Dokończ misję!', '#46D99A', 1.3, 4);
     this.sound.fanfare(false);
     this.updateCoinDisplays();
+    if (!this.paused) this.monetization.gameplayStart(); // R3-04: revived
     this.lastTime = performance.now();
   }
 
@@ -14730,6 +14822,8 @@ class Game {
       const { dateKey } = dailySeedForDate(new Date());
       const previousBest = this.save.daily.lastSeedDate === dateKey ? this.save.daily.lastSeedScore : 0;
       const isNewBest = this.player.score > previousBest;
+      // R3-07: read before save.daily below is rewritten (its dates are the markers).
+      const paid = this.dailyCoreRewardsPaid(dateKey);
       let dailyBonusCoins = CONFIG.daily.completionBonusCoins;
       let dailyBonusPrisms = 0;
       if (isNewBest) {
@@ -14748,7 +14842,8 @@ class Game {
         lastSeedScore: isNewBest ? this.player.score : this.save.daily.lastSeedScore,
         streak, lastPlayedDate: dateKey
       };
-      this.dailyResult = { isNewBest, previousBest, dailyBonusCoins, dailyBonusPrisms, streak };
+      // R3-07: Core City only for the day's first finish and its first new best.
+      this.dailyResult = { isNewBest, previousBest, dailyBonusCoins, dailyBonusPrisms, streak, coreFirst: !paid.first, coreBest: isNewBest && !paid.best };
       this.analytics.track('daily_challenge_end', {
         dateKey, score: this.player.score, isNewBest, dailyBonusCoins, dailyBonusPrisms, streak
       });
@@ -14766,9 +14861,10 @@ class Game {
     // of this round's gain, for the result screen to name (display only).
     const coreParts = [];
     if (this.isDailyRun) {
-      coreGain = cc.dailyFirstClearGain + (this.dailyResult.isNewBest ? cc.dailyNewBestGain : 0);
-      coreParts.push(['Wyzwanie dnia', cc.dailyFirstClearGain]);
-      if (this.dailyResult.isNewBest) coreParts.push(['rekord dnia', cc.dailyNewBestGain]);
+      const r = this.dailyResult;
+      coreGain = (r.coreFirst ? cc.dailyFirstClearGain : 0) + (r.coreBest ? cc.dailyNewBestGain : 0);
+      if (r.coreFirst) coreParts.push(['Wyzwanie dnia', cc.dailyFirstClearGain]);
+      if (r.coreBest) coreParts.push(['rekord dnia', cc.dailyNewBestGain]);
     } else {
       coreGain = cc.arenaCompleteGain + (place <= 3 ? cc.arenaTop3Gain : 0) + (place === 1 ? cc.arenaFirstGain : 0);
       coreParts.push(['runda', cc.arenaCompleteGain]);
@@ -14786,9 +14882,9 @@ class Game {
         this.save.stats.recentArenaScores = recent.slice(-CONFIG.rival.history);
       }
     }
-    const early = (this.save.hub.coreLevel || 1) <= cc.earlyLevelMax;
-    if (early) coreGain = Math.round(coreGain * cc.earlyLevelMult);
-    this.lastCoreGain = { parts: coreParts, early, total: coreGain };
+    const early = this.coreEarlyBonus();
+    coreGain = coreGainScaled(coreGain, early);
+    this.lastCoreGain = { parts: coreParts, early, total: coreGain, dailyClaimed: this.isDailyRun && !coreParts.length };
     this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + coreGain;
     this.hubMilestoneReached = false;
     this.hubMilestoneRewards = [];
@@ -15044,7 +15140,9 @@ class Game {
     document.getElementById('leaveConfirm').classList.add('hidden');
     this.sound.setDucked(false);
     if (this.revivePending && !this.reviveAdInFlight) this.armReviveTimer();
-    this.monetization.gameplayStart();
+    // R3-04: back to the start card or the revive offer is not play yet
+    // (beginMissionPlay() / a revive send gameplayStart).
+    if (!this.introPending && !this.revivePending) this.monetization.gameplayStart();
     this.lastTime = performance.now();
     this.rafId = requestAnimationFrame((t) => this.loop(t));
   }
@@ -16931,8 +17029,8 @@ class DevPanel {
     this.taps = [];
     this.failedCodes = 0;
     this.lockedUntil = 0;
-    // Hidden gesture: 7 quick taps on the guest ID line in Profil.
-    const idRow = document.getElementById('guestIdLabel');
+    // Hidden gesture: 7 quick taps on the "Grasz jako" line in Profil (R3-08: was the guest ID).
+    const idRow = document.getElementById('profileIdentity');
     if (idRow && idRow.parentElement) idRow.parentElement.addEventListener('click', () => this.onSecretTap());
     window.addEventListener('keydown', (e) => {
       if (!DEV.access) return;
@@ -18245,7 +18343,6 @@ const I18N_EN = {
   "Dane wracają do miasta.": "Data is flowing back to the city.",
   "Delikatne pąki": "Delicate Buds",
   "Deszcz na Szybie": "Rain on Glass",
-  "Dni w grze: {0} · sesje: {1} · rundy: {2} · misje: {3}": "Days played: {0} · sessions: {1} · rounds: {2} · missions: {3}",
   "Do portu wjechała ciężarówka — obiekt T5. Urośnij przez magazyny i ją pochłoń.": "A truck has rolled into the port — a T5 object. Grow through the warehouses and swallow it.",
   "Do resetu": "Until reset",
   "Dobra trasa": "Good Route",
@@ -18366,7 +18463,7 @@ const I18N_EN = {
   "Hologramowy horyzont": "Hologram Horizon",
   "Hologramy wracają do normy.": "The holograms are back to normal.",
   "Hurtownia": "Wholesale Depot",
-  "ID gościa:": "Guest ID:",
+  "Grasz jako:": "Playing as:",
   "IDŹ DO DZIELNIC": "GO TO DISTRICTS",
   "IGLICA": "SPIRE",
   "Iglica": "The Spire",
@@ -19893,7 +19990,6 @@ const I18N_EN = {
   "rekord +{#0}%": "record +{0}%",
   "Wyzwanie dnia +{#0}%": "Daily Challenge +{0}%",
   "rekord dnia +{#0}%": "daily record +{0}%",
-  "×{0} na LVL 1–{#1}": "×{0} at LVL 1–{1}",
   "Miasto zbudowane w całości": "Your city is fully built",
   "+{#0}–{#1}% za rundę · co 100%: +{#2} monet i +{#3} pryzmatów": "+{0}–{1}% per round · every 100%: +{2} coins and +{3} prisms",
   "+{#0}–{#1}% za rundę · nagroda najpóźniej za {#2} {3}": "+{0}–{1}% per round · reward in {2} {3} at most",
@@ -19944,10 +20040,23 @@ const I18N_EN = {
   "Polski": "Polish",
   "Angielski": "English",
   "Runda Areny (GRAJ 2:00): +{#0}% za ukończenie; podium (1.–3. miejsce) +{#1}%, zwycięstwo jeszcze +{#2}%, nowy rekord +{#3}% — razem +{#4}–{#5}% za rundę.": "Arena round (PLAY 2:00): +{0}% for finishing; podium (1st–3rd place) +{1}%, a win another +{2}%, a new record +{3}% — +{4}–{5}% per round in total.",
-  "Wyzwanie dnia: +{#0}% za każde ukończenie, +{#1}% za nowy rekord dnia — razem +{#2}–{#3}%.": "Daily Challenge: +{0}% for every finish, +{1}% for a new daily record — +{2}–{3}% in total.",
-  "Teraz (LVL {#0}) cały przyrost ×{1}: runda Areny +{#2}–{#3}%, Wyzwanie dnia +{#4}–{#5}%.": "Now (LVL {0}) every gain ×{1}: Arena round +{2}–{3}%, Daily Challenge +{4}–{5}%.",
-  "Na LVL 1–{#0} cały przyrost jest ×{1}.": "On LVL 1–{0} every gain is ×{1}.",
   "Po LVL 6 każde 100%: +{#0} monet i +{#1} pryzmatów.": "After LVL 6 every 100%: +{0} coins and +{1} prisms.",
+  // R3 (CrazyGames Preview QA R3: Core City values, Daily once a day, backup, profile)
+  "Wyzwanie dnia: +{#0}% za pierwsze ukończenie dnia, +{#1}% za pierwszy nowy rekord dnia — razem do +{#2}%. Raz dziennie: kolejne podejścia mogą poprawić rekord, ale nie ładują już miasta.": "Daily Challenge: +{0}% for the day’s first finish, +{1}% for the day’s first new daily record — up to +{2}% in total. Once a day: later runs can still beat the record but no longer build the city.",
+  "Premia startowa: +{#0}% postępu miasta na LVL 1–{#1}, już wliczona w liczby powyżej (także w rundzie, która kończy LVL {#2}). Od LVL {#3} premia nie obowiązuje: runda Areny +{#4}–{#5}%, Wyzwanie dnia +{#6}% i +{#7}% za rekord.": "Starting bonus: +{0}% city progress on LVL 1–{1}, already included in the numbers above (also in the round that completes LVL {2}). From LVL {3} it no longer applies: Arena round +{4}–{5}%, Daily Challenge +{6}% and +{7}% for a record.",
+  "Premia startowa (+{#0}% na LVL 1–{#1}) już nie obowiązuje — liczby powyżej są bez niej.": "The starting bonus (+{0}% on LVL 1–{1}) no longer applies — the numbers above are without it.",
+  "z premią startową +{#0}%": "with the starting bonus +{0}%",
+  "Wyzwanie dnia: nagrody Core City odebrane dziś": "Daily Challenge: today’s Core City rewards already claimed",
+  "Odebrane dziś": "Claimed today",
+  "Dzisiejsze nagrody Core City odebrane. Graj dalej o rekord — nowa mapa i nagrody jutro.": "Today’s Core City rewards are claimed. Keep playing for the record — a new map and new rewards tomorrow.",
+  "Premia startowa: +{#0}% postępu miasta na LVL 1–{#1} (już wliczona). Od LVL {#2}: +{#3}% i +{#4}%. Każda nagroda raz dziennie.": "Starting bonus: +{0}% city progress on LVL 1–{1} (already included). From LVL {2}: +{3}% and +{4}%. Each reward once a day.",
+  "Każda nagroda Core City raz dziennie; rekord możesz poprawiać dalej.": "Each Core City reward once a day; you can keep beating the record.",
+  "+{#0}–{#1}% za rundę z premią startową · nagroda najpóźniej za {#2} {3}": "+{0}–{1}% per round with the starting bonus · reward in {2} {3} at most",
+  "Możesz zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.": "You can start over — the broken save is then kept aside as a copy.",
+  "Dni w grze": "Days played",
+  "Sesje": "Sessions",
+  "Rundy": "Rounds",
+  "Misje": "Missions",
 };
 
 window.addEventListener('DOMContentLoaded', () => {

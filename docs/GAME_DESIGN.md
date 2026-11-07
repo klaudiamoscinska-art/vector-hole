@@ -381,14 +381,24 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   jaki jest). Runda przerwana przy wyniku 0 (nic nie zjedzone) nie daje
   niczego. Pełne nagrody i postęp — tylko za rundę dograną do końca czasu.
 - **Core City (LVL):** ukończona runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
-  rekord — części się sumują), każde ukończone Wyzwanie dnia +20% (+10% rekord dnia); na
-  LVL 1–2 suma ×1,6, zaokrąglona. Okno „Nagrody Core City” liczy zakresy tą samą funkcją co
-  GRAJ (`coreGainRange()`, CG-QA-08: Arena +10–17%, na LVL 1–2 +16–27%; Wyzwanie +20–30%,
-  na LVL 1–2 +32–48%). Nadwyżka
+  rekord — części się sumują); **Wyzwanie dnia raz dziennie (R3-07, decyzja właścicielki
+  2026-11-07):** +20% za pierwsze ukończenie w danym dniu UTC i +10% za pierwszy nowy rekord
+  dnia — kolejne podejścia mogą poprawiać rekord (monety i pryzmaty za Wyzwanie bez zmian), ale
+  nie ładują już miasta; runda przerwana nic nie zużywa. Znacznikami wypłaty są istniejące pola
+  zapisu (`lastPlayedDate` = podstawa wypłacona dziś, `lastSeedDate` = bonus za rekord
+  wypłacony dziś — dawna gra ustawiała je zawsze razem z tymi wypłatami), więc zapisy sprzed
+  zmiany nie dostają ponownej nagrody, a zapis v13 nie ma nowych pól. **Premia startowa** na
+  LVL 1–2: suma ×1,6, zaokrąglona (według poziomu przed doliczeniem — runda, która kończy
+  LVL 2, też ją ma). Jedno źródło liczb (`coreGainScaled()`, `coreRewardValues()`, R3-06): okno
+  „Nagrody Core City”, GRAJ, karta Miasta, panel Wyzwania dnia i wynik rundy pokazują wartości
+  już przemnożone (Arena +16–27% na LVL 1–2 / +10–17% od LVL 3; Wyzwanie +32% i +16% /
+  +20% i +10%), na LVL 1–2 nazywają premię („Premia startowa: +60% postępu miasta na LVL 1–2”,
+  „z premią startową”) i podają wartości od LVL 3; wynik rozpisuje części tak, jak wpadły
+  („runda +16% · podium +3% · z premią startową +60%”, suma = przyrost). Panel Wyzwania mówi
+  „Odebrane dziś” przy wykorzystanej nagrodzie. Nadwyżka
   przechodzi dalej. DEVICE-QA-1: Miasto i GRAJ podają zakres
   („+10–17% za rundę · nagroda najpóźniej za N rund”, na LVL 1–2
-  „+16–27%”), wynik rundy rozpisuje przyrost („runda +10% · podium +2% ·
-  1. miejsce +3%…”); od LVL 6 karta mówi „Miasto zbudowane w całości” i
+  „+16–27% za rundę z premią startową”), wynik rundy rozpisuje przyrost; od LVL 6 karta mówi „Miasto zbudowane w całości” i
   co daje każde dalsze 100%. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
   „Pikselowy Wybuch”, Finisz „Fala”, zestaw „Pryzmat”; potem 100 monet + 10
   pryzmatów.
@@ -654,11 +664,16 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   (`(pointer: coarse) and (hover: none)`) i strona nie jest w ramce innej domeny (Chrome blokuje tam
   `vibrate()`) — w praktyce GitHub Pages na Androidzie; nigdy w paczce CrazyGames (zawsze ramka
   portalu), na PC, laptopie dotykowym ani w Safari na iPhonie. Gdzie wiersza nie ma, gra nie wywołuje
-  wibracji; zapisane ustawienia zostają. Arkusz pauzy nie ma już „ZMIEŃ WYGLĄD” (R2-01, decyzja
+  wibracji; zapisane ustawienia zostają. W paczce CrazyGames nie ma też wiersza „Wibracje” w
+  Ustawieniach Profilu (R3-01, decyzja właścicielki; na GitHub Pages zostaje). Arkusz pauzy nie ma już „ZMIEŃ WYGLĄD” (R2-01, decyzja
   właścicielki) — wygląd zmienia się w Warsztacie między rundami.
 - ~~Energia per platforma~~ — v22: energii nie ma nigdzie (§5).
 - **Zapis:** na GitHub Pages lokalnie w przeglądarce (jak dotąd) + **kopia zapasowa**
-  w Profilu: kod `VH1.…` do skopiowania i wczytania na innym urządzeniu. Gra prosi
+  w Profilu: kod `VH1.…` do skopiowania i wczytania na innym urządzeniu (paczka CrazyGames
+  nie pokazuje tego panelu — R3-03, decyzja właścicielki: zapisuje Data Module; kod i format
+  zostają, a komunikat o uszkodzonym zapisie w paczce nie odsyła do kodu). Profil nie pokazuje
+  technicznego ID gościa (R3-08): „Grasz jako: Gość” albo nazwa gracza, a liczby (dni w grze,
+  sesje, rundy, misje) jako cztery kafelki; `guestId` w zapisie bez zmian. Gra prosi
   przeglądarkę o trwałe przechowywanie danych. (Wersja webowa uruchomiona na domenie
   CrazyGames — nie paczka — ma dawne lustro v19 w module danych portalu; przy różnicy
   wygrywa zapis z większym postępem.)
@@ -688,9 +703,11 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”. **Zdarzenia rozgrywki
   (CG-QA-07):** paczka wysyła do tego samego SDK `gameplayStart` / `gameplayStop` (wymóg
   CrazyGames dla zintegrowanego SDK także na Basic Launch; od pierwszego `gameplayStart` portal
-  mierzy rozmiar i czas ładowania): start rundy Areny, Wyzwania i misji, wznowienie po pauzie —
-  start; pauza (także po utracie fokusu, bo gra naprawdę staje), koniec rundy lub misji,
-  wyjście — stop; nigdy dwa razy z rzędu. `loadingStart/Stop` nie są wysyłane (opcjonalne,
+  mierzy rozmiar i czas ładowania): start rundy Areny i Wyzwania, START na karcie misji (nie samo
+  jej pokazanie — R3-04: świat stoi, „zegar ruszy po dotknięciu”), wznowienie po pauzie i
+  przedłużenie misji (revive) — start; pauza (także po utracie fokusu, bo gra naprawdę staje i
+  czeka na WZNÓW), oferta przedłużenia po końcu czasu, koniec rundy lub misji, wyjście — stop;
+  wznowienie do karty startowej albo do oferty nie wysyła startu; nigdy dwa razy z rzędu. `loadingStart/Stop` nie są wysyłane (opcjonalne,
   gra nie doładowuje niczego po starcie), `happytime` i reklamy też nie. **Reset profilu
   (CG-QA-04, decyzja właścicielki):** paczka nie pokazuje przycisku RESETUJ PROFIL (w Preview
   nie działał); tekst prywatności mówi, jak usunąć dane (dane strony w przeglądarce / kontakt
@@ -803,7 +820,7 @@ czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.
 
 ## 6a. Panel testowy (v23, tylko dla twórców)
 Nie jest częścią gry dla gracza: bez kodu dewelopera nie ma go w DOM.
-Otwieranie: Profil → 7 szybkich stuknięć w „ID gościa” (albo `?dev`
+Otwieranie: Profil → 7 szybkich stuknięć w „Grasz jako” (R3-08; dawniej „ID gościa”; albo `?dev`
 w adresie) → kod → boczny przycisk DEV. Każda akcja działa tylko
 w **trybie testowym** — osobny zapis; prawdziwy postęp nie jest ruszany
 i wraca po „ZAKOŃCZ TESTY”. Panel nie zmienia balansu ani zasad: używa

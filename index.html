@@ -382,8 +382,15 @@
       <p class="hint-text">Nazwa jest opcjonalna — możesz grać jako Gość.</p>
       <input id="displayNameInput" class="text-input" type="text" maxlength="16" placeholder="Twoja nazwa (opcjonalnie)">
       <button id="btnSaveProfile" class="btn btn-primary">ZAPISZ</button>
-      <div class="hint-text">ID gościa: <span id="guestIdLabel"></span></div>
-      <p id="profileStats" class="hint-text profile-stats"></p>
+      <!-- R3-08: no technical guest ID on screen (save.guestId stays as it is) --
+           the player's name, or "Gość"; the stats as four small tiles. -->
+      <div class="hint-text profile-identity">Grasz jako: <span id="profileIdentity">Gość</span></div>
+      <div id="profileStats" class="profile-stats">
+        <div class="profile-stat"><span id="profileStatDays" class="profile-stat-value">0</span><span class="profile-stat-label">Dni w grze</span></div>
+        <div class="profile-stat"><span id="profileStatSessions" class="profile-stat-value">0</span><span class="profile-stat-label">Sesje</span></div>
+        <div class="profile-stat"><span id="profileStatRounds" class="profile-stat-value">0</span><span class="profile-stat-label">Rundy</span></div>
+        <div class="profile-stat"><span id="profileStatMissions" class="profile-stat-value">0</span><span class="profile-stat-label">Misje</span></div>
+      </div>
 
       <div class="settings-block">
         <div class="settings-title">USTAWIENIA</div>
@@ -421,7 +428,7 @@
           </div>
         </div>
         <p id="soundStatus" class="hint-text sound-status">—</p>
-        <div class="control-row">
+        <div id="vibrationRow" class="control-row">
           <span class="control-label">Wibracje</span>
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="haptics" data-value="1">Wł.</button>
@@ -432,7 +439,7 @@
 
       <!-- v19: progress lives in this browser only (no accounts) -- a backup
            code carries it to another device or back after cleared data. -->
-      <div class="settings-block">
+      <div id="backupBlock" class="settings-block">
         <div class="settings-title">KOPIA ZAPASOWA</div>
         <p class="hint-text backup-hint">Postęp zapisuje się w tej przeglądarce. Kod kopii przeniesie go na inny telefon albo przywróci po wyczyszczeniu danych.</p>
         <div class="control-row">
@@ -791,6 +798,8 @@
             <span class="daily-reward-value daily-reward-gold" id="dailyRewardBest">—</span>
           </div>
         </div>
+        <!-- R3-06/07: the starting bonus and the once-a-day rule in words. -->
+        <p id="dailyRewardNote" class="daily-reward-note"></p>
       </div>
 
       </div>

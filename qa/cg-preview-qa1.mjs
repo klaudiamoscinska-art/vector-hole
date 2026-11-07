@@ -437,6 +437,8 @@ async function coreCityChecks(pkgUrl, webUrl) {
     for (let i = 0; i < 3; i++) out.push(one());
     out.push(one({ round: { daily: true, seed: 12345 } }));
     g.save.hub.coreLevel = 3; g.save.hub.coreCharge = 0;
+    // R3-07: the Daily fills Core City once a day -- the LVL 3 Daily stands for another day.
+    g.save.daily.lastPlayedDate = g.save.daily.lastSeedDate = '2000-01-01';
     for (let i = 0; i < 2; i++) out.push(one());
     out.push(one({ round: { daily: true, seed: 12346 } }));
     return out;
@@ -454,13 +456,14 @@ async function coreCityChecks(pkgUrl, webUrl) {
     return { body: body.slice(body.indexOf('\n', body.search(/How to fill|Jak ładować/))).trim(), play: document.getElementById('hubPlaySub').textContent };
   }, level);
   const en1 = await sheet(p, 1), en3 = await sheet(p, 3);
-  r.push(report('[mock] 08 English, LVL 1: the sheet says how the parts add up, "Now (LVL 1) every gain ×1.6: Arena round +16–27%", and GRAJ says +16–27%', /\+10% for finishing; podium \(1st–3rd place\) \+2%, a win another \+3%, a new record \+2% — \+10–17% per round in total/.test(en1.body) && /Now \(LVL 1\) every gain ×1\.6: Arena round \+16–27%, Daily Challenge \+32–48%/.test(en1.body) && /\+20% for every finish, \+10% for a new daily record — \+20–30% in total/.test(en1.body) && /\+16–27% city build/.test(en1.play) && !/[ąćęłńóśźż]/i.test(en1.body + en1.play), JSON.stringify(en1)));
-  r.push(report('[mock] 08 English, LVL 3: "On LVL 1–2 every gain is ×1.6", GRAJ says +10–17%', /On LVL 1–2 every gain is ×1\.6/.test(en3.body) && /\+10–17% city build/.test(en3.play), JSON.stringify(en3)));
+  // R3-06: the values at the current level (bonus included, parts add up), the bonus named, LVL 3+ values given.
+  r.push(report('[mock] 08/R3-06 English, LVL 1: real values "+16% for finishing … +16–27% per round", Daily "+32% … +16% … up to +48%" once a day, the starting bonus +60% named with the LVL 3 values, GRAJ +16–27%', /\+16% for finishing; podium \(1st–3rd place\) \+3%, a win another \+5%, a new record \+3% — \+16–27% per round in total/.test(en1.body) && /Daily Challenge: \+32% for the day’s first finish, \+16% for the day’s first new daily record — up to \+48% in total\. Once a day/.test(en1.body) && /Starting bonus: \+60% city progress on LVL 1–2, already included.*From LVL 3 it no longer applies: Arena round \+10–17%, Daily Challenge \+20% and \+10% for a record/.test(en1.body) && /\+16–27% city build/.test(en1.play) && !/[ąćęłńóśźż×]/i.test(en1.body + en1.play), JSON.stringify(en1)));
+  r.push(report('[mock] 08/R3-06 English, LVL 3: values without the bonus (+10–17%, Daily +20% / +10% up to +30%), "The starting bonus (+60% on LVL 1–2) no longer applies", GRAJ +10–17%', /\+10% for finishing; podium \(1st–3rd place\) \+2%, a win another \+3%, a new record \+2% — \+10–17% per round in total/.test(en3.body) && /\+20% for the day’s first finish, \+10% for the day’s first new daily record — up to \+30% in total/.test(en3.body) && /The starting bonus \(\+60% on LVL 1–2\) no longer applies/.test(en3.body) && /\+10–17% city build/.test(en3.play), JSON.stringify(en3)));
   await d.close();
   const w = await context({ locale: 'pl-PL' });
   const wp = await w.open(webUrl);
   const pl1 = await sheet(wp, 1);
-  r.push(report('[web] 08 Polish, LVL 1: "+10% za ukończenie … razem +10–17% za rundę", "Teraz (LVL 1) cały przyrost ×1,6: runda Areny +16–27%", Daily "za każde ukończenie", GRAJ +16–27%', /\+10% za ukończenie; podium \(1\.–3\. miejsce\) \+2%, zwycięstwo jeszcze \+3%, nowy rekord \+2% — razem \+10–17% za rundę/.test(pl1.body) && /Teraz \(LVL 1\) cały przyrost ×1,6: runda Areny \+16–27%, Wyzwanie dnia \+32–48%/.test(pl1.body) && /\+20% za każde ukończenie/.test(pl1.body) && !/pierwsze dziś/.test(pl1.body) && /\+16–27% budowy miasta/.test(pl1.play), JSON.stringify(pl1)));
+  r.push(report('[web] 08/R3-06 Polish, LVL 1: "+16% za ukończenie … razem +16–27% za rundę", Wyzwanie "+32% za pierwsze ukończenie dnia, +16% … razem do +48%. Raz dziennie", "Premia startowa: +60% …" z wartościami od LVL 3, GRAJ +16–27%', /\+16% za ukończenie; podium \(1\.–3\. miejsce\) \+3%, zwycięstwo jeszcze \+5%, nowy rekord \+3% — razem \+16–27% za rundę/.test(pl1.body) && /Wyzwanie dnia: \+32% za pierwsze ukończenie dnia, \+16% za pierwszy nowy rekord dnia — razem do \+48%\. Raz dziennie/.test(pl1.body) && /Premia startowa: \+60% postępu miasta na LVL 1–2.*Od LVL 3 premia nie obowiązuje: runda Areny \+10–17%, Wyzwanie dnia \+20% i \+10% za rekord/.test(pl1.body) && !/za każde ukończenie|×1,6/.test(pl1.body) && /\+16–27% budowy miasta/.test(pl1.play), JSON.stringify(pl1)));
   await w.close();
   return r;
 }

@@ -1107,6 +1107,12 @@ body.touch-input #gameCanvas {
   color: var(--nc-gold);
 }
 
+/* R3-07: a Daily Core City reward already claimed today. */
+.daily-reward-box.claimed { opacity: 0.6; }
+.daily-reward-box.claimed .daily-reward-value { color: var(--nc-text-dim); }
+/* R3-06/07: the starting bonus / once-a-day rule under the two rewards. */
+.daily-reward-note { width: 100%; margin: 6px 0 0; font-size: 11px; line-height: 1.35; color: var(--nc-text-dim); text-align: center; }
+
 /* ===================== CAMPAIGN MODE (Vector Hole v3) ===================== */
 
 /* District picker: a compact horizontal chip strip (not in the GDD
@@ -3830,6 +3836,19 @@ body.touch-input #gameCanvas {
 .result-daily-kicker { font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px; color: var(--nc-gold, #EFCB63); }
 .result-daily-text { font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .result-daily-reward { flex: 0 0 auto; font-family: var(--font-display); font-size: 13px; color: var(--nc-gold, #EFCB63); white-space: nowrap; }
+/* R3-02: the result's notes share the action bar's width and one card shape
+   (the gold card was 360 px wide, the Daily / Core City lines 320 px, the
+   buttons 440 px; a landscape column makes them all 480 px). */
+#gameOverScreen .result-daily, #gameOverScreen .daily-result, #gameOverScreen .hub-milestone-result { max-width: 440px; margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 13px; }
+/* "Main menu / Back to City" is centred under PLAY AGAIN in every layout: the
+   package's stretched column (align-items: stretch) left its 440 px box at
+   the left edge of a 480 px PLAY AGAIN, so its label sat off centre. */
+.result-actions > #btnMenu { align-self: center; }
+/* ... and the action bar itself sits in the column's middle like the cards
+   above it: stretched to a column wider than its 480 px cap (compact
+   landscape, e.g. a laptop's fullscreen at 125-175 % scaling) it hugged the
+   left edge, 10 px off the centred cards. */
+body.wide #gameOverScreen .wide-col > .result-actions { align-self: center; }
 
 /* Consent bar + profile settings */
 .consent-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 115; width: min(560px, calc(100% - 24px)); padding: 10px 12px; border-radius: 14px; background: rgba(7, 23, 37, 0.96); border: 1px solid var(--nc-panel-border, #315A72); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); color: var(--text-main); font-family: var(--font-ui); font-size: 12px; }
@@ -3840,7 +3859,13 @@ body.touch-input #gameCanvas {
 .settings-title { font-family: var(--font-display); font-size: 11px; letter-spacing: 2px; color: rgba(230, 250, 255, 0.55); margin-bottom: 4px; }
 .settings-links { display: flex; gap: 8px; flex-wrap: wrap; }
 .settings-links .btn { width: auto; }
-.profile-stats { font-size: 12px; opacity: 0.8; }
+/* R3-08: the profile's four numbers as small tiles in one row (was one dim
+   "Days played: 3 · sessions: 5 · …" line next to a technical guest ID). */
+.profile-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 420px; margin: 2px auto 0; }
+.profile-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 7px 4px 6px; border-radius: 10px; border: 1px solid var(--nc-border); background: rgba(4, 16, 29, 0.5); }
+.profile-stat-value { font-family: var(--font-display); font-size: 16px; line-height: 1.1; color: var(--nc-cyan); font-variant-numeric: tabular-nums; }
+.profile-stat-label { font-size: 10px; font-weight: 700; line-height: 1.2; color: var(--nc-text-dim); text-align: center; overflow-wrap: anywhere; }
+.profile-identity { font-weight: 700; }
 /* Never on top of a modal: hide while any overlay sheet/celebration is open. */
 body:has(.overlay-screen:not(.hidden)) .consent-bar,
 body:has(.unlock-overlay:not(.hidden)) .consent-bar,

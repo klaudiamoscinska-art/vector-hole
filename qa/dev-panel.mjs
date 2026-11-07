@@ -92,14 +92,14 @@ export async function runDevPanelChecks(url) {
       code: !!document.getElementById('devCodeBox'), panelObj: !!window.game.devPanel
     }));
     push('access: a player has no dev button, panel or code box in the DOM', !none.access && !none.fab && !none.panel && !none.code && none.panelObj, JSON.stringify(none));
-    // Hidden gesture: 7 quick taps on the guest ID line in Profil.
+    // Hidden gesture: 7 quick taps on the "Grasz jako" line in Profil (R3-08: was the guest ID).
     await g.page.evaluate(() => window.game.openProfileScreen());
-    const row = g.page.locator('#guestIdLabel');
+    const row = g.page.locator('#profileIdentity');
     for (let i = 0; i < 6; i++) await row.click();
     const after6 = await g.page.evaluate(() => !!document.getElementById('devCodeBox'));
     await row.click();
     await g.page.waitForSelector('#devCodeBox:not(.hidden)');
-    push('access: 7 quick taps on the guest ID in Profil ask for the dev code (6 do not)', !after6, `after 6 taps: ${after6}`);
+    push('access: 7 quick taps on the profile name line ask for the dev code (6 do not)', !after6, `after 6 taps: ${after6}`);
     await g.page.fill('#devCodeInput', 'zly-kod');
     await g.page.click('#devCodeBox button[type="submit"]');
     await wait(g.page, 400);
