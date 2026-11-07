@@ -3848,7 +3848,7 @@ body.touch-input #gameCanvas {
    above it: stretched to a column wider than its 480 px cap (compact
    landscape, e.g. a laptop's fullscreen at 125-175 % scaling) it hugged the
    left edge, 10 px off the centred cards. */
-body.wide #gameOverScreen .wide-col > .result-actions { align-self: center; }
+body.wide #gameOverScreen .wide-col > .result-actions { align-self: center; width: 100%; }
 
 /* Consent bar + profile settings */
 .consent-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 115; width: min(560px, calc(100% - 24px)); padding: 10px 12px; border-radius: 14px; background: rgba(7, 23, 37, 0.96); border: 1px solid var(--nc-panel-border, #315A72); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); color: var(--text-main); font-family: var(--font-ui); font-size: 12px; }
