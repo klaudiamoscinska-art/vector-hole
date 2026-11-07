@@ -36,8 +36,9 @@ const ADDED_SINCE_BASE = {
   'el:mouseleave': 1, 'el:contextmenu': 1, 'document:gesturestart': 1,
   'window:keydown': 1 + 1, 'window:pointerdown': 1, 'window:wheel': 1, 'window:blur': 1,
   // WORKSHOP-BUY (the second keydown above: Escape ends a look): the action
-  // slot's buy, cancel and "how to get them" buttons.
-  'el:click': 3,
+  // slot's buy, cancel and "how to get them" buttons. R2-01: minus the pause
+  // sheet's ZMIEŃ WYGLĄD button (removed).
+  'el:click': 3 - 1,
   // FTUE-2 FIX (real devices): re-measure after a turn once the app box
   // settles (an iPhone home-screen app's resize came too early).
   'window:orientationchange': 1,
