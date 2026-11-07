@@ -96,6 +96,18 @@ html[data-distribution="crazygames-basic"] .result-actions > #btnPlayAgain { fle
 /* CrazyGames package: the page's static text is Polish until game.js has picked the language;
    on a slow connection an English player would read a dead Polish menu for seconds. */
 html[data-distribution="crazygames-basic"]:not(.i18n-ready) #app { visibility: hidden; }
+/* CG-DATA-1: until then the package waits for SDK.init() (the save is read only after it),
+   so its page (tools/export-crazygames-basic.mjs) shows this static loader instead of an
+   empty frame. No progress bar -- the wait has no known length; after 3 s it says what
+   it waits for. Gone with .i18n-ready, also when the SDK fails (the game then explains). */
+html[data-distribution="crazygames-basic"] #cgBoot { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 0 16px; text-align: center; background: radial-gradient(ellipse at 50% 45%, var(--nc-bg-2) 0%, var(--nc-bg) 70%); color: var(--nc-text); pointer-events: none; }
+html[data-distribution="crazygames-basic"].i18n-ready #cgBoot { display: none; }
+.cg-boot-vortex { width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--nc-cyan-soft); border-top-color: var(--nc-cyan); border-right-color: var(--nc-pink); box-shadow: 0 0 24px var(--nc-cyan-soft); animation: cg-boot-spin 0.9s linear infinite; }
+.cg-boot-title { margin: 0; font-family: var(--font-display); font-size: 22px; letter-spacing: 0.12em; }
+.cg-boot-wait { margin: 0; font-family: var(--font-ui); font-size: 14px; color: var(--nc-text-dim); opacity: 0; animation: cg-boot-show 0.3s ease 3s forwards; }
+@keyframes cg-boot-spin { to { transform: rotate(360deg); } }
+@keyframes cg-boot-show { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cg-boot-vortex { animation: none; } }
 
 /* CrazyGames package: the pointer while the mouse is locked, and the offer to lock it. */
 .lock-cursor {

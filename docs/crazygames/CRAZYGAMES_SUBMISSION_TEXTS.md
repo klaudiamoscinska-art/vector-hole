@@ -44,9 +44,9 @@ MORE TO DO
 - A daily challenge on a map that is new every day
 - A Core City that grows with your finished Arena rounds
 - Vortex looks, trails and effects to unlock (looks only: they never change how a round plays)
-- Progress saved in your browser
+- Progress saved automatically, also to your CrazyGames account when you are logged in
 
-No account, no energy and no wait between rounds. Press play and start swallowing.
+No sign-up, no energy and no wait between rounds. Press play and start swallowing.
 ```
 
 ## Gameplay description
@@ -95,8 +95,9 @@ na początek zaznaczyć tylko komputery; to decyzja właścicielki.
 ## Saves and implementation
 
 ```
-Progress is saved locally in the player's browser (localStorage). There are no accounts, no cloud save and no external login.
-The game does not use the CrazyGames SDK in this build and shows no ads. It has no in-game purchases and sends no data to any server.
+Progress save: Yes, using the Data Module from the CrazyGames SDK.
+Guests play without logging in; their progress is saved by the SDK in the browser. Logged-in players' progress is saved to their CrazyGames account and synced across devices. The game has no accounts of its own, no external login and no back-end.
+The game uses the CrazyGames HTML5 SDK v3 only for the Data Module in this build. It shows no ads, has no in-game purchases and sends no data to any server of its own.
 ```
 
 ## Features (krótka lista, jeśli formularz o nią pyta)
@@ -113,8 +114,8 @@ The game does not use the CrazyGames SDK in this build and shows no ads. It has 
 
 ## Czego nie pisać
 
-Prawdziwy multiplayer, gra ze znajomymi online, natywna aplikacja, CrazyGames SDK, zapis
-w chmurze, reklamy z nagrodą, zakupy, wyzwania znajomych. Nie używaj nazw innych gier ani porównań do nich.
+Prawdziwy multiplayer, gra ze znajomymi online, natywna aplikacja, reklamy (także z nagrodą),
+zakupy, wyzwania znajomych, własne konta gry. Nie używaj nazw innych gier ani porównań do nich.
 
 ## Jak wypełnić zgłoszenie
 
@@ -122,7 +123,11 @@ w chmurze, reklamy z nagrodą, zakupy, wyzwania znajomych. Nie używaj nazw inny
    Submit, dopóki nie zdecydujesz o tym po odbiorze.**
 2. Wgraj `game.zip` albo zawartość folderu `game/`, zależnie od tego, co pokaże portal.
    `index.html` jest w głównym katalogu paczki.
-3. Uruchom Preview i QA Tool. Sprawdź Arenę, Dzielnice, pauzę, ponowne wejście (zapis)
+3. **W formularzu zaznacz przełącznik zapisu postępu („Progress Save”) z opcją Data Module
+   CrazyGames SDK** — bez niego SDK wyłącza Data Module (`dataModuleDisabled`) i gra pokaże
+   „Couldn't connect to CrazyGames saving”, nic nie zapisując. Procedura testu zapisu (gość,
+   konto, drugie urządzenie): `docs/CG_DATA1_REPORT.md` §F.
+   Uruchom Preview i QA Tool. Sprawdź Arenę, Dzielnice, pauzę, ponowne wejście (zapis)
    i brak ofert reklam, a **fizyczną myszą**: kliknięcie planszy blokuje kursor, ruch we
    wszystkie strony, Esc odblokowuje i pauzuje, wznowienie blokuje ponownie. Tych kroków nie
    dało się wykonać lokalnie.

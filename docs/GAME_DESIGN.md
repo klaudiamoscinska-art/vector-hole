@@ -639,17 +639,36 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   dnia) nie idą przez słownik: `formatDayMonth()` pisze je w języku gry
   („29 PAŹDZIERNIKA” / „OCTOBER 29”, GAME-READY-1).
 - ~~Energia per platforma~~ — v22: energii nie ma nigdzie (§5).
-- **Zapis:** lokalnie w przeglądarce (jak dotąd) + na CrazyGames w module
-  danych portalu (konto gracza, synchronizacja urządzeń; przy różnicy wygrywa
-  zapis z większym postępem) + **kopia zapasowa** w Profilu: kod `VH1.…` do
-  skopiowania i wczytania na innym urządzeniu. Gra prosi przeglądarkę
-  o trwałe przechowywanie danych.
-- **Paczka CrazyGames Basic (CRAZYGAMES-BASIC-1):** ta sama gra z tych samych plików;
+- **Zapis:** na GitHub Pages lokalnie w przeglądarce (jak dotąd) + **kopia zapasowa**
+  w Profilu: kod `VH1.…` do skopiowania i wczytania na innym urządzeniu. Gra prosi
+  przeglądarkę o trwałe przechowywanie danych. (Wersja webowa uruchomiona na domenie
+  CrazyGames — nie paczka — ma dawne lustro v19 w module danych portalu; przy różnicy
+  wygrywa zapis z większym postępem.)
+- **Paczka CrazyGames (CRAZYGAMES-BASIC-1, CG-DATA-1):** ta sama gra z tych samych plików;
   `tools/export-crazygames-basic.mjs` stawia znak dystrybucji w stronie paczki. W paczce
-  nie ma SDK, reklam (także demonstracyjnej), ofert za reklamę, WYZWIJ ZNAJOMEGO, pytania
-  o statystyki ani zapisu w chmurze: tylko zapis lokalny. Mysz blokuje się po kliknięciu
-  planszy (§3). Nagrody i balans bez zmian.
-  Na Full Launch dochodzi SDK z osobną decyzją; GitHub Pages działa jak dotąd.
+  nie ma reklam (także demonstracyjnej), ofert za reklamę, WYZWIJ ZNAJOMEGO ani pytania
+  o statystyki. Mysz blokuje się po kliknięciu planszy (§3). Nagrody i balans bez zmian.
+  **Zapis paczki (CG-DATA-1) idzie wyłącznie przez Data Module CrazyGames SDK v3**
+  (oficjalny skrypt SDK w `<head>` paczki; z SDK używany jest tylko zapis): gość —
+  w przeglądarce, przez SDK; zalogowany gracz — na koncie CrazyGames, z synchronizacją
+  urządzeń. Logowanie nie jest wymagane i gra nie ma własnego ekranu logowania. Przy
+  zalogowaniu CrazyGames przeładowuje grę z danymi konta (konto bez danych przejmuje
+  postęp gościa); od chwili zalogowania strona nic więcej nie zapisuje ani nie odczytuje
+  (także „napraw zapis”, reset profilu i kod kopii zapasowej), żeby postęp gościa nie
+  trafił na konto, które już ma swój. SDK 3.8.0 umie też przełączyć dane na konto bez
+  przeładowania (CG-DATA-2), dlatego komunikat „Zalogowano na konto CrazyGames” ma tylko
+  ODŚWIEŻ i nie da się go zamknąć; w trakcie rundy pojawia się po jej końcu (ta runda nie
+  jest zapisana). Wylogowanie odświeża stronę jako gość.
+  Paczka nie czyta ani nie pisze własnego klucza `vectorHoleSave_v1` w `localStorage`
+  (stare zapisy z niewydanych paczek testowych zostają nietknięte i nieużywane —
+  decyzja właścicielki). Gra czeka na `SDK.init()` (maks. 20 s; zwykle ułamek sekundy) —
+  w tym czasie strona paczki pokazuje statyczny ekran ładowania po angielsku: GLITCH GULP,
+  wirujący wir, po 3 s „Connecting to CrazyGames saving…”, bez paska postępu (CG-DATA-2);
+  gdy SDK
+  nie działa (zablokowany skrypt, błąd, brak odpowiedzi, poza CrazyGames, wyłączony
+  Data Module), zapis jest „niedostępny”: gra działa z pamięci, nic nie zapisuje ani nie
+  usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”. Na Full Launch dochodzą
+  reklamy i zdarzenia SDK z osobną decyzją; GitHub Pages działa jak dotąd.
 - **Ochrona zapisu (PX01):** gra nigdy po cichu nie nadpisuje zapisu, którego
   nie umie w pełni odczytać — ani przy wczytaniu, ani żadnym późniejszym
   autozapisem. Zapis z nowszej wersji gry („Zapis z nowszej wersji gry” →
@@ -665,7 +684,15 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   a do chmury trafia tylko zapis, który udało się zapisać lokalnie. Gdy
   przeglądarka nie pozwala odczytać danych, gra mówi „Zapis nie działa” i nic
   nie zapisuje. Reset w Profilu zablokowanego zapisu wymaga udanej kopii
-  `.rescue` — inaczej nic nie jest usuwane.
+  `.rescue` — inaczej nic nie jest usuwane (GitHub Pages: reset usuwa tylko
+  `vectorHoleSave_v1`, kopie `.bak`/`.rescue` zostają, gra nigdy sama ich nie czyta).
+  **Paczka CrazyGames (CG-DATA-2 R1, decyzja właścicielki):** świadomy reset usuwa
+  z Data Module `vectorHoleSave_v1`, `vectorHoleSave_v1.bak` i `vectorHoleSave_v1.rescue`
+  (każdy klucz osobno, bez `clear()`; najpierw kopie, na końcu zapis, każdy sprawdzony
+  odczytem). Gdy zapis jest zablokowany (inna karta, zalogowanie, brak połączenia
+  z zapisem CrazyGames, zapis nieczytelny albo z nowszej wersji), reset nic nie usuwa
+  i mówi „Profil nie został zresetowany”; gdy SDK odmówi usunięcia któregoś klucza —
+  „Nie udało się zresetować profilu” (bez przeładowania, zapis, jeśli został, działa dalej).
 
 ## 6. QA (boty)
 
@@ -758,7 +785,8 @@ Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
 
 ## 7. Świadomie niezbudowane / decyzje dla właściciela
 
-- Brak backendu: rankingi, zapis w chmurze i konta są lokalne.
+- Brak backendu: rankingi i konta są lokalne; zapis w chmurze tylko w paczce CrazyGames,
+  przez Data Module portalu (CG-DATA-1), bez własnego serwera.
 - Brak PWA/service workera i `og:image` (decyzja właścicielki; zasada trzech
   plików uchylona 18.10.2026 — przeszkodą nie są już pliki, tylko własny
   mechanizm aktualizacji service workera).

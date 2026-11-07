@@ -31,6 +31,9 @@ export function isMain(url) {
 }
 export const OUT = path.join(ROOT, 'qa', 'out');
 fs.mkdirSync(OUT, { recursive: true });
+// CG-DATA-1: the CrazyGames SDK's official URL and the QA stand-in served for it.
+export const CG_SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
+export const CG_SDK_MOCK = fs.readFileSync(path.join(ROOT, 'qa', 'cg-sdk-mock.js'), 'utf8');
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
@@ -166,7 +169,7 @@ export async function waitForQaBridge(page, timeout = 15000) {
 /** Launch Chromium + a page that records console errors and page errors.
  *  External requests (Google Fonts etc.) are blocked so runs are offline
  *  and deterministic; `allowExternal` lets the network test opt back in. */
-export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null, deviceScaleFactor = 2, locale = 'pl-PL', trackRequests = false } = {}) {
+export async function openGame(baseUrl, { save = null, viewport = { width: 420, height: 860 }, mobile = true, query = '', allowExternal = false, initScript = null, deviceScaleFactor = 2, locale = 'pl-PL', trackRequests = false, cgSdk = null } = {}) {
   const browser = await chromium.launch();
   // v19: the game picks its language from the browser -- the suites assert
   // Polish copy, so they run as a Polish browser unless told otherwise.
@@ -177,6 +180,9 @@ export async function openGame(baseUrl, { save = null, viewport = { width: 420, 
   if (!allowExternal) {
     await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => { external.push(route.request().url()); route.abort(); });
   }
+  // CG-DATA-1: the CrazyGames package loads the SDK; cgSdk (the stand-in, or the real
+  // file, which runs in its local mode on 127.0.0.1) answers its URL. Last route wins.
+  if (cgSdk) await context.route(CG_SDK_URL, (route) => route.fulfill({ contentType: 'text/javascript', body: cgSdk }));
   if (save) {
     await context.addInitScript((s) => {
       if (!sessionStorage.getItem('__qaSeeded')) {

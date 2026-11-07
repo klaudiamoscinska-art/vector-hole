@@ -3,6 +3,8 @@
 // It writes only under --out and never touches the GitHub Pages release (E3/L1).
 //   node tools/export-crazygames-basic.mjs [--out=DIR]   default qa/out/crazygames-basic
 // Result: DIR/game/ (index.html, game.js, style.css), DIR/game.zip, DIR/BUILD_INFO.json.
+// CG-DATA-1: the page loads the CrazyGames HTML5 SDK v3 from its official URL (the only
+// external reference allowed) for the Data Module save; game.js waits for SDK.init().
 // Same sources = same bytes: line endings are normalised to LF (git's form) and the
 // ZIP has fixed timestamps and order. Exit code 1 if a check fails; no file is left
 // half-written under game/ because the folder is rebuilt from scratch on every run.
@@ -15,9 +17,12 @@ import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DISTRIBUTION = 'crazygames-basic';
-// docs.crazygames.com/requirements/technical/ (read 2026-11-03), Basic Implementation
-// without the SDK: the total file size is the initial download.
+// docs.crazygames.com/requirements/technical/ (read 2026-11-03), Basic Implementation:
+// 50 MB without the SDK (250 MB with it) -- the package keeps the stricter limit.
 export const LIMITS = { files: 1500, bytes: 50 * 1024 * 1024, mobileHomepageBytes: 20 * 1024 * 1024 };
+// docs.crazygames.com/sdk/intro (read 2026-11-06): in <head>, before the game's code.
+export const CG_SDK_SRC = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
+export const CG_BOOT = '<div id="cgBoot" role="status" aria-live="polite"><div class="cg-boot-vortex" aria-hidden="true"></div><p class="cg-boot-title">GLITCH GULP</p><p class="cg-boot-wait">Connecting to CrazyGames saving…</p></div>';
 const TITLE = 'GLITCH GULP';
 const DESCRIPTION = 'Steer a vortex through a neon city and swallow everything smaller. 2-minute Arena rounds against bots and a 240-mission Campaign.';
 
@@ -46,6 +51,11 @@ export function packagePage(html) {
   // The package starts in English (game.js detectLang), so the static page says so too.
   once(/<html\b([^>]*)>/, (_, attrs) => `<html${attrs.replace(/\s+lang="[^"]*"/, '')} lang="en" data-distribution="${DISTRIBUTION}">`, '<html>');
   once(/(<noscript><p\b[^>]*>)[^<]*(<\/p><\/noscript>)/, '$1GLITCH GULP needs JavaScript turned on.$2', '<noscript>');
+  // CG-DATA-1: the Data Module save needs the SDK, loaded before game.js runs.
+  once(/<\/head>/, `<script src="${CG_SDK_SRC}"></script>\n</head>`, '</head>');
+  // CG-DATA-1: while SDK.init() runs the game is hidden; this static, English loader is the
+  // first frame instead of an empty page (style.css #cgBoot; gone once the game starts).
+  once(/<body>\n/, `<body>\n${CG_BOOT}\n`, '<body>');
   return out;
 }
 
@@ -72,7 +82,10 @@ export function collectRuntime(root, html) {
       }
     }
   };
-  for (const m of html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)) (localRef(m[1]) ? add(m[1], 'js') : external.push(m[1]));
+  for (const m of html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)) {
+    if (m[1] === CG_SDK_SRC) continue; // the official SDK, served by CrazyGames
+    (localRef(m[1]) ? add(m[1], 'js') : external.push(m[1]));
+  }
   for (const m of html.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*>/g)) {
     const href = (/\bhref="([^"]+)"/.exec(m[0]) || [])[1];
     if (href) (localRef(href) ? add(href, 'css') : external.push(href));
@@ -116,7 +129,8 @@ export function exportPackage({ root = ROOT, out = path.join(ROOT, 'qa', 'out', 
   if (missing.length) problems.push('missing files: ' + missing.join(', '));
   if (external.length) problems.push('external or non-relative references: ' + external.join(', '));
   // Absolute paths fail on the portal; a root-relative src/href would also miss the check above.
-  const rooted = [...page.matchAll(/\b(?:src|href)="(\/[^"]*|https?:[^"]*)"/g)].map(m => m[1]);
+  const rooted = [...page.matchAll(/\b(?:src|href)="(\/[^"]*|https?:[^"]*)"/g)].map(m => m[1]).filter(u => u !== CG_SDK_SRC);
+  if (page.split(`<script src="${CG_SDK_SRC}"></script>`).length !== 2) problems.push('the page must load the CrazyGames SDK exactly once');
   if (rooted.length) problems.push('absolute paths in the page: ' + rooted.join(', '));
   if (/github\.io/.test(page)) problems.push('the page still names the GitHub Pages site');
   const entries = new Map([['index.html', Buffer.from(page, 'utf8')], ...[...files].map(([k, v]) => [k, Buffer.from(v, 'utf8')])]);
