@@ -4,6 +4,15 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-PREVIEW-QA-1 R4 (R4-01, R4-02) (zapis nadal v13, klucz bez zmian; ekonomia, balans, RNG i FTUE bez zmian)
+- **Ekran startowy bez paska przewijania na PC (R4-01):** w układzie poziomym skala UI zostawia 620 px logicznych
+  wysokości, a sztywna scena demo 470 px + GRAJ + notka potrzebowały ~631 — kolumna przewijała się o ~11 px (Full HD
+  w oknie, 1366×768, 1536×864, 1280×720, pełny ekran przy 125–175%, zrzut z Preview 1867×1006). Scena może się teraz
+  skurczyć (do 240 px), gdy brakuje miejsca; gdzie jest miejsce — 470 px jak dotąd. Bez `overflow: hidden`.
+- **Boostery w 1. rundzie Areny (R4-02) — zbadane, bez zmiany:** Złoty Rdzeń (od 10 s) i finisz działają od 1. rundy;
+  karty Ewolucji od 2. rundy to zasada FTUE-3 (PR #80), nie regresja. Ewentualna zmiana — decyzja właścicielki.
+- `qa/cg-preview-qa4.mjs` (R4; 33 ramki EN/PL, paczka i web, przewijanie innych ekranów, inwentarz boosterów rund 1–2).
+
 ## CG-PREVIEW-QA-1 R3 (R3-01–04, 06–08) (zapis nadal v13, klucz bez zmian, bez nowych pól; jedyna zmiana ekonomii: R3-07)
 - **Wyzwanie dnia ładuje Core City raz dziennie (R3-07, decyzja właścicielki):** +20% za pierwsze ukończenie dnia i
   +10% za pierwszy nowy rekord dnia (×1,6 na LVL 1–2); kolejne podejścia poprawiają rekord bez kolejnych procentów.

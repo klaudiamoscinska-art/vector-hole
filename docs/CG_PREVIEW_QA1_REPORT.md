@@ -1,4 +1,4 @@
-# CG-PREVIEW-QA-1 — zgłoszenia z CrazyGames Preview (R1: CG-QA-01–08, R2-01–03, R3-01–04 i 06–08)
+# CG-PREVIEW-QA-1 — zgłoszenia z CrazyGames Preview (R1: CG-QA-01–08, R2-01–03, R3-01–04 i 06–08, R4-01–02)
 
 Baza: `main` 3e3089de23f0976e5e0a9a201fa29544d5841925 (paczka d47aa022…). Gałąź `cg-preview-qa1`.
 Zapis v13, klucz `vectorHoleSave_v1`, ekonomia, balans, RNG, audio, sterowanie i FTUE bez zmian.
@@ -77,6 +77,15 @@ fokusu naprawdę się zatrzymuje (arkusz pauzy, czeka na WZNÓW — zachowanie z
 Karty Ewolucji w rundzie (świat zamrożony na wybór) traktowane jak część rozgrywki — bez zdarzeń (bez zmian).
 `loadingStart/Stop` (opcjonalne) i `happytime` nie są wysyłane; Basic Launch nie ma reklam.
 
+## R4
+
+Testy: `node qa/cg-preview-qa4.mjs [--root=DIR]` (mock SDK — to nie jest wynik CrazyGames Preview).
+
+| ID | Przyczyna (kod) | Zmiana |
+|---|---|---|
+| R4-01 | Ekran startowy nowego gracza (logo, żywe demo, GRAJ, „Runda na Arenie · 2:00”) w układzie `wide`: `--ui-scale` = min(wysokość / 620, szerokość / 1100, 1,6), więc gdy ogranicza wysokość ramki, zostaje dokładnie 620 px logicznych (przy 1,6 — np. 1867×1006 — 629). Scena demo miała sztywne 470 px; razem z odstępami, GRAJ i notką kolumna miała ~631 px → `.screen-inner` (`overflow-y: auto`) przewijało o ~11 px i pokazywało pasek. Nie fullscreen ani grafika: każdy kształt ramki z proporcją < ~1,77 (Full HD w oknie, 1366×768, 1536×864, 1280×720, 1600×900, 1440×900 w oknie, QHD przy 150–175%) i ramka z `--ui-scale` obciętym do 1,6. | Tylko CSS ekranu powitalnego w `wide`: kolumna ma wysokość ekranu, a scena demo (do 470 px jak dotąd) może się skurczyć (minimum 240 px). Bez `overflow: hidden`; inne ekrany, telefon i `compact` bez zmian. Baza e9c286c: 13 z 32 ramek PC z paskiem (sonda), kandydat: 33/33 ramek bez paska w EN i PL (paczka i web); na zrzucie właścicielki (1867×1006) scena 458 px zamiast 470. |
+| R4-02 | Zbadane, nie zmienione. Boostery w rundzie Areny: **Złoty Rdzeń** (`CONFIG.golden`: pierwszy po 10 s, potem 20 s po zjedzeniu / zniknięciu po 14 s, ≥ 500 px od gracza; zjedzony przez gracza — SZAŁ 7 s), **karty Ewolucji** (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala, Łowca — przy promieniu 46 i 66) i **finisz** (ostatnie 12 s: Zaciemnienie albo Burza portali). Pierwsza runda nowego gracza idzie **bez kart Ewolucji** — zasada FTUE-3 (`CONFIG.ftue.evolutionFromRuns = 1`, commit 6062528, PR #80 scalony 2026-10-25, opisana w GDD §1/§2). Złoty Rdzeń i finisz działają w 1. rundzie tak jak w kolejnych. PR #93 nie zmienia żadnego z tych mechanizmów. | Brak zmiany kodu — to zamierzone ograniczenie FTUE, nie regresja. Zmiana wymaga decyzji właścicielki (rekomendacja w HANDOFF). Pomiar (bot „casual”, 4 nowych graczy, 1280×720): runda 1 — Złote Rdzenie 16 (4/rundę), SZAŁ 1, karty 0, finisz 4/4; runda 2 — 16, SZAŁ 3, karty 8 (2/rundę, pierwsza „NOWOŚĆ · EWOLUCJA”); baza sprzed FTUE-3 (a24cbcf): runda 1 — 16, SZAŁ 1, karty 8. |
+
 ## Core City — wzór (finalizeRun)
 
 Arena: `10 + 2 (miejsca 1–3) + 3 (1. miejsce) + 2 (nowy rekord)`; Wyzwanie dnia: `20 + 10 (rekord dnia)`.
@@ -110,3 +119,11 @@ ukończenie dnia i +10% za pierwszy nowy rekord dnia (na LVL 1–2: +32% i +16%,
     „Starting bonus: +60%…”; okno Core City Rewards bez „×1.6”, z wartościami od LVL 3. Po LVL 3: +10–17%, +20% / +10%.
 16. Wyzwanie dnia: ukończ (Core City rośnie), ukończ drugi raz z lepszym wynikiem → „Daily Challenge: today’s Core City
     rewards already claimed”, pasek Core City bez zmian, rekord wyższy; Challenges: „Claimed today”. Odśwież i powtórz.
+
+**R4 (nowa paczka):**
+
+17. Nowy profil (okno prywatne albo nowe konto gościa): ekran startowy GLITCH GULP w pełnym ekranie portalu i w oknie
+    przeglądarki — brak pionowego paska przewijania po prawej, PLAY i „Arena round · 2:00” w całości na ekranie.
+    Jeśli to możliwe, powtórz przy skalowaniu Windows 125% / 150% (Ustawienia → Ekran → Skala) i po polsku (Settings → Polish).
+18. Pierwsza runda: po ~10 s baner „GOLDEN CORE!” i złota strzałka; brak kart Ewolucji (FTUE-3). Druga runda: karta
+    „NEW · EVOLUTION” przy pierwszym wzroście.
