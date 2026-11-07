@@ -14,7 +14,8 @@
 //   mode: 'sdk' (above) | 'passthrough' (every key is a plain localStorage key, so the
 //         older package suites keep seeding 'vectorHoleSave_v1' directly)
 //   environment: 'local' | 'crazygames' | 'disabled' (default by host)
-//   initDelayMs, initFails, initHangs, dataDisabled, failGet, failSet, limitBytes
+//   initDelayMs, initFails, initHangs, dataDisabled, failGet, failSet, limitBytes,
+//   failRemove: [keys] whose removeItem throws (CG-DATA-2 R1: a partly failed reset)
 //   user: { id, username } or null (also kept in localStorage.__cgMockUser)
 (() => {
   const GAME_ID = 'qa-mock';
@@ -83,6 +84,7 @@
     },
     removeItem(k) {
       check('set'); log.push(['removeItem', k]);
+      if ((cfg().failRemove || []).includes(k)) throw err('other', 'mock remove failure');
       if (passthrough()) { ls().removeItem(k); return; }
       delete data[k];
       persist();

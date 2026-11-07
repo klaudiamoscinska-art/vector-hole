@@ -4,6 +4,14 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-DATA-2 R1 „Bezpieczny reset profilu w paczce CrazyGames” (zapis nadal v13, klucz bez zmian; GitHub Pages bez zmian)
+- **Decyzja właścicielki:** „Resetuj profil” w paczce usuwa z Data Module zapis `vectorHoleSave_v1` i jego kopie
+  `.bak`/`.rescue` (każdy klucz osobno, bez `clear()`). Gdy zapis jest zablokowany (inna karta, zalogowanie, brak
+  połączenia z zapisem CrazyGames, zapis nieczytelny), nic nie jest usuwane: „Profil nie został zresetowany”. Gdy SDK
+  odmówi usunięcia: „Nie udało się zresetować profilu”, bez przeładowania i bez komunikatu o sukcesie.
+- Tekst prywatności (gra i szkic polityki) opisuje to dokładnie. GitHub Pages: reset jak dotąd (kopie zostają, PX01).
+- `qa/cg-data1.mjs`: reset gościa i konta, ponowne uruchomienie, blokady, częściowe błędy, prawdziwe SDK, wersja web.
+
 ## CG-DATA-2 „Audyt Data Module przed CrazyGames Preview” (zapis nadal v13, klucz bez zmian; rozgrywka, ekonomia, FTUE bez zmian; na GitHub Pages bez widocznej zmiany)
 - **Logowanie bez przeładowania nie miesza kont:** SDK 3.8.0 umie przełączyć dane na konto w działającej
   stronie. Od zalogowania paczka nie czyta ani nie pisze zapisu żadną drogą (wcześniej kod kopii zapasowej,

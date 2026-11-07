@@ -4453,6 +4453,30 @@ function releaseSaveGuard() {
   return true;
 }
 
+/** CG-DATA-2 R1 (owner's decision 2026-11-07): "Reset profile" in the
+ *  CrazyGames package erases the save AND its .bak/.rescue copies from the
+ *  Data Module -- one removeItem() per key, never clear(). Nothing is deleted
+ *  while the guard holds the save back (another tab, a login, the SDK
+ *  unavailable, a save it can't read) or when another tab stored since this
+ *  one read it: 'blocked'. The copies go first and the save last, each read
+ *  back: 'failed' means a key is still there (the save, if it was the one,
+ *  stays playable). On 'ok' this page writes nothing more until the reload. */
+function cgEraseSave() {
+  if (!saveWritable()) return 'blocked';
+  let store;
+  try {
+    store = playerSaveStore();
+    if (store.getItem(SAVE_SLOT) !== SAVE_GUARD.seen) { markSaveStale(); return 'blocked'; }
+  } catch (e) { return 'blocked'; }
+  for (const key of [saveBackupKey(), saveRescueKey(), SAVE_SLOT]) {
+    try { store.removeItem(key); if (store.getItem(key) === null) continue; } catch (e) { /* refused */ }
+    return 'failed';
+  }
+  SAVE_GUARD.state = 'reset';
+  SAVE_GUARD.seen = null;
+  return 'ok';
+}
+
 /** v19: how far a save got -- the safer of two saves is the one with more
  *  progress (a fresh device must never overwrite a long campaign). */
 function saveProgressScore(s) {
@@ -10274,6 +10298,14 @@ class Game {
    *  state (active screens, cached campaign progress, etc.) re-initializes
    *  from the fresh save exactly like a real first launch would. */
   resetProfile() {
+    // CG-DATA-2 R1: the CrazyGames package erases the save with its copies (cgEraseSave()).
+    if (PORTAL_BASIC && !DEV.sandbox) {
+      const res = cgEraseSave();
+      if (res !== 'ok') { this.showSaveGuardNotice(res === 'blocked' ? 'resetBlocked' : 'resetFailed'); return; }
+      this.analytics.track('profile_reset', {});
+      location.reload();
+      return;
+    }
     // PX01: a save the guard held back (newer version, broken, other tab)
     // is kept under the rescue key even on an explicit reset -- and if that
     // copy can't be made, nothing is deleted (local, cloud) and nothing reloads.
@@ -10367,7 +10399,7 @@ class Game {
         PORTAL_BASIC ? '<strong>Co wysyłamy:</strong> gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.' : '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
         PORTAL_BASIC ? '<strong>Reklamy i zakupy:</strong> ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.' : '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
         '<strong>Czcionki:</strong> wbudowane w grę — bez pobierania z Google.',
-        PORTAL_BASIC ? '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry, także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.' : '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
+        PORTAL_BASIC ? '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry razem z jego kopiami zapasowymi z zapisu CrazyGames: jako gość na tym urządzeniu, po zalogowaniu także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.' : '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
       ]
     });
   }
@@ -10690,7 +10722,9 @@ class Game {
     // CG-DATA-2: after a CrazyGames login every way on is the reload.
     if (PORTAL_BASIC && !DEV.sandbox && CG_DATA.login) kind = 'login';
     if (kind === 'ok') return;
-    if (kind !== 'rescueFailed' && kind !== 'login') {
+    // An answer to the player's own action (a reset, a copy) is shown every time.
+    const answer = ['rescueFailed', 'login', 'resetBlocked', 'resetFailed'].includes(kind);
+    if (!answer) {
       if (this.saveGuardShown === kind) return;
       this.saveGuardShown = kind;
       this.analytics.track('save_guard', { state: kind, issues: SAVE_GUARD.issues.length });
@@ -10714,10 +10748,13 @@ class Game {
       sheets.unavailable.body = ['Nie udało się połączyć z zapisem CrazyGames, więc gra nie odczytała Twojego postępu. Niczego nie usunie ani nie nadpisze.', keep, 'Odśwież stronę, aby spróbować ponownie.'];
       // No "play without saving" here: the page can't tell whose save SDK.data holds now.
       sheets.login = { title: 'Zalogowano na konto CrazyGames', body: ['Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.', 'Odśwież stronę, aby grać dalej z postępem z konta.'], action: { label: 'ODŚWIEŻ', onClick: reload }, locked: true };
+      // CG-DATA-2 R1: a reset that deleted nothing, or not everything (cgEraseSave()).
+      sheets.resetBlocked = { title: 'Profil nie został zresetowany', body: ['Zapis jest teraz zablokowany — na przykład gra jest otwarta w innej karcie albo nie ma połączenia z zapisem CrazyGames — więc gra niczego nie usunęła.', 'Odśwież stronę i spróbuj ponownie.'], action: { label: 'ODŚWIEŻ', onClick: reload } };
+      sheets.resetFailed = { title: 'Nie udało się zresetować profilu', body: ['Zapis CrazyGames nie pozwolił usunąć wszystkich danych, więc reset mógł się nie udać w całości.', 'Odśwież stronę, sprawdź postęp i w razie potrzeby spróbuj ponownie.'], action: { label: 'ODŚWIEŻ', onClick: reload } };
     }
     const sh = sheets[kind];
     if (!sh) return;
-    this.openInfoSheet({ title: sh.title, body: sh.body, action: sh.action || null, closeLabel: sh.action && kind !== 'stale' ? 'GRAJ BEZ ZAPISU' : 'ROZUMIEM', locked: !!sh.locked });
+    this.openInfoSheet({ title: sh.title, body: sh.body, action: sh.action || null, closeLabel: sh.action && kind !== 'stale' && !answer ? 'GRAJ BEZ ZAPISU' : 'ROZUMIEM', locked: !!sh.locked });
   }
 
   updateCoinDisplays() {
@@ -19168,7 +19205,13 @@ const I18N_EN = {
   "Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.": "This page won't save anything more, so guest progress doesn't mix with the account's progress.",
   "Odśwież stronę, aby grać dalej z postępem z konta.": "Reload the page to keep playing with your account's progress.",
   "postęp gry, ustawienia i losowy identyfikator gościa — przez zapis CrazyGames: jako gość w pamięci Twojej przeglądarki na tym urządzeniu, a po zalogowaniu na konto CrazyGames na tym koncie (wtedy postęp jest też na Twoich innych urządzeniach). Gra nie ma własnych kont i nie prosi o e-mail. Nazwa gracza jest opcjonalna.": "game progress, settings and a random guest ID — through CrazyGames saving: as a guest in your browser's memory on this device, and when you're signed in to CrazyGames, in that account (then your progress is on your other devices too). The game has no accounts of its own and doesn't ask for your email. Player name is optional.",
-  "dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry, także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.": "access and data portability — the “Download my data” button; deletion — “Reset profile” (erases the game save, also from your CrazyGames account). You can also lodge a complaint with the President of UODO (Polish Data Protection Office).",
+  "dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry razem z jego kopiami zapasowymi z zapisu CrazyGames: jako gość na tym urządzeniu, po zalogowaniu także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.": "access and data portability — the “Download my data” button; deletion — “Reset profile” (erases the game save together with its backup copies from CrazyGames saving: as a guest on this device, when signed in also from your CrazyGames account). You can also lodge a complaint with the President of UODO (Polish Data Protection Office).",
+  "Profil nie został zresetowany": "The profile wasn't reset",
+  "Zapis jest teraz zablokowany — na przykład gra jest otwarta w innej karcie albo nie ma połączenia z zapisem CrazyGames — więc gra niczego nie usunęła.": "Saving is blocked right now — for example the game is open in another tab or there is no connection to CrazyGames saving — so the game deleted nothing.",
+  "Odśwież stronę i spróbuj ponownie.": "Reload the page and try again.",
+  "Nie udało się zresetować profilu": "Couldn't reset the profile",
+  "Zapis CrazyGames nie pozwolił usunąć wszystkich danych, więc reset mógł się nie udać w całości.": "CrazyGames saving didn't allow deleting all the data, so the reset may not be complete.",
+  "Odśwież stronę, sprawdź postęp i w razie potrzeby spróbuj ponownie.": "Reload the page, check your progress and try again if needed.",
   "Brak miejsca na kopię": "No room for a copy",
   "Zapis nie działa": "Saving doesn't work",
   "Przeglądarka nie pozwala odczytać zapisanego postępu (np. tryb prywatny albo zablokowane dane witryny). Gra niczego nie usunie ani nie nadpisze.": "The browser doesn't allow the saved progress to be read (e.g. private mode or blocked site data). The game won't delete or overwrite anything.",

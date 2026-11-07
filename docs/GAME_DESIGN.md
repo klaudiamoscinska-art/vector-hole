@@ -684,7 +684,15 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   a do chmury trafia tylko zapis, który udało się zapisać lokalnie. Gdy
   przeglądarka nie pozwala odczytać danych, gra mówi „Zapis nie działa” i nic
   nie zapisuje. Reset w Profilu zablokowanego zapisu wymaga udanej kopii
-  `.rescue` — inaczej nic nie jest usuwane.
+  `.rescue` — inaczej nic nie jest usuwane (GitHub Pages: reset usuwa tylko
+  `vectorHoleSave_v1`, kopie `.bak`/`.rescue` zostają, gra nigdy sama ich nie czyta).
+  **Paczka CrazyGames (CG-DATA-2 R1, decyzja właścicielki):** świadomy reset usuwa
+  z Data Module `vectorHoleSave_v1`, `vectorHoleSave_v1.bak` i `vectorHoleSave_v1.rescue`
+  (każdy klucz osobno, bez `clear()`; najpierw kopie, na końcu zapis, każdy sprawdzony
+  odczytem). Gdy zapis jest zablokowany (inna karta, zalogowanie, brak połączenia
+  z zapisem CrazyGames, zapis nieczytelny albo z nowszej wersji), reset nic nie usuwa
+  i mówi „Profil nie został zresetowany”; gdy SDK odmówi usunięcia któregoś klucza —
+  „Nie udało się zresetować profilu” (bez przeładowania, zapis, jeśli został, działa dalej).
 
 ## 6. QA (boty)
 

@@ -457,6 +457,132 @@ async function robustnessChecks(url) {
   return r;
 }
 
+/* ------------------------------ G. reset profile (CG-DATA-2 R1) ------------------------------ */
+// The owner's decision: in the package "Reset profile" erases the save and its .bak/.rescue
+// copies from the Data Module (removeItem per key, never clear()); nothing while the save is
+// held back; a partial failure says so. The web build keeps its reset (the copies stay).
+const COPIES = [SAVE + '.bak', SAVE + '.rescue'];
+const withCopies = (blob) => { const b = JSON.parse(blob); b.data[COPIES[0]] = 'qa-old-backup'; b.data[COPIES[1]] = 'qa-old-rescue'; return JSON.stringify(b); };
+/** Records every Data Module removeItem/clear in sessionStorage (it survives the reload). */
+const recordOps = (p) => p.evaluate(() => {
+  const dm = window.CrazyGames.SDK.data;
+  for (const m of ['removeItem', 'clear']) { const o = dm[m].bind(dm); dm[m] = (...a) => { sessionStorage.setItem('__cgOps', (sessionStorage.getItem('__cgOps') || '') + m + ':' + (a[0] || '') + '|'); return o(...a); }; }
+});
+/** The real button (TAK, RESETUJ), then the reload the reset does. */
+async function resetAndReload(p) {
+  await Promise.all([p.waitForNavigation({ timeout: 15000 }), p.evaluate(() => setTimeout(() => document.getElementById('btnResetProfileYes').click(), 0))]);
+  await ready(p);
+}
+/** A reset that must NOT reload: the sheet it shows, and whether the page stayed. */
+async function resetStays(p) {
+  await p.evaluate(() => { window.__stayed = true; document.getElementById('btnResetProfileYes').click(); });
+  await settle(400);
+  return p.evaluate(() => { const s = document.getElementById('infoSheet'); return { stayed: window.__stayed === true, sheet: s.classList.contains('hidden') ? '' : s.innerText }; });
+}
+const fresh = (s) => s.welcome && s.runs === 0 && s.guard === 'ok';
+/** Keys after a reset: no copy, and the save (if the new session already wrote one) is a fresh profile. */
+const erased = (data) => !COPIES.some(k => k in data) && (!(SAVE in data) || (() => { const v = JSON.parse(data[SAVE]); return v.stats.runsPlayed === 0 && v.coins === 0; })());
+const noPolish = (t) => !/[ąćęłńóśźż]/i.test(t);
+async function resetChecks(url, webUrl) {
+  const r = [];
+  const base = await playedGuestBlob(url);
+  const seeded = withCopies(base.blob);
+
+  // G1 guest: the save and both copies go, one removeItem each, then a fresh profile -- twice.
+  let d = await device(url, { seed: { [GUEST]: seeded } });
+  let p = await d.open();
+  const before = await p.evaluate(() => ({ keys: Object.keys(window.__blob().data).sort(), st: window.__state() }));
+  await recordOps(p);
+  await resetAndReload(p);
+  const g1 = await p.evaluate(() => ({ data: (window.__blob() || {}).data || {}, st: window.__state(), ops: sessionStorage.getItem('__cgOps') || '', touch: window.__lsTouch }));
+  r.push(report('[mock] G1 guest reset: vectorHoleSave_v1, .bak and .rescue removed from the Data Module (removeItem each: copies first, the save last; no clear()); after the reload only a fresh profile, no copy', before.keys.length === 3 && before.st.runs >= 1 && erased(g1.data) && g1.ops === `removeItem:${SAVE}.bak|removeItem:${SAVE}.rescue|removeItem:${SAVE}|` && fresh(g1.st) && g1.touch.length === 0, JSON.stringify({ before: before.keys, after: Object.keys(g1.data), ops: g1.ops, st: g1.st })));
+  await reload(p);
+  const g1b = await p.evaluate(() => window.__state());
+  await p.close();
+  const p1c = await d.open();
+  const g1c = await p1c.evaluate(() => window.__state());
+  r.push(report('[mock] G1 after the reset nothing comes back: another reload and a new tab start fresh (no restore from a copy)', fresh(g1b) && fresh(g1c), JSON.stringify({ g1b, g1c })));
+  r.push(report('[mock] G1 no errors', d.errors.length === 0, d.errors.slice(0, 2).join(' | ')));
+  await d.close();
+
+  // G2 account: the same in the account's data (the mock's "cloud"); another device sees it too.
+  CLOUD.delete('acc-reset');
+  d = await device(url, { seed: { __cgMockUser: { id: 'acc-reset', username: 'qa_reset' } } });
+  p = await d.open();
+  await p.evaluate(() => { window.__arena(); for (const k of ['vectorHoleSave_v1.bak', 'vectorHoleSave_v1.rescue']) window.CrazyGames.SDK.data.setItem(k, 'qa-old-' + k); });
+  await settle();
+  const accBefore = Object.keys(JSON.parse(CLOUD.get('acc-reset'))).sort();
+  await resetAndReload(p);
+  await settle();
+  const accData = JSON.parse(CLOUD.get('acc-reset') || '{}'), accAfter = Object.keys(accData);
+  const g2 = await p.evaluate(() => window.__state());
+  const d2 = await device(url, { seed: { __cgMockUser: { id: 'acc-reset', username: 'qa_reset' } } });
+  const g2other = await (await d2.open()).evaluate(() => window.__state());
+  r.push(report('[mock] G2 account reset: the save and both copies removed from the account data, fresh after the reload and on another device (simulated; real CrazyGames cloud sync NOT VERIFIED)', accBefore.length === 3 && erased(accData) && fresh(g2) && fresh(g2other), JSON.stringify({ accBefore, accAfter, g2, g2other })));
+  await d.close(); await d2.close();
+
+  // G3-G5: the save is held back -> nothing is deleted, an English notice, no reload.
+  const blocked = [
+    ['G3 the SDK cannot read (unavailable)', { mock: { mode: 'sdk', failGet: true }, seed: { [GUEST]: seeded } }, null],
+    ['G4 another tab stored newer progress', { seed: { [GUEST]: seeded } }, 'tab'],
+    ['G4b another tab stored since this one read (its storage event not here yet)', { seed: { [GUEST]: seeded } }, 'race'],
+    ['G5 a corrupt save', { seed: { [GUEST]: withCopies(JSON.stringify({ data: { [SAVE]: '{"schemaVersion":13,"coins":' } })) } }, null]
+  ];
+  for (const [name, opt, how] of blocked) {
+    d = await device(url, opt);
+    p = await d.open();
+    if (how === 'tab') { const t = await d.open(); await t.evaluate(() => { window.game.save.coins += 50; saveGame(window.game.save); }); await settle(300); await t.close(); }
+    if (how === 'race') await p.evaluate(() => { SAVE_GUARD.seen = SAVE_GUARD.seen + ' '; });
+    const blobBefore = await p.evaluate(() => window.__lsRaw('SDK_DATA_qa-mock'));
+    const res = await resetStays(p);
+    const blobAfter = await p.evaluate(() => window.__lsRaw('SDK_DATA_qa-mock'));
+    r.push(report(`[mock] ${name}: reset deletes nothing (save and copies byte-equal), no reload, "The profile wasn't reset" in English`, res.stayed && blobAfter === blobBefore && /The profile wasn't reset/.test(res.sheet) && noPolish(res.sheet), JSON.stringify({ ...res, sheet: res.sheet.slice(0, 160), unchanged: blobAfter === blobBefore })));
+    await d.close();
+  }
+
+  // G6: the save itself can't be removed -> the copies are gone, the save stays and keeps working.
+  d = await device(url, { seed: { [GUEST]: seeded } });
+  p = await d.open();
+  const mainBefore = await p.evaluate(() => window.__blob().data.vectorHoleSave_v1);
+  await p.evaluate(() => { window.__cgMock.failRemove = ['vectorHoleSave_v1']; });
+  const g6 = await resetStays(p);
+  const g6b = await p.evaluate((m) => { const b = window.__blob().data; window.__cgMock.failRemove = []; window.game.save.coins += 3; return { keys: Object.keys(b), mainSame: b.vectorHoleSave_v1 === m, guard: SAVE_GUARD.state, write: saveGame(window.game.save) }; }, mainBefore);
+  r.push(report('[mock] G6 partial failure (the save can\'t be removed): no reload, "Couldn\'t reset the profile" in English (no success shown), the save is still there and saving works', g6.stayed && /Couldn't reset the profile/.test(g6.sheet) && noPolish(g6.sheet) && g6b.mainSame && !g6b.keys.some(k => COPIES.includes(k)) && g6b.guard === 'ok' && g6b.write === true && mainBefore, JSON.stringify({ ...g6, sheet: g6.sheet.slice(0, 120), g6b })));
+  await resetAndReload(p);
+  const g6c = await p.evaluate(() => ({ data: (window.__blob() || {}).data || {}, st: window.__state() }));
+  r.push(report('[mock] G6 the next reset (the SDK works again) completes', erased(g6c.data) && fresh(g6c.st), JSON.stringify({ keys: Object.keys(g6c.data), st: g6c.st })));
+  await d.close();
+
+  // G7: the first copy can't be removed -> nothing at all is deleted.
+  d = await device(url, { seed: { [GUEST]: seeded } });
+  p = await d.open();
+  const b7 = await p.evaluate(() => window.__lsRaw('SDK_DATA_qa-mock'));
+  await p.evaluate(() => { window.__cgMock.failRemove = ['vectorHoleSave_v1.bak']; });
+  const g7 = await resetStays(p);
+  const a7 = await p.evaluate(() => window.__lsRaw('SDK_DATA_qa-mock'));
+  r.push(report('[mock] G7 partial failure at the first copy: nothing deleted (byte-equal), no reload, "Couldn\'t reset the profile"', g7.stayed && a7 === b7 && /Couldn't reset the profile/.test(g7.sheet), JSON.stringify({ ...g7, sheet: g7.sheet.slice(0, 80), unchanged: a7 === b7 })));
+  await d.close();
+
+  // G8: the privacy text says what the reset does.
+  d = await device(url);
+  p = await d.open();
+  const priv = await p.evaluate(async () => { window.game.openPrivacyPolicy(); await new Promise(r => setTimeout(r, 300)); const s = document.getElementById('infoSheet'); return s.classList.contains('hidden') ? '' : s.innerText; });
+  r.push(report('[mock] G8 privacy (English): "Reset profile" erases the save with its backup copies from CrazyGames saving', /backup copies from CrazyGames saving/.test(priv) && noPolish(priv), priv.slice(0, 300) || '(privacy sheet not opened)'));
+  await d.close();
+
+  // G9: the web build's reset is unchanged -- the save goes, .bak/.rescue stay (PX01), no SDK.
+  const legacy = await (async () => { const dd = await device(webUrl, { sdk: null }); const pp = await dd.open(); const s = await veteranSave(pp, { missions: 3 }); await dd.close(); return s; })();
+  d = await device(webUrl, { sdk: null, seed: { [SAVE]: legacy, [COPIES[0]]: 'qa-old-backup', [COPIES[1]]: 'qa-old-rescue' } });
+  p = await d.open();
+  // (Loading an older save may itself refresh .bak -- PX01 migration, as on the base.)
+  const b9 = await p.evaluate(() => ({ bak: window.__lsRaw('vectorHoleSave_v1.bak'), rescue: window.__lsRaw('vectorHoleSave_v1.rescue'), st: window.__state() }));
+  await resetAndReload(p);
+  const g9 = await p.evaluate(() => ({ main: window.__lsRaw('vectorHoleSave_v1'), bak: window.__lsRaw('vectorHoleSave_v1.bak'), rescue: window.__lsRaw('vectorHoleSave_v1.rescue'), st: window.__state(), cg: !!window.CrazyGames }));
+  r.push(report('[web] G9 GitHub Pages reset as before: the old save removed (the new session writes a fresh one), .bak and .rescue kept (PX01), a fresh profile (nothing restored from them), no SDK', !b9.st.welcome && b9.st.m01 && (g9.main === null || Object.keys(JSON.parse(g9.main).campaign.completed).length === 0) && g9.bak !== null && g9.bak === b9.bak && g9.rescue === 'qa-old-rescue' && fresh(g9.st) && !g9.cg && d.external.length === 0, JSON.stringify({ before: b9.st, bakKept: g9.bak === b9.bak, rescue: g9.rescue, st: g9.st, cg: g9.cg })));
+  await d.close();
+  return r;
+}
+
 /* ------------------------------ F. the web build ------------------------------ */
 async function webChecks(webUrl) {
   const r = [];
@@ -492,6 +618,12 @@ async function realSdkChecks(url, gameDir, file) {
   await reload(p);
   const s1 = await p.evaluate(() => ({ ...window.__state(), touch: window.__lsTouch }));
   r.push(report(`[real SDK local] SDK ${version} in its local mode: a new player in English, a round saved in SDK_DATA_local, restored after a reload, the game's own key untouched`, s0.env === 'local' && s0.welcome && s0.lang === 'en' && s0.guard === 'ok' && blob && blob.stats.runsPlayed === a.runs && s1.runs === a.runs && s1.coins === a.coins && s1.touch.length === 0, JSON.stringify({ s0, s1: { runs: s1.runs, guard: s1.guard }, a })));
+  // CG-DATA-2 R1: "Reset profile" through the real SDK's removeItem (its local mode).
+  await p.evaluate(() => { for (const k of ['vectorHoleSave_v1.bak', 'vectorHoleSave_v1.rescue']) window.CrazyGames.SDK.data.setItem(k, 'qa-old-' + k); });
+  const realBefore = await p.evaluate(() => Object.keys(JSON.parse(window.__lsRaw('SDK_DATA_local')).data).sort());
+  await resetAndReload(p);
+  const realAfter = await p.evaluate(() => ({ data: JSON.parse(window.__lsRaw('SDK_DATA_local') || '{"data":{}}').data, st: window.__state() }));
+  r.push(report('[real SDK local] reset profile with the real SDK: vectorHoleSave_v1, .bak and .rescue gone from SDK_DATA_local, a fresh profile after the reload', realBefore.length === 3 && erased(realAfter.data) && fresh(realAfter.st), JSON.stringify({ realBefore, after: Object.keys(realAfter.data), st: realAfter.st })));
   r.push(report('[real SDK local] no errors', d.errors.length === 0, d.errors.slice(0, 2).join(' | ')));
   await d.close();
   // The real SDK on a crazygames.com-like host with no portal around it: disabled after its 7 s check.
@@ -526,7 +658,7 @@ export async function runCgData1Checks({ realSdk = null } = {}) {
   browser = await chromium.launch();
   const all = [];
   try {
-    for (const step of [() => newPlayerChecks(site.url), () => guestChecks(site.url), () => accountChecks(site.url), () => conflictChecks(site.url), () => robustnessChecks(site.url), () => webChecks(web.url), () => realSdkChecks(site.url, pkg.gameDir, realSdk)]) {
+    for (const step of [() => newPlayerChecks(site.url), () => guestChecks(site.url), () => accountChecks(site.url), () => conflictChecks(site.url), () => robustnessChecks(site.url), () => resetChecks(site.url, web.url), () => webChecks(web.url), () => realSdkChecks(site.url, pkg.gameDir, realSdk)]) {
       try { all.push(...await step()); } catch (e) { all.push(report(`cg-data1: step crashed (${step.toString().slice(6, 40)})`, false, String(e && e.stack || e))); }
     }
   } finally { await browser.close(); site.server.close(); web.server.close(); }
