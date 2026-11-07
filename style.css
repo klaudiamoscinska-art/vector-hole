@@ -4608,9 +4608,15 @@ body.wide #mainMenu .hub-quick-tile { padding: 14px; }
 body.wide #mainMenu .hub-chest-row { grid-column: 2; grid-row: 6; max-width: none; width: 100%; }
 /* First run: the live demo as a wide stage, GRAJ under it. */
 body.wide #mainMenu.first-run { align-items: center; }
-body.wide #mainMenu.first-run > .hub-inner { max-width: 1040px; height: auto; padding: 24px 28px; justify-content: center; }
-body.wide #mainMenu.first-run .hub-welcome { min-height: 0; flex: none; width: 100%; max-width: none; }
-body.wide #mainMenu.first-run .welcome-stage { width: 100%; height: 470px; min-height: 0; flex: none; border-radius: 22px; }
+/* R4-01: the stage gives way, not the screen. --ui-scale leaves exactly 620
+   logical px of height whenever the frame's height is the limit (1920x953,
+   1366x768, 1536x864, fullscreen at 125-175%...), and a fixed 470 px stage +
+   GRAJ + the note came to ~631: the column scrolled by ~11 px and showed a
+   scrollbar. The column now takes the screen's height and the stage shrinks
+   (up to 470 px, as before, wherever there is room). */
+body.wide #mainMenu.first-run > .hub-inner { max-width: 1040px; height: 100%; padding: 24px 28px; justify-content: center; }
+body.wide #mainMenu.first-run .hub-welcome { min-height: 0; flex: 0 1 auto; width: 100%; max-width: none; }
+body.wide #mainMenu.first-run .welcome-stage { width: 100%; height: 470px; min-height: 240px; flex: 0 1 auto; border-radius: 22px; }
 body.wide #mainMenu.first-run .welcome-cta { max-width: 440px; }
 
 /* Dzielnice: every district at a glance (a 3-column grid, no strip to
