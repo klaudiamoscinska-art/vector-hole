@@ -381,7 +381,10 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   jaki jest). Runda przerwana przy wyniku 0 (nic nie zjedzone) nie daje
   niczego. Pełne nagrody i postęp — tylko za rundę dograną do końca czasu.
 - **Core City (LVL):** ukończona runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
-  rekord), Wyzwanie dnia +20% (+10% rekord); LVL 1–2 ×1,6. Nadwyżka
+  rekord — części się sumują), każde ukończone Wyzwanie dnia +20% (+10% rekord dnia); na
+  LVL 1–2 suma ×1,6, zaokrąglona. Okno „Nagrody Core City” liczy zakresy tą samą funkcją co
+  GRAJ (`coreGainRange()`, CG-QA-08: Arena +10–17%, na LVL 1–2 +16–27%; Wyzwanie +20–30%,
+  na LVL 1–2 +32–48%). Nadwyżka
   przechodzi dalej. DEVICE-QA-1: Miasto i GRAJ podają zakres
   („+10–17% za rundę · nagroda najpóźniej za N rund”, na LVL 1–2
   „+16–27%”), wynik rundy rozpisuje przyrost („runda +10% · podium +2% ·
@@ -572,7 +575,9 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   miasta: …”, pod paskiem części przyrostu), tabela (pod nią „Miejsce
   liczy się według punktów…”), pasek akcji: ZAGRAJ JESZCZE RAZ, pod nim
   ×2 MONET · REKLAMA i WYZWIJ ZNAJOMEGO tej samej szerokości, „Wróć do
-  Miasta”.
+  Miasta” — dopóki gracz nie zna Miasta (bez wizyty po rundzie, < 3 rund, bez misji)
+  ten sam przycisk nazywa się „Menu główne” (CG-QA-01). Ukończona misja dnia to złota
+  karta „MISJA DNIA UKOŃCZONA · nazwa · +N monet” (CG-QA-02; nagroda jak dotąd, raz dziennie).
 - **Karty nagród i odblokowań (DEVICE-QA-1):** jeden komponent; przyciski
   na osi tekstu (na szerokim ekranie ikona z lewej, tekst i przyciski
   wspólnie wyśrodkowane), licznik „Nowość n z N”, przycisk z akcją tylko
@@ -632,12 +637,25 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 - **Języki:** polski (źródłowy) i angielski. Gra wybiera język przeglądarki
   (polski dla `pl-*`, angielski dla pozostałych i gdy przeglądarka nie podaje języka); Profil → Ustawienia →
   Język przełącza i zapamiętuje. Paczka CrazyGames zaczyna zawsze po angielsku, także w polskiej
-  przeglądarce; polski wraca tylko z wyboru w Profilu (GitHub Pages bez zmian). Tłumaczenie to warstwa na wyjściu
+  przeglądarce; polski wraca tylko z wyboru w Profilu (GitHub Pages bez zmian). Nazwy języków w języku
+  interfejsu: „Polski | Angielski” po polsku, „Polish | English” po angielsku (CG-QA-03). Zmiana języka
+  przeładowuje stronę; w paczce wybór jedzie razem z przeładowaniem w adresie strony (`#lang=en`,
+  czytany i usuwany przy starcie), bo Data Module zapisuje z opóźnieniem (1–30 s), a zapis sprzed
+  przeładowania mógł jeszcze nie dotrzeć (CG-QA-05). Tłumaczenie to warstwa na wyjściu
   (`I18N_EN`), więc nowy polski tekst wymaga wpisu w słowniku (pilnuje
   `qa/v19.mjs`). Nazwy dzielnic, utworów i misji mają angielskie odpowiedniki
   (Plac Neonów → Neon Square, Wir Neonów → Neon Vortex…). Daty (Wyzwanie
   dnia) nie idą przez słownik: `formatDayMonth()` pisze je w języku gry
   („29 PAŹDZIERNIKA” / „OCTOBER 29”, GAME-READY-1).
+- **Ustawienia sterowania (pauza → STEROWANIE; CG-QA-06, R2-02/03):** „Czułość” zawsze. „Tryb
+  sterowania” (pad kciuka / przeciąganie) tylko na urządzeniach z dotykiem (zdarzenia dotyku lub
+  `maxTouchPoints`, także laptop dotykowy) — zmienia wyłącznie sterowanie dotykiem. „Haptyka” tylko
+  tam, gdzie wibracja może zadziałać: przeglądarka ma `navigator.vibrate`, główny wskaźnik to palec
+  (`(pointer: coarse) and (hover: none)`) i strona nie jest w ramce innej domeny (Chrome blokuje tam
+  `vibrate()`) — w praktyce GitHub Pages na Androidzie; nigdy w paczce CrazyGames (zawsze ramka
+  portalu), na PC, laptopie dotykowym ani w Safari na iPhonie. Gdzie wiersza nie ma, gra nie wywołuje
+  wibracji; zapisane ustawienia zostają. Arkusz pauzy nie ma już „ZMIEŃ WYGLĄD” (R2-01, decyzja
+  właścicielki) — wygląd zmienia się w Warsztacie między rundami.
 - ~~Energia per platforma~~ — v22: energii nie ma nigdzie (§5).
 - **Zapis:** na GitHub Pages lokalnie w przeglądarce (jak dotąd) + **kopia zapasowa**
   w Profilu: kod `VH1.…` do skopiowania i wczytania na innym urządzeniu. Gra prosi
@@ -649,7 +667,7 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   nie ma reklam (także demonstracyjnej), ofert za reklamę, WYZWIJ ZNAJOMEGO ani pytania
   o statystyki. Mysz blokuje się po kliknięciu planszy (§3). Nagrody i balans bez zmian.
   **Zapis paczki (CG-DATA-1) idzie wyłącznie przez Data Module CrazyGames SDK v3**
-  (oficjalny skrypt SDK w `<head>` paczki; z SDK używany jest tylko zapis): gość —
+  (oficjalny skrypt SDK w `<head>` paczki; z SDK używane są tylko zapis i zdarzenia rozgrywki): gość —
   w przeglądarce, przez SDK; zalogowany gracz — na koncie CrazyGames, z synchronizacją
   urządzeń. Logowanie nie jest wymagane i gra nie ma własnego ekranu logowania. Przy
   zalogowaniu CrazyGames przeładowuje grę z danymi konta (konto bez danych przejmuje
@@ -667,8 +685,16 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   gdy SDK
   nie działa (zablokowany skrypt, błąd, brak odpowiedzi, poza CrazyGames, wyłączony
   Data Module), zapis jest „niedostępny”: gra działa z pamięci, nic nie zapisuje ani nie
-  usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”. Na Full Launch dochodzą
-  reklamy i zdarzenia SDK z osobną decyzją; GitHub Pages działa jak dotąd.
+  usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”. **Zdarzenia rozgrywki
+  (CG-QA-07):** paczka wysyła do tego samego SDK `gameplayStart` / `gameplayStop` (wymóg
+  CrazyGames dla zintegrowanego SDK także na Basic Launch; od pierwszego `gameplayStart` portal
+  mierzy rozmiar i czas ładowania): start rundy Areny, Wyzwania i misji, wznowienie po pauzie —
+  start; pauza (także po utracie fokusu, bo gra naprawdę staje), koniec rundy lub misji,
+  wyjście — stop; nigdy dwa razy z rzędu. `loadingStart/Stop` nie są wysyłane (opcjonalne,
+  gra nie doładowuje niczego po starcie), `happytime` i reklamy też nie. **Reset profilu
+  (CG-QA-04, decyzja właścicielki):** paczka nie pokazuje przycisku RESETUJ PROFIL (w Preview
+  nie działał); tekst prywatności mówi, jak usunąć dane (dane strony w przeglądarce / kontakt
+  z CrazyGames). Na Full Launch dochodzą reklamy z osobną decyzją; GitHub Pages działa jak dotąd.
 - **Ochrona zapisu (PX01):** gra nigdy po cichu nie nadpisuje zapisu, którego
   nie umie w pełni odczytać — ani przy wczytaniu, ani żadnym późniejszym
   autozapisem. Zapis z nowszej wersji gry („Zapis z nowszej wersji gry” →
@@ -686,7 +712,8 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   nie zapisuje. Reset w Profilu zablokowanego zapisu wymaga udanej kopii
   `.rescue` — inaczej nic nie jest usuwane (GitHub Pages: reset usuwa tylko
   `vectorHoleSave_v1`, kopie `.bak`/`.rescue` zostają, gra nigdy sama ich nie czyta).
-  **Paczka CrazyGames (CG-DATA-2 R1, decyzja właścicielki):** świadomy reset usuwa
+  **Paczka CrazyGames (CG-DATA-2 R1, decyzja właścicielki; od CG-QA-04 bez przycisku w paczce —
+  kod zostaje):** świadomy reset usuwa
   z Data Module `vectorHoleSave_v1`, `vectorHoleSave_v1.bak` i `vectorHoleSave_v1.rescue`
   (każdy klucz osobno, bez `clear()`; najpierw kopie, na końcu zapis, każdy sprawdzony
   odczytem). Gdy zapis jest zablokowany (inna karta, zalogowanie, brak połączenia

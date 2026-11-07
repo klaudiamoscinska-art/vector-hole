@@ -45,7 +45,7 @@ The website you play on
 If you play on a game portal, such as CrazyGames, that portal runs its own website and its own services under its own privacy policy.
 
 Your choices
-In the game's profile you can download your data ("Download my data") and delete it ("Reset profile" erases the game save together with its backup copies from the CrazyGames save system: as a guest on this device, when you are logged in also from your CrazyGames account). Clearing your browser's site data deletes a guest's data on that device. If you are in the EU, you may also complain to your national data protection authority.
+In the game's profile you can download your data ("Download my data"). Clearing your browser's site data deletes a guest's data on that device; for data saved in your CrazyGames account, contact CrazyGames. (The CrazyGames version has no "Reset profile" button.) If you are in the EU, you may also complain to your national data protection authority.
 
 Children
 The game asks for no personal information. A player name is optional; please do not enter your real name.

@@ -4,6 +4,24 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-PREVIEW-QA-1 „Zgłoszenia z CrazyGames Preview” (R1: 8, R2: 3) (zapis nadal v13, klucz bez zmian; ekonomia, balans i FTUE bez zmian)
+- **Zdarzenia SDK w paczce (CG-QA-07):** paczka nie wysyłała `gameplayStart/Stop` (reklamowy dostawca był „none”),
+  a CrazyGames mierzy rozmiar i czas ładowania do pierwszego `gameplayStart`. Teraz idą przez SDK ładowane dla zapisu:
+  start / wznowienie rundy lub misji — start; pauza, koniec, wyjście — stop; bez duplikatów. `loadingStart/Stop` — nie.
+- **PL → EN w paczce (CG-QA-05):** wybór języka przechodzi przez przeładowanie w adresie (`#lang=…`), bo Data Module
+  zapisuje z opóźnieniem; nazwy języków w języku interfejsu: „Polski | Angielski” / „Polish | English” (CG-QA-03).
+- **Bez „Resetuj profil” w paczce (CG-QA-04, decyzja właścicielki);** tekst prywatności mówi, jak usunąć dane.
+  GitHub Pages bez zmian.
+- **„Menu główne” zamiast „Wróć do Miasta”** na wyniku Areny, dopóki gracz nie zna Miasta (CG-QA-01).
+- **Misja dnia na wyniku jako złota karta** zamiast surowej linii (CG-QA-02; nagroda bez zmian, raz dziennie).
+- **Haptyka tylko tam, gdzie wibracja może zadziałać** (CG-QA-06, R2-03): telefon z `navigator.vibrate`, poza ramką
+  innej domeny (Chrome blokuje tam `vibrate()`), więc nigdy w paczce CrazyGames; gdzie wiersza nie ma, gra nie wibruje.
+- **R2-01:** bez „ZMIEŃ WYGLĄD” w arkuszu pauzy (decyzja właścicielki; wygląd zmienia się w Warsztacie).
+- **R2-02:** „Tryb sterowania” (pad kciuka) tylko na urządzeniach z dotykiem; „Czułość” bez zmian.
+- **Okno „Nagrody Core City”** liczy zakresy tą samą funkcją co GRAJ (+16–27% na LVL 1–2) i mówi, że Wyzwanie dnia daje
+  +20% za każde ukończenie (wcześniej „za pierwsze dziś”, niezgodnie z grą) (CG-QA-08). Wzór i liczby bez zmian.
+- `qa/cg-preview-qa1.mjs` (64 kontrole R1 + R2; mock SDK zapisuje wywołania `SDK.game` i ma model opóźnionego zapisu konta).
+
 ## CG-DATA-2 R1 „Bezpieczny reset profilu w paczce CrazyGames” (zapis nadal v13, klucz bez zmian; GitHub Pages bez zmian)
 - **Decyzja właścicielki:** „Resetuj profil” w paczce usuwa z Data Module zapis `vectorHoleSave_v1` i jego kopie
   `.bak`/`.rescue` (każdy klucz osobno, bez `clear()`). Gdy zapis jest zablokowany (inna karta, zalogowanie, brak
