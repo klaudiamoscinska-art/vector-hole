@@ -1025,15 +1025,16 @@ async function englishEdgeChecks(url, webUrl) {
   r.push(report('English: a mission tier-up banner reaches the canvas in English', flows.drawn.includes('NEW SIZE!') && !flows.drawn.some(t => /ROZMIAR/.test(t)), JSON.stringify(flows.drawn)));
   await live.browser.close();
 
-  // The multiplier's decimal sign follows the language.
+  // The starting bonus is named in the chosen language (R3-06: the sheet states every value with
+  // the bonus already in, so no "×1.6" / "×1,6" is left for the player to apply).
   // (In the package Polish comes only from a saved choice, whatever the browser.)
-  for (const [lang, want] of [['en', /×1\.6/], ['pl', /×1,6/]]) {
+  for (const [lang, want] of [['en', /Starting bonus: \+60% city progress on LVL 1–2/], ['pl', /Premia startowa: \+60% postępu miasta na LVL 1–2/]]) {
     const c = await veteran(url, { runsPlayed: 0 }, { locale: 'pl-PL' });
     await c.page.evaluate((l) => { const s = JSON.parse(localStorage.getItem('vectorHoleSave_v1')); s.settings.lang = l; localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)); }, lang);
     await c.page.reload();
     await c.page.waitForFunction(() => window.game && window.game.state !== undefined);
     const text = await c.page.evaluate(async () => { window.game.openCoreCityRoadmap(); await new Promise(res => setTimeout(res, 230)); return document.getElementById('infoSheetBody').innerText; });
-    r.push(report('language: the Core City multiplier uses the decimal sign of the chosen language, ' + lang, want.test(text), (text.match(/×\d[.,]\d/) || [''])[0]));
+    r.push(report('language: the Core City starting bonus is named in the chosen language, no multiplier left to apply (R3-06), ' + lang, want.test(text) && !/×\d[.,]\d/.test(text), (text.match(/(Starting bonus|Premia startowa)[^.(]*|×\d[.,]\d/) || [''])[0]));
     await c.browser.close();
   }
   return r;
