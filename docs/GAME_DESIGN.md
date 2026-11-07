@@ -653,11 +653,18 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   w przeglądarce, przez SDK; zalogowany gracz — na koncie CrazyGames, z synchronizacją
   urządzeń. Logowanie nie jest wymagane i gra nie ma własnego ekranu logowania. Przy
   zalogowaniu CrazyGames przeładowuje grę z danymi konta (konto bez danych przejmuje
-  postęp gościa); od chwili zalogowania strona nic więcej nie zapisuje, żeby postęp
-  gościa nie trafił na konto, które już ma swój. Wylogowanie odświeża stronę jako gość.
+  postęp gościa); od chwili zalogowania strona nic więcej nie zapisuje ani nie odczytuje
+  (także „napraw zapis”, reset profilu i kod kopii zapasowej), żeby postęp gościa nie
+  trafił na konto, które już ma swój. SDK 3.8.0 umie też przełączyć dane na konto bez
+  przeładowania (CG-DATA-2), dlatego komunikat „Zalogowano na konto CrazyGames” ma tylko
+  ODŚWIEŻ i nie da się go zamknąć; w trakcie rundy pojawia się po jej końcu (ta runda nie
+  jest zapisana). Wylogowanie odświeża stronę jako gość.
   Paczka nie czyta ani nie pisze własnego klucza `vectorHoleSave_v1` w `localStorage`
   (stare zapisy z niewydanych paczek testowych zostają nietknięte i nieużywane —
-  decyzja właścicielki). Gra czeka na `SDK.init()` (ekran ukryty, maks. 20 s); gdy SDK
+  decyzja właścicielki). Gra czeka na `SDK.init()` (maks. 20 s; zwykle ułamek sekundy) —
+  w tym czasie strona paczki pokazuje statyczny ekran ładowania po angielsku: GLITCH GULP,
+  wirujący wir, po 3 s „Connecting to CrazyGames saving…”, bez paska postępu (CG-DATA-2);
+  gdy SDK
   nie działa (zablokowany skrypt, błąd, brak odpowiedzi, poza CrazyGames, wyłączony
   Data Module), zapis jest „niedostępny”: gra działa z pamięci, nic nie zapisuje ani nie
   usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”. Na Full Launch dochodzą

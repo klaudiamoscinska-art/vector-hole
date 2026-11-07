@@ -4,6 +4,17 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-DATA-2 „Audyt Data Module przed CrazyGames Preview” (zapis nadal v13, klucz bez zmian; rozgrywka, ekonomia, FTUE bez zmian; na GitHub Pages bez widocznej zmiany)
+- **Logowanie bez przeładowania nie miesza kont:** SDK 3.8.0 umie przełączyć dane na konto w działającej
+  stronie. Od zalogowania paczka nie czyta ani nie pisze zapisu żadną drogą (wcześniej kod kopii zapasowej,
+  „napraw zapis” i reset profilu mogły zapisać lub skasować dane konta), a komunikat „Zalogowano na konto
+  CrazyGames” ma tylko ODŚWIEŻ i nie da się go zamknąć (wcześniej ROZUMIEM pozwalało grać dalej bez zapisu,
+  bez kolejnego ostrzeżenia). W trakcie rundy komunikat czeka do jej końca.
+- **Ekran ładowania paczki** zamiast pustej strony, gdy gra czeka na SDK: statyczny, po angielsku (GLITCH GULP,
+  wirujący wir, po 3 s „Connecting to CrazyGames saving…”), bez paska postępu; znika, gdy gra startuje.
+- `qa/cg-data1.mjs`: logowanie w trakcie rundy, blokada po logowaniu, dwie karty zalogowanego gracza, ekran
+  ładowania i czas startu (mock, prawdziwe SDK w trybie lokalnym).
+
 ## CG-DATA-1 „Zapis paczki CrazyGames przez Data Module” (zapis nadal v13, klucz bez zmian; GitHub Pages, rozgrywka, ekonomia i FTUE bez zmian)
 - **Paczka CrazyGames zapisuje postęp przez Data Module CrazyGames SDK v3**: gość w przeglądarce,
   zalogowany gracz na koncie CrazyGames (synchronizacja urządzeń). Bez logowania w grze, bez backendu.

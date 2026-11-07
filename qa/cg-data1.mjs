@@ -32,9 +32,18 @@ const SPY = `(() => {
     };
   }
   window.__flash = { visibleBeforeReady: false, hiddenFrames: 0 };
+  // CG-DATA-2: the package's loader -- what the first frame shows, frames with neither the
+  // loader nor the game, when its "what we wait for" line shows and when the game starts.
+  window.__boot = { first: null, emptyFrames: 0, waitShownAt: null, readyAt: null, loaderAfterReady: null };
   const tick = () => {
     const app = document.getElementById('app'), ready = document.documentElement.classList.contains('i18n-ready');
-    if (ready) return;
+    const b = document.getElementById('cgBoot');
+    const shown = !!b && getComputedStyle(b).display !== 'none';
+    if (ready) { window.__boot.readyAt = performance.now(); window.__boot.loaderAfterReady = shown; return; }
+    if (!window.__boot.first && document.body) window.__boot.first = { loader: shown, text: b ? b.innerText : '', progress: !!document.querySelector('progress, [role="progressbar"]') };
+    if (!shown && document.body) window.__boot.emptyFrames++;
+    const w = b && b.querySelector('.cg-boot-wait');
+    if (w && window.__boot.waitShownAt === null && +getComputedStyle(w).opacity > 0.9) window.__boot.waitShownAt = performance.now();
     if (app) { if (getComputedStyle(app).visibility !== 'hidden') window.__flash.visibleBeforeReady = true; else window.__flash.hiddenFrames++; }
     requestAnimationFrame(tick);
   };
@@ -114,12 +123,14 @@ async function newPlayerChecks(url) {
   await settle(300);
   const s = await p.evaluate(() => {
     const def = defaultSave(), sv = window.game.save;
-    return { ...window.__state(), flash: window.__flash, htmlLang: document.documentElement.lang,
+    return { ...window.__state(), flash: window.__flash, boot: window.__boot, htmlLang: document.documentElement.lang,
       fresh: sv.coins === def.coins && (sv.prisms || 0) === (def.prisms || 0) && Object.keys(sv.campaign.completed).length === 0 && JSON.stringify(sv.owned) === JSON.stringify(def.owned) && JSON.stringify(sv.campaign.unlockedDistricts) === JSON.stringify(def.campaign.unlockedDistricts),
       touch: window.__lsTouch.slice(), polish: /[ąćęłńóśźż]/i.test(document.getElementById('app').innerText) };
   });
   r.push(report('[mock] A new player: no save, the welcome screen, a guard that may save (ok)', s.welcome && s.guard === 'ok' && s.runs === 0, JSON.stringify(s)));
   r.push(report('[mock] A new player: English from the first visible frame (Polish browser, SDK 1.5 s late), #app hidden until then, no Polish on screen', s.lang === 'en' && s.htmlLang === 'en' && !s.flash.visibleBeforeReady && s.flash.hiddenFrames > 10 && !s.polish, JSON.stringify({ flash: s.flash, lang: s.lang, polish: s.polish })));
+  const b = s.boot;
+  r.push(report('[mock] A new player: the first frame is the English GLITCH GULP loader (no empty frame, no progress bar, no Polish), gone once the game starts; the "connecting" line waits past 1.5 s', b.first && b.first.loader && /GLITCH GULP/.test(b.first.text) && !/[ąćęłńóśźż%]/i.test(b.first.text) && !b.first.progress && b.emptyFrames === 0 && b.loaderAfterReady === false && b.waitShownAt === null, JSON.stringify(b)));
   r.push(report('[mock] A new player: nothing unlocked for testing (coins, prisms, looks, missions, districts = defaultSave())', s.fresh, JSON.stringify(s)));
   r.push(report('[mock] A new player: the game never reads or writes its own localStorage key in the package', s.touch.length === 0, s.touch.join()));
   r.push(report('[mock] A new player: no errors, nothing external besides the SDK', d.errors.length === 0 && d.external.length === 0, d.errors.concat(d.external).slice(0, 2).join(' | ')));
@@ -176,6 +187,16 @@ async function accountChecks(url) {
   await reload(p1);
   const synced = await p1.evaluate(() => window.__state());
   r.push(report('[mock] C account: progress made on the second device is there on the first after a reload', more.done && synced.m01, JSON.stringify(synced)));
+  // CG-DATA-2: two tabs of the same logged-in player on one device (the SDK keeps a copy of
+  // the account data in SDK_DATA_CLOUD_CACHE_<id>): the older tab must not write over the newer.
+  const t2 = await d1.open();
+  const newer = await t2.evaluate(() => { window.__arena(); return { runs: window.game.save.stats.runsPlayed, coins: window.game.save.coins }; });
+  await settle(300);
+  const older = await p1.evaluate(() => ({ guard: SAVE_GUARD.state, ok: saveGame(window.game.save) }));
+  await settle();
+  const kept = cloudSave('acc-A');
+  r.push(report('[mock] C account, two tabs: a round in the second tab stops the first from writing; the account keeps the newer progress', older.guard === 'stale' && older.ok === false && kept.stats.runsPlayed === newer.runs && kept.coins === newer.coins, JSON.stringify({ older, newer, cloud: { runs: kept.stats.runsPlayed, coins: kept.coins } })));
+  await t2.close();
   r.push(report('[mock] C account: no errors, no direct localStorage save key', d1.errors.length + d2.errors.length === 0 && (await p1.evaluate(() => window.__lsTouch.length)) === 0, d1.errors.concat(d2.errors).slice(0, 2).join(' | ')));
   await d1.close(); await d2.close();
   return r;
@@ -195,9 +216,56 @@ async function conflictChecks(url) {
   const moved = cloudSave('acc-new');
   r.push(report('[mock] D1 guest -> new account: the page stops writing at the login, the SDK carries the guest progress to the account', st1.guard === 'stale' && st1.write === false && moved && moved.stats.runsPlayed === g1.runs, JSON.stringify({ guard: st1.guard, write: st1.write, moved: moved && moved.stats.runsPlayed })));
   r.push(report('[mock] D1 the player sees why (English): signed in, reload to play with the account', /Signed in to CrazyGames/.test(st1.sheet) && /account's progress/.test(st1.sheet) && !/[ąćęłńóśźż]/i.test(st1.sheet), st1.sheet.slice(0, 200)));
-  await reload(p);
+  // CG-DATA-2: the SDK switched SDK.data in place (no reload): the notice must not let the
+  // player play on unsaved, and no save path may touch the account's data any more.
+  const accBytes1 = CLOUD.get('acc-new');
+  const lock = await p.evaluate(() => {
+    const sheet = document.getElementById('infoSheet'), g = window.game;
+    sheet.dispatchEvent(new MouseEvent('click', { bubbles: true })); // a tap on the backdrop
+    g.closeInfoSheet(); g.openInfoSheet({ title: 'another sheet', body: [] }); g.showScreen('profileScreen');
+    const res = { closeHidden: document.getElementById('btnInfoSheetClose').classList.contains('hidden'), write: saveGame(g.save) };
+    // A backup code is the player's explicit choice -- it lifts a guard, but not this one.
+    res.adopt = g.adoptSave(defaultSave(), 'code');
+    g.resetProfile(); // "Reset profile" after the login: must not delete the account's save
+    // No Data Module call at all after the login (the mock logs every one).
+    const log = window.__cgMockLog, at = log.findIndex(x => x[0] === 'login');
+    res.dataCallsAfterLogin = log.slice(at + 1).filter(x => /Item|clear/.test(x[0])).length;
+    res.storeOpen = res.dataCallsAfterLogin > 0;
+    return res;
+  });
+  await settle(300);
+  const lockSheet = await p.evaluate(() => { const s = document.getElementById('infoSheet'); return s.classList.contains('hidden') ? '' : s.innerText; });
+  r.push(report('[mock] D1 after the login the notice stays (no close button, the backdrop, other sheets and screens leave it), only RELOAD; repair, save and reset touch nothing', lock.closeHidden && /Signed in to CrazyGames/.test(lockSheet) && /RELOAD/i.test(lockSheet) && lock.adopt === null && lock.write === false && lock.storeOpen === false && CLOUD.get('acc-new') === accBytes1, JSON.stringify({ lock, sheet: lockSheet.slice(0, 120), accountUnchanged: CLOUD.get('acc-new') === accBytes1 })));
+  await Promise.all([p.waitForNavigation(), p.click('#btnInfoSheetAction')]);
+  await ready(p);
   const after1 = await p.evaluate(() => window.__state());
-  r.push(report('[mock] D1 after the reload the account plays on with the carried progress', after1.runs === g1.runs && after1.guard === 'ok', JSON.stringify(after1)));
+  r.push(report('[mock] D1 RELOAD: the account plays on with the carried progress', after1.runs === g1.runs && after1.guard === 'ok', JSON.stringify(after1)));
+  const errD1 = d.errors.slice();
+  await d.close();
+
+  // D5: a login during an Arena round (to an account with data): the round plays on, its
+  // result is not written anywhere, the reload notice comes when the round ends.
+  const accR = await accountWithProgress(url, 'acc-round', 2);
+  const bytesR = CLOUD.get('acc-round');
+  d = await device(url);
+  p = await d.open();
+  await p.evaluate(() => window.__arena());
+  const guestBlobR = await p.evaluate(() => window.__lsRaw('SDK_DATA_qa-mock'));
+  await p.evaluate(() => window.game.startRound({}));
+  await settle(500);
+  await p.evaluate(() => window.__cgMockLogin({ id: 'acc-round', username: 'qa_round' }));
+  await settle(500);
+  const mid = await p.evaluate(() => ({ running: window.game.running, sheet: !document.getElementById('infoSheet').classList.contains('hidden') }));
+  await p.evaluate(() => { window.game.timeRemaining = 0.05; });
+  await p.waitForFunction(() => !window.game.running, null, { timeout: 10000 });
+  await settle(500);
+  const endR = await p.evaluate(() => { const s = document.getElementById('infoSheet'); return { sheet: s.classList.contains('hidden') ? '' : s.innerText, closeHidden: document.getElementById('btnInfoSheetClose').classList.contains('hidden'), guestBlob: window.__lsRaw('SDK_DATA_qa-mock') }; });
+  r.push(report('[mock] D5 login during a round: no notice over the running round; at its end the reload notice; the round written neither to the account nor to the guest data', mid.running && !mid.sheet && /Signed in to CrazyGames/.test(endR.sheet) && endR.closeHidden && CLOUD.get('acc-round') === bytesR && endR.guestBlob === guestBlobR, JSON.stringify({ mid, sheet: endR.sheet.slice(0, 80), account: CLOUD.get('acc-round') === bytesR, guest: endR.guestBlob === guestBlobR })));
+  await Promise.all([p.waitForNavigation(), p.click('#btnInfoSheetAction')]);
+  await ready(p);
+  const afterR = await p.evaluate(() => window.__state());
+  r.push(report('[mock] D5 after RELOAD the account\'s own progress shows', afterR.runs === accR.runs && afterR.coins === accR.coins && afterR.guard === 'ok', JSON.stringify({ afterR, accR })));
+  r.push(report('[mock] D1/D5 no errors', errD1.length + d.errors.length === 0, errD1.concat(d.errors).slice(0, 2).join(' | ')));
   await d.close();
 
   // D2: a guest with its own progress logs in to an account that already has data.
@@ -271,9 +339,10 @@ async function robustnessChecks(url) {
   // E1: a slow SDK -- nothing is read or written before it is ready, the save loads in full.
   let d = await device(url, { mock: { mode: 'sdk', initDelayMs: 4000 }, seed: { [GUEST]: base.blob } });
   let p = await d.open();
-  let s = await p.evaluate(() => ({ ...window.__state(), flash: window.__flash, log: window.__cgMockLog.map(x => x[0]) }));
+  let s = await p.evaluate(() => ({ ...window.__state(), flash: window.__flash, boot: window.__boot, log: window.__cgMockLog.map(x => x[0]) }));
   // (The mock refuses any data call before init() resolved; the log starts at init.)
   r.push(report('[mock] E1 slow SDK (4 s): the game waits, #app stays hidden, no data call before init, then the full save loads', s.guard === 'ok' && s.coins === base.st.coins && s.runs === base.st.runs && !s.flash.visibleBeforeReady && s.flash.hiddenFrames > 30 && s.log[0] === 'init' && s.log[1] === 'getItem', JSON.stringify(s)));
+  r.push(report('[mock] E1 slow SDK (4 s): the loader the whole time, its "Connecting to CrazyGames saving" line after ~3 s, the game then starts', s.boot.first && s.boot.first.loader && s.boot.emptyFrames === 0 && s.boot.waitShownAt !== null && s.boot.waitShownAt > 2500 && s.boot.waitShownAt < s.boot.readyAt && s.boot.loaderAfterReady === false, JSON.stringify(s.boot)));
   await d.close();
 
   // E2-E5: SDK missing / init fails / init never answers / Data Module disabled.
@@ -293,7 +362,9 @@ async function robustnessChecks(url) {
     await settle(400);
     // The notice opens at boot; read it before a round closes the sheet.
     const sheet = await p.evaluate(() => { const s = document.getElementById('infoSheet'); return s && !s.classList.contains('hidden') ? s.innerText : ''; });
-    const st = await p.evaluate(() => ({ ...window.__state(), written: saveGame(window.game.save), arena: window.__arena() }));
+    const st = await p.evaluate(() => ({ ...window.__state(), boot: window.__boot, written: saveGame(window.game.save), arena: window.__arena() }));
+    // (A fast failure can start the game before the first frame: then no loader is ever seen.)
+    r.push(report(`[mock] ${name}: no empty frame while waiting (the loader until the game starts and explains), start after ${Math.round(st.boot.readyAt || -1)} ms`, (!st.boot.first || st.boot.first.loader) && st.boot.emptyFrames === 0 && st.boot.loaderAfterReady === false, JSON.stringify(st.boot)));
     await settle(400);
     const after = await p.evaluate(() => ({ blob: window.__lsRaw('SDK_DATA_qa-mock'), legacy: window.__lsRaw('vectorHoleSave_v1'), sdkKeys: Object.keys(localStorage).filter(k => /^SDK_DATA/.test(k)) }));
     const notice = /Couldn't connect to CrazyGames saving/.test(sheet) && !/[ąćęłńóśźż]/i.test(sheet);
@@ -414,7 +485,8 @@ async function realSdkChecks(url, gameDir, file) {
   const version = (real.match(/HTML SDK initialized",\{version:"(\d+\.\d+\.\d+)"/) || [])[1] || '?';
   const d = await device(url, { sdk: real, mock: {}, locale: 'pl-PL' });
   const p = await d.open();
-  const s0 = await p.evaluate(() => ({ ...window.__state(), env: window.CrazyGames.SDK.environment }));
+  const s0 = await p.evaluate(() => ({ ...window.__state(), env: window.CrazyGames.SDK.environment, boot: window.__boot }));
+  r.push(report(`[real SDK local] SDK ${version}: the loader from the first frame, no empty frame, the game starts after ${Math.round(s0.boot.readyAt || -1)} ms (normal start, SDK on this machine)`, s0.boot.first && s0.boot.first.loader && s0.boot.emptyFrames === 0 && s0.boot.loaderAfterReady === false && s0.boot.readyAt < 10000, JSON.stringify(s0.boot)));
   const a = await p.evaluate(() => window.__arena());
   const blob = await p.evaluate(() => { const b = JSON.parse(window.__lsRaw('SDK_DATA_local') || 'null'); return b && b.data && b.data.vectorHoleSave_v1 ? JSON.parse(b.data.vectorHoleSave_v1) : null; });
   await reload(p);
@@ -439,8 +511,9 @@ async function realSdkChecks(url, gameDir, file) {
   const t0 = Date.now();
   await page.goto('https://glitch-gulp.game-files.crazygames.com/index.html');
   await ready(page, 30000);
-  const off = await page.evaluate(() => ({ guard: SAVE_GUARD.state, env: window.CrazyGames.SDK.environment, keys: Object.keys(localStorage).filter(k => /^SDK_DATA|^vectorHoleSave/.test(k)), touch: window.__lsTouch }));
+  const off = await page.evaluate(() => ({ guard: SAVE_GUARD.state, env: window.CrazyGames.SDK.environment, keys: Object.keys(localStorage).filter(k => /^SDK_DATA|^vectorHoleSave/.test(k)), touch: window.__lsTouch, boot: window.__boot }));
   r.push(report('[real SDK local] outside CrazyGames the real SDK turns itself off: the game starts after its check, saves nothing (unavailable)', off.env === 'disabled' && off.guard === 'unavailable' && off.keys.length === 0, JSON.stringify({ ...off, bootMs: Date.now() - t0 })));
+  r.push(report(`[real SDK local] its ~7 s check: the loader and its "connecting" line the whole time (start after ${Math.round(off.boot.readyAt || -1)} ms)`, off.boot.first && off.boot.first.loader && off.boot.emptyFrames === 0 && off.boot.waitShownAt !== null && off.boot.loaderAfterReady === false, JSON.stringify(off.boot)));
   await ctx.close();
   return r;
 }

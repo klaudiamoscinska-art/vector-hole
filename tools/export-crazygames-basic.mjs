@@ -22,6 +22,7 @@ export const DISTRIBUTION = 'crazygames-basic';
 export const LIMITS = { files: 1500, bytes: 50 * 1024 * 1024, mobileHomepageBytes: 20 * 1024 * 1024 };
 // docs.crazygames.com/sdk/intro (read 2026-11-06): in <head>, before the game's code.
 export const CG_SDK_SRC = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
+export const CG_BOOT = '<div id="cgBoot" role="status" aria-live="polite"><div class="cg-boot-vortex" aria-hidden="true"></div><p class="cg-boot-title">GLITCH GULP</p><p class="cg-boot-wait">Connecting to CrazyGames saving…</p></div>';
 const TITLE = 'GLITCH GULP';
 const DESCRIPTION = 'Steer a vortex through a neon city and swallow everything smaller. 2-minute Arena rounds against bots and a 240-mission Campaign.';
 
@@ -52,6 +53,9 @@ export function packagePage(html) {
   once(/(<noscript><p\b[^>]*>)[^<]*(<\/p><\/noscript>)/, '$1GLITCH GULP needs JavaScript turned on.$2', '<noscript>');
   // CG-DATA-1: the Data Module save needs the SDK, loaded before game.js runs.
   once(/<\/head>/, `<script src="${CG_SDK_SRC}"></script>\n</head>`, '</head>');
+  // CG-DATA-1: while SDK.init() runs the game is hidden; this static, English loader is the
+  // first frame instead of an empty page (style.css #cgBoot; gone once the game starts).
+  once(/<body>\n/, `<body>\n${CG_BOOT}\n`, '<body>');
   return out;
 }
 

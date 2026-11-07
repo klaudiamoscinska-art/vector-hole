@@ -3631,8 +3631,16 @@ async function cgDataBoot() {
       removeItem: (k) => data().removeItem(k)
     };
     // A login while playing: from now on SDK.data may hold another player's
-    // save, so this page writes nothing more (CrazyGames reloads it).
-    try { sdk.user.addAuthListener(() => { CG_DATA.login = true; markSaveStale(); }); } catch (e) { /* no user module */ }
+    // save (SDK 3.8.0 can switch it to the account's data without a reload),
+    // so this page neither reads nor writes it any more -- not even through
+    // the player's "repair"/"reset" choices -- and asks for a reload.
+    try {
+      sdk.user.addAuthListener(() => {
+        CG_DATA.login = true;
+        if (SAVE_GUARD.state === 'ok') SAVE_GUARD.state = 'stale';
+        if (SAVE_GUARD.notify) SAVE_GUARD.notify();
+      });
+    } catch (e) { /* no user module */ }
   } catch (e) {
     CG_DATA.error = (e && (e.code || e.message)) || String(e);
     console.warn('GLITCH GULP: CrazyGames Data Module unavailable, progress is not saved this session:', CG_DATA.error);
@@ -3645,6 +3653,7 @@ async function cgDataBoot() {
 function playerSaveStore() {
   if (!PORTAL_BASIC) return localStorage;
   if (!CG_DATA.store) throw new Error('CrazyGames Data Module unavailable: ' + CG_DATA.error);
+  if (CG_DATA.login) throw new Error('Signed in to CrazyGames: this page no longer touches the save');
   return CG_DATA.store;
 }
 /** Where loadSave()/saveGame() go: the dev panel's test save always stays in
@@ -10678,8 +10687,10 @@ class Game {
   /** PX01: tells the player why progress isn't being saved and offers the
    *  only safe ways out (each shown once per session). */
   showSaveGuardNotice(kind = SAVE_GUARD.state) {
+    // CG-DATA-2: after a CrazyGames login every way on is the reload.
+    if (PORTAL_BASIC && !DEV.sandbox && CG_DATA.login) kind = 'login';
     if (kind === 'ok') return;
-    if (kind !== 'rescueFailed') {
+    if (kind !== 'rescueFailed' && kind !== 'login') {
       if (this.saveGuardShown === kind) return;
       this.saveGuardShown = kind;
       this.analytics.track('save_guard', { state: kind, issues: SAVE_GUARD.issues.length });
@@ -10701,11 +10712,12 @@ class Game {
     // CG-DATA-1: in the CrazyGames package the save is the SDK's, not the browser's.
     if (PORTAL_BASIC && !DEV.sandbox) {
       sheets.unavailable.body = ['Nie udało się połączyć z zapisem CrazyGames, więc gra nie odczytała Twojego postępu. Niczego nie usunie ani nie nadpisze.', keep, 'Odśwież stronę, aby spróbować ponownie.'];
-      if (CG_DATA.login) sheets.stale = { title: 'Zalogowano na konto CrazyGames', body: ['Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.', 'Odśwież stronę, aby grać dalej z postępem z konta.'], action: { label: 'ODŚWIEŻ', onClick: reload } };
+      // No "play without saving" here: the page can't tell whose save SDK.data holds now.
+      sheets.login = { title: 'Zalogowano na konto CrazyGames', body: ['Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.', 'Odśwież stronę, aby grać dalej z postępem z konta.'], action: { label: 'ODŚWIEŻ', onClick: reload }, locked: true };
     }
     const sh = sheets[kind];
     if (!sh) return;
-    this.openInfoSheet({ title: sh.title, body: sh.body, action: sh.action || null, closeLabel: sh.action && kind !== 'stale' ? 'GRAJ BEZ ZAPISU' : 'ROZUMIEM' });
+    this.openInfoSheet({ title: sh.title, body: sh.body, action: sh.action || null, closeLabel: sh.action && kind !== 'stale' ? 'GRAJ BEZ ZAPISU' : 'ROZUMIEM', locked: !!sh.locked });
   }
 
   updateCoinDisplays() {
@@ -11075,11 +11087,15 @@ class Game {
 
   /** Generic "what is this?" popup (#infoSheet). `body` is a list of
    *  paragraphs/HTML snippets (authored strings only, never user input);
-   *  `action` optionally adds a primary button ({label, onClick}). */
-  openInfoSheet({ icon = '', title, body = [], action = null, onClose = null, closeLabel = 'ROZUMIEM' }) {
+   *  `action` optionally adds a primary button ({label, onClick}); a
+   *  `locked` sheet has only that button and stays until it is used. */
+  openInfoSheet({ icon = '', title, body = [], action = null, onClose = null, closeLabel = 'ROZUMIEM', locked = false }) {
+    if (this.infoSheetLocked) return;
     this.closeInfoSheet();
     this.infoSheetOnClose = onClose;
+    this.infoSheetLocked = locked && !!action;
     document.getElementById('btnInfoSheetClose').textContent = closeLabel;
+    document.getElementById('btnInfoSheetClose').classList.toggle('hidden', this.infoSheetLocked);
     document.getElementById('infoSheetIcon').innerHTML = icon;
     document.getElementById('infoSheetIcon').classList.toggle('hidden', !icon);
     document.getElementById('infoSheetTitle').textContent = title;
@@ -11093,6 +11109,7 @@ class Game {
   }
 
   closeInfoSheet() {
+    if (this.infoSheetLocked) return;
     document.getElementById('infoSheet').classList.add('hidden');
     this.infoSheetAction = null;
     const onClose = this.infoSheetOnClose;
@@ -11547,7 +11564,8 @@ class Game {
     // A restored save lands on Miasto -- never on a result screen of the
     // save it replaced (whose buttons would then act on the new one).
     if (this.pendingSave && !this.running) { const p = this.pendingSave; this.pendingSave = null; this.adoptSave(p.save, p.source, p.after); return; }
-    if (SAVE_GUARD.state === 'stale' && !this.saveGuardShown) setTimeout(() => this.showSaveGuardNotice(), 0);
+    // CG-DATA-2: a CrazyGames login during a round asks for the reload as soon as it ends.
+    if ((SAVE_GUARD.state === 'stale' && !this.saveGuardShown) || CG_DATA.login) setTimeout(() => { if (!(CG_DATA.login && this.running)) this.showSaveGuardNotice(); }, 0);
     // FTUE-1: Miasto visits (a real arrival, not a re-render) after the
     // first finished play -- the login calendar waits for the second.
     if (id === 'mainMenu' && document.getElementById('mainMenu').classList.contains('hidden') && !this.isFirstRun()) this.hubVisits = (this.hubVisits || 0) + 1;
@@ -11601,6 +11619,7 @@ class Game {
 
   hideAllOverlays() {
     ['mainMenu', 'shopScreen', 'gameOverScreen', 'adOverlay', 'pauseSheet', 'leaveConfirm', 'resetProfileConfirm', 'infoSheet', 'unlockOverlay', 'loginRewardScreen', 'reviveOverlay', 'consentBar', 'profileScreen', 'campaignScreen', 'missionResultScreen', 'challengesScreen', 'missionBriefing'].forEach(s => {
+      if (s === 'infoSheet' && this.infoSheetLocked) return; // e.g. a key press on a focused button behind it
       document.getElementById(s).classList.add('hidden');
     });
     document.getElementById('bottomNav').classList.add('hidden');
