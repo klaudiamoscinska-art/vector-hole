@@ -272,9 +272,7 @@ po `<body>`; `game.js`; `style.css`; 1,33 MB, ZIP 0,41 MB; powtarzalny eksport �
 - Wolna sieć: skrypt reklam SDK nie ma limitu czasu; jeśli `init()` przekroczy 20 s, sesja jest „unavailable”
   (bez zapisu, z komunikatem) — bezpiecznie, ale bez zapisu.
 - Ekran ładowania jest po angielsku także dla gracza, który wybrał polski (języka nie znamy przed odczytem zapisu).
-- **Decyzja właścicielki:** „Resetuj profil” w paczce usuwa główny zapis, a kopie `.bak`/`.rescue` (jeśli kiedyś
-  powstały) zostają na koncie — tekst prywatności mówi „kasuje zapis gry, także z konta”. Opcje: usuwać też kopie
-  przy resecie w paczce albo doprecyzować tekst. Nie zmieniałem (to zmiana zachowania PX01).
+- ~~Decyzja właścicielki: kopie `.bak`/`.rescue` po resecie~~ — rozstrzygnięte w CG-DATA-2 R1 (niżej).
 
 ### Procedura Preview dla właścicielki (uzupełnia §F)
 Kroki 1–7 z §F na nowej paczce, a dodatkowo:
@@ -287,3 +285,64 @@ Kroki 1–7 z §F na nowej paczce, a dodatkowo:
     o innej karcie; po odświeżeniu pierwsza karta ma rundę z drugiej.
 11. **Ekran ładowania:** przy starcie GLITCH GULP z wirującym wirem (zwykle ułamek sekundy), nigdy pusta strona ani
     polski tekst.
+
+## CG-DATA-2 R1 — bezpieczny reset profilu w paczce (2026-11-07)
+
+Decyzja właścicielki: świadomy reset profilu w paczce CrazyGames usuwa `vectorHoleSave_v1`,
+`vectorHoleSave_v1.bak` i `vectorHoleSave_v1.rescue` (nazwy potwierdzone w kodzie: `SAVE_KEY`, `saveBackupKey()`,
+`saveRescueKey()`; w paczce `SAVE_SLOT` = `SAVE_KEY`, poza panelem TEST).
+
+### Ścieżki resetu i odzyskiwania (przegląd)
+- `Game.resetProfile()` (Profil → Resetuj profil → TAK, RESETUJ) — jedyny świadomy reset; zmieniony tylko w paczce.
+- „ZACZNIJ OD NOWA” / „NAPRAW ZAPIS” (arkusz uszkodzonego zapisu) i kod kopii zapasowej (`adoptSave()`) — to nie reset
+  profilu: odkładają stary zapis do `.rescue` (PX01), bez zmian.
+- Panel TEST — własny zapis w `localStorage`, bez zmian.
+- Automatyczne odczytanie kopii: **nie istnieje** — `.bak`/`.rescue` są tylko zapisywane (`storeCopy()`), `loadSave()`
+  czyta wyłącznie `SAVE_SLOT`; „Pobierz moje dane” eksportuje stan z pamięci.
+
+### Zachowanie (paczka; `cgEraseSave()` w `game.js`)
+- `removeItem()` każdego klucza osobno, **nigdy `clear()`**; kolejność: `.bak`, `.rescue`, na końcu zapis; po każdym
+  usunięciu odczyt kontrolny.
+- **Nic nie jest usuwane** (`'blocked'`, komunikat „Profil nie został zresetowany”, bez przeładowania), gdy strażnik
+  zapisu nie jest w stanie `ok` (inna karta z nowszym postępem, zalogowanie — wtedy zablokowany arkusz logowania,
+  SDK niedostępne, zapis nieczytelny / z nowszej wersji) albo gdy zapis w SDK różni się od tego, co strona odczytała
+  (inna karta zapisała przed dotarciem zdarzenia `storage`).
+- **Częściowe niepowodzenie** (`'failed'`): zatrzymanie na pierwszym kluczu, który został; komunikat „Nie udało się
+  zresetować profilu”, **bez przeładowania i bez komunikatu o sukcesie**; zapis, jeśli został, działa dalej.
+  Ponieważ zapis jest usuwany jako ostatni, nigdy nie zostaje stan „zapis usunięty, kopie zostały”.
+- Sukces: strażnik w stan `reset` (strona nic już nie zapisze do przeładowania), potem `location.reload()`.
+- GitHub Pages / web: reset jak dotąd (usuwa tylko `SAVE_SLOT`, kopie zostają, PX01 bez zmian).
+- Teksty: prywatność w grze (PL + EN) i `docs/crazygames/PRIVACY_POLICY_DRAFT.md` opisują usunięcie kopii;
+  6 nowych wpisów `I18N_EN`.
+
+### Testy (PASS / FAIL / NOT RUN)
+`qa/cg-data1.mjs --real-sdk=…`: **76/76 PASS** (było 62; nowe: G1–G9 i reset na prawdziwym SDK).
+Te same testy na kodzie `8e731bb`: 10 FAIL w G1–G8 (kopie zostawały; przy innej karcie, zapisie nieczytelnym
+i częściowym błędzie reset kasował dane albo milczał), G9 (web) PASS na obu — zachowanie web bez zmian.
+
+| Test | Rodzaj | Wynik |
+|---|---|---|
+| G1 gość: 3× `removeItem` (bez `clear`), świeży profil, ponowne przeładowanie i nowa karta bez powrotu danych | mock | PASS |
+| G2 konto: klucze usunięte z danych konta, świeży profil, drugie urządzenie świeże | mock (chmura symulowana) | PASS |
+| G3–G5 SDK niedostępne / inna karta / wyścig z inną kartą / zapis uszkodzony: nic nie usunięte (bajt w bajt), komunikat EN | mock | PASS |
+| G6 SDK odmawia usunięcia zapisu: kopie usunięte, zapis został i działa, komunikat błędu, kolejny reset kończy się | mock | PASS |
+| G7 SDK odmawia usunięcia pierwszej kopii: nic nie usunięte | mock | PASS |
+| G8 tekst prywatności EN | mock | PASS |
+| G9 GitHub Pages: reset jak dotąd (kopie zostają), świeży profil, bez SDK | web | PASS |
+| Reset przez prawdziwe SDK 3.8.0 (`SDK_DATA_local`) | real SDK local | PASS |
+| Reset zalogowanego gracza na prawdziwym CrazyGames, synchronizacja usunięcia z chmurą, drugie urządzenie | portal | **NOT RUN / NOT VERIFIED** |
+
+Regresja kandydata: REGRESJA_R1
+
+### Paczka
+PACZKA_R1
+
+### Ryzyka
+- **NOT VERIFIED:** czy usunięcie u zalogowanego gracza dociera do chmury CrazyGames przed przeładowaniem (debounce
+  1–30 s w ramce portalu; brak API wymuszenia). Lokalny PASS (mock, prawdziwe SDK w trybie local) tego nie dowodzi.
+  Sprawdzi to krok 8 procedury Preview (reset → 30 s → odświeżenie → nadal nowy profil; drugie urządzenie).
+- Prawdziwe SDK mogłoby teoretycznie usunąć klucz w pamięci, a nie zapisać tego w przeglądarce (np. pełna pamięć) —
+  odczyt kontrolny widzi pamięć SDK; po przeładowaniu stary zapis mógłby wrócić. Mało prawdopodobne (usuwanie
+  zmniejsza dane), NOT VERIFIED.
+- Komunikat „Profil nie został zresetowany” przy zapisie uszkodzonym radzi odświeżenie, które tego nie naprawi —
+  gracz ma wtedy w arkuszu uszkodzonego zapisu „ZACZNIJ OD NOWA” (PX01).
