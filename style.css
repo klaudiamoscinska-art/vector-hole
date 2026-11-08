@@ -4140,7 +4140,9 @@ body[data-gfx="0"] #hud::before { display: none; }
 #campaignScreen .district-tile .district-node-name { font-size: 11.5px; }
 #campaignScreen .district-tile .district-node-status { font-size: 9px; }
 /* VISUAL-1: where you play now, what opens next, a district just opened. */
-.district-tile-chip { position: absolute; top: 5px; left: 6px; z-index: 1; will-change: transform; padding: 2px 6px; border-radius: 6px;
+.district-tile .district-node-status { display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.district-status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.district-tile-chip { position: relative; flex: none; z-index: 1; will-change: transform; padding: 1px 5px; border-radius: 6px;
   font-size: 9px; font-weight: 800; letter-spacing: 0.06em; line-height: 1.2; color: #04101D; background: var(--district-color);
   box-shadow: 0 0 8px color-mix(in srgb, var(--district-color) 60%, transparent); }
 .district-tile-chip.next { color: var(--district-color); background: rgba(4, 16, 29, 0.85); border: 1px solid var(--district-color); box-shadow: none; }
@@ -4943,7 +4945,7 @@ body.compact #mainMenu.first-run .welcome-note { grid-column: 2; grid-row: 4; }
 /* --- compact Dzielnice: 12 smaller tiles; the next mission on the right */
 body.compact #campaignScreen .district-tile { height: 50px; }
 body.compact #campaignScreen .district-tile .district-node-name { font-size: 11px; }
-body.compact #campaignScreen .district-tile .district-node-status { font-size: 9px; }
+body.compact #campaignScreen .district-tile .district-node-status { font-size: 9px; gap: 3px; } body.compact .district-tile-chip { padding: 0 3px; letter-spacing: 0; }
 body.compact #campaignScreen .mission-card { padding: 10px; gap: 8px; }
 body.compact #campaignScreen .mission-card .mc-play { font-size: 19px; padding: 11px 14px; }
 

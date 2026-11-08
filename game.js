@@ -599,14 +599,18 @@ const I18N = { lang: 'pl', dict: Object.create(null), upper: Object.create(null)
 const PL_HINT = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(nie|się|jest|misj\w*|rund\w*|wir\w*|dzielnic\w*|monet\w*|pryzmat\w*|graj|dalej|wynik|czas|nagrod\w*|poziom|twój|twoja|twoje|zbierz|dotknij|wróć|anuluj|zamknij|kup|wyzwani\w*|miasto|sklep|reklam\w*|ustawieni\w*|muzyk\w*|energi\w*|za|na|do|od|po|bez|dla|albo|oraz|tak)\b/i;
 
 /** CG-QA-05: the CrazyGames package's language switch hands its choice over the
- *  reload in the page's own URL (#lang=en), read and cleared once at boot. */
+ *  reload in the page's own URL (#lang=en), read and cleared once at boot.
+ *  R5-04: the save it just stored rides along in this tab's sessionStorage (not
+ *  in the URL: the SDK copies the URL into its error reports), see cgAdoptSaveHandoff(). */
 const LANG_HANDOFF = 'lang=';
+const SAVE_HANDOFF_KEY = 'vectorHoleLangSwitchSave';
 function takeLangHandoff() {
-  let m = null;
+  let m = null, save = null;
   try { m = new RegExp('^#' + LANG_HANDOFF + '(pl|en)$').exec(location.hash); } catch (e) { /* no location */ }
+  try { save = sessionStorage.getItem(SAVE_HANDOFF_KEY); sessionStorage.removeItem(SAVE_HANDOFF_KEY); } catch (e) { /* no session storage */ }
   if (!m) return null;
   try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* stays in the URL */ }
-  return m[1];
+  return { lang: m[1], save };
 }
 
 function detectLang(setting) {
@@ -3695,6 +3699,24 @@ function playerSaveStore() {
 /** Where loadSave()/saveGame() go: the dev panel's test save always stays in
  *  this browser's localStorage, never in a player's CrazyGames account. */
 function saveStore() { return DEV.sandbox ? localStorage : playerSaveStore(); }
+
+/** R5-04: a language switch reloads only the game's frame, and the portal answers the
+ *  reloaded SDK with the last save it got through to the account (its code, read
+ *  2026-11-08: the answer changes only after a save succeeded; saves wait 1-30 s). A
+ *  signed-in player's newest writes were missing: the Daily Reward just claimed was
+ *  offered again, a round just finished was gone, and the next write put the old
+ *  state in the account for good. The save the switch stored replaces what came back
+ *  only if it is readable and ahead of it; an unreadable stored save is left alone. */
+function cgAdoptSaveHandoff(raw) {
+  try {
+    const current = saveStore().getItem(SAVE_SLOT);
+    if (current === raw) return false;
+    const handed = parseSaveString(raw);
+    if (current !== null && !saveIsAhead(handed, parseSaveString(current))) return false;
+    saveStore().setItem(SAVE_SLOT, raw);
+    return true;
+  } catch (e) { return false; }
+}
 
 /** Another tab of the package stored the save (inside the SDK's own
  *  localStorage keys): the same PX01 'stale' rule as the web build's key. */
@@ -8756,6 +8778,7 @@ class Game {
     this.introPending = false;
     this.evolutionAutoPickTimer = null;
     this.magnetUntil = 0;
+    this.magnetPulled = [];
     this.speedBoostUntil = 0;
     this.scannerTimer = 0;
     this.scannerTarget = null;
@@ -10670,14 +10693,17 @@ class Game {
   setLanguage(lang) {
     if (lang !== 'pl' && lang !== 'en') return;
     this.save.settings.lang = lang;
-    saveGame(this.save);
+    const stored = saveGame(this.save);
     this.analytics.track('language', { lang });
     if (lang === I18N.lang) return;
     // CG-QA-05: in the CrazyGames package the save reaches a signed-in player's
     // account later (the Data Module debounces saving 1-30 s), so the reload
     // right after saveGame() could read the old language back -- the choice
     // rides on the reload itself (takeLangHandoff() at boot).
-    if (PORTAL_BASIC) { try { history.replaceState(history.state, '', '#' + LANG_HANDOFF + lang); } catch (e) { /* the save still has it */ } }
+    if (PORTAL_BASIC) {
+      if (stored && !DEV.sandbox) { try { sessionStorage.setItem(SAVE_HANDOFF_KEY, SAVE_GUARD.seen); } catch (e) { /* reads what the portal has */ } }
+      try { history.replaceState(history.state, '', '#' + LANG_HANDOFF + lang); } catch (e) { /* the save still has it */ }
+    }
     location.reload();
   }
 
@@ -12636,9 +12662,11 @@ class Game {
       // (still pending while selecting it re-renders the strip at once)
       if (this.districtReveal && this.districtReveal.id === d.id && this.districtReveal.t0 == null) node.classList.add('just-unlocked');
       const chip = isCurrent ? '<span class="district-tile-chip">TERAZ</span>' : (isNext ? '<span class="district-tile-chip next">NASTĘPNA</span>' : '');
-      node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"${isNext ? ' data-next="1"' : ''}></canvas>` + chip +
+      // R5-01: the chip sits on the status line -- pinned to the tile's top it ran into a two-line name.
+      // (On the next district it replaces "ZABLOKOWANA": both don't fit, and the lock says it.)
+      node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"${isNext ? ' data-next="1"' : ''}></canvas>` +
         `<span class="district-tile-info"><span class="district-node-name">${d.name}</span>` +
-        `<span class="district-node-status">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : 'ZABLOKOWANA')}</span>` +
+        `<span class="district-node-status">${chip}<span class="district-status-text">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : (isNext ? '' : 'ZABLOKOWANA'))}</span></span>` +
         `<span class="district-tile-bar"><span style="width:${unlocked ? pctDone : 0}%"></span></span></span>`;
       node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
       wrap.appendChild(node);
@@ -14673,6 +14701,7 @@ class Game {
     this.evolutionPaceRadius = 0;
     clearTimeout(this.evolutionAutoPickTimer);
     this.magnetUntil = 0;
+    this.magnetPulled = [];
     this.speedBoostUntil = 0;
     this.scannerTimer = 0;
     this.scannerTarget = null;
@@ -15962,7 +15991,11 @@ class Game {
     this.analytics.track('evolution_pick', { mutation: id });
     this.vibrate(50);
 
-    if (id === 'magnet_pulse') this.magnetUntil = Infinity;
+    if (id === 'magnet_pulse') {
+      this.magnetUntil = Infinity;
+      // R5-03: the pick shows at once how far the pull reaches.
+      this.ripples.push(new Ripple(this.player.x, this.player.y, '#50F0FA', this.player.radius, CONFIG.evolution.magnetRadius, 0.7));
+    }
     if (id === 'combo_reactor') this.comboWindowOverride = CONFIG.juice.combo.windowSeconds * 1.6;
     if (id === 'bounty_core') this.assignBountyTarget();
   }
@@ -16059,6 +16092,32 @@ class Game {
     }
   }
 
+  /** R5-03: the Magnes card's pull drifts objects slowly and showed nothing else, so a
+   *  player who picked it could not tell it was on: the edge of its field and a streak on
+   *  each object being pulled (one path, no shadow; the objects come from the update's
+   *  own loop). Once the hole is wider than the field there is nothing left to show. */
+  drawMagnetField(ctx, time) {
+    const p = this.player, R = CONFIG.evolution.magnetRadius;
+    if (!(performance.now() < this.magnetUntil) || p.radius >= R) return;
+    ctx.save();
+    ctx.strokeStyle = '#50F0FA';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 1.6 / this.zoom;
+    ctx.globalAlpha = 0.2 + 0.08 * Math.sin(time * 3);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    for (const o of this.magnetPulled) {
+      const d = dist(p.x, p.y, o.x, o.y) || 1, ux = (p.x - o.x) / d, uy = (p.y - o.y) / d;
+      ctx.moveTo(o.x + ux * o.radius, o.y + uy * o.radius);
+      ctx.lineTo(o.x + ux * (o.radius + 16), o.y + uy * (o.radius + 16));
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   /** Per-frame upkeep for whichever mutation the player picked this run —
    *  Magnet Pulse, Slipstream's speed window, and the Scanner ping. */
   updateMutationEffects(dt) {
@@ -16066,11 +16125,13 @@ class Game {
 
     const fullMagnet = now < this.magnetUntil;
     const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : 0, this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
+    this.magnetPulled.length = 0;
     if (magnetRadius > 0) {
       for (const obj of this.objects) {
         if (obj.eating || !this.holeCanEat(this.player, obj)) continue;
         const d = dist(this.player.x, this.player.y, obj.x, obj.y);
         if (d > 0 && d < magnetRadius) {
+          if (fullMagnet) this.magnetPulled.push(obj);
           const pull = CONFIG.evolution.magnetPull * (1 - d / magnetRadius);
           obj.x -= ((obj.x - this.player.x) / d) * pull * dt;
           obj.y -= ((obj.y - this.player.y) / d) * pull * dt;
@@ -16728,6 +16789,7 @@ class Game {
     this.drawDangerHalos(ctx);
     this.drawPreyRings(ctx);
     this.drawScannerTarget(ctx);
+    this.drawMagnetField(ctx, time);
     this.drawBountyMarker(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const r of this.ripples) r.draw(ctx);
@@ -20112,13 +20174,14 @@ window.addEventListener('DOMContentLoaded', () => {
     let lang = 'pl';
     devBoot();
     const handed = PORTAL_BASIC ? takeLangHandoff() : null;
+    if (handed && handed.save && !DEV.sandbox) cgAdoptSaveHandoff(handed.save);
     try { const raw = saveStore().getItem(SAVE_SLOT); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
-    if (handed) lang = handed;
+    if (handed) lang = handed.lang;
     i18nStart(lang);
     document.documentElement.classList.add('i18n-ready');
     window.game = new Game();
     // CG-QA-05: the save read at boot may predate the switch -- it keeps the choice.
-    if (handed && window.game.save.settings.lang !== handed) { window.game.save.settings.lang = handed; saveGame(window.game.save); }
+    if (handed && window.game.save.settings.lang !== handed.lang) { window.game.save.settings.lang = handed.lang; saveGame(window.game.save); }
     window.game.devPanel = new DevPanel(window.game);
   };
   // CG-DATA-1: the CrazyGames package reads its save only once the SDK is
