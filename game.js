@@ -8438,19 +8438,24 @@ function wobblePath(ctx, r, fn, steps = 48) {
    shadowBlur is what a weak GPU pays for on every one. Its glow is drawn once
    into a small canvas at device scale (shadowBlur ignores the transform, so
    it matches the live glow) and stamped under a live stroke -- shadow, then
-   line, as before. Device radii are bucketed (3% apart) and the stamp is scaled
-   to the exact radius. Rings in a cycling hsl() color stay live. */
+   line, as before. Device radii are bucketed (3% apart, 6% from 128 px) and the
+   stamp is scaled to the exact radius. Rings in a cycling hsl() color stay live.
+   PERF-05: width and blur are keyed as they are at the bucket's radius, so the
+   gulp pop and a changing zoom land on the same sprite instead of a new one. */
 const RING_GLOW_CACHE = new Map();
 const RING_GLOW_MAX_ENTRIES = 96, RING_GLOW_MAX_PIXELS = 6e6;
 let ringGlowPixels = 0;
 
 function ringGlowSprite(color, devR, devLw, blur) {
-  const bucket = Math.round(Math.log(Math.max(1, devR)) / Math.log(1.03));
-  const lw2 = Math.max(1, Math.round(devLw * 2)), b = Math.round(blur);
-  const key = color + '|' + bucket + '|' + lw2 + '|' + b;
+  const step = devR < 128 ? 1.03 : 1.06;
+  const r = Math.pow(step, Math.round(Math.log(Math.max(1, devR)) / Math.log(step)));
+  const fit = r / Math.max(1, devR), fitBlur = blur * fit;
+  const lw2 = Math.max(1, Math.round(devLw * fit * 2));
+  const b = Math.round(fitBlur <= 24 ? fitBlur : Math.pow(1.03, Math.round(Math.log(fitBlur) / Math.log(1.03))));
+  const key = color + '|' + r.toFixed(1) + '|' + lw2 + '|' + b;
   let sprite = RING_GLOW_CACHE.get(key);
   if (sprite) { RING_GLOW_CACHE.delete(key); RING_GLOW_CACHE.set(key, sprite); return sprite; }
-  const r = Math.pow(1.03, bucket), half = Math.ceil(r + lw2 / 4 + b * 1.5 + 2);
+  const half = Math.ceil(r + lw2 / 4 + b * 1.5 + 2);
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = half * 2;
   const c = canvas.getContext('2d');
