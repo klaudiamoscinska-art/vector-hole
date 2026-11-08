@@ -10928,11 +10928,11 @@ class Game {
     // Golden Shot v8: currency pills "pop" whenever the balance grows.
     const total = this.save.coins + (this.save.prisms || 0) * 1000;
     if (this._lastWalletShown !== undefined && total > this._lastWalletShown) {
-      document.querySelectorAll('.coin-display').forEach(el => {
-        el.classList.remove('coin-pop');
-        void el.offsetWidth;
-        el.classList.add('coin-pop');
-      });
+      // PERF-05: one forced layout restarts every pill's pop (it was one per pill).
+      const pills = document.querySelectorAll('.coin-display');
+      pills.forEach(el => el.classList.remove('coin-pop'));
+      void document.body.offsetWidth;
+      pills.forEach(el => el.classList.add('coin-pop'));
     }
     this._lastWalletShown = total;
     if (this.warsztatFocus) this.renderWarsztatAction(); // e.g. a rewarded ad while short of prisms
