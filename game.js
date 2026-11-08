@@ -7641,7 +7641,14 @@ class CityFloor {
     const m = 24 / view.zoom;
     const i0 = Math.max(0, Math.floor((view.cx - view.hw - m) / P)), i1 = Math.min(CITY_CELLS - 1, Math.floor((view.cx + view.hw + m) / P));
     const j0 = Math.max(0, Math.floor((view.cy - view.hh - m) / P)), j1 = Math.min(CITY_CELLS - 1, Math.floor((view.cy + view.hh + m) / P));
-    let budget = 2;
+    // PERF-04: a block missing from the cache has to be painted now, so each
+    // one uses up this frame's budget before the optional work (rescales,
+    // prefetch); together they stay at max(missing, 2) paints.
+    let missing = 0;
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) if (!this.cache.has(`${theme || '*'}|${i}|${j}`)) missing++;
+    }
+    let budget = Math.max(0, 2 - missing);
     let used = 0;
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
