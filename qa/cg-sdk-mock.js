@@ -17,6 +17,8 @@
 //   initDelayMs, initFails, initHangs, dataDisabled, failGet, failSet, limitBytes,
 //   failRemove: [keys] whose removeItem throws (CG-DATA-2 R1: a partly failed reset)
 //   user: { id, username } or null (also kept in localStorage.__cgMockUser)
+//   locale: SDK.user.systemInfo.locale (default 'en-US' as the SDK's demo mode; null = none),
+//   localeThrows: reading SDK.user.systemInfo throws
 //   cloudDebounceMs: CG-QA-05/04 MODEL, not the portal's known behaviour -- a logged-in
 //         player's save reaches the account only this long after the last write (the
 //         docs: "debounces data saving with 1 second ... up to 30 seconds"); a reload
@@ -125,6 +127,10 @@
     user: {
       get isUserAccountAvailable() { return env() === 'crazygames'; },
       async getUser() { return user; },
+      get systemInfo() {
+        if (cfg().localeThrows) throw err('userNotAvailable', 'systemInfo failed');
+        return { countryCode: 'US', locale: cfg().locale === undefined ? 'en-US' : cfg().locale, device: { type: 'desktop' }, applicationType: 'web' };
+      },
       addAuthListener(fn) { listeners.push(fn); },
       removeAuthListener(fn) { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }
     },

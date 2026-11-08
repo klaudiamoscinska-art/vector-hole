@@ -593,7 +593,7 @@ const SEAL_SALT = 'vh-neon-core-v11';
    placeholder's own text is translated recursively (names, plural words).
    UPPERCASE variants come for free. Language: save.settings.lang
    ('auto' = the browser's: Polish for pl-*, English for everything else;
-   in the CrazyGames package 'auto' is always English, PORTAL_BASIC below).
+   in the CrazyGames package the SDK's locale decides instead, detectLang()).
    ?i18n=log collects untranslated Polish in I18N.misses (qa/v19.mjs). */
 const I18N = { lang: 'pl', dict: Object.create(null), upper: Object.create(null), patterns: [], cache: new Map(), log: false, misses: new Set(), outputs: new Set() };
 const PL_HINT = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(nie|się|jest|misj\w*|rund\w*|wir\w*|dzielnic\w*|monet\w*|pryzmat\w*|graj|dalej|wynik|czas|nagrod\w*|poziom|twój|twoja|twoje|zbierz|dotknij|wróć|anuluj|zamknij|kup|wyzwani\w*|miasto|sklep|reklam\w*|ustawieni\w*|muzyk\w*|energi\w*|za|na|do|od|po|bez|dla|albo|oraz|tak)\b/i;
@@ -615,11 +615,11 @@ function takeLangHandoff() {
 
 function detectLang(setting) {
   if (setting === 'pl' || setting === 'en') return setting;
-  // The CrazyGames package starts in English whatever the browser says; only a
-  // choice made in Profil (saved 'pl') brings Polish back.
-  if (PORTAL_BASIC) return 'en';
+  // C1: the CrazyGames package follows the SDK's locale, not the browser's. Boot
+  // calls this after cgDataBoot() has settled, so nothing waits and nothing
+  // re-decides later; no SDK or no locale means English. Never written to the save.
   let l = 'en';
-  try { l = (navigator.languages && navigator.languages[0]) || navigator.language || 'en'; } catch (e) { /* no navigator */ }
+  try { l = (PORTAL_BASIC ? CG_DATA.sdk.user.systemInfo.locale : (navigator.languages && navigator.languages[0]) || navigator.language) || 'en'; } catch (e) { /* no SDK or no navigator */ }
   return /^pl\b/i.test(l) ? 'pl' : 'en';
 }
 

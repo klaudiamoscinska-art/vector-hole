@@ -342,7 +342,7 @@ async function robustnessChecks(url) {
   let s = await p.evaluate(() => ({ ...window.__state(), flash: window.__flash, boot: window.__boot, log: window.__cgMockLog.map(x => x[0]) }));
   // (The mock refuses any data call before init() resolved; the log starts at init.)
   r.push(report('[mock] E1 slow SDK (4 s): the game waits, #app stays hidden, no data call before init, then the full save loads', s.guard === 'ok' && s.coins === base.st.coins && s.runs === base.st.runs && !s.flash.visibleBeforeReady && s.flash.hiddenFrames > 30 && s.log[0] === 'init' && s.log[1] === 'getItem', JSON.stringify(s)));
-  r.push(report('[mock] E1 slow SDK (4 s): the loader the whole time, its "Connecting to CrazyGames saving" line after ~3 s, the game then starts', s.boot.first && s.boot.first.loader && s.boot.emptyFrames === 0 && s.boot.waitShownAt !== null && s.boot.waitShownAt > 2500 && s.boot.waitShownAt < s.boot.readyAt && s.boot.loaderAfterReady === false, JSON.stringify(s.boot)));
+  r.push(report('[mock] E1 slow SDK (4 s): the loader the whole time, its "what we wait for" line after ~3 s, the game then starts', s.boot.first && s.boot.first.loader && s.boot.emptyFrames === 0 && s.boot.waitShownAt !== null && s.boot.waitShownAt > 2500 && s.boot.waitShownAt < s.boot.readyAt && s.boot.loaderAfterReady === false, JSON.stringify(s.boot)));
   await d.close();
 
   // E2-E5: SDK missing / init fails / init never answers / Data Module disabled.

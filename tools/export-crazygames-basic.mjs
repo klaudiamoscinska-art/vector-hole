@@ -22,7 +22,7 @@ export const DISTRIBUTION = 'crazygames-basic';
 export const LIMITS = { files: 1500, bytes: 50 * 1024 * 1024, mobileHomepageBytes: 20 * 1024 * 1024 };
 // docs.crazygames.com/sdk/intro (read 2026-11-06): in <head>, before the game's code.
 export const CG_SDK_SRC = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
-export const CG_BOOT = '<div id="cgBoot" role="status" aria-live="polite"><div class="cg-boot-vortex" aria-hidden="true"></div><p class="cg-boot-title">GLITCH GULP</p><p class="cg-boot-wait">Connecting to CrazyGames saving…</p></div>';
+export const CG_BOOT = '<div id="cgBoot" role="status" aria-live="polite"><div class="cg-boot-vortex" aria-hidden="true"></div><p class="cg-boot-title">GLITCH GULP</p><p class="cg-boot-wait">CrazyGames…</p></div>';
 const TITLE = 'GLITCH GULP';
 const DESCRIPTION = 'Steer a vortex through a neon city and swallow everything smaller. 2-minute Arena rounds against bots and a 240-mission Campaign.';
 
@@ -48,7 +48,7 @@ export function packagePage(html) {
   };
   once(/<title>[^<]*<\/title>/, `<title>${TITLE}</title>`, '<title>');
   once(/<meta name="description"[^>]*>/, `<meta name="description" content="${DESCRIPTION}">`, 'meta description');
-  // The package starts in English (game.js detectLang), so the static page says so too.
+  // English until game.js has the SDK's locale (detectLang); #app is hidden until then and the loader has no words.
   once(/<html\b([^>]*)>/, (_, attrs) => `<html${attrs.replace(/\s+lang="[^"]*"/, '')} lang="en" data-distribution="${DISTRIBUTION}">`, '<html>');
   once(/(<noscript><p\b[^>]*>)[^<]*(<\/p><\/noscript>)/, '$1GLITCH GULP needs JavaScript turned on.$2', '<noscript>');
   // CG-DATA-1: the Data Module save needs the SDK, loaded before game.js runs.

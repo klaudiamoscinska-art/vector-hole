@@ -655,8 +655,9 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 
 - **Języki:** polski (źródłowy) i angielski. Gra wybiera język przeglądarki
   (polski dla `pl-*`, angielski dla pozostałych i gdy przeglądarka nie podaje języka); Profil → Ustawienia →
-  Język przełącza i zapamiętuje. Paczka CrazyGames zaczyna zawsze po angielsku, także w polskiej
-  przeglądarce; polski wraca tylko z wyboru w Profilu (GitHub Pages bez zmian). Nazwy języków w języku
+  Język przełącza i zapamiętuje. Paczka CrazyGames bierze język z CrazyGames SDK
+  (`SDK.user.systemInfo.locale`: `pl`, `pl-PL` → polski; każdy inny, brak albo błąd SDK → angielski), a nie z
+  przeglądarki; wybór w Profilu ma pierwszeństwo, wybór automatyczny niczego nie zapisuje (GitHub Pages bez zmian). Nazwy języków w języku
   interfejsu: „Polski | Angielski” po polsku, „Polish | English” po angielsku (CG-QA-03). Zmiana języka
   przeładowuje stronę; w paczce wybór jedzie razem z przeładowaniem w adresie strony (`#lang=en`,
   czytany i usuwany przy starcie), bo Data Module zapisuje z opóźnieniem (1–30 s), a zapis sprzed
