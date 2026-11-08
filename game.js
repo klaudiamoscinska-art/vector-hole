@@ -5844,6 +5844,56 @@ function drawSpiralArms(ctx, r, colors, angle, arms, steps = 22) {
   ctx.restore();
 }
 
+/** The inside of a hole, centered at (0,0): a tinted depth gradient, the arms
+ *  and a black core, clipped to the circle. */
+function paintVortex(ctx, r, base, colors, angle, steps) {
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
+  const depth = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  depth.addColorStop(0, 'rgba(0,0,0,1)');
+  depth.addColorStop(0.6, rgbaColor(base, 0.12));
+  depth.addColorStop(1, rgbaColor(base, 0.38));
+  ctx.fillStyle = depth;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  drawSpiralArms(ctx, r * 1.02, colors, angle, 4, steps);
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
+  core.addColorStop(0, 'rgba(0,0,0,1)');
+  core.addColorStop(0.45, 'rgba(0,0,0,0.85)');
+  core.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+}
+
+/* PERF-06: the vortex only turns, and repainting its wide translucent arms
+   through an antialiased clip was the GPU's largest cost per hole. It is drawn
+   once per color and size at device scale and stamped rotated (radii bucketed
+   as PERF-01's ring glow). Rainbow skins change color every frame and stay live. */
+const VORTEX_CACHE = new Map();
+const VORTEX_MAX_ENTRIES = 64, VORTEX_MAX_PIXELS = 8e6;
+let vortexPixels = 0;
+
+function vortexSprite(base, colors, devR, steps) {
+  const step = devR < 128 ? 1.03 : 1.06;
+  const r = Math.pow(step, Math.round(Math.log(Math.max(1, devR)) / Math.log(step)));
+  const key = base + '|' + colors.join() + '|' + steps + '|' + r.toFixed(1);
+  let sprite = VORTEX_CACHE.get(key);
+  if (sprite) { VORTEX_CACHE.delete(key); VORTEX_CACHE.set(key, sprite); return sprite; }
+  const half = Math.ceil(r) + 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = half * 2;
+  const c = canvas.getContext('2d');
+  c.translate(half, half);
+  paintVortex(c, r, base, colors, 0, steps);
+  sprite = { canvas, half, r };
+  VORTEX_CACHE.set(key, sprite);
+  vortexPixels += canvas.width * canvas.height;
+  while (VORTEX_CACHE.size > VORTEX_MAX_ENTRIES || (vortexPixels > VORTEX_MAX_PIXELS && VORTEX_CACHE.size > 1)) {
+    const oldest = VORTEX_CACHE.keys().next().value;
+    vortexPixels -= VORTEX_CACHE.get(oldest).canvas.width ** 2;
+    VORTEX_CACHE.delete(oldest);
+  }
+  return sprite;
+}
+
 /** Cheap stable per-object phase so neighbours don't bob in sync. */
 function artSeed(x, y) { return ((x * 0.013 + y * 0.029) % (Math.PI * 2)); }
 
@@ -8259,24 +8309,20 @@ class Hole {
     const colors = horizon ? HORIZON_ARMS : solid
       ? [shadeColor(solid, 0.5), solid, shadeColor(solid, -0.2), shadeColor(solid, 0.25)]
       : [0, 1, 2, 3].map(i => `hsl(${(i * 90 + time * 60) % 360}, 100%, 65%)`);
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
-    const depth = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-    depth.addColorStop(0, 'rgba(0,0,0,1)');
-    depth.addColorStop(0.6, rgbaColor(base, 0.12));
-    depth.addColorStop(1, rgbaColor(base, 0.38));
-    ctx.fillStyle = depth;
-    ctx.fillRect(-r, -r, r * 2, r * 2);
     // Bots spin a touch slower/offset so a crowd doesn't turn in lockstep.
     const spin = this.isPlayer ? 2.4 : 1.9;
-    drawSpiralArms(ctx, r * 1.02, colors, -time * spin + (this.isPlayer ? 0 : r), 4, horizon ? 44 : undefined);
-    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
-    core.addColorStop(0, 'rgba(0,0,0,1)');
-    core.addColorStop(0.45, 'rgba(0,0,0,0.85)');
-    core.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = core;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    const angle = -time * spin + (this.isPlayer ? 0 : r);
+    const steps = horizon ? 44 : undefined;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    // Below 15 the arms' minimum widths stop scaling with the radius.
+    if ((solid || horizon) && r >= 15 && ctx.globalAlpha === 1) {
+      const m = ctx.getTransform(), z = Math.hypot(m.a, m.b);
+      const s = vortexSprite(base, colors, r * z, steps);
+      const k = r * s.half / s.r;
+      ctx.rotate(angle);
+      ctx.drawImage(s.canvas, -k, -k, k * 2, k * 2);
+    } else paintVortex(ctx, r, base, colors, angle, steps);
     ctx.restore();
   }
 
