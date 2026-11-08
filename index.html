@@ -351,11 +351,13 @@
   <div id="loginRewardScreen" class="screen overlay-screen hidden">
     <div class="screen-inner pause-panel login-panel" role="dialog" aria-modal="true" aria-labelledby="loginRewardTitle">
       <div class="login-kicker">CODZIENNA NAGRODA</div>
-      <h2 id="loginRewardTitle" class="section-title">Dzień <span id="loginRewardDay">1</span> z 7</h2>
+      <h2 id="loginRewardTitle" class="section-title">Dzień 1 z 7</h2>
       <p class="hint-text">Wracaj codziennie — nagrody rosną. Dzień 7 to wielka paczka!</p>
       <div id="loginRewardGrid" class="login-grid"></div>
       <div id="loginBurst" class="login-burst" aria-hidden="true"></div>
       <button id="btnLoginClaim" class="btn btn-primary btn-mega">ODBIERZ</button>
+      <!-- R4-03: after the claim, a confirmation (not a button) in its place. -->
+      <p id="loginClaimedNote" class="login-claimed hidden" role="status"></p>
       <button id="btnLoginDouble" class="btn btn-gold hidden">×2 ZA REKLAMĘ</button>
       <button id="btnLoginClose" class="btn btn-link hidden">Nie, dziękuję</button>
     </div>

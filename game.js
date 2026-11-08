@@ -213,7 +213,17 @@ const CONFIG = {
     // cards -- they paused it twice in its first 6-32 s with a 3-way choice
     // before the player knew the basics. They appear from this many
     // finished rounds on, the first offer marked as new.
-    evolutionFromRuns: 1,
+    // R4-02 (owner decision, 2026-11-08): the first round has the cards
+    // again (0), paced by firstRoundEvolution below.
+    evolutionFromRuns: 0,
+    // R4-02: the first regular Arena round's two offers, in order. Each
+    // waits for its growth size (CONFIG.evolution.triggerRadii) and comes
+    // on a bite (the vortex grows) once `notBefore` s of play have passed,
+    // or at `latest` s whatever the size -- a slow start still gets both
+    // choices, and the second leaves ~55 s to use them. The offer pauses
+    // the round (Game.loop()), so the 2:00 of play stay whole. Later
+    // rounds, the Daily and a friend's challenge keep the size triggers.
+    firstRoundEvolution: [{ notBefore: 25, latest: 30 }, { notBefore: 60, latest: 65 }],
     // ...and an Arena result says what the next round brings: a feature
     // unlock (Warsztat, Wyzwania) or a Core City reward at most this many
     // finished rounds away (Game.nextRoundHook()).
@@ -11559,10 +11569,13 @@ class Game {
     const st = this.loginState();
     if (st.claimedToday) return;
     this.renderLoginGrid(st.day, false);
-    document.getElementById('loginRewardDay').textContent = st.day + 1;
+    // R4-03: one text node, so English gets "Day 1 of 7" (a lone "z" was left untranslated).
+    document.getElementById('loginRewardTitle').textContent = `Dzień ${st.day + 1} z ${CONFIG.loginRewards.length}`;
     const btn = document.getElementById('btnLoginClaim');
     btn.disabled = false;
     btn.textContent = 'ODBIERZ';
+    btn.classList.remove('hidden');
+    document.getElementById('loginClaimedNote').classList.add('hidden');
     document.getElementById('btnLoginDouble').classList.add('hidden');
     document.getElementById('btnLoginDouble').textContent = '×2 ZA REKLAMĘ';
     document.getElementById('btnLoginClose').classList.add('hidden');
@@ -11599,17 +11612,29 @@ class Game {
     this.analytics.track('login_reward_claim', { day: st.day + 1, coins: reward.coins || 0, prisms: reward.prisms || 0 });
 
     this.renderLoginGrid(st.day, true);
+    // R4-03: the claim button used to stay as a disabled big blue "+60 MONET!"
+    // that looked like a button and did nothing. The reward is already in
+    // the save: the button goes, a confirmation takes its place, and the
+    // way out is a real button unless a "×2" ad is on offer.
     const btn = document.getElementById('btnLoginClaim');
     btn.disabled = true;
-    btn.textContent = `+${reward.coins ? reward.coins + ' MONET' : ''}${reward.coins && reward.prisms ? ' · ' : ''}${reward.prisms ? reward.prisms + ' PRYZMATÓW' : ''}!`;
+    btn.classList.add('hidden');
+    const note = document.getElementById('loginClaimedNote');
+    const amounts = [reward.coins ? `+${reward.coins} monet` : '', reward.prisms ? `+${reward.prisms} ${plural(reward.prisms, ['pryzmat', 'pryzmaty', 'pryzmatów'])}` : ''].filter(Boolean);
+    note.innerHTML = `<span class="login-claimed-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="login-claimed-label">Odebrano</span>${amounts.map(a => `<strong>${a}</strong>`).join('')}`;
+    note.classList.remove('hidden');
     this.burstDom(document.getElementById('loginBurst'), reward.big ? 40 : 22);
     this.sound.fanfare(!!reward.big);
     this.vibrate([30, 40, 80]);
     this.updateCoinDisplays();
     // Golden Shot v11: opt-in "double it" right at the moment of reward.
     this.lastLoginReward = reward;
-    document.getElementById('btnLoginDouble').classList.toggle('hidden', !this.monetization.adsAvailable);
-    document.getElementById('btnLoginClose').classList.remove('hidden');
+    const ads = this.monetization.adsAvailable;
+    document.getElementById('btnLoginDouble').classList.toggle('hidden', !ads);
+    const close = document.getElementById('btnLoginClose');
+    close.textContent = ads ? 'Nie, dziękuję' : 'DALEJ';
+    close.className = ads ? 'btn btn-link' : 'btn btn-primary';
+    close.classList.remove('hidden');
     document.getElementById('btnLoginDouble').disabled = false;
     this.analytics.track('ad_offer', { context: 'login_double' });
   }
@@ -14643,6 +14668,9 @@ class Game {
     const regularRound = !this.isDailyRun && !this.challenge;
     this.evolutionQuiet = regularRound && arenaRunsOf(this.save) < CONFIG.ftue.evolutionFromRuns;
     this.evolutionIntro = regularRound && arenaRunsOf(this.save) === CONFIG.ftue.evolutionFromRuns;
+    // R4-02: the first regular round paces its offers (checkEvolutionTriggers()).
+    this.evolutionPace = regularRound && arenaRunsOf(this.save) === 0 ? CONFIG.ftue.firstRoundEvolution : null;
+    this.evolutionPaceRadius = 0;
     clearTimeout(this.evolutionAutoPickTimer);
     this.magnetUntil = 0;
     this.speedBoostUntil = 0;
@@ -15966,6 +15994,20 @@ class Game {
 
   checkEvolutionTriggers() {
     if (this.evolutionPending || this.evolutionQuiet) return;
+    if (this.evolutionPace) {
+      // R4-02: first round -- the offers in order, each in its window.
+      const t = ROUND_TIME - this.timeRemaining, r = this.player.radius;
+      const grew = r > this.evolutionPaceRadius;
+      this.evolutionPaceRadius = r;
+      const i = CONFIG.evolution.triggerRadii.findIndex(x => !this.evolutionOffersTriggered.has(x));
+      const w = this.evolutionPace[i];
+      if (i < 0 || !w) return;
+      if (t >= w.latest || (t >= w.notBefore && grew && r >= CONFIG.evolution.triggerRadii[i])) {
+        this.evolutionOffersTriggered.add(CONFIG.evolution.triggerRadii[i]);
+        this.offerEvolution();
+      }
+      return;
+    }
     for (const r of CONFIG.evolution.triggerRadii) {
       if (this.player.radius >= r && !this.evolutionOffersTriggered.has(r)) {
         this.evolutionOffersTriggered.add(r);
@@ -18199,6 +18241,11 @@ const I18N_EN = {
   "+{0} monet · +{1} pryzmaty · wzmocnienie „{2}”. Następna za {3} gwiazdek.": "+{0} coins · +{1} prisms · “{2}” booster. Next one in {3} stars.",
   "+{0} monet{1}": "+{0} coins{1}",
   "+{0} pryzmatów": "+{0} prisms",
+  // R4-03: the daily reward's confirmation after the claim.
+  "+{#0} pryzmat": "+{0} prism",
+  "+{#0} pryzmaty": "+{0} prisms",
+  "Odebrano": "Claimed",
+  "Dzień {#0} z {#1}": "Day {0} of {1}",
   "+{0} za nowy rekord w Wyzwaniu dnia": "+{0} for a new Daily Challenge record",
   "+{0} ◆ · REKLAMA": "+{0} ◆ · AD",
   "+{0}% za rundę · nagroda za {1} {2}": "+{0}% per round · reward in {1} {2}",

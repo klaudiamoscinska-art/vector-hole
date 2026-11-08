@@ -7,8 +7,11 @@
 //   ultra-wide --, the CrazyGames frames, phones and a tablet, in English and Polish: no
 //   scrollbar anywhere, PLAY and the note on screen, the demo at its full 470 px wherever there
 //   is room; the other screens still scroll where their content is taller than the frame.
-// R4-02: what a brand-new player meets in Arena rounds 1 and 2 (golden cores, SZAŁ, evolution
-//   cards, the finish) -- the FTUE-3 rule (round 1 without cards), measured, not changed.
+// R4-02 (owner decision): a new player's first Arena round offers the evolution cards twice --
+//   at 25-30 s and 60-65 s of play, each after its growth size (46 / 66) or at the window's end;
+//   2:00 of play kept (the offer holds the round); round 2, the Daily, returning players unchanged.
+// R4-03: the Daily Reward window after CLAIM -- a plain confirmation instead of a dead button,
+//   a real NEXT / DALEJ button out (No, thanks only beside an ad offer), paid once (taps, close, reload).
 // Mock results are not CrazyGames Preview results.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -162,25 +165,32 @@ async function otherScreensChecks(pkgUrl, webUrl) {
   return r;
 }
 
-/* ---------- R4-02: in-round boosters for a brand-new player (measured, unchanged) ---------- */
+/* ---------- R4-02: the evolution cards in a new player's first round (owner decision) ---------- */
+// In-page player for the running Arena round (re-aims every 0.4 s at the nearest bite on screen,
+// a golden core first). `idle` stands still (a slow start: never reaches the growth sizes).
+// Each offer is recorded with the play time (frames; the offer pauses the round, so it adds
+// none), the round clock and the radius, then answered by a tap on the first card.
 const DRIVER = `
-window.__r4Play = function () {
+window.__r4Play = function (opts = {}) {
   const g = window.game, p = g.player, dt = 1 / 30;
   const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
   let v = realNow(); performance.now = () => v;
   if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false;
-  const out = { golden: [], frenzy: 0, offers: [], quiet: !!g.evolutionQuiet, intro: !!g.evolutionIntro, runs: g.save.stats.runsPlayed, finish: null };
+  // clock0: round time already played in real time before this driver took over (a few frames).
+  const out = { golden: [], frenzy: 0, offers: [], quiet: !!g.evolutionQuiet, intro: !!g.evolutionIntro, paced: !!g.evolutionPace, runs: g.save.stats.runsPlayed, finish: null, clock0: +(CONFIG.round.duration - g.timeRemaining).toFixed(2) };
   let frames = 0, wanderA = 1;
   const sg = g.spawnGoldenCore, sf = g.startFrenzy;
   g.spawnGoldenCore = function () { out.golden.push(Math.round(frames * dt)); return sg.call(g); };
   g.startFrenzy = function () { out.frenzy++; return sf.call(g); };
-  while (g.state === GameState.PLAYING && frames < 200 * 30) {
+  while (g.state === GameState.PLAYING && frames < (opts.seconds || 200) * 30) {
     if (g.evolutionPending) {
-      out.offers.push({ t: Math.round(frames * dt), kicker: (document.getElementById('evolutionKicker') || {}).textContent || '' });
+      out.offers.push({ play: +(frames * dt).toFixed(1), clock: +(CONFIG.round.duration - g.timeRemaining).toFixed(1), r: Math.round(p.radius), kicker: (document.getElementById('evolutionKicker') || {}).textContent || '', shown: !document.getElementById('evolutionOverlay').classList.contains('hidden') });
+      if (opts.hold) break;
       const card = document.querySelector('#evolutionCards .evolution-card'); if (card) card.click(); else g.skipEvolutionOffer();
       continue;
     }
-    if (frames % 12 === 0) {
+    if (opts.idle) g.keyDir = { x: 0, y: 0 };
+    else if (frames % 12 === 0) {
       const vw = g.width / g.zoom / 2, vh = g.height / g.zoom / 2;
       let best = g.goldenObj && Math.abs(g.goldenObj.x - p.x) < vw && Math.abs(g.goldenObj.y - p.y) < vh ? g.goldenObj : null, bd = Infinity;
       if (!best) for (const o of g.objects) { if (o.eating || !g.holeCanEat(p, o) || Math.abs(o.x - p.x) > vw || Math.abs(o.y - p.y) > vh) continue; const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < bd) { bd = d; best = o; } }
@@ -191,40 +201,209 @@ window.__r4Play = function () {
     if (g.overdriveActive && !out.finish) out.finish = g.overdriveVariant;
   }
   out.powers = [...(g.activeMutations || [])];
-  if (g.state === GameState.PLAYING) { g.timeRemaining = 0.001; v += 16; g.update(0.016); }
+  out.play = +(frames * dt).toFixed(1);
+  if (!opts.hold && g.state === GameState.PLAYING) { g.timeRemaining = 0.001; v += 16; g.update(0.016); }
   delete g.spawnGoldenCore; delete g.startFrenzy;
   g.keyDir = { x: 0, y: 0 }; performance.now = realNow;
   return out;
 };`;
-async function boosterChecks(pkgUrl) {
+const NEW_KICKER = /^(NOWOŚĆ · EWOLUCJA|NEW · EVOLUTION)$/;
+async function evolutionChecks(pkgUrl, webUrl) {
   const r = [];
   const rounds = { 1: [], 2: [] };
-  for (const seed of [1000, 8919, 16838]) {
-    const d = await context({ locale: 'en-US', device: { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 } });
+  for (const [seed, build, url, lang] of [[1000, 'package', pkgUrl, 'en'], [8919, 'package', pkgUrl, 'en'], [16838, 'web', webUrl, 'pl'], [24757, 'web', webUrl, 'pl']]) {
+    const d = await context({ locale: lang === 'pl' ? 'pl-PL' : 'en-US', device: { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 } });
     try {
-      const p = await d.open(pkgUrl);
+      const p = await d.open(url);
       await p.addScriptTag({ content: DRIVER });
       await p.evaluate((sd) => { window.__qaSeedRandom(sd); document.getElementById('btnWelcomePlay').click(); }, seed);
       for (const n of [1, 2]) {
         await settle(150);
-        rounds[n].push(await p.evaluate(() => window.__r4Play()));
+        rounds[n].push({ seed, build, ...await p.evaluate(() => window.__r4Play()) });
         await settle(400);
         await p.evaluate(async () => { for (let i = 0; i < 40; i++) { const u = document.getElementById('unlockOverlay'); if (u && !u.classList.contains('hidden')) { document.getElementById('btnUnlockLater').click(); break; } await new Promise(x => setTimeout(x, 100)); } });
         await settle(150);
         if (n === 1) await p.evaluate((sd) => { window.__qaSeedRandom(sd); document.getElementById('btnPlayAgain').click(); }, seed + 1);
       }
-      if (d.errors.length) r.push(report(`[package] R4-02 seed ${seed}: no console errors`, false, d.errors.slice(0, 3).join(' | ')));
+      if (d.errors.length) r.push(report(`[${build}] R4-02 seed ${seed}: no console errors`, false, d.errors.slice(0, 3).join(' | ')));
     } finally { await d.close(); }
   }
-  const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
   const r1 = rounds[1], r2 = rounds[2];
-  r.push(report('[package] R4-02 round 1 of a new player: the Złoty Rdzeń still appears (first at 10 s, ~every 34 s after) and the finish (blackout / portal rain) still fires -- the booster on the board is there',
-    r1.every(x => x.golden.length >= 3 && x.golden[0] === 10 && x.finish), JSON.stringify(r1.map(x => ({ golden: x.golden, frenzy: x.frenzy, finish: x.finish })))));
-  r.push(report('[package] R4-02 round 1 of a new player: no evolution cards (FTUE-3, CONFIG.ftue.evolutionFromRuns = 1 -- the approved rule, not a regression)',
-    r1.every(x => x.runs === 0 && x.quiet && !x.offers.length && !x.powers.length), JSON.stringify(r1.map(x => ({ runs: x.runs, quiet: x.quiet, offers: x.offers.length })))));
-  r.push(report('[package] R4-02 round 2: two evolution offers (radius 46 and 66), the first marked as new, each picked card active for the round; golden cores as in round 1',
-    r2.every(x => x.runs === 1 && !x.quiet && x.intro && x.offers.length === 2 && x.powers.length === 2 && x.golden.length >= 3), JSON.stringify(r2.map(x => ({ offers: x.offers, powers: x.powers, golden: x.golden.length })))));
-  console.log(`  R4-02 inventory: round 1 golden ${sum(r1, x => x.golden.length)} / SZAŁ ${sum(r1, x => x.frenzy)} / cards ${sum(r1, x => x.offers.length)}; round 2 golden ${sum(r2, x => x.golden.length)} / SZAŁ ${sum(r2, x => x.frenzy)} / cards ${sum(r2, x => x.offers.length)} (${r1.length} new players)`);
+  // Times on the round's own clock (2:00 minus the time left), which the offers' windows use.
+  const brief = (a) => JSON.stringify(a.map(x => ({ seed: x.seed, b: x.build, offers: x.offers.map(o => `${o.clock}s r${o.r} ${o.kicker}`), powers: x.powers.length, play: +(x.clock0 + x.play).toFixed(2) })));
+  r.push(report('[package EN + web PL] R4-02 round 1 of a new player (casual-like player, real PLAY button): two evolution choices -- the first at 25-30 s of play, the second at 60-65 s, both after the vortex reached the size the cards wait for (46 / 66), the first marked "NEW · EVOLUTION" / "NOWOŚĆ · EWOLUCJA"; both picked powers stay active to the end',
+    r1.every(x => x.runs === 0 && x.paced && !x.quiet && x.offers.length === 2 && x.offers[0].clock >= 25 && x.offers[0].clock <= 30.1 && x.offers[1].clock >= 60 && x.offers[1].clock <= 65.1
+      && x.offers[0].r >= 46 && x.offers[1].r >= 66 && NEW_KICKER.test(x.offers[0].kicker) && !NEW_KICKER.test(x.offers[1].kicker) && x.offers.every(o => o.shown) && x.powers.length === 2), brief(r1)));
+  r.push(report('[package EN + web PL] R4-02 round 1 keeps 2:00 of play (the cards pause the round), the Złoty Rdzeń from 10 s and the finish as before',
+    r1.every(x => Math.abs(x.clock0 + x.play - 120) <= 0.1 && x.golden.length >= 3 && x.golden[0] === 10 && x.finish), JSON.stringify(r1.map(x => ({ play: +(x.clock0 + x.play).toFixed(2), clock0: x.clock0, golden: x.golden, finish: x.finish })))));
+  r.push(report('[package EN + web PL] R4-02 round 2 unchanged: the cards come at the growth sizes (not paced), two choices, neither marked new any more (the first round introduced them)',
+    r2.every(x => x.runs === 1 && !x.paced && !x.quiet && x.offers.length === 2 && x.offers.every(o => !NEW_KICKER.test(o.kicker)) && x.offers[0].r >= 46 && x.powers.length === 2), brief(r2)));
+
+  // A slow start (the vortex never reaches 46): both choices still come, at 30 and 65 s.
+  // The offer holds the round: 1.5 s of real time with the game loop running moves no clock.
+  {
+    const d = await context({ locale: 'en-US', device: { viewport: { width: 412, height: 915 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true } });
+    try {
+      const p = await d.open(pkgUrl);
+      await p.addScriptTag({ content: DRIVER });
+      await p.evaluate(() => { window.__qaSeedRandom(77); document.getElementById('btnWelcomePlay').click(); });
+      await settle(150);
+      const first = await p.evaluate(() => window.__r4Play({ idle: true, hold: true }));
+      const hold = await p.evaluate(async () => {
+        const g = window.game, t0 = g.timeRemaining, s0 = g.player.score;
+        g.running = true; g.lastTime = performance.now(); g.rafId = requestAnimationFrame((t) => g.loop(t));
+        await new Promise(x => setTimeout(x, 1500));
+        const out = { t0: +t0.toFixed(2), t1: +g.timeRemaining.toFixed(2), pending: g.evolutionPending, score: g.player.score === s0 };
+        document.querySelector('#evolutionCards .evolution-card').click();
+        return out;
+      });
+      const rest = await p.evaluate(() => window.__r4Play({ idle: true }));
+      const all = [...first.offers, ...rest.offers];
+      r.push(report('[package EN, phone] R4-02 a slow first round (the vortex stays below the card size): both choices still come, at 30 s and 65 s of play',
+        all.length === 2 && Math.abs(all[0].clock - 30) <= 0.1 && Math.abs(all[1].clock - 65) <= 0.1 && all[0].r < 46 && all[1].r < 66, JSON.stringify({ offers: all, firstPlay: first.play })));
+      r.push(report('[package EN, phone] R4-02 while the cards are open the round is held: the clock and the score do not move in 1.5 s of real time with the game loop running',
+        hold.pending && hold.t0 === hold.t1 && hold.score, JSON.stringify(hold)));
+      if (d.errors.length) r.push(report('[package] R4-02 slow round: no console errors', false, d.errors.slice(0, 3).join(' | ')));
+    } finally { await d.close(); }
+  }
+
+  // Who gets the paced first round: a new player's regular round only (also after a first round
+  // left early -- R1: not a finished round); a returning player, the Daily and a friend's
+  // challenge keep the size triggers; nothing new in the save.
+  {
+    const d = await context({ locale: 'pl-PL', device: { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 } });
+    try {
+      const p = await d.open(webUrl);
+      const st = await p.evaluate(() => {
+        const g = window.game, out = {};
+        g.save.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
+        const keys0 = Object.keys(defaultSave()).sort().join();
+        g.startRound({}); out.fresh = { paced: !!g.evolutionPace, intro: g.evolutionIntro, quiet: g.evolutionQuiet };
+        g.player.score = 120; g.pauseGame(); g.leaveRun(); out.leftRuns = g.save.stats.runsPlayed;
+        g.startRound({}); out.afterLeave = { paced: !!g.evolutionPace, intro: g.evolutionIntro };
+        g.player.setRadius(70); g.checkEvolutionTriggers(); out.afterLeave.offerAtOnce = g.evolutionPending; g.skipEvolutionOffer(); g.stopRun();
+        g.startRound({ seed: 4242, daily: true }); out.daily = { paced: !!g.evolutionPace, intro: g.evolutionIntro }; g.player.setRadius(50); g.checkEvolutionTriggers(); out.daily.offer = g.evolutionPending; g.skipEvolutionOffer(); g.stopRun();
+        g.save.stats.runsPlayed = 4;
+        g.startRound({}); out.veteran = { paced: !!g.evolutionPace, intro: g.evolutionIntro }; g.player.setRadius(50); g.checkEvolutionTriggers(); out.veteran.offer = g.evolutionPending; g.skipEvolutionOffer(); g.stopRun();
+        out.saveKeys = Object.keys(g.save).sort().join() === keys0; out.schema = g.save.schemaVersion;
+        out.cfg = CONFIG.ftue.firstRoundEvolution; out.radii = CONFIG.evolution.triggerRadii;
+        return out;
+      });
+      r.push(report('[web PL] R4-02 the paced first round only for a new player\'s regular round (also again after a first round left early); the Daily, a returning player: cards at the growth size at once, not marked new; no new save field, schema 13',
+        st.fresh.paced && st.fresh.intro && !st.fresh.quiet && st.leftRuns === 0 && st.afterLeave.paced && !st.afterLeave.offerAtOnce
+        && !st.daily.paced && !st.daily.intro && st.daily.offer && !st.veteran.paced && !st.veteran.intro && st.veteran.offer && st.saveKeys && st.schema === 13
+        && JSON.stringify(st.radii) === '[46,66]', JSON.stringify(st)));
+      if (d.errors.length) r.push(report('[web] R4-02 rules: no console errors', false, d.errors.slice(0, 3).join(' | ')));
+    } finally { await d.close(); }
+  }
+  return r;
+}
+
+/* ---------- R4-03: the Daily Reward window after the claim ---------- */
+// A mouse click in the element's centre (page.click waits for the breathing btn-mega to stand still).
+async function tap(p, sel) { const b = await p.locator(sel).boundingBox(); await p.mouse.click(b.x + b.width / 2, b.y + b.height / 2); }
+async function dailyRewardChecks(pkgUrl, webUrl) {
+  const r = [];
+  fs.mkdirSync(path.join(WORK, 'shots'), { recursive: true });
+  const PHONE = { viewport: { width: 375, height: 667 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true };
+  const PC = { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 };
+  // A returning player (3 rounds) whose last claim was yesterday, on Miasto: the calendar opens.
+  const open = (p, day, ads) => p.evaluate(async ({ day, ads }) => {
+    const g = window.game, s = defaultSave();
+    s.stats.runsPlayed = 3; s.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
+    s.unlocks.announced = Array.from(new Set([...unlockedFeatureIds(s), 'warsztat', 'wyzwania', 'kampania']));
+    s.coins = 100; s.prisms = 5;
+    const today = g.loginState().today; s.login = { lastClaimDate: new Date(Date.parse(today) - 86400000).toISOString().slice(0, 10), day, totalClaims: day };
+    g.save = sanitizeSave(s); g.bootFirstRun = false; g.hubVisits = 3;
+    if (ads) g.monetization.provider = 'qa-ads';
+    g.showScreen('mainMenu'); g.maybeShowLoginReward();
+    await new Promise(x => setTimeout(x, 500));
+    return !document.getElementById('loginRewardScreen').classList.contains('hidden');
+  }, { day, ads });
+  const state = (p) => p.evaluate(() => {
+    const g = window.game, vis = (id) => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden') && e.offsetParent !== null; };
+    const note = document.getElementById('loginClaimedNote'), close = document.getElementById('btnLoginClose');
+    const cs = getComputedStyle(note), b = close.getBoundingClientRect();
+    return {
+      open: vis('loginRewardScreen'), claim: vis('btnLoginClaim'), note: vis('loginClaimedNote'), noteText: note.innerText.replace(/\s+/g, ' ').trim(),
+      noteLooksStatic: note.tagName === 'P' && !note.closest('button') && cs.cursor !== 'pointer' && (cs.backgroundColor === 'rgba(0, 0, 0, 0)' || cs.backgroundColor === 'transparent') && cs.borderStyle === 'none',
+      double: vis('btnLoginDouble'), close: vis('btnLoginClose'), closeText: close.textContent.trim(), closePrimary: close.classList.contains('btn-primary'),
+      closeInView: b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth,
+      coins: g.save.coins, prisms: g.save.prisms, claimedToday: g.loginState().claimedToday, day: g.save.login.day,
+      title: document.getElementById('loginRewardTitle').textContent.trim()
+    };
+  });
+  for (const [build, url, lang, device, dev] of [['package', pkgUrl, 'en', PC, 'PC 1280x720'], ['package', pkgUrl, 'en', PHONE, 'phone 375x667'], ['web', webUrl, 'pl', PC, 'PC 1280x720'], ['web', webUrl, 'pl', PHONE, 'phone 375x667'], ['package', pkgUrl + '#lang=pl', 'pl', PC, 'PC 1280x720']]) {
+    const d = await context({ locale: lang === 'pl' ? 'pl-PL' : 'en-US', device });
+    try {
+      const p = await d.open(url);
+      const shown = await open(p, 0, false);
+      const before = await state(p);
+      await tap(p, '#btnLoginClaim');
+      await settle(500);
+      const after = await state(p);
+      await p.screenshot({ path: path.join(WORK, 'shots', `daily-${build}-${lang}-${device === PHONE ? 'phone' : 'pc'}.png`) });
+      // Taps that must change nothing: the confirmation itself, the (hidden) claim button, claim() again.
+      await tap(p, '#loginClaimedNote');
+      await p.evaluate(() => { document.getElementById('btnLoginClaim').click(); window.game.claimLoginReward(); });
+      await settle(200);
+      const poked = await state(p);
+      await tap(p, '#btnLoginClose');
+      await settle(300);
+      const closed = await state(p);
+      const again = await p.evaluate(async () => { window.game.maybeShowLoginReward(); await new Promise(x => setTimeout(x, 200)); return !document.getElementById('loginRewardScreen').classList.contains('hidden'); });
+      const en = lang === 'en';
+      // The package has no ads: NEXT / DALEJ. GitHub Pages runs the demo ad provider: ×2 + "No, thanks".
+      const ads = build === 'web';
+      const want = { note: en ? /^Claimed \+60 coins$/ : /^Odebrano \+60 monet$/, close: ads ? (en ? 'No, thanks' : 'Nie, dziękuję') : (en ? 'NEXT' : 'DALEJ') };
+      r.push(report(`[${build} ${lang.toUpperCase()}, ${dev}] R4-03 after CLAIM: the claim button is gone; "${en ? 'Claimed +60 coins' : 'Odebrano +60 monet'}" is a plain confirmation (no button look), the coins are in the save once; the way out on screen: ${ads ? `the "×2" ad offer + "${want.close}" (a link)` : `a real "${want.close}" button (no ad offer, so no "No, thanks")`}`,
+        shown && before.claim && !before.note && !before.close && !after.claim && after.note && want.note.test(after.noteText) && after.noteLooksStatic
+        && after.close && after.closeText === want.close && after.closePrimary === !ads && after.closeInView && after.double === ads
+        && after.title === (en ? 'Day 1 of 7' : 'Dzień 1 z 7')
+        && after.coins === before.coins + 60 && after.claimedToday && after.day === 1 && !d.errors.length,
+        JSON.stringify({ shown, before: { claim: before.claim, coins: before.coins }, after, errors: d.errors.slice(0, 2) })));
+      r.push(report(`[${build} ${lang.toUpperCase()}, ${dev}] R4-03 tapping the confirmation, the hidden claim button or claim() again grants nothing; "${want.close}" closes the window; it does not come back today`,
+        poked.coins === after.coins && poked.prisms === after.prisms && poked.open && !closed.open && closed.coins === after.coins && !again, JSON.stringify({ poked: poked.coins, closed: closed.open, coins: closed.coins, again })));
+    } finally { await d.close(); }
+  }
+  // GitHub Pages: a reload after the claim neither reopens the window nor pays again.
+  {
+    const d = await context({ locale: 'pl-PL', device: PC });
+    try {
+      const p = await d.open(webUrl);
+      await open(p, 0, false);
+      await tap(p, '#btnLoginClaim'); await settle(300);
+      const c1 = await p.evaluate(() => ({ coins: window.game.save.coins, stored: JSON.parse(localStorage.getItem('vectorHoleSave_v1')).coins }));
+      await p.reload();
+      await p.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state !== undefined, null, { timeout: 40000 });
+      await settle(1200);
+      const c2 = await p.evaluate(async () => { const g = window.game; g.hubVisits = 3; g.bootFirstRun = false; g.showScreen('mainMenu'); g.maybeShowLoginReward(); await new Promise(x => setTimeout(x, 300));
+        return { coins: g.save.coins, open: !document.getElementById('loginRewardScreen').classList.contains('hidden'), claimed: g.loginState().claimedToday, schema: g.save.schemaVersion }; });
+      r.push(report('[web PL] R4-03 a reload after the claim: the window stays closed, the coins are not paid again, the save is still v13',
+        c1.coins === 160 && c1.stored === 160 && c2.coins === 160 && !c2.open && c2.claimed && c2.schema === 13, JSON.stringify({ c1, c2 })));
+    } finally { await d.close(); }
+  }
+  // An ad offer (a build with ads): "×2 FOR AN AD" + "No, thanks" as before; day 3 (prisms) and day 7.
+  {
+    const d = await context({ locale: 'pl-PL', device: PC });
+    try {
+      const p = await d.open(webUrl);
+      await open(p, 0, true);
+      await tap(p, '#btnLoginClaim'); await settle(300);
+      const ad = await state(p);
+      await p.evaluate(() => { window.game.monetization.provider = 'none'; window.game.closeLoginReward(); });
+      await open(p, 2, false); await tap(p, '#btnLoginClaim'); await settle(300);
+      const d3 = await state(p);
+      await p.evaluate(() => window.game.closeLoginReward());
+      await open(p, 6, false); await tap(p, '#btnLoginClaim'); await settle(300);
+      const d7 = await state(p);
+      await p.screenshot({ path: path.join(WORK, 'shots', 'daily-web-pl-day7.png') });
+      r.push(report('[web PL] R4-03 with an ad offer the window keeps "×2 ZA REKLAMĘ" + "Nie, dziękuję" (a link); day 3 says "Odebrano +3 pryzmaty", day 7 "Odebrano +500 monet +15 pryzmatów", each paid once',
+        ad.double && ad.closeText === 'Nie, dziękuję' && !ad.closePrimary && ad.note && ad.coins === 160
+        && d3.noteText === 'Odebrano +3 pryzmaty' && d3.prisms === 8 && d3.closeText === 'DALEJ' && d7.noteText === 'Odebrano +500 monet +15 pryzmatów' && d7.coins === 600 && d7.prisms === 20 && !d.errors.length,
+        JSON.stringify({ ad: { double: ad.double, close: ad.closeText }, d3: { note: d3.noteText, prisms: d3.prisms }, d7: { note: d7.noteText, coins: d7.coins, prisms: d7.prisms }, errors: d.errors.slice(0, 2) })));
+    } finally { await d.close(); }
+  }
   return r;
 }
 
@@ -238,7 +417,7 @@ export async function runCgPreviewQa4Checks({ root = ROOT } = {}) {
   const all = [];
   const only = (process.argv.find(x => x.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
   try {
-    for (const step of [startScreenChecks, otherScreensChecks, boosterChecks]) {
+    for (const step of [startScreenChecks, otherScreensChecks, evolutionChecks, dailyRewardChecks]) {
       if (only.length && !only.includes(step.name)) continue;
       try { all.push(...await step(site.url, web.url)); } catch (e) { all.push(report(`cg-preview-qa4: ${step.name} crashed`, false, String(e && e.stack || e).slice(0, 600))); }
     }

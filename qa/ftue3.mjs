@@ -5,6 +5,10 @@
 //    pause it twice in its first 6-32 s; from the 2nd round they are back,
 //    the first offer marked "NOWOŚĆ · EWOLUCJA" (CONFIG.ftue.evolutionFromRuns).
 //    Daily, challenges and every later round are unchanged.
+//    R4-02 (owner decision, 2026-11-08): the first round has the cards again,
+//    paced -- the first at 25-30 s of play, the second at 60-65 s (each after
+//    its growth size, or at the window's end; CONFIG.ftue.firstRoundEvolution),
+//    the first marked "NOWOŚĆ · EWOLUCJA"; round 2 on: size triggers, "EWOLUCJA".
 //  - 3B: the player's vortex pressed against the city's edge pulls in what
 //    lies between it and the wall (Game.edgeReach(),
 //    CONFIG.arena.edgeReachSlack) -- a smaller rival or a fragment in a
@@ -227,10 +231,12 @@ export async function runFtue3Checks(url) {
   results.push(report('FTUE3 first session: welcome card -> GRAJ -> an Arena round of 2:00 at once, the same 2:00 for rounds 2 and 3 (seeded casual player, real buttons)',
     sessions.every(s => s.welcome && s.rounds.every(r => r.start.arena && r.start.playing && r.start.len === 120 && !r.start.daily && !r.start.challenge)),
     JSON.stringify(sessions.map(s => s.rounds.map(r => r.start)))));
-  results.push(report('FTUE3-3A round 1 runs without evolution cards (no full-screen pause) although the vortex grew past both evolution sizes; round 2 offers them, the first one "NOWOŚĆ · EWOLUCJA", later ones "EWOLUCJA"',
-    sessions.every(s => s.rounds[0].start.quiet && s.rounds[0].play.offers.length === 0 && s.rounds[0].play.maxR >= 66
-      && !s.rounds[1].start.quiet && s.rounds[1].play.offers.length >= 1 && s.rounds[1].play.offers[0].kicker === 'NOWOŚĆ · EWOLUCJA' && s.rounds[1].play.offers[0].shown
-      && s.rounds[1].play.offers.slice(1).every(o => o.kicker === 'EWOLUCJA') && s.rounds[2].play.offers.every(o => o.kicker === 'EWOLUCJA')),
+  // __f3Play counts play from its own start; the round ran a few real frames before it (<= 0.3 s).
+  results.push(report('FTUE3-3A (R4-02) round 1 offers the evolution cards twice, paced: "NOWOŚĆ · EWOLUCJA" at 25-30 s of play, "EWOLUCJA" at 60-65 s; rounds 2 and 3 at the growth sizes, all "EWOLUCJA"',
+    sessions.every(s => !s.rounds[0].start.quiet && s.rounds[0].play.offers.length === 2 && s.rounds[0].play.maxR >= 66
+      && s.rounds[0].play.offers[0].t >= 24.7 && s.rounds[0].play.offers[0].t <= 30.1 && s.rounds[0].play.offers[0].kicker === 'NOWOŚĆ · EWOLUCJA' && s.rounds[0].play.offers[0].shown
+      && s.rounds[0].play.offers[1].t >= 59.7 && s.rounds[0].play.offers[1].t <= 65.1 && s.rounds[0].play.offers[1].kicker === 'EWOLUCJA'
+      && !s.rounds[1].start.quiet && s.rounds[1].play.offers.length >= 1 && s.rounds[1].play.offers.every(o => o.kicker === 'EWOLUCJA') && s.rounds[2].play.offers.every(o => o.kicker === 'EWOLUCJA')),
     JSON.stringify(sessions.map(s => s.rounds.map(r => ({ quiet: r.start.quiet, maxR: r.play.maxR, offers: r.play.offers.map(o => o.t + ' ' + o.kicker) }))))));
   results.push(report('FTUE3-3C result 1 -> "NASTĘPNA RUNDA · Odblokujesz Warsztat", result 2 -> Wyzwania (and the Warsztat card), result 3 -> the Core City reward when <= 2 rounds away; each promise comes true',
     sessions.every(s => { const [a, b, c] = s.rounds.map(r => r.result.next);
@@ -308,6 +314,9 @@ export async function runFtue3Checks(url) {
         const r = { pending: gm.evolutionPending, kicker: document.getElementById('evolutionKicker').textContent };
         if (gm.evolutionPending) gm.skipEvolutionOffer(); gm.checkEvolutionTriggers(); r.second = gm.evolutionPending; r.kicker2 = document.getElementById('evolutionKicker').textContent; if (gm.evolutionPending) gm.skipEvolutionOffer(); return r; };
       out.first = offer({});
+      // R4-02: the first round's first offer waits for 25 s of play (a bite) -- at 30 s it comes anyway.
+      gm.startRound({}); cancelAnimationFrame(gm.rafId); gm.running = false; gm.player.setRadius(70); gm.timeRemaining = CONFIG.round.duration - 30; gm.checkEvolutionTriggers();
+      out.firstAt30 = { pending: gm.evolutionPending, kicker: document.getElementById('evolutionKicker').textContent }; gm.skipEvolutionOffer(); gm.stopRun();
       out.daily = offer({ daily: true });
       out.challenge = offer({ seed: 99, challenge: { score: 3000, from: 'Ola' } });
       gm.save.stats.runsPlayed = 1; out.second = offer({});
@@ -319,21 +328,21 @@ export async function runFtue3Checks(url) {
       gm.stopRun();
       return out;
     });
-    results.push(report('FTUE3-3A cards only from the 2nd round: none in the first regular round; Daily and a friend\'s challenge as a first play keep them (same round for everyone); round 2 "NOWOŚĆ · EWOLUCJA" then "EWOLUCJA"; a veteran "EWOLUCJA"; campaign powers "EWOLUCJA"',
-      !ev.first.pending && !ev.first.second && ev.daily.pending && ev.daily.kicker === 'EWOLUCJA' && ev.challenge.pending && ev.challenge.kicker === 'EWOLUCJA'
-      && ev.second.pending && ev.second.kicker === 'NOWOŚĆ · EWOLUCJA' && ev.second.second && ev.second.kicker2 === 'EWOLUCJA'
+    results.push(report('FTUE3-3A (R4-02) the first regular round paces its cards: none at 0 s even at the card size, "NOWOŚĆ · EWOLUCJA" at 30 s; Daily and a friend\'s challenge as a first play keep the size triggers (same round for everyone); round 2 and a veteran "EWOLUCJA" at once; campaign powers "EWOLUCJA"',
+      !ev.first.pending && !ev.first.second && ev.firstAt30.pending && ev.firstAt30.kicker === 'NOWOŚĆ · EWOLUCJA' && ev.daily.pending && ev.daily.kicker === 'EWOLUCJA' && ev.challenge.pending && ev.challenge.kicker === 'EWOLUCJA'
+      && ev.second.pending && ev.second.kicker === 'EWOLUCJA' && ev.second.second && ev.second.kicker2 === 'EWOLUCJA'
       && ev.veteran.pending && ev.veteran.kicker === 'EWOLUCJA' && ev.veteran.second && ev.powerKicker === 'EWOLUCJA', JSON.stringify(ev)));
     // A first round left early (R1) is not a finished round: the retry is still the quiet first round.
     const left = await g.page.evaluate(async () => {
       const gm = window.game; localStorage.removeItem('vectorHoleSave_v1');
       gm.save = defaultSave(); gm.save.privacy = { decided: true, analytics: false, ads: false, ts: Date.now() };
-      gm.startRound({}); const out = { quiet1: gm.evolutionQuiet };
+      gm.startRound({}); const out = { paced1: !!gm.evolutionPace };
       window.__f3Play(15, false); out.score = gm.player.score;
       gm.pauseGame(); gm.leaveRun(); out.runs = gm.save.stats.runsPlayed;
-      gm.startRound({}); out.quiet2 = gm.evolutionQuiet; gm.player.setRadius(70); gm.checkEvolutionTriggers(); out.pending = gm.evolutionPending; gm.stopRun();
+      gm.startRound({}); out.paced2 = !!gm.evolutionPace; out.intro2 = gm.evolutionIntro; gm.player.setRadius(70); gm.checkEvolutionTriggers(); out.pending = gm.evolutionPending; gm.stopRun();
       return out;
     });
-    results.push(report('FTUE3-3A a first round left early (R1: partial pay, not counted) -> the next round is still the first, without cards', left.quiet1 && left.score > 0 && left.runs === 0 && left.quiet2 && !left.pending, JSON.stringify(left)));
+    results.push(report('FTUE3-3A (R4-02) a first round left early (R1: partial pay, not counted) -> the next round is still the first: paced cards (none at 0 s), the first one marked new', left.paced1 && left.score > 0 && left.runs === 0 && left.paced2 && left.intro2 && !left.pending, JSON.stringify(left)));
     results.push(report('FTUE3-3A no errors', g.errors.length === 0, g.errors.join(' | ')));
     await g.browser.close();
   }
@@ -382,7 +391,8 @@ export async function runFtue3Checks(url) {
       document.getElementById('btnWelcomePlay').click(); window.__f3Play(200);
       await new Promise(r => setTimeout(r, 400));
       const a = { kicker: document.getElementById('resultNextKicker').textContent, text: document.getElementById('resultNextText').textContent };
-      gm.save.stats.runsPlayed = 1; gm.startRound({}); cancelAnimationFrame(gm.rafId); gm.running = false; gm.player.setRadius(70); gm.checkEvolutionTriggers();
+      // R4-02: the "new" mark is on the first round's first offer (at 30 s at the latest).
+      gm.save.stats.runsPlayed = 0; gm.startRound({}); cancelAnimationFrame(gm.rafId); gm.running = false; gm.player.setRadius(70); gm.timeRemaining = CONFIG.round.duration - 30; gm.checkEvolutionTriggers();
       await new Promise(r => setTimeout(r, 200));
       a.evo = document.getElementById('evolutionKicker').textContent; gm.skipEvolutionOffer();
       gm.save.stats.runsPlayed = 0; gm.save.unlocks.announced = []; gm.save.campaign.completed.M02 = true; gm.startRound({ seed: 3 }); cancelAnimationFrame(gm.rafId); gm.running = false; gm.player.score = 900; gm.endRound();
@@ -436,8 +446,8 @@ export async function runFtue3Checks(url) {
       out.next = window.__f3Result().next;
       return out;
     });
-    results.push(report('FTUE3 reload after the first round: Miasto (not the welcome card), GRAJ -> round 2 with "NOWOŚĆ · EWOLUCJA", its result points to Wyzwania',
-      !rl.welcome && rl.runs === 1 && !rl.quiet && rl.offers[0] === 'NOWOŚĆ · EWOLUCJA' && rl.next && rl.next.hook === 'wyzwania', JSON.stringify(rl)));
+    results.push(report('FTUE3 reload after the first round: Miasto (not the welcome card), GRAJ -> round 2 with the cards at the growth size ("EWOLUCJA" -- R4-02: round 1 introduced them), its result points to Wyzwania',
+      !rl.welcome && rl.runs === 1 && !rl.quiet && !rl.intro && rl.offers[0] === 'EWOLUCJA' && rl.next && rl.next.hook === 'wyzwania', JSON.stringify(rl)));
     results.push(report('FTUE3 reload: no errors', r.errors.length === 0, r.errors.join(' | ')));
     await r.browser.close();
   }
@@ -483,8 +493,8 @@ export async function runFtue3Checks(url) {
 
     const land = [];
     for (const [vp, mobile] of [[{ width: 844, height: 390 }, true], [{ width: 640, height: 360 }, false], [{ width: 1280, height: 720 }, false]]) land.push(await firstSession(url, 11, vp, { mobile }));
-    results.push(report('FTUE3 first session in landscape / Poki 640x360 / desktop 1280x720: round 1 without cards, round 2 "NOWOŚĆ · EWOLUCJA", results 1-2 point to Warsztat / Wyzwania, no errors',
-      land.every(s => s.rounds[0].play.offers.length === 0 && s.rounds[1].play.offers[0] && s.rounds[1].play.offers[0].kicker === 'NOWOŚĆ · EWOLUCJA' && s.rounds[0].result.next && s.rounds[0].result.next.hook === 'warsztat' && s.rounds[1].result.next && s.rounds[1].result.next.hook === 'wyzwania' && s.errors.length === 0),
+    results.push(report('FTUE3 first session in landscape / Poki 640x360 / desktop 1280x720: round 1 with two paced cards ("NOWOŚĆ · EWOLUCJA" at 25-30 s), round 2 "EWOLUCJA", results 1-2 point to Warsztat / Wyzwania, no errors',
+      land.every(s => s.rounds[0].play.offers.length === 2 && s.rounds[0].play.offers[0].t >= 24.7 && s.rounds[0].play.offers[0].t <= 30.1 && s.rounds[0].play.offers[0].kicker === 'NOWOŚĆ · EWOLUCJA' && s.rounds[1].play.offers[0] && s.rounds[1].play.offers[0].kicker === 'EWOLUCJA' && s.rounds[0].result.next && s.rounds[0].result.next.hook === 'warsztat' && s.rounds[1].result.next && s.rounds[1].result.next.hook === 'wyzwania' && s.errors.length === 0),
       JSON.stringify(land.map(s => ({ offers: s.rounds.map(r => r.play.offers.length), next: s.rounds.map(r => r.result.next && r.result.next.hook), errors: s.errors })))));
   }
   return results;
