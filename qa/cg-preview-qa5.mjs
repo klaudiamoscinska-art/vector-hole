@@ -181,8 +181,12 @@ async function magnetChecks(pkgUrl) {
   r.push(report('[package] R5-03 visible while active: the 160 range ring and a streak per pulled object, no canvas shadow; nothing once the hole is wider than the field', res.drawMid.arcs.length === 1 && res.drawMid.arcs[0] === 160 && res.drawMid.lines >= 1 && res.drawMid.blur === 0 && res.drawHuge.arcs.length === 0 && res.drawHuge.lines === 0, JSON.stringify({ mid: res.drawMid, huge: res.drawHuge })));
   r.push(report('[package] R5-03 cheap: one path of streaks per frame', res.drawMs < 1.5, `${res.drawMs} ms for ${res.drawCount} pulled objects (software canvas)`));
   fs.mkdirSync(path.join(WORK, 'shots'), { recursive: true });
-  await page.evaluate(() => { const g = window.game; if (g.evolutionPending) g.skipEvolutionOffer(); g.player.setRadius(66); });
-  await settle(700);
+  // The size jumps above open the remaining card offers: closed for the picture.
+  await page.evaluate(async () => {
+    const g = window.game;
+    g.player.setRadius(66);
+    for (let i = 0; i < 30; i++) { if (g.evolutionPending) g.skipEvolutionOffer(); await new Promise(x => setTimeout(x, 30)); }
+  });
   await page.screenshot({ path: path.join(WORK, 'shots', 'r5-03-magnet.png') });
   r.push(report('[package] R5-03 no page errors', !c.errors.length, c.errors.slice(0, 3).join(' ')));
   await c.close();

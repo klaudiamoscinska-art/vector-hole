@@ -195,6 +195,7 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 - **Ewolucja (R4-02: w 1. rundzie przy 25–30 s i 60–65 s gry, od 2. rundy przy rozmiarze):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
   (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala,
   Łowca) albo POMIŃ. Działają do końca rundy.
+  **Magnes (Arena, R5-03):** pole 160 od środka dziury, siła 90 × (1 − d/160); widać falę przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Od promienia 160 pole jest w środku dziury i nic nie przyciąga (zmiana zasięgu to decyzja właścicielki).
 - **Złoty Rdzeń:** po 10 s, potem co 20 s; kto zje — SZAŁ na 7 s
   (punkty ×2, zasięg ×1,35, prędkość ×1,2, obiekty o rozmiar większe).
 - **Wielki finisz:** ostatnie 12 s — losowo (z ziarna) Zaciemnienie albo

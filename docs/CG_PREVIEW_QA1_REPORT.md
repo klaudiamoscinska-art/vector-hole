@@ -87,6 +87,47 @@ Testy: `node qa/cg-preview-qa4.mjs [--root=DIR]` (mock SDK — to nie jest wynik
 | R4-02 | Zgłoszenie dotyczyło okien wyboru kart Ewolucji w trakcie rundy (nie boosterów na planszy ani kupowanych). Pierwsza runda nowego gracza szła **bez kart** — zasada FTUE-3 (`CONFIG.ftue.evolutionFromRuns = 1`, commit 6062528, PR #80, 2026-10-25), nie regresja; PR #93 jej nie zmieniał. Karty przychodzą przy promieniu 46 i 66 (`CONFIG.evolution.triggerRadii`), co u bota „casual” wypada w 5–29 s; wybór całkowicie zatrzymuje `update()` (`Game.loop()`), więc zegar rundy stoi. Karty losuje ziarno rundy (`this.rng`) po ułożeniu mapy; z tego strumienia korzysta potem tylko wybór finiszu. | Decyzja właścicielki (2026-11-08): dwa wybory w 1. rundzie. `evolutionFromRuns: 0` i `CONFIG.ftue.firstRoundEvolution` = [25–30 s, 60–65 s]: oferta czeka na swój rozmiar i przychodzi przy kęsie po początku okna, najpóźniej na jego końcu. Tylko zwykła 1. runda (także ponowiona po wyjściu); Wyzwanie dnia, wyzwanie znajomego i rundy 2+ — bez zmian (przy rozmiarze), „NOWOŚĆ · EWOLUCJA” przechodzi z 2. do 1. rundy. Bez zmian: karty, ich działanie, progi, balans, nagrody (wzory), układ mapy, zapis. Skutki pośrednie: w 1. rundzie gracz ma 2 moce, więc wynik jest wyższy (bot „casual”, 12 nowych graczy: mediana 6862 → 9250 pkt, miejsca bez zmian 36/36 pierwszych; monety z wzoru ~173 → ~194); przy danym ziarnie wariant finiszu 1. rundy może być inny (losowanie kart zużywa ziarno — jak w rundach 2+ i przed FTUE-3); 2 pauzy pełnoekranowe w 1. rundzie (wcześniej 0). Pomiar (bot, 8 ziaren): oferty przy 25–27 s i 60–61 s gry; wolny start (wir < 46): przy 30 i 65 s. |
 | R4-03 | Okno CODZIENNA NAGRODA: po ODBIERZ monety trafiały do zapisu od razu (`claimLoginReward()`, `saveGame()`), a sam przycisk ODBIERZ (duży niebieski `btn-mega`) zostawał jako **wyłączony** przycisk z napisem „+60 MONET!” — wyglądał na klikalny i nic nie robił. W paczce CrazyGames reklam nie ma (`provider: 'none'`), więc „×2 ZA REKLAMĘ” jest ukryte i jedynym wyjściem był link „Nie, dziękuję” (odmowa czegoś, czego nie zaproponowano). Na GitHub Pages (dostawca `demo`) obok jest „×2”. Przy okazji: tytuł po angielsku „Day 1 z 7” (osobny węzeł „ z 7” z jedną literą nie był tłumaczony). | Po odbiorze przycisk znika, w jego miejscu nieklikalne potwierdzenie (`#loginClaimedNote`, `role="status"`): „✓ Odebrano +60 monet” / „Claimed +60 coins” (pryzmaty z poprawną liczbą mnogą). Bez reklamy wyjście to przycisk DALEJ / NEXT; z ofertą reklamy bez zmian „×2 ZA REKLAMĘ” + „Nie, dziękuję”. Tytuł jednym tekstem: „Dzień 1 z 7” / „Day 1 of 7”. Harmonogram, kwoty, seria, ochrona zegara i zapis bez zmian; ponowne przyznanie wykluczone jak dotąd (`loginState().claimedToday`). |
 
+## R5
+
+Testy: `node qa/cg-preview-qa5.mjs [--root=DIR]` (mock SDK — to nie jest wynik CrazyGames Preview).
+
+| ID | Przyczyna | Zmiana | Status |
+|---|---|---|---|
+| R5-01 | Etykieta NASTĘPNA/TERAZ była przypięta do góry kafelka (`top: 5px`), a tekst do dołu; dwuwierszowa nazwa przy niskim kafelku (66 px w `wide`, 58 px w `compact`) wchodziła na etykietę. | Etykieta stoi w wierszu stanu, pod nazwą. Na następnej dzielnicy zastępuje „ZABLOKOWANA” (kłódka mówi to samo, oba teksty się nie mieszczą). Na najwęższych ramkach tekst stanu kończy się wielokropkiem. Logika dzielnic bez zmian. | PASS (mock), Preview PENDING |
+| R5-02 | Patrz niżej. Miejsce zatrzymania potwierdzone (prezentacja klatki w procesie GPU), przyczyna w kodzie gry niepotwierdzona. | Bez zmiany kodu. | NOT VERIFIED — nie naprawione |
+| R5-03 | Magnes działa zgodnie z konfiguracją (zasięg 160 od **środka** dziury, siła 90 × (1 − d/160)), ale słabnie z rozmiarem, a nie miał żadnego sygnału. | Przy wyborze fala do krawędzi pola; gdy działa: pierścień zasięgu i kreska przy każdym przyciąganym obiekcie (jedna ścieżka, bez cienia). Siła, zasięg, balans, RNG bez zmian. | Czytelność PASS (mock); zasięg przy dużej dziurze: decyzja właścicielki |
+| R5-04 | Zmiana języka przeładowuje tylko ramkę gry. Portal odpowiada przeładowanemu SDK ostatnim zapisem, który **dotarł na konto** (kod ramki v2.13, 2026-11-08: odpowiedź zmienia się dopiero po udanym zapisie, a zapisy czekają 1–30 s). Zalogowany gracz po odbiorze nagrody i szybkiej zmianie języka dostawał stary zapis: nagroda wracała, a następny zapis utrwalał stary stan na koncie. Odświeżenie później pomagało, stąd brak powtarzalności. | Zmiana języka przekazuje właśnie zapisany stan przez `sessionStorage` tej karty (tylko paczka; nie przez URL, bo SDK kopiuje URL do raportów błędów). Po starcie zastępuje odczytany stan tylko gdy jest czytelny, nowszy i jest znacznik `#lang=`. | PASS (mock), Preview PENDING |
+
+### R5-02 — pomiar (Intel Iris Xe, 1920×1080, Chrome 157)
+
+| Warunki | FPS | GPU/klatkę | Najdłuższe zatrzymania |
+|---|---|---|---|
+| Trace z CrazyGames Preview (właścicielka) | 60 → 37 w ostatnich ~35 s | 4 → 25,6 ms | 1153 ms w rundzie, 269 ms na końcu |
+| Lokalnie, widoczne okno, bez portalu, runda 1 | 60 | 6 → 14 ms | 819 ms na końcu rundy, 145 ms i 112 ms w rundzie |
+| Lokalnie, runda 2 | 60 | 6 → 11 ms | 832 ms na końcu rundy, 179 ms w rundzie |
+
+- JavaScript gry w każdym przypadku: 1,2–1,8 ms na klatkę; zatrzymań nie poprzedza praca gry ani GC.
+- Lokalnie zatrzymania na końcu rundy (807–817 ms) i część w rundzie (138 ms) to `DXGISwapChainImageBacking::Present` w głównym wątku procesu GPU, czyli wyświetlanie klatki przez przeglądarkę i sterownik. Zatrzymanie 1091 ms z Preview ma ten sam ślad (RunTask GPU bez GPUTask, 288 ms CPU na 1091 ms czasu), ale Trace nie miał kategorii `gpu`, więc nazwa zdarzenia tam jest NOT VERIFIED.
+- Wariant koszt GPU późnej rundy (10 s, nowy headless, ten sam GPU): pełny 14,9–15,6 ms; bez cienia 11,0; bez obiektów 11,2; bez podłogi 14,1; bez cząstek 14,2; poziom 0: 10,5; w ramce iframe 15,9; 1060×596: 12,4.
+- Strażnik jakości `monitorFrame()` mierzy tylko pracę JS, więc nie widzi kosztu GPU. Nie zmieniam go: lokalnie gra trzyma 60 FPS, a obniżenie jakości nie usuwa zatrzymań w Present.
+- Spadek do 37 FPS występuje tylko w Trace z Preview (portal, DevTools, inne warstwy) — różnicy nie udało się przypisać jednej przyczynie.
+
+Następny test: w Preview nagrać Trace z kategorią `gpu` i zaznaczyć moment przycięcia; lokalnie porównać rundę z `--disable-direct-composition`, aby sprawdzić, czy zatrzymania Present znikają poza ścieżką DirectComposition, oraz ustalić, co robi strona w chwili zatrzymania przy 35–38 s rundy.
+
+### R5-03 — co Magnes robi przy danym rozmiarze (zmierzone, 1 s, dziura stoi)
+
+| Promień dziury | Odległość obiektu | Przesunięcie | Uwaga |
+|---|---|---|---|
+| 30 | 60 | 59 px (wciągnięty) | wyraźny |
+| 46 | 80 | 60 px | wyraźny |
+| 66 | 90 | 53 px | druga karta w 1. rundzie |
+| 90 | 120 | 30 px | słaby przy ruchu |
+| 118 | 140 | 15 px | prawie niewidoczny |
+| 150 | 158 | 1,5 px | praktycznie zero |
+| ≥ 160 | dowolna | 0 px | pole jest w środku dziury |
+
+Decyzja dla właścicielki: Magnes misji liczy zasięg od krawędzi dziury (`CONFIG.campaign.magnet`: krawędź + 70, siła 120); Magnes Areny od środka. Rekomendacja: ten sam sposób w Arenie, z testem balansu botów. Do decyzji nie zmieniam.
+
 ## Core City — wzór (finalizeRun)
 
 Arena: `10 + 2 (miejsca 1–3) + 3 (1. miejsce) + 2 (nowy rekord)`; Wyzwanie dnia: `20 + 10 (rekord dnia)`.
@@ -132,3 +173,11 @@ ukończenie dnia i +10% za pierwszy nowy rekord dnia (na LVL 1–2: +32% i +16%,
 19. Następnego dnia (albo po zmianie daty): okno DAILY REWARD → CLAIM → zamiast niebieskiego „+60 COINS!” napis
     „✓ Claimed +60 coins” i przycisk NEXT; klik w napis nic nie robi; NEXT zamyka; po odświeżeniu okno nie wraca, monety
     tylko raz. Tytuł „Day 1 of 7”. Po polsku: „Odebrano +60 monet”, DALEJ.
+
+**R5 (nowa paczka):**
+
+R5-1. Districts (PC, PL i EN): „Park Impulsów” i każda dwuwierszowa nazwa nie dotyka etykiety; etykieta NEXT/NOW jest pod nazwą.
+R5-2. Arena: wybierz kartę Magnes — fala z wiru, potem pierścień wokół wiru i kreski przy przyciąganych obiektach, widoczne do promienia 160.
+R5-3. Zalogowana, nowy dzień: odbierz Daily Reward, zaraz przełącz PL/EN 5 razy — okno nie wraca, monety naliczone raz. Odśwież po 30 s: stan bez zmian.
+R5-4. Zalogowana: skończ rundę i od razu zmień język — monety z rundy zostają.
+R5-5. Runda Areny z Chrome Performance (kategoria GPU, jeśli dostępna): zanotuj czas każdego przycięcia.

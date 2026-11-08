@@ -4,6 +4,12 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-PREVIEW-QA-1 R5 (R5-01, R5-03, R5-04) (zapis nadal v13, klucz bez zmian; ekonomia, balans i RNG bez zmian)
+- **Etykieta na kafelku dzielnicy (R5-01):** NASTĘPNA/TERAZ stoi w wierszu stanu pod nazwą, więc dwuwierszowa nazwa nie wchodzi na etykietę (PC, CrazyGames, telefon, PL/EN). Logika dzielnic bez zmian.
+- **Magnes w Arenie jest widoczny (R5-03):** fala przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Siła i zasięg bez zmian; powyżej promienia 160 pole jest w środku dziury (decyzja właścicielki).
+- **Daily Reward i zmiana języka w paczce (R5-04):** zmiana języka przekazuje świeży zapis przez własne przeładowanie, bo portal oddaje ostatni zapis, który dotarł na konto. Nagroda nie wraca, postęp sprzed chwili nie ginie. GitHub Pages bez zmian.
+- **Przycięcia Areny (R5-02):** zdiagnozowane, bez zmiany kodu: zatrzymania są w prezentacji klatki w procesie GPU; przyczyna w kodzie gry niepotwierdzona (`docs/CG_PREVIEW_QA1_REPORT.md`).
+
 ## CG-PREVIEW-QA-1 R4 (R4-01, R4-02, R4-03) (zapis nadal v13, klucz bez zmian; ekonomia, balans i RNG bez zmian; FTUE: R4-02 decyzją właścicielki)
 - **Ekran startowy bez paska przewijania na PC (R4-01):** w układzie poziomym skala UI zostawia 620 px logicznych
   wysokości, a sztywna scena demo 470 px + GRAJ + notka potrzebowały ~631 — kolumna przewijała się o ~11 px (Full HD
