@@ -4,14 +4,20 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
-## CG-PREVIEW-QA-1 R4 (R4-01, R4-02) (zapis nadal v13, klucz bez zmian; ekonomia, balans, RNG i FTUE bez zmian)
+## CG-PREVIEW-QA-1 R4 (R4-01, R4-02, R4-03) (zapis nadal v13, klucz bez zmian; ekonomia, balans i RNG bez zmian; FTUE: R4-02 decyzją właścicielki)
 - **Ekran startowy bez paska przewijania na PC (R4-01):** w układzie poziomym skala UI zostawia 620 px logicznych
   wysokości, a sztywna scena demo 470 px + GRAJ + notka potrzebowały ~631 — kolumna przewijała się o ~11 px (Full HD
   w oknie, 1366×768, 1536×864, 1280×720, pełny ekran przy 125–175%, zrzut z Preview 1867×1006). Scena może się teraz
   skurczyć (do 240 px), gdy brakuje miejsca; gdzie jest miejsce — 470 px jak dotąd. Bez `overflow: hidden`.
-- **Boostery w 1. rundzie Areny (R4-02) — zbadane, bez zmiany:** Złoty Rdzeń (od 10 s) i finisz działają od 1. rundy;
-  karty Ewolucji od 2. rundy to zasada FTUE-3 (PR #80), nie regresja. Ewentualna zmiana — decyzja właścicielki.
-- `qa/cg-preview-qa4.mjs` (R4; 33 ramki EN/PL, paczka i web, przewijanie innych ekranów, inwentarz boosterów rund 1–2).
+- **Karty Ewolucji w 1. rundzie Areny (R4-02, decyzja właścicielki):** FTUE-3 zostawiało pierwszą rundę bez kart;
+  teraz dwa wybory — pierwszy przy 25–30 s gry („NOWOŚĆ · EWOLUCJA”), drugi przy 60–65 s; każdy czeka na swój rozmiar
+  (46 / 66) i przychodzi przy kęsie, najpóźniej na końcu okna. Wybór zatrzymuje rundę — 2:00 gry w całości. Rundy 2+,
+  Wyzwanie dnia i wyzwanie znajomego bez zmian. Wyższy wynik 1. rundy to skutek mocy (wzory nagród bez zmian).
+- **Okno dziennej nagrody (R4-03):** po ODBIERZ zamiast wyłączonego niebieskiego „+60 MONET!” — potwierdzenie
+  „✓ Odebrano +60 monet” (nie przycisk) i przycisk DALEJ; „Nie, dziękuję” tylko obok „×2 ZA REKLAMĘ”. Tytuł
+  „Day 1 of 7” po angielsku (było „Day 1 z 7”). Nagrody, seria i zapis bez zmian.
+- `qa/cg-preview-qa4.mjs` (R4; 33 ramki EN/PL, paczka i web, przewijanie innych ekranów, karty w 1. rundzie, okno dziennej nagrody);
+  `qa/ftue3.mjs` dostosowany do R4-02.
 
 ## CG-PREVIEW-QA-1 R3 (R3-01–04, 06–08) (zapis nadal v13, klucz bez zmian, bez nowych pól; jedyna zmiana ekonomii: R3-07)
 - **Wyzwanie dnia ładuje Core City raz dziennie (R3-07, decyzja właścicielki):** +20% za pierwsze ukończenie dnia i

@@ -114,13 +114,18 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   (po 12 s rundy) → „Ten rywal jest mniejszy…”; pierwsze pochłonięcie
   przez większy wir → zasada o większych rywalach (raz). Kto gra od razu,
   nie widzi nic. Za duży obiekt objaśnia „ZA DUŻE · URÓŚNIJ DO Tn”.
-- **Pierwsze 5 minut (FTUE-3, `CONFIG.ftue.evolutionFromRuns` /
+- **Pierwsze 5 minut (FTUE-3, `CONFIG.ftue.firstRoundEvolution` /
   `coreHookRounds`):** pierwsza runda Areny (bez ukończonej rundy; nie
-  Wyzwanie dnia ani wyzwanie znajomego) idzie **bez kart Ewolucji** —
-  wcześniej zatrzymywały ją dwa razy w 6–32 s wyborem z trzech kart,
-  zanim gracz poznał sterowanie. Karty wchodzą od 2. rundy; pierwsza
-  oferta ma nagłówek „NOWOŚĆ · EWOLUCJA”. Runda opuszczona w pauzie nie
-  jest ukończona, więc następna nadal jest „pierwsza”. **Każdy wynik
+  Wyzwanie dnia ani wyzwanie znajomego) ma **dwa wybory kart Ewolucji
+  w ustalonych oknach** (R4-02, decyzja właścicielki 2026-11-08; FTUE-3
+  z 2026-10-25 zostawiało tę rundę bez kart, bo w starym rytmie
+  zatrzymywały ją dwa razy w 6–32 s): pierwszy przy 25–30 s gry, drugi
+  przy 60–65 s. Każdy czeka na swój rozmiar (promień 46 / 66) i przychodzi
+  przy kęsie, gdy minie początek okna, a najpóźniej na jego końcu —
+  także gdy wir jest mniejszy. Pierwsza oferta ma nagłówek „NOWOŚĆ ·
+  EWOLUCJA”. Wybór zatrzymuje rundę, więc 2:00 gry zostaje w całości.
+  Od 2. rundy karty przychodzą przy rozmiarach jak dotąd. Runda opuszczona
+  w pauzie nie jest ukończona, więc następna nadal jest „pierwsza”. **Każdy wynik
   Areny mówi, co da następna runda** (`nextRoundHook()`, linia pod
   rozmiarem i miejscem, bez okna i bez dodatkowego dotknięcia): po 1.
   rundzie „NASTĘPNA RUNDA · Odblokujesz Warsztat · nowy wygląd wiru”, po
@@ -187,7 +192,7 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 - **Kolejność rysowania planszy (DEVICE-QA-1):** obiekty w kadrze rysują
   się od największych, równe od tyłu do przodu — mały obiekt nigdy nie
   chowa się pod budynkiem. Pozycje, jedzenie i RNG bez zmian.
-- **Ewolucja (od 2. rundy Areny — FTUE-3):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
+- **Ewolucja (R4-02: w 1. rundzie przy 25–30 s i 60–65 s gry, od 2. rundy przy rozmiarze):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
   (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala,
   Łowca) albo POMIŃ. Działają do końca rundy.
 - **Złoty Rdzeń:** po 10 s, potem co 20 s; kto zje — SZAŁ na 7 s
@@ -442,7 +447,10 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   gra otwarta w innej karcie), gra mówi „Kopia wczytana bez zapisu”.
 - **Retencja:** 7-dniowy kalendarz logowania (FTUE-1: nowy gracz nie widzi
   go przy pierwszej wizycie w Mieście po pierwszej rozgrywce, tylko przy
-  drugiej albo po ponownym uruchomieniu; nagrody i seria bez zmian),
+  drugiej albo po ponownym uruchomieniu; nagrody i seria bez zmian; R4-03:
+  po ODBIERZ przycisk znika, w jego miejscu potwierdzenie „Odebrano +60 monet”
+  (nie przycisk), wyjście to DALEJ, a „Nie, dziękuję” tylko obok oferty
+  „×2 ZA REKLAMĘ”; tytuł „Dzień 1 z 7” / „Day 1 of 7”),
   darmowa skrzynia co 4 h,
   Misja dnia (jedna z czterech, raz dziennie, sprawdzana po ukończonej
   rundzie Areny; BALANCE-1: „Zjedz 3 rywali” 80, „Zdobądź 4000 punktów”
@@ -785,7 +793,8 @@ dnia),
 powitalnego do 3. wyniku prawdziwymi przyciskami z botem „casual” na
 stałych ziarnach — dotknięcia, pauzy pełnoekranowe, pierwszy kęs, kęsy
 w 10 s, najdłuższa przerwa bez kęsa, miejsca, model osi czasu; pierwsza
-runda bez kart, „NOWOŚĆ · EWOLUCJA” w 2.; Wyzwanie dnia, wyzwanie
+runda z dwiema kartami przy 25–30 s i 60–65 s (R4-02), „NOWOŚĆ · EWOLUCJA”
+w 1.; Wyzwanie dnia, wyzwanie
 znajomego i weterani bez zmian; krawędź miasta: rywal i fragment w rogu
 i przy ścianie, nic bez dociśnięcia, boty bez zmian, zasady rozmiaru,
 koszt; linia następnej rundy: obie bramki, Warsztat z kampanii, Core
@@ -861,7 +870,8 @@ Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
   przybliżeniem człowieka — prawdziwe testy z graczami mogą przesunąć
   krzywą (wystarczy zmienić `DIFFICULTY.timeFactor`).
 - **FTUE-3 — hipotezy do pomiaru (nie wynik):** pierwsza runda bez kart
-  i linia „NASTĘPNA RUNDA” mają podnieść odsetek graczy, którzy kończą
+  (od R4-02 z dwiema kartami w 25–30 s i 60–65 s — porównać te same
+  wskaźniki przed i po R4-02) i linia „NASTĘPNA RUNDA” mają podnieść odsetek graczy, którzy kończą
   1. rundę i zaczynają 2. i 3. (`run_start` z `playCount`, `run_end`
   `completed`, nowe zdarzenie `result_next` {hook, rounds, runs}; karty
   w 2. rundzie: `evolution_offer` / `evolution_pick` / `evolution_skip`).
