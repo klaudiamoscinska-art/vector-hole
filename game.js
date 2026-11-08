@@ -7888,15 +7888,9 @@ class WorldObject {
       const breathe = 0.5 + 0.5 * Math.sin(performance.now() / 260);
       ctx.save();
       ctx.globalAlpha = highlight * (0.35 + 0.35 * breathe);
-      ctx.strokeStyle = this.color;
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = this.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
       // A few px outside the object, not 1.4x its radius -- the old ring
       // read bigger than the hole that could already eat it (player feedback).
-      ctx.arc(this.x, this.y, this.radius + 3 + 2 * breathe, 0, Math.PI * 2);
-      ctx.stroke();
+      drawGlowRing(ctx, this.x, this.y, this.radius + 3 + 2 * breathe, this.color, 2, 18);
       ctx.restore();
     }
 
@@ -8433,6 +8427,59 @@ function wobblePath(ctx, r, fn, steps = 48) {
   ctx.closePath();
 }
 
+/* PERF-01: a full-circle neon ring is the same picture every frame, and its
+   shadowBlur is what a weak GPU pays for on every one. Its glow is drawn once
+   into a small canvas at device scale (shadowBlur ignores the transform, so
+   it matches the live glow) and stamped under a live stroke -- shadow, then
+   line, as before. Device radii are bucketed (3% apart) and the stamp is scaled
+   to the exact radius. Rings in a cycling hsl() color stay live. */
+const RING_GLOW_CACHE = new Map();
+const RING_GLOW_MAX_ENTRIES = 96, RING_GLOW_MAX_PIXELS = 6e6;
+let ringGlowPixels = 0;
+
+function ringGlowSprite(color, devR, devLw, blur) {
+  const bucket = Math.round(Math.log(Math.max(1, devR)) / Math.log(1.03));
+  const lw2 = Math.max(1, Math.round(devLw * 2)), b = Math.round(blur);
+  const key = color + '|' + bucket + '|' + lw2 + '|' + b;
+  let sprite = RING_GLOW_CACHE.get(key);
+  if (sprite) { RING_GLOW_CACHE.delete(key); RING_GLOW_CACHE.set(key, sprite); return sprite; }
+  const r = Math.pow(1.03, bucket), half = Math.ceil(r + lw2 / 4 + b * 1.5 + 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = half * 2;
+  const c = canvas.getContext('2d');
+  // Only the shadow lands on the canvas: the line itself is drawn off it.
+  const off = half * 4;
+  c.shadowColor = color; c.shadowBlur = b; c.shadowOffsetX = off;
+  c.lineWidth = lw2 / 2;
+  c.beginPath(); c.arc(half - off, half, r, 0, Math.PI * 2); c.stroke();
+  sprite = { canvas, half, r };
+  RING_GLOW_CACHE.set(key, sprite);
+  ringGlowPixels += canvas.width * canvas.height;
+  while (RING_GLOW_CACHE.size > RING_GLOW_MAX_ENTRIES || (ringGlowPixels > RING_GLOW_MAX_PIXELS && RING_GLOW_CACHE.size > 1)) {
+    const oldest = RING_GLOW_CACHE.keys().next().value;
+    ringGlowPixels -= RING_GLOW_CACHE.get(oldest).canvas.width ** 2;
+    RING_GLOW_CACHE.delete(oldest);
+  }
+  return sprite;
+}
+
+function drawGlowRing(ctx, x, y, r, color, lw, blur) {
+  // gfx levels without blur turn it off with an own shadowBlur (applyGfx()).
+  const blurOn = !Object.prototype.hasOwnProperty.call(ctx, 'shadowBlur');
+  const live = blurOn && color.startsWith('hsl');
+  if (blurOn && !live) {
+    const m = ctx.getTransform(), z = Math.hypot(m.a, m.b);
+    const s = ringGlowSprite(color, r * z, lw * z, blur);
+    const k = (r * z / s.r) * s.half / z;
+    ctx.drawImage(s.canvas, x - k, y - k, k * 2, k * 2);
+  }
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = color; ctx.lineWidth = lw;
+  if (live) { ctx.shadowBlur = blur; ctx.shadowColor = color; }
+  ctx.stroke();
+  if (live) ctx.shadowBlur = 0;
+}
+
 /** Signature rim for each hole style, drawn centered at (0,0). `solid` is
  *  null for rainbow skins; `c` is then a cycling hue. */
 function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
@@ -8446,7 +8493,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
   };
   switch (style) {
     case 'tech': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 16);
+      drawGlowRing(ctx, 0, 0, r, c, lw, 16);
       // Three rotating bracket arcs + counter-rotating tick ring.
       for (let i = 0; i < 3; i++) {
         const a = t * 1.4 + (i / 3) * Math.PI * 2;
@@ -8486,7 +8533,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
       break;
     }
     case 'galaxy': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 18);
+      drawGlowRing(ctx, 0, 0, r, c, lw, 18);
       ctx.save(); ctx.rotate(t * 0.5); ctx.scale(1, 0.38);
       ctx.beginPath(); ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2);
       ctx.globalAlpha *= 0.55; glowStroke(shadeColor(c, 0.3), Math.max(1.5, lw * 0.6), 10);
@@ -8513,11 +8560,11 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
         ctx.lineTo(Math.cos(a + w) * r, Math.sin(a + w) * r);
       }
       ctx.fillStyle = rgbaColor(c, 0.75); ctx.shadowBlur = 18; ctx.shadowColor = c; ctx.fill(); ctx.shadowBlur = 0;
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(shadeColor(c, 0.3), lw * 1.1, 14);
+      drawGlowRing(ctx, 0, 0, r, shadeColor(c, 0.3), lw * 1.1, 14);
       break;
     }
     case 'storm': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 18);
+      drawGlowRing(ctx, 0, 0, r, c, lw, 18);
       // Crackling arcs: re-rolled ~12x per second from a stable seed.
       const tick = Math.floor(t * 12);
       for (let b = 0; b < (detailed ? 3 : 2); b++) {
@@ -8547,7 +8594,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
       break;
     }
     case 'crystal': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw * 0.8, 14);
+      drawGlowRing(ctx, 0, 0, r, c, lw * 0.8, 14);
       const shards = 8;
       for (let i = 0; i < shards; i++) {
         const a = t * 0.6 + (i / shards) * Math.PI * 2;
@@ -8569,8 +8616,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
       // round it: the motion a player can read on a phone at r = 12 px.
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.strokeStyle = '#25384A'; ctx.lineWidth = lw * 1.5; ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-      glowStroke('#50F0FA', Math.max(1.5, lw * 0.42), Math.max(6, r * 0.22));
+      drawGlowRing(ctx, 0, 0, r, '#50F0FA', Math.max(1.5, lw * 0.42), Math.max(6, r * 0.22));
       const arcs = detailed ? 3 : 2;
       for (let i = 0; i < arcs; i++) {
         const a0 = -t * 1.5 + (i / arcs) * Math.PI * 2;
@@ -8589,8 +8635,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
         ctx.beginPath(); ctx.arc(0, 0, r, a0, a0 + (Math.PI * 2) / segments + 0.02);
         ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
       }
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.globalAlpha *= 0.4; glowStroke('#ffffff', 1, 14); ctx.globalAlpha /= 0.4;
+      ctx.globalAlpha *= 0.4; drawGlowRing(ctx, 0, 0, r, '#ffffff', 1, 14); ctx.globalAlpha /= 0.4;
       for (let i = 0; i < (detailed ? 6 : 3); i++) {
         const a = -t * 1.8 + (i / 6) * Math.PI * 2;
         const d = r + lw * 2;
