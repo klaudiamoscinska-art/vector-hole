@@ -16536,6 +16536,12 @@ class Game {
     const view = this.floorView();
     this.cityFloor.draw(ctx, view, null);
     if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, null, null, this.player);
+    // PERF-02: this outline encloses the whole screen, so its shadow costs a
+    // screen-sized blur even with no edge in view, where it paints no pixel.
+    // Margin: half the line + the glow and the max shake (screen px).
+    const m = 2 + 40 / this.zoom;
+    if (view.cx - view.hw - m > 0 && view.cx + view.hw + m < WORLD_W
+      && view.cy - view.hh - m > 0 && view.cy + view.hh + m < WORLD_H) return;
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 84, 173, 0.65)';
     ctx.shadowBlur = 14;
