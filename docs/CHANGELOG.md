@@ -4,6 +4,24 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-OBJECTS-02 „Premium Vector Objects” — nowe grafiki obiektów T1 i T2 (zapis nadal v13, klucz bez zmian; mechanika, progi T1–T6, promienie, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
+- **15 wyglądów T1/T2 narysowanych od nowa** w jednym systemie (`VA_ART`, `vaKit()`): fragment, kapsuła (T1); latarnia, drzewo, ławka,
+  kiosk, skrzynia, moduł dachowy, znacznik, kryształ, paleta, witryna, klucz sektora, emiter, znacznik ogrodu (T2). Kierunek zatwierdzony
+  przez właścicielkę: hybryda top-down + pełna sylwetka. Reguły: `docs/GG_OBJECTS_02_ART_RULES.md`.
+- **Jedna kamera i jedno światło:** przód obiektu ku dołowi ekranu, głębia zawsze w górę i w prawo (widać górę, przód i prawą ścianę),
+  światło z lewej góry jak na podłożu A2.1; kolor klasy (cyjan T1, róż T2) dominuje, cień schodzi w fiolet, akcentem jest przeciwny neon,
+  ciemny grafit-granat na podstawach i ekranach, kontur, cień kontaktowy i pierścień podstawki.
+- **Stała orientacja:** fragment nie kołysze się już o ±20° (jedyny obiekt, który się obracał); unoszenie i „oddech” bez zmian.
+- **Ikony celów = ta sama geometria:** ikony 15 wyglądów oraz ikony klas fragment / kapsuła / element uliczny / znacznik powstają z tej
+  samej funkcji rysującej, odtworzonej jako ścieżki SVG (`vaIconSvg()`); logika celów i misji bez zmian.
+- **Ostrość i cache:** sprite’y T1/T2 malowane w 2× / 3× / 4× zależnie od gęstości pikseli płótna (telefon 3×), T3–T6 zostają przy 2×;
+  nadal jedno `drawImage` na obiekt, poświaty liczone tylko przy malowaniu sprite’a.
+- Złoty Rdzeń (rysowany grafiką fragmentu w złocie) i podglądy fragmentu w menu dostają tę samą nową sylwetkę.
+- Bez zmian: obiekty T3–T6, landmarki, portal, złoty bajt (źródło ich grafik identyczne z bazą), podłoże A2.1, Horyzont, efekty
+  pochłaniania, HUD poza ikonami celów, kamera, sterowanie, boty, zapis.
+- **QA:** `node qa/objects2.mjs` (15 kontroli), `node qa/objects2-shots.mjs --root DIR` (PRZED/PO z gry: arkusze, Arena, Kampania,
+  Wyzwanie dnia; telefon 390×844, CrazyGames 800×450, desktop 1366×768). Raport: `docs/GG_OBJECTS_02_REPORT.md`, obrazy: `design/objects2/`.
+
 ## GG-VISUAL-02 „Premium Vector City” (A2.1) — nowe podłoże miasta (zapis nadal v13, klucz bez zmian; mechanika, RNG, seedy, układ map, balans i ekonomia bez zmian)
 - **Podłoże Areny, Wyzwania dnia, wyzwań znajomych i Kampanii** (jeden renderer: `paintCityChunk()` → `CITY_ART`) składa się z materiałów
   z głębią, widzianych z góry: ciemna jezdnia z płytami skrzyżowań i mosiężnym pierścieniem, jasny kamienny krawężnik na cokole

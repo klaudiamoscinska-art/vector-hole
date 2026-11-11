@@ -907,7 +907,7 @@ async function languageChecks(url) {
   const r = [];
   const g = await openGame(url, { locale: 'de-DE', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, query: '?i18n=log' });
   const lang = await g.page.evaluate(() => I18N.lang);
-  r.push(report('language: a browser in any other language gets English (the SDK's en-US decides, qa/cg-lang1.mjs has the matrix)', lang === 'en', lang));
+  r.push(report('language: a browser in any other language gets English (the SDK\'s en-US decides, qa/cg-lang1.mjs has the matrix)', lang === 'en', lang));
   await g.browser.close();
   // The SDK's locale decides, not the browser (here en-US from the mock's default); Profil → Polski is remembered.
   const pl = await openGame(url, { locale: 'pl-PL', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1 });
