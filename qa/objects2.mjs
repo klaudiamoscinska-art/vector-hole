@@ -10,8 +10,9 @@
 //  - O2-4 one geometry at every scale: the board sprite, a big preview and the
 //    goal icon of a look are the same silhouette (overlap of the normalized
 //    shapes), and the icon is the art replayed as SVG, one per look;
-//  - O2-5 one orientation: an idle object never turns (the fragment used to
-//    rock by +-20 degrees);
+//  - O2-5 one camera and one orientation: a solid shows its top, front and
+//    right side, and an idle object never turns (the fragment used to rock
+//    by +-20 degrees);
 //  - O2-6 the art is outside the round: painting every sprite and icon draws
 //    no Math.random and leaves game.rng, the layout and the save alone;
 //  - O2-7 the cache: one sprite per look and supersample (2x / 3x / 4x by the
@@ -198,7 +199,9 @@ export async function runObjects2Checks() {
           aspect: [+small.aspect.toFixed(2), +big.aspect.toFixed(2), icon ? +icon.aspect.toFixed(2) : 0],
           axisSpread: +(Math.max(...axes) - Math.min(...axes)).toFixed(2), idleIoU: +Math.min(...idle.map(b => iou(b.mask, idle[0].mask))).toFixed(3),
           halfW: +(Math.max(-bx[0], bx[2]) / r).toFixed(2), halfH: +(Math.max(-bx[1], bx[3]) / r).toFixed(2),
-          center: [+((bx[0] + bx[2]) / 2 / r).toFixed(2), +((bx[1] + bx[3]) / 2 / r).toFixed(2)]
+          center: [+((bx[0] + bx[2]) / 2 / r).toFixed(2), +((bx[1] + bx[3]) / 2 / r).toFixed(2)],
+          // how full the four corners of the big silhouette's box are (TL, TR, BL, BR; 7 x 7 of 48 x 48)
+          corners: [[0, 0], [41, 0], [0, 41], [41, 41]].map(([cx, cy]) => { let n = 0; for (let j = 0; j < 7; j++) for (let i = 0; i < 7; i++) n += big.mask[(cy + j) * 48 + cx + i]; return +(n / 49).toFixed(2); })
         };
         out.icons[kind] = { len: def.icon.length, paths: (def.icon.match(/<path /g) || []).length, currentColor: /currentColor/.test(def.icon), color: def.color, fromArt: def.icon === (type === 'fragment' ? m.__qaGoalIcons.fragment : type === 'capsule' ? m.__qaGoalIcons.capsule : m.__qaGoalArtIcons[kind]), markup: def.icon };
       }
@@ -246,6 +249,14 @@ export async function runObjects2Checks() {
       propClassIcon: is(art.classIcons.propIsOwn && art.classIcons.propPaths > 8, true),
       markerClassIcon: is(art.classIcons.markerIsZnacznik, true)
     }, `worst ${wi[0]} ${wi[1]}; icon sizes ${kinds.map(k => art.icons[k].len).join('/')} chars`));
+    // A solid seen from the front and above, depth receding up-right: its box
+    // is full at the top right and the bottom left, empty at the top left
+    // and the bottom right (a mirrored camera would swap them).
+    const solids = ['skrzynia', 'modul_dachowy'];
+    results.push(expectAll('O2-5 one camera: a solid shows its top, front and RIGHT side (depth recedes up and to the right)', Object.fromEntries(solids.map(k => {
+      const [tl, tr, bl, br] = L[k].corners;
+      return [k, holds(tl < 0.25 && br < 0.25 && tr > 0.6 && bl > 0.6, L[k].corners.join('/'), 'TL and BR empty (< 0.25), TR and BL full (> 0.6)')];
+    })), solids.map(k => `${k} ${L[k].corners.join('/')}`).join(' ')));
     results.push(expectAll('O2-5 one orientation: no look turns while idle', {
       reshaped: is(kinds.filter(k => L[k].idleIoU < 0.94).join(), ''),
       fragmentAxis: holds(L.fragment.axisSpread < 1, L.fragment.axisSpread, 'the fragment\'s long axis within 1 degree'),

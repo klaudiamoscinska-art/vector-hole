@@ -19,7 +19,7 @@ są w historii gita (`git log -- docs/`).
 - Złoty Rdzeń (rysowany grafiką fragmentu w złocie) i podglądy fragmentu w menu dostają tę samą nową sylwetkę.
 - Bez zmian: obiekty T3–T6, landmarki, portal, złoty bajt (źródło ich grafik identyczne z bazą), podłoże A2.1, Horyzont, efekty
   pochłaniania, HUD poza ikonami celów, kamera, sterowanie, boty, zapis.
-- **QA:** `node qa/objects2.mjs` (14 kontroli), `node qa/objects2-shots.mjs --root DIR` (PRZED/PO z gry: arkusze, Arena, Kampania,
+- **QA:** `node qa/objects2.mjs` (15 kontroli), `node qa/objects2-shots.mjs --root DIR` (PRZED/PO z gry: arkusze, Arena, Kampania,
   Wyzwanie dnia; telefon 390×844, CrazyGames 800×450, desktop 1366×768). Raport: `docs/GG_OBJECTS_02_REPORT.md`, obrazy: `design/objects2/`.
 
 ## GG-VISUAL-02 „Premium Vector City” (A2.1) — nowe podłoże miasta (zapis nadal v13, klucz bez zmian; mechanika, RNG, seedy, układ map, balans i ekonomia bez zmian)
