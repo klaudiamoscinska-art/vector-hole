@@ -2,6 +2,12 @@
  "base": {
   "scenes": {
    "arena-phone": {
+    "under": {
+     "n": 210,
+     "min": 8.43,
+     "p05": 10.96,
+     "median": 13.25
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -17,11 +23,12 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 9.1,
-    "frameMsP90": 11.1,
+    "frameMsMedian": 9.5,
+    "frameMsP90": 13.6,
     "randomCalls": 23
    },
    "campaign-phone": {
+    "under": null,
     "layoutHash": "cd3ea182",
     "objects": 22,
     "bots": 0,
@@ -37,11 +44,17 @@
      1760
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 2.1,
-    "frameMsP90": 2.8,
+    "frameMsMedian": 2,
+    "frameMsP90": 2.2,
     "randomCalls": 43
    },
    "daily-phone": {
+    "under": {
+     "n": 210,
+     "min": 6.15,
+     "p05": 10.75,
+     "median": 13.25
+    },
     "layoutHash": "2bb93250",
     "objects": 299,
     "bots": 5,
@@ -49,19 +62,25 @@
     "zoom": 1.08,
     "gfx": 2,
     "player": [
-     864,
-     1538
+     540,
+     1905
     ],
     "camera": [
-     864,
-     1538
+     540,
+     1905
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 7.7,
-    "frameMsP90": 8,
+    "frameMsMedian": 5.6,
+    "frameMsP90": 6.2,
     "randomCalls": 12
    },
    "arena-phone-gfx0": {
+    "under": {
+     "n": 210,
+     "min": 8.43,
+     "p05": 10.96,
+     "median": 13.25
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -77,11 +96,17 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 2.7,
-    "frameMsP90": 5.9,
+    "frameMsMedian": 2.5,
+    "frameMsP90": 3.5,
     "randomCalls": 12
    },
    "arena-desktop": {
+    "under": {
+     "n": 210,
+     "min": 8.43,
+     "p05": 10.96,
+     "median": 13.25
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -98,10 +123,11 @@
     ],
     "stillRepaints": 0,
     "frameMsMedian": 7.8,
-    "frameMsP90": 9.9,
+    "frameMsP90": 8.5,
     "randomCalls": 23
    },
    "campaign-desktop": {
+    "under": null,
     "layoutHash": "cd3ea182",
     "objects": 22,
     "bots": 0,
@@ -117,11 +143,17 @@
      1760
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 4.9,
-    "frameMsP90": 5.4,
+    "frameMsMedian": 5.2,
+    "frameMsP90": 5.5,
     "randomCalls": 43
    },
    "daily-desktop": {
+    "under": {
+     "n": 210,
+     "min": 6.15,
+     "p05": 10.75,
+     "median": 13.25
+    },
     "layoutHash": "2bb93250",
     "objects": 299,
     "bots": 5,
@@ -129,16 +161,16 @@
     "zoom": 1.564,
     "gfx": 2,
     "player": [
-     864,
-     1538
+     540,
+     1905
     ],
     "camera": [
-     864,
-     1538
+     540,
+     1905
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 5.8,
-    "frameMsP90": 6.4,
+    "frameMsMedian": 5.3,
+    "frameMsP90": 7.4,
     "randomCalls": 12
    }
   },
@@ -146,12 +178,12 @@
   "floor": {
    "paintMs": {
     "x1": {
-     "median": 1.7,
-     "max": 4.4
+     "median": 1.6,
+     "max": 2.1
     },
     "x2": {
-     "median": 4.7,
-     "max": 8.7
+     "median": 4.2,
+     "max": 7.5
     }
    },
    "luma": {
@@ -233,6 +265,12 @@
  "A": {
   "scenes": {
    "arena-phone": {
+    "under": {
+     "n": 210,
+     "min": 6.19,
+     "p05": 7.83,
+     "median": 11.52
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -248,11 +286,12 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 9.6,
-    "frameMsP90": 12.1,
+    "frameMsMedian": 9,
+    "frameMsP90": 10.9,
     "randomCalls": 23
    },
    "campaign-phone": {
+    "under": null,
     "layoutHash": "cd3ea182",
     "objects": 22,
     "bots": 0,
@@ -268,11 +307,17 @@
      1760
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 2,
+    "frameMsMedian": 2.1,
     "frameMsP90": 2.2,
     "randomCalls": 43
    },
    "daily-phone": {
+    "under": {
+     "n": 210,
+     "min": 5.44,
+     "p05": 8.03,
+     "median": 11.38
+    },
     "layoutHash": "2bb93250",
     "objects": 299,
     "bots": 5,
@@ -280,19 +325,25 @@
     "zoom": 1.08,
     "gfx": 2,
     "player": [
-     864,
-     1538
+     540,
+     1905
     ],
     "camera": [
-     864,
-     1538
+     540,
+     1905
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 7.7,
-    "frameMsP90": 8.2,
+    "frameMsMedian": 6,
+    "frameMsP90": 8.1,
     "randomCalls": 12
    },
    "arena-phone-gfx0": {
+    "under": {
+     "n": 210,
+     "min": 6.52,
+     "p05": 8.34,
+     "median": 11.63
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -308,11 +359,17 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 2.5,
-    "frameMsP90": 2.9,
+    "frameMsMedian": 2.8,
+    "frameMsP90": 5,
     "randomCalls": 12
    },
    "arena-desktop": {
+    "under": {
+     "n": 210,
+     "min": 6.19,
+     "p05": 7.83,
+     "median": 11.52
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -328,11 +385,12 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 8.2,
-    "frameMsP90": 10.6,
+    "frameMsMedian": 7.5,
+    "frameMsP90": 8,
     "randomCalls": 23
    },
    "campaign-desktop": {
+    "under": null,
     "layoutHash": "cd3ea182",
     "objects": 22,
     "bots": 0,
@@ -348,11 +406,17 @@
      1760
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 5,
-    "frameMsP90": 5.5,
+    "frameMsMedian": 5.3,
+    "frameMsP90": 7.1,
     "randomCalls": 43
    },
    "daily-desktop": {
+    "under": {
+     "n": 210,
+     "min": 5.44,
+     "p05": 8.03,
+     "median": 11.38
+    },
     "layoutHash": "2bb93250",
     "objects": 299,
     "bots": 5,
@@ -360,16 +424,16 @@
     "zoom": 1.564,
     "gfx": 2,
     "player": [
-     864,
-     1538
+     540,
+     1905
     ],
     "camera": [
-     864,
-     1538
+     540,
+     1905
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 5.9,
-    "frameMsP90": 6.4,
+    "frameMsMedian": 5.2,
+    "frameMsP90": 5.9,
     "randomCalls": 12
    }
   },
@@ -377,12 +441,12 @@
   "floor": {
    "paintMs": {
     "x1": {
-     "median": 2.7,
-     "max": 3.4
+     "median": 1.7,
+     "max": 2.1
     },
     "x2": {
-     "median": 4.7,
-     "max": 9.2
+     "median": 5.2,
+     "max": 11.9
     }
    },
    "luma": {
@@ -461,9 +525,15 @@
    }
   }
  },
- "B": {
+ "A2": {
   "scenes": {
    "arena-phone": {
+    "under": {
+     "n": 210,
+     "min": 4.5,
+     "p05": 5.71,
+     "median": 9.39
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -479,11 +549,12 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 8.8,
-    "frameMsP90": 9.9,
+    "frameMsMedian": 10.5,
+    "frameMsP90": 14.1,
     "randomCalls": 23
    },
    "campaign-phone": {
+    "under": null,
     "layoutHash": "cd3ea182",
     "objects": 22,
     "bots": 0,
@@ -500,10 +571,16 @@
     ],
     "stillRepaints": 0,
     "frameMsMedian": 2.1,
-    "frameMsP90": 3,
+    "frameMsP90": 3.1,
     "randomCalls": 43
    },
    "daily-phone": {
+    "under": {
+     "n": 210,
+     "min": 4.58,
+     "p05": 6.19,
+     "median": 9.66
+    },
     "layoutHash": "2bb93250",
     "objects": 299,
     "bots": 5,
@@ -511,19 +588,25 @@
     "zoom": 1.08,
     "gfx": 2,
     "player": [
-     864,
-     1538
+     540,
+     1905
     ],
     "camera": [
-     864,
-     1538
+     540,
+     1905
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 8.8,
-    "frameMsP90": 11.8,
+    "frameMsMedian": 6.1,
+    "frameMsP90": 8.3,
     "randomCalls": 12
    },
    "arena-phone-gfx0": {
+    "under": {
+     "n": 210,
+     "min": 4.55,
+     "p05": 5.85,
+     "median": 9.89
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -539,11 +622,17 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 2.9,
-    "frameMsP90": 3.5,
+    "frameMsMedian": 3.2,
+    "frameMsP90": 4,
     "randomCalls": 12
    },
    "arena-desktop": {
+    "under": {
+     "n": 210,
+     "min": 4.5,
+     "p05": 5.71,
+     "median": 9.39
+    },
     "layoutHash": "991bcf7b",
     "objects": 299,
     "bots": 5,
@@ -559,11 +648,12 @@
      640
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 11.7,
-    "frameMsP90": 12.4,
+    "frameMsMedian": 7.9,
+    "frameMsP90": 13.9,
     "randomCalls": 23
    },
    "campaign-desktop": {
+    "under": null,
     "layoutHash": "cd3ea182",
     "objects": 22,
     "bots": 0,
@@ -580,10 +670,16 @@
     ],
     "stillRepaints": 0,
     "frameMsMedian": 5.1,
-    "frameMsP90": 5.2,
+    "frameMsP90": 5.9,
     "randomCalls": 43
    },
    "daily-desktop": {
+    "under": {
+     "n": 210,
+     "min": 4.58,
+     "p05": 6.19,
+     "median": 9.66
+    },
     "layoutHash": "2bb93250",
     "objects": 299,
     "bots": 5,
@@ -591,16 +687,16 @@
     "zoom": 1.564,
     "gfx": 2,
     "player": [
-     864,
-     1538
+     540,
+     1905
     ],
     "camera": [
-     864,
-     1538
+     540,
+     1905
     ],
     "stillRepaints": 0,
-    "frameMsMedian": 6.1,
-    "frameMsP90": 6.4,
+    "frameMsMedian": 5.2,
+    "frameMsP90": 7.5,
     "randomCalls": 12
    }
   },
@@ -608,12 +704,275 @@
   "floor": {
    "paintMs": {
     "x1": {
-     "median": 2,
-     "max": 2.9
+     "median": 2.7,
+     "max": 6.9
     },
     "x2": {
-     "median": 5.8,
-     "max": 10
+     "median": 5.6,
+     "max": 14.9
+    }
+   },
+   "luma": {
+    "plac": {
+     "mean": 0.2018,
+     "p95": 0.433,
+     "p999": 0.5717,
+     "busy": 0.02383
+    },
+    "park": {
+     "mean": 0.2116,
+     "p95": 0.433,
+     "p999": 0.5918,
+     "busy": 0.02481
+    },
+    "port": {
+     "mean": 0.2082,
+     "p95": 0.3919,
+     "p999": 0.5666,
+     "busy": 0.02047
+    },
+    "galeria": {
+     "mean": 0.1829,
+     "p95": 0.3832,
+     "p999": 0.5453,
+     "busy": 0.02127
+    },
+    "dachy": {
+     "mean": 0.1734,
+     "p95": 0.3365,
+     "p999": 0.5313,
+     "busy": 0.01735
+    },
+    "rdzen": {
+     "mean": 0.1826,
+     "p95": 0.4204,
+     "p999": 0.5803,
+     "busy": 0.02642
+    },
+    "metro": {
+     "mean": 0.201,
+     "p95": 0.433,
+     "p999": 0.7028,
+     "busy": 0.02408
+    },
+    "bazar": {
+     "mean": 0.1942,
+     "p95": 0.3693,
+     "p999": 0.5666,
+     "busy": 0.01964
+    },
+    "fabryka": {
+     "mean": 0.1606,
+     "p95": 0.3834,
+     "p999": 0.5313,
+     "busy": 0.02185
+    },
+    "zatoka": {
+     "mean": 0.2006,
+     "p95": 0.3569,
+     "p999": 0.5313,
+     "busy": 0.01612
+    },
+    "ogrody": {
+     "mean": 0.2105,
+     "p95": 0.3693,
+     "p999": 0.5399,
+     "busy": 0.0209
+    },
+    "chmura": {
+     "mean": 0.2103,
+     "p95": 0.4324,
+     "p999": 0.5789,
+     "busy": 0.02206
+    }
+   }
+  }
+ },
+ "B": {
+  "scenes": {
+   "arena-phone": {
+    "under": {
+     "n": 210,
+     "min": 8.82,
+     "p05": 10.83,
+     "median": 13.46
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 8.9,
+    "frameMsP90": 9.5,
+    "randomCalls": 23
+   },
+   "campaign-phone": {
+    "under": null,
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2,
+    "frameMsP90": 2.3,
+    "randomCalls": 43
+   },
+   "daily-phone": {
+    "under": {
+     "n": 210,
+     "min": 6.4,
+     "p05": 10.64,
+     "median": 13.51
+    },
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     540,
+     1905
+    ],
+    "camera": [
+     540,
+     1905
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5.5,
+    "frameMsP90": 6.8,
+    "randomCalls": 12
+   },
+   "arena-phone-gfx0": {
+    "under": {
+     "n": 210,
+     "min": 9.11,
+     "p05": 10.93,
+     "median": 13.55
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.5,
+    "frameMsP90": 2.9,
+    "randomCalls": 12
+   },
+   "arena-desktop": {
+    "under": {
+     "n": 210,
+     "min": 8.82,
+     "p05": 10.83,
+     "median": 13.46
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 7.4,
+    "frameMsP90": 7.9,
+    "randomCalls": 23
+   },
+   "campaign-desktop": {
+    "under": null,
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5.3,
+    "frameMsP90": 5.8,
+    "randomCalls": 43
+   },
+   "daily-desktop": {
+    "under": {
+     "n": 210,
+     "min": 6.4,
+     "p05": 10.64,
+     "median": 13.51
+    },
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     540,
+     1905
+    ],
+    "camera": [
+     540,
+     1905
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 4.8,
+    "frameMsP90": 7.6,
+    "randomCalls": 12
+   }
+  },
+  "errors": [],
+  "floor": {
+   "paintMs": {
+    "x1": {
+     "median": 1.9,
+     "max": 9.6
+    },
+    "x2": {
+     "median": 5.2,
+     "max": 9.8
     }
    },
    "luma": {

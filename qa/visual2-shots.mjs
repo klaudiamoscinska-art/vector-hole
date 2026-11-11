@@ -22,7 +22,8 @@ const opt = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)
 const flag = (k) => process.argv.includes(`--${k}`);
 
 export const PROTO_FILE = path.join(ROOT, 'design', 'visual2', 'gg-visual2-proto.js');
-export const STYLES = ['base', 'A', 'B'];
+export const PROTO_A2_FILE = path.join(ROOT, 'design', 'visual2', 'gg-visual2-a2.js');
+export const STYLES = ['base', 'A', 'A2']; // B (R1) still renders with --style=B
 export const FRAMES = [
   ['phone', { width: 390, height: 844 }, true, 2],
   ['desktop', { width: 1366, height: 768 }, false, 1]
@@ -37,7 +38,7 @@ export function gameSourceWith(style) {
   if (style === 'base') return src;
   const at = src.lastIndexOf('\nexport {');
   if (at < 0) throw new Error('game.js export list not found');
-  return src.slice(0, at) + '\n' + fs.readFileSync(PROTO_FILE, 'utf8') + '\n' + src.slice(at);
+  return src.slice(0, at) + '\n' + fs.readFileSync(PROTO_FILE, 'utf8') + '\n' + fs.readFileSync(PROTO_A2_FILE, 'utf8') + '\n' + src.slice(at);
 }
 
 async function boot(url, style, [, viewport, mobile, dsf]) {
@@ -65,11 +66,13 @@ async function stage(page, scene, gfx) {
     g.running = false;
     performance.now = () => FROZEN_T;
     const p = g.player;
-    if (scene === 'arena') { p.x = 600; p.y = 640; } // Plac Neonów (blocks 1,1)
+    // Arena: Plac Neonów (blocks 1,1). Daily (R2): Port Syntez (blocks 0-2, 4-5).
+    const spot = scene === 'arena' ? [600, 640] : scene === 'daily' ? [540, 1905] : null;
+    if (spot) { p.x = spot[0]; p.y = spot[1]; }
     const dt = 1 / 60;
     if (scene === 'campaign') { for (let k = 0; k < 3; k++) g.updateCampaign(dt); }
     else for (let k = 0; k < 3; k++) g.update(dt);
-    if (scene === 'arena') { p.x = 600; p.y = 640; p.vx = p.vy = 0; }
+    if (spot) { p.x = spot[0]; p.y = spot[1]; p.vx = p.vy = 0; }
     g.banner = null; g.bannerQueue = [];
     g.particles = []; g.ripples = []; g.floatTexts = []; g.shake = 0; g.flashAlpha = 0;
     if (scene === 'campaign') { const b = CONFIG.campaign.bounds; g.followCamera(b.minX, b.minY, b.maxX, b.maxY); }
@@ -86,9 +89,36 @@ async function stage(page, scene, gfx) {
     let h = 0x811c9dc5;
     for (const o of list) { for (const v of [Math.round(o.x * 100), Math.round(o.y * 100), Math.round(o.radius * 100)]) { h ^= v; h = Math.imul(h, 0x01000193) >>> 0; } }
     for (const b of g.bots) { for (const v of [Math.round(b.x * 100), Math.round(b.y * 100), Math.round(b.radius * 100)]) { h ^= v; h = Math.imul(h, 0x01000193) >>> 0; } }
+    // R2 readability: the floor's luminance right under every small pickup
+    // of the round (fragments and capsules), and the contrast of a cyan
+    // fragment (#50F0FA) against it (WCAG ratio, 1 = invisible, 21 = max).
+    let under = null;
+    if (scene !== 'campaign') {
+      const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      const Y = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      const fragY = Y(0x50, 0xF0, 0xFA), chunks = new Map(), ratios = [];
+      for (const o of g.objects) {
+        if (o.tier !== 'fragment' && o.tier !== 'capsule') continue;
+        const ci = Math.floor(o.x / 375), cj = Math.floor(o.y / 375);
+        if (ci < 0 || cj < 0 || ci > 7 || cj > 7) continue;
+        let img = chunks.get(ci + ',' + cj);
+        if (!img) { const e = SCREEN_FLOOR.render(ci, cj, 1, null, null); img = e.canvas.getContext('2d').getImageData(0, 0, e.canvas.width, e.canvas.height); chunks.set(ci + ',' + cj, img); }
+        let acc = 0, n = 0;
+        for (let dy = -8; dy <= 8; dy += 4) for (let dx = -8; dx <= 8; dx += 4) {
+          const px = Math.round(o.x - ci * 375 + 2 + dx), py = Math.round(o.y - cj * 375 + 2 + dy);
+          if (px < 0 || py < 0 || px >= img.width || py >= img.height) continue;
+          const k = (py * img.width + px) * 4; acc += Y(img.data[k], img.data[k + 1], img.data[k + 2]); n++;
+        }
+        if (n) ratios.push((fragY + 0.05) / (acc / n + 0.05));
+      }
+      SCREEN_FLOOR.clearChunks();
+      ratios.sort((a, b) => a - b);
+      under = { n: ratios.length, min: +ratios[0].toFixed(2), p05: +ratios[Math.floor(ratios.length * 0.05)].toFixed(2), median: +ratios[ratios.length >> 1].toFixed(2) };
+    }
     await new Promise(r => setTimeout(r, 120));
     draw();
     return {
+      under,
       layoutHash: h.toString(16), objects: list.length, bots: g.bots.length, seed: g.runSeed, zoom: +g.zoom.toFixed(3), gfx: g.gfxLevel,
       player: [Math.round(p.x), Math.round(p.y)], camera: [Math.round(g.camera.x), Math.round(g.camera.y)],
       stillRepaints: g.cityFloor.renders - before, frameMsMedian: +times[20].toFixed(2), frameMsP90: +times[36].toFixed(2), randomCalls: window.__qaRandomCalls
@@ -159,6 +189,35 @@ async function districtSheet(page, file) {
   await page.evaluate(() => document.getElementById('qaSheet').remove());
 }
 
+/** R2: every district's three compositions side by side (A2 only). */
+async function compositionSheet(page, file) {
+  await page.evaluate((ids) => {
+    const P = 375, k = 0.4, cell = P * k, pad = 24, cols = 4, gap = 10;
+    const cv = document.createElement('canvas');
+    cv.id = 'qaSheet';
+    cv.width = cols * (cell * 3 + gap); cv.height = 3 * (cell + pad);
+    cv.style.cssText = `position:fixed;left:0;top:0;z-index:99999;width:${cv.width}px;height:${cv.height}px`;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#04101D'; c.fillRect(0, 0, cv.width, cv.height);
+    ids.forEach((id, q) => {
+      const ox = (q % cols) * (cell * 3 + gap), oy = Math.floor(q / cols) * (cell + pad);
+      for (let v = 0; v < 3; v++) {
+        window.__GV2.setVariant(v);
+        const e = SCREEN_FLOOR.render(2 + v, 2, 2, id, null);
+        c.drawImage(e.canvas, ox + v * cell, oy + pad, cell + 1, cell + 1);
+      }
+      const d = DISTRICTS.find(x => x.id === id);
+      c.fillStyle = DISTRICT_COLORS[id]; c.font = '700 14px sans-serif'; c.textBaseline = 'middle';
+      c.fillText(`${q + 1}. ${d ? d.name : id}`, ox + 6, oy + pad / 2);
+    });
+    window.__GV2.setVariant(null);
+    document.body.appendChild(cv);
+    SCREEN_FLOOR.clearChunks();
+  }, DISTRICT_IDS_ALL);
+  await page.locator('#qaSheet').screenshot({ path: file });
+  await page.evaluate(() => document.getElementById('qaSheet').remove());
+}
+
 export async function run({ styles = STYLES, only = null, publish = false } = {}) {
   const dir = path.join(OUT, 'visual2');
   fs.mkdirSync(dir, { recursive: true });
@@ -187,6 +246,7 @@ export async function run({ styles = STYLES, only = null, publish = false } = {}
           if (want('sheet')) {
             await g.page.setViewportSize({ width: 1500, height: 1220 });
             await districtSheet(g.page, path.join(dir, `districts-${style}.png`));
+            if (style === 'A2') { await g.page.setViewportSize({ width: 1860, height: 560 }); await compositionSheet(g.page, path.join(dir, 'districts36-A2.png')); }
           }
         }
         facts[style].errors = (facts[style].errors || []).concat(g.errors);
