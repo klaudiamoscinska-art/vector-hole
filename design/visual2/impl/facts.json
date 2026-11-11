@@ -1,0 +1,786 @@
+{
+ "base": {
+  "scenes": {
+   "arena-phone": {
+    "under": {
+     "n": 210,
+     "min": 8.43,
+     "p05": 10.96,
+     "median": 13.25,
+     "zones": {
+      "road": {
+       "n": 122,
+       "min": 10.6,
+       "median": 13.7
+      },
+      "walk": {
+       "n": 21,
+       "min": 8.43,
+       "median": 11.08
+      },
+      "lot": {
+       "n": 67,
+       "min": 10.58,
+       "median": 13.14
+      }
+     }
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 10.1,
+    "frameMsP90": 13.3,
+    "randomCalls": 23
+   },
+   "campaign-phone": {
+    "under": {
+     "n": 20,
+     "min": 7.52,
+     "p05": 9.11,
+     "median": 12.38,
+     "zones": {
+      "road": {
+       "n": 5,
+       "min": 7.52,
+       "median": 10.63
+      },
+      "walk": {
+       "n": 4,
+       "min": 10.46,
+       "median": 12.43
+      },
+      "lot": {
+       "n": 11,
+       "min": 9.11,
+       "median": 12.4
+      }
+     }
+    },
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.2,
+    "frameMsP90": 3.1,
+    "randomCalls": 43
+   },
+   "daily-phone": {
+    "under": {
+     "n": 210,
+     "min": 6.15,
+     "p05": 10.75,
+     "median": 13.25,
+     "zones": {
+      "road": {
+       "n": 120,
+       "min": 10.75,
+       "median": 13.72
+      },
+      "walk": {
+       "n": 20,
+       "min": 6.15,
+       "median": 11.3
+      },
+      "lot": {
+       "n": 70,
+       "min": 9.37,
+       "median": 13.18
+      }
+     }
+    },
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     540,
+     1905
+    ],
+    "camera": [
+     540,
+     1905
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5.9,
+    "frameMsP90": 6.2,
+    "randomCalls": 12
+   },
+   "arena-phone-gfx0": {
+    "under": {
+     "n": 210,
+     "min": 8.43,
+     "p05": 10.96,
+     "median": 13.25,
+     "zones": {
+      "road": {
+       "n": 122,
+       "min": 10.6,
+       "median": 13.7
+      },
+      "walk": {
+       "n": 21,
+       "min": 8.43,
+       "median": 11.08
+      },
+      "lot": {
+       "n": 67,
+       "min": 10.58,
+       "median": 13.14
+      }
+     }
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.6,
+    "frameMsP90": 2.9,
+    "randomCalls": 12
+   },
+   "arena-desktop": {
+    "under": {
+     "n": 210,
+     "min": 8.43,
+     "p05": 10.96,
+     "median": 13.25,
+     "zones": {
+      "road": {
+       "n": 122,
+       "min": 10.6,
+       "median": 13.7
+      },
+      "walk": {
+       "n": 21,
+       "min": 8.43,
+       "median": 11.08
+      },
+      "lot": {
+       "n": 67,
+       "min": 10.58,
+       "median": 13.14
+      }
+     }
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 8.5,
+    "frameMsP90": 12.1,
+    "randomCalls": 23
+   },
+   "campaign-desktop": {
+    "under": {
+     "n": 20,
+     "min": 7.52,
+     "p05": 9.11,
+     "median": 12.38,
+     "zones": {
+      "road": {
+       "n": 5,
+       "min": 7.52,
+       "median": 10.63
+      },
+      "walk": {
+       "n": 4,
+       "min": 10.46,
+       "median": 12.43
+      },
+      "lot": {
+       "n": 11,
+       "min": 9.11,
+       "median": 12.4
+      }
+     }
+    },
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 4.8,
+    "frameMsP90": 5.5,
+    "randomCalls": 43
+   },
+   "daily-desktop": {
+    "under": {
+     "n": 210,
+     "min": 6.15,
+     "p05": 10.75,
+     "median": 13.25,
+     "zones": {
+      "road": {
+       "n": 120,
+       "min": 10.75,
+       "median": 13.72
+      },
+      "walk": {
+       "n": 20,
+       "min": 6.15,
+       "median": 11.3
+      },
+      "lot": {
+       "n": 70,
+       "min": 9.37,
+       "median": 13.18
+      }
+     }
+    },
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     540,
+     1905
+    ],
+    "camera": [
+     540,
+     1905
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 6.1,
+    "frameMsP90": 8,
+    "randomCalls": 12
+   }
+  },
+  "errors": [],
+  "floor": {
+   "paintMs": {
+    "x1": {
+     "median": 1.6,
+     "max": 7.6
+    },
+    "x2": {
+     "median": 4.2,
+     "max": 8.6
+    }
+   },
+   "luma": {
+    "plac": {
+     "mean": 0.0963,
+     "p95": 0.1998,
+     "p999": 0.4375,
+     "busy": 0.01584
+    },
+    "park": {
+     "mean": 0.1044,
+     "p95": 0.1996,
+     "p999": 0.3968,
+     "busy": 0.01607
+    },
+    "port": {
+     "mean": 0.0975,
+     "p95": 0.1911,
+     "p999": 0.4288,
+     "busy": 0.01653
+    },
+    "galeria": {
+     "mean": 0.0812,
+     "p95": 0.1556,
+     "p999": 0.3169,
+     "busy": 0.01161
+    },
+    "dachy": {
+     "mean": 0.0937,
+     "p95": 0.2021,
+     "p999": 0.3263,
+     "busy": 0.02009
+    },
+    "rdzen": {
+     "mean": 0.0914,
+     "p95": 0.204,
+     "p999": 0.4425,
+     "busy": 0.01772
+    },
+    "metro": {
+     "mean": 0.0858,
+     "p95": 0.185,
+     "p999": 0.3801,
+     "busy": 0.01346
+    },
+    "bazar": {
+     "mean": 0.0864,
+     "p95": 0.1843,
+     "p999": 0.4288,
+     "busy": 0.01232
+    },
+    "fabryka": {
+     "mean": 0.0827,
+     "p95": 0.1681,
+     "p999": 0.3169,
+     "busy": 0.00954
+    },
+    "zatoka": {
+     "mean": 0.0858,
+     "p95": 0.1869,
+     "p999": 0.3263,
+     "busy": 0.01011
+    },
+    "ogrody": {
+     "mean": 0.0973,
+     "p95": 0.1883,
+     "p999": 0.3968,
+     "busy": 0.0127
+    },
+    "chmura": {
+     "mean": 0.1006,
+     "p95": 0.2021,
+     "p999": 0.4408,
+     "busy": 0.0228
+    }
+   }
+  }
+ },
+ "after": {
+  "scenes": {
+   "arena-phone": {
+    "under": {
+     "n": 210,
+     "min": 4.66,
+     "p05": 6.52,
+     "median": 10.14,
+     "zones": {
+      "road": {
+       "n": 122,
+       "min": 6.69,
+       "median": 13.13
+      },
+      "walk": {
+       "n": 21,
+       "min": 4.66,
+       "median": 7
+      },
+      "lot": {
+       "n": 67,
+       "min": 5.3,
+       "median": 9.31
+      }
+     }
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 9.4,
+    "frameMsP90": 9.9,
+    "randomCalls": 23
+   },
+   "campaign-phone": {
+    "under": {
+     "n": 20,
+     "min": 5.61,
+     "p05": 6.5,
+     "median": 8.24,
+     "zones": {
+      "road": {
+       "n": 5,
+       "min": 5.61,
+       "median": 8.06
+      },
+      "walk": {
+       "n": 4,
+       "min": 6.81,
+       "median": 7.9
+      },
+      "lot": {
+       "n": 11,
+       "min": 6.65,
+       "median": 8.34
+      }
+     }
+    },
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 1.9,
+    "frameMsP90": 2.1,
+    "randomCalls": 43
+   },
+   "daily-phone": {
+    "under": {
+     "n": 210,
+     "min": 5.11,
+     "p05": 6.72,
+     "median": 10.23,
+     "zones": {
+      "road": {
+       "n": 120,
+       "min": 6.54,
+       "median": 13.13
+      },
+      "walk": {
+       "n": 20,
+       "min": 5.11,
+       "median": 7.51
+      },
+      "lot": {
+       "n": 70,
+       "min": 5.17,
+       "median": 9.69
+      }
+     }
+    },
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     540,
+     1905
+    ],
+    "camera": [
+     540,
+     1905
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 6.4,
+    "frameMsP90": 8.5,
+    "randomCalls": 12
+   },
+   "arena-phone-gfx0": {
+    "under": {
+     "n": 210,
+     "min": 4.66,
+     "p05": 6.52,
+     "median": 10.14,
+     "zones": {
+      "road": {
+       "n": 122,
+       "min": 6.69,
+       "median": 13.13
+      },
+      "walk": {
+       "n": 21,
+       "min": 4.66,
+       "median": 7
+      },
+      "lot": {
+       "n": 67,
+       "min": 5.3,
+       "median": 9.31
+      }
+     }
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.6,
+    "frameMsP90": 2.9,
+    "randomCalls": 12
+   },
+   "arena-desktop": {
+    "under": {
+     "n": 210,
+     "min": 4.66,
+     "p05": 6.52,
+     "median": 10.14,
+     "zones": {
+      "road": {
+       "n": 122,
+       "min": 6.69,
+       "median": 13.13
+      },
+      "walk": {
+       "n": 21,
+       "min": 4.66,
+       "median": 7
+      },
+      "lot": {
+       "n": 67,
+       "min": 5.3,
+       "median": 9.31
+      }
+     }
+    },
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 7.7,
+    "frameMsP90": 9,
+    "randomCalls": 23
+   },
+   "campaign-desktop": {
+    "under": {
+     "n": 20,
+     "min": 5.61,
+     "p05": 6.5,
+     "median": 8.24,
+     "zones": {
+      "road": {
+       "n": 5,
+       "min": 5.61,
+       "median": 8.06
+      },
+      "walk": {
+       "n": 4,
+       "min": 6.81,
+       "median": 7.9
+      },
+      "lot": {
+       "n": 11,
+       "min": 6.65,
+       "median": 8.34
+      }
+     }
+    },
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5.2,
+    "frameMsP90": 6.4,
+    "randomCalls": 43
+   },
+   "daily-desktop": {
+    "under": {
+     "n": 210,
+     "min": 5.11,
+     "p05": 6.72,
+     "median": 10.23,
+     "zones": {
+      "road": {
+       "n": 120,
+       "min": 6.54,
+       "median": 13.13
+      },
+      "walk": {
+       "n": 20,
+       "min": 5.11,
+       "median": 7.51
+      },
+      "lot": {
+       "n": 70,
+       "min": 5.17,
+       "median": 9.69
+      }
+     }
+    },
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     540,
+     1905
+    ],
+    "camera": [
+     540,
+     1905
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 6.1,
+    "frameMsP90": 8.6,
+    "randomCalls": 12
+   }
+  },
+  "errors": [],
+  "floor": {
+   "paintMs": {
+    "x1": {
+     "median": 2.5,
+     "max": 8.7
+    },
+    "x2": {
+     "median": 5.8,
+     "max": 11.5
+    }
+   },
+   "luma": {
+    "plac": {
+     "mean": 0.1776,
+     "p95": 0.433,
+     "p999": 0.5602,
+     "busy": 0.02418
+    },
+    "park": {
+     "mean": 0.1848,
+     "p95": 0.4301,
+     "p999": 0.5682,
+     "busy": 0.02526
+    },
+    "port": {
+     "mean": 0.1793,
+     "p95": 0.3771,
+     "p999": 0.5551,
+     "busy": 0.02057
+    },
+    "galeria": {
+     "mean": 0.1623,
+     "p95": 0.376,
+     "p999": 0.5427,
+     "busy": 0.02113
+    },
+    "dachy": {
+     "mean": 0.1554,
+     "p95": 0.3365,
+     "p999": 0.5313,
+     "busy": 0.01718
+    },
+    "rdzen": {
+     "mean": 0.1634,
+     "p95": 0.3721,
+     "p999": 0.5688,
+     "busy": 0.0252
+    },
+    "metro": {
+     "mean": 0.1744,
+     "p95": 0.4112,
+     "p999": 0.6526,
+     "busy": 0.02353
+    },
+    "bazar": {
+     "mean": 0.1698,
+     "p95": 0.3684,
+     "p999": 0.5551,
+     "busy": 0.01938
+    },
+    "fabryka": {
+     "mean": 0.1427,
+     "p95": 0.3367,
+     "p999": 0.5313,
+     "busy": 0.02001
+    },
+    "zatoka": {
+     "mean": 0.1735,
+     "p95": 0.3491,
+     "p999": 0.5313,
+     "busy": 0.01646
+    },
+    "ogrody": {
+     "mean": 0.1781,
+     "p95": 0.3519,
+     "p999": 0.5349,
+     "busy": 0.01974
+    },
+    "chmura": {
+     "mean": 0.1789,
+     "p95": 0.3523,
+     "p999": 0.5674,
+     "busy": 0.02023
+    }
+   }
+  }
+ }
+}

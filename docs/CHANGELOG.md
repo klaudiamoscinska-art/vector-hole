@@ -4,6 +4,21 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-VISUAL-02 „Premium Vector City” (A2.1) — nowe podłoże miasta (zapis nadal v13, klucz bez zmian; mechanika, RNG, seedy, układ map, balans i ekonomia bez zmian)
+- **Podłoże Areny, Wyzwania dnia, wyzwań znajomych i Kampanii** (jeden renderer: `paintCityChunk()` → `CITY_ART`) składa się z materiałów
+  z głębią, widzianych z góry: ciemna jezdnia z płytami skrzyżowań i mosiężnym pierścieniem, jasny kamienny krawężnik na cokole
+  (ściana i cień od południa i wschodu), działka stopień niżej, jedno światło z lewej góry, mosiężna intarsja jako wspólny detal.
+- **36 własnych kompozycji działek** — po 3 dla każdej z 12 dzielnic (dzielnice Rozdziału II nie są już przemalowanymi 1–6). Wybiera je
+  `cityHash(i, j, 2)` jak dotąd, nigdy RNG rundy.
+- **Czytelność (A2.1):** nieprzezroczyste materiały działek przyciemnione zależnie od jasności (15–34 %), płyty chodnika ok. 20 % —
+  kontrast kryształu do podłoża pod obiektem: Arena, mediana 13,3 → 10,1 (przy samym A2: 9,4), na działkach 13,1 → 9,3; najniższy 4,7 : 1.
+- **Jakość i cache:** wpis bloku pamięta `rich`; zmiana poziomu jakości (monitorFrame, ustawienia) przemalowuje bloki w kadrze leniwie, w tym
+  samym budżecie co zmiana zoomu. Poziom 0: bez faktur, wzoru płyt chodnika, ziarna jezdni i połowy latarni.
+- Bez zmian: obiekty, kryształy, kapsuły, Horyzont i efekty pochłaniania, cienie, HUD, minimapa i podgląd Wyzwania dnia (kolorowe kwadraty), ekrany menu.
+- **QA:** `node qa/visual2.mjs` (19 kontroli: każdy blok piksel w piksel jak zatwierdzony prototyp `design/visual2/gg-visual2-a2.js`,
+  36 różnych kompozycji, RNG/układ/zapis nietknięte, jakość i zoom, cztery tryby), `node qa/visual2-compare.mjs --root DIR` (PRZED/PO).
+  Prototyp i raporty rund: `docs/GG_VISUAL_01_REPORT.md`, `_R2_`, `_R3_`; raport wdrożenia: `docs/GG_VISUAL_02_REPORT.md`.
+
 ## CG-PREVIEW-QA-1 R5 (R5-01, R5-03, R5-04) (zapis nadal v13, klucz bez zmian; ekonomia, balans i RNG bez zmian)
 - **Etykieta na kafelku dzielnicy (R5-01):** NASTĘPNA/TERAZ stoi w wierszu stanu pod nazwą, więc dwuwierszowa nazwa nie wchodzi na etykietę (PC, CrazyGames, telefon, PL/EN). Logika dzielnic bez zmian.
 - **Magnes w Arenie jest widoczny (R5-03):** fala przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Siła i zasięg bez zmian; powyżej promienia 160 pole jest w środku dziury (decyzja właścicielki).
