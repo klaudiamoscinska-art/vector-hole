@@ -1,0 +1,695 @@
+{
+ "base": {
+  "scenes": {
+   "arena-phone": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 9.1,
+    "frameMsP90": 11.1,
+    "randomCalls": 23
+   },
+   "campaign-phone": {
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.1,
+    "frameMsP90": 2.8,
+    "randomCalls": 43
+   },
+   "daily-phone": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     864,
+     1538
+    ],
+    "camera": [
+     864,
+     1538
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 7.7,
+    "frameMsP90": 8,
+    "randomCalls": 12
+   },
+   "arena-phone-gfx0": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.7,
+    "frameMsP90": 5.9,
+    "randomCalls": 12
+   },
+   "arena-desktop": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 7.8,
+    "frameMsP90": 9.9,
+    "randomCalls": 23
+   },
+   "campaign-desktop": {
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 4.9,
+    "frameMsP90": 5.4,
+    "randomCalls": 43
+   },
+   "daily-desktop": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     864,
+     1538
+    ],
+    "camera": [
+     864,
+     1538
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5.8,
+    "frameMsP90": 6.4,
+    "randomCalls": 12
+   }
+  },
+  "errors": [],
+  "floor": {
+   "paintMs": {
+    "x1": {
+     "median": 1.7,
+     "max": 4.4
+    },
+    "x2": {
+     "median": 4.7,
+     "max": 8.7
+    }
+   },
+   "luma": {
+    "plac": {
+     "mean": 0.0963,
+     "p95": 0.1998,
+     "p999": 0.4375,
+     "busy": 0.01584
+    },
+    "park": {
+     "mean": 0.1044,
+     "p95": 0.1996,
+     "p999": 0.3968,
+     "busy": 0.01607
+    },
+    "port": {
+     "mean": 0.0975,
+     "p95": 0.1911,
+     "p999": 0.4288,
+     "busy": 0.01653
+    },
+    "galeria": {
+     "mean": 0.0812,
+     "p95": 0.1556,
+     "p999": 0.3169,
+     "busy": 0.01161
+    },
+    "dachy": {
+     "mean": 0.0937,
+     "p95": 0.2021,
+     "p999": 0.3263,
+     "busy": 0.02009
+    },
+    "rdzen": {
+     "mean": 0.0914,
+     "p95": 0.204,
+     "p999": 0.4425,
+     "busy": 0.01772
+    },
+    "metro": {
+     "mean": 0.0858,
+     "p95": 0.185,
+     "p999": 0.3801,
+     "busy": 0.01346
+    },
+    "bazar": {
+     "mean": 0.0864,
+     "p95": 0.1843,
+     "p999": 0.4288,
+     "busy": 0.01232
+    },
+    "fabryka": {
+     "mean": 0.0827,
+     "p95": 0.1681,
+     "p999": 0.3169,
+     "busy": 0.00954
+    },
+    "zatoka": {
+     "mean": 0.0858,
+     "p95": 0.1869,
+     "p999": 0.3263,
+     "busy": 0.01011
+    },
+    "ogrody": {
+     "mean": 0.0973,
+     "p95": 0.1883,
+     "p999": 0.3968,
+     "busy": 0.0127
+    },
+    "chmura": {
+     "mean": 0.1006,
+     "p95": 0.2021,
+     "p999": 0.4408,
+     "busy": 0.0228
+    }
+   }
+  }
+ },
+ "A": {
+  "scenes": {
+   "arena-phone": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 9.6,
+    "frameMsP90": 12.1,
+    "randomCalls": 23
+   },
+   "campaign-phone": {
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2,
+    "frameMsP90": 2.2,
+    "randomCalls": 43
+   },
+   "daily-phone": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     864,
+     1538
+    ],
+    "camera": [
+     864,
+     1538
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 7.7,
+    "frameMsP90": 8.2,
+    "randomCalls": 12
+   },
+   "arena-phone-gfx0": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.5,
+    "frameMsP90": 2.9,
+    "randomCalls": 12
+   },
+   "arena-desktop": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 8.2,
+    "frameMsP90": 10.6,
+    "randomCalls": 23
+   },
+   "campaign-desktop": {
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5,
+    "frameMsP90": 5.5,
+    "randomCalls": 43
+   },
+   "daily-desktop": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     864,
+     1538
+    ],
+    "camera": [
+     864,
+     1538
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5.9,
+    "frameMsP90": 6.4,
+    "randomCalls": 12
+   }
+  },
+  "errors": [],
+  "floor": {
+   "paintMs": {
+    "x1": {
+     "median": 2.7,
+     "max": 3.4
+    },
+    "x2": {
+     "median": 4.7,
+     "max": 9.2
+    }
+   },
+   "luma": {
+    "plac": {
+     "mean": 0.1522,
+     "p95": 0.2682,
+     "p999": 0.4774,
+     "busy": 0.01358
+    },
+    "park": {
+     "mean": 0.1673,
+     "p95": 0.2698,
+     "p999": 0.4696,
+     "busy": 0.01472
+    },
+    "port": {
+     "mean": 0.156,
+     "p95": 0.2556,
+     "p999": 0.4728,
+     "busy": 0.01721
+    },
+    "galeria": {
+     "mean": 0.1349,
+     "p95": 0.2323,
+     "p999": 0.4558,
+     "busy": 0.01265
+    },
+    "dachy": {
+     "mean": 0.1307,
+     "p95": 0.2442,
+     "p999": 0.4564,
+     "busy": 0.01617
+    },
+    "rdzen": {
+     "mean": 0.1436,
+     "p95": 0.2592,
+     "p999": 0.5166,
+     "busy": 0.01815
+    },
+    "metro": {
+     "mean": 0.1341,
+     "p95": 0.2438,
+     "p999": 0.4637,
+     "busy": 0.01505
+    },
+    "bazar": {
+     "mean": 0.1451,
+     "p95": 0.243,
+     "p999": 0.4728,
+     "busy": 0.01212
+    },
+    "fabryka": {
+     "mean": 0.1841,
+     "p95": 0.2731,
+     "p999": 0.4558,
+     "busy": 0.01039
+    },
+    "zatoka": {
+     "mean": 0.1337,
+     "p95": 0.2337,
+     "p999": 0.4564,
+     "busy": 0.01256
+    },
+    "ogrody": {
+     "mean": 0.168,
+     "p95": 0.2554,
+     "p999": 0.4696,
+     "busy": 0.01129
+    },
+    "chmura": {
+     "mean": 0.1372,
+     "p95": 0.2458,
+     "p999": 0.4791,
+     "busy": 0.01658
+    }
+   }
+  }
+ },
+ "B": {
+  "scenes": {
+   "arena-phone": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 8.8,
+    "frameMsP90": 9.9,
+    "randomCalls": 23
+   },
+   "campaign-phone": {
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.1,
+    "frameMsP90": 3,
+    "randomCalls": 43
+   },
+   "daily-phone": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     864,
+     1538
+    ],
+    "camera": [
+     864,
+     1538
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 8.8,
+    "frameMsP90": 11.8,
+    "randomCalls": 12
+   },
+   "arena-phone-gfx0": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 2.9,
+    "frameMsP90": 3.5,
+    "randomCalls": 12
+   },
+   "arena-desktop": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     600,
+     640
+    ],
+    "camera": [
+     600,
+     640
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 11.7,
+    "frameMsP90": 12.4,
+    "randomCalls": 23
+   },
+   "campaign-desktop": {
+    "layoutHash": "cd3ea182",
+    "objects": 22,
+    "bots": 0,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1500,
+     1760
+    ],
+    "camera": [
+     1500,
+     1760
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 5.1,
+    "frameMsP90": 5.2,
+    "randomCalls": 43
+   },
+   "daily-desktop": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     864,
+     1538
+    ],
+    "camera": [
+     864,
+     1538
+    ],
+    "stillRepaints": 0,
+    "frameMsMedian": 6.1,
+    "frameMsP90": 6.4,
+    "randomCalls": 12
+   }
+  },
+  "errors": [],
+  "floor": {
+   "paintMs": {
+    "x1": {
+     "median": 2,
+     "max": 2.9
+    },
+    "x2": {
+     "median": 5.8,
+     "max": 10
+    }
+   },
+   "luma": {
+    "plac": {
+     "mean": 0.0958,
+     "p95": 0.2295,
+     "p999": 0.5338,
+     "busy": 0.01988
+    },
+    "park": {
+     "mean": 0.0976,
+     "p95": 0.2126,
+     "p999": 0.5232,
+     "busy": 0.01894
+    },
+    "port": {
+     "mean": 0.0951,
+     "p95": 0.1939,
+     "p999": 0.5306,
+     "busy": 0.02096
+    },
+    "galeria": {
+     "mean": 0.0765,
+     "p95": 0.1685,
+     "p999": 0.5031,
+     "busy": 0.01618
+    },
+    "dachy": {
+     "mean": 0.0802,
+     "p95": 0.1876,
+     "p999": 0.5052,
+     "busy": 0.02018
+    },
+    "rdzen": {
+     "mean": 0.089,
+     "p95": 0.2214,
+     "p999": 0.5349,
+     "busy": 0.02056
+    },
+    "metro": {
+     "mean": 0.0804,
+     "p95": 0.1756,
+     "p999": 0.5193,
+     "busy": 0.01597
+    },
+    "bazar": {
+     "mean": 0.0884,
+     "p95": 0.1782,
+     "p999": 0.5306,
+     "busy": 0.01567
+    },
+    "fabryka": {
+     "mean": 0.0852,
+     "p95": 0.1546,
+     "p999": 0.5031,
+     "busy": 0.01172
+    },
+    "zatoka": {
+     "mean": 0.0739,
+     "p95": 0.1525,
+     "p999": 0.5052,
+     "busy": 0.01518
+    },
+    "ogrody": {
+     "mean": 0.0961,
+     "p95": 0.1812,
+     "p999": 0.5232,
+     "busy": 0.01539
+    },
+    "chmura": {
+     "mean": 0.0881,
+     "p95": 0.1876,
+     "p999": 0.534,
+     "busy": 0.02313
+    }
+   }
+  }
+ }
+}
