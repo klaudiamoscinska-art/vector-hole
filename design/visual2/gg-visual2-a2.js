@@ -20,7 +20,13 @@
    plates lift 2-3 units, containers / stalls / racks are painted bays.
    ============================================================================ */
 const GV2_A2 = (() => {
-  if (typeof window === 'undefined' || window.__GG_VISUAL !== 'A2') return null;
+  const VARIANT = typeof window !== 'undefined' ? window.__GG_VISUAL : null;
+  if (VARIANT !== 'A2' && VARIANT !== 'A2.1') return null;
+  // R3 -- A2.1: the lot's opaque materials are toned down (brighter ones
+  // more), so small pickups stand further off the ground. Curb, sidewalk,
+  // junctions, lamps, relief shadows, brass, paint and light strips (all
+  // translucent or outside the lot) keep their A2 values.
+  const DIM = VARIANT === 'A2.1';
   const P = CITY_PITCH, R = CITY_ROAD, B = CITY_BLEED;
   const TAU = Math.PI * 2;
   const WALK = 20;          // visual sidewalk width (the lot is what is left)
@@ -42,6 +48,29 @@ const GV2_A2 = (() => {
     return v;
   }
   const al = (col, a) => rgbaColor(col, a);
+
+  /* ---- A2.1: lot material correction ---- */
+  const DIM_BASE = 0.15, DIM_SLOPE = 0.7, DIM_PIVOT = 0.14, DIM_MAX = 0.34, DIM_INK = '#04080e';
+  const dimCache = new Map();
+  /** An opaque '#rrggbb' material, toned toward the night: 15 % for the
+   *  dark ones, up to 34 % for the brightest. Anything else is returned as is. */
+  function dimColor(v) {
+    if (typeof v !== 'string' || v.length !== 7 || v[0] !== '#') return v;
+    let out = dimCache.get(v);
+    if (out) return out;
+    const [r, g, b] = hexToRgb(v), L = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    out = mix(v, DIM_INK, clamp(DIM_BASE + (L - DIM_PIVOT) * DIM_SLOPE, DIM_BASE, DIM_MAX));
+    dimCache.set(v, out);
+    return out;
+  }
+  const STYLE_PROPS = ['fillStyle', 'strokeStyle'].map(k => [k, Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, k)]);
+  /** While a lot is painted, every opaque material set on `c` goes through dimColor(). */
+  function dimLot(c, on) {
+    for (const [k, desc] of STYLE_PROPS) {
+      if (on) Object.defineProperty(c, k, { configurable: true, get() { return desc.get.call(c); }, set(v) { desc.set.call(c, dimColor(v)); } });
+      else delete c[k];
+    }
+  }
 
   /* ---- path builders (each returns a function that builds the path) ---- */
   const circ = (c, cx, cy, r) => () => { c.beginPath(); c.arc(cx, cy, r, 0, TAU); };
@@ -612,11 +641,13 @@ const GV2_A2 = (() => {
     for (let k = DEPTH; k > 0; k -= 2) { c.save(); c.translate(k, k); fill(c, wall, quarter(0)); c.restore(); }
     fill(c, '#46586d', quarter(0));
     fill(c, '#5d7188', () => { c.beginPath(); c.moveTo(bx, by + bs - RAD); c.lineTo(bx, by + RAD); c.arcTo(bx, by, bx + RAD, by, RAD); c.lineTo(bx + bs - RAD, by); c.lineTo(bx + bs - RAD, by + 5); c.lineTo(bx + RAD, by + 5); c.arcTo(bx + 5, by + 5, bx + 5, by + RAD, RAD - 5); c.lineTo(bx + 5, by + bs - RAD); c.closePath(); });
-    fill(c, '#1f2c3d', quarter(5));
+    // A2.1: the paving of the sidewalk is a surface too (small pickups lie on
+    // it and measured worst there); the curb around it keeps its light.
+    fill(c, DIM ? '#18222f' : '#1f2c3d', quarter(5));
     if (rich) {
       // Large pavers: every other slab a shade lighter.
       c.save(); quarter(5)(); c.clip();
-      c.fillStyle = '#243347';
+      c.fillStyle = DIM ? '#1c2837' : '#243347';
       for (let k = 0; k * 34 < bs; k += 2) { c.fillRect(bx + k * 34, by, 34, WALK); c.fillRect(bx + k * 34 + 34, by + bs - WALK, 34, WALK); c.fillRect(bx, by + k * 34 + 34, WALK, 34); c.fillRect(bx + bs - WALK, by + k * 34, WALK, 34); }
       c.restore();
     }
@@ -626,11 +657,13 @@ const GV2_A2 = (() => {
 
     // 4. The lot: its material and one composition.
     c.save(); lot(); c.clip();
+    if (DIM) dimLot(c, true);
     c.fillStyle = K.g; c.fillRect(lx, ly, ls, ls);
     const lotRng = new SeededRNG(cityHash(i, j, 2));
     const rolled = Math.floor(lotRng.next() * 3);
     const variant = forced == null ? rolled : forced;
     (LOTS[d] || LOTS.plac)[variant](c, lx, ly, ls, K, lotRng);
+    if (DIM) dimLot(c, false);
     const sign = !theme && citySignCells()[`${i},${j}`];
     if (sign && sign !== 'rdzen') {
       const dist = DISTRICTS.find(q => q.id === sign);
@@ -689,6 +722,6 @@ const GV2_A2 = (() => {
       return orig.apply(this, args);
     };
   }
-  return { style: 'A2', paintChunk, LOTS, setDetail: (v) => { detail = v; }, setVariant: (v) => { forced = v; } };
+  return { style: VARIANT, paintChunk, LOTS, setDetail: (v) => { detail = v; }, setVariant: (v) => { forced = v; } };
 })();
 if (GV2_A2) { paintCityChunk = GV2_A2.paintChunk; window.__GV2 = GV2_A2; }

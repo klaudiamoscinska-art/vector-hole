@@ -23,7 +23,7 @@ const flag = (k) => process.argv.includes(`--${k}`);
 
 export const PROTO_FILE = path.join(ROOT, 'design', 'visual2', 'gg-visual2-proto.js');
 export const PROTO_A2_FILE = path.join(ROOT, 'design', 'visual2', 'gg-visual2-a2.js');
-export const STYLES = ['base', 'A', 'A2']; // B (R1) still renders with --style=B
+export const STYLES = ['base', 'A2', 'A2.1']; // R3; A and B (R1) still render with --style=A,B
 export const FRAMES = [
   ['phone', { width: 390, height: 844 }, true, 2],
   ['desktop', { width: 1366, height: 768 }, false, 1]
@@ -93,27 +93,31 @@ async function stage(page, scene, gfx) {
     // of the round (fragments and capsules), and the contrast of a cyan
     // fragment (#50F0FA) against it (WCAG ratio, 1 = invisible, 21 = max).
     let under = null;
-    if (scene !== 'campaign') {
+    {
+      const theme = scene === 'campaign' ? g.campaignTheme() : null;
+      const small = scene === 'campaign' ? g.campaignEntities.filter(o => o.type === 'fragment' || o.type === 'capsule') : g.objects.filter(o => o.tier === 'fragment' || o.tier === 'capsule');
       const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
       const Y = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-      const fragY = Y(0x50, 0xF0, 0xFA), chunks = new Map(), ratios = [];
-      for (const o of g.objects) {
-        if (o.tier !== 'fragment' && o.tier !== 'capsule') continue;
+      const fragY = Y(0x50, 0xF0, 0xFA), chunks = new Map(), ratios = [], zones = { road: [], walk: [], lot: [] };
+      // Where a point of the 375-unit block grid lies (the prototype's sidewalk is 20 wide).
+      const zoneOf = (x, y) => { const u = ((x % 375) + 375) % 375, v = ((y % 375) + 375) % 375, e = Math.min(u, v, 375 - u, 375 - v); return e < 32 ? 'road' : e < 52 ? 'walk' : 'lot'; };
+      for (const o of small) {
         const ci = Math.floor(o.x / 375), cj = Math.floor(o.y / 375);
         if (ci < 0 || cj < 0 || ci > 7 || cj > 7) continue;
         let img = chunks.get(ci + ',' + cj);
-        if (!img) { const e = SCREEN_FLOOR.render(ci, cj, 1, null, null); img = e.canvas.getContext('2d').getImageData(0, 0, e.canvas.width, e.canvas.height); chunks.set(ci + ',' + cj, img); }
+        if (!img) { const e = SCREEN_FLOOR.render(ci, cj, 1, theme, null); img = e.canvas.getContext('2d').getImageData(0, 0, e.canvas.width, e.canvas.height); chunks.set(ci + ',' + cj, img); }
         let acc = 0, n = 0;
         for (let dy = -8; dy <= 8; dy += 4) for (let dx = -8; dx <= 8; dx += 4) {
           const px = Math.round(o.x - ci * 375 + 2 + dx), py = Math.round(o.y - cj * 375 + 2 + dy);
           if (px < 0 || py < 0 || px >= img.width || py >= img.height) continue;
           const k = (py * img.width + px) * 4; acc += Y(img.data[k], img.data[k + 1], img.data[k + 2]); n++;
         }
-        if (n) ratios.push((fragY + 0.05) / (acc / n + 0.05));
+        if (n) { const q = (fragY + 0.05) / (acc / n + 0.05); ratios.push(q); zones[zoneOf(o.x, o.y)].push(q); }
       }
       SCREEN_FLOOR.clearChunks();
       ratios.sort((a, b) => a - b);
-      under = { n: ratios.length, min: +ratios[0].toFixed(2), p05: +ratios[Math.floor(ratios.length * 0.05)].toFixed(2), median: +ratios[ratios.length >> 1].toFixed(2) };
+      if (ratios.length) under = { n: ratios.length, min: +ratios[0].toFixed(2), p05: +ratios[Math.floor(ratios.length * 0.05)].toFixed(2), median: +ratios[ratios.length >> 1].toFixed(2),
+        zones: Object.fromEntries(Object.entries(zones).map(([k, v]) => { v.sort((a, b) => a - b); return [k, v.length ? { n: v.length, min: +v[0].toFixed(2), median: +v[v.length >> 1].toFixed(2) } : { n: 0 }]; })) };
     }
     await new Promise(r => setTimeout(r, 120));
     draw();
@@ -246,7 +250,7 @@ export async function run({ styles = STYLES, only = null, publish = false } = {}
           if (want('sheet')) {
             await g.page.setViewportSize({ width: 1500, height: 1220 });
             await districtSheet(g.page, path.join(dir, `districts-${style}.png`));
-            if (style === 'A2') { await g.page.setViewportSize({ width: 1860, height: 560 }); await compositionSheet(g.page, path.join(dir, 'districts36-A2.png')); }
+            if (style.startsWith('A2')) { await g.page.setViewportSize({ width: 1860, height: 560 }); await compositionSheet(g.page, path.join(dir, `districts36-${style}.png`)); }
           }
         }
         facts[style].errors = (facts[style].errors || []).concat(g.errors);
