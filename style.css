@@ -1107,6 +1107,12 @@ body.touch-input #gameCanvas {
   color: var(--nc-gold);
 }
 
+/* R3-07: a Daily Core City reward already claimed today. */
+.daily-reward-box.claimed { opacity: 0.6; }
+.daily-reward-box.claimed .daily-reward-value { color: var(--nc-text-dim); }
+/* R3-06/07: the starting bonus / once-a-day rule under the two rewards. */
+.daily-reward-note { width: 100%; margin: 6px 0 0; font-size: 11px; line-height: 1.35; color: var(--nc-text-dim); text-align: center; }
+
 /* ===================== CAMPAIGN MODE (Vector Hole v3) ===================== */
 
 /* District picker: a compact horizontal chip strip (not in the GDD
@@ -3528,6 +3534,14 @@ body.touch-input #gameCanvas {
 .login-tile.just-claimed { opacity: 1; animation: v8-tile-claim 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes v8-tile-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes v8-tile-claim { 0% { transform: scale(1); } 40% { transform: scale(1.35) rotate(-4deg); } 100% { transform: scale(1); } }
+/* R4-03: the claim's confirmation -- plain status text with a check, no
+   button fill or border, so it never reads as a button that does nothing. */
+.login-claimed { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px;
+  font-size: 15px; font-weight: 800; color: var(--nc-text); cursor: default; user-select: none; }
+.login-claimed-check { display: inline-flex; width: 22px; height: 22px; color: var(--nc-green); filter: drop-shadow(0 0 6px rgba(70, 217, 154, 0.7)); }
+.login-claimed-check svg { width: 100%; height: 100%; }
+.login-claimed-label { color: var(--nc-green); letter-spacing: 0.04em; }
+.login-claimed strong { color: var(--nc-gold); font-size: 18px; }
 .login-burst { position: absolute; left: 50%; top: 55%; pointer-events: none; }
 .login-burst span {
   position: absolute;
@@ -3821,6 +3835,28 @@ body.touch-input #gameCanvas {
 .result-next-text { font-weight: 700; line-height: 1.25; }
 @keyframes ftue3-next-in { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .result-next { animation: none; } }
+/* CG-QA-02: the daily mission's reward, a gold card like the line above. */
+.result-daily { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 360px; margin: 2px 0 4px; padding: 8px 12px; border-radius: 12px; background: rgba(239, 203, 99, 0.08); border: 1px solid rgba(239, 203, 99, 0.45); color: var(--nc-text, #E6FAFF); font-family: var(--font-ui); font-size: 13px; text-align: left; }
+.result-daily.hidden { display: none; }
+.result-daily-icon { flex: 0 0 24px; width: 24px; height: 24px; color: var(--nc-gold, #EFCB63); }
+.result-daily-icon svg { display: block; width: 100%; height: 100%; }
+.result-daily-body { display: flex; flex: 1 1 auto; flex-direction: column; gap: 1px; min-width: 0; }
+.result-daily-kicker { font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px; color: var(--nc-gold, #EFCB63); }
+.result-daily-text { font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.result-daily-reward { flex: 0 0 auto; font-family: var(--font-display); font-size: 13px; color: var(--nc-gold, #EFCB63); white-space: nowrap; }
+/* R3-02: the result's notes share the action bar's width and one card shape
+   (the gold card was 360 px wide, the Daily / Core City lines 320 px, the
+   buttons 440 px; a landscape column makes them all 480 px). */
+#gameOverScreen .result-daily, #gameOverScreen .daily-result, #gameOverScreen .hub-milestone-result { max-width: 440px; margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 13px; }
+/* "Main menu / Back to City" is centred under PLAY AGAIN in every layout: the
+   package's stretched column (align-items: stretch) left its 440 px box at
+   the left edge of a 480 px PLAY AGAIN, so its label sat off centre. */
+.result-actions > #btnMenu { align-self: center; }
+/* ... and the action bar itself sits in the column's middle like the cards
+   above it: stretched to a column wider than its 480 px cap (compact
+   landscape, e.g. a laptop's fullscreen at 125-175 % scaling) it hugged the
+   left edge, 10 px off the centred cards. */
+body.wide #gameOverScreen .wide-col > .result-actions { align-self: center; width: 100%; }
 
 /* Consent bar + profile settings */
 .consent-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 115; width: min(560px, calc(100% - 24px)); padding: 10px 12px; border-radius: 14px; background: rgba(7, 23, 37, 0.96); border: 1px solid var(--nc-panel-border, #315A72); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); color: var(--text-main); font-family: var(--font-ui); font-size: 12px; }
@@ -3831,7 +3867,13 @@ body.touch-input #gameCanvas {
 .settings-title { font-family: var(--font-display); font-size: 11px; letter-spacing: 2px; color: rgba(230, 250, 255, 0.55); margin-bottom: 4px; }
 .settings-links { display: flex; gap: 8px; flex-wrap: wrap; }
 .settings-links .btn { width: auto; }
-.profile-stats { font-size: 12px; opacity: 0.8; }
+/* R3-08: the profile's four numbers as small tiles in one row (was one dim
+   "Days played: 3 · sessions: 5 · …" line next to a technical guest ID). */
+.profile-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 420px; margin: 2px auto 0; }
+.profile-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 7px 4px 6px; border-radius: 10px; border: 1px solid var(--nc-border); background: rgba(4, 16, 29, 0.5); }
+.profile-stat-value { font-family: var(--font-display); font-size: 16px; line-height: 1.1; color: var(--nc-cyan); font-variant-numeric: tabular-nums; }
+.profile-stat-label { font-size: 10px; font-weight: 700; line-height: 1.2; color: var(--nc-text-dim); text-align: center; overflow-wrap: anywhere; }
+.profile-identity { font-weight: 700; }
 /* Never on top of a modal: hide while any overlay sheet/celebration is open. */
 body:has(.overlay-screen:not(.hidden)) .consent-bar,
 body:has(.unlock-overlay:not(.hidden)) .consent-bar,
@@ -4098,7 +4140,9 @@ body[data-gfx="0"] #hud::before { display: none; }
 #campaignScreen .district-tile .district-node-name { font-size: 11.5px; }
 #campaignScreen .district-tile .district-node-status { font-size: 9px; }
 /* VISUAL-1: where you play now, what opens next, a district just opened. */
-.district-tile-chip { position: absolute; top: 5px; left: 6px; z-index: 1; will-change: transform; padding: 2px 6px; border-radius: 6px;
+.district-tile .district-node-status { display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.district-status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.district-tile-chip { position: relative; flex: none; z-index: 1; will-change: transform; padding: 1px 5px; border-radius: 6px;
   font-size: 9px; font-weight: 800; letter-spacing: 0.06em; line-height: 1.2; color: #04101D; background: var(--district-color);
   box-shadow: 0 0 8px color-mix(in srgb, var(--district-color) 60%, transparent); }
 .district-tile-chip.next { color: var(--district-color); background: rgba(4, 16, 29, 0.85); border: 1px solid var(--district-color); box-shadow: none; }
@@ -4574,9 +4618,15 @@ body.wide #mainMenu .hub-quick-tile { padding: 14px; }
 body.wide #mainMenu .hub-chest-row { grid-column: 2; grid-row: 6; max-width: none; width: 100%; }
 /* First run: the live demo as a wide stage, GRAJ under it. */
 body.wide #mainMenu.first-run { align-items: center; }
-body.wide #mainMenu.first-run > .hub-inner { max-width: 1040px; height: auto; padding: 24px 28px; justify-content: center; }
-body.wide #mainMenu.first-run .hub-welcome { min-height: 0; flex: none; width: 100%; max-width: none; }
-body.wide #mainMenu.first-run .welcome-stage { width: 100%; height: 470px; min-height: 0; flex: none; border-radius: 22px; }
+/* R4-01: the stage gives way, not the screen. --ui-scale leaves exactly 620
+   logical px of height whenever the frame's height is the limit (1920x953,
+   1366x768, 1536x864, fullscreen at 125-175%...), and a fixed 470 px stage +
+   GRAJ + the note came to ~631: the column scrolled by ~11 px and showed a
+   scrollbar. The column now takes the screen's height and the stage shrinks
+   (up to 470 px, as before, wherever there is room). */
+body.wide #mainMenu.first-run > .hub-inner { max-width: 1040px; height: 100%; padding: 24px 28px; justify-content: center; }
+body.wide #mainMenu.first-run .hub-welcome { min-height: 0; flex: 0 1 auto; width: 100%; max-width: none; }
+body.wide #mainMenu.first-run .welcome-stage { width: 100%; height: 470px; min-height: 240px; flex: 0 1 auto; border-radius: 22px; }
 body.wide #mainMenu.first-run .welcome-cta { max-width: 440px; }
 
 /* Dzielnice: every district at a glance (a 3-column grid, no strip to
@@ -4895,7 +4945,7 @@ body.compact #mainMenu.first-run .welcome-note { grid-column: 2; grid-row: 4; }
 /* --- compact Dzielnice: 12 smaller tiles; the next mission on the right */
 body.compact #campaignScreen .district-tile { height: 50px; }
 body.compact #campaignScreen .district-tile .district-node-name { font-size: 11px; }
-body.compact #campaignScreen .district-tile .district-node-status { font-size: 9px; }
+body.compact #campaignScreen .district-tile .district-node-status { font-size: 9px; gap: 3px; } body.compact .district-tile-chip { padding: 0 3px; letter-spacing: 0; }
 body.compact #campaignScreen .mission-card { padding: 10px; gap: 8px; }
 body.compact #campaignScreen .mission-card .mc-play { font-size: 19px; padding: 11px 14px; }
 

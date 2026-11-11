@@ -4,6 +4,60 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CG-PREVIEW-QA-1 R5 (R5-01, R5-03, R5-04) (zapis nadal v13, klucz bez zmian; ekonomia, balans i RNG bez zmian)
+- **Etykieta na kafelku dzielnicy (R5-01):** NASTĘPNA/TERAZ stoi w wierszu stanu pod nazwą, więc dwuwierszowa nazwa nie wchodzi na etykietę (PC, CrazyGames, telefon, PL/EN). Logika dzielnic bez zmian.
+- **Magnes w Arenie jest widoczny (R5-03):** fala przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Siła i zasięg bez zmian; powyżej promienia 160 pole jest w środku dziury (decyzja właścicielki).
+- **Daily Reward i zmiana języka w paczce (R5-04):** zmiana języka przekazuje świeży zapis przez własne przeładowanie, bo portal oddaje ostatni zapis, który dotarł na konto. Nagroda nie wraca, postęp sprzed chwili nie ginie. GitHub Pages bez zmian.
+- **Przycięcia Areny (R5-02):** zdiagnozowane, bez zmiany kodu: zatrzymania są w prezentacji klatki w procesie GPU; przyczyna w kodzie gry niepotwierdzona (`docs/CG_PREVIEW_QA1_REPORT.md`).
+
+## CG-PREVIEW-QA-1 R4 (R4-01, R4-02, R4-03) (zapis nadal v13, klucz bez zmian; ekonomia, balans i RNG bez zmian; FTUE: R4-02 decyzją właścicielki)
+- **Ekran startowy bez paska przewijania na PC (R4-01):** w układzie poziomym skala UI zostawia 620 px logicznych
+  wysokości, a sztywna scena demo 470 px + GRAJ + notka potrzebowały ~631 — kolumna przewijała się o ~11 px (Full HD
+  w oknie, 1366×768, 1536×864, 1280×720, pełny ekran przy 125–175%, zrzut z Preview 1867×1006). Scena może się teraz
+  skurczyć (do 240 px), gdy brakuje miejsca; gdzie jest miejsce — 470 px jak dotąd. Bez `overflow: hidden`.
+- **Karty Ewolucji w 1. rundzie Areny (R4-02, decyzja właścicielki):** FTUE-3 zostawiało pierwszą rundę bez kart;
+  teraz dwa wybory — pierwszy przy 25–30 s gry („NOWOŚĆ · EWOLUCJA”), drugi przy 60–65 s; każdy czeka na swój rozmiar
+  (46 / 66) i przychodzi przy kęsie, najpóźniej na końcu okna. Wybór zatrzymuje rundę — 2:00 gry w całości. Rundy 2+,
+  Wyzwanie dnia i wyzwanie znajomego bez zmian. Wyższy wynik 1. rundy to skutek mocy (wzory nagród bez zmian).
+- **Okno dziennej nagrody (R4-03):** po ODBIERZ zamiast wyłączonego niebieskiego „+60 MONET!” — potwierdzenie
+  „✓ Odebrano +60 monet” (nie przycisk) i przycisk DALEJ; „Nie, dziękuję” tylko obok „×2 ZA REKLAMĘ”. Tytuł
+  „Day 1 of 7” po angielsku (było „Day 1 z 7”). Nagrody, seria i zapis bez zmian.
+- `qa/cg-preview-qa4.mjs` (R4; 33 ramki EN/PL, paczka i web, przewijanie innych ekranów, karty w 1. rundzie, okno dziennej nagrody);
+  `qa/ftue3.mjs` dostosowany do R4-02.
+
+## CG-PREVIEW-QA-1 R3 (R3-01–04, 06–08) (zapis nadal v13, klucz bez zmian, bez nowych pól; jedyna zmiana ekonomii: R3-07)
+- **Wyzwanie dnia ładuje Core City raz dziennie (R3-07, decyzja właścicielki):** +20% za pierwsze ukończenie dnia i
+  +10% za pierwszy nowy rekord dnia (×1,6 na LVL 1–2); kolejne podejścia poprawiają rekord bez kolejnych procentów.
+  Znaczniki to istniejące daty w zapisie, więc zapis sprzed zmiany nie dostaje dzisiejszej nagrody drugi raz.
+- **Wartości Core City wszędzie takie, jakie wpadną (R3-06):** okno nagród, GRAJ, karta Miasta, panel Wyzwania i wynik
+  rundy podają liczby z premią już wliczoną, nazywają „Premię startową +60%” na LVL 1–2 i wartości od LVL 3;
+  panel Wyzwania pokazuje „Odebrane dziś”. Mnożnik ×1,6 i jego warunki bez zmian.
+- **Ekran wyników (R3-02):** „Main menu / Back to City” wyśrodkowane pod PLAY AGAIN w każdym układzie (w paczce było
+  przy lewej krawędzi), karty pod rankingiem tej samej szerokości i kształtu co przyciski.
+- **Paczka CrazyGames:** bez „Wibracje” w Ustawieniach (R3-01) i bez panelu KOPIA ZAPASOWA (R3-03); GitHub Pages bez zmian.
+- **Profil (R3-08):** zamiast „ID gościa: guest_…” — „Grasz jako: Gość” (albo nazwa), statystyki jako cztery kafelki.
+- **Zdarzenia SDK (R3-04):** `gameplayStart` w misji dopiero po START na karcie startowej; oferta przedłużenia misji
+  to przerwa (`gameplayStop`), przedłużenie — `gameplayStart`; wznowienie do karty / oferty nie wysyła startu.
+- `qa/cg-preview-qa3.mjs` (R3; `--legacy-root` sprawdza prawdziwy zapis poprzedniej paczki).
+
+## CG-PREVIEW-QA-1 „Zgłoszenia z CrazyGames Preview” (R1: 8, R2: 3) (zapis nadal v13, klucz bez zmian; ekonomia, balans i FTUE bez zmian)
+- **Zdarzenia SDK w paczce (CG-QA-07):** paczka nie wysyłała `gameplayStart/Stop` (reklamowy dostawca był „none”),
+  a CrazyGames mierzy rozmiar i czas ładowania do pierwszego `gameplayStart`. Teraz idą przez SDK ładowane dla zapisu:
+  start / wznowienie rundy lub misji — start; pauza, koniec, wyjście — stop; bez duplikatów. `loadingStart/Stop` — nie.
+- **PL → EN w paczce (CG-QA-05):** wybór języka przechodzi przez przeładowanie w adresie (`#lang=…`), bo Data Module
+  zapisuje z opóźnieniem; nazwy języków w języku interfejsu: „Polski | Angielski” / „Polish | English” (CG-QA-03).
+- **Bez „Resetuj profil” w paczce (CG-QA-04, decyzja właścicielki);** tekst prywatności mówi, jak usunąć dane.
+  GitHub Pages bez zmian.
+- **„Menu główne” zamiast „Wróć do Miasta”** na wyniku Areny, dopóki gracz nie zna Miasta (CG-QA-01).
+- **Misja dnia na wyniku jako złota karta** zamiast surowej linii (CG-QA-02; nagroda bez zmian, raz dziennie).
+- **Haptyka tylko tam, gdzie wibracja może zadziałać** (CG-QA-06, R2-03): telefon z `navigator.vibrate`, poza ramką
+  innej domeny (Chrome blokuje tam `vibrate()`), więc nigdy w paczce CrazyGames; gdzie wiersza nie ma, gra nie wibruje.
+- **R2-01:** bez „ZMIEŃ WYGLĄD” w arkuszu pauzy (decyzja właścicielki; wygląd zmienia się w Warsztacie).
+- **R2-02:** „Tryb sterowania” (pad kciuka) tylko na urządzeniach z dotykiem; „Czułość” bez zmian.
+- **Okno „Nagrody Core City”** liczy zakresy tą samą funkcją co GRAJ (+16–27% na LVL 1–2) i mówi, że Wyzwanie dnia daje
+  +20% za każde ukończenie (wcześniej „za pierwsze dziś”, niezgodnie z grą) (CG-QA-08). Wzór i liczby bez zmian.
+- `qa/cg-preview-qa1.mjs` (64 kontrole R1 + R2; mock SDK zapisuje wywołania `SDK.game` i ma model opóźnionego zapisu konta).
+
 ## CG-DATA-2 R1 „Bezpieczny reset profilu w paczce CrazyGames” (zapis nadal v13, klucz bez zmian; GitHub Pages bez zmian)
 - **Decyzja właścicielki:** „Resetuj profil” w paczce usuwa z Data Module zapis `vectorHoleSave_v1` i jego kopie
   `.bak`/`.rescue` (każdy klucz osobno, bez `clear()`). Gdy zapis jest zablokowany (inna karta, zalogowanie, brak

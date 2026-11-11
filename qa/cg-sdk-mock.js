@@ -17,11 +17,19 @@
 //   initDelayMs, initFails, initHangs, dataDisabled, failGet, failSet, limitBytes,
 //   failRemove: [keys] whose removeItem throws (CG-DATA-2 R1: a partly failed reset)
 //   user: { id, username } or null (also kept in localStorage.__cgMockUser)
+//   locale: SDK.user.systemInfo.locale (default 'en-US' as the SDK's demo mode; null = none),
+//   localeThrows: reading SDK.user.systemInfo throws
+//   cloudDebounceMs: CG-QA-05/04 MODEL, not the portal's known behaviour -- a logged-in
+//         player's save reaches the account only this long after the last write (the
+//         docs: "debounces data saving with 1 second ... up to 30 seconds"); a reload
+//         before that loses it.
+// SDK.game calls are logged in window.__cgMockGame as [name, performance.now()].
 (() => {
   const GAME_ID = 'qa-mock';
   const GUEST_KEY = 'SDK_DATA_' + GAME_ID, CACHE_KEY = 'SDK_DATA_CLOUD_CACHE_' + GAME_ID;
   const cfg = () => window.__cgMock || (window.__cgMock = {});
   const log = window.__cgMockLog = [];
+  const gameLog = window.__cgMockGame = [];
   const ls = () => { try { return window.localStorage; } catch (e) { return null; } };
   const err = (code, message) => Object.assign(new Error(message), { code });
   const readJson = (k) => { try { const s = ls(); return JSON.parse((s && s.getItem(k)) || 'null'); } catch (e) { return null; } };
@@ -50,8 +58,15 @@
       throw err('dataLimitExcedeed', 'Game data when converted to a JSON string cannot exceed 1048576 bytes. Data was not saved');
     }
     if (handler === 'local') writeJson(GUEST_KEY, { data, metadata: { date: new Date() } });
-    else { cloud.save(user.id, data); writeJson(CACHE_KEY, { data, metadata: { date: new Date() } }); }
+    else {
+      const id = user.id, snapshot = JSON.parse(json);
+      clearTimeout(cloudTimer);
+      if (cfg().cloudDebounceMs) cloudTimer = setTimeout(() => cloud.save(id, snapshot), cfg().cloudDebounceMs);
+      else cloud.save(id, snapshot);
+      writeJson(CACHE_KEY, { data, metadata: { date: new Date() } });
+    }
   }
+  let cloudTimer = null;
   async function loadFor(u) {
     if (!u) { handler = 'local'; data = (readJson(GUEST_KEY) || {}).data || {}; return; }
     handler = 'cloud';
@@ -112,10 +127,14 @@
     user: {
       get isUserAccountAvailable() { return env() === 'crazygames'; },
       async getUser() { return user; },
+      get systemInfo() {
+        if (cfg().localeThrows) throw err('userNotAvailable', 'systemInfo failed');
+        return { countryCode: 'US', locale: cfg().locale === undefined ? 'en-US' : cfg().locale, device: { type: 'desktop' }, applicationType: 'web' };
+      },
       addAuthListener(fn) { listeners.push(fn); },
       removeAuthListener(fn) { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }
     },
-    game: { gameplayStart() {}, gameplayStop() {}, happytime() {}, loadingStart() {}, loadingStop() {} },
+    game: Object.fromEntries(['gameplayStart', 'gameplayStop', 'happytime', 'loadingStart', 'loadingStop'].map(n => [n, () => { gameLog.push([n, performance.now()]); }])),
     ad: { requestAd(type, cb) { setTimeout(() => cb && cb.adError && cb.adError({ code: 'unfilled' }), 0); }, hasAdblock: async () => false }
   };
   window.CrazyGames = { SDK };

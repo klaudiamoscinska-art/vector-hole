@@ -123,10 +123,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="4"/><circle cx="8" cy="13" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.3" fill="currentColor" stroke="none"/></svg>
         STEROWANIE
       </button>
-      <button id="btnQuickEquip" class="btn btn-secondary pause-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/></svg>
-        ZMIEŃ WYGLĄD
-      </button>
       <div id="pauseTrack" class="pause-track">
         <svg class="np-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/></svg>
         <span class="pause-track-text"><span class="pause-track-label">TERAZ GRA</span><span id="pauseTrackName" class="pause-track-name">—</span></span>
@@ -134,7 +130,7 @@
       </div>
 
       <div id="controlsPanel" class="controls-panel hidden">
-        <div class="control-row">
+        <div id="inputModeRow" class="control-row">
           <span class="control-label">Tryb sterowania</span>
           <div class="control-toggle">
             <button id="btnInputThumbpad" class="toggle-btn">Kciuk (pad)</button>
@@ -149,7 +145,7 @@
             <button class="toggle-btn" data-sensitivity="1.3">Wysoka</button>
           </div>
         </div>
-        <div class="control-row">
+        <div id="hapticsRow" class="control-row">
           <span class="control-label">Haptyka</span>
           <div class="control-toggle">
             <button id="btnHapticsOn" class="toggle-btn">Wł.</button>
@@ -355,11 +351,13 @@
   <div id="loginRewardScreen" class="screen overlay-screen hidden">
     <div class="screen-inner pause-panel login-panel" role="dialog" aria-modal="true" aria-labelledby="loginRewardTitle">
       <div class="login-kicker">CODZIENNA NAGRODA</div>
-      <h2 id="loginRewardTitle" class="section-title">Dzień <span id="loginRewardDay">1</span> z 7</h2>
+      <h2 id="loginRewardTitle" class="section-title">Dzień 1 z 7</h2>
       <p class="hint-text">Wracaj codziennie — nagrody rosną. Dzień 7 to wielka paczka!</p>
       <div id="loginRewardGrid" class="login-grid"></div>
       <div id="loginBurst" class="login-burst" aria-hidden="true"></div>
       <button id="btnLoginClaim" class="btn btn-primary btn-mega">ODBIERZ</button>
+      <!-- R4-03: after the claim, a confirmation (not a button) in its place. -->
+      <p id="loginClaimedNote" class="login-claimed hidden" role="status"></p>
       <button id="btnLoginDouble" class="btn btn-gold hidden">×2 ZA REKLAMĘ</button>
       <button id="btnLoginClose" class="btn btn-link hidden">Nie, dziękuję</button>
     </div>
@@ -386,16 +384,23 @@
       <p class="hint-text">Nazwa jest opcjonalna — możesz grać jako Gość.</p>
       <input id="displayNameInput" class="text-input" type="text" maxlength="16" placeholder="Twoja nazwa (opcjonalnie)">
       <button id="btnSaveProfile" class="btn btn-primary">ZAPISZ</button>
-      <div class="hint-text">ID gościa: <span id="guestIdLabel"></span></div>
-      <p id="profileStats" class="hint-text profile-stats"></p>
+      <!-- R3-08: no technical guest ID on screen (save.guestId stays as it is) --
+           the player's name, or "Gość"; the stats as four small tiles. -->
+      <div class="hint-text profile-identity">Grasz jako: <span id="profileIdentity">Gość</span></div>
+      <div id="profileStats" class="profile-stats">
+        <div class="profile-stat"><span id="profileStatDays" class="profile-stat-value">0</span><span class="profile-stat-label">Dni w grze</span></div>
+        <div class="profile-stat"><span id="profileStatSessions" class="profile-stat-value">0</span><span class="profile-stat-label">Sesje</span></div>
+        <div class="profile-stat"><span id="profileStatRounds" class="profile-stat-value">0</span><span class="profile-stat-label">Rundy</span></div>
+        <div class="profile-stat"><span id="profileStatMissions" class="profile-stat-value">0</span><span class="profile-stat-label">Misje</span></div>
+      </div>
 
       <div class="settings-block">
         <div class="settings-title">USTAWIENIA</div>
         <div class="control-row">
           <span class="control-label">Język</span>
-          <div class="control-toggle" translate="no">
+          <div class="control-toggle">
             <button class="toggle-btn" data-lang="pl">Polski</button>
-            <button class="toggle-btn" data-lang="en">English</button>
+            <button class="toggle-btn" data-lang="en">Angielski</button>
           </div>
         </div>
         <div class="control-row">
@@ -425,7 +430,7 @@
           </div>
         </div>
         <p id="soundStatus" class="hint-text sound-status">—</p>
-        <div class="control-row">
+        <div id="vibrationRow" class="control-row">
           <span class="control-label">Wibracje</span>
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="haptics" data-value="1">Wł.</button>
@@ -436,7 +441,7 @@
 
       <!-- v19: progress lives in this browser only (no accounts) -- a backup
            code carries it to another device or back after cleared data. -->
-      <div class="settings-block">
+      <div id="backupBlock" class="settings-block">
         <div class="settings-title">KOPIA ZAPASOWA</div>
         <p class="hint-text backup-hint">Postęp zapisuje się w tej przeglądarce. Kod kopii przeniesie go na inny telefon albo przywróci po wyczyszczeniu danych.</p>
         <div class="control-row">
@@ -795,6 +800,8 @@
             <span class="daily-reward-value daily-reward-gold" id="dailyRewardBest">—</span>
           </div>
         </div>
+        <!-- R3-06/07: the starting bonus and the once-a-day rule in words. -->
+        <p id="dailyRewardNote" class="daily-reward-note"></p>
       </div>
 
       </div>
@@ -902,7 +909,12 @@
       <p class="result-rank-note">Miejsce liczy się według punktów, nie rozmiaru wiru.</p>
 
       <p id="dailyResultLine" class="hint-text daily-result hidden"></p>
-      <p id="missionResultLine" class="hint-text mission-result hidden"></p>
+      <!-- CG-QA-02: the daily mission's reward as a card (was one raw caps line). -->
+      <div id="missionResultLine" class="result-daily hidden" role="status">
+        <span class="result-daily-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.2 9.6"/></svg></span>
+        <span class="result-daily-body"><span class="result-daily-kicker">MISJA DNIA UKOŃCZONA</span><span id="dailyMissionName" class="result-daily-text"></span></span>
+        <span id="dailyMissionReward" class="result-daily-reward"></span>
+      </div>
       <p id="hubMilestoneLine" class="hint-text hub-milestone-result hidden"></p>
 
       <!-- v12: the next-action bar sticks to the bottom of the results

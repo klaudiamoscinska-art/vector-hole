@@ -907,12 +907,12 @@ async function languageChecks(url) {
   const r = [];
   const g = await openGame(url, { locale: 'de-DE', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1, query: '?i18n=log' });
   const lang = await g.page.evaluate(() => I18N.lang);
-  r.push(report('language: a browser in any other language gets English (no SDK locale in Basic)', lang === 'en', lang));
+  r.push(report('language: a browser in any other language gets English (the SDK's en-US decides, qa/cg-lang1.mjs has the matrix)', lang === 'en', lang));
   await g.browser.close();
-  // The package starts in English even in a Polish browser; Profil → Polski is remembered.
+  // The SDK's locale decides, not the browser (here en-US from the mock's default); Profil → Polski is remembered.
   const pl = await openGame(url, { locale: 'pl-PL', viewport: { width: 1216, height: 684 }, mobile: false, deviceScaleFactor: 1 });
   const plang = await pl.page.evaluate(() => ({ lang: I18N.lang, saved: JSON.parse(localStorage.getItem('vectorHoleSave_v1')).settings.lang }));
-  r.push(report('language: a Polish browser gets English too, and the save keeps "auto"', plang.lang === 'en' && plang.saved === 'auto', JSON.stringify(plang)));
+  r.push(report('language: a Polish browser with an English SDK locale gets English, and the save keeps "auto"', plang.lang === 'en' && plang.saved === 'auto', JSON.stringify(plang)));
   await pl.page.evaluate(() => { window.game.openProfileScreen(); });
   await Promise.all([pl.page.waitForEvent('load'), pl.page.click('[data-lang="pl"]')]);
   await pl.page.waitForFunction(() => window.game && window.game.state !== undefined);
@@ -977,7 +977,7 @@ async function englishEdgeChecks(url, webUrl) {
   const en = await staticPage(url, 'en-US');
   r.push(report('English: no Polish menu is painted while game.js is still on its way, and the menu appears once it has run', !en.during.shown && en.after.shown && en.after.lang === 'en', JSON.stringify(en)));
   const pl = await staticPage(url, 'pl-PL');
-  r.push(report('Polish browser in the package: the static page says lang="en", nothing is painted until game.js has run, then English', pl.during.lang === 'en' && !pl.during.shown && pl.after.shown && pl.after.lang === 'en', JSON.stringify(pl)));
+  r.push(report('Polish browser, English SDK locale: the static page says lang="en", nothing is painted until game.js has run, then English', pl.during.lang === 'en' && !pl.during.shown && pl.after.shown && pl.after.lang === 'en', JSON.stringify(pl)));
   const web = await staticPage(webUrl, 'pl-PL');
   r.push(report('web build: the static page paints as before (no marker, nothing hidden) and a Polish browser still gets Polish', web.during.shown && web.after.shown && web.during.lang === 'pl' && web.after.lang === 'pl', JSON.stringify(web)));
 
@@ -1025,15 +1025,16 @@ async function englishEdgeChecks(url, webUrl) {
   r.push(report('English: a mission tier-up banner reaches the canvas in English', flows.drawn.includes('NEW SIZE!') && !flows.drawn.some(t => /ROZMIAR/.test(t)), JSON.stringify(flows.drawn)));
   await live.browser.close();
 
-  // The multiplier's decimal sign follows the language.
+  // The starting bonus is named in the chosen language (R3-06: the sheet states every value with
+  // the bonus already in, so no "×1.6" / "×1,6" is left for the player to apply).
   // (In the package Polish comes only from a saved choice, whatever the browser.)
-  for (const [lang, want] of [['en', /×1\.6/], ['pl', /×1,6/]]) {
+  for (const [lang, want] of [['en', /Starting bonus: \+60% city progress on LVL 1–2/], ['pl', /Premia startowa: \+60% postępu miasta na LVL 1–2/]]) {
     const c = await veteran(url, { runsPlayed: 0 }, { locale: 'pl-PL' });
     await c.page.evaluate((l) => { const s = JSON.parse(localStorage.getItem('vectorHoleSave_v1')); s.settings.lang = l; localStorage.setItem('vectorHoleSave_v1', JSON.stringify(s)); }, lang);
     await c.page.reload();
     await c.page.waitForFunction(() => window.game && window.game.state !== undefined);
     const text = await c.page.evaluate(async () => { window.game.openCoreCityRoadmap(); await new Promise(res => setTimeout(res, 230)); return document.getElementById('infoSheetBody').innerText; });
-    r.push(report('language: the Core City multiplier uses the decimal sign of the chosen language, ' + lang, want.test(text), (text.match(/×\d[.,]\d/) || [''])[0]));
+    r.push(report('language: the Core City starting bonus is named in the chosen language, no multiplier left to apply (R3-06), ' + lang, want.test(text) && !/×\d[.,]\d/.test(text), (text.match(/(Starting bonus|Premia startowa)[^.(]*|×\d[.,]\d/) || [''])[0]));
     await c.browser.close();
   }
   return r;

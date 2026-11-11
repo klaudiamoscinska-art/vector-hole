@@ -55,7 +55,7 @@ export const MATRIX = [
 // The whole screen catalogue runs in these (the main screens run everywhere).
 const FULL_CATALOGUE = ['320x568', '390x844', '844x390', '640x360', '800x450', '1280x720', '768x1024', '775x328', '390x664', '874x402', '402x812'];
 const MAIN_SCENES = ['welcome', 'hub', 'hubConsent', 'campaign', 'briefing', 'shop', 'challenges', 'arena', 'arenaLate', 'pause', 'evolution', 'results', 'mission', 'missionResult', 'login'];
-const EXTRA_SCENES = ['profile', 'leaveConfirm', 'resetConfirm', 'infoSheet', 'unlock', 'missionStart', 'revive', 'ad', 'quickEquip', 'resultsFailed', 'challengeHub'];
+const EXTRA_SCENES = ['profile', 'leaveConfirm', 'resetConfirm', 'infoSheet', 'unlock', 'missionStart', 'revive', 'ad', 'resultsFailed', 'challengeHub'];
 
 const args = process.argv.slice(2);
 const argOf = (k) => { const a = args.find(x => x.startsWith(`--${k}=`)); return a ? a.split('=')[1].split(',') : null; };
@@ -267,8 +267,7 @@ export const SCENES = {
     audit: { root: '#pauseSheet', primary: '#btnResume', mustSee: ['#btnLeaveRun', '#btnRestart'] } },
   leaveConfirm: { stage: async (p) => { await veteran(p); await p.evaluate(() => { frozenRoundIn(); const gm = window.game; gm.running = true; gm.pauseGame(); document.getElementById('btnLeaveRun').click(); }); await p.waitForTimeout(400); },
     audit: { root: '#leaveConfirm', primary: '#btnLeaveConfirmNo', mustSee: ['#btnLeaveConfirmYes'] } },
-  quickEquip: { stage: async (p) => { await veteran(p); await p.evaluate(() => { frozenRoundIn(); const gm = window.game; gm.running = true; gm.pauseGame(); document.getElementById('btnQuickEquip').click(); }); await p.waitForTimeout(400); },
-    audit: { root: '#quickEquipScreen', primary: '#btnQuickEquipApply', mustSee: ['#btnQuickEquipClose'] } },
+  // R2-01: ZMIEŃ WYGLĄD left the pause sheet, so its popup is no longer a scene.
   evolution: { stage: async (p) => { await veteran(p); await p.evaluate(() => { frozenRoundIn(); const gm = window.game; delete gm.checkEvolutionTriggers; gm.evolutionOffersTriggered = new Set(); gm.offerEvolution(); gm.render(performance.now() / 1000); }); await p.waitForTimeout(700); },
     audit: { root: '#evolutionOverlay', primary: '#evolutionCards > *', mustSee: ['#btnEvolutionSkip'] } },
   results: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.startRound({ seed: 777 }); cancelAnimationFrame(gm.rafId); gm.player.score = 4200; gm.endRound(); }); await p.waitForTimeout(3200); await p.evaluate(() => { window.game.unlockQueue = []; document.getElementById('unlockOverlay').classList.add('hidden'); }); },

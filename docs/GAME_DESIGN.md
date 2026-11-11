@@ -114,13 +114,18 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   (po 12 s rundy) → „Ten rywal jest mniejszy…”; pierwsze pochłonięcie
   przez większy wir → zasada o większych rywalach (raz). Kto gra od razu,
   nie widzi nic. Za duży obiekt objaśnia „ZA DUŻE · URÓŚNIJ DO Tn”.
-- **Pierwsze 5 minut (FTUE-3, `CONFIG.ftue.evolutionFromRuns` /
+- **Pierwsze 5 minut (FTUE-3, `CONFIG.ftue.firstRoundEvolution` /
   `coreHookRounds`):** pierwsza runda Areny (bez ukończonej rundy; nie
-  Wyzwanie dnia ani wyzwanie znajomego) idzie **bez kart Ewolucji** —
-  wcześniej zatrzymywały ją dwa razy w 6–32 s wyborem z trzech kart,
-  zanim gracz poznał sterowanie. Karty wchodzą od 2. rundy; pierwsza
-  oferta ma nagłówek „NOWOŚĆ · EWOLUCJA”. Runda opuszczona w pauzie nie
-  jest ukończona, więc następna nadal jest „pierwsza”. **Każdy wynik
+  Wyzwanie dnia ani wyzwanie znajomego) ma **dwa wybory kart Ewolucji
+  w ustalonych oknach** (R4-02, decyzja właścicielki 2026-11-08; FTUE-3
+  z 2026-10-25 zostawiało tę rundę bez kart, bo w starym rytmie
+  zatrzymywały ją dwa razy w 6–32 s): pierwszy przy 25–30 s gry, drugi
+  przy 60–65 s. Każdy czeka na swój rozmiar (promień 46 / 66) i przychodzi
+  przy kęsie, gdy minie początek okna, a najpóźniej na jego końcu —
+  także gdy wir jest mniejszy. Pierwsza oferta ma nagłówek „NOWOŚĆ ·
+  EWOLUCJA”. Wybór zatrzymuje rundę, więc 2:00 gry zostaje w całości.
+  Od 2. rundy karty przychodzą przy rozmiarach jak dotąd. Runda opuszczona
+  w pauzie nie jest ukończona, więc następna nadal jest „pierwsza”. **Każdy wynik
   Areny mówi, co da następna runda** (`nextRoundHook()`, linia pod
   rozmiarem i miejscem, bez okna i bez dodatkowego dotknięcia): po 1.
   rundzie „NASTĘPNA RUNDA · Odblokujesz Warsztat · nowy wygląd wiru”, po
@@ -187,9 +192,10 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 - **Kolejność rysowania planszy (DEVICE-QA-1):** obiekty w kadrze rysują
   się od największych, równe od tyłu do przodu — mały obiekt nigdy nie
   chowa się pod budynkiem. Pozycje, jedzenie i RNG bez zmian.
-- **Ewolucja (od 2. rundy Areny — FTUE-3):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
+- **Ewolucja (R4-02: w 1. rundzie przy 25–30 s i 60–65 s gry, od 2. rundy przy rozmiarze):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
   (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala,
   Łowca) albo POMIŃ. Działają do końca rundy.
+  **Magnes (Arena, R5-03):** pole 160 od środka dziury, siła 90 × (1 − d/160); widać falę przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Od promienia 160 pole jest w środku dziury i nic nie przyciąga (zmiana zasięgu to decyzja właścicielki).
 - **Złoty Rdzeń:** po 10 s, potem co 20 s; kto zje — SZAŁ na 7 s
   (punkty ×2, zasięg ×1,35, prędkość ×1,2, obiekty o rozmiar większe).
 - **Wielki finisz:** ostatnie 12 s — losowo (z ziarna) Zaciemnienie albo
@@ -381,11 +387,24 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   jaki jest). Runda przerwana przy wyniku 0 (nic nie zjedzone) nie daje
   niczego. Pełne nagrody i postęp — tylko za rundę dograną do końca czasu.
 - **Core City (LVL):** ukończona runda Areny +10% (+2% podium, +3% zwycięstwo, +2%
-  rekord), Wyzwanie dnia +20% (+10% rekord); LVL 1–2 ×1,6. Nadwyżka
+  rekord — części się sumują); **Wyzwanie dnia raz dziennie (R3-07, decyzja właścicielki
+  2026-11-07):** +20% za pierwsze ukończenie w danym dniu UTC i +10% za pierwszy nowy rekord
+  dnia — kolejne podejścia mogą poprawiać rekord (monety i pryzmaty za Wyzwanie bez zmian), ale
+  nie ładują już miasta; runda przerwana nic nie zużywa. Znacznikami wypłaty są istniejące pola
+  zapisu (`lastPlayedDate` = podstawa wypłacona dziś, `lastSeedDate` = bonus za rekord
+  wypłacony dziś — dawna gra ustawiała je zawsze razem z tymi wypłatami), więc zapisy sprzed
+  zmiany nie dostają ponownej nagrody, a zapis v13 nie ma nowych pól. **Premia startowa** na
+  LVL 1–2: suma ×1,6, zaokrąglona (według poziomu przed doliczeniem — runda, która kończy
+  LVL 2, też ją ma). Jedno źródło liczb (`coreGainScaled()`, `coreRewardValues()`, R3-06): okno
+  „Nagrody Core City”, GRAJ, karta Miasta, panel Wyzwania dnia i wynik rundy pokazują wartości
+  już przemnożone (Arena +16–27% na LVL 1–2 / +10–17% od LVL 3; Wyzwanie +32% i +16% /
+  +20% i +10%), na LVL 1–2 nazywają premię („Premia startowa: +60% postępu miasta na LVL 1–2”,
+  „z premią startową”) i podają wartości od LVL 3; wynik rozpisuje części tak, jak wpadły
+  („runda +16% · podium +3% · z premią startową +60%”, suma = przyrost). Panel Wyzwania mówi
+  „Odebrane dziś” przy wykorzystanej nagrodzie. Nadwyżka
   przechodzi dalej. DEVICE-QA-1: Miasto i GRAJ podają zakres
   („+10–17% za rundę · nagroda najpóźniej za N rund”, na LVL 1–2
-  „+16–27%”), wynik rundy rozpisuje przyrost („runda +10% · podium +2% ·
-  1. miejsce +3%…”); od LVL 6 karta mówi „Miasto zbudowane w całości” i
+  „+16–27% za rundę z premią startową”), wynik rundy rozpisuje przyrost; od LVL 6 karta mówi „Miasto zbudowane w całości” i
   co daje każde dalsze 100%. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
   „Pikselowy Wybuch”, Finisz „Fala”, zestaw „Pryzmat”; potem 100 monet + 10
   pryzmatów.
@@ -429,7 +448,10 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   gra otwarta w innej karcie), gra mówi „Kopia wczytana bez zapisu”.
 - **Retencja:** 7-dniowy kalendarz logowania (FTUE-1: nowy gracz nie widzi
   go przy pierwszej wizycie w Mieście po pierwszej rozgrywce, tylko przy
-  drugiej albo po ponownym uruchomieniu; nagrody i seria bez zmian),
+  drugiej albo po ponownym uruchomieniu; nagrody i seria bez zmian; R4-03:
+  po ODBIERZ przycisk znika, w jego miejscu potwierdzenie „Odebrano +60 monet”
+  (nie przycisk), wyjście to DALEJ, a „Nie, dziękuję” tylko obok oferty
+  „×2 ZA REKLAMĘ”; tytuł „Dzień 1 z 7” / „Day 1 of 7”),
   darmowa skrzynia co 4 h,
   Misja dnia (jedna z czterech, raz dziennie, sprawdzana po ukończonej
   rundzie Areny; BALANCE-1: „Zjedz 3 rywali” 80, „Zdobądź 4000 punktów”
@@ -572,7 +594,9 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   miasta: …”, pod paskiem części przyrostu), tabela (pod nią „Miejsce
   liczy się według punktów…”), pasek akcji: ZAGRAJ JESZCZE RAZ, pod nim
   ×2 MONET · REKLAMA i WYZWIJ ZNAJOMEGO tej samej szerokości, „Wróć do
-  Miasta”.
+  Miasta” — dopóki gracz nie zna Miasta (bez wizyty po rundzie, < 3 rund, bez misji)
+  ten sam przycisk nazywa się „Menu główne” (CG-QA-01). Ukończona misja dnia to złota
+  karta „MISJA DNIA UKOŃCZONA · nazwa · +N monet” (CG-QA-02; nagroda jak dotąd, raz dziennie).
 - **Karty nagród i odblokowań (DEVICE-QA-1):** jeden komponent; przyciski
   na osi tekstu (na szerokim ekranie ikona z lewej, tekst i przyciski
   wspólnie wyśrodkowane), licznik „Nowość n z N”, przycisk z akcją tylko
@@ -631,16 +655,35 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
 
 - **Języki:** polski (źródłowy) i angielski. Gra wybiera język przeglądarki
   (polski dla `pl-*`, angielski dla pozostałych i gdy przeglądarka nie podaje języka); Profil → Ustawienia →
-  Język przełącza i zapamiętuje. Paczka CrazyGames zaczyna zawsze po angielsku, także w polskiej
-  przeglądarce; polski wraca tylko z wyboru w Profilu (GitHub Pages bez zmian). Tłumaczenie to warstwa na wyjściu
+  Język przełącza i zapamiętuje. Paczka CrazyGames bierze język z CrazyGames SDK
+  (`SDK.user.systemInfo.locale`: `pl`, `pl-PL` → polski; każdy inny, brak albo błąd SDK → angielski), a nie z
+  przeglądarki; wybór w Profilu ma pierwszeństwo, wybór automatyczny niczego nie zapisuje (GitHub Pages bez zmian). Nazwy języków w języku
+  interfejsu: „Polski | Angielski” po polsku, „Polish | English” po angielsku (CG-QA-03). Zmiana języka
+  przeładowuje stronę; w paczce wybór jedzie razem z przeładowaniem w adresie strony (`#lang=en`,
+  czytany i usuwany przy starcie), bo Data Module zapisuje z opóźnieniem (1–30 s), a zapis sprzed
+  przeładowania mógł jeszcze nie dotrzeć (CG-QA-05). Tłumaczenie to warstwa na wyjściu
   (`I18N_EN`), więc nowy polski tekst wymaga wpisu w słowniku (pilnuje
   `qa/v19.mjs`). Nazwy dzielnic, utworów i misji mają angielskie odpowiedniki
   (Plac Neonów → Neon Square, Wir Neonów → Neon Vortex…). Daty (Wyzwanie
   dnia) nie idą przez słownik: `formatDayMonth()` pisze je w języku gry
   („29 PAŹDZIERNIKA” / „OCTOBER 29”, GAME-READY-1).
+- **Ustawienia sterowania (pauza → STEROWANIE; CG-QA-06, R2-02/03):** „Czułość” zawsze. „Tryb
+  sterowania” (pad kciuka / przeciąganie) tylko na urządzeniach z dotykiem (zdarzenia dotyku lub
+  `maxTouchPoints`, także laptop dotykowy) — zmienia wyłącznie sterowanie dotykiem. „Haptyka” tylko
+  tam, gdzie wibracja może zadziałać: przeglądarka ma `navigator.vibrate`, główny wskaźnik to palec
+  (`(pointer: coarse) and (hover: none)`) i strona nie jest w ramce innej domeny (Chrome blokuje tam
+  `vibrate()`) — w praktyce GitHub Pages na Androidzie; nigdy w paczce CrazyGames (zawsze ramka
+  portalu), na PC, laptopie dotykowym ani w Safari na iPhonie. Gdzie wiersza nie ma, gra nie wywołuje
+  wibracji; zapisane ustawienia zostają. W paczce CrazyGames nie ma też wiersza „Wibracje” w
+  Ustawieniach Profilu (R3-01, decyzja właścicielki; na GitHub Pages zostaje). Arkusz pauzy nie ma już „ZMIEŃ WYGLĄD” (R2-01, decyzja
+  właścicielki) — wygląd zmienia się w Warsztacie między rundami.
 - ~~Energia per platforma~~ — v22: energii nie ma nigdzie (§5).
 - **Zapis:** na GitHub Pages lokalnie w przeglądarce (jak dotąd) + **kopia zapasowa**
-  w Profilu: kod `VH1.…` do skopiowania i wczytania na innym urządzeniu. Gra prosi
+  w Profilu: kod `VH1.…` do skopiowania i wczytania na innym urządzeniu (paczka CrazyGames
+  nie pokazuje tego panelu — R3-03, decyzja właścicielki: zapisuje Data Module; kod i format
+  zostają, a komunikat o uszkodzonym zapisie w paczce nie odsyła do kodu). Profil nie pokazuje
+  technicznego ID gościa (R3-08): „Grasz jako: Gość” albo nazwa gracza, a liczby (dni w grze,
+  sesje, rundy, misje) jako cztery kafelki; `guestId` w zapisie bez zmian. Gra prosi
   przeglądarkę o trwałe przechowywanie danych. (Wersja webowa uruchomiona na domenie
   CrazyGames — nie paczka — ma dawne lustro v19 w module danych portalu; przy różnicy
   wygrywa zapis z większym postępem.)
@@ -649,7 +692,7 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   nie ma reklam (także demonstracyjnej), ofert za reklamę, WYZWIJ ZNAJOMEGO ani pytania
   o statystyki. Mysz blokuje się po kliknięciu planszy (§3). Nagrody i balans bez zmian.
   **Zapis paczki (CG-DATA-1) idzie wyłącznie przez Data Module CrazyGames SDK v3**
-  (oficjalny skrypt SDK w `<head>` paczki; z SDK używany jest tylko zapis): gość —
+  (oficjalny skrypt SDK w `<head>` paczki; z SDK używane są tylko zapis i zdarzenia rozgrywki): gość —
   w przeglądarce, przez SDK; zalogowany gracz — na koncie CrazyGames, z synchronizacją
   urządzeń. Logowanie nie jest wymagane i gra nie ma własnego ekranu logowania. Przy
   zalogowaniu CrazyGames przeładowuje grę z danymi konta (konto bez danych przejmuje
@@ -667,8 +710,18 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   gdy SDK
   nie działa (zablokowany skrypt, błąd, brak odpowiedzi, poza CrazyGames, wyłączony
   Data Module), zapis jest „niedostępny”: gra działa z pamięci, nic nie zapisuje ani nie
-  usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”. Na Full Launch dochodzą
-  reklamy i zdarzenia SDK z osobną decyzją; GitHub Pages działa jak dotąd.
+  usuwa i mówi „Nie udało się połączyć z zapisem CrazyGames…”. **Zdarzenia rozgrywki
+  (CG-QA-07):** paczka wysyła do tego samego SDK `gameplayStart` / `gameplayStop` (wymóg
+  CrazyGames dla zintegrowanego SDK także na Basic Launch; od pierwszego `gameplayStart` portal
+  mierzy rozmiar i czas ładowania): start rundy Areny i Wyzwania, START na karcie misji (nie samo
+  jej pokazanie — R3-04: świat stoi, „zegar ruszy po dotknięciu”), wznowienie po pauzie i
+  przedłużenie misji (revive) — start; pauza (także po utracie fokusu, bo gra naprawdę staje i
+  czeka na WZNÓW), oferta przedłużenia po końcu czasu, koniec rundy lub misji, wyjście — stop;
+  wznowienie do karty startowej albo do oferty nie wysyła startu; nigdy dwa razy z rzędu. `loadingStart/Stop` nie są wysyłane (opcjonalne,
+  gra nie doładowuje niczego po starcie), `happytime` i reklamy też nie. **Reset profilu
+  (CG-QA-04, decyzja właścicielki):** paczka nie pokazuje przycisku RESETUJ PROFIL (w Preview
+  nie działał); tekst prywatności mówi, jak usunąć dane (dane strony w przeglądarce / kontakt
+  z CrazyGames). Na Full Launch dochodzą reklamy z osobną decyzją; GitHub Pages działa jak dotąd.
 - **Ochrona zapisu (PX01):** gra nigdy po cichu nie nadpisuje zapisu, którego
   nie umie w pełni odczytać — ani przy wczytaniu, ani żadnym późniejszym
   autozapisem. Zapis z nowszej wersji gry („Zapis z nowszej wersji gry” →
@@ -686,7 +739,8 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   nie zapisuje. Reset w Profilu zablokowanego zapisu wymaga udanej kopii
   `.rescue` — inaczej nic nie jest usuwane (GitHub Pages: reset usuwa tylko
   `vectorHoleSave_v1`, kopie `.bak`/`.rescue` zostają, gra nigdy sama ich nie czyta).
-  **Paczka CrazyGames (CG-DATA-2 R1, decyzja właścicielki):** świadomy reset usuwa
+  **Paczka CrazyGames (CG-DATA-2 R1, decyzja właścicielki; od CG-QA-04 bez przycisku w paczce —
+  kod zostaje):** świadomy reset usuwa
   z Data Module `vectorHoleSave_v1`, `vectorHoleSave_v1.bak` i `vectorHoleSave_v1.rescue`
   (każdy klucz osobno, bez `clear()`; najpierw kopie, na końcu zapis, każdy sprawdzony
   odczytem). Gdy zapis jest zablokowany (inna karta, zalogowanie, brak połączenia
@@ -741,7 +795,8 @@ dnia),
 powitalnego do 3. wyniku prawdziwymi przyciskami z botem „casual” na
 stałych ziarnach — dotknięcia, pauzy pełnoekranowe, pierwszy kęs, kęsy
 w 10 s, najdłuższa przerwa bez kęsa, miejsca, model osi czasu; pierwsza
-runda bez kart, „NOWOŚĆ · EWOLUCJA” w 2.; Wyzwanie dnia, wyzwanie
+runda z dwiema kartami przy 25–30 s i 60–65 s (R4-02), „NOWOŚĆ · EWOLUCJA”
+w 1.; Wyzwanie dnia, wyzwanie
 znajomego i weterani bez zmian; krawędź miasta: rywal i fragment w rogu
 i przy ścianie, nic bez dociśnięcia, boty bez zmian, zasady rozmiaru,
 koszt; linia następnej rundy: obie bramki, Warsztat z kampanii, Core
@@ -776,7 +831,7 @@ czas klatki zależy od maszyny — porównuj z bazą na tej samej maszynie.
 
 ## 6a. Panel testowy (v23, tylko dla twórców)
 Nie jest częścią gry dla gracza: bez kodu dewelopera nie ma go w DOM.
-Otwieranie: Profil → 7 szybkich stuknięć w „ID gościa” (albo `?dev`
+Otwieranie: Profil → 7 szybkich stuknięć w „Grasz jako” (R3-08; dawniej „ID gościa”; albo `?dev`
 w adresie) → kod → boczny przycisk DEV. Każda akcja działa tylko
 w **trybie testowym** — osobny zapis; prawdziwy postęp nie jest ruszany
 i wraca po „ZAKOŃCZ TESTY”. Panel nie zmienia balansu ani zasad: używa
@@ -817,7 +872,8 @@ Szczegóły i zakres: `docs/CHANGELOG.md` (v23), testy `qa/dev-panel.mjs`.
   przybliżeniem człowieka — prawdziwe testy z graczami mogą przesunąć
   krzywą (wystarczy zmienić `DIFFICULTY.timeFactor`).
 - **FTUE-3 — hipotezy do pomiaru (nie wynik):** pierwsza runda bez kart
-  i linia „NASTĘPNA RUNDA” mają podnieść odsetek graczy, którzy kończą
+  (od R4-02 z dwiema kartami w 25–30 s i 60–65 s — porównać te same
+  wskaźniki przed i po R4-02) i linia „NASTĘPNA RUNDA” mają podnieść odsetek graczy, którzy kończą
   1. rundę i zaczynają 2. i 3. (`run_start` z `playCount`, `run_end`
   `completed`, nowe zdarzenie `result_next` {hook, rounds, runs}; karty
   w 2. rundzie: `evolution_offer` / `evolution_pick` / `evolution_skip`).

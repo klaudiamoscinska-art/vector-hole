@@ -176,8 +176,8 @@ const CONFIG = {
       arenaTop3Gain: 2,     // place 1-3 (additive with completeGain)
       arenaFirstGain: 3,    // place 1 only (additive on top of the Top3 bonus)
       arenaNewPbGain: 2,    // new personal-best score this run, max once per round
-      dailyFirstClearGain: 20, // first Daily completion of the UTC day
-      dailyNewBestGain: 10     // "premium/gold" bonus: a new Daily best this run
+      dailyFirstClearGain: 20, // the day's first finished Daily run (R3-07: once per UTC day)
+      dailyNewBestGain: 10     // "premium/gold" bonus: the day's first new Daily best (R3-07: once per day)
     },
     // Fallback reward once level 6 (and every skin/aura/effect/overdrive
     // skin from the ladder) is already owned -- GDD §8.2's own disclaimer
@@ -213,7 +213,17 @@ const CONFIG = {
     // cards -- they paused it twice in its first 6-32 s with a 3-way choice
     // before the player knew the basics. They appear from this many
     // finished rounds on, the first offer marked as new.
-    evolutionFromRuns: 1,
+    // R4-02 (owner decision, 2026-11-08): the first round has the cards
+    // again (0), paced by firstRoundEvolution below.
+    evolutionFromRuns: 0,
+    // R4-02: the first regular Arena round's two offers, in order. Each
+    // waits for its growth size (CONFIG.evolution.triggerRadii) and comes
+    // on a bite (the vortex grows) once `notBefore` s of play have passed,
+    // or at `latest` s whatever the size -- a slow start still gets both
+    // choices, and the second leaves ~55 s to use them. The offer pauses
+    // the round (Game.loop()), so the 2:00 of play stay whole. Later
+    // rounds, the Daily and a friend's challenge keep the size triggers.
+    firstRoundEvolution: [{ notBefore: 25, latest: 30 }, { notBefore: 60, latest: 65 }],
     // ...and an Arena result says what the next round brings: a feature
     // unlock (Warsztat, Wyzwania) or a Core City reward at most this many
     // finished rounds away (Game.nextRoundHook()).
@@ -583,18 +593,33 @@ const SEAL_SALT = 'vh-neon-core-v11';
    placeholder's own text is translated recursively (names, plural words).
    UPPERCASE variants come for free. Language: save.settings.lang
    ('auto' = the browser's: Polish for pl-*, English for everything else;
-   in the CrazyGames package 'auto' is always English, PORTAL_BASIC below).
+   in the CrazyGames package the SDK's locale decides instead, detectLang()).
    ?i18n=log collects untranslated Polish in I18N.misses (qa/v19.mjs). */
 const I18N = { lang: 'pl', dict: Object.create(null), upper: Object.create(null), patterns: [], cache: new Map(), log: false, misses: new Set(), outputs: new Set() };
 const PL_HINT = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(nie|się|jest|misj\w*|rund\w*|wir\w*|dzielnic\w*|monet\w*|pryzmat\w*|graj|dalej|wynik|czas|nagrod\w*|poziom|twój|twoja|twoje|zbierz|dotknij|wróć|anuluj|zamknij|kup|wyzwani\w*|miasto|sklep|reklam\w*|ustawieni\w*|muzyk\w*|energi\w*|za|na|do|od|po|bez|dla|albo|oraz|tak)\b/i;
 
+/** CG-QA-05: the CrazyGames package's language switch hands its choice over the
+ *  reload in the page's own URL (#lang=en), read and cleared once at boot.
+ *  R5-04: the save it just stored rides along in this tab's sessionStorage (not
+ *  in the URL: the SDK copies the URL into its error reports), see cgAdoptSaveHandoff(). */
+const LANG_HANDOFF = 'lang=';
+const SAVE_HANDOFF_KEY = 'vectorHoleLangSwitchSave';
+function takeLangHandoff() {
+  let m = null, save = null;
+  try { m = new RegExp('^#' + LANG_HANDOFF + '(pl|en)$').exec(location.hash); } catch (e) { /* no location */ }
+  try { save = sessionStorage.getItem(SAVE_HANDOFF_KEY); sessionStorage.removeItem(SAVE_HANDOFF_KEY); } catch (e) { /* no session storage */ }
+  if (!m) return null;
+  try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* stays in the URL */ }
+  return { lang: m[1], save };
+}
+
 function detectLang(setting) {
   if (setting === 'pl' || setting === 'en') return setting;
-  // The CrazyGames package starts in English whatever the browser says; only a
-  // choice made in Profil (saved 'pl') brings Polish back.
-  if (PORTAL_BASIC) return 'en';
+  // C1: the CrazyGames package follows the SDK's locale, not the browser's. Boot
+  // calls this after cgDataBoot() has settled, so nothing waits and nothing
+  // re-decides later; no SDK or no locale means English. Never written to the save.
   let l = 'en';
-  try { l = (navigator.languages && navigator.languages[0]) || navigator.language || 'en'; } catch (e) { /* no navigator */ }
+  try { l = (PORTAL_BASIC ? CG_DATA.sdk.user.systemInfo.locale : (navigator.languages && navigator.languages[0]) || navigator.language) || 'en'; } catch (e) { /* no SDK or no navigator */ }
   return /^pl\b/i.test(l) ? 'pl' : 'en';
 }
 
@@ -2023,6 +2048,16 @@ class Monetization {
   get adsAvailable() { return this.provider !== 'none'; }
   price(sku) { return this.prices[sku] || (IAP_PRODUCTS.find(p => p.sku === sku) || {}).price || ''; }
 
+  /** The CrazyGames SDK that gets the gameplay markers: the ad provider's, or
+   *  (CG-QA-07) in the CrazyGames package the SDK it already loads for saving --
+   *  no ads there, but docs.crazygames.com/requirements/technical: with the SDK
+   *  integrated, a Basic Launch needs "Gameplay start" when the player reaches
+   *  game state, and the initial download size is measured up to the first one. */
+  crazySdk() {
+    if (this.provider === 'crazygames') return this.sdk;
+    return PORTAL_BASIC ? CG_DATA.sdk : null;
+  }
+
   /** Portals pause their own ads during gameplay and use these markers for
    *  their engagement metrics (CrazyGames/Poki both require them). */
   gameplayStart() {
@@ -2030,7 +2065,8 @@ class Monetization {
     this.inGameplay = true;
     if (DEV.sandbox) return; // v23: test play is not portal engagement
     try {
-      if (this.provider === 'crazygames') this.sdk.game.gameplayStart();
+      const cg = this.crazySdk();
+      if (cg) cg.game.gameplayStart();
       else if (this.provider === 'poki') this.sdk.gameplayStart();
     } catch (e) { /* SDK hiccup -- never block the game */ }
   }
@@ -2040,7 +2076,8 @@ class Monetization {
     this.inGameplay = false;
     if (DEV.sandbox) return;
     try {
-      if (this.provider === 'crazygames') this.sdk.game.gameplayStop();
+      const cg = this.crazySdk();
+      if (cg) cg.game.gameplayStop();
       else if (this.provider === 'poki') this.sdk.gameplayStop();
     } catch (e) { /* ignore */ }
   }
@@ -3604,7 +3641,8 @@ let SAVE_SLOT = SAVE_KEY;
    'unavailable': the game plays from memory and writes nothing -- a failed
    read is never taken for "no save". The web build is untouched (localStorage). */
 const CG_SDK_INIT_TIMEOUT_MS = 20000;
-const CG_DATA = { store: null, error: null, login: false };
+// sdk: the initialised SDK on CrazyGames (gameplay markers, Monetization.crazySdk()).
+const CG_DATA = { store: null, error: null, login: false, sdk: null };
 
 async function cgDataBoot() {
   const sdk = window.CrazyGames && window.CrazyGames.SDK;
@@ -3613,6 +3651,8 @@ async function cgDataBoot() {
     let timer;
     await Promise.race([sdk.init(), new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('SDK init timed out')), CG_SDK_INIT_TIMEOUT_MS); })]).finally(() => clearTimeout(timer));
     if (sdk.environment !== 'crazygames' && sdk.environment !== 'local') throw new Error('SDK environment ' + sdk.environment);
+    // CG-QA-07: the markers need only the Game module, even if the Data Module is off.
+    CG_DATA.sdk = sdk;
     // Every call goes through SDK.data, which follows the SDK's own switch to
     // the account's data after a login.
     const data = () => window.CrazyGames.SDK.data;
@@ -3659,6 +3699,24 @@ function playerSaveStore() {
 /** Where loadSave()/saveGame() go: the dev panel's test save always stays in
  *  this browser's localStorage, never in a player's CrazyGames account. */
 function saveStore() { return DEV.sandbox ? localStorage : playerSaveStore(); }
+
+/** R5-04: a language switch reloads only the game's frame, and the portal answers the
+ *  reloaded SDK with the last save it got through to the account (its code, read
+ *  2026-11-08: the answer changes only after a save succeeded; saves wait 1-30 s). A
+ *  signed-in player's newest writes were missing: the Daily Reward just claimed was
+ *  offered again, a round just finished was gone, and the next write put the old
+ *  state in the account for good. The save the switch stored replaces what came back
+ *  only if it is readable and ahead of it; an unreadable stored save is left alone. */
+function cgAdoptSaveHandoff(raw) {
+  try {
+    const current = saveStore().getItem(SAVE_SLOT);
+    if (current === raw) return false;
+    const handed = parseSaveString(raw);
+    if (current !== null && !saveIsAhead(handed, parseSaveString(current))) return false;
+    saveStore().setItem(SAVE_SLOT, raw);
+    return true;
+  } catch (e) { return false; }
+}
 
 /** Another tab of the package stored the save (inside the SDK's own
  *  localStorage keys): the same PX01 'stale' rule as the web build's key. */
@@ -3787,6 +3845,12 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function screenLayout(w, h) {
   if (w < 560 || w < h * 1.25) return 'phone';
   return h < 620 ? 'compact' : 'wide';
+}
+/** Core City: a round's summed gain `pct` as it lands on the bar -- × the
+ *  starting bonus on LVL 1..earlyLevelMax, rounded (finalizeRun(); R3-06: the
+ *  one formula every reward the copy states goes through as well). */
+function coreGainScaled(pct, early) {
+  return early ? Math.round(pct * CONFIG.hub.coreCity.earlyLevelMult) : pct;
 }
 function lerp(a, b, t) { return a + (b - a) * t; }
 /** Round/mission clock as m:ss (v12 HUD; was a bare "120 s"). */
@@ -5780,6 +5844,56 @@ function drawSpiralArms(ctx, r, colors, angle, arms, steps = 22) {
   ctx.restore();
 }
 
+/** The inside of a hole, centered at (0,0): a tinted depth gradient, the arms
+ *  and a black core, clipped to the circle. */
+function paintVortex(ctx, r, base, colors, angle, steps) {
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
+  const depth = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  depth.addColorStop(0, 'rgba(0,0,0,1)');
+  depth.addColorStop(0.6, rgbaColor(base, 0.12));
+  depth.addColorStop(1, rgbaColor(base, 0.38));
+  ctx.fillStyle = depth;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  drawSpiralArms(ctx, r * 1.02, colors, angle, 4, steps);
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
+  core.addColorStop(0, 'rgba(0,0,0,1)');
+  core.addColorStop(0.45, 'rgba(0,0,0,0.85)');
+  core.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+}
+
+/* PERF-06: the vortex only turns, and repainting its wide translucent arms
+   through an antialiased clip was the GPU's largest cost per hole. It is drawn
+   once per color and size at device scale and stamped rotated (radii bucketed
+   as PERF-01's ring glow). Rainbow skins change color every frame and stay live. */
+const VORTEX_CACHE = new Map();
+const VORTEX_MAX_ENTRIES = 64, VORTEX_MAX_PIXELS = 8e6;
+let vortexPixels = 0;
+
+function vortexSprite(base, colors, devR, steps) {
+  const step = devR < 128 ? 1.03 : 1.06;
+  const r = Math.pow(step, Math.round(Math.log(Math.max(1, devR)) / Math.log(step)));
+  const key = base + '|' + colors.join() + '|' + steps + '|' + r.toFixed(1);
+  let sprite = VORTEX_CACHE.get(key);
+  if (sprite) { VORTEX_CACHE.delete(key); VORTEX_CACHE.set(key, sprite); return sprite; }
+  const half = Math.ceil(r) + 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = half * 2;
+  const c = canvas.getContext('2d');
+  c.translate(half, half);
+  paintVortex(c, r, base, colors, 0, steps);
+  sprite = { canvas, half, r };
+  VORTEX_CACHE.set(key, sprite);
+  vortexPixels += canvas.width * canvas.height;
+  while (VORTEX_CACHE.size > VORTEX_MAX_ENTRIES || (vortexPixels > VORTEX_MAX_PIXELS && VORTEX_CACHE.size > 1)) {
+    const oldest = VORTEX_CACHE.keys().next().value;
+    vortexPixels -= VORTEX_CACHE.get(oldest).canvas.width ** 2;
+    VORTEX_CACHE.delete(oldest);
+  }
+  return sprite;
+}
+
 /** Cheap stable per-object phase so neighbours don't bob in sync. */
 function artSeed(x, y) { return ((x * 0.013 + y * 0.029) % (Math.PI * 2)); }
 
@@ -7577,7 +7691,14 @@ class CityFloor {
     const m = 24 / view.zoom;
     const i0 = Math.max(0, Math.floor((view.cx - view.hw - m) / P)), i1 = Math.min(CITY_CELLS - 1, Math.floor((view.cx + view.hw + m) / P));
     const j0 = Math.max(0, Math.floor((view.cy - view.hh - m) / P)), j1 = Math.min(CITY_CELLS - 1, Math.floor((view.cy + view.hh + m) / P));
-    let budget = 2;
+    // PERF-04: a block missing from the cache has to be painted now, so each
+    // one uses up this frame's budget before the optional work (rescales,
+    // prefetch); together they stay at max(missing, 2) paints.
+    let missing = 0;
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) if (!this.cache.has(`${theme || '*'}|${i}|${j}`)) missing++;
+    }
+    let budget = Math.max(0, 2 - missing);
     let used = 0;
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
@@ -7824,15 +7945,9 @@ class WorldObject {
       const breathe = 0.5 + 0.5 * Math.sin(performance.now() / 260);
       ctx.save();
       ctx.globalAlpha = highlight * (0.35 + 0.35 * breathe);
-      ctx.strokeStyle = this.color;
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = this.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
       // A few px outside the object, not 1.4x its radius -- the old ring
       // read bigger than the hole that could already eat it (player feedback).
-      ctx.arc(this.x, this.y, this.radius + 3 + 2 * breathe, 0, Math.PI * 2);
-      ctx.stroke();
+      drawGlowRing(ctx, this.x, this.y, this.radius + 3 + 2 * breathe, this.color, 2, 18);
       ctx.restore();
     }
 
@@ -8194,24 +8309,20 @@ class Hole {
     const colors = horizon ? HORIZON_ARMS : solid
       ? [shadeColor(solid, 0.5), solid, shadeColor(solid, -0.2), shadeColor(solid, 0.25)]
       : [0, 1, 2, 3].map(i => `hsl(${(i * 90 + time * 60) % 360}, 100%, 65%)`);
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
-    const depth = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-    depth.addColorStop(0, 'rgba(0,0,0,1)');
-    depth.addColorStop(0.6, rgbaColor(base, 0.12));
-    depth.addColorStop(1, rgbaColor(base, 0.38));
-    ctx.fillStyle = depth;
-    ctx.fillRect(-r, -r, r * 2, r * 2);
     // Bots spin a touch slower/offset so a crowd doesn't turn in lockstep.
     const spin = this.isPlayer ? 2.4 : 1.9;
-    drawSpiralArms(ctx, r * 1.02, colors, -time * spin + (this.isPlayer ? 0 : r), 4, horizon ? 44 : undefined);
-    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
-    core.addColorStop(0, 'rgba(0,0,0,1)');
-    core.addColorStop(0.45, 'rgba(0,0,0,0.85)');
-    core.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = core;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    const angle = -time * spin + (this.isPlayer ? 0 : r);
+    const steps = horizon ? 44 : undefined;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    // Below 15 the arms' minimum widths stop scaling with the radius.
+    if ((solid || horizon) && r >= 15 && ctx.globalAlpha === 1) {
+      const m = ctx.getTransform(), z = Math.hypot(m.a, m.b);
+      const s = vortexSprite(base, colors, r * z, steps);
+      const k = r * s.half / s.r;
+      ctx.rotate(angle);
+      ctx.drawImage(s.canvas, -k, -k, k * 2, k * 2);
+    } else paintVortex(ctx, r, base, colors, angle, steps);
     ctx.restore();
   }
 
@@ -8369,6 +8480,64 @@ function wobblePath(ctx, r, fn, steps = 48) {
   ctx.closePath();
 }
 
+/* PERF-01: a full-circle neon ring is the same picture every frame, and its
+   shadowBlur is what a weak GPU pays for on every one. Its glow is drawn once
+   into a small canvas at device scale (shadowBlur ignores the transform, so
+   it matches the live glow) and stamped under a live stroke -- shadow, then
+   line, as before. Device radii are bucketed (3% apart, 6% from 128 px) and the
+   stamp is scaled to the exact radius. Rings in a cycling hsl() color stay live.
+   PERF-05: width and blur are keyed as they are at the bucket's radius, so the
+   gulp pop and a changing zoom land on the same sprite instead of a new one. */
+const RING_GLOW_CACHE = new Map();
+const RING_GLOW_MAX_ENTRIES = 96, RING_GLOW_MAX_PIXELS = 6e6;
+let ringGlowPixels = 0;
+
+function ringGlowSprite(color, devR, devLw, blur) {
+  const step = devR < 128 ? 1.03 : 1.06;
+  const r = Math.pow(step, Math.round(Math.log(Math.max(1, devR)) / Math.log(step)));
+  const fit = r / Math.max(1, devR), fitBlur = blur * fit;
+  const lw2 = Math.max(1, Math.round(devLw * fit * 2));
+  const b = Math.round(fitBlur <= 24 ? fitBlur : Math.pow(1.03, Math.round(Math.log(fitBlur) / Math.log(1.03))));
+  const key = color + '|' + r.toFixed(1) + '|' + lw2 + '|' + b;
+  let sprite = RING_GLOW_CACHE.get(key);
+  if (sprite) { RING_GLOW_CACHE.delete(key); RING_GLOW_CACHE.set(key, sprite); return sprite; }
+  const half = Math.ceil(r + lw2 / 4 + b * 1.5 + 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = half * 2;
+  const c = canvas.getContext('2d');
+  // Only the shadow lands on the canvas: the line itself is drawn off it.
+  const off = half * 4;
+  c.shadowColor = color; c.shadowBlur = b; c.shadowOffsetX = off;
+  c.lineWidth = lw2 / 2;
+  c.beginPath(); c.arc(half - off, half, r, 0, Math.PI * 2); c.stroke();
+  sprite = { canvas, half, r };
+  RING_GLOW_CACHE.set(key, sprite);
+  ringGlowPixels += canvas.width * canvas.height;
+  while (RING_GLOW_CACHE.size > RING_GLOW_MAX_ENTRIES || (ringGlowPixels > RING_GLOW_MAX_PIXELS && RING_GLOW_CACHE.size > 1)) {
+    const oldest = RING_GLOW_CACHE.keys().next().value;
+    ringGlowPixels -= RING_GLOW_CACHE.get(oldest).canvas.width ** 2;
+    RING_GLOW_CACHE.delete(oldest);
+  }
+  return sprite;
+}
+
+function drawGlowRing(ctx, x, y, r, color, lw, blur) {
+  // gfx levels without blur turn it off with an own shadowBlur (applyGfx()).
+  const blurOn = !Object.prototype.hasOwnProperty.call(ctx, 'shadowBlur');
+  const live = blurOn && color.startsWith('hsl');
+  if (blurOn && !live) {
+    const m = ctx.getTransform(), z = Math.hypot(m.a, m.b);
+    const s = ringGlowSprite(color, r * z, lw * z, blur);
+    const k = (r * z / s.r) * s.half / z;
+    ctx.drawImage(s.canvas, x - k, y - k, k * 2, k * 2);
+  }
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = color; ctx.lineWidth = lw;
+  if (live) { ctx.shadowBlur = blur; ctx.shadowColor = color; }
+  ctx.stroke();
+  if (live) ctx.shadowBlur = 0;
+}
+
 /** Signature rim for each hole style, drawn centered at (0,0). `solid` is
  *  null for rainbow skins; `c` is then a cycling hue. */
 function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
@@ -8382,7 +8551,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
   };
   switch (style) {
     case 'tech': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 16);
+      drawGlowRing(ctx, 0, 0, r, c, lw, 16);
       // Three rotating bracket arcs + counter-rotating tick ring.
       for (let i = 0; i < 3; i++) {
         const a = t * 1.4 + (i / 3) * Math.PI * 2;
@@ -8422,7 +8591,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
       break;
     }
     case 'galaxy': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 18);
+      drawGlowRing(ctx, 0, 0, r, c, lw, 18);
       ctx.save(); ctx.rotate(t * 0.5); ctx.scale(1, 0.38);
       ctx.beginPath(); ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2);
       ctx.globalAlpha *= 0.55; glowStroke(shadeColor(c, 0.3), Math.max(1.5, lw * 0.6), 10);
@@ -8449,11 +8618,11 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
         ctx.lineTo(Math.cos(a + w) * r, Math.sin(a + w) * r);
       }
       ctx.fillStyle = rgbaColor(c, 0.75); ctx.shadowBlur = 18; ctx.shadowColor = c; ctx.fill(); ctx.shadowBlur = 0;
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(shadeColor(c, 0.3), lw * 1.1, 14);
+      drawGlowRing(ctx, 0, 0, r, shadeColor(c, 0.3), lw * 1.1, 14);
       break;
     }
     case 'storm': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw, 18);
+      drawGlowRing(ctx, 0, 0, r, c, lw, 18);
       // Crackling arcs: re-rolled ~12x per second from a stable seed.
       const tick = Math.floor(t * 12);
       for (let b = 0; b < (detailed ? 3 : 2); b++) {
@@ -8483,7 +8652,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
       break;
     }
     case 'crystal': {
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); glowStroke(c, lw * 0.8, 14);
+      drawGlowRing(ctx, 0, 0, r, c, lw * 0.8, 14);
       const shards = 8;
       for (let i = 0; i < shards; i++) {
         const a = t * 0.6 + (i / shards) * Math.PI * 2;
@@ -8505,8 +8674,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
       // round it: the motion a player can read on a phone at r = 12 px.
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.strokeStyle = '#25384A'; ctx.lineWidth = lw * 1.5; ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-      glowStroke('#50F0FA', Math.max(1.5, lw * 0.42), Math.max(6, r * 0.22));
+      drawGlowRing(ctx, 0, 0, r, '#50F0FA', Math.max(1.5, lw * 0.42), Math.max(6, r * 0.22));
       const arcs = detailed ? 3 : 2;
       for (let i = 0; i < arcs; i++) {
         const a0 = -t * 1.5 + (i / arcs) * Math.PI * 2;
@@ -8525,8 +8693,7 @@ function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
         ctx.beginPath(); ctx.arc(0, 0, r, a0, a0 + (Math.PI * 2) / segments + 0.02);
         ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
       }
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.globalAlpha *= 0.4; glowStroke('#ffffff', 1, 14); ctx.globalAlpha /= 0.4;
+      ctx.globalAlpha *= 0.4; drawGlowRing(ctx, 0, 0, r, '#ffffff', 1, 14); ctx.globalAlpha /= 0.4;
       for (let i = 0; i < (detailed ? 6 : 3); i++) {
         const a = -t * 1.8 + (i / 6) * Math.PI * 2;
         const d = r + lw * 2;
@@ -8714,6 +8881,7 @@ class Game {
     this.introPending = false;
     this.evolutionAutoPickTimer = null;
     this.magnetUntil = 0;
+    this.magnetPulled = [];
     this.speedBoostUntil = 0;
     this.scannerTimer = 0;
     this.scannerTarget = null;
@@ -9266,7 +9434,8 @@ class Game {
   /** Short vibration if haptics are enabled and the browser supports it.
    *  Feature-detected — never assumed available (GDD 5.1). */
   vibrate(ms) {
-    if (this.save.settings.haptics && navigator.vibrate) navigator.vibrate(ms);
+    // R2-03: never where it can't work (a blocked call in a portal frame only warns).
+    if (this.canVibrate && this.save.settings.haptics && navigator.vibrate) navigator.vibrate(ms);
   }
 
   bindUI() {
@@ -9436,7 +9605,33 @@ class Game {
       // also held the ×2 offer. No statistics either, so nothing to consent to.
       document.getElementById('btnShare').parentElement.classList.add('hidden');
       document.querySelector('[data-consent]').closest('.control-row').classList.add('hidden');
+      // CG-QA-04 (owner's decision 2026-11-07): "Reset profile" didn't work in
+      // CrazyGames Preview, so the package doesn't offer it (resetProfile() and
+      // the save stay as they are; GitHub Pages keeps its button).
+      document.querySelector('.profile-danger-zone').classList.add('hidden');
+      // R3-01 (owner's decision): no vibration switch anywhere in the package --
+      // this.canVibrate is never true here (portal frame), so it would do nothing.
+      document.getElementById('vibrationRow').classList.add('hidden');
+      // R3-03 (owner's decision): the Data Module saves on its own (guest and
+      // account), so no manual backup code here; the code paths and the save
+      // format stay, and GitHub Pages keeps the panel.
+      document.getElementById('backupBlock').classList.add('hidden');
     }
+    // CG-QA-06 / R2-03: vibration only where it can shake something -- the
+    // browser has navigator.vibrate, the main input is a finger (coarse pointer,
+    // no hover: desktop Chrome, touch laptops included, has the API and nothing to
+    // shake) and the page is not in another site's frame: Chrome (55+) blocks
+    // vibrate() in a frame cross-origin to the top page, which is how CrazyGames
+    // always runs the package (Firefox for Android: API without vibration; iPhone
+    // Safari: no API). The saved setting stays as it is.
+    let touchFirst = false, foreignFrame = false;
+    try { touchFirst = matchMedia('(pointer: coarse) and (hover: none)').matches; } catch (e) { /* no media queries */ }
+    try { foreignFrame = window.top !== window.self && window.top.location.origin !== location.origin; } catch (e) { foreignFrame = true; }
+    this.canVibrate = !PORTAL_BASIC && !foreignFrame && typeof navigator.vibrate === 'function' && touchFirst;
+    document.getElementById('hapticsRow').classList.toggle('hidden', !this.canVibrate);
+    // R2-02: the thumb pad only changes how touch steers (bindInput()), so the
+    // control mode is offered only where the device has touch input.
+    document.getElementById('inputModeRow').classList.toggle('hidden', !(('ontouchstart' in window) || navigator.maxTouchPoints > 0));
     document.getElementById('btnMenu').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'menu' });
       this.updateCoinDisplays();
@@ -9467,7 +9662,8 @@ class Game {
       document.getElementById('pauseSheet').classList.add('hidden');
       document.getElementById('leaveConfirm').classList.remove('hidden');
     });
-    document.getElementById('btnQuickEquip').addEventListener('click', () => this.openQuickEquip());
+    // R2-01 (owner's decision): no ZMIEŃ WYGLĄD in the pause sheet any more -- looks
+    // change in Warsztat between rounds; the popup below is no longer reachable.
     document.getElementById('quickEquipAura').addEventListener('click', () => this.cycleQuickEquip('aura'));
     document.getElementById('quickEquipEffect').addEventListener('click', () => this.cycleQuickEquip('effect'));
     document.getElementById('quickEquipOverdrive').addEventListener('click', () => this.cycleQuickEquip('overdriveSkin'));
@@ -10261,7 +10457,10 @@ class Game {
 
   openProfileScreen() {
     document.getElementById('displayNameInput').value = this.save.displayName || '';
-    document.getElementById('guestIdLabel').textContent = this.save.guestId;
+    // R3-08: the player's name, or "Gość" (translated) -- never the technical guest ID.
+    const who = document.getElementById('profileIdentity');
+    who.textContent = this.save.displayName || 'Gość';
+    if (this.save.displayName) who.setAttribute('translate', 'no'); else who.removeAttribute('translate');
     this.syncControlsPanel();
     this.syncPrivacyPanel();
     this.updateSoundStatus();
@@ -10382,9 +10581,12 @@ class Game {
   syncPrivacyPanel() {
     const on = !!this.save.privacy.analytics;
     document.querySelectorAll('[data-consent]').forEach(btn => btn.classList.toggle('active', (btn.dataset.consent === '1') === on));
-    const st = document.getElementById('profileStats');
-    if (st && this.retention) {
-      st.textContent = `Dni w grze: ${this.retention.activeDays} · sesje: ${this.retention.sessions} · rundy: ${this.save.stats.runsPlayed || 0} · misje: ${Object.keys(this.save.campaign.completed).length}`;
+    // R3-08: the same four numbers, one tile each (labels are static text).
+    if (this.retention) {
+      document.getElementById('profileStatDays').textContent = formatNum(this.retention.activeDays);
+      document.getElementById('profileStatSessions').textContent = formatNum(this.retention.sessions);
+      document.getElementById('profileStatRounds').textContent = formatNum(this.save.stats.runsPlayed || 0);
+      document.getElementById('profileStatMissions').textContent = formatNum(Object.keys(this.save.campaign.completed).length);
     }
   }
 
@@ -10399,7 +10601,7 @@ class Game {
         PORTAL_BASIC ? '<strong>Co wysyłamy:</strong> gra nie ma serwera, niczego nie wysyła i nie zbiera statystyk. Portal, na którym grasz, ma własną politykę prywatności.' : '<strong>Co wysyłamy:</strong> sama gra nie ma serwera i niczego nie wysyła. Anonimowe statystyki rozgrywki są przekazywane do narzędzia analitycznego strony/aplikacji <em>tylko po Twojej zgodzie</em>; zgodę możesz w każdej chwili wycofać tutaj.',
         PORTAL_BASIC ? '<strong>Reklamy i zakupy:</strong> ta wersja gry nie wyświetla reklam i niczego nie sprzedaje za prawdziwe pieniądze.' : '<strong>Reklamy i zakupy:</strong> na portalach z grami i w aplikacji reklamy wyświetla partner (np. portal lub sklep z aplikacjami) na swoich zasadach i ze swoją zgodą na cookies. Reklamy z nagrodą oglądasz zawsze dobrowolnie. Gra nie sprzedaje losowych nagród za prawdziwe pieniądze.',
         '<strong>Czcionki:</strong> wbudowane w grę — bez pobierania z Google.',
-        PORTAL_BASIC ? '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry razem z jego kopiami zapasowymi z zapisu CrazyGames: jako gość na tym urządzeniu, po zalogowaniu także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.' : '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
+        PORTAL_BASIC ? '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — dane gościa usuniesz z tego urządzenia, czyszcząc dane strony w przeglądarce; w sprawie danych zapisanych na koncie CrazyGames skontaktuj się z CrazyGames. Masz też prawo skargi do Prezesa UODO.' : '<strong>Twoje prawa (RODO):</strong> dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje wszystko z tego urządzenia). Masz też prawo skargi do Prezesa UODO.'
       ]
     });
   }
@@ -10594,9 +10796,18 @@ class Game {
   setLanguage(lang) {
     if (lang !== 'pl' && lang !== 'en') return;
     this.save.settings.lang = lang;
-    saveGame(this.save);
+    const stored = saveGame(this.save);
     this.analytics.track('language', { lang });
-    if (lang !== I18N.lang) location.reload();
+    if (lang === I18N.lang) return;
+    // CG-QA-05: in the CrazyGames package the save reaches a signed-in player's
+    // account later (the Data Module debounces saving 1-30 s), so the reload
+    // right after saveGame() could read the old language back -- the choice
+    // rides on the reload itself (takeLangHandoff() at boot).
+    if (PORTAL_BASIC) {
+      if (stored && !DEV.sandbox) { try { sessionStorage.setItem(SAVE_HANDOFF_KEY, SAVE_GUARD.seen); } catch (e) { /* reads what the portal has */ } }
+      try { history.replaceState(history.state, '', '#' + LANG_HANDOFF + lang); } catch (e) { /* the save still has it */ }
+    }
+    location.reload();
   }
 
   async copyBackupCode() {
@@ -10746,6 +10957,8 @@ class Game {
     // CG-DATA-1: in the CrazyGames package the save is the SDK's, not the browser's.
     if (PORTAL_BASIC && !DEV.sandbox) {
       sheets.unavailable.body = ['Nie udało się połączyć z zapisem CrazyGames, więc gra nie odczytała Twojego postępu. Niczego nie usunie ani nie nadpisze.', keep, 'Odśwież stronę, aby spróbować ponownie.'];
+      // R3-03: no backup code in the package, so the broken-save sheet doesn't point to one.
+      sheets.corrupt.body = [sheets.corrupt.body[0], 'Możesz zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.', keep];
       // No "play without saving" here: the page can't tell whose save SDK.data holds now.
       sheets.login = { title: 'Zalogowano na konto CrazyGames', body: ['Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.', 'Odśwież stronę, aby grać dalej z postępem z konta.'], action: { label: 'ODŚWIEŻ', onClick: reload }, locked: true };
       // CG-DATA-2 R1: a reset that deleted nothing, or not everything (cgEraseSave()).
@@ -10761,11 +10974,11 @@ class Game {
     // Golden Shot v8: currency pills "pop" whenever the balance grows.
     const total = this.save.coins + (this.save.prisms || 0) * 1000;
     if (this._lastWalletShown !== undefined && total > this._lastWalletShown) {
-      document.querySelectorAll('.coin-display').forEach(el => {
-        el.classList.remove('coin-pop');
-        void el.offsetWidth;
-        el.classList.add('coin-pop');
-      });
+      // PERF-05: one forced layout restarts every pill's pop (it was one per pill).
+      const pills = document.querySelectorAll('.coin-display');
+      pills.forEach(el => el.classList.remove('coin-pop'));
+      void document.body.offsetWidth;
+      pills.forEach(el => el.classList.add('coin-pop'));
     }
     this._lastWalletShown = total;
     if (this.warsztatFocus) this.renderWarsztatAction(); // e.g. a rewarded ad while short of prisms
@@ -10806,7 +11019,8 @@ class Game {
     document.getElementById('hubCityPitchTitle').textContent = built ? 'Miasto zbudowane w całości' : 'Każda runda Areny buduje Twoje miasto';
     document.getElementById('hubCityPitchSub').textContent = built
       ? `${this.coreGainRangeText()} za rundę · co 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`
-      : `${this.coreGainRangeText()} za rundę · nagroda najpóźniej za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
+      // R3-06: on LVL 1-2 the range already holds the starting bonus -- say so.
+      : `${this.coreGainRangeText()} za rundę${this.coreEarlyBonus() ? ' z premią startową' : ''} · nagroda najpóźniej za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
 
     this.updateHubQuickTiles();
     // First-run welcome: until the first finished play, Miasto shows only
@@ -10844,8 +11058,23 @@ class Game {
       goalText.textContent = `Jedna mapa dla wszystkich graczy. Za ukończenie: +${CONFIG.daily.completionBonusCoins} monet.`;
     }
     document.getElementById('dailyStreakValue').textContent = this.save.daily.streak || 0;
-    document.getElementById('dailyRewardFirst').textContent = `+${CONFIG.hub.coreCity.dailyFirstClearGain}% Core City`;
-    document.getElementById('dailyRewardBest').textContent = `+${CONFIG.hub.coreCity.dailyNewBestGain}% Core City`;
+    // R3-06/07: what each reward is worth at today's level (×1.6 already in on
+    // LVL 1-2) or that it was claimed today -- the two Daily Core City gains
+    // are paid once a day.
+    const rv = this.coreRewardValues();
+    const rewardBox = (id, value, claimed) => {
+      const el = document.getElementById(id);
+      el.textContent = claimed ? 'Odebrane dziś' : `+${value}% Core City`;
+      el.closest('.daily-reward-box').classList.toggle('claimed', claimed);
+    };
+    rewardBox('dailyRewardFirst', rv.daily.first, rv.daily.paid.first);
+    rewardBox('dailyRewardBest', rv.daily.best, rv.daily.paid.best);
+    const cc = CONFIG.hub.coreCity, note = document.getElementById('dailyRewardNote');
+    note.textContent = rv.daily.paid.first && rv.daily.paid.best
+      ? 'Dzisiejsze nagrody Core City odebrane. Graj dalej o rekord — nowa mapa i nagrody jutro.'
+      : (rv.early
+        ? `Premia startowa: +${this.coreEarlyBonusPct()}% postępu miasta na LVL 1–${cc.earlyLevelMax} (już wliczona). Od LVL ${cc.earlyLevelMax + 1}: +${cc.dailyFirstClearGain}% i +${cc.dailyNewBestGain}%. Każda nagroda raz dziennie.`
+        : 'Każda nagroda Core City raz dziennie; rekord możesz poprawiać dalej.');
   }
 
   /** Which REWARD_CATEGORY_ICONS entry matches a CORE_CITY_LEVEL_REWARDS
@@ -10903,18 +11132,62 @@ class Game {
 
   /** Core City % a plain finished Arena round adds at the current level
    *  (podium, first place and a record add more -- see finalizeRun()). */
-  coreGainPerRound() {
-    const cc = CONFIG.hub.coreCity;
-    return Math.round(cc.arenaCompleteGain * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
-  }
+  coreGainPerRound() { return this.coreGainRange().min; }
 
   /** DEVICE-QA-1 (playtest 019): the most one finished Arena round adds --
    *  podium, first place and a record on top of the plain round. The copy
    *  states the range, so 67% -> 82% no longer contradicts "+10%". */
-  coreGainMaxPerRound() {
+  coreGainMaxPerRound() { return this.coreGainRange().max; }
+
+  /** CG-QA-08: the least and most Core City % one finished round of `kind`
+   *  ('arena' | 'daily') adds at the current level -- finalizeRun()'s sums and
+   *  rounding, the one source of every range the copy states. */
+  coreGainRange(kind = 'arena') {
     const cc = CONFIG.hub.coreCity;
-    const top = cc.arenaCompleteGain + cc.arenaTop3Gain + cc.arenaFirstGain + cc.arenaNewPbGain;
-    return Math.round(top * ((this.save.hub.coreLevel || 1) <= cc.earlyLevelMax ? cc.earlyLevelMult : 1));
+    const early = this.coreEarlyBonus();
+    const [lo, hi] = kind === 'daily'
+      ? [cc.dailyFirstClearGain, cc.dailyFirstClearGain + cc.dailyNewBestGain]
+      : [cc.arenaCompleteGain, cc.arenaCompleteGain + cc.arenaTop3Gain + cc.arenaFirstGain + cc.arenaNewPbGain];
+    const at = (pct) => coreGainScaled(pct, early);
+    return { min: at(lo), max: at(hi), base: { min: lo, max: hi }, early };
+  }
+
+  /** R3-06: the starting bonus (×earlyLevelMult) applies to a round that
+   *  ends while the city is at LVL 1..earlyLevelMax -- the level before the
+   *  round's gain is added, so the round that finishes LVL 2 still has it. */
+  coreEarlyBonus() { return (this.save.hub.coreLevel || 1) <= CONFIG.hub.coreCity.earlyLevelMax; }
+
+  /** R3-06: what each Core City reward is worth right now (coreGainScaled(),
+   *  the rounding finalizeRun() applies), part by part: every part is what it
+   *  adds on top of the ones before it, so the parts add up to the real total.
+   *  Daily: `paid` says which of the two today's save has already had (R3-07). */
+  coreRewardValues() {
+    const cc = CONFIG.hub.coreCity, early = this.coreEarlyBonus();
+    const steps = (parts) => { let sum = 0; return parts.map(p => { const before = coreGainScaled(sum, early); sum += p; return coreGainScaled(sum, early) - before; }); };
+    const [complete, podium, win, record] = steps([cc.arenaCompleteGain, cc.arenaTop3Gain, cc.arenaFirstGain, cc.arenaNewPbGain]);
+    const [first, best] = steps([cc.dailyFirstClearGain, cc.dailyNewBestGain]);
+    const paid = this.dailyCoreRewardsPaid(dailySeedForDate(new Date()).dateKey);
+    return { early, arena: { complete, podium, win, record, ...this.coreGainRange('arena') }, daily: { first, best, total: first + best, paid } };
+  }
+
+  /** R3-06: "+60%" for the starting bonus (earlyLevelMult 1.6). */
+  coreEarlyBonusPct() { return Math.round((CONFIG.hub.coreCity.earlyLevelMult - 1) * 100); }
+
+  /** R3-07 (owner's decision 2026-11-07): the Daily Challenge fills Core City
+   *  once per UTC day -- the base gain for the day's first finished run and
+   *  the record gain for the day's first new daily best -- later runs can
+   *  still beat the record but add nothing to the city. Read from the save
+   *  fields finalizeRun() always wrote with those gains: every finished Daily
+   *  run set lastPlayedDate (and paid the base), and only a new daily best set
+   *  lastSeedDate (and paid the record gain). So the same two dates are the
+   *  "paid today" markers for saves from before R3-07 too: a player who
+   *  finished today's Daily before the update is not paid twice, and nothing
+   *  new is stored (save v13, its .bak/.rescue copies and the CrazyGames Data
+   *  Module keep the same shape). A payout and its marker are written in the
+   *  same saveGame(), so a save that didn't persist loses both together. */
+  dailyCoreRewardsPaid(dateKey) {
+    const d = this.save.daily || {};
+    return { first: d.lastPlayedDate === dateKey, best: d.lastSeedDate === dateKey };
   }
 
   coreGainRangeText() { return `+${this.coreGainPerRound()}–${this.coreGainMaxPerRound()}%`; }
@@ -10924,10 +11197,20 @@ class Game {
    *  part translates on its own. */
   fillCoreGainParts(el, g) {
     el.textContent = '';
-    if (!g || !g.parts.length) return;
-    const cc = CONFIG.hub.coreCity;
-    const bits = g.parts.map(([label, pct]) => `${label} +${pct}%`);
-    if (g.early) bits.push(`×${I18N.lang === 'pl' ? String(cc.earlyLevelMult).replace('.', ',') : cc.earlyLevelMult} na LVL 1–${cc.earlyLevelMax}`);
+    if (!g) return;
+    // R3-07: a Daily replay after today's Core City rewards were paid.
+    const bits = g.dailyClaimed ? ['Wyzwanie dnia: nagrody Core City odebrane dziś'] : [];
+    // R3-06: each part as it really landed (×1.6 and rounding already in, the
+    // parts add up to the gain shown above), the starting bonus named, not a
+    // multiplier left for the player to apply.
+    let sum = 0;
+    for (const [label, pct] of g.parts) {
+      const before = coreGainScaled(sum, g.early);
+      sum += pct;
+      bits.push(`${label} +${coreGainScaled(sum, g.early) - before}%`);
+    }
+    if (g.early && g.parts.length) bits.push(`z premią startową +${this.coreEarlyBonusPct()}%`);
+    if (!bits.length) return;
     bits.forEach((b, i) => {
       if (i) el.appendChild(document.createTextNode(' · '));
       const s = document.createElement('span');
@@ -11198,10 +11481,18 @@ class Game {
 
   coreCityHowToFillHtml() {
     const c = CONFIG.hub.coreCity;
+    // R3-06: every number is what the reward is worth at the current level
+    // (coreRewardValues(): ×1.6 and rounding already in on LVL 1-2, the parts
+    // add up to the totals, like GRAJ's "+16–27%"); the starting bonus is named
+    // and the LVL 3+ values are given while it applies.
+    const v = this.coreRewardValues(), a = v.arena, d = v.daily, bonus = this.coreEarlyBonusPct();
     return '<ul class="info-sheet-list">' +
-      `<li>Runda GRAJ 2:00: +${c.arenaCompleteGain}% (top 3: +${c.arenaTop3Gain}%, 1. miejsce: +${c.arenaFirstGain}%, rekord: +${c.arenaNewPbGain}%)</li>` +
-      `<li>Wyzwanie dnia: +${c.dailyFirstClearGain}% za pierwsze dziś, +${c.dailyNewBestGain}% za nowy rekord</li>` +
-      `<li>Na LVL 1–${c.earlyLevelMax} całość ×${I18N.lang === 'pl' ? String(c.earlyLevelMult).replace('.', ',') : c.earlyLevelMult}. Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
+      `<li>Runda Areny (GRAJ 2:00): +${a.complete}% za ukończenie; podium (1.–3. miejsce) +${a.podium}%, zwycięstwo jeszcze +${a.win}%, nowy rekord +${a.record}% — razem +${a.min}–${a.max}% za rundę.</li>` +
+      `<li>Wyzwanie dnia: +${d.first}% za pierwsze ukończenie dnia, +${d.best}% za pierwszy nowy rekord dnia — razem do +${d.total}%. Raz dziennie: kolejne podejścia mogą poprawić rekord, ale nie ładują już miasta.</li>` +
+      (v.early
+        ? `<li>Premia startowa: +${bonus}% postępu miasta na LVL 1–${c.earlyLevelMax}, już wliczona w liczby powyżej (także w rundzie, która kończy LVL ${c.earlyLevelMax}). Od LVL ${c.earlyLevelMax + 1} premia nie obowiązuje: runda Areny +${a.base.min}–${a.base.max}%, Wyzwanie dnia +${c.dailyFirstClearGain}% i +${c.dailyNewBestGain}% za rekord.</li>`
+        : `<li>Premia startowa (+${bonus}% na LVL 1–${c.earlyLevelMax}) już nie obowiązuje — liczby powyżej są bez niej.</li>`) +
+      `<li>Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
       '<li>Runda opuszczona przed końcem nie ładuje miasta.</li>' +
       '</ul>';
   }
@@ -11407,10 +11698,13 @@ class Game {
     const st = this.loginState();
     if (st.claimedToday) return;
     this.renderLoginGrid(st.day, false);
-    document.getElementById('loginRewardDay').textContent = st.day + 1;
+    // R4-03: one text node, so English gets "Day 1 of 7" (a lone "z" was left untranslated).
+    document.getElementById('loginRewardTitle').textContent = `Dzień ${st.day + 1} z ${CONFIG.loginRewards.length}`;
     const btn = document.getElementById('btnLoginClaim');
     btn.disabled = false;
     btn.textContent = 'ODBIERZ';
+    btn.classList.remove('hidden');
+    document.getElementById('loginClaimedNote').classList.add('hidden');
     document.getElementById('btnLoginDouble').classList.add('hidden');
     document.getElementById('btnLoginDouble').textContent = '×2 ZA REKLAMĘ';
     document.getElementById('btnLoginClose').classList.add('hidden');
@@ -11447,17 +11741,29 @@ class Game {
     this.analytics.track('login_reward_claim', { day: st.day + 1, coins: reward.coins || 0, prisms: reward.prisms || 0 });
 
     this.renderLoginGrid(st.day, true);
+    // R4-03: the claim button used to stay as a disabled big blue "+60 MONET!"
+    // that looked like a button and did nothing. The reward is already in
+    // the save: the button goes, a confirmation takes its place, and the
+    // way out is a real button unless a "×2" ad is on offer.
     const btn = document.getElementById('btnLoginClaim');
     btn.disabled = true;
-    btn.textContent = `+${reward.coins ? reward.coins + ' MONET' : ''}${reward.coins && reward.prisms ? ' · ' : ''}${reward.prisms ? reward.prisms + ' PRYZMATÓW' : ''}!`;
+    btn.classList.add('hidden');
+    const note = document.getElementById('loginClaimedNote');
+    const amounts = [reward.coins ? `+${reward.coins} monet` : '', reward.prisms ? `+${reward.prisms} ${plural(reward.prisms, ['pryzmat', 'pryzmaty', 'pryzmatów'])}` : ''].filter(Boolean);
+    note.innerHTML = `<span class="login-claimed-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="login-claimed-label">Odebrano</span>${amounts.map(a => `<strong>${a}</strong>`).join('')}`;
+    note.classList.remove('hidden');
     this.burstDom(document.getElementById('loginBurst'), reward.big ? 40 : 22);
     this.sound.fanfare(!!reward.big);
     this.vibrate([30, 40, 80]);
     this.updateCoinDisplays();
     // Golden Shot v11: opt-in "double it" right at the moment of reward.
     this.lastLoginReward = reward;
-    document.getElementById('btnLoginDouble').classList.toggle('hidden', !this.monetization.adsAvailable);
-    document.getElementById('btnLoginClose').classList.remove('hidden');
+    const ads = this.monetization.adsAvailable;
+    document.getElementById('btnLoginDouble').classList.toggle('hidden', !ads);
+    const close = document.getElementById('btnLoginClose');
+    close.textContent = ads ? 'Nie, dziękuję' : 'DALEJ';
+    close.className = ads ? 'btn btn-link' : 'btn btn-primary';
+    close.classList.remove('hidden');
     document.getElementById('btnLoginDouble').disabled = false;
     this.analytics.track('ad_offer', { context: 'login_double' });
   }
@@ -12283,6 +12589,7 @@ class Game {
     el.classList.add('hidden');
     this.introPending = false;
     this.pointerScreen = null;
+    this.monetization.gameplayStart(); // R3-04: the clock starts now
     this.lastTime = performance.now();
     this.showBanner('START!', this.mission ? this.mission.def.name : '', '#46D99A', 0.9, 3);
     this.sound.missionStart();
@@ -12458,9 +12765,11 @@ class Game {
       // (still pending while selecting it re-renders the strip at once)
       if (this.districtReveal && this.districtReveal.id === d.id && this.districtReveal.t0 == null) node.classList.add('just-unlocked');
       const chip = isCurrent ? '<span class="district-tile-chip">TERAZ</span>' : (isNext ? '<span class="district-tile-chip next">NASTĘPNA</span>' : '');
-      node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"${isNext ? ' data-next="1"' : ''}></canvas>` + chip +
+      // R5-01: the chip sits on the status line -- pinned to the tile's top it ran into a two-line name.
+      // (On the next district it replaces "ZABLOKOWANA": both don't fit, and the lock says it.)
+      node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"${isNext ? ' data-next="1"' : ''}></canvas>` +
         `<span class="district-tile-info"><span class="district-node-name">${d.name}</span>` +
-        `<span class="district-node-status">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : 'ZABLOKOWANA')}</span>` +
+        `<span class="district-node-status">${chip}<span class="district-status-text">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : (isNext ? '' : 'ZABLOKOWANA'))}</span></span>` +
         `<span class="district-tile-bar"><span style="width:${unlocked ? pctDone : 0}%"></span></span></span>`;
       node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
       wrap.appendChild(node);
@@ -12899,7 +13208,9 @@ class Game {
     this.pointerScreen = null; // no steering until the first touch/mouse move
     this.running = true;
     this.setBoardLive(true);
-    this.monetization.gameplayStart();
+    // R3-04: no gameplayStart yet -- the world is frozen behind the start card
+    // until START (beginMissionPlay()); CrazyGames: "when the user enters in a
+    // playable state, so excludes menus".
     this.state = GameState.PLAYING;
     // v15: every mission waits on a tap (owner: "rozpoczęcie levelu powinno
     // być na kliknięcie, aby gracz miał czas przeczytać komunikat") -- the
@@ -13790,6 +14101,7 @@ class Game {
       return;
     }
     this.revivePending = true;
+    this.monetization.gameplayStop(); // R3-04: time's up, the offer is a break
     this.hideNelaToast();
     m.reviveDeclined = true; // one offer per attempt, whatever the answer
     const missing = this.campaignGoalItems().filter(it => it.progress < it.target)
@@ -13844,6 +14156,7 @@ class Game {
     this.player.invulnerableUntil = performance.now() + 2000;
     this.showBanner(`+${CONFIG.ads.reviveSeconds} S!`, 'Dokończ misję!', '#46D99A', 1.3, 4);
     this.sound.fanfare(false);
+    if (!this.paused) this.monetization.gameplayStart(); // R3-04: revived
     this.lastTime = performance.now();
   }
 
@@ -13863,6 +14176,7 @@ class Game {
     this.showBanner(`+${A.reviveSeconds} S!`, 'Dokończ misję!', '#46D99A', 1.3, 4);
     this.sound.fanfare(false);
     this.updateCoinDisplays();
+    if (!this.paused) this.monetization.gameplayStart(); // R3-04: revived
     this.lastTime = performance.now();
   }
 
@@ -14485,8 +14799,12 @@ class Game {
     const regularRound = !this.isDailyRun && !this.challenge;
     this.evolutionQuiet = regularRound && arenaRunsOf(this.save) < CONFIG.ftue.evolutionFromRuns;
     this.evolutionIntro = regularRound && arenaRunsOf(this.save) === CONFIG.ftue.evolutionFromRuns;
+    // R4-02: the first regular round paces its offers (checkEvolutionTriggers()).
+    this.evolutionPace = regularRound && arenaRunsOf(this.save) === 0 ? CONFIG.ftue.firstRoundEvolution : null;
+    this.evolutionPaceRadius = 0;
     clearTimeout(this.evolutionAutoPickTimer);
     this.magnetUntil = 0;
+    this.magnetPulled = [];
     this.speedBoostUntil = 0;
     this.scannerTimer = 0;
     this.scannerTarget = null;
@@ -14664,6 +14982,8 @@ class Game {
       const { dateKey } = dailySeedForDate(new Date());
       const previousBest = this.save.daily.lastSeedDate === dateKey ? this.save.daily.lastSeedScore : 0;
       const isNewBest = this.player.score > previousBest;
+      // R3-07: read before save.daily below is rewritten (its dates are the markers).
+      const paid = this.dailyCoreRewardsPaid(dateKey);
       let dailyBonusCoins = CONFIG.daily.completionBonusCoins;
       let dailyBonusPrisms = 0;
       if (isNewBest) {
@@ -14682,7 +15002,8 @@ class Game {
         lastSeedScore: isNewBest ? this.player.score : this.save.daily.lastSeedScore,
         streak, lastPlayedDate: dateKey
       };
-      this.dailyResult = { isNewBest, previousBest, dailyBonusCoins, dailyBonusPrisms, streak };
+      // R3-07: Core City only for the day's first finish and its first new best.
+      this.dailyResult = { isNewBest, previousBest, dailyBonusCoins, dailyBonusPrisms, streak, coreFirst: !paid.first, coreBest: isNewBest && !paid.best };
       this.analytics.track('daily_challenge_end', {
         dateKey, score: this.player.score, isNewBest, dailyBonusCoins, dailyBonusPrisms, streak
       });
@@ -14700,9 +15021,10 @@ class Game {
     // of this round's gain, for the result screen to name (display only).
     const coreParts = [];
     if (this.isDailyRun) {
-      coreGain = cc.dailyFirstClearGain + (this.dailyResult.isNewBest ? cc.dailyNewBestGain : 0);
-      coreParts.push(['Wyzwanie dnia', cc.dailyFirstClearGain]);
-      if (this.dailyResult.isNewBest) coreParts.push(['rekord dnia', cc.dailyNewBestGain]);
+      const r = this.dailyResult;
+      coreGain = (r.coreFirst ? cc.dailyFirstClearGain : 0) + (r.coreBest ? cc.dailyNewBestGain : 0);
+      if (r.coreFirst) coreParts.push(['Wyzwanie dnia', cc.dailyFirstClearGain]);
+      if (r.coreBest) coreParts.push(['rekord dnia', cc.dailyNewBestGain]);
     } else {
       coreGain = cc.arenaCompleteGain + (place <= 3 ? cc.arenaTop3Gain : 0) + (place === 1 ? cc.arenaFirstGain : 0);
       coreParts.push(['runda', cc.arenaCompleteGain]);
@@ -14720,9 +15042,9 @@ class Game {
         this.save.stats.recentArenaScores = recent.slice(-CONFIG.rival.history);
       }
     }
-    const early = (this.save.hub.coreLevel || 1) <= cc.earlyLevelMax;
-    if (early) coreGain = Math.round(coreGain * cc.earlyLevelMult);
-    this.lastCoreGain = { parts: coreParts, early, total: coreGain };
+    const early = this.coreEarlyBonus();
+    coreGain = coreGainScaled(coreGain, early);
+    this.lastCoreGain = { parts: coreParts, early, total: coreGain, dailyClaimed: this.isDailyRun && !coreParts.length };
     this.save.hub.coreCharge = (this.save.hub.coreCharge || 0) + coreGain;
     this.hubMilestoneReached = false;
     this.hubMilestoneRewards = [];
@@ -14882,11 +15204,17 @@ class Game {
       this.analytics.track('result_next', { hook: next.id, rounds: next.rounds, runs: arenaRunsOf(this.save) });
     }
     document.getElementById('btnPlayAgain').textContent = this.challenge && !this.challengeBeaten ? 'REWANŻ — TA SAMA MAPA' : 'ZAGRAJ JESZCZE RAZ';
+    // CG-QA-01: a new player last saw that screen as the welcome card, not as
+    // Miasto -- "Wróć do Miasta" only once they know it (a visit after a round,
+    // the campaign tile's round count, a cleared mission).
+    const knowsCity = (this.hubVisits || 0) > 0 || arenaRunsOf(this.save) >= CONFIG.ftue.campaignIntroRuns || missionsClearedOf(this.save) > 0;
+    document.getElementById('btnMenu').textContent = knowsCity ? 'Wróć do Miasta' : 'Menu główne';
     if (place === 1 || isNewPb) this.monetization.happyTime();
 
     const missionLine = document.getElementById('missionResultLine');
     if (this.missionJustCompleted) {
-      missionLine.textContent = `MISJA DNIA UKOŃCZONA: „${this.activeMission.name}” — +${this.activeMission.rewardCoins} monet`;
+      document.getElementById('dailyMissionName').textContent = this.activeMission.name;
+      document.getElementById('dailyMissionReward').textContent = `+${this.activeMission.rewardCoins} monet`;
       missionLine.classList.remove('hidden');
     } else {
       missionLine.classList.add('hidden');
@@ -14972,7 +15300,9 @@ class Game {
     document.getElementById('leaveConfirm').classList.add('hidden');
     this.sound.setDucked(false);
     if (this.revivePending && !this.reviveAdInFlight) this.armReviveTimer();
-    this.monetization.gameplayStart();
+    // R3-04: back to the start card or the revive offer is not play yet
+    // (beginMissionPlay() / a revive send gameplayStart).
+    if (!this.introPending && !this.revivePending) this.monetization.gameplayStart();
     this.lastTime = performance.now();
     this.rafId = requestAnimationFrame((t) => this.loop(t));
   }
@@ -15764,7 +16094,11 @@ class Game {
     this.analytics.track('evolution_pick', { mutation: id });
     this.vibrate(50);
 
-    if (id === 'magnet_pulse') this.magnetUntil = Infinity;
+    if (id === 'magnet_pulse') {
+      this.magnetUntil = Infinity;
+      // R5-03: the pick shows at once how far the pull reaches.
+      this.ripples.push(new Ripple(this.player.x, this.player.y, '#50F0FA', this.player.radius, CONFIG.evolution.magnetRadius, 0.7));
+    }
     if (id === 'combo_reactor') this.comboWindowOverride = CONFIG.juice.combo.windowSeconds * 1.6;
     if (id === 'bounty_core') this.assignBountyTarget();
   }
@@ -15796,6 +16130,20 @@ class Game {
 
   checkEvolutionTriggers() {
     if (this.evolutionPending || this.evolutionQuiet) return;
+    if (this.evolutionPace) {
+      // R4-02: first round -- the offers in order, each in its window.
+      const t = ROUND_TIME - this.timeRemaining, r = this.player.radius;
+      const grew = r > this.evolutionPaceRadius;
+      this.evolutionPaceRadius = r;
+      const i = CONFIG.evolution.triggerRadii.findIndex(x => !this.evolutionOffersTriggered.has(x));
+      const w = this.evolutionPace[i];
+      if (i < 0 || !w) return;
+      if (t >= w.latest || (t >= w.notBefore && grew && r >= CONFIG.evolution.triggerRadii[i])) {
+        this.evolutionOffersTriggered.add(CONFIG.evolution.triggerRadii[i]);
+        this.offerEvolution();
+      }
+      return;
+    }
     for (const r of CONFIG.evolution.triggerRadii) {
       if (this.player.radius >= r && !this.evolutionOffersTriggered.has(r)) {
         this.evolutionOffersTriggered.add(r);
@@ -15847,6 +16195,32 @@ class Game {
     }
   }
 
+  /** R5-03: the Magnes card's pull drifts objects slowly and showed nothing else, so a
+   *  player who picked it could not tell it was on: the edge of its field and a streak on
+   *  each object being pulled (one path, no shadow; the objects come from the update's
+   *  own loop). Once the hole is wider than the field there is nothing left to show. */
+  drawMagnetField(ctx, time) {
+    const p = this.player, R = CONFIG.evolution.magnetRadius;
+    if (!(performance.now() < this.magnetUntil) || p.radius >= R) return;
+    ctx.save();
+    ctx.strokeStyle = '#50F0FA';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 1.6 / this.zoom;
+    ctx.globalAlpha = 0.2 + 0.08 * Math.sin(time * 3);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    for (const o of this.magnetPulled) {
+      const d = dist(p.x, p.y, o.x, o.y) || 1, ux = (p.x - o.x) / d, uy = (p.y - o.y) / d;
+      ctx.moveTo(o.x + ux * o.radius, o.y + uy * o.radius);
+      ctx.lineTo(o.x + ux * (o.radius + 16), o.y + uy * (o.radius + 16));
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   /** Per-frame upkeep for whichever mutation the player picked this run —
    *  Magnet Pulse, Slipstream's speed window, and the Scanner ping. */
   updateMutationEffects(dt) {
@@ -15854,11 +16228,13 @@ class Game {
 
     const fullMagnet = now < this.magnetUntil;
     const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : 0, this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
+    this.magnetPulled.length = 0;
     if (magnetRadius > 0) {
       for (const obj of this.objects) {
         if (obj.eating || !this.holeCanEat(this.player, obj)) continue;
         const d = dist(this.player.x, this.player.y, obj.x, obj.y);
         if (d > 0 && d < magnetRadius) {
+          if (fullMagnet) this.magnetPulled.push(obj);
           const pull = CONFIG.evolution.magnetPull * (1 - d / magnetRadius);
           obj.x -= ((obj.x - this.player.x) / d) * pull * dt;
           obj.y -= ((obj.y - this.player.y) / d) * pull * dt;
@@ -16218,6 +16594,12 @@ class Game {
     const view = this.floorView();
     this.cityFloor.draw(ctx, view, null);
     if (this.gfxLevel > 0) this.cityFloor.drawTraffic(ctx, view, time, null, null, this.player);
+    // PERF-02: this outline encloses the whole screen, so its shadow costs a
+    // screen-sized blur even with no edge in view, where it paints no pixel.
+    // Margin: half the line + the glow and the max shake (screen px).
+    const m = 2 + 40 / this.zoom;
+    if (view.cx - view.hw - m > 0 && view.cx + view.hw + m < WORLD_W
+      && view.cy - view.hh - m > 0 && view.cy + view.hh + m < WORLD_H) return;
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 84, 173, 0.65)';
     ctx.shadowBlur = 14;
@@ -16516,6 +16898,7 @@ class Game {
     this.drawDangerHalos(ctx);
     this.drawPreyRings(ctx);
     this.drawScannerTarget(ctx);
+    this.drawMagnetField(ctx, time);
     this.drawBountyMarker(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const r of this.ripples) r.draw(ctx);
@@ -16859,8 +17242,8 @@ class DevPanel {
     this.taps = [];
     this.failedCodes = 0;
     this.lockedUntil = 0;
-    // Hidden gesture: 7 quick taps on the guest ID line in Profil.
-    const idRow = document.getElementById('guestIdLabel');
+    // Hidden gesture: 7 quick taps on the "Grasz jako" line in Profil (R3-08: was the guest ID).
+    const idRow = document.getElementById('profileIdentity');
     if (idRow && idRow.parentElement) idRow.parentElement.addEventListener('click', () => this.onSecretTap());
     window.addEventListener('keydown', (e) => {
       if (!DEV.access) return;
@@ -18029,6 +18412,11 @@ const I18N_EN = {
   "+{0} monet · +{1} pryzmaty · wzmocnienie „{2}”. Następna za {3} gwiazdek.": "+{0} coins · +{1} prisms · “{2}” booster. Next one in {3} stars.",
   "+{0} monet{1}": "+{0} coins{1}",
   "+{0} pryzmatów": "+{0} prisms",
+  // R4-03: the daily reward's confirmation after the claim.
+  "+{#0} pryzmat": "+{0} prism",
+  "+{#0} pryzmaty": "+{0} prisms",
+  "Odebrano": "Claimed",
+  "Dzień {#0} z {#1}": "Day {0} of {1}",
   "+{0} za nowy rekord w Wyzwaniu dnia": "+{0} for a new Daily Challenge record",
   "+{0} ◆ · REKLAMA": "+{0} ◆ · AD",
   "+{0}% za rundę · nagroda za {1} {2}": "+{0}% per round · reward in {1} {2}",
@@ -18173,7 +18561,6 @@ const I18N_EN = {
   "Dane wracają do miasta.": "Data is flowing back to the city.",
   "Delikatne pąki": "Delicate Buds",
   "Deszcz na Szybie": "Rain on Glass",
-  "Dni w grze: {0} · sesje: {1} · rundy: {2} · misje: {3}": "Days played: {0} · sessions: {1} · rounds: {2} · missions: {3}",
   "Do portu wjechała ciężarówka — obiekt T5. Urośnij przez magazyny i ją pochłoń.": "A truck has rolled into the port — a T5 object. Grow through the warehouses and swallow it.",
   "Do resetu": "Until reset",
   "Dobra trasa": "Good Route",
@@ -18294,7 +18681,7 @@ const I18N_EN = {
   "Hologramowy horyzont": "Hologram Horizon",
   "Hologramy wracają do normy.": "The holograms are back to normal.",
   "Hurtownia": "Wholesale Depot",
-  "ID gościa:": "Guest ID:",
+  "Grasz jako:": "Playing as:",
   "IDŹ DO DZIELNIC": "GO TO DISTRICTS",
   "IGLICA": "SPIRE",
   "Iglica": "The Spire",
@@ -18404,7 +18791,7 @@ const I18N_EN = {
   "MIEJSCE": "PLACE",
   "MIESZANKA": "SHUFFLE",
   "MISJA DNIA": "DAILY MISSION",
-  "MISJA DNIA UKOŃCZONA: „{0}” — +{1} monet": "DAILY MISSION COMPLETE: “{0}” — +{1} coins",
+  "MISJA DNIA UKOŃCZONA": "DAILY MISSION COMPLETE",
   "MISJA UKOŃCZONA": "MISSION COMPLETE",
   "MONET": "COINS",
   "Magazyn części": "Parts Warehouse",
@@ -18858,7 +19245,6 @@ const I18N_EN = {
   "Rozkład jazdy": "Timetable",
   "Rozkład jazdy wrócił do normy.": "The timetable is back to normal.",
   "Runda 2:00": "Round 2:00",
-  "Runda GRAJ 2:00: +{0}% (top 3: +{1}%, 1. miejsce: +{2}%, rekord: +{3}%)": "PLAY round 2:00: +{0}% (top 3: +{1}%, 1st place: +{2}%, record: +{3}%)",
   "Runda: {0} XP + punkty wyniku + premia za podium (do +{1} XP za 1. miejsce). Misja: +{2} XP za ukończenie.": "Round: {0} XP + score points + podium bonus (up to +{1} XP for 1st place). Mission: +{2} XP for completing it.",
   "Ruszaj dalej: {0} czeka.": "Move on: {0} awaits.",
   "Rytm kwiatów": "Flower Rhythm",
@@ -19157,7 +19543,6 @@ const I18N_EN = {
   "Wystawa otwarta z hukiem.": "The exhibition opened with a bang.",
   "Wyzwania": "Challenges",
   "Wyzwanie dnia": "Daily Challenge",
-  "Wyzwanie dnia: +{0}% za pierwsze dziś, +{1}% za nowy rekord": "Daily Challenge: +{0}% for the first today, +{1}% for a new record",
   "Wył.": "Off",
   "Wyłącz": "Switch off",
   "Wyłącz 2 węzły": "Switch off 2 nodes",
@@ -19205,7 +19590,7 @@ const I18N_EN = {
   "Ta strona nic więcej nie zapisze, żeby nie pomieszać postępu gościa z postępem konta.": "This page won't save anything more, so guest progress doesn't mix with the account's progress.",
   "Odśwież stronę, aby grać dalej z postępem z konta.": "Reload the page to keep playing with your account's progress.",
   "postęp gry, ustawienia i losowy identyfikator gościa — przez zapis CrazyGames: jako gość w pamięci Twojej przeglądarki na tym urządzeniu, a po zalogowaniu na konto CrazyGames na tym koncie (wtedy postęp jest też na Twoich innych urządzeniach). Gra nie ma własnych kont i nie prosi o e-mail. Nazwa gracza jest opcjonalna.": "game progress, settings and a random guest ID — through CrazyGames saving: as a guest in your browser's memory on this device, and when you're signed in to CrazyGames, in that account (then your progress is on your other devices too). The game has no accounts of its own and doesn't ask for your email. Player name is optional.",
-  "dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — „Resetuj profil” (kasuje zapis gry razem z jego kopiami zapasowymi z zapisu CrazyGames: jako gość na tym urządzeniu, po zalogowaniu także z konta CrazyGames). Masz też prawo skargi do Prezesa UODO.": "access and data portability — the “Download my data” button; deletion — “Reset profile” (erases the game save together with its backup copies from CrazyGames saving: as a guest on this device, when signed in also from your CrazyGames account). You can also lodge a complaint with the President of UODO (Polish Data Protection Office).",
+  "dostęp i przeniesienie danych — przycisk „Pobierz moje dane”; usunięcie — dane gościa usuniesz z tego urządzenia, czyszcząc dane strony w przeglądarce; w sprawie danych zapisanych na koncie CrazyGames skontaktuj się z CrazyGames. Masz też prawo skargi do Prezesa UODO.": "access and data portability — the “Download my data” button; deletion — clear this site’s data in your browser to delete a guest’s data on this device; for data saved in your CrazyGames account, contact CrazyGames. You can also lodge a complaint with the President of UODO (Polish Data Protection Office).",
   "Profil nie został zresetowany": "The profile wasn't reset",
   "Zapis jest teraz zablokowany — na przykład gra jest otwarta w innej karcie albo nie ma połączenia z zapisem CrazyGames — więc gra niczego nie usunęła.": "Saving is blocked right now — for example the game is open in another tab or there is no connection to CrazyGames saving — so the game deleted nothing.",
   "Odśwież stronę i spróbuj ponownie.": "Reload the page and try again.",
@@ -19823,13 +20208,11 @@ const I18N_EN = {
   "rekord +{#0}%": "record +{0}%",
   "Wyzwanie dnia +{#0}%": "Daily Challenge +{0}%",
   "rekord dnia +{#0}%": "daily record +{0}%",
-  "×{0} na LVL 1–{#1}": "×{0} at LVL 1–{1}",
   "Miasto zbudowane w całości": "Your city is fully built",
   "+{#0}–{#1}% za rundę · co 100%: +{#2} monet i +{#3} pryzmatów": "+{0}–{1}% per round · every 100%: +{2} coins and +{3} prisms",
   "+{#0}–{#1}% za rundę · nagroda najpóźniej za {#2} {3}": "+{0}–{1}% per round · reward in {2} {3} at most",
   "Arena · runda 2:00 · +{#0}–{#1}% budowy miasta": "Arena · round 2:00 · +{0}–{1}% city build",
   "+{#0} monet + {#1} pryzmatów": "+{0} coins + {1} prisms",
-  "Na LVL 1–{#0} całość ×{1}. Po LVL 6 każde 100%: +{#2} monet i +{#3} pryzmatów.": "At LVL 1–{0} everything ×{1}. After LVL 6 every 100%: +{2} coins and +{3} prisms.",
   "Runda opuszczona przed końcem nie ładuje miasta.": "A round left before the end doesn't charge the city.",
   "PUNKTY": "POINTS",
   "Miejsce liczy się według punktów, nie rozmiaru wiru.": "Places go by points, not by vortex size.",
@@ -19870,6 +20253,28 @@ const I18N_EN = {
   "Błysk przy połykaniu": "A flash as you swallow",
   "Kolor banera na finiszu rundy": "The banner color at a round's finale",
   "PODGLĄD · {0} · BEZ BONUSU W RUNDZIE": "PREVIEW · {0} · NO IN-ROUND BONUS",
+  // CG-QA-01/03/08 (CrazyGames Preview QA R1)
+  "Menu główne": "Main menu",
+  "Polski": "Polish",
+  "Angielski": "English",
+  "Runda Areny (GRAJ 2:00): +{#0}% za ukończenie; podium (1.–3. miejsce) +{#1}%, zwycięstwo jeszcze +{#2}%, nowy rekord +{#3}% — razem +{#4}–{#5}% za rundę.": "Arena round (PLAY 2:00): +{0}% for finishing; podium (1st–3rd place) +{1}%, a win another +{2}%, a new record +{3}% — +{4}–{5}% per round in total.",
+  "Po LVL 6 każde 100%: +{#0} monet i +{#1} pryzmatów.": "After LVL 6 every 100%: +{0} coins and +{1} prisms.",
+  // R3 (CrazyGames Preview QA R3: Core City values, Daily once a day, backup, profile)
+  "Wyzwanie dnia: +{#0}% za pierwsze ukończenie dnia, +{#1}% za pierwszy nowy rekord dnia — razem do +{#2}%. Raz dziennie: kolejne podejścia mogą poprawić rekord, ale nie ładują już miasta.": "Daily Challenge: +{0}% for the day’s first finish, +{1}% for the day’s first new daily record — up to +{2}% in total. Once a day: later runs can still beat the record but no longer build the city.",
+  "Premia startowa: +{#0}% postępu miasta na LVL 1–{#1}, już wliczona w liczby powyżej (także w rundzie, która kończy LVL {#2}). Od LVL {#3} premia nie obowiązuje: runda Areny +{#4}–{#5}%, Wyzwanie dnia +{#6}% i +{#7}% za rekord.": "Starting bonus: +{0}% city progress on LVL 1–{1}, already included in the numbers above (also in the round that completes LVL {2}). From LVL {3} it no longer applies: Arena round +{4}–{5}%, Daily Challenge +{6}% and +{7}% for a record.",
+  "Premia startowa (+{#0}% na LVL 1–{#1}) już nie obowiązuje — liczby powyżej są bez niej.": "The starting bonus (+{0}% on LVL 1–{1}) no longer applies — the numbers above are without it.",
+  "z premią startową +{#0}%": "with the starting bonus +{0}%",
+  "Wyzwanie dnia: nagrody Core City odebrane dziś": "Daily Challenge: today’s Core City rewards already claimed",
+  "Odebrane dziś": "Claimed today",
+  "Dzisiejsze nagrody Core City odebrane. Graj dalej o rekord — nowa mapa i nagrody jutro.": "Today’s Core City rewards are claimed. Keep playing for the record — a new map and new rewards tomorrow.",
+  "Premia startowa: +{#0}% postępu miasta na LVL 1–{#1} (już wliczona). Od LVL {#2}: +{#3}% i +{#4}%. Każda nagroda raz dziennie.": "Starting bonus: +{0}% city progress on LVL 1–{1} (already included). From LVL {2}: +{3}% and +{4}%. Each reward once a day.",
+  "Każda nagroda Core City raz dziennie; rekord możesz poprawiać dalej.": "Each Core City reward once a day; you can keep beating the record.",
+  "+{#0}–{#1}% za rundę z premią startową · nagroda najpóźniej za {#2} {3}": "+{0}–{1}% per round with the starting bonus · reward in {2} {3} at most",
+  "Możesz zacząć od nowa — uszkodzony zapis zostanie wtedy odłożony jako kopia.": "You can start over — the broken save is then kept aside as a copy.",
+  "Dni w grze": "Days played",
+  "Sesje": "Sessions",
+  "Rundy": "Rounds",
+  "Misje": "Missions",
 };
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -19877,10 +20282,15 @@ window.addEventListener('DOMContentLoaded', () => {
     // The language is decided before the first screen renders.
     let lang = 'pl';
     devBoot();
+    const handed = PORTAL_BASIC ? takeLangHandoff() : null;
+    if (handed && handed.save && !DEV.sandbox) cgAdoptSaveHandoff(handed.save);
     try { const raw = saveStore().getItem(SAVE_SLOT); lang = detectLang(raw ? (JSON.parse(raw).settings || {}).lang : 'auto'); } catch (e) { lang = detectLang('auto'); }
+    if (handed) lang = handed.lang;
     i18nStart(lang);
     document.documentElement.classList.add('i18n-ready');
     window.game = new Game();
+    // CG-QA-05: the save read at boot may predate the switch -- it keeps the choice.
+    if (handed && window.game.save.settings.lang !== handed.lang) { window.game.save.settings.lang = handed.lang; saveGame(window.game.save); }
     window.game.devPanel = new DevPanel(window.game);
   };
   // CG-DATA-1: the CrazyGames package reads its save only once the SDK is

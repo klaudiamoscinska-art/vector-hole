@@ -163,8 +163,9 @@ async function behaviourChecks(url) {
     charge: is(r1.charge, 82), gain: is(r1.gain, '+15%'), parts: is(r1.parts, 'runda +10% · podium +2% · 1. miejsce +3%')
   }, JSON.stringify(r1)));
   const r2 = await finished(1, 0, 0, 1);
-  out.push(expectAll('Core City 002: LVL1 0%, 1st place + record -> 27% ((10+2+3+2) x1.6), the early multiplier is named', {
-    charge: is(r2.charge, 27), gain: is(r2.gain, '+27%'), parts: matches(/rekord \+2% · ×1,6 na LVL 1–2$/, r2.parts)
+  // R3-06: the parts as they landed (x1.6 and rounding in, adding up to the gain), the bonus named.
+  out.push(expectAll('Core City 002: LVL1 0%, 1st place + record -> 27% ((10+2+3+2) x1.6), each part as it landed and the starting bonus named', {
+    charge: is(r2.charge, 27), gain: is(r2.gain, '+27%'), parts: is(r2.parts, 'runda +16% · podium +3% · 1. miejsce +5% · rekord +3% · z premią startową +60%')
   }, JSON.stringify(r2)));
   const r3 = await finished(3, 40, 999999, 4);
   out.push(expectAll('Core City: 4th place -> the plain +10% only', { charge: is(r3.charge, 50), parts: is(r3.parts, 'runda +10%') }, JSON.stringify(r3)));
