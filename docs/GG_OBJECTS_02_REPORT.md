@@ -89,4 +89,85 @@ Sprite’y T3–T6, landmarków, portalu i bajtu: 30 porównanych, 0 różnic (p
 (M09 i M17 oraz M15 i M21 mają te same hashe, bo ich układ powstaje z tego samego szablonu i tego samego seeda testowego —
 różnią się tylko wyglądem obiektów.)
 
-<!-- QA-SECTIONS -->
+## 4. Bramki (P00 w etapie: baza `2f8ab87` vs kandydat, ta sama maszyna)
+
+| Bramka | Dowód | Wynik |
+|---|---|---|
+| CORE-ENERGY | `v22` 49/49 | PASS |
+| CORE-ISOLATION | `px02-isolation` 95/95, `v22` 49/49 | PASS |
+| CORE-LOOP | `trace` 7/7, `flow` 35/35, `ftue1` 78/78, `ftue3` 26/26, `leave-run` 22/22, `arena-bots` 8/8, `campaign-bots` 2/2 | PASS |
+| CORE-SAVE | `save-safety` 107/107, schemat 13 i klucz bez zmian; `perf1 --equiv`: zapis po rundzie i misjach M01, M59 identyczny z bazą | PASS |
+| TOOLS-DEV | `dev-panel` (v23) 66/66 | PASS |
+| DEPLOY-PAGES | `check_pages_workflow.py` PASS, `release` 93/93, `release-recovery` 81/81, `.github/`, `index.html`, `style.css` bez zmian | PASS |
+
+## 5. Testy
+
+**Nowy zestaw `node qa/objects2.mjs` — 15/15 PASS:** klasy T1/T2 (tier, promień, wartość, wzrost, liczba, wyglądy) i bramka
+pochłaniania bez zmian; źródło 31 pozostałych grafik identyczne z bazą; 15 wyglądów z jednego zestawu; sprite cały, na hitboxie;
+jedna geometria (pokrycie sylwetek plansza ↔ duży podgląd najgorzej 0,912, ikona ↔ duży podgląd najgorzej 0,96); jedna kamera
+(góra, przód, prawa ściana); brak obrotu w bezczynności (oś fragmentu 0,11°, wcześniej ±20°); malowanie nie rusza `Math.random`,
+`game.rng`, układu ani zapisu; cache: 15 sprite’ów, 0,6 Mpx przy 3×, budowa zestawu ok. 10–15 ms, nic nie dochodzi na stojącej
+klatce; Arena, Wyzwanie dnia, wyzwanie znajomego, M02/M09/M14/M21 i jakość 0 rysują te same sprite’y; 0 błędów konsoli.
+Zestaw sprawdzony mutacjami na kopii: przywrócone kołysanie, odwrócona kamera, ikona z innego wyglądu i zmieniony próg klasy —
+każda wywala swoją kontrolę.
+
+**`node qa/run-all.mjs` na kandydacie** (pierwszy pełny start od naprawy składni, patrz §6) — w chwili merge ukończone 30 z 47
+zestawów, **1613 PASS, 1 FAIL (zastany na `main`, §6)**: `instructions` 4/4, `boot` 9/9, `bridge` 20/20, `release` 93/93,
+`release-recovery` 81/81, `trace` 7/7, `edge-cases` 13/13, `features` 41/41, `visual` 20/20, `design` 29/29, `flow` 35/35,
+`arena-bots` 8/8, `campaign-bots` 2/2, `v15` 32/32, `audio` 42/42, `v17` 12/12, `v18` 23/23, `v19` (angielski, zapisy) 16/16,
+`v20` 12/12, `v21` 62/62, `v22` 49/49, `dev-panel` 66/66, `save-safety` 107/107, `px02-isolation` 95/95, `ftue1` 78/78,
+`leave-run` 22/22, `ftue3` 26/26, `responsive` 525/526, `devices` 75/75, `visual1` 9 PASS (w toku).
+
+**Uruchomione osobno (równolegle, żeby nie czekać na kolejkę):** `content` 11/11 (240 misji: PASS 240, ISSUE 0 — cele, ikona =
+obiekt z planszy, odprawa = HUD, EN, przejście botem), `cg-lang1` 50/50 (język w paczce CrazyGames), `crazygames-basic1`
+87 PASS / 5 FAIL (te same 5 na bazie, §6; build paczki i jej kontrole treści PASS), `objects2` 15/15.
+
+**`node qa/perf1.mjs --equiv=2f8ab87…` (baza vs kandydat):** skróty stanu gry identyczne we wszystkich 9 scenach (Arena: pierwsza
+runda, późna, maks., ramka Poki, jakość 0; misje M01, M59, bossowie 6 i 12) — różnią się wyłącznie piksele (nowe grafiki);
+zapis po rundzie (wynik 14123), M01 (47) i M59 (2430) identyczny; menu: Miasto LVL1/LVL6, Dzielnice, Wyzwanie dnia identyczne,
+Warsztat inny (podgląd z fragmentem); ekran startowy/hub piksel w piksel, pauza 1,9 % pikseli (plansza pod arkuszem).
+
+**NOT RUN w chwili merge** (kolejka `run-all` jeszcze trwała; właścicielka poleciła przyspieszyć i scalić): `visual1` (reszta),
+`visual2` i `objects2` w ramach `run-all` (`objects2` uruchomiony osobno), `balance1`, bramki `perf1` (uruchomione tylko
+`--equiv` i `--bench`), `gameready1`, `deviceqa1`, `workshop-buy`, `cg-data1`, `cg-preview-qa1/3/4/5`, `difficulty` (240 misji,
+expert + casual), `calibrate`. Zmiana nie dotyka czasu misji, ekonomii ani danych — to uzasadnia kolejność, nie zastępuje wyniku.
+
+**NOT VERIFIED:** prawdziwy iPhone i inne urządzenia (Safari, GPU, DPR 3), czytelność z graczami, działająca paczka w portalu
+CrazyGames (testowana lokalnie z atrapą SDK), wygląd w każdej z 240 misji (zrzuty: 9 misji w 5 dzielnicach).
+
+## 6. Problemy zastane na `main` (nie są regresją tej zmiany)
+
+| Problem | Dowód, że zastany | Co zrobiono |
+|---|---|---|
+| `qa/crazygames-basic1.mjs:910` — `SyntaxError` (apostrof), przez który nie startował ani ten zestaw, ani `run-all` | `node --check` na bazie | naprawione osobnym commitem (`1854e0d`, tylko plik testu, żadna kontrola nie zmieniona) |
+| `responsive`: „320x568 campaign: main action not hit (under #btnNavWarsztat)” | ten sam FAIL na bazie (`--only=320x568 --scenes=campaign,briefing`: 18/19 na bazie i na kandydacie) | opisane, nie ruszane (układ ekranu Dzielnic, poza zakresem) |
+| `crazygames-basic1`: 4 kontrole blokady kursora (`lock:` ×2, `UI: pause button…`, `step crashed (pointerLockChecks…)`) | te same 4 FAIL na bazie (87 PASS / 5 FAIL po obu stronach) | opisane, nie ruszane |
+| `crazygames-basic1`: „hole: all 22 other skins… draw the same pixels as the base” (porównanie z commitem `727b8bd`) | ten sam FAIL na bazie — różnica pochodzi z PERF-06 (wir ze sprite’a), nie z obiektów | opisane, nie ruszane |
+
+## 7. Wydajność (`node qa/perf1.mjs --bench --pair=<baza> --reps=3`, baza i kandydat na przemian, raster programowy)
+
+| Scenariusz (iPhone 13, 390×844 @3) | Klatka mediana ms, baza → kandydat | p95 ms | Klatki > 16,7 ms |
+|---|---|---|---|
+| Arena, pierwsza runda | 10,8 → 9,4 (−13 %) | 16,8 → 14,4 | 50 → 22 |
+| Arena, późna faza | 23,1 → 19,8 (−14 %) | 30,8 → 29,8 | 899 → 809 |
+| Arena, wir prawie maks. | 21,7 → 20,5 (−6 %) | 30,6 → 31,1 | 600 → 600 |
+| Arena, jakość 0 | 6,3 → 5,9 (−6 %) | 9,1 → 8,4 | 0 → 1 |
+| Misja M01 | 5,6 → 5,3 (−5 %) | 9,1 → 9,8 | 0 → 0 |
+| Misja z największą liczbą obiektów | 6,7 → 6,5 (−3 %) | 9,9 → 10,1 | 1 → 0 |
+
+`update()` bez zmian (0,1–0,3 ms). Żadnej regresji; zysk bierze się z mniejszych płócien sprite’ów T1/T2 (własne podłoże zamiast
+dużej poświaty) i z usunięcia obrotu 170 fragmentów. Wahania p95 (±8 %) mieszczą się w rozrzucie powtórzeń.
+Rozmiar wydania: 1 458 068 → 1 472 473 B (+1,0 %), gzip 451 326 → 458 207 B (limit bramki 520 KB).
+Liczby bezwzględne zależą od maszyny (raster programowy jest pesymistyczny) — ważne jest porównanie par.
+
+## 8. Ryzyka i ograniczenia
+
+- Odbiór wizualny na prawdziwym iPhonie nie był możliwy w tym środowisku — do sprawdzenia przez właścicielkę (czytelność
+  fragmentów r = 7 przy oddalonej kamerze, ostrość przy DPR 3; gra ogranicza DPR płótna do 2, więc sprite’y są malowane w 3×).
+- Kapsuła jest w połowie różowa (jak na zatwierdzonym arkuszu), a róż to kolor klasy T2. Klasę T1 nadal niosą cyjanowa połowa,
+  rozmiar i minimapa; jeśli w grze okaże się to mylące, wystarczy zmienić proporcję w `VA_ART.kapsula`.
+- Złoty Rdzeń zmienił sylwetkę razem z fragmentem (rysuje go ta sama funkcja) — świadomie, ale nie było go na arkuszu.
+- Ikony celów są teraz wielobarwne (nie biorą `currentColor`); przy 13 px (wiersz misji) są czytelne jako sylwetka, bez detalu.
+- Część `run-all` nie zdążyła się wykonać przed merge (§5) — wyniki do uzupełnienia po zakończeniu kolejki.
+- Na `main` pozostają zastane FAIL-e z §6 (układ Dzielnic 320×568, blokada kursora w paczce, stare porównanie wiru).
+
