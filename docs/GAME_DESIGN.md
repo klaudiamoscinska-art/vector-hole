@@ -354,6 +354,16 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   albo maszt; kopuła tylko jako obiekt nazwany). Landmark ma ikonę
   budowli z kolumnami, nie gwiazdkę wyniku. Pylony celu nigdy nie leżą
   pod pojazdem ani budowlą.
+- **Wygląd obiektów T1 i T2 (GG-OBJECTS-02):** 15 wyglądów (fragment,
+  kapsuła; latarnia, drzewo, ławka, kiosk, skrzynia, moduł dachowy,
+  znacznik, kryształ, paleta, witryna, klucz sektora, emiter, znacznik
+  ogrodu) jest narysowanych w jednym systemie: plansza z góry, obiekt
+  jako mała figura 2.5D z pełną sylwetką — przód ku dołowi ekranu,
+  widać górę, przód i prawą ścianę, światło z lewej góry. Kolor klasy
+  dominuje (cyjan T1, róż T2), cień schodzi w fiolet, akcent to
+  przeciwny neon. Obiekt nie obraca się; ikona celu to ta sama grafika
+  odtworzona jako SVG. Reguły: `docs/GG_OBJECTS_02_ART_RULES.md`.
+  Klasy, progi, promienie i punkty bez zmian.
 - **Kamera misji (CONTENT-1):** kadr stały, dopóki wir nie przekroczy
   24% krótszego boku ekranu (ta sama zasada co w Arenie,
   `holeScreenFrac`); dalej kamera się oddala, ale nie dalej niż cały
