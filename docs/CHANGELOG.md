@@ -4,6 +4,24 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-OBJECTS-03 „Premium Vector Objects” — nowe grafiki obiektów T3 i T4 (zapis nadal v13, klucz bez zmian; mechanika, progi T1–T6, promienie, hitboxy, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
+- **13 wyglądów T3/T4 narysowanych od nowa w systemie z GG-OBJECTS-02** (`VA_ART`, `vaKit()` — ta sama kamera, światło, kontur i podłoże):
+  T3 (złoto) samochód + wariant konwoju, węzeł energii, pylon, zasilacz, lustro, mostek; T4 (fiolet) pawilon, billboard, magazyn,
+  pomnik Areny (`landmark`), kino, fontanna, portal finiszu Areny. Reguły: `docs/GG_OBJECTS_02_ART_RULES.md` §8.
+- **Paleta tierów:** kolor klasy niesie bryłę (złoto T3, fiolet T4); cyjan = szyby, woda, ekrany i światła, róż = małe akcenty,
+  grafit-granat = cokoły, stopy, opony. Samochód stoi przodem do widza (maska, szyba, boczne okna, koła, reflektory) — jedna orientacja.
+- **Ikony celów = ta sama geometria:** pojazd, węzeł, pylon, zasilacz, lustro, mostek, pawilon, billboard, magazyn i ikona klasy
+  „budowle” powstają z funkcji rysującej (`vaIconSvg()`). Ikona celu-landmarku (budowla z kolumnami) pozostaje wspólna dla wszystkich
+  landmarków.
+- **Stany i efekty:** przygaszenie zużytego węzła / lustra (0,35), niezasilonego mostka (0,55) i zablokowanego landmarku (0,45 + kłódka)
+  bez zmian; nakładki „na żywo” przeniesione na nowe kształty (łuki wokół rdzenia węzła, puls kuli pylonu, linia skanu billboardu,
+  wir w otworze portalu). Napis na kinie nadal przechodzi przez warstwę językową (KINO / CINEMA).
+- **Cache:** sprite’y T3/T4 zostają przy 2×, są mniejsze niż dotąd (własne podłoże zamiast ogólnej poświaty): 1,63 → 1,06 Mpx na komplet.
+- Bez zmian: wszystkie 15 wyglądów T1/T2 (źródło, piksele i ikony identyczne z bazą), T5, T6, landmarki T5/T6, złoty bajt, portal-pomocnik
+  Kampanii, podłoże A2.1, Horyzont, efekty pochłaniania, kamera, sterowanie, boty, zapis, integracje.
+- **QA:** `node qa/objects3.mjs` (19 kontroli), `node qa/objects3-shots.mjs --root DIR` (PRZED/PO z gry: arkusze A–D, Arena z oddaleniem,
+  Kampania w 5 dzielnicach, Wyzwanie dnia; 390×844, 800×450, 1366×768). Raport: `docs/GG_OBJECTS_03_REPORT.md`, obrazy: `design/objects3/`.
+
 ## GG-OBJECTS-02 „Premium Vector Objects” — nowe grafiki obiektów T1 i T2 (zapis nadal v13, klucz bez zmian; mechanika, progi T1–T6, promienie, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
 - **15 wyglądów T1/T2 narysowanych od nowa** w jednym systemie (`VA_ART`, `vaKit()`): fragment, kapsuła (T1); latarnia, drzewo, ławka,
   kiosk, skrzynia, moduł dachowy, znacznik, kryształ, paleta, witryna, klucz sektora, emiter, znacznik ogrodu (T2). Kierunek zatwierdzony
