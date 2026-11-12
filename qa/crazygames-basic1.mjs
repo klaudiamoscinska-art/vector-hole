@@ -845,31 +845,23 @@ async function holeChecks(url, webUrl) {
   r.push(report('hole: same save id and price, new name in the Warsztat', names === 'Horyzont', names));
   await g.browser.close();
 
-  // Every other skin, bot style and aura: pixel-equal to the base commit at a fixed time.
-  const BASE = '727b8bdbf93a4033aea0b213d6572f22260384cd';
-  const dir = path.join(WORK, 'base-site');
-  fs.mkdirSync(dir, { recursive: true });
-  for (const f of ['index.html', 'game.js', 'style.css']) fs.writeFileSync(path.join(dir, f), revisionFile(BASE, f));
-  const base = await serve({ root: dir });
-  const sample = async (u) => {
-    const b = await openGame(u, { viewport: { width: 800, height: 600 }, mobile: false, deviceScaleFactor: 1 });
-    const out = await b.page.evaluate(() => {
-      const gm = window.game; gm.startRound({ seed: 4242 }); cancelAnimationFrame(gm.rafId); gm.running = false;
-      const Hole = gm.player.constructor, hash = (d) => { let h = 2166136261; for (let i = 0; i < d.length; i += 3) { h ^= d[i]; h = Math.imul(h, 16777619); } return h >>> 0; };
-      const res = {};
-      const paint = (opt) => { const c = document.createElement('canvas'); c.width = c.height = 260; const x = c.getContext('2d'); x.translate(130, 130); const h = new Hole('', 0, 0, true); Object.assign(h, { radius: 70 }, opt); h.draw(x, 1.25); return hash(x.getImageData(0, 0, 260, 260).data); };
-      for (const k of SKINS) if (k.id !== 'rainbow') res['skin:' + k.id] = paint({ skin: k.id, auraId: 'none' });
-      for (const a of AURAS) res['aura:' + a.id] = paint({ skin: 'cyan', auraId: a.id });
-      for (const st of ['tech', 'plasma', 'toxic', 'galaxy', 'crystal', 'sun']) res['bot:' + st] = paint({ skin: 'custom', edgeColor: '#FF54AD', styleOverride: st, isPlayer: false });
-      return res;
-    });
-    await b.browser.close();
-    return out;
-  };
-  const [was, now] = [await sample(base.url), await sample(webUrl)];
-  base.server.close();
-  const changed = Object.keys(was).filter(k => was[k] !== now[k]);
-  r.push(report(`hole: all ${Object.keys(was).length} other skins, auras and bot styles draw the same pixels as the base`, Object.keys(was).length > 15 && changed.length === 0, changed.join(', ')));
+  // GG-HOLE-01 redrew every look (until then they were frozen to the pixels of 727b8bd):
+  // every skin and bot style draws its own picture, and each one turns between frames.
+  const b = await openGame(webUrl, { viewport: { width: 800, height: 600 }, mobile: false, deviceScaleFactor: 1 });
+  const looks = await b.page.evaluate(() => {
+    const gm = window.game; gm.startRound({ seed: 4242 }); cancelAnimationFrame(gm.rafId); gm.running = false;
+    const Hole = gm.player.constructor, hash = (d) => { let h = 2166136261, lit = 0; for (let i = 0; i < d.length; i += 4) { h ^= d[i] + d[i + 1] * 3 + d[i + 2] * 7; h = Math.imul(h, 16777619); if (d[i + 3] > 40) lit++; } return [h >>> 0, lit]; };
+    const res = {};
+    const paint = (opt, t) => { const c = document.createElement('canvas'); c.width = c.height = 260; const x = c.getContext('2d'); x.translate(130, 130); const h = new Hole('', 0, 0, true); Object.assign(h, { radius: 70 }, opt); h.draw(x, t); return hash(x.getImageData(0, 0, 260, 260).data); };
+    const add = (key, opt) => { const [h1, lit] = paint(opt, 1.25), [h2] = paint(opt, 1.6); res[key] = { hash: h1, lit, turns: h1 !== h2 }; };
+    for (const k of SKINS) add('skin:' + k.id, { skin: k.id, auraId: 'none' });
+    for (const st of ['tech', 'plasma', 'toxic', 'galaxy', 'crystal', 'sun']) add('bot:' + st, { skin: 'custom', edgeColor: '#FF54AD', styleOverride: st, isPlayer: false });
+    return res;
+  });
+  await b.browser.close();
+  const keys = Object.keys(looks);
+  const bad = keys.filter(k => looks[k].lit < 12000 || !looks[k].turns || keys.some(o => o !== k && looks[o].hash === looks[k].hash));
+  r.push(report(`hole: all ${keys.length} skins and bot styles draw their own picture and turn between frames`, keys.length >= 16 && bad.length === 0, bad.join(', ')));
   return r;
 }
 
