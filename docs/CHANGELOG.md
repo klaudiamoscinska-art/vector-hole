@@ -4,6 +4,24 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-OBJECTS-04 „Premium Vector Objects” — nowe grafiki obiektów T5 i T6 oraz ich landmarków (zapis nadal v13, klucz bez zmian; mechanika, progi T1–T6, promienie, hitboxy, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
+- **16 wyglądów T5/T6 narysowanych od nowa w systemie z GG-OBJECTS-02/-03** (`VA_ART`, `vaKit()` — ta sama kamera, światło, kontur,
+  podłoże): T5 (srebro) autobus, tramwaj, ciężarówka, landmarki dźwig, galeria, iglica, Stacja Centralna, Brama Bazaru; T6 (zieleń)
+  wieżowiec, maszt, kopuła, landmarki Rdzeń Miasta, Fabryka Pikseli, Latarnia Hologramów, Drzewo Światła, Serwer Główny (i iglica w T6).
+  Reguły: `docs/GG_OBJECTS_02_ART_RULES.md` §9. Biblioteka T1–T6 jest w jednym stylu; poza nią został tylko złoty bajt.
+- **Materiały:** kolor klasy położony na chłodnej stali (`vaHull()`): T5 srebro + lodowy błękit świateł, T6 zieleń + turkus, róż
+  i fiolet tylko jako pojedyncze detale. Pojazdy T5 stoją przodem do widza, jak samochód T3.
+- **Ikony celów:** autobus, tramwaj, ciężarówka, wieżowiec, maszt, kopuła i klasy „ciężkie pojazdy” / „wieże” to te same grafiki
+  (`vaIconSvg()`); cel nazywający bossa pokazuje jego własny landmark (13 bossów, także kino i fontanna) w kolorze tieru — dotąd
+  wszystkie miały wspólną budowlę z kolumnami. Brama iglicy (T5) i iglica (T6) dzielą wygląd `lm_iglica` w kolorach swoich tierów.
+- **Cache:** sprite’y T5/T6 przy 2× (`VA_BIG`), mniejsze niż dotąd: 7,85 → 5,59 Mpx na komplet 17 sprite’ów.
+- Bez zmian: wszystkie wyglądy T1–T4 (źródło, piksele i ikony identyczne z bazą), złoty bajt, nakładki „na żywo” (mrugające światło
+  masztu, obracający się pierścień bossa), tabliczki z nazwami bossów, podłoże A2.1, Horyzont, kamera, sterowanie, boty, zapis, integracje.
+- **QA:** `node qa/objects4.mjs` (15 kontroli), `node qa/objects4-shots.mjs --root DIR` (PRZED/PO z gry: arkusze A–D, Arena późna
+  i oddalona, Wyzwanie dnia, wyzwanie znajomego, misje T5/T6 obu rozdziałów; 390×844, 800×450, 1366×768; jakość 0).
+  `qa/objects2.mjs`, `qa/objects3.mjs` nie traktują już T5/T6 jako zamrożonych; `qa/content.mjs` rozróżnia bossów po identyfikatorze.
+  Raport: `docs/GG_OBJECTS_04_REPORT.md`, obrazy: `design/objects4/`.
+
 ## GG-OBJECTS-03 „Premium Vector Objects” — nowe grafiki obiektów T3 i T4 (zapis nadal v13, klucz bez zmian; mechanika, progi T1–T6, promienie, hitboxy, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
 - **13 wyglądów T3/T4 narysowanych od nowa w systemie z GG-OBJECTS-02** (`VA_ART`, `vaKit()` — ta sama kamera, światło, kontur i podłoże):
   T3 (złoto) samochód + wariant konwoju, węzeł energii, pylon, zasilacz, lustro, mostek; T4 (fiolet) pawilon, billboard, magazyn,

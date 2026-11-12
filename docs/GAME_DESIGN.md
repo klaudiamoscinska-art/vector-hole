@@ -374,8 +374,20 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   same grafiki; cel-landmark zachowuje wspólną ikonę z kolumnami.
   Stany specjalne bez zmian (zużyty węzeł i lustro przygaszone,
   niezasilony mostek półprzezroczysty, zablokowany landmark z kłódką).
-  T5, T6 i ich landmarki mają jeszcze dawne grafiki. Klasy, progi,
-  promienie, punkty i mechanika bez zmian.
+  Klasy, progi, promienie, punkty i mechanika bez zmian.
+- **Wygląd obiektów T5 i T6 (GG-OBJECTS-04):** 16 wyglądów w tym samym
+  systemie — T5 (srebro na chłodnej stali, lodowy błękit świateł):
+  autobus, tramwaj, ciężarówka oraz landmarki dźwig, galeria, iglica
+  (także jej brama), Stacja Centralna, Brama Bazaru; T6 (zieleń na
+  grafitowej stali, turkus świateł): wieżowiec, maszt, kopuła oraz
+  landmarki iglica, Rdzeń Miasta, Fabryka Pikseli, Latarnia
+  Hologramów, Drzewo Światła, Serwer Główny. Pojazdy stoją przodem do
+  widza jak samochód T3. Ikony celów T5/T6 i ikony klas „ciężkie
+  pojazdy” / „wieże” to te same grafiki; cel nazywający bossa (także kino
+  i fontannę) pokazuje ikonę tego landmarku — brama iglicy (T5) i iglica
+  (T6) mają jeden wygląd w kolorach swoich tierów. Klasy, progi,
+  promienie, punkty i mechanika bez zmian; cała biblioteka T1–T6 jest
+  już w jednym stylu.
 - **Kamera misji (CONTENT-1):** kadr stały, dopóki wir nie przekroczy
   24% krótszego boku ekranu (ta sama zasada co w Arenie,
   `holeScreenFrac`); dalej kamera się oddala, ale nie dalej niż cały

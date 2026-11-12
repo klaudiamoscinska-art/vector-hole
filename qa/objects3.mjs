@@ -37,7 +37,11 @@ import { LOOKS3, FROZEN_SPRITES, TIER_COLOR, sheetRoot, spriteHashes } from './o
 export const OBJECTS3_BASE_REV = 'b049d28a1a5d72297331440d839d28d9b412b2db';
 const T12 = LOOKS12.map(l => l[0]);
 const T34 = [...new Set(LOOKS3.map(l => l[0]))];
-const OTHER = ['autobus', 'tramwaj', 'ciezarowka', 'wiezowiec', 'maszt', 'kopula', 'lm_dzwig', 'lm_galeria', 'lm_iglica', 'lm_rdzen', 'lm_stacja', 'lm_bazar', 'lm_fabryka', 'lm_latarnia', 'lm_drzewo', 'lm_serwer', 'bajt'];
+// GG-OBJECTS-04 redrew T5/T6 and their landmarks with the same kit (qa/objects4.mjs):
+// only the byte is still the base revision's look outside T1-T4.
+const T56 = ['autobus', 'tramwaj', 'ciezarowka', 'wiezowiec', 'maszt', 'kopula', 'lm_dzwig', 'lm_galeria', 'lm_iglica', 'lm_rdzen', 'lm_stacja', 'lm_bazar', 'lm_fabryka', 'lm_latarnia', 'lm_drzewo', 'lm_serwer'];
+const OTHER = ['bajt'];
+const FROZEN3 = FROZEN_SPRITES.filter(([k]) => !T56.includes(k));
 
 /** The numbers of the T3/T4 classes (Arena TIERS) at the base revision. */
 const FROZEN_TIERS = {
@@ -55,8 +59,7 @@ const FROZEN_LANDMARK_TIERS = { kino: 4, fontanna: 4, dzwig: 5, galeria_glowna: 
 const FROZEN_ICON_STEPS = [
   { eat: 'fragment', n: 1 }, { eat: 'capsule', n: 1 }, { eat: 'prop', n: 1 }, { eat: 'marker', n: 1 },
   ...LOOKS12.filter(l => l[2] === 'prop' || l[2] === 'marker').map(l => ({ eat: l[2], glyph: l[0], n: 1 })),
-  { eat: 'heavy', n: 1 }, { eat: 'tower', n: 1 }, ...['autobus', 'tramwaj', 'ciezarowka'].map(g => ({ eat: 'heavy', glyph: g, n: 1 })), ...['wiezowiec', 'maszt', 'kopula'].map(g => ({ eat: 'tower', glyph: g, n: 1 })),
-  { landmark: 'kino' }, { landmark: 'fontanna' }, { landmark: 'iglica' }, { eat: 'runner', n: 1 }, { tier: 4 }, { combo: 8 }, { score: 100 }
+  { eat: 'runner', n: 1 }, { tier: 4 }, { combo: 8 }, { score: 100 }
 ];
 
 /** name -> source of every `name(c, r, col...) {` entry of an object literal in a game.js text. */
@@ -94,7 +97,7 @@ const inventory = (page, steps) => page.evaluate((steps) => ({
   tiers: JSON.stringify(TIERS), stats: JSON.stringify(window.__m.__qaEntityStats), landmarkTiers: JSON.stringify(window.__m.__qaLandmarkTiers),
   radius: JSON.stringify(CONFIG.campaign.entityRadius), byTier: JSON.stringify(CONFIG.campaign.landmarkByTier), sizeTiers: JSON.stringify(CONFIG.sizeTiers),
   icons: steps.map(st => { const d = window.game.objectiveIconDef(st, null); return d.color + d.icon; }),
-  twists: ['gate', 'portal', 'impulse', 'rival', 'landmark', 'heavy', 'tower', 'tier', 'runner', 'hunters', 'racer', 'dark', 'glitch', 'fragile'].map(k => window.__m.__qaGoalIcons[k])
+  twists: ['gate', 'portal', 'impulse', 'rival', 'landmark', 'tier', 'runner', 'hunters', 'racer', 'dark', 'glitch', 'fragile'].map(k => window.__m.__qaGoalIcons[k])
 }), steps);
 
 export async function runObjects3Checks() {
@@ -115,7 +118,7 @@ export async function runObjects3Checks() {
     const fn = (name) => [between(baseSrc, `\nfunction ${name}(`, '\n}\n'), between(nowSrc, `\nfunction ${name}(`, '\n}\n')];
     const line = (re) => [(baseSrc.match(re) || [''])[0], (nowSrc.match(re) || ['-'])[0]];
     const same = ([a, b]) => !!a && a === b;
-    results.push(expectAll('O3-1 the fifteen T1/T2 looks, the palette and the camera are the base revision\'s source; T5/T6, their landmarks and the byte too', {
+    results.push(expectAll('O3-1 the fifteen T1/T2 looks, the palette and the camera are the base revision\'s source; the byte too', {
       t12Compared: is(T12.filter(k => vaBase[k]).length, 15),
       t12Changed: is(T12.filter(k => vaBase[k] !== vaNow[k]).join(), ''),
       otherCompared: is(OTHER.filter(k => oaBase[k]).length, OTHER.length),
@@ -134,7 +137,7 @@ export async function runObjects3Checks() {
   try {
     /* ---- O3-1 / O3-2 (pixels and numbers): base page vs candidate page ---- */
     const b = await open(baseSrv.url, 2);
-    const baseFacts = { sprites: await spriteHashes(b.page, FROZEN_SPRITES), inv: await inventory(b.page, FROZEN_ICON_STEPS) };
+    const baseFacts = { sprites: await spriteHashes(b.page, FROZEN3), inv: await inventory(b.page, FROZEN_ICON_STEPS) };
     baseFacts.t34Pixels = await b.page.evaluate(async (looks) => {
       const c = document.createElement('canvas').getContext('2d'); window.__m.__qaSpriteCache.clear();
       for (const [k, , , r, tier, , variant] of looks) window.__m.__qaDrawObjectArt(c, k, { 3: '#EFCB63', 4: '#9875FF' }[tier], r, 0, 0, { live: false, variant });
@@ -146,14 +149,14 @@ export async function runObjects3Checks() {
 
     const g = await open(url, 2);
     const page = g.page;
-    const nowSprites = await spriteHashes(page, FROZEN_SPRITES), inv = await inventory(page, FROZEN_ICON_STEPS);
+    const nowSprites = await spriteHashes(page, FROZEN3), inv = await inventory(page, FROZEN_ICON_STEPS);
     const keys = Object.keys(baseFacts.sprites);
-    results.push(expectAll('O3-1 the T1/T2 sprites (board size, big, the golden core), T5/T6, their landmarks and the byte are the base revision\'s pixels', {
-      compared: holds(keys.length >= 45, keys.length, '>= 45 sprites'),
+    results.push(expectAll('O3-1 the T1/T2 sprites (board size, big, the golden core) and the byte are the base revision\'s pixels', {
+      compared: holds(keys.length >= 32, keys.length, '>= 32 sprites'),
       sameKeys: is(Object.keys(nowSprites).join(), keys.join()),
       different: is(keys.filter(k => baseFacts.sprites[k] !== nowSprites[k]).join(), '')
     }, `${keys.length} sprites, 3x on this 2x page`));
-    results.push(expectAll('O3-1 the goal icons outside T3/T4 (T1/T2 looks and classes, T5/T6, landmarks, twists) are the base revision\'s markup', {
+    results.push(expectAll('O3-1 the goal icons of T1/T2 looks and classes and the twists are the base revision\'s markup', {
       icons: is(FROZEN_ICON_STEPS.filter((st, i) => baseFacts.inv.icons[i] !== inv.icons[i]).map(st => JSON.stringify(st)).join(), ''),
       twists: is(JSON.stringify(inv.twists), JSON.stringify(baseFacts.inv.twists))
     }, `${FROZEN_ICON_STEPS.length} goal rows + ${inv.twists.length} class / twist icons`));
@@ -197,7 +200,7 @@ export async function runObjects3Checks() {
     }, T34);
     results.push(expectAll('O3-3 the thirteen T3/T4 looks are the shared kit\'s art, for every Arena subtype and campaign entity of those classes', {
       inKit: is(looks.inKit.join(), T34.join()),
-      kit: is(looks.vaCount, T12.length + T34.length),
+      kit: is(looks.vaCount, T12.length + T34.length + T56.length),
       campaignResolves: is(looks.resolved.join(), 'samochod,samochod,wezel,wezel,zasilacz,mostek,pylon,lustro,pawilon,pawilon,billboard,magazyn,landmark,lm_kino,lm_fontanna,lm_dzwig'),
       arenaSubtypes: is(looks.arena.filter(k => !T34.includes(k)).join(), '')
     }, `${looks.vaCount} looks in the kit`));
