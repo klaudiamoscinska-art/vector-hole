@@ -36,6 +36,8 @@ export const OBJECTS2_BASE_REV = '2f8ab87ae135dc0921bfe4b6f5c04edb7b1ee209';
 const VA_KINDS = LOOKS.map(l => l[0]);
 /** GG-OBJECTS-03: the T3/T4 looks, redrawn with the same kit since (qa/objects3.mjs). */
 const T34_KINDS = ['samochod', 'wezel', 'pylon', 'zasilacz', 'lustro', 'mostek', 'pawilon', 'billboard', 'magazyn', 'landmark', 'lm_kino', 'lm_fontanna', 'portal'];
+/** GG-OBJECTS-04: the T5/T6 looks and their landmarks, redrawn with the same kit since (qa/objects4.mjs). */
+const T56_KINDS = ['autobus', 'tramwaj', 'ciezarowka', 'wiezowiec', 'maszt', 'kopula', 'lm_dzwig', 'lm_galeria', 'lm_iglica', 'lm_stacja', 'lm_bazar', 'lm_rdzen', 'lm_fabryka', 'lm_latarnia', 'lm_drzewo', 'lm_serwer'];
 
 /** The base revision's numbers for the four T1/T2 classes (Arena TIERS). */
 const FROZEN_TIERS = {
@@ -90,11 +92,11 @@ export async function runObjects2Checks() {
     try { base = artSources(String(revisionFile(OBJECTS2_BASE_REV, 'game.js'))); } catch (e) { why = String(e.message || e).slice(0, 160); }
     if (!base) results.push(report('O2-1 T3-T6 art source equals the base revision', false, 'base revision not readable: ' + why));
     else {
-      const others = Object.keys(base).filter(k => !VA_KINDS.includes(k) && !T34_KINDS.includes(k) && k !== 'live:rest');
+      const others = Object.keys(base).filter(k => !VA_KINDS.includes(k) && !T34_KINDS.includes(k) && !T56_KINDS.includes(k) && k !== 'live:rest');
       const changed = others.filter(k => base[k] !== now[k]);
       const gone = VA_KINDS.filter(k => now[k]);
-      results.push(expectAll('O2-1 every other look still drawn the old way (T5/T6, their landmarks, the byte) is the base revision\'s source, unchanged', {
-        others: holds(others.length >= 17, others.length, '>= 17 looks compared'),
+      results.push(expectAll('O2-1 every other look still drawn the old way (the byte) is the base revision\'s source, unchanged', {
+        others: holds(others.length >= 1, others.length, '>= 1 look compared'),
         changed: is(changed.join(','), ''),
         oldT1T2Removed: is(gone.join(','), '')
       }, `${others.length} looks compared with ${OBJECTS2_BASE_REV.slice(0, 7)}`));
@@ -139,7 +141,7 @@ export async function runObjects2Checks() {
       return { va, same: LOOKS.every(([k]) => art[k] === window.__m.__qaVaArt[k]), resolved, arenaAll: arena.every(k => va.includes(k)), golden: !art.zloty };
     }, LOOKS);
     results.push(expectAll('O2-2 the fifteen T1/T2 looks are the shared kit\'s art, in Arena and for every campaign entity of those types', {
-      kinds: is(looks.va.filter(k => !T34_KINDS.includes(k)).sort().join(), VA_KINDS.slice().sort().join()),
+      kinds: is(looks.va.filter(k => !T34_KINDS.includes(k) && !T56_KINDS.includes(k)).sort().join(), VA_KINDS.slice().sort().join()),
       objectArtUsesThem: is(looks.same, true),
       campaignResolves: is(looks.resolved.join(), VA_KINDS.join()),
       arenaSubtypes: is(looks.arenaAll, true)

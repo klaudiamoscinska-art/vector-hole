@@ -70,7 +70,9 @@ window.__qaContentAudit = function (id) {
     // A step that names no object and whose type is laid in random looks
     // (props, T4-T6) is about the whole class; otherwise about one look.
     const randomClass = !st.glyph && st.eat && ['prop', 'structure', 'heavy', 'tower'].includes(st.eat) && !def.setup[st.eat + 'Glyph'];
-    row.objectKey = st.eat === 'runner' ? 'runner' : (kind === 'eat' || kind === 'activate') ? (randomClass ? 'class:' + st.eat : arts.join('|')) : kind;
+    // GG-OBJECTS-04: a boss is its own object (its own icon); the spire's
+    // gate and the spire share one look in two tier colors.
+    row.objectKey = st.eat === 'runner' ? 'runner' : (kind === 'eat' || kind === 'activate') ? (randomClass ? 'class:' + st.eat : arts.join('|')) : kind === 'landmark' ? 'landmark:' + st.landmark : kind;
     out.steps.push(row);
     if (!st.label) issue('P1', 'tekst', 'krok ' + (i + 1) + ': brak opisu celu');
     if (/[a-z]+_[a-z]+/.test(st.label)) issue('P1', 'tekst', 'krok ' + (i + 1) + ': surowy identyfikator w opisie: ' + st.label);
