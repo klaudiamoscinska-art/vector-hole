@@ -1,7 +1,7 @@
-# GLITCH GULP — wspólne reguły grafiki obiektów (GG-OBJECTS-02 / -03, „Premium Vector Objects”)
+# GLITCH GULP — wspólne reguły grafiki obiektów (GG-OBJECTS-02 / -03 / -04, „Premium Vector Objects”)
 
-Obowiązują dla obiektów T1 i T2 (15 wyglądów, GG-OBJECTS-02) oraz T3 i T4 (13 wyglądów, GG-OBJECTS-03, §8) i są wzorcem dla
-kolejnych tierów. Kierunek zatwierdzony przez właścicielkę: **propozycja 3 — hybryda top-down + pełna sylwetka**.
+Obowiązują dla obiektów T1 i T2 (15 wyglądów, GG-OBJECTS-02), T3 i T4 (13 wyglądów, GG-OBJECTS-03, §8) oraz T5 i T6 z ich
+landmarkami (16 wyglądów, GG-OBJECTS-04, §9) — to cała biblioteka obiektów gry (poza złotym bajtem). Kierunek zatwierdzony przez właścicielkę: **propozycja 3 — hybryda top-down + pełna sylwetka**.
 Kod: `game.js`, blok `VA_*` (`vaKit()`, `VA_ART`, `vaIconSvg()`). Obrazy z gry: `design/objects2/` (T1/T2) i `design/objects3/`
 (T3/T4: `sheet-hero-*`, `sheet-scale-*`, `sheet-family-*`, `sheet-icons-*`). Testy: `node qa/objects2.mjs`, `node qa/objects3.mjs`.
 
@@ -145,3 +145,58 @@ porównuje `qa/objects3.mjs` z bazą).
   landmarków (kino i fontanna też), dopóki T5/T6 nie dostaną swoich.
 - Nie rysować fontanny ani portalu jako ciemnej tarczy z jasną obręczą i spiralą — tak wygląda wir.
 - Portal-pomocnik w Kampanii (para teleportów na drodze) jest znakiem na podłożu, nie obiektem — nie należy do tej biblioteki.
+
+## 9. T5 i T6 (GG-OBJECTS-04) — największe obiekty i landmarki bossów
+
+Reguły §1–§8 obowiązują bez zmian (kamera `VA_DX`/`VA_DY`, światło z lewej góry, kontur, `K.base()`, „jedna funkcja = plansza,
+duży podgląd i ikona”). Nic w T1–T4 nie zostało zmienione (`qa/objects4.mjs` porównuje źródło, piksele i ikony z bazą).
+Obrazy z gry: `design/objects4/` (`sheet-hero-*`, `sheet-scale-*`, `sheet-family-after.jpg` = cała biblioteka T1–T6, `sheet-icons-*`).
+
+### Paleta tierów
+
+| Tier | Kolor klasy | Materiał bazowy | Światło i szkło | Akcenty |
+|---|---|---|---|---|
+| T5 | srebro `#CBD5E1` | kolor klasy na chłodnej stali (`vaHull(col, 0.9)`), prawa ściana w stalowy fiolet | lodowy błękit `VA_ICE`, cyjan szyb | nieliczne różowe paski, lampy i kogut pantografu |
+| T6 | zieleń `#46D99A` | zieleń na grafitowej stali (`vaHull(col, 0.55–0.85)`) | turkus `VA_TEAL`, zielone neonowe krawędzie | pojedyncze fioletowe detale (światło masztu wieżowca, owoc drzewa, znaczniki pierścienia rdzenia) |
+
+- `vaHull(col, k)` kładzie kolor klasy na stali (`k` = udział koloru klasy); `vaFaces()` daje z tego wypełnienia `K.box()`.
+  Kolor klasy identyfikuje tier, ale nie zastępuje materiałów: szkło, stal, kamień zostają sobą.
+- T5 nie może wyglądać na złote T3 ani fioletowe T4: korpus jest srebrny, fiolet tylko w cieniu prawej ściany.
+- T6 to najwyższy poziom technologii: więcej warstw (przeszklenia, kratownice, poświaty), ale bez drobnicy, która znika przy oddaleniu.
+
+### Pełne sylwetki
+
+| Obiekt | Klasa / próg | Co musi być widać |
+|---|---|---|
+| Autobus (`autobus`) | ciężki pojazd, T5 | długie nadwozie przodem do widza (tablica kierunkowa, szyba, reflektory, kratka, zderzak), po prawej pas okien, drzwi, listwa lodowa i różowa, dwa koła; dwa agregaty na dachu |
+| Tramwaj (`tramwaj`) | ciężki pojazd, T5 | dwa człony z harmonijką, zaokrąglona szyba z linią kierunkową, okrągłe reflektory, okna w trzech grupach, wózki z małymi kołami, pantograf z różowym ślizgiem |
+| Ciężarówka (`ciezarowka`) | ciężki pojazd, T5 | kabina przodem do widza (szyba, belka świateł, wysoka kratka, lusterko), owiewka do wysokiej żebrowanej skrzyni z różowym pasem i lampkami, trzy osie |
+| Wieżowiec (`wiezowiec`) | wieża, T6 | trzy cofające się bryły ze ścianą kurtynową (szprosy, piętra, część okien zapalona), zielone krawędzie, przeszklony hol z daszkiem, rama na koronie, maszt z fioletowym światłem |
+| Maszt (`maszt`) | wieża, T6 | kratownica na cokole (trzy nogi, zastrzały), dwie platformy, dwie anteny talerzowe, anteny panelowe, pręt z lampą (miga nakładka „na żywo”) |
+| Kopuła (`kopula`) | wieża, T6 | szklana kopuła z południkami i równoleżnikami, pierścień neonu, bęben z pasem okien, wejście, latarnia z iglicą |
+| Dźwig (`lm_dzwig`) | landmark, T5 | kratownicowa wieża na podstawie z szynami, kabina operatora, długi wysięgnik i przeciwwysięgnik z balastem, kozioł z cięgnami, wózek, lina, kontener na haku |
+| Galeria (`lm_galeria`) | landmark, T5 | schody, kolumnada, podświetlone dzieła między kolumnami, szklane drzwi, belkowanie z lodową linią, tympanon, szklana piramida na dachu |
+| Iglica (`lm_iglica`) | landmark, T5 (brama iglicy) i T6 (iglica) | cokół, pawilon z łukową bramą, zwężająca się wieża z pierścieniami, taras widokowy, świecąca igła — jeden wygląd, kolor tieru z gry |
+| Stacja Centralna (`lm_stacja`) | landmark, T5 | hala z przeszklonym sklepieniem kolebkowym i lunetą-wachlarzem, wielki portal z torami w głąb, łukowe okna, rondel metra „M” |
+| Brama Bazaru (`lm_bazar`) | landmark, T5 | dwa filary z różowymi neonami, nadproże z szyldem, dwa dachy z wywiniętymi okapami, wiszące lampiony, girlanda świateł, zwieńczenie |
+| Rdzeń Miasta (`lm_rdzen`) | landmark, T6 | stopniowa podstawa reaktora, cztery pylony, unoszący się fasetowany kryształ w pierścieniu-halo, promień energii |
+| Fabryka Pikseli (`lm_fabryka`) | landmark, T6 | hala z dachem szedowym (połacie + przeszklenia w prawo), dwa kominy „dymiące” pikselami, okna-piksele, brama, emblemat 3×3 |
+| Latarnia Hologramów (`lm_latarnia`) | landmark, T6 | wieża w pasy na kamiennym cokole, domek latarnika, galeria z balustradą, szklana laterna z białym światłem, hologramowe wiązki i pierścień (wiązki to światło: bez nich w ikonie) |
+| Drzewo Światła (`lm_drzewo`) | landmark, T6 | okrągła donica, korzenie, pień z trzema konarami i świecącymi żyłkami, korona z dziesięciu kul, światełka, krople światła — to nie drzewo T2 |
+| Serwer Główny (`lm_serwer`) | landmark, T6 | wieża szaf za szklanymi drzwiami (dziewięć kaset z diodami), żebra chłodzenia, agregat z wentylatorami, chmura danych połączona pakietami |
+
+### Ikony celów
+
+- Wyglądy T5/T6 i ikony klas „ciężkie pojazdy” (ciężarówka za autobusem) i „wieże” (maszt obok wieżowca) to `vaIconSvg()`.
+- Cel nazywający bossa pokazuje ikonę jego landmarku w kolorze tieru (także kino i fontanna). `GOAL_ICONS.landmark` (budowla
+  z kolumnami) zostaje ikoną klasy. Ikona to ta sama geometria; ścieżka zaczęta od `lineTo` (Canvas traktuje ją jak `moveTo`)
+  dostaje w SVG `M` — tak jest w fontannie, której kodu nie zmieniano.
+
+### Czego dodatkowo nie robić
+
+- Nie dodawać obiektów z arkusza referencyjnego (furgonetka, dron, antena T3, pomnik T4, reaktor, kopuła ochronna…), których gra nie ma.
+- Nie zmieniać przypisania `LANDMARK_ART` / `LANDMARK_TIERS` dla wyglądu: brama iglicy i iglica dzielą jedną funkcję.
+- Nie rysować latarni ani drzewa bossów jak małej latarni / drzewa T2.
+- Nie przekraczać 1,12 r szerokości i 1,16 r wysokości bryły (`qa/objects4.mjs` O4-4): największe obiekty są duże przez promień z gry,
+  nie przez rysunek wychodzący poza hitbox.
+

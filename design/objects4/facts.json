@@ -1,0 +1,2652 @@
+{
+ "before": {
+  "scenes": {
+   "arena-late-phone": {
+    "mission": null,
+    "layoutHash": "a78d2509",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.727,
+    "gfx": 2,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2419
+    ],
+    "frameMsMedian": 13,
+    "frameMsP90": 15.6,
+    "randomCalls": 845
+   },
+   "arena-far-phone": {
+    "mission": null,
+    "layoutHash": "633664ff",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     2235,
+     3083
+    ],
+    "playerRadius": 150,
+    "camera": [
+     2235,
+     2273
+    ],
+    "frameMsMedian": 14.6,
+    "frameMsP90": 15.3,
+    "randomCalls": 904
+   },
+   "daily-phone": {
+    "mission": null,
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     901,
+     1348
+    ],
+    "playerRadius": 18,
+    "camera": [
+     901,
+     1348
+    ],
+    "frameMsMedian": 9,
+    "frameMsP90": 11.3,
+    "randomCalls": 12
+   },
+   "challenge-phone": {
+    "mission": null,
+    "layoutHash": "2be215c2",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "drzewo": 10,
+     "latarnia": 8,
+     "lawka": 6,
+     "skrzynia": 6,
+     "kiosk": 10,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 3,
+     "pawilon": 3,
+     "billboard": 3,
+     "autobus": 4,
+     "ciezarowka": 2,
+     "kopula": 4
+    },
+    "bots": 5,
+    "seed": 12,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     630,
+     1563
+    ],
+    "playerRadius": 18,
+    "camera": [
+     630,
+     1563
+    ],
+    "frameMsMedian": 8.2,
+    "frameMsP90": 10.4,
+    "randomCalls": 12
+   },
+   "m12-port-phone": {
+    "mission": "M12",
+    "layoutHash": "4a6a2aa9",
+    "objects": 52,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "zasilacz": 3,
+     "lm_dzwig": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 5.1,
+    "frameMsP90": 6.8,
+    "randomCalls": 149
+   },
+   "m16-galeria-phone": {
+    "mission": "M16",
+    "layoutHash": "fd0fb8b8",
+    "objects": 50,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "magazyn": 3,
+     "pawilon": 3,
+     "billboard": 3,
+     "lustro": 3,
+     "lm_galeria": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 6.4,
+    "frameMsP90": 6.9,
+    "randomCalls": 154
+   },
+   "m19-dachy-phone": {
+    "mission": "M19",
+    "layoutHash": "efd7e822",
+    "objects": 43,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 3,
+     "drzewo": 1,
+     "lawka": 3,
+     "latarnia": 4,
+     "samochod": 10,
+     "magazyn": 3,
+     "pawilon": 2,
+     "billboard": 3,
+     "mostek": 2,
+     "lm_iglica": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 5.7,
+    "frameMsP90": 6.4,
+    "randomCalls": 135
+   },
+   "m20-dachy-phone": {
+    "mission": "M20",
+    "layoutHash": "52914c3f",
+    "objects": 59,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 12,
+     "magazyn": 4,
+     "pawilon": 3,
+     "billboard": 3,
+     "autobus": 2,
+     "ciezarowka": 4,
+     "tramwaj": 4,
+     "lm_iglica": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 6.4,
+    "frameMsP90": 6.8,
+    "randomCalls": 278
+   },
+   "m24-rdzen-phone": {
+    "mission": "M24",
+    "layoutHash": "f705183d",
+    "objects": 61,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 3,
+     "autobus": 3,
+     "ciezarowka": 4,
+     "tramwaj": 3,
+     "wezel": 3,
+     "lm_rdzen": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 8.8,
+    "frameMsP90": 9.2,
+    "randomCalls": 228
+   },
+   "m54-dachy-phone": {
+    "mission": "M54",
+    "layoutHash": "83ba4ffd",
+    "objects": 51,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "billboard": 3,
+     "pawilon": 3,
+     "magazyn": 2,
+     "autobus": 8,
+     "maszt": 3
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1147,
+     1354
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1147,
+     1354
+    ],
+    "frameMsMedian": 7.8,
+    "frameMsP90": 8.1,
+    "randomCalls": 173
+   },
+   "m56-rdzen-phone": {
+    "mission": "M56",
+    "layoutHash": "8c5d6751",
+    "objects": 60,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "tramwaj": 5,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1147,
+     1354
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1147,
+     1354
+    ],
+    "frameMsMedian": 8.2,
+    "frameMsP90": 13.4,
+    "randomCalls": 281
+   },
+   "lm-stacja-phone": {
+    "mission": "M90",
+    "layoutHash": "ec72e133",
+    "objects": 51,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 5,
+     "pawilon": 1,
+     "zasilacz": 3,
+     "lm_stacja": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 7.7,
+    "frameMsP90": 10.3,
+    "randomCalls": 150
+   },
+   "lm-bazar-phone": {
+    "mission": "M120",
+    "layoutHash": "e70ed57d",
+    "objects": 59,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "pylon": 4,
+     "lm_bazar": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 6.7,
+    "frameMsP90": 7.2,
+    "randomCalls": 323
+   },
+   "lm-fabryka-phone": {
+    "mission": "M150",
+    "layoutHash": "1884f118",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_fabryka": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 12.1,
+    "frameMsP90": 14.8,
+    "randomCalls": 307
+   },
+   "lm-latarnia-phone": {
+    "mission": "M180",
+    "layoutHash": "2c4dac19",
+    "objects": 62,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "latarnia": 3,
+     "lawka": 3,
+     "drzewo": 3,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 4,
+     "pawilon": 2,
+     "tramwaj": 6,
+     "ciezarowka": 3,
+     "autobus": 1,
+     "lustro": 4,
+     "lm_latarnia": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 11.9,
+    "frameMsP90": 17.7,
+    "randomCalls": 252
+   },
+   "lm-drzewo-phone": {
+    "mission": "M210",
+    "layoutHash": "ff155eff",
+    "objects": 62,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "latarnia": 3,
+     "lawka": 3,
+     "drzewo": 3,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 4,
+     "pawilon": 2,
+     "tramwaj": 6,
+     "ciezarowka": 3,
+     "autobus": 1,
+     "pylon": 4,
+     "lm_drzewo": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 9,
+    "frameMsP90": 9.7,
+    "randomCalls": 243
+   },
+   "lm-serwer-phone": {
+    "mission": "M240",
+    "layoutHash": "1a72d1c9",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_serwer": 1
+    },
+    "bots": 3,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 13.5,
+    "frameMsP90": 15,
+    "randomCalls": 316
+   },
+   "h-tramwaj-phone": {
+    "mission": "M44",
+    "layoutHash": "4262e51e",
+    "objects": 93,
+    "kinds": {
+     "fragment": 62,
+     "lawka": 3,
+     "latarnia": 1,
+     "drzewo": 4,
+     "kiosk": 3,
+     "samochod": 10,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 1,
+     "tramwaj": 2
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1136,
+     1050
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1136,
+     1222
+    ],
+    "frameMsMedian": 3.5,
+    "frameMsP90": 3.9,
+    "randomCalls": 147
+   },
+   "h-ciezarowka-phone": {
+    "mission": "M38",
+    "layoutHash": "a501b828",
+    "objects": 42,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "billboard": 3,
+     "pawilon": 3,
+     "magazyn": 2,
+     "ciezarowka": 2
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1185,
+     2045
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1185,
+     1778
+    ],
+    "frameMsMedian": 3.8,
+    "frameMsP90": 4.1,
+    "randomCalls": 123
+   },
+   "arena-late-gfx0-phone": {
+    "mission": null,
+    "layoutHash": "2a10d3e7",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.727,
+    "gfx": 0,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2419
+    ],
+    "frameMsMedian": 3.6,
+    "frameMsP90": 4,
+    "randomCalls": 838
+   },
+   "m16-galeria-gfx0-phone": {
+    "mission": "M16",
+    "layoutHash": "fd0fb8b8",
+    "objects": 50,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "magazyn": 3,
+     "pawilon": 3,
+     "billboard": 3,
+     "lustro": 3,
+     "lm_galeria": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 0,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 2.4,
+    "frameMsP90": 2.7,
+    "randomCalls": 154
+   },
+   "arena-late-cg": {
+    "mission": null,
+    "layoutHash": "a78d2509",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.727,
+    "gfx": 2,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2690
+    ],
+    "frameMsMedian": 4.3,
+    "frameMsP90": 5.3,
+    "randomCalls": 845
+   },
+   "arena-far-cg": {
+    "mission": null,
+    "layoutHash": "633664ff",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     2235,
+     3083
+    ],
+    "playerRadius": 150,
+    "camera": [
+     2235,
+     2612
+    ],
+    "frameMsMedian": 5,
+    "frameMsP90": 5.4,
+    "randomCalls": 904
+   },
+   "daily-cg": {
+    "mission": null,
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     901,
+     1348
+    ],
+    "playerRadius": 18,
+    "camera": [
+     901,
+     1348
+    ],
+    "frameMsMedian": 3.6,
+    "frameMsP90": 3.8,
+    "randomCalls": 12
+   },
+   "m12-port-cg": {
+    "mission": "M12",
+    "layoutHash": "4a6a2aa9",
+    "objects": 52,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "zasilacz": 3,
+     "lm_dzwig": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 2.5,
+    "frameMsP90": 3.5,
+    "randomCalls": 149
+   },
+   "m24-rdzen-cg": {
+    "mission": "M24",
+    "layoutHash": "f705183d",
+    "objects": 61,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 3,
+     "autobus": 3,
+     "ciezarowka": 4,
+     "tramwaj": 3,
+     "wezel": 3,
+     "lm_rdzen": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 2.8,
+    "frameMsP90": 3.7,
+    "randomCalls": 228
+   },
+   "lm-serwer-cg": {
+    "mission": "M240",
+    "layoutHash": "1a72d1c9",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_serwer": 1
+    },
+    "bots": 3,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 5.4,
+    "frameMsP90": 5.7,
+    "randomCalls": 316
+   },
+   "arena-late-desktop": {
+    "mission": null,
+    "layoutHash": "a78d2509",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.053,
+    "gfx": 2,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2635
+    ],
+    "frameMsMedian": 10,
+    "frameMsP90": 14.2,
+    "randomCalls": 845
+   },
+   "arena-far-desktop": {
+    "mission": null,
+    "layoutHash": "633664ff",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.841,
+    "gfx": 2,
+    "player": [
+     2235,
+     3083
+    ],
+    "playerRadius": 150,
+    "camera": [
+     2187,
+     2543
+    ],
+    "frameMsMedian": 13.4,
+    "frameMsP90": 17.6,
+    "randomCalls": 904
+   },
+   "daily-desktop": {
+    "mission": null,
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     901,
+     1348
+    ],
+    "playerRadius": 18,
+    "camera": [
+     901,
+     1348
+    ],
+    "frameMsMedian": 5.9,
+    "frameMsP90": 6.4,
+    "randomCalls": 12
+   },
+   "m12-port-desktop": {
+    "mission": "M12",
+    "layoutHash": "4a6a2aa9",
+    "objects": 52,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "zasilacz": 3,
+     "lm_dzwig": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 7.2,
+    "frameMsP90": 9,
+    "randomCalls": 149
+   },
+   "m24-rdzen-desktop": {
+    "mission": "M24",
+    "layoutHash": "f705183d",
+    "objects": 61,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 3,
+     "autobus": 3,
+     "ciezarowka": 4,
+     "tramwaj": 3,
+     "wezel": 3,
+     "lm_rdzen": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 11.4,
+    "frameMsP90": 11.8,
+    "randomCalls": 228
+   },
+   "lm-serwer-desktop": {
+    "mission": "M240",
+    "layoutHash": "1a72d1c9",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_serwer": 1
+    },
+    "bots": 3,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 14.1,
+    "frameMsP90": 18.6,
+    "randomCalls": 316
+   }
+  },
+  "errors": [],
+  "frozenSprites": {
+   "fragment|#50F0FA|7||3": "51f3b3d9:102",
+   "kapsula|#50F0FA|10||3": "e81b8f0b:126",
+   "latarnia|#FF54AD|20||3": "c9b7ebf9:216",
+   "drzewo|#FF54AD|20||3": "a5bf5433:216",
+   "lawka|#FF54AD|20||3": "19aa6fed:216",
+   "kiosk|#FF54AD|20||3": "5f1d52c8:216",
+   "skrzynia|#FF54AD|20||3": "855d5b4c:216",
+   "modul_dachowy|#FF54AD|20||3": "1e201a4c:216",
+   "znacznik|#FF54AD|20||3": "a1ce213e:216",
+   "krysztal|#FF54AD|20||3": "5599ebc0:216",
+   "paleta|#FF54AD|20||3": "7a52a8b9:216",
+   "witryna|#FF54AD|20||3": "676b49a7:216",
+   "klucz_sektora|#FF54AD|20||3": "c7ed0008:216",
+   "emiter|#FF54AD|20||3": "23b70e14:216",
+   "znacznik_ogrodu|#FF54AD|20||3": "6ddea30d:216",
+   "fragment|#50F0FA|78||3": "fee66eb:738",
+   "kapsula|#50F0FA|78||3": "7459045b:738",
+   "latarnia|#FF54AD|78||3": "d5f0f420:738",
+   "drzewo|#FF54AD|78||3": "2afa0b2f:738",
+   "lawka|#FF54AD|78||3": "f6b855c7:738",
+   "kiosk|#FF54AD|78||3": "5d8a9837:738",
+   "skrzynia|#FF54AD|78||3": "1323478b:738",
+   "modul_dachowy|#FF54AD|78||3": "129e15ba:738",
+   "znacznik|#FF54AD|78||3": "a196b45b:738",
+   "krysztal|#FF54AD|78||3": "9eb02121:738",
+   "paleta|#FF54AD|78||3": "a8a49114:738",
+   "witryna|#FF54AD|78||3": "7f189412:738",
+   "klucz_sektora|#FF54AD|78||3": "55f153f9:738",
+   "emiter|#FF54AD|78||3": "183cac0c:738",
+   "znacznik_ogrodu|#FF54AD|78||3": "5f682ee6:738",
+   "samochod|#EFCB63|34|": "7ff49a6f:228",
+   "samochod|#EFCB63|34|konwoj": "1b0ab3b4:228",
+   "wezel|#EFCB63|32|": "80e39b7e:216",
+   "pylon|#EFCB63|32|": "1e8862d7:216",
+   "zasilacz|#EFCB63|32|": "eaad8dbd:216",
+   "lustro|#EFCB63|32|": "63261769:216",
+   "mostek|#EFCB63|32|": "5ca9b286:216",
+   "pawilon|#9875FF|54|": "e8a78bfc:348",
+   "billboard|#9875FF|54|": "9f0900e:348",
+   "magazyn|#9875FF|54|": "117a3a1e:348",
+   "landmark|#9875FF|52|": "8499ce3c:336",
+   "lm_kino|#9875FF|52|": "416ed16e:336",
+   "lm_fontanna|#9875FF|52|": "2f9542af:336",
+   "portal|#9875FF|18|": "80b9bfb4:132",
+   "samochod|#EFCB63|78|": "8383e815:492",
+   "samochod|#EFCB63|78|konwoj": "ac26043:492",
+   "wezel|#EFCB63|78|": "1519888e:492",
+   "pylon|#EFCB63|78|": "54a411bd:492",
+   "zasilacz|#EFCB63|78|": "f01a10ca:492",
+   "lustro|#EFCB63|78|": "6dcd3336:492",
+   "mostek|#EFCB63|78|": "321d0233:492",
+   "pawilon|#9875FF|78|": "895cd286:492",
+   "billboard|#9875FF|78|": "56e38991:492",
+   "magazyn|#9875FF|78|": "8672e88c:492",
+   "landmark|#9875FF|78|": "aceb6b3f:492",
+   "lm_kino|#9875FF|78|": "9c6d4a19:492",
+   "lm_fontanna|#9875FF|78|": "c9eb2874:492",
+   "portal|#9875FF|78|": "284291cc:492",
+   "fragment|#EFCB63|13||3": "8a80ff54:156",
+   "bajt|#EFCB63|12|": "a96cd460:140"
+  }
+ },
+ "after": {
+  "scenes": {
+   "arena-late-phone": {
+    "mission": null,
+    "layoutHash": "a78d2509",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.727,
+    "gfx": 2,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2419
+    ],
+    "frameMsMedian": 11.7,
+    "frameMsP90": 14.9,
+    "randomCalls": 845
+   },
+   "arena-far-phone": {
+    "mission": null,
+    "layoutHash": "633664ff",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     2235,
+     3083
+    ],
+    "playerRadius": 150,
+    "camera": [
+     2235,
+     2273
+    ],
+    "frameMsMedian": 19.5,
+    "frameMsP90": 22.5,
+    "randomCalls": 904
+   },
+   "daily-phone": {
+    "mission": null,
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     901,
+     1348
+    ],
+    "playerRadius": 18,
+    "camera": [
+     901,
+     1348
+    ],
+    "frameMsMedian": 10,
+    "frameMsP90": 18.9,
+    "randomCalls": 12
+   },
+   "challenge-phone": {
+    "mission": null,
+    "layoutHash": "2be215c2",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "drzewo": 10,
+     "latarnia": 8,
+     "lawka": 6,
+     "skrzynia": 6,
+     "kiosk": 10,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 3,
+     "pawilon": 3,
+     "billboard": 3,
+     "autobus": 4,
+     "ciezarowka": 2,
+     "kopula": 4
+    },
+    "bots": 5,
+    "seed": 12,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     630,
+     1563
+    ],
+    "playerRadius": 18,
+    "camera": [
+     630,
+     1563
+    ],
+    "frameMsMedian": 8.9,
+    "frameMsP90": 20.1,
+    "randomCalls": 12
+   },
+   "m12-port-phone": {
+    "mission": "M12",
+    "layoutHash": "4a6a2aa9",
+    "objects": 52,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "zasilacz": 3,
+     "lm_dzwig": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 5.1,
+    "frameMsP90": 6.9,
+    "randomCalls": 149
+   },
+   "m16-galeria-phone": {
+    "mission": "M16",
+    "layoutHash": "fd0fb8b8",
+    "objects": 50,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "magazyn": 3,
+     "pawilon": 3,
+     "billboard": 3,
+     "lustro": 3,
+     "lm_galeria": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 6.5,
+    "frameMsP90": 6.8,
+    "randomCalls": 154
+   },
+   "m19-dachy-phone": {
+    "mission": "M19",
+    "layoutHash": "efd7e822",
+    "objects": 43,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 3,
+     "drzewo": 1,
+     "lawka": 3,
+     "latarnia": 4,
+     "samochod": 10,
+     "magazyn": 3,
+     "pawilon": 2,
+     "billboard": 3,
+     "mostek": 2,
+     "lm_iglica": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 5.9,
+    "frameMsP90": 7.8,
+    "randomCalls": 135
+   },
+   "m20-dachy-phone": {
+    "mission": "M20",
+    "layoutHash": "52914c3f",
+    "objects": 59,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 12,
+     "magazyn": 4,
+     "pawilon": 3,
+     "billboard": 3,
+     "autobus": 2,
+     "ciezarowka": 4,
+     "tramwaj": 4,
+     "lm_iglica": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 6.2,
+    "frameMsP90": 6.8,
+    "randomCalls": 278
+   },
+   "m24-rdzen-phone": {
+    "mission": "M24",
+    "layoutHash": "f705183d",
+    "objects": 61,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 3,
+     "autobus": 3,
+     "ciezarowka": 4,
+     "tramwaj": 3,
+     "wezel": 3,
+     "lm_rdzen": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 6.8,
+    "frameMsP90": 9,
+    "randomCalls": 228
+   },
+   "m54-dachy-phone": {
+    "mission": "M54",
+    "layoutHash": "83ba4ffd",
+    "objects": 51,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "billboard": 3,
+     "pawilon": 3,
+     "magazyn": 2,
+     "autobus": 8,
+     "maszt": 3
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1147,
+     1354
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1147,
+     1354
+    ],
+    "frameMsMedian": 6.4,
+    "frameMsP90": 7.4,
+    "randomCalls": 173
+   },
+   "m56-rdzen-phone": {
+    "mission": "M56",
+    "layoutHash": "8c5d6751",
+    "objects": 60,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "tramwaj": 5,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1147,
+     1354
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1147,
+     1354
+    ],
+    "frameMsMedian": 5.1,
+    "frameMsP90": 6,
+    "randomCalls": 281
+   },
+   "lm-stacja-phone": {
+    "mission": "M90",
+    "layoutHash": "ec72e133",
+    "objects": 51,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 5,
+     "pawilon": 1,
+     "zasilacz": 3,
+     "lm_stacja": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 8.1,
+    "frameMsP90": 8.9,
+    "randomCalls": 150
+   },
+   "lm-bazar-phone": {
+    "mission": "M120",
+    "layoutHash": "e70ed57d",
+    "objects": 59,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "pylon": 4,
+     "lm_bazar": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 5,
+    "frameMsP90": 5.9,
+    "randomCalls": 323
+   },
+   "lm-fabryka-phone": {
+    "mission": "M150",
+    "layoutHash": "1884f118",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_fabryka": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 8.1,
+    "frameMsP90": 10.5,
+    "randomCalls": 307
+   },
+   "lm-latarnia-phone": {
+    "mission": "M180",
+    "layoutHash": "2c4dac19",
+    "objects": 62,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "latarnia": 3,
+     "lawka": 3,
+     "drzewo": 3,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 4,
+     "pawilon": 2,
+     "tramwaj": 6,
+     "ciezarowka": 3,
+     "autobus": 1,
+     "lustro": 4,
+     "lm_latarnia": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 9.3,
+    "frameMsP90": 10.6,
+    "randomCalls": 252
+   },
+   "lm-drzewo-phone": {
+    "mission": "M210",
+    "layoutHash": "ff155eff",
+    "objects": 62,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "latarnia": 3,
+     "lawka": 3,
+     "drzewo": 3,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 4,
+     "pawilon": 2,
+     "tramwaj": 6,
+     "ciezarowka": 3,
+     "autobus": 1,
+     "pylon": 4,
+     "lm_drzewo": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 6.3,
+    "frameMsP90": 9.4,
+    "randomCalls": 243
+   },
+   "lm-serwer-phone": {
+    "mission": "M240",
+    "layoutHash": "1a72d1c9",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_serwer": 1
+    },
+    "bots": 3,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 13.5,
+    "frameMsP90": 17.5,
+    "randomCalls": 316
+   },
+   "h-tramwaj-phone": {
+    "mission": "M44",
+    "layoutHash": "4262e51e",
+    "objects": 93,
+    "kinds": {
+     "fragment": 62,
+     "lawka": 3,
+     "latarnia": 1,
+     "drzewo": 4,
+     "kiosk": 3,
+     "samochod": 10,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 1,
+     "tramwaj": 2
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1136,
+     1050
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1136,
+     1222
+    ],
+    "frameMsMedian": 3.2,
+    "frameMsP90": 3.6,
+    "randomCalls": 147
+   },
+   "h-ciezarowka-phone": {
+    "mission": "M38",
+    "layoutHash": "a501b828",
+    "objects": 42,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "billboard": 3,
+     "pawilon": 3,
+     "magazyn": 2,
+     "ciezarowka": 2
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1185,
+     2045
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1185,
+     1778
+    ],
+    "frameMsMedian": 2.5,
+    "frameMsP90": 2.6,
+    "randomCalls": 123
+   },
+   "arena-late-gfx0-phone": {
+    "mission": null,
+    "layoutHash": "2a10d3e7",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.727,
+    "gfx": 0,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2419
+    ],
+    "frameMsMedian": 3.4,
+    "frameMsP90": 4.8,
+    "randomCalls": 838
+   },
+   "m16-galeria-gfx0-phone": {
+    "mission": "M16",
+    "layoutHash": "fd0fb8b8",
+    "objects": 50,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "magazyn": 3,
+     "pawilon": 3,
+     "billboard": 3,
+     "lustro": 3,
+     "lm_galeria": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 0,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 2.3,
+    "frameMsP90": 3.4,
+    "randomCalls": 154
+   },
+   "arena-late-cg": {
+    "mission": null,
+    "layoutHash": "a78d2509",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.727,
+    "gfx": 2,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2690
+    ],
+    "frameMsMedian": 4.2,
+    "frameMsP90": 5.3,
+    "randomCalls": 845
+   },
+   "arena-far-cg": {
+    "mission": null,
+    "layoutHash": "633664ff",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     2235,
+     3083
+    ],
+    "playerRadius": 150,
+    "camera": [
+     2235,
+     2612
+    ],
+    "frameMsMedian": 5.3,
+    "frameMsP90": 5.7,
+    "randomCalls": 904
+   },
+   "daily-cg": {
+    "mission": null,
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     901,
+     1348
+    ],
+    "playerRadius": 18,
+    "camera": [
+     901,
+     1348
+    ],
+    "frameMsMedian": 2.4,
+    "frameMsP90": 2.7,
+    "randomCalls": 12
+   },
+   "m12-port-cg": {
+    "mission": "M12",
+    "layoutHash": "4a6a2aa9",
+    "objects": 52,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "zasilacz": 3,
+     "lm_dzwig": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 1.9,
+    "frameMsP90": 2.8,
+    "randomCalls": 149
+   },
+   "m24-rdzen-cg": {
+    "mission": "M24",
+    "layoutHash": "f705183d",
+    "objects": 61,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 3,
+     "autobus": 3,
+     "ciezarowka": 4,
+     "tramwaj": 3,
+     "wezel": 3,
+     "lm_rdzen": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 2.7,
+    "frameMsP90": 2.9,
+    "randomCalls": 228
+   },
+   "lm-serwer-cg": {
+    "mission": "M240",
+    "layoutHash": "1a72d1c9",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_serwer": 1
+    },
+    "bots": 3,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 4.6,
+    "frameMsP90": 4.9,
+    "randomCalls": 316
+   },
+   "arena-late-desktop": {
+    "mission": null,
+    "layoutHash": "a78d2509",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.053,
+    "gfx": 2,
+    "player": [
+     2235,
+     2783
+    ],
+    "playerRadius": 84,
+    "camera": [
+     2235,
+     2635
+    ],
+    "frameMsMedian": 12.4,
+    "frameMsP90": 13.2,
+    "randomCalls": 845
+   },
+   "arena-far-desktop": {
+    "mission": null,
+    "layoutHash": "633664ff",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.841,
+    "gfx": 2,
+    "player": [
+     2235,
+     3083
+    ],
+    "playerRadius": 150,
+    "camera": [
+     2187,
+     2543
+    ],
+    "frameMsMedian": 10.4,
+    "frameMsP90": 11.6,
+    "randomCalls": 904
+   },
+   "daily-desktop": {
+    "mission": null,
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     901,
+     1348
+    ],
+    "playerRadius": 18,
+    "camera": [
+     901,
+     1348
+    ],
+    "frameMsMedian": 14.8,
+    "frameMsP90": 15.4,
+    "randomCalls": 12
+   },
+   "m12-port-desktop": {
+    "mission": "M12",
+    "layoutHash": "4a6a2aa9",
+    "objects": 52,
+    "kinds": {
+     "fragment": 13,
+     "drzewo": 5,
+     "latarnia": 2,
+     "lawka": 4,
+     "kiosk": 2,
+     "samochod": 12,
+     "magazyn": 5,
+     "pawilon": 2,
+     "billboard": 3,
+     "zasilacz": 3,
+     "lm_dzwig": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 7.8,
+    "frameMsP90": 8.7,
+    "randomCalls": 149
+   },
+   "m24-rdzen-desktop": {
+    "mission": "M24",
+    "layoutHash": "f705183d",
+    "objects": 61,
+    "kinds": {
+     "fragment": 13,
+     "kiosk": 4,
+     "lawka": 3,
+     "latarnia": 4,
+     "drzewo": 2,
+     "samochod": 11,
+     "billboard": 4,
+     "magazyn": 3,
+     "pawilon": 3,
+     "autobus": 3,
+     "ciezarowka": 4,
+     "tramwaj": 3,
+     "wezel": 3,
+     "lm_rdzen": 1
+    },
+    "bots": 2,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 8.6,
+    "frameMsP90": 9.6,
+    "randomCalls": 228
+   },
+   "lm-serwer-desktop": {
+    "mission": "M240",
+    "layoutHash": "1a72d1c9",
+    "objects": 70,
+    "kinds": {
+     "fragment": 15,
+     "latarnia": 2,
+     "lawka": 5,
+     "kiosk": 5,
+     "drzewo": 3,
+     "samochod": 13,
+     "billboard": 5,
+     "pawilon": 3,
+     "magazyn": 3,
+     "ciezarowka": 3,
+     "autobus": 4,
+     "tramwaj": 4,
+     "zasilacz": 4,
+     "lm_serwer": 1
+    },
+    "bots": 3,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1730
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1730
+    ],
+    "frameMsMedian": 12.3,
+    "frameMsP90": 12.9,
+    "randomCalls": 316
+   }
+  },
+  "errors": [],
+  "frozenSprites": {
+   "fragment|#50F0FA|7||3": "51f3b3d9:102",
+   "kapsula|#50F0FA|10||3": "e81b8f0b:126",
+   "latarnia|#FF54AD|20||3": "c9b7ebf9:216",
+   "drzewo|#FF54AD|20||3": "a5bf5433:216",
+   "lawka|#FF54AD|20||3": "19aa6fed:216",
+   "kiosk|#FF54AD|20||3": "5f1d52c8:216",
+   "skrzynia|#FF54AD|20||3": "855d5b4c:216",
+   "modul_dachowy|#FF54AD|20||3": "1e201a4c:216",
+   "znacznik|#FF54AD|20||3": "a1ce213e:216",
+   "krysztal|#FF54AD|20||3": "5599ebc0:216",
+   "paleta|#FF54AD|20||3": "7a52a8b9:216",
+   "witryna|#FF54AD|20||3": "676b49a7:216",
+   "klucz_sektora|#FF54AD|20||3": "c7ed0008:216",
+   "emiter|#FF54AD|20||3": "23b70e14:216",
+   "znacznik_ogrodu|#FF54AD|20||3": "6ddea30d:216",
+   "fragment|#50F0FA|78||3": "fee66eb:738",
+   "kapsula|#50F0FA|78||3": "7459045b:738",
+   "latarnia|#FF54AD|78||3": "d5f0f420:738",
+   "drzewo|#FF54AD|78||3": "2afa0b2f:738",
+   "lawka|#FF54AD|78||3": "f6b855c7:738",
+   "kiosk|#FF54AD|78||3": "5d8a9837:738",
+   "skrzynia|#FF54AD|78||3": "1323478b:738",
+   "modul_dachowy|#FF54AD|78||3": "129e15ba:738",
+   "znacznik|#FF54AD|78||3": "a196b45b:738",
+   "krysztal|#FF54AD|78||3": "9eb02121:738",
+   "paleta|#FF54AD|78||3": "a8a49114:738",
+   "witryna|#FF54AD|78||3": "7f189412:738",
+   "klucz_sektora|#FF54AD|78||3": "55f153f9:738",
+   "emiter|#FF54AD|78||3": "183cac0c:738",
+   "znacznik_ogrodu|#FF54AD|78||3": "5f682ee6:738",
+   "samochod|#EFCB63|34|": "7ff49a6f:228",
+   "samochod|#EFCB63|34|konwoj": "1b0ab3b4:228",
+   "wezel|#EFCB63|32|": "80e39b7e:216",
+   "pylon|#EFCB63|32|": "1e8862d7:216",
+   "zasilacz|#EFCB63|32|": "eaad8dbd:216",
+   "lustro|#EFCB63|32|": "63261769:216",
+   "mostek|#EFCB63|32|": "5ca9b286:216",
+   "pawilon|#9875FF|54|": "e8a78bfc:348",
+   "billboard|#9875FF|54|": "9f0900e:348",
+   "magazyn|#9875FF|54|": "117a3a1e:348",
+   "landmark|#9875FF|52|": "8499ce3c:336",
+   "lm_kino|#9875FF|52|": "416ed16e:336",
+   "lm_fontanna|#9875FF|52|": "2f9542af:336",
+   "portal|#9875FF|18|": "80b9bfb4:132",
+   "samochod|#EFCB63|78|": "8383e815:492",
+   "samochod|#EFCB63|78|konwoj": "ac26043:492",
+   "wezel|#EFCB63|78|": "1519888e:492",
+   "pylon|#EFCB63|78|": "54a411bd:492",
+   "zasilacz|#EFCB63|78|": "f01a10ca:492",
+   "lustro|#EFCB63|78|": "6dcd3336:492",
+   "mostek|#EFCB63|78|": "321d0233:492",
+   "pawilon|#9875FF|78|": "895cd286:492",
+   "billboard|#9875FF|78|": "56e38991:492",
+   "magazyn|#9875FF|78|": "8672e88c:492",
+   "landmark|#9875FF|78|": "aceb6b3f:492",
+   "lm_kino|#9875FF|78|": "9c6d4a19:492",
+   "lm_fontanna|#9875FF|78|": "c9eb2874:492",
+   "portal|#9875FF|78|": "284291cc:492",
+   "fragment|#EFCB63|13||3": "8a80ff54:156",
+   "bajt|#EFCB63|12|": "a96cd460:140"
+  }
+ }
+}
