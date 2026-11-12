@@ -1,0 +1,1744 @@
+{
+ "before": {
+  "scenes": {
+   "arena-phone": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     391
+    ],
+    "frameMsMedian": 7.8,
+    "frameMsP90": 14.7,
+    "randomCalls": 23
+   },
+   "arena-far-phone": {
+    "layoutHash": "d341fecb",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     1214,
+     665
+    ],
+    "playerRadius": 154,
+    "camera": [
+     1214,
+     727
+    ],
+    "frameMsMedian": 12.7,
+    "frameMsP90": 17.9,
+    "randomCalls": 1007
+   },
+   "daily-phone": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     2100,
+     522
+    ],
+    "playerRadius": 18,
+    "camera": [
+     2100,
+     522
+    ],
+    "frameMsMedian": 5.5,
+    "frameMsP90": 6,
+    "randomCalls": 12
+   },
+   "m04-plac-phone": {
+    "layoutHash": "e4f36cae",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "wezel": 2,
+     "lm_kino": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 4.2,
+    "frameMsP90": 6.1,
+    "randomCalls": 94
+   },
+   "m25-plac-phone": {
+    "layoutHash": "da512c2c",
+    "objects": 30,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 6
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 3.2,
+    "frameMsP90": 3.6,
+    "randomCalls": 82
+   },
+   "m29-plac-phone": {
+    "layoutHash": "54b60159",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "pawilon": 3
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 3.2,
+    "frameMsP90": 3.9,
+    "randomCalls": 98
+   },
+   "m08-park-phone": {
+    "layoutHash": "f11534a5",
+    "objects": 36,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 3,
+     "drzewo": 1,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "pylon": 3,
+     "lm_fontanna": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 3.4,
+    "frameMsP90": 3.8,
+    "randomCalls": 97
+   },
+   "m35-park-phone": {
+    "layoutHash": "cf9ae986",
+    "objects": 38,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "billboard": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 4.4,
+    "frameMsP90": 4.8,
+    "randomCalls": 100
+   },
+   "m11-port-phone": {
+    "layoutHash": "fd68815b",
+    "objects": 32,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 8
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 3.4,
+    "frameMsP90": 3.8,
+    "randomCalls": 88
+   },
+   "m42-port-phone": {
+    "layoutHash": "fc23a122",
+    "objects": 39,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "magazyn": 3,
+     "zasilacz": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1782,
+     2163
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1782,
+     1778
+    ],
+    "frameMsMedian": 3.9,
+    "frameMsP90": 5.3,
+    "randomCalls": 113
+   },
+   "m46-galeria-phone": {
+    "layoutHash": "2af868e3",
+    "objects": 26,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "lustro": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1720,
+     1610
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1720,
+     1610
+    ],
+    "frameMsMedian": 1.8,
+    "frameMsP90": 2.2,
+    "randomCalls": 63
+   },
+   "m19-dachy-phone": {
+    "layoutHash": "efd7e822",
+    "objects": 43,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 3,
+     "drzewo": 1,
+     "lawka": 3,
+     "latarnia": 4,
+     "samochod": 10,
+     "magazyn": 3,
+     "pawilon": 2,
+     "billboard": 3,
+     "mostek": 2,
+     "lm_iglica": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 5.6,
+    "frameMsP90": 9.3,
+    "randomCalls": 135
+   },
+   "arena-gfx0-phone": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     391
+    ],
+    "frameMsMedian": 2.1,
+    "frameMsP90": 2.8,
+    "randomCalls": 12
+   },
+   "arena-cg": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     245
+    ],
+    "frameMsMedian": 2.8,
+    "frameMsP90": 5,
+    "randomCalls": 23
+   },
+   "arena-far-cg": {
+    "layoutHash": "d341fecb",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     1214,
+     665
+    ],
+    "playerRadius": 154,
+    "camera": [
+     1214,
+     665
+    ],
+    "frameMsMedian": 4.9,
+    "frameMsP90": 5.2,
+    "randomCalls": 1007
+   },
+   "daily-cg": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     2100,
+     522
+    ],
+    "playerRadius": 18,
+    "camera": [
+     2100,
+     522
+    ],
+    "frameMsMedian": 2.1,
+    "frameMsP90": 2.8,
+    "randomCalls": 12
+   },
+   "m04-plac-cg": {
+    "layoutHash": "e4f36cae",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "wezel": 2,
+     "lm_kino": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 1.4,
+    "frameMsP90": 4.3,
+    "randomCalls": 94
+   },
+   "m42-port-cg": {
+    "layoutHash": "fc23a122",
+    "objects": 39,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "magazyn": 3,
+     "zasilacz": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1782,
+     2163
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1782,
+     1975
+    ],
+    "frameMsMedian": 1.3,
+    "frameMsP90": 2,
+    "randomCalls": 113
+   },
+   "arena-desktop": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     245
+    ],
+    "frameMsMedian": 6.3,
+    "frameMsP90": 10.2,
+    "randomCalls": 23
+   },
+   "arena-far-desktop": {
+    "layoutHash": "d341fecb",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.841,
+    "gfx": 2,
+    "player": [
+     1214,
+     665
+    ],
+    "playerRadius": 154,
+    "camera": [
+     1214,
+     665
+    ],
+    "frameMsMedian": 10,
+    "frameMsP90": 14.5,
+    "randomCalls": 1007
+   },
+   "daily-desktop": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     2100,
+     522
+    ],
+    "playerRadius": 18,
+    "camera": [
+     2100,
+     522
+    ],
+    "frameMsMedian": 6.7,
+    "frameMsP90": 11.2,
+    "randomCalls": 12
+   },
+   "m04-plac-desktop": {
+    "layoutHash": "e4f36cae",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "wezel": 2,
+     "lm_kino": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 5.6,
+    "frameMsP90": 7.2,
+    "randomCalls": 94
+   },
+   "m42-port-desktop": {
+    "layoutHash": "fc23a122",
+    "objects": 39,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "magazyn": 3,
+     "zasilacz": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1782,
+     2163
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1728,
+     1935
+    ],
+    "frameMsMedian": 5.8,
+    "frameMsP90": 8.2,
+    "randomCalls": 113
+   }
+  },
+  "errors": [],
+  "frozenSprites": {
+   "fragment|#50F0FA|7||3": "51f3b3d9:102",
+   "kapsula|#50F0FA|10||3": "e81b8f0b:126",
+   "latarnia|#FF54AD|20||3": "c9b7ebf9:216",
+   "drzewo|#FF54AD|20||3": "a5bf5433:216",
+   "lawka|#FF54AD|20||3": "19aa6fed:216",
+   "kiosk|#FF54AD|20||3": "5f1d52c8:216",
+   "skrzynia|#FF54AD|20||3": "855d5b4c:216",
+   "modul_dachowy|#FF54AD|20||3": "1e201a4c:216",
+   "znacznik|#FF54AD|20||3": "a1ce213e:216",
+   "krysztal|#FF54AD|20||3": "5599ebc0:216",
+   "paleta|#FF54AD|20||3": "7a52a8b9:216",
+   "witryna|#FF54AD|20||3": "676b49a7:216",
+   "klucz_sektora|#FF54AD|20||3": "c7ed0008:216",
+   "emiter|#FF54AD|20||3": "23b70e14:216",
+   "znacznik_ogrodu|#FF54AD|20||3": "6ddea30d:216",
+   "fragment|#50F0FA|78||3": "fee66eb:738",
+   "kapsula|#50F0FA|78||3": "7459045b:738",
+   "latarnia|#FF54AD|78||3": "d5f0f420:738",
+   "drzewo|#FF54AD|78||3": "2afa0b2f:738",
+   "lawka|#FF54AD|78||3": "f6b855c7:738",
+   "kiosk|#FF54AD|78||3": "5d8a9837:738",
+   "skrzynia|#FF54AD|78||3": "1323478b:738",
+   "modul_dachowy|#FF54AD|78||3": "129e15ba:738",
+   "znacznik|#FF54AD|78||3": "a196b45b:738",
+   "krysztal|#FF54AD|78||3": "9eb02121:738",
+   "paleta|#FF54AD|78||3": "a8a49114:738",
+   "witryna|#FF54AD|78||3": "7f189412:738",
+   "klucz_sektora|#FF54AD|78||3": "55f153f9:738",
+   "emiter|#FF54AD|78||3": "183cac0c:738",
+   "znacznik_ogrodu|#FF54AD|78||3": "5f682ee6:738",
+   "fragment|#EFCB63|13||3": "8a80ff54:156",
+   "autobus|#CBD5E1|76|": "cd344129:576",
+   "tramwaj|#CBD5E1|76|": "7dc2bc61:576",
+   "ciezarowka|#CBD5E1|76|": "4f4da49d:576",
+   "wiezowiec|#46D99A|100|": "409d472c:736",
+   "maszt|#46D99A|100|": "d3e27350:736",
+   "kopula|#46D99A|100|": "38b3b402:736",
+   "bajt|#EFCB63|12|": "a96cd460:140",
+   "lm_dzwig|#CBD5E1|78|": "e063f410:588",
+   "lm_galeria|#CBD5E1|78|": "523b0547:588",
+   "lm_iglica|#CBD5E1|78|": "79bd8fee:588",
+   "lm_stacja|#CBD5E1|78|": "8ab7d2c7:588",
+   "lm_bazar|#CBD5E1|78|": "b0ec9864:588",
+   "lm_iglica|#46D99A|104|": "35080ffb:764",
+   "lm_rdzen|#46D99A|104|": "1df292b6:764",
+   "lm_fabryka|#46D99A|104|": "6f77e772:764",
+   "lm_latarnia|#46D99A|104|": "9e3659de:764",
+   "lm_drzewo|#46D99A|104|": "873494b5:764",
+   "lm_serwer|#46D99A|104|": "2863e57d:764"
+  }
+ },
+ "after": {
+  "scenes": {
+   "arena-phone": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     391
+    ],
+    "frameMsMedian": 9.5,
+    "frameMsP90": 15.9,
+    "randomCalls": 23
+   },
+   "arena-far-phone": {
+    "layoutHash": "d341fecb",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     1214,
+     665
+    ],
+    "playerRadius": 154,
+    "camera": [
+     1214,
+     727
+    ],
+    "frameMsMedian": 12.1,
+    "frameMsP90": 16.3,
+    "randomCalls": 1007
+   },
+   "daily-phone": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     2100,
+     522
+    ],
+    "playerRadius": 18,
+    "camera": [
+     2100,
+     522
+    ],
+    "frameMsMedian": 5.4,
+    "frameMsP90": 6.5,
+    "randomCalls": 12
+   },
+   "m04-plac-phone": {
+    "layoutHash": "e4f36cae",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "wezel": 2,
+     "lm_kino": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 3.6,
+    "frameMsP90": 7.3,
+    "randomCalls": 94
+   },
+   "m25-plac-phone": {
+    "layoutHash": "da512c2c",
+    "objects": 30,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 6
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 2.3,
+    "frameMsP90": 4.5,
+    "randomCalls": 82
+   },
+   "m29-plac-phone": {
+    "layoutHash": "54b60159",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "pawilon": 3
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 2.6,
+    "frameMsP90": 2.9,
+    "randomCalls": 98
+   },
+   "m08-park-phone": {
+    "layoutHash": "f11534a5",
+    "objects": 36,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 3,
+     "drzewo": 1,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "pylon": 3,
+     "lm_fontanna": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 3.1,
+    "frameMsP90": 7,
+    "randomCalls": 97
+   },
+   "m35-park-phone": {
+    "layoutHash": "cf9ae986",
+    "objects": 38,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "billboard": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 3.8,
+    "frameMsP90": 5.1,
+    "randomCalls": 100
+   },
+   "m11-port-phone": {
+    "layoutHash": "fd68815b",
+    "objects": 32,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 8
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1968,
+     1814
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1968,
+     1778
+    ],
+    "frameMsMedian": 3.3,
+    "frameMsP90": 4.9,
+    "randomCalls": 88
+   },
+   "m42-port-phone": {
+    "layoutHash": "fc23a122",
+    "objects": 39,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "magazyn": 3,
+     "zasilacz": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1782,
+     2163
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1782,
+     1778
+    ],
+    "frameMsMedian": 2.5,
+    "frameMsP90": 3.8,
+    "randomCalls": 113
+   },
+   "m46-galeria-phone": {
+    "layoutHash": "2af868e3",
+    "objects": 26,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "lustro": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1720,
+     1610
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1720,
+     1610
+    ],
+    "frameMsMedian": 2.1,
+    "frameMsP90": 2.8,
+    "randomCalls": 63
+   },
+   "m19-dachy-phone": {
+    "layoutHash": "efd7e822",
+    "objects": 43,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 3,
+     "drzewo": 1,
+     "lawka": 3,
+     "latarnia": 4,
+     "samochod": 10,
+     "magazyn": 3,
+     "pawilon": 2,
+     "billboard": 3,
+     "mostek": 2,
+     "lm_iglica": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 7.6,
+    "frameMsP90": 14.2,
+    "randomCalls": 135
+   },
+   "arena-gfx0-phone": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 0,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     391
+    ],
+    "frameMsMedian": 2.2,
+    "frameMsP90": 3.6,
+    "randomCalls": 12
+   },
+   "arena-cg": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     245
+    ],
+    "frameMsMedian": 2.5,
+    "frameMsP90": 10,
+    "randomCalls": 23
+   },
+   "arena-far-cg": {
+    "layoutHash": "d341fecb",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.58,
+    "gfx": 2,
+    "player": [
+     1214,
+     665
+    ],
+    "playerRadius": 154,
+    "camera": [
+     1214,
+     665
+    ],
+    "frameMsMedian": 4.4,
+    "frameMsP90": 5.4,
+    "randomCalls": 1007
+   },
+   "daily-cg": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.08,
+    "gfx": 2,
+    "player": [
+     2100,
+     522
+    ],
+    "playerRadius": 18,
+    "camera": [
+     2100,
+     522
+    ],
+    "frameMsMedian": 3.6,
+    "frameMsP90": 7.1,
+    "randomCalls": 12
+   },
+   "m04-plac-cg": {
+    "layoutHash": "e4f36cae",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "wezel": 2,
+     "lm_kino": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 1.2,
+    "frameMsP90": 2.1,
+    "randomCalls": 94
+   },
+   "m42-port-cg": {
+    "layoutHash": "fc23a122",
+    "objects": 39,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "magazyn": 3,
+     "zasilacz": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1,
+    "gfx": 2,
+    "player": [
+     1782,
+     2163
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1782,
+     1975
+    ],
+    "frameMsMedian": 1,
+    "frameMsP90": 1.2,
+    "randomCalls": 113
+   },
+   "arena-desktop": {
+    "layoutHash": "991bcf7b",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     1214,
+     245
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1214,
+     245
+    ],
+    "frameMsMedian": 5.9,
+    "frameMsP90": 16.7,
+    "randomCalls": 23
+   },
+   "arena-far-desktop": {
+    "layoutHash": "d341fecb",
+    "objects": 309,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "latarnia": 3,
+     "skrzynia": 9,
+     "lawka": 7,
+     "drzewo": 14,
+     "kiosk": 7,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "magazyn": 6,
+     "pawilon": 1,
+     "billboard": 2,
+     "tramwaj": 1,
+     "autobus": 2,
+     "ciezarowka": 3,
+     "kopula": 2,
+     "wiezowiec": 1,
+     "maszt": 1,
+     "portal": 10
+    },
+    "bots": 5,
+    "seed": 20261111,
+    "zoom": 0.841,
+    "gfx": 2,
+    "player": [
+     1214,
+     665
+    ],
+    "playerRadius": 154,
+    "camera": [
+     1214,
+     665
+    ],
+    "frameMsMedian": 13.4,
+    "frameMsP90": 22.4,
+    "randomCalls": 1007
+   },
+   "daily-desktop": {
+    "layoutHash": "2bb93250",
+    "objects": 299,
+    "kinds": {
+     "fragment": 170,
+     "kapsula": 40,
+     "skrzynia": 9,
+     "kiosk": 11,
+     "latarnia": 2,
+     "drzewo": 6,
+     "lawka": 12,
+     "znacznik": 10,
+     "samochod": 10,
+     "wezel": 4,
+     "pylon": 4,
+     "landmark": 2,
+     "billboard": 2,
+     "pawilon": 4,
+     "magazyn": 3,
+     "ciezarowka": 4,
+     "tramwaj": 1,
+     "autobus": 1,
+     "wiezowiec": 2,
+     "maszt": 2
+    },
+    "bots": 5,
+    "seed": 1162589282,
+    "zoom": 1.564,
+    "gfx": 2,
+    "player": [
+     2100,
+     522
+    ],
+    "playerRadius": 18,
+    "camera": [
+     2100,
+     522
+    ],
+    "frameMsMedian": 5.3,
+    "frameMsP90": 8.7,
+    "randomCalls": 12
+   },
+   "m04-plac-desktop": {
+    "layoutHash": "e4f36cae",
+    "objects": 37,
+    "kinds": {
+     "fragment": 12,
+     "kiosk": 3,
+     "drzewo": 2,
+     "latarnia": 5,
+     "lawka": 2,
+     "samochod": 10,
+     "wezel": 2,
+     "lm_kino": 1
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1530,
+     1690
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1530,
+     1690
+    ],
+    "frameMsMedian": 5.8,
+    "frameMsP90": 10.7,
+    "randomCalls": 94
+   },
+   "m42-port-desktop": {
+    "layoutHash": "fc23a122",
+    "objects": 39,
+    "kinds": {
+     "fragment": 11,
+     "kiosk": 4,
+     "drzewo": 3,
+     "lawka": 3,
+     "latarnia": 1,
+     "samochod": 10,
+     "magazyn": 3,
+     "zasilacz": 4
+    },
+    "bots": 1,
+    "seed": 3318787601,
+    "zoom": 1.449,
+    "gfx": 2,
+    "player": [
+     1782,
+     2163
+    ],
+    "playerRadius": 18,
+    "camera": [
+     1728,
+     1935
+    ],
+    "frameMsMedian": 5.4,
+    "frameMsP90": 7,
+    "randomCalls": 113
+   }
+  },
+  "errors": [],
+  "frozenSprites": {
+   "fragment|#50F0FA|7||3": "51f3b3d9:102",
+   "kapsula|#50F0FA|10||3": "e81b8f0b:126",
+   "latarnia|#FF54AD|20||3": "c9b7ebf9:216",
+   "drzewo|#FF54AD|20||3": "a5bf5433:216",
+   "lawka|#FF54AD|20||3": "19aa6fed:216",
+   "kiosk|#FF54AD|20||3": "5f1d52c8:216",
+   "skrzynia|#FF54AD|20||3": "855d5b4c:216",
+   "modul_dachowy|#FF54AD|20||3": "1e201a4c:216",
+   "znacznik|#FF54AD|20||3": "a1ce213e:216",
+   "krysztal|#FF54AD|20||3": "5599ebc0:216",
+   "paleta|#FF54AD|20||3": "7a52a8b9:216",
+   "witryna|#FF54AD|20||3": "676b49a7:216",
+   "klucz_sektora|#FF54AD|20||3": "c7ed0008:216",
+   "emiter|#FF54AD|20||3": "23b70e14:216",
+   "znacznik_ogrodu|#FF54AD|20||3": "6ddea30d:216",
+   "fragment|#50F0FA|78||3": "fee66eb:738",
+   "kapsula|#50F0FA|78||3": "7459045b:738",
+   "latarnia|#FF54AD|78||3": "d5f0f420:738",
+   "drzewo|#FF54AD|78||3": "2afa0b2f:738",
+   "lawka|#FF54AD|78||3": "f6b855c7:738",
+   "kiosk|#FF54AD|78||3": "5d8a9837:738",
+   "skrzynia|#FF54AD|78||3": "1323478b:738",
+   "modul_dachowy|#FF54AD|78||3": "129e15ba:738",
+   "znacznik|#FF54AD|78||3": "a196b45b:738",
+   "krysztal|#FF54AD|78||3": "9eb02121:738",
+   "paleta|#FF54AD|78||3": "a8a49114:738",
+   "witryna|#FF54AD|78||3": "7f189412:738",
+   "klucz_sektora|#FF54AD|78||3": "55f153f9:738",
+   "emiter|#FF54AD|78||3": "183cac0c:738",
+   "znacznik_ogrodu|#FF54AD|78||3": "5f682ee6:738",
+   "fragment|#EFCB63|13||3": "8a80ff54:156",
+   "autobus|#CBD5E1|76|": "cd344129:576",
+   "tramwaj|#CBD5E1|76|": "7dc2bc61:576",
+   "ciezarowka|#CBD5E1|76|": "4f4da49d:576",
+   "wiezowiec|#46D99A|100|": "409d472c:736",
+   "maszt|#46D99A|100|": "d3e27350:736",
+   "kopula|#46D99A|100|": "38b3b402:736",
+   "bajt|#EFCB63|12|": "a96cd460:140",
+   "lm_dzwig|#CBD5E1|78|": "e063f410:588",
+   "lm_galeria|#CBD5E1|78|": "523b0547:588",
+   "lm_iglica|#CBD5E1|78|": "79bd8fee:588",
+   "lm_stacja|#CBD5E1|78|": "8ab7d2c7:588",
+   "lm_bazar|#CBD5E1|78|": "b0ec9864:588",
+   "lm_iglica|#46D99A|104|": "35080ffb:764",
+   "lm_rdzen|#46D99A|104|": "1df292b6:764",
+   "lm_fabryka|#46D99A|104|": "6f77e772:764",
+   "lm_latarnia|#46D99A|104|": "9e3659de:764",
+   "lm_drzewo|#46D99A|104|": "873494b5:764",
+   "lm_serwer|#46D99A|104|": "2863e57d:764"
+  }
+ }
+}
