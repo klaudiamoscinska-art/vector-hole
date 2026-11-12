@@ -2453,8 +2453,10 @@ const GOAL_ICONS = {
   // v10 classes + objective kinds.
   // "any structure": the pavilion and the billboard together
   get structure() { return vaIconSvg([['pawilon', SIZE_TIER_COLORS[4], 0.8, -3.4, 2.4], ['billboard', SIZE_TIER_COLORS[4], 0.56, 6.6, -4.6]]); },
-  heavy: '<rect x="5.5" y="3" width="16.5" height="8.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><rect x="2" y="7" width="17" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18.6" r="1.8" fill="currentColor"/><circle cx="15" cy="18.6" r="1.8" fill="currentColor"/>',
-  tower: '<path d="M2.5 21V11h5v10M8.5 21V3.5h6V21M15.5 21V8h6v13M2 21h20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.8 7.5h1.4M10.8 11h1.4M10.8 14.5h1.4M17.8 11.5h1.4M17.8 15h1.4M4.3 14.5h1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  // GG-OBJECTS-04: "any heavy vehicle" = the lorry behind the bus, "any
+  // tower" = the mast beside the skyscraper (the board art, as for structure)
+  get heavy() { return vaIconSvg([['ciezarowka', SIZE_TIER_COLORS[5], 0.6, 6.4, -4.2], ['autobus', SIZE_TIER_COLORS[5], 0.82, -3.2, 2.4]]); },
+  get tower() { return vaIconSvg([['maszt', SIZE_TIER_COLORS[6], 0.66, 5.6, -0.6], ['wiezowiec', SIZE_TIER_COLORS[6], 0.84, -3.4, 1.2]]); },
   tier: '<path d="M12 3l7 8h-4v9H9v-9H5z" fill="currentColor"/>',
   rival: '<circle cx="9" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="12" r="3" fill="currentColor"/>',
   impulse: '<path d="M5 6l6 6-6 6M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -2502,12 +2504,13 @@ const GOAL_ART_ICONS = {
   get pawilon() { return vaIconSvg([['pawilon', SIZE_TIER_COLORS[4]]]); },
   get billboard() { return vaIconSvg([['billboard', SIZE_TIER_COLORS[4]]]); },
   get magazyn() { return vaIconSvg([['magazyn', SIZE_TIER_COLORS[4]]]); },
-  autobus: '<rect x="2" y="6" width="20" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 9h2.6v3H4.5zM8.7 9h2.6v3H8.7zM12.9 9h2.6v3h-2.6zM17.1 9h2.4v3h-2.4z" fill="currentColor"/><circle cx="7" cy="18.2" r="1.8" fill="currentColor"/><circle cx="17" cy="18.2" r="1.8" fill="currentColor"/>',
-  tramwaj: '<path d="M9 6l3-3.5L15 6M10 2.5h5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="1.5" y="6" width="10" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><rect x="12.5" y="6" width="10" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h2v3H4zM7.5 9h2v3h-2zM15 9h2v3h-2zM18.5 9h2v3h-2z" fill="currentColor"/><path d="M1.5 20h21" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
-  ciezarowka: '<rect x="1.5" y="4.5" width="13.5" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 5.5v10M8.3 5.5v10M11.6 5.5v10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 16.5V9h4l3 4v3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18.5" r="1.8" fill="currentColor"/><circle cx="18" cy="18.5" r="1.8" fill="currentColor"/>',
-  wiezowiec: '<path d="M6 21V9h3V5.5h2.5V2.5h1v3H15V9h3v12z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12.5h1.6M13.4 12.5H15M9 15.8h1.6M13.4 15.8H15M9 19h1.6M13.4 19H15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
-  maszt: '<path d="M7 21L11.4 3.5h1.2L17 21M8.3 15.8h7.4M9.6 10.6h4.8M8.3 15.8l6.1-5.2M15.7 15.8l-6.1-5.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="6.6" cy="9" rx="1.7" ry="2.5" transform="rotate(-20 6.6 9)" fill="currentColor"/><ellipse cx="17.4" cy="6" rx="1.7" ry="2.5" transform="rotate(20 17.4 6)" fill="currentColor"/><circle cx="12" cy="2.3" r="1.2" fill="currentColor"/>',
-  kopula: '<path d="M3.5 14a8.5 8.5 0 0117 0z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 5.5V14M8 7.2c1.3 2 1.8 4.3 1.8 6.8M16 7.2c-1.3 2-1.8 4.3-1.8 6.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="2.5" y="14" width="19" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 16.8h2M9.5 16.8h2M13.5 16.8h2M17.5 16.8h1.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>'
+  // GG-OBJECTS-04: and every T5 / T6 look's.
+  get autobus() { return vaIconSvg([['autobus', SIZE_TIER_COLORS[5]]]); },
+  get tramwaj() { return vaIconSvg([['tramwaj', SIZE_TIER_COLORS[5]]]); },
+  get ciezarowka() { return vaIconSvg([['ciezarowka', SIZE_TIER_COLORS[5]]]); },
+  get wiezowiec() { return vaIconSvg([['wiezowiec', SIZE_TIER_COLORS[6]]]); },
+  get maszt() { return vaIconSvg([['maszt', SIZE_TIER_COLORS[6]]]); },
+  get kopula() { return vaIconSvg([['kopula', SIZE_TIER_COLORS[6]]]); }
 };
 
 // Fill color per CampaignEntity `type`, by size tier -- shared by
@@ -5742,11 +5745,689 @@ const VA_ART = {
     K.oval(0, cy, 0.49, 0.61, K.rad(0, cy, 0, 0.61, '#E8FBFF', [0.3, VA_CYAN], [0.7, P.front], '#1B0F52'), VA_INK, 0.05);
     K.bloom(VA_PINK, 0.2, () => [-PI / 2, PI * 0.14, PI * 0.86].forEach((a) => K.oval(Math.cos(a) * 0.585, cy + Math.sin(a) * 0.705, 0.055, 0.055, VA_PINK, VA_INK, 0.025)));
     K.begin(); K.ov(0, cy, 0.62, 0.74, PI * 1.08, PI * 1.42); K.paint(null, '#ffffff', 0.04, 0.6);
+  },
+
+  /* ---------- GG-OBJECTS-04: T5 (silver) heavy vehicles ---------- */
+
+  // T5 -- city bus: a long body nose to the viewer, a window band down its right side, cooling units on the roof.
+  autobus(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.9);
+    const x0 = -0.78, W = 0.82, yT = -0.04, yB = 0.64, D = 1.84, x1 = x0 + W, h = yB - yT;
+    K.base(0.76, 1.04);
+    K.rr(x0 + 0.04, yB - 0.06, 0.17, 0.18, 0.05, VA_STEEL[0], VA_INK, 0.04);
+    K.rr(x1 - 0.21, yB - 0.06, 0.17, 0.18, 0.05, VA_STEEL[0], VA_INK, 0.04);
+    const B = K.box(x0, yT, W, h, D, vaFaces(K, H, x0, yT, W, h, D));
+    // the side: a dark skirt, the windows, a door, an ice light line, a pink stripe, two wheels
+    K.poly(vaSq(B, 0, 0.84, 1, 1), H.sideLo, 0);
+    [[0.05, 0.17], [0.3, 0.45], [0.48, 0.63], [0.66, 0.8], [0.83, 0.96]].forEach(([u0, u1]) => K.poly(vaSq(B, u0, 0.12, u1, 0.44), vaLitGlass(K, ...B.side(u0, 0.12), ...B.side(u1, 0.44), VA_CYAN), VA_INK, 0.03));
+    K.poly(vaSq(B, 0.19, 0.12, 0.28, 0.8), vaMix(VA_CYAN, '#0B2A4A', 0.62), VA_INK, 0.03);
+    K.line([...B.side(0.235, 0.14), ...B.side(0.235, 0.78)], VA_INK, 0.02, 0.6);
+    K.bloom(VA_ICE, 0.16, () => K.line([...B.side(0.02, 0.53), ...B.side(0.98, 0.53)], VA_ICE, 0.035));
+    K.line([...B.side(0.3, 0.65), ...B.side(0.98, 0.65)], VA_PINK, 0.03, 0.9);
+    vaWheel(K, P, x1, yB - 0.02, 0.36, 0.16); vaWheel(K, P, x1, yB - 0.02, 1.46, 0.16);
+    // the roof: two cooling units
+    [[0.14, 0.4], [0.56, 0.84]].forEach(([v0, v1]) => {
+      const q = B.top(0.16, v0);
+      K.box(q[0], q[1] - 0.06, W * 0.62, 0.06, (v1 - v0) * D, { front: VA_STEEL[2], top: K.lin(q[0], 0, q[0] + 0.6, 0, VA_STEEL[3], H.top), side: VA_STEEL[1], under: VA_STEEL[2], ink: 0.05, plain: true });
+    });
+    // the nose: destination sign, windscreen, headlights, grille, bumper
+    K.rr(x0 + 0.08, yT + 0.04, W - 0.16, 0.08, 0.02, VA_SCREEN, VA_INK, 0.03);
+    K.bloom(VA_ICE, 0.18, () => K.rr(x0 + 0.14, yT + 0.065, W - 0.42, 0.03, 0.015, VA_ICE));
+    K.oval(x1 - 0.17, yT + 0.08, 0.025, 0.025, VA_PINK);
+    K.rr(x0 + 0.05, yT + 0.15, W - 0.1, 0.27, 0.04, vaGlass(K, x0, yT + 0.15, x1, yT + 0.42), VA_INK, 0.035);
+    K.line([x0 + W / 2, yT + 0.16, x0 + W / 2, yT + 0.41], VA_INK, 0.025, 0.6);
+    K.poly([x0 + 0.1, yT + 0.38, x0 + 0.24, yT + 0.18, x0 + 0.31, yT + 0.18, x0 + 0.17, yT + 0.38], '#ffffff', 0, 0, 0.3);
+    K.bloom('#ffffff', 0.2, () => [x0 + 0.06, x1 - 0.22].forEach((hx) => K.rr(hx, yB - 0.2, 0.16, 0.07, 0.03, K.lin(0, yB - 0.2, 0, yB - 0.13, '#ffffff', VA_ICE), VA_INK, 0.03)));
+    for (let i = 0; i < 3; i++) K.line([x0 + 0.28, yB - 0.2 + i * 0.03, x1 - 0.28, yB - 0.2 + i * 0.03], VA_STEEL[0], 0.018, 0.8);
+    K.rr(x0 - 0.02, yB - 0.1, W + 0.04, 0.1, 0.04, K.lin(0, yB - 0.1, 0, yB, VA_STEEL[3], VA_STEEL[1]), VA_INK, 0.04);
+  },
+
+  // T5 -- tram: two linked cars on rails, a rounded windscreen, a pantograph on the roof.
+  tramwaj(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.9);
+    const x0 = -0.74, W = 0.76, yT = 0.04, yB = 0.64, x1 = x0 + W, h = yB - yT, D1 = 0.96, Z2 = 1.06, D2 = 0.92;
+    K.base(0.74, 1.02);
+    const car = (z, d) => {
+      const fx = x0 + z * VA_DX, fy = yT + z * VA_DY;
+      const B = K.box(fx, fy, W, h, d, vaFaces(K, H, fx, fy, W, h, d));
+      K.poly(vaSq(B, 0, 0.82, 1, 1), H.sideLo, 0);
+      [[0.08, 0.34], [0.4, 0.64], [0.7, 0.94]].forEach(([u0, u1]) => K.poly(vaSq(B, u0, 0.14, u1, 0.5), vaLitGlass(K, ...B.side(u0, 0.14), ...B.side(u1, 0.5), VA_CYAN), VA_INK, 0.03));
+      K.bloom(VA_ICE, 0.14, () => K.line([...B.side(0.03, 0.6), ...B.side(0.97, 0.6)], VA_ICE, 0.032));
+      K.line([...B.side(0.03, 0.7), ...B.side(0.97, 0.7)], VA_PINK, 0.022, 0.85);
+      [0.2, 0.8].forEach((u) => vaWheel(K, P, x1, yB + 0.01, z + u * d, 0.1));
+      return B;
+    };
+    car(Z2, D2);
+    // the bellows between the two cars
+    const jz = D1 - 0.02, jx = x0 + 0.08 + jz * VA_DX, jy = yT + 0.06 + jz * VA_DY;
+    const J = K.box(jx, jy, W - 0.16, h - 0.14, Z2 - D1 + 0.04, { front: VA_STEEL[1], top: VA_STEEL[2], side: VA_STEEL[0], under: VA_STEEL[1], ink: 0.06, plain: true });
+    [0.25, 0.5, 0.75].forEach((u) => K.line([...J.side(u, 0.05), ...J.side(u, 0.95)], VA_STEEL[2], 0.02));
+    const F = car(0, D1);
+    // the pantograph: an insulated base, two folding arms, the pink contact strip
+    const mid = F.top(0.5, 0.5);
+    K.box(mid[0] - 0.12, mid[1] - 0.04, 0.24, 0.04, 0.12, { front: VA_STEEL[1], top: VA_STEEL[3], side: VA_STEEL[0], under: VA_STEEL[1], ink: 0.04, plain: true });
+    const top = [mid[0] + 0.02, mid[1] - 0.36], kL = [mid[0] - 0.15, mid[1] - 0.2], kR = [mid[0] + 0.17, mid[1] - 0.2];
+    [[mid[0] - 0.08, mid[1] - 0.03, ...kL, ...top], [mid[0] + 0.1, mid[1] - 0.03, ...kR, ...top]].forEach((pts) => { K.line(pts, VA_INK, 0.07); K.line(pts, VA_STEEL[3], 0.03); });
+    K.bloom(VA_PINK, 0.2, () => { K.line([top[0] - 0.22, top[1], top[0] + 0.22, top[1]], VA_INK, 0.08); K.line([top[0] - 0.22, top[1], top[0] + 0.22, top[1]], VA_PINK, 0.04); });
+    // the nose: a big rounded windscreen with the destination line, round headlights, a dark skirt
+    K.rr(x0 + 0.05, yT + 0.05, W - 0.1, 0.32, 0.11, vaGlass(K, x0, yT + 0.05, x1, yT + 0.37), VA_INK, 0.035);
+    K.rr(x0 + 0.14, yT + 0.08, W - 0.28, 0.06, 0.02, VA_SCREEN, 0);
+    K.bloom(VA_ICE, 0.16, () => K.rr(x0 + 0.18, yT + 0.095, W - 0.44, 0.03, 0.015, VA_ICE));
+    K.poly([x0 + 0.12, yT + 0.34, x0 + 0.26, yT + 0.16, x0 + 0.32, yT + 0.16, x0 + 0.18, yT + 0.34], '#ffffff', 0, 0, 0.3);
+    K.bloom('#ffffff', 0.2, () => [x0 + 0.15, x1 - 0.15].forEach((hx) => K.oval(hx, yB - 0.15, 0.05, 0.045, K.ball(hx, yB - 0.15, 0.05, '#ffffff', VA_ICE), VA_INK, 0.03)));
+    K.oval(x0 + W / 2, yB - 0.16, 0.035, 0.035, VA_PINK, VA_INK, 0.02);
+    K.rr(x0 - 0.01, yB - 0.08, W + 0.02, 0.08, 0.03, K.lin(0, yB - 0.08, 0, yB, VA_STEEL[2], VA_STEEL[0]), VA_INK, 0.04);
+  },
+
+  // T5 -- lorry: a cab nose to the viewer, a tall ribbed box behind it, three axles.
+  ciezarowka(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.9), p = vaP;
+    const x0 = -0.8, W = 0.84, x1 = x0 + W, yT = 0.06, yB = 0.66, Dc = 0.56, Z = 0.62, Db = 1.2, yC = -0.14, yCb = 0.5;
+    K.base(0.76, 1.04);
+    K.rr(x0 + 0.04, yB - 0.06, 0.17, 0.18, 0.05, VA_STEEL[0], VA_INK, 0.04);
+    K.rr(x1 - 0.21, yB - 0.06, 0.17, 0.18, 0.05, VA_STEEL[0], VA_INK, 0.04);
+    K.line([...p(x1 - 0.05, yB - 0.08, Z), ...p(x1 - 0.05, yB - 0.08, Z + Db)], VA_STEEL[0], 0.1);
+    // the cargo box: ribs, a pink band, ice marker lights
+    const bx = x0 + 0.01 + Z * VA_DX, by = yC + Z * VA_DY, bw = W - 0.02, bh = yCb - yC;
+    const C = K.box(bx, by, bw, bh, Db, vaFaces(K, H, bx, by, bw, bh, Db));
+    for (let i = 1; i < 8; i++) K.line([...C.side(i / 8, 0.04), ...C.side(i / 8, 0.96)], H.sideLo, 0.025, 0.8);
+    K.poly(vaSq(C, 0.08, 0.38, 0.92, 0.5), VA_PINK, 0, 0, 0.9);
+    K.poly(vaSq(C, 0.08, 0.5, 0.92, 0.55), VA_ICE, 0, 0, 0.85);
+    K.bloom(VA_ICE, 0.14, () => [0.08, 0.38, 0.68, 0.96].forEach((u) => { const q = C.side(u, 0.94); K.oval(q[0], q[1], 0.026, 0.026, VA_ICE); }));
+    [0.2, 0.5, 0.8].forEach((u) => { const q = C.top(u, 0.04); K.oval(q[0], q[1], 0.022, 0.016, VA_ICE); });
+    vaWheel(K, P, x1, yB - 0.02, Z + 0.7, 0.15); vaWheel(K, P, x1, yB - 0.02, Z + 1.02, 0.15);
+    // the cab, a wind deflector up to the box, a door window
+    const B = K.box(x0, yT, W, yB - yT, Dc, vaFaces(K, H, x0, yT, W, yB - yT, Dc));
+    const d0 = B.top(0.06, 0.45), d1 = B.top(0.94, 0.45);
+    K.poly([...d0, ...d1, bx + bw - 0.06, by + 0.03, bx + 0.06, by + 0.03], K.lin(0, by, 0, d0[1], H.lite, H.front), VA_INK, 0.05);
+    K.poly(vaSq(B, 0.16, 0.08, 0.8, 0.44), vaLitGlass(K, ...B.side(0.16, 0.08), ...B.side(0.8, 0.44), VA_CYAN), VA_INK, 0.03);
+    K.line([...B.side(0.86, 0.08), ...B.side(0.86, 0.9)], VA_INK, 0.02, 0.5);
+    vaWheel(K, P, x1, yB - 0.02, 0.28, 0.15);
+    // the nose: windscreen, a light bar, a tall grille, headlights, bumper, a mirror
+    K.rr(x0 + 0.06, yT + 0.07, W - 0.12, 0.2, 0.03, vaGlass(K, x0, yT + 0.07, x1, yT + 0.27), VA_INK, 0.035);
+    K.poly([x0 + 0.12, yT + 0.25, x0 + 0.24, yT + 0.09, x0 + 0.3, yT + 0.09, x0 + 0.18, yT + 0.25], '#ffffff', 0, 0, 0.3);
+    K.bloom(VA_ICE, 0.16, () => [0.25, 0.5, 0.75].forEach((t) => K.rr(x0 + W * t - 0.05, yT + 0.015, 0.1, 0.035, 0.015, VA_ICE, VA_INK, 0.015)));
+    K.rr(x0 + 0.24, yT + 0.32, W - 0.48, 0.18, 0.02, VA_STEEL[0], VA_INK, 0.03);
+    for (let i = 0; i < 4; i++) K.line([x0 + 0.27, yT + 0.355 + i * 0.037, x1 - 0.27, yT + 0.355 + i * 0.037], VA_STEEL[3], 0.018, 0.85);
+    K.bloom('#ffffff', 0.2, () => [x0 + 0.05, x1 - 0.2].forEach((hx) => K.rr(hx, yT + 0.33, 0.15, 0.08, 0.03, K.lin(0, yT + 0.33, 0, yT + 0.41, '#ffffff', VA_ICE), VA_INK, 0.03)));
+    K.rr(x0 - 0.02, yB - 0.1, W + 0.04, 0.1, 0.04, K.lin(0, yB - 0.1, 0, yB, VA_STEEL[3], VA_STEEL[1]), VA_INK, 0.04);
+    K.line([x1, yT + 0.12, x1 + 0.08, yT + 0.1], VA_STEEL[1], 0.03);
+    K.rr(x1 + 0.05, yT + 0.04, 0.06, 0.15, 0.02, K.lin(0, yT, 0, yT + 0.2, VA_STEEL[3], VA_STEEL[1]), VA_INK, 0.025);
+  },
+
+  /* ---------- GG-OBJECTS-04: T6 (green) towers ---------- */
+
+  // T6 -- skyscraper: three set-back blocks of lit green glass, neon edges, a lobby, a mast on the crown.
+  wiezowiec(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.55);
+    K.base(0.84, 0.98);
+    K.glow(-0.04, -0.2, 1.1, P.col, 0.12);
+    // [front x, base y (front plane), width, height, depth, z]
+    const blocks = [[-0.64, 0.82, 0.92, 0.66, 0.64, 0], [-0.52, 0.16, 0.7, 0.52, 0.46, 0.08], [-0.39, -0.36, 0.44, 0.28, 0.28, 0.18]];
+    let crown = null;
+    blocks.forEach(([x, yb, w, h, d, z], i) => {
+      const fx = x + z * VA_DX, fy = yb - h + z * VA_DY;
+      const B = K.box(fx, fy, w, h, d, vaFaces(K, H, fx, fy, w, h, d));
+      const gx0 = fx + 0.05, gy0 = fy + 0.05, gw = w - 0.1, gh = h - (i ? 0.1 : 0.2);
+      K.poly(vaSq(B, 0.08, 0.06, 0.92, 0.94), vaMix(VA_TEAL, '#0B2A4A', 0.66), 0);
+      K.bloom(VA_TEAL, 0.12, () => K.rr(gx0, gy0, gw, gh, 0.02, vaLitGlass(K, fx, fy, fx + w, fy + h, VA_TEAL), VA_INK, 0.03));
+      const rows = Math.max(2, Math.round(gh / 0.085)), cols = Math.max(2, Math.round(gw / 0.11));
+      for (let j = 1; j < rows; j++) {
+        const yy = gy0 + j * gh / rows;
+        K.line([gx0, yy, gx0 + gw, yy], H.frontLo, 0.018, 0.9);
+        K.line([...B.side(0.08, (yy - fy) / h), ...B.side(0.92, (yy - fy) / h)], VA_STEEL[0], 0.016, 0.8);
+      }
+      for (let k = 1; k < cols; k++) K.line([gx0 + k * gw / cols, gy0, gx0 + k * gw / cols, gy0 + gh], VA_STEEL[1], 0.02, 0.9);
+      if (!K.icon) {
+        for (let j = 0; j < rows; j++) for (let k = 0; k < cols; k++) {
+          if ((j * 7 + k * 3 + i * 2) % 5) continue;
+          K.rr(gx0 + k * gw / cols + 0.012, gy0 + j * gh / rows + 0.012, gw / cols - 0.024, gh / rows - 0.024, 0.008, vaMix(P.lite, '#ffffff', 0.4), 0, 0, 0.75);
+        }
+      }
+      K.bloom(P.col, 0.2, () => { K.line([fx + 0.01, fy + 0.012, fx + w - 0.01, fy + 0.012], P.lite, 0.03); K.line([fx + 0.015, fy + 0.02, fx + 0.015, fy + h - 0.02], P.col, 0.028); });
+      crown = B;
+    });
+    // the lobby: a lit door under a canopy
+    K.rr(-0.32, 0.6, 0.28, 0.22, 0.02, K.lin(0, 0.6, 0, 0.82, vaMix(VA_TEAL, '#ffffff', 0.5), VA_TEAL), VA_INK, 0.03);
+    K.line([-0.18, 0.62, -0.18, 0.82], VA_INK, 0.02, 0.7);
+    K.box(-0.4, 0.55, 0.44, 0.05, 0.12, { front: H.hi, top: H.lite, side: H.side, under: H.front, ink: 0.04, plain: true });
+    // the crown: a neon frame and the mast with a violet light
+    K.poly(vaTq(crown, 0.15, 0.15, 0.85, 0.85), null, P.lite, 0.025);
+    const q = crown.top(0.5, 0.5);
+    K.line([q[0], q[1], q[0], q[1] - 0.26], VA_INK, 0.07); K.line([q[0], q[1], q[0], q[1] - 0.26], VA_STEEL[3], 0.03);
+    K.bloom('#9875FF', 0.2, () => K.oval(q[0], q[1] - 0.27, 0.035, 0.035, '#9875FF', VA_INK, 0.02));
+  },
+
+  // T6 -- broadcast mast: a braced lattice tower on a plinth, two platforms, two dishes, panel antennas.
+  maszt(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.85);
+    K.base(0.86, 0.8);
+    K.glow(0, -0.3, 0.9, P.col, 0.12);
+    K.box(-0.5, 0.66, 0.76, 0.16, 0.56, { front: K.lin(0, 0.66, 0, 0.82, VA_STEEL[3], VA_STEEL[1]), top: VA_STEEL[3], side: VA_STEEL[0], under: VA_STEEL[2] });
+    const FL = [-0.32, 0.68], FR = [0.12, 0.68], BR = [0.12 + 0.4 * VA_DX, 0.68 + 0.4 * VA_DY], TL = [-0.07, -0.78], TR = [0.01, -0.78], TB = [0.05, -0.81];
+    const bar = (pts, colr, lw) => { K.line(pts, VA_INK, lw + 0.05); K.line(pts, colr, lw); };
+    const lv = [0, 0.2, 0.38, 0.54, 0.68, 0.8, 0.9, 1];
+    bar([...BR, ...TB], H.sideLo, 0.05);
+    for (let i = 0; i < lv.length - 1; i++) bar([...vaLerp(FR, TR, lv[i]), ...vaLerp(BR, TB, lv[i + 1])], H.sideLo, 0.03);
+    // two platforms
+    const deck = (t, rad) => { const cy = vaLerp(FL, TL, t)[1], cx = (vaLerp(FL, TL, t)[0] + vaLerp(FR, TR, t)[0]) / 2 + 0.04; K.drum(cx, cy - 0.02, cy + 0.03, rad, rad * 0.3, K.lin(cx - rad, 0, cx + rad, 0, VA_STEEL[3], VA_STEEL[1]), K.lin(cx - rad, 0, cx + rad, 0, H.top, H.side), 0.04); return [cx, cy]; };
+    deck(0.36, 0.34);
+    for (let i = 0; i < lv.length - 1; i++) {
+      bar([...vaLerp(FL, TL, lv[i]), ...vaLerp(FR, TR, lv[i + 1])], H.frontLo, 0.032);
+      bar([...vaLerp(FR, TR, lv[i]), ...vaLerp(FL, TL, lv[i + 1])], H.frontLo, 0.032);
+      bar([...vaLerp(FL, TL, lv[i + 1]), ...vaLerp(FR, TR, lv[i + 1])], H.front, 0.032);
+    }
+    const leg = (a, b, wb, wt, fill) => K.poly([a[0] - wb, a[1], b[0] - wt, b[1], b[0] + wt, b[1], a[0] + wb, a[1]], fill, VA_INK, 0.04);
+    leg(FL, TL, 0.055, 0.03, K.lin(-0.36, 0, -0.05, 0, H.lite, H.front));
+    leg(FR, TR, 0.055, 0.03, K.lin(0, 0, 0.16, 0, H.front, H.side));
+    const up = deck(0.74, 0.22);
+    // dishes: a big one facing left, a smaller one facing right
+    const dish = (cx, cy, s, rx, ry, mount) => {
+      K.line([mount, cy, cx - s * 0.04, cy], VA_INK, 0.07); K.line([mount, cy, cx - s * 0.04, cy], VA_STEEL[3], 0.03);
+      K.poly([cx + s * 0.12, cy - ry * 0.5, cx + s * 0.12, cy + ry * 0.5, cx + s * 0.22, cy], VA_STEEL[1], VA_INK, 0.03);
+      K.oval(cx, cy, rx, ry, K.lin(cx - rx, cy - ry, cx + rx, cy + ry, '#F2FFFF', VA_STEEL[3]), VA_INK, 0.045);
+      K.oval(cx, cy, rx * 0.72, ry * 0.76, null, P.col, 0.025);
+      K.line([cx, cy - ry * 0.2, cx - s * 0.16, cy], VA_STEEL[2], 0.02);
+      K.bloom(VA_TEAL, 0.14, () => K.oval(cx - s * 0.16, cy, 0.03, 0.03, VA_TEAL));
+    };
+    dish(-0.42, -0.06, -1, 0.11, 0.24, -0.2);
+    dish(0.32, -0.46, 1, 0.09, 0.19, 0.04);
+    // panel antennas, the beacon rod (the live overlay blinks its light at 0, -0.98 r)
+    [[-0.16, -0.7], [0.07, -0.7]].forEach(([x, y]) => K.rr(x, y, 0.08, 0.18, 0.02, K.lin(x, 0, x + 0.08, 0, H.lite, H.side), VA_INK, 0.03));
+    K.bloom(VA_TEAL, 0.14, () => K.line([up[0] - 0.2, up[1] + 0.06, up[0] + 0.2, up[1] + 0.06], VA_TEAL, 0.025));
+    K.line([0, -0.8, 0, -0.95], VA_INK, 0.06); K.line([0, -0.8, 0, -0.95], VA_STEEL[3], 0.025);
+    K.oval(0, -0.98, 0.04, 0.04, vaMix('#9875FF', VA_NIGHT, 0.3), VA_INK, 0.02);
+  },
+
+  // T6 -- dome hall: a glass geodesic dome with neon ribs on a ringed drum, an entrance, a lantern on top.
+  kopula(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.7), PI = Math.PI;
+    K.base(0.84, 1.02);
+    K.glow(0, -0.1, 1.05, P.col, 0.16);
+    const y0 = 0.34, y1 = 0.6, RX = 0.92, RY = 0.26;
+    K.drum(0, y0, y1, RX, RY, K.lin(-RX, 0, RX, 0, H.lite, [0.3, H.front], [0.75, H.side], H.sideLo), K.lin(-RX, 0, RX, 0, H.lite, H.top));
+    // a band of lit windows round the drum's front
+    for (let k = 0; k < 11; k++) {
+      const a0 = PI * (0.04 + k * 0.084), a1 = a0 + PI * 0.06, yy = y0 + 0.08;
+      const pt = (a, dy) => [RX * Math.cos(a), yy + dy + RY * Math.sin(a)];
+      K.poly([...pt(a0, 0), ...pt(a1, 0), ...pt(a1, 0.1), ...pt(a0, 0.1)], vaLitGlass(K, 0, yy, 0, yy + 0.3, VA_TEAL), VA_INK, 0.02);
+    }
+    // the dome: glass, meridian and ring ribs, a sheen
+    const R = 0.8, RV = 0.86, yR = y0 - 0.01;
+    K.bloom(P.col, 0.24, () => { K.begin(); K.ov(0, yR, R, RV, PI, PI * 2); K.ov(0, yR, R, 0.23, 0, PI, true); K.z(); K.paint(K.rad(-0.28, yR - 0.62, 0.05, 1.1, vaMix(VA_TEAL, '#ffffff', 0.55), [0.35, VA_TEAL], [0.8, vaMix(P.col, '#0B2A4A', 0.55)], vaMix(P.col, VA_NIGHT, 0.6)), VA_INK, 0.06); });
+    [0.3, 0.58, 0.82].forEach((hh) => { const rx = R * Math.sqrt(1 - hh * hh); K.begin(); K.ov(0, yR - RV * hh, rx, 0.23 * rx / R, 0.02, PI - 0.02); K.paint(null, P.lite, 0.028, 0.9); });
+    [0.16, 0.32, 0.5, 0.68, 0.84].forEach((t) => { const a = PI * t, x = R * Math.cos(a), y = yR + 0.23 * Math.sin(a); K.begin(); K.m(x, y); K.b(x * 1.02, y - RV * 0.55, x * 0.55, yR - RV * 0.98, 0, yR - RV); K.paint(null, P.lite, 0.028, 0.9); });
+    K.begin(); K.ov(0, yR, R * 0.86, RV * 0.9, PI * 1.12, PI * 1.38); K.paint(null, '#ffffff', 0.045, 0.55);
+    K.bloom(P.col, 0.18, () => { K.begin(); K.ov(0, yR, R + 0.02, 0.24, 0, PI); K.paint(null, P.col, 0.04); });
+    // the entrance on the drum's front
+    K.box(-0.17, 0.56, 0.34, 0.3, 0.14, vaFaces(K, H, -0.17, 0.56, 0.34, 0.3, 0.14));
+    K.rr(-0.11, 0.62, 0.22, 0.24, 0.02, K.lin(0, 0.62, 0, 0.86, vaMix(VA_TEAL, '#ffffff', 0.55), VA_TEAL), VA_INK, 0.03);
+    K.line([0, 0.64, 0, 0.86], VA_INK, 0.02, 0.7);
+    // the lantern and its spire
+    K.drum(0, yR - RV - 0.06, yR - RV + 0.03, 0.12, 0.04, K.lin(-0.12, 0, 0.12, 0, H.lite, H.side), vaMix(VA_TEAL, '#ffffff', 0.4), 0.035);
+    K.line([0, yR - RV - 0.08, 0, yR - RV - 0.3], VA_INK, 0.06); K.line([0, yR - RV - 0.08, 0, yR - RV - 0.3], VA_STEEL[3], 0.025);
+    K.bloom(P.col, 0.24, () => K.oval(0, yR - RV - 0.32, 0.04, 0.04, K.ball(0, yR - RV - 0.32, 0.04, '#ffffff', P.lite, P.col), VA_INK, 0.02));
+  },
+
+  /* ---------- GG-OBJECTS-04: boss landmarks, T5 (silver) ---------- */
+
+  // T5 landmark -- the port crane: a lattice mast, a long jib with a trolley and a hanging container, a counterweight.
+  lm_dzwig(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.9);
+    K.base(0.86, 0.92);
+    const bar = (pts, colr, lw) => { K.line(pts, VA_INK, lw + 0.045); K.line(pts, colr, lw); };
+    const steel = { front: K.lin(0, 0.62, 0, 0.82, VA_STEEL[3], VA_STEEL[1]), top: VA_STEEL[3], side: VA_STEEL[0], under: VA_STEEL[2] };
+    K.box(-0.7, 0.66, 0.72, 0.16, 0.52, steel);
+    [0.08, 0.92].forEach((t) => K.line([-0.7 + 0.72 * t, 0.84, -0.7 + 0.72 * t + 0.6 * VA_DX, 0.84 + 0.6 * VA_DY], VA_STEEL[3], 0.02, 0.8));
+    // the mast: two front legs, a back leg, bracing
+    const xl = -0.5, xr = -0.26, yb = 0.66, yt = -0.6, dz = 0.22;
+    const FL0 = [xl, yb], FL1 = [xl, yt], FR0 = [xr, yb], FR1 = [xr, yt], BR0 = [xr + dz * VA_DX, yb + dz * VA_DY], BR1 = [xr + dz * VA_DX, yt + dz * VA_DY];
+    bar([...BR0, ...BR1], H.sideLo, 0.03);
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+      bar([...vaLerp(FR0, FR1, i / n), ...vaLerp(BR0, BR1, (i + 1) / n)], H.sideLo, 0.02);
+      bar([...vaLerp(i % 2 ? FL0 : FR0, i % 2 ? FL1 : FR1, i / n), ...vaLerp(i % 2 ? FR0 : FL0, i % 2 ? FR1 : FL1, (i + 1) / n)], H.frontLo, 0.022);
+    }
+    bar([...FL0, ...FL1], H.lite, 0.04); bar([...FR0, ...FR1], H.front, 0.04);
+    // the counter-jib and its weight, the jib (a truss), the A-frame and its ties
+    bar([-0.94, -0.64, -0.3, -0.64], H.side, 0.04);
+    K.box(-0.98, -0.78, 0.28, 0.2, 0.14, vaFaces(K, H, -0.98, -0.78, 0.28, 0.2, 0.14, { front: VA_STEEL[2] }));
+    for (let i = 0; i < 3; i++) K.poly([-0.95 + i * 0.09, -0.6, -0.9 + i * 0.09, -0.6, -0.86 + i * 0.09, -0.7, -0.91 + i * 0.09, -0.7], VA_PINK, 0, 0, 0.9);
+    const J = [-0.3, 1.0], yj0 = -0.62, yj1 = -0.74, zb = [0.12 * VA_DX, 0.12 * VA_DY];
+    bar([J[0] + zb[0], yj0 + zb[1], J[1] + zb[0], yj0 + zb[1]], H.sideLo, 0.022);
+    for (let i = 0; i < 12; i++) { const xa = J[0] + (J[1] - J[0]) * i / 12, xb = J[0] + (J[1] - J[0]) * (i + 0.5) / 12, xc = J[0] + (J[1] - J[0]) * (i + 1) / 12; bar([xa, yj0, xb, yj1, xc, yj0], H.frontLo, 0.018); }
+    bar([J[0], yj0, J[1], yj0], H.front, 0.032); bar([J[0], yj1, J[1] - 0.04, yj1], H.lite, 0.026);
+    const apex = [-0.36, -1.04];
+    [[-0.94, -0.66], [0.82, -0.74]].forEach((q) => K.line([...apex, ...q], VA_STEEL[3], 0.016, 0.9));
+    bar([-0.48, -0.74, ...apex, -0.24, -0.74], H.lite, 0.03);
+    // the slewing unit and the driver's cab (ice glass)
+    K.box(-0.58, -0.76, 0.4, 0.13, 0.26, vaFaces(K, H, -0.58, -0.76, 0.4, 0.13, 0.26));
+    K.box(-0.2, -0.74, 0.18, 0.15, 0.2, vaFaces(K, H, -0.2, -0.74, 0.18, 0.15, 0.2));
+    K.bloom(VA_ICE, 0.14, () => K.rr(-0.18, -0.72, 0.14, 0.09, 0.02, vaLitGlass(K, -0.18, -0.72, -0.04, -0.63, VA_ICE), VA_INK, 0.02));
+    // trolley, cable, hook block, a container on the hook
+    K.box(0.52, -0.62, 0.14, 0.06, 0.12, { front: VA_STEEL[2], top: VA_STEEL[3], side: VA_STEEL[1], under: VA_STEEL[2], ink: 0.035, plain: true });
+    K.line([0.58, -0.56, 0.58, 0.02], VA_STEEL[3], 0.016);
+    K.rr(0.55, -0.02, 0.06, 0.06, 0.015, VA_PINK, VA_INK, 0.02);
+    K.line([0.58, 0.04, 0.42, 0.1, 0.58, 0.04, 0.78, 0.1], VA_STEEL[3], 0.014, 0.9);
+    const Cn = K.box(0.38, 0.1, 0.44, 0.24, 0.24, vaFaces(K, H, 0.38, 0.1, 0.44, 0.24, 0.24));
+    for (let i = 1; i < 6; i++) K.line([0.38 + i * 0.073, 0.12, 0.38 + i * 0.073, 0.32], H.frontLo, 0.016, 0.9);
+    K.rr(0.42, 0.18, 0.36, 0.05, 0.01, VA_PINK, 0, 0, 0.9);
+    K.poly(vaSq(Cn, 0.15, 0.3, 0.85, 0.45), VA_ICE, 0, 0, 0.8);
+    // warning lights: the jib tip and the A-frame
+    K.bloom(VA_PINK, 0.2, () => { K.oval(0.99, -0.69, 0.03, 0.03, VA_PINK); K.oval(apex[0], apex[1] - 0.01, 0.03, 0.03, VA_PINK); });
+  },
+
+  // T5 landmark -- the main gallery: a colonnaded hall on steps, a pediment, lit artworks, a glass pyramid on the roof.
+  lm_galeria(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.92), f = (...a) => a.flat();
+    K.base(0.86, 1.04);
+    const x = -0.9, w = 1.36, h = 0.74, d = 0.74, bz = (X, Y, z, W, Hh, D, o) => K.box(X + z * VA_DX, Y + z * VA_DY, W, Hh, D, o);
+    const stone = (yy) => ({ front: K.lin(0, yy, 0, yy + 0.1, H.lite, H.side), top: K.lin(-1, 0, 1, 0, H.lite, H.top), side: H.sideLo, under: H.front, ink: 0.06 });
+    bz(x - 0.08, 0.7, 0, w + 0.16, 0.1, d + 0.2, stone(0.7));
+    bz(x - 0.04, 0.62, 0.06, w + 0.08, 0.08, d + 0.12, stone(0.62));
+    const fx = x + 0.12 * VA_DX, fy = 0.62 - h + 0.12 * VA_DY, mx = fx + w / 2;
+    const B = K.box(fx, fy, w, h, d, vaFaces(K, H, fx, fy, w, h, d, { plain: true }));
+    K.poly(vaSq(B, 0.1, 0.3, 0.9, 0.75), vaMix(VA_ICE, '#0B2A4A', 0.6), VA_INK, 0.03);
+    [0.35, 0.65].forEach((u) => K.line([...B.side(u, 0.3), ...B.side(u, 0.75)], VA_INK, 0.02, 0.6));
+    // the recessed front: artworks between the columns, glass doors in the middle
+    K.rr(fx + 0.06, fy + 0.2, w - 0.12, h - 0.22, 0.02, K.lin(0, fy + 0.2, 0, fy + h, '#14235A', VA_SCREEN), VA_INK, 0.03);
+    const cols = 6, step = (w - 0.16) / (cols - 1), cx = (i) => fx + 0.08 + i * step;
+    const art = [VA_PINK, VA_ICE, null, VA_CYAN, VA_PINK];
+    art.forEach((hue, i) => {
+      const ax = cx(i) + 0.06, aw = step - 0.12;
+      if (!hue) { K.bloom(VA_ICE, 0.14, () => K.rr(ax - 0.02, fy + 0.32, aw + 0.04, h - 0.32, 0.02, vaGlass(K, ax, fy + 0.32, ax + aw, fy + h), VA_INK, 0.03)); K.line([ax + aw / 2, fy + 0.34, ax + aw / 2, fy + h], VA_INK, 0.02, 0.7); return; }
+      K.bloom(hue, 0.16, () => K.rr(ax, fy + 0.3, aw, 0.26, 0.02, VA_SCREEN, hue, 0.03));
+      K.oval(ax + aw * 0.4, fy + 0.4, aw * 0.18, aw * 0.18, hue, 0, 0, 0.9);
+      K.poly([ax + 0.03, fy + 0.53, ax + aw * 0.55, fy + 0.44, ax + aw - 0.03, fy + 0.53], vaMix(hue, VA_NIGHT, 0.3), 0);
+    });
+    for (let i = 0; i < cols; i++) {
+      const px = cx(i) - 0.035;
+      K.rr(px, fy + 0.2, 0.07, h - 0.24, 0.015, K.lin(px, 0, px + 0.07, 0, H.lite, [0.5, H.top], H.side), VA_INK, 0.025);
+      K.rr(px - 0.02, fy + 0.18, 0.11, 0.04, 0.01, H.lite, VA_INK, 0.02);
+      K.rr(px - 0.015, fy + h - 0.05, 0.1, 0.05, 0.01, H.top, VA_INK, 0.02);
+    }
+    // the entablature with an ice light line, the pediment
+    K.rr(fx - 0.02, fy + 0.08, w + 0.04, 0.11, 0.01, K.lin(0, fy + 0.08, 0, fy + 0.19, H.lite, H.front), VA_INK, 0.035);
+    K.bloom(VA_ICE, 0.14, () => K.line([fx + 0.06, fy + 0.165, fx + w - 0.06, fy + 0.165], VA_ICE, 0.025));
+    const pd = 0.16, pz = [pd * VA_DX, pd * VA_DY], L = [fx - 0.03, fy + 0.08], Rr = [fx + w + 0.03, fy + 0.08], A = [mx, fy - 0.24];
+    K.poly(f(L, A, [A[0] + pz[0], A[1] + pz[1]], [L[0] + pz[0], L[1] + pz[1]]), K.lin(...L, ...A, H.lite, H.top), VA_INK, 0.05);
+    K.poly(f(A, Rr, [Rr[0] + pz[0], Rr[1] + pz[1]], [A[0] + pz[0], A[1] + pz[1]]), K.lin(...A, ...Rr, H.side, H.sideLo), VA_INK, 0.05);
+    K.poly(f(L, A, Rr), K.lin(0, A[1], 0, L[1], H.hi, H.frontLo), VA_INK, 0.06);
+    K.poly(vaInset(f(L, A, Rr), 0.72), K.lin(0, A[1], 0, L[1], '#14235A', VA_SCREEN), 0);
+    K.bloom(VA_PINK, 0.18, () => K.oval(mx, fy - 0.04, 0.06, 0.06, null, VA_PINK, 0.03));
+    // the glass pyramid on the roof
+    const c00 = B.top(0.3, 0.4), c10 = B.top(0.76, 0.4), c11 = B.top(0.76, 0.92), mid = B.top(0.53, 0.66), ap = [mid[0], mid[1] - 0.4];
+    K.poly(f(c00, c10, c11, ap), vaMix(VA_ICE, '#0B2A4A', 0.5), VA_INK, 0.06);
+    K.poly(f(c10, c11, ap), K.lin(...c10, ...ap, vaMix(VA_ICE, '#0B2A4A', 0.62), vaMix(VA_ICE, '#0B2A4A', 0.35)), 0);
+    K.bloom(VA_ICE, 0.16, () => K.poly(f(c00, c10, ap), vaLitGlass(K, ...ap, ...c10, VA_ICE), VA_INK, 0.03));
+    [0.33, 0.66].forEach((t) => { K.line(f(vaLerp(c00, ap, t), vaLerp(c10, ap, t), vaLerp(c11, ap, t)), H.lite, 0.018, 0.8); });
+    K.line(f(vaLerp(c00, c10, 0.5), ap), H.lite, 0.018, 0.8);
+    K.bloom(VA_PINK, 0.18, () => K.oval(ap[0], ap[1], 0.03, 0.03, VA_PINK));
+  },
+
+  // T5 / T6 landmark -- the spire (one look at two tiers: its gate at T5, the
+  // spire itself at T6): a gate pavilion, a tapering tower with neon rings, an observation disc, a lit needle.
+  lm_iglica(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.8), p = vaP, f = (...a) => a.flat(), PI = Math.PI;
+    const lit = vaMix(P.col, VA_CYAN, 0.45);
+    K.base(0.86, 0.98);
+    K.glow(0, -0.4, 1.0, P.col, 0.16);
+    const bz = (X, Y, z, W, Hh, D, o) => K.box(X + z * VA_DX, Y + z * VA_DY, W, Hh, D, o);
+    bz(-0.86, 0.64, 0, 1.3, 0.18, 0.84, { front: K.lin(0, 0.64, 0, 0.82, VA_STEEL[3], VA_STEEL[1]), top: K.lin(-0.9, 0, 0.8, 0, VA_STEEL[3], VA_STEEL[2]), side: VA_STEEL[0], under: VA_STEEL[2] });
+    // the gate pavilion: an arch, lit frame, two pink lamps
+    const gx = -0.66 + 0.12 * VA_DX, gy = 0.28 + 0.12 * VA_DY;
+    bz(-0.66, 0.28, 0.12, 0.9, 0.36, 0.6, vaFaces(K, H, gx, gy, 0.9, 0.36, 0.6));
+    const ax = gx + 0.45, ab = gy + 0.36;
+    K.begin(); K.m(ax - 0.17, ab); K.l(ax - 0.17, ab - 0.16); K.ov(ax, ab - 0.16, 0.17, 0.14, PI, PI * 2, true); K.l(ax + 0.17, ab); K.z();
+    K.paint(K.lin(0, ab - 0.3, 0, ab, '#14235A', VA_SCREEN), VA_INK, 0.03);
+    K.bloom(lit, 0.18, () => { K.begin(); K.m(ax - 0.17, ab); K.l(ax - 0.17, ab - 0.16); K.ov(ax, ab - 0.16, 0.17, 0.14, PI, PI * 2, true); K.l(ax + 0.17, ab); K.paint(null, lit, 0.03); });
+    K.bloom(VA_PINK, 0.18, () => [gx + 0.1, gx + 0.8].forEach((lx) => K.rr(lx - 0.02, gy + 0.1, 0.04, 0.16, 0.02, VA_PINK)));
+    // the tower: front and right faces, a small top, rings, a lit window slit
+    const cx = -0.15, cz = 0.42, hb = 0.2, ht = 0.1, y0 = 0.28, y1 = -0.4;
+    const b0 = p(cx - hb, y0, cz - hb), b1 = p(cx + hb, y0, cz - hb), b2 = p(cx + hb, y0, cz + hb);
+    const t0 = p(cx - ht, y1, cz - ht), t1 = p(cx + ht, y1, cz - ht), t2 = p(cx + ht, y1, cz + ht), t3 = p(cx - ht, y1, cz + ht);
+    const ring = (t, a0, a1) => { const q = p(cx, y0 + (y1 - y0) * t, cz), rx = (hb + (ht - hb) * t) * 1.75; K.begin(); K.ov(q[0], q[1], rx, rx * 0.3, a0, a1); K.paint(null, VA_INK, 0.07); K.begin(); K.ov(q[0], q[1], rx, rx * 0.3, a0, a1); K.paint(null, P.lite, 0.035); };
+    [0.3, 0.62].forEach((t) => ring(t, PI, PI * 2));
+    K.poly(f(b0, b1, b2, t2, t3, t0), P.front, VA_INK, 0.09);
+    K.poly(f(b1, b2, t2, t1), K.lin(0, y1, 0, y0, H.side, H.sideLo), 0);
+    K.poly(f(b0, b1, t1, t0), K.lin(0, y1, 0, y0, H.hi, [0.5, H.front], H.frontLo), 0);
+    K.poly(f(t0, t1, t2, t3), H.lite, 0);
+    K.bloom(lit, 0.18, () => K.line(f(vaLerp(vaLerp(b0, b1, 0.5), vaLerp(t0, t1, 0.5), 0.08), vaLerp(vaLerp(b0, b1, 0.5), vaLerp(t0, t1, 0.5), 0.92)), lit, 0.035));
+    K.line(f(b0, t0), '#ffffff', 0.025, 0.5);
+    K.bloom(P.col, 0.16, () => [0.3, 0.62].forEach((t) => ring(t, 0, PI)));
+    // the observation disc and the needle
+    const top = p(cx, y1, cz);
+    K.drum(top[0], top[1] - 0.08, top[1] + 0.02, 0.3, 0.09, K.lin(top[0] - 0.3, 0, top[0] + 0.3, 0, H.lite, [0.4, H.front], H.sideLo), K.lin(top[0] - 0.3, 0, top[0] + 0.3, 0, H.lite, H.top), 0.05);
+    K.bloom(lit, 0.16, () => { K.begin(); K.ov(top[0], top[1] - 0.03, 0.3, 0.09, PI * 0.1, PI * 0.9); K.paint(null, lit, 0.03); });
+    const nb = top[1] - 0.1, nt = top[1] - 0.42;
+    K.poly([top[0] - 0.06, nb, top[0], nt, top[0] + 0.06, nb], K.lin(top[0] - 0.06, 0, top[0] + 0.06, 0, H.lite, H.side), VA_INK, 0.04);
+    K.bloom(lit, 0.3, () => K.oval(top[0], nt - 0.01, 0.04, 0.04, K.ball(top[0], nt - 0.01, 0.04, '#ffffff', lit), VA_INK, 0.02));
+  },
+
+  // T5 landmark -- the Central Station: a hall with a glazed barrel vault, a great arched portal over the rails, the metro roundel.
+  lm_stacja(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.9), PI = Math.PI;
+    K.base(0.86, 1.04);
+    const x = -0.92, w = 1.34, h = 0.72, d = 0.78;
+    K.box(x - 0.06, 0.7, w + 0.12, 0.1, d + 0.1, { front: K.lin(0, 0.7, 0, 0.8, VA_STEEL[3], VA_STEEL[1]), top: K.lin(-1, 0, 1, 0, VA_STEEL[3], VA_STEEL[2]), side: VA_STEEL[0], under: VA_STEEL[2] });
+    const fx = x + 0.04 * VA_DX, fy = 0.7 - h + 0.04 * VA_DY, mx = fx + w / 2;
+    const B = K.box(fx, fy, w, h, d, vaFaces(K, H, fx, fy, w, h, d, { plain: true }));
+    [[0.1, 0.3], [0.4, 0.6], [0.7, 0.9]].forEach(([u0, u1]) => K.poly(vaSq(B, u0, 0.3, u1, 0.8), vaMix(VA_ICE, '#0B2A4A', 0.58), VA_INK, 0.03));
+    // the glazed barrel vault, extruded back over the hall
+    const vx = mx, rx = w / 2 - 0.04, ry = 0.32, dv = [(d - 0.04) * VA_DX, (d - 0.04) * VA_DY];
+    K.begin(); K.ov(vx, fy, rx, ry, PI, PI * 2); K.ov(vx + dv[0], fy + dv[1], rx, ry, PI * 2, PI, true); K.z();
+    K.paint(K.lin(vx - rx, fy - ry, vx + rx + dv[0], fy, vaMix(VA_ICE, '#ffffff', 0.25), vaMix(VA_ICE, '#0B2A4A', 0.5)), VA_INK, 0.06);
+    [1.12, 1.26, 1.4, 1.55, 1.7, 1.86].forEach((t) => { const a = PI * t, q = [vx + rx * Math.cos(a), fy + ry * Math.sin(a)]; K.line([...q, q[0] + dv[0], q[1] + dv[1]], H.lite, 0.02, 0.85); });
+    // the lunette: a fan window
+    K.begin(); K.ov(vx, fy, rx, ry, PI, PI * 2); K.z();
+    K.paint(K.lin(0, fy - ry, 0, fy, vaMix(VA_ICE, '#ffffff', 0.45), vaMix(VA_ICE, '#0B2A4A', 0.45)), H.front, 0.05);
+    for (let i = 1; i < 6; i++) { const a = PI + PI * i / 6; K.line([vx, fy, vx + rx * Math.cos(a), fy + ry * Math.sin(a)], H.side, 0.02, 0.9); }
+    K.begin(); K.ov(vx, fy, rx * 0.4, ry * 0.4, PI, PI * 2); K.paint(null, H.side, 0.02, 0.9);
+    // the cornice with an ice light line
+    K.rr(fx - 0.02, fy - 0.02, w + 0.04, 0.07, 0.01, K.lin(0, fy - 0.02, 0, fy + 0.05, H.lite, H.front), VA_INK, 0.035);
+    K.bloom(VA_ICE, 0.14, () => K.line([fx + 0.04, fy + 0.03, fx + w - 0.04, fy + 0.03], VA_ICE, 0.022));
+    // the portal: a dark tunnel mouth, rails, a lit frame with a pink keystone
+    const ar = 0.3, ab = fy + h, as = ab - 0.26;
+    const arch = () => { K.begin(); K.m(mx - ar, ab); K.l(mx - ar, as); K.ov(mx, as, ar, ar * 0.95, PI, PI * 2, true); K.l(mx + ar, ab); };
+    arch(); K.z(); K.paint(K.lin(0, as - ar, 0, ab, VA_STEEL[0], '#030914'), VA_INK, 0.03);
+    K.bloom(VA_ICE, 0.14, () => [[-0.17, -0.05], [0.17, 0.05]].forEach(([a, b]) => K.line([mx + a, ab, mx + b, as - 0.02], VA_ICE, 0.02, 0.8)));
+    K.bloom(VA_ICE, 0.12, () => [0.2, 0.5, 0.8].forEach((t) => K.oval(mx + (t - 0.5) * 0.02, ab - (ab - as + 0.1) * t, 0.018, 0.018, VA_ICE)));
+    K.bloom(VA_ICE, 0.2, () => { arch(); K.paint(null, VA_ICE, 0.04); });
+    K.rr(mx - 0.035, as - ar * 0.95 - 0.04, 0.07, 0.07, 0.01, VA_PINK, VA_INK, 0.02);
+    // tall arched windows either side of the portal
+    [fx + 0.1, fx + 0.28, fx + w - 0.38, fx + w - 0.2].forEach((wx) => {
+      K.begin(); K.m(wx, fy + 0.58); K.l(wx, fy + 0.26); K.ov(wx + 0.05, fy + 0.26, 0.05, 0.05, PI, PI * 2, true); K.l(wx + 0.1, fy + 0.58); K.z();
+      K.paint(vaGlass(K, wx, fy + 0.2, wx + 0.1, fy + 0.58), VA_INK, 0.025);
+    });
+    // the metro roundel above the vault: an ice ring, a pink band, the M
+    const ry0 = fy - ry - 0.18;
+    K.line([mx, fy - ry + 0.02, mx, ry0 + 0.12], VA_INK, 0.06); K.line([mx, fy - ry + 0.02, mx, ry0 + 0.12], VA_STEEL[3], 0.025);
+    K.bloom(VA_ICE, 0.24, () => K.oval(mx, ry0, 0.15, 0.15, VA_SCREEN, VA_ICE, 0.035));
+    K.rr(mx - 0.17, ry0 - 0.025, 0.34, 0.05, 0.01, VA_PINK, VA_INK, 0.02);
+    K.line([mx - 0.07, ry0 + 0.06, mx - 0.07, ry0 - 0.07, mx, ry0, mx + 0.07, ry0 - 0.07, mx + 0.07, ry0 + 0.06], VA_INK, 0.06);
+    K.line([mx - 0.07, ry0 + 0.06, mx - 0.07, ry0 - 0.07, mx, ry0, mx + 0.07, ry0 - 0.07, mx + 0.07, ry0 + 0.06], '#ffffff', 0.03);
+  },
+
+  // T5 landmark -- the Night Bazaar gate: two pillars, a lintel, a double roof with upswept eaves, hanging lanterns.
+  lm_bazar(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.9);
+    K.base(0.86, 1.04);
+    const pill = (px) => {
+      K.box(px - 0.03, 0.7, 0.24, 0.12, 0.26, { front: K.lin(0, 0.7, 0, 0.82, VA_STEEL[3], VA_STEEL[1]), top: VA_STEEL[3], side: VA_STEEL[0], under: VA_STEEL[2], ink: 0.06 });
+      const Bp = K.box(px, -0.3, 0.18, 1.0, 0.22, vaFaces(K, H, px, -0.3, 0.18, 1.0, 0.22));
+      K.bloom(VA_PINK, 0.16, () => K.rr(px + 0.07, -0.22, 0.04, 0.84, 0.02, VA_PINK));
+      [0.1, 0.5, 0.9].forEach((v) => { const q = Bp.side(0.5, v); K.oval(q[0], q[1], 0.02, 0.02, VA_ICE); });
+    };
+    pill(-0.66); pill(0.3);
+    // the opening: a garland of lights from pillar to pillar
+    const gl = [-0.48, 0.02], gr = [0.3, 0.02];
+    K.begin(); K.m(...gl); K.q(-0.09, 0.26, ...gr); K.paint(null, VA_STEEL[1], 0.015);
+    K.bloom(VA_PINK, 0.12, () => { for (let i = 1; i < 10; i++) { const t = i / 10, x = (1 - t) * (1 - t) * gl[0] + 2 * t * (1 - t) * -0.09 + t * t * gr[0], y = (1 - t) * (1 - t) * gl[1] + 2 * t * (1 - t) * 0.26 + t * t * gr[1]; K.oval(x, y, 0.022, 0.022, i % 2 ? VA_PINK : VA_ICE); } });
+    // the lintel with a dark sign board
+    const Lb = K.box(-0.74, -0.42, 1.24, 0.14, 0.3, vaFaces(K, H, -0.74, -0.42, 1.24, 0.14, 0.3));
+    K.rr(-0.32, -0.4, 0.42, 0.1, 0.02, VA_SCREEN, VA_INK, 0.025);
+    K.bloom(VA_ICE, 0.16, () => K.rr(-0.26, -0.365, 0.3, 0.03, 0.015, VA_ICE));
+    // hanging lanterns
+    [-0.42, -0.25, -0.09, 0.07, 0.23].forEach((lx, i) => {
+      const ly = -0.12 + Math.abs(i - 2) * 0.04, hue = i % 2 ? VA_ICE : VA_PINK;
+      K.line([lx, -0.28, lx, ly - 0.07], VA_STEEL[3], 0.012, 0.8);
+      K.bloom(hue, 0.18, () => K.oval(lx, ly, 0.055, 0.075, K.ball(lx, ly, 0.06, '#ffffff', hue, vaMix(hue, VA_NIGHT, 0.5)), VA_INK, 0.02));
+      K.rr(lx - 0.03, ly - 0.09, 0.06, 0.025, 0.01, VA_STEEL[1], 0);
+    });
+    // two roof tiers: a slab rising to its ridge, a pink-lit eave
+    const roof = (xl, xr, ye, rise, sag, d, ridge) => {
+      const xm = (xl + xr) / 2, dd = [d * VA_DX, d * VA_DY];
+      K.begin(); K.m(xl, ye - rise); K.q(xm, ye + sag, xr, ye - rise); K.l(xr - 0.16 + dd[0], ye - ridge + dd[1]); K.l(xl + 0.16 + dd[0], ye - ridge + dd[1]); K.z();
+      K.paint(K.lin(0, ye - ridge + dd[1], 0, ye, H.lite, H.front), VA_INK, 0.06);
+      K.poly([xr, ye - rise, xr - 0.16 + dd[0], ye - ridge + dd[1], xr - 0.06 + dd[0] * 0.3, ye - rise + 0.06], H.side, VA_INK, 0.03);
+      K.begin(); K.m(xl, ye - rise); K.q(xm, ye + sag, xr, ye - rise); K.paint(null, VA_INK, 0.1);
+      K.bloom(VA_PINK, 0.16, () => { K.begin(); K.m(xl, ye - rise); K.q(xm, ye + sag, xr, ye - rise); K.paint(null, VA_PINK, 0.045); });
+      K.bloom(VA_ICE, 0.16, () => { K.oval(xl, ye - rise, 0.03, 0.03, VA_ICE); K.oval(xr, ye - rise, 0.03, 0.03, VA_ICE); });
+    };
+    const top = Lb.top(0.5, 0.5);
+    roof(-0.92, 0.72, -0.42, 0.12, 0.04, 0.44, 0.3);
+    [-0.4, 0.16].forEach((px) => K.rr(px, -0.86, 0.06, 0.2, 0.01, H.side, VA_INK, 0.025));
+    roof(-0.6, 0.42, -0.72, 0.1, 0.03, 0.3, 0.22);
+    // the finial
+    K.line([top[0] - 0.02, -0.98, top[0] - 0.02, -1.08], VA_INK, 0.06); K.line([top[0] - 0.02, -0.98, top[0] - 0.02, -1.08], VA_STEEL[3], 0.025);
+    K.bloom(VA_PINK, 0.2, () => K.oval(top[0] - 0.02, -1.08, 0.04, 0.04, K.ball(top[0] - 0.02, -1.08, 0.04, '#ffffff', VA_PINK), VA_INK, 0.02));
+  },
+
+  /* ---------- GG-OBJECTS-04: boss landmarks, T6 (green) ---------- */
+
+  // T6 landmark -- the City Core: a faceted energy crystal in a halo ring over a stepped reactor base, four pylons round it.
+  lm_rdzen(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.62), PI = Math.PI, f = (...a) => a.flat();
+    K.base(0.84, 1.02);
+    K.glow(0, -0.4, 1.08, P.col, 0.3);
+    K.drum(0, 0.52, 0.7, 0.98, 0.28, K.lin(-0.98, 0, 0.98, 0, VA_STEEL[3], [0.5, VA_STEEL[1]], VA_STEEL[0]), K.lin(-0.98, 0, 0.98, 0, VA_STEEL[3], VA_STEEL[2]));
+    K.bloom(P.col, 0.2, () => { K.begin(); K.ov(0, 0.63, 0.98, 0.28, PI * 0.06, PI * 0.94); K.paint(null, P.col, 0.035); });
+    const pylon = (a, hh) => {
+      const bx = Math.cos(a) * 0.84, by = 0.52 + Math.sin(a) * 0.23, ty = by - hh;
+      K.poly([bx - 0.07, by, bx - 0.035, ty, bx + 0.035, ty, bx + 0.07, by], K.lin(bx - 0.07, 0, bx + 0.07, 0, H.lite, [0.5, H.front], H.sideLo), VA_INK, 0.035);
+      K.line([bx, by - 0.04, bx, ty + 0.04], P.lite, 0.015, 0.7);
+      K.bloom(P.col, 0.2, () => K.oval(bx, ty - 0.03, 0.05, 0.05, K.ball(bx, ty - 0.03, 0.05, '#ffffff', P.lite, P.col), VA_INK, 0.02));
+      if (!K.icon) K.line([bx, ty - 0.03, bx * 0.25, -0.4], vaMix(VA_TEAL, '#ffffff', 0.3), 0.012, 0.55);
+    };
+    pylon(PI * 1.22, 0.76); pylon(PI * 1.78, 0.76);
+    K.drum(0, 0.3, 0.5, 0.7, 0.2, K.lin(-0.7, 0, 0.7, 0, H.lite, [0.3, H.front], [0.75, H.side], H.sideLo), K.lin(-0.7, 0, 0.7, 0, H.lite, H.top));
+    for (let k = 0; k < 7; k++) { const a = PI * (0.12 + k * 0.12), xx = 0.7 * Math.cos(a), yy = 0.38 + 0.2 * Math.sin(a); K.rr(xx - 0.035, yy - 0.04, 0.07, 0.08, 0.01, VA_TEAL, VA_INK, 0.015, 0.95); }
+    K.oval(0, 0.3, 0.42, 0.12, K.rad(0, 0.3, 0, 0.42, vaMix(P.col, '#ffffff', 0.5), P.col, VA_STEEL[1]), VA_INK, 0.03);
+    // the halo ring's back half, the crystal, the front half
+    const halo = (a0, a1) => { K.begin(); K.ov(0, -0.36, 0.64, 0.19, a0, a1); K.paint(null, VA_INK, 0.11); K.begin(); K.ov(0, -0.36, 0.64, 0.19, a0, a1); K.paint(null, K.lin(-0.64, 0, 0.64, 0, H.lite, H.side), 0.06); };
+    halo(PI, PI * 2);
+    K.bloom(VA_TEAL, 0.2, () => K.line([0, 0.26, 0, 0.12], vaMix(VA_TEAL, '#ffffff', 0.4), 0.04, 0.85));
+    const ap = [0.02, -1.04], lf = [-0.36, -0.42], rt = [0.4, -0.44], fr = [0.06, -0.3], bt = [0.02, 0.12];
+    K.bloom(P.col, 0.5, () => K.poly(f(ap, lf, bt, rt), P.col, VA_INK, 0.06));
+    K.poly(f(ap, lf, fr), K.lin(...lf, ...ap, '#ffffff', P.lite), 0);
+    K.poly(f(ap, fr, rt), K.lin(...fr, ...rt, P.hi, P.col), 0);
+    K.poly(f(lf, fr, bt), K.lin(...lf, ...bt, P.col, P.frontLo), 0);
+    K.poly(f(fr, rt, bt), K.lin(...fr, ...rt, P.side, P.sideLo), 0);
+    K.line(f(lf, fr, rt), '#ffffff', 0.02, 0.6); K.line(f(ap, fr, bt), '#ffffff', 0.02, 0.45);
+    K.poly([-0.14, -0.6, -0.04, -0.82, -0.02, -0.62], '#ffffff', 0, 0, 0.6);
+    K.bloom(P.col, 0.2, () => halo(0, PI));
+    K.bloom('#9875FF', 0.16, () => [PI * 0.3, PI * 0.7].forEach((a) => K.oval(0.64 * Math.cos(a), -0.36 + 0.19 * Math.sin(a), 0.03, 0.03, '#9875FF', VA_INK, 0.015)));
+    pylon(PI * 0.24, 0.62); pylon(PI * 0.76, 0.62);
+  },
+
+  // T6 landmark -- the Pixel Factory: a sawtooth hall with glazed roof teeth, two chimneys breathing pixels, a loading gate.
+  lm_fabryka(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.72), f = (...a) => a.flat();
+    K.base(0.86, 1.04);
+    const D = 0.72, dv = [D * VA_DX, D * VA_DY], sh = (q) => [q[0] + dv[0], q[1] + dv[1]], X = 0.06;
+    // the chimneys behind the hall, and their pixel smoke
+    [[-0.26, -0.86], [0.12, -0.66]].forEach(([cx, ty]) => {
+      K.drum(cx, ty, 0.1, 0.1, 0.035, K.lin(cx - 0.1, 0, cx + 0.1, 0, H.lite, [0.4, H.front], H.sideLo), VA_STEEL[0], 0.04);
+      [0.18, 0.4].forEach((t) => { const yy = ty + 0.04 + (0.1 - ty) * t; K.begin(); K.ov(cx, yy, 0.1, 0.035, 0, Math.PI); K.paint(null, P.lite, 0.025, 0.9); });
+      K.bloom(VA_TEAL, 0.14, () => { K.begin(); K.ov(cx, ty, 0.1, 0.035, 0, Math.PI * 2); K.paint(null, VA_TEAL, 0.02); });
+    });
+    const px = [[-0.3, -0.98, 0.07, 0.9], [-0.2, -1.06, 0.05, 0.7], [-0.34, -1.1, 0.04, 0.5], [0.1, -0.78, 0.06, 0.9], [0.18, -0.86, 0.045, 0.7], [0.08, -0.92, 0.035, 0.5]];
+    K.bloom(P.col, 0.14, () => px.forEach(([x, y, s, a], i) => K.rr(x, y, s, s, 0.005, [P.lite, VA_TEAL, VA_PINK][i % 3], 0, 0, a)));
+    // the hall: a sawtooth profile extruded back; roofs lit, glazing facing right
+    const prof = [[-0.92, 0.8], [-0.92, 0.06], [-0.48, -0.24], [-0.48, 0.06], [-0.04, -0.24], [-0.04, 0.06], [0.4, -0.24], [0.4, 0.8]].map(([x, y]) => [x + X, y]);
+    for (let i = 1; i < prof.length - 2; i++) {
+      const a = prof[i], b = prof[i + 1];
+      if (b[1] < a[1]) K.poly(f(a, b, sh(b), sh(a)), K.lin(...sh(a), ...b, H.lite, H.top), VA_INK, 0.05);
+      else K.poly(f(a, b, sh(b), sh(a)), vaLitGlass(K, ...a, ...sh(b), VA_TEAL), VA_INK, 0.04);
+    }
+    const RT = prof[6], RB = prof[7];
+    K.poly(f(RT, RB, sh(RB), sh(RT)), K.lin(...RT, ...sh(RB), H.side, H.sideLo), VA_INK, 0.05);
+    const sd = (u, v) => vaLerp(vaLerp(RT, RB, v), vaLerp(sh(RT), sh(RB), v), u);
+    [0.3, 0.7].forEach((t) => K.poly(f(sd(t - 0.12, 0.36), sd(t + 0.12, 0.36), sd(t + 0.12, 0.62), sd(t - 0.12, 0.62)), vaMix(VA_TEAL, '#0B2A4A', 0.62), VA_INK, 0.02));
+    K.poly(f(...prof), K.lin(0, -0.24, 0, 0.8, H.hi, [0.35, H.front], H.frontLo), VA_INK, 0.09);
+    K.line([prof[1][0], prof[1][1], prof[2][0], prof[2][1]], '#ffffff', 0.025, 0.55);
+    K.bloom(P.col, 0.16, () => K.line([prof[0][0] + 0.03, 0.14, prof[7][0] - 0.03, 0.14], P.col, 0.03));
+    // pixel windows, a pixel emblem on the right gable, the loading gate
+    for (let j = 0; j < 3; j++) for (let k = 0; k < 9; k++) {
+      const wx = -0.84 + X + k * 0.135, wy = 0.22 + j * 0.1;
+      if (wx > -0.28 + X && wx < 0.12 + X && j > 0) continue;
+      K.rr(wx, wy, 0.075, 0.07, 0.01, (j * 5 + k * 3) % 4 === 0 ? '#ffffff' : (j + k) % 3 ? vaMix(VA_TEAL, '#0B2A4A', 0.3) : P.lite, VA_INK, 0.015, 0.95);
+    }
+    const ex = 0.2 + X, ey = -0.1;
+    K.bloom(VA_PINK, 0.12, () => [[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2], [1, 1]].forEach(([i, j], n) => K.rr(ex + i * 0.045, ey + j * 0.045, 0.04, 0.04, 0.004, n === 8 ? P.lite : VA_PINK)));
+    K.rr(-0.26 + X, 0.36, 0.36, 0.44, 0.02, VA_STEEL[0], VA_INK, 0.035);
+    for (let i = 0; i < 5; i++) K.line([-0.23 + X, 0.42 + i * 0.07, 0.07 + X, 0.42 + i * 0.07], H.side, 0.025, 0.9);
+    K.bloom(P.col, 0.14, () => { for (let i = 0; i < 5; i++) { const sx = -0.25 + X + i * 0.072; K.poly([sx, 0.79, sx + 0.035, 0.75, sx + 0.07, 0.75, sx + 0.035, 0.79], P.col, 0); } });
+    K.bloom(VA_TEAL, 0.2, () => K.rr(-0.14 + X, 0.31, 0.12, 0.035, 0.015, VA_TEAL, VA_INK, 0.015));
+  },
+
+  // T6 landmark -- the Hologram Lighthouse: a striped tower on a stone plinth, a gallery, a glass lantern, hologram beams.
+  lm_latarnia(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.78), PI = Math.PI;
+    K.base(0.84, 0.88);
+    K.glow(0, -0.5, 0.95, P.col, 0.2);
+    const ly = -0.5;
+    // the hologram beams: light, not body (an icon leaves them out)
+    if (!K.icon) {
+      [-1, 1].forEach((s) => { K.poly([s * 0.06, ly - 0.03, s * 1.06, ly - 0.32, s * 1.06, ly + 0.16, s * 0.06, ly + 0.03], K.lin(0, 0, s * 1.06, 0, rgbaColor(VA_TEAL, 0.5), rgbaColor(VA_TEAL, 0)), 0); });
+      [[-0.78, -0.62], [-0.56, -0.38], [0.66, -0.66], [0.86, -0.42]].forEach(([x, y], i) => K.rr(x, y, 0.045, 0.045, 0.005, i % 2 ? VA_PINK : P.lite, 0, 0, 0.6));
+    }
+    // the plinth and the keeper's house
+    K.drum(0, 0.56, 0.72, 0.66, 0.2, K.lin(-0.66, 0, 0.66, 0, VA_STEEL[3], [0.5, VA_STEEL[1]], VA_STEEL[0]), K.lin(-0.66, 0, 0.66, 0, VA_STEEL[3], VA_STEEL[2]));
+    K.bloom(P.col, 0.16, () => { K.begin(); K.ov(0, 0.64, 0.66, 0.2, PI * 0.08, PI * 0.92); K.paint(null, P.col, 0.03); });
+    K.box(-0.62, 0.34, 0.32, 0.24, 0.22, vaFaces(K, H, -0.62, 0.34, 0.32, 0.24, 0.22));
+    K.rr(-0.56, 0.4, 0.1, 0.1, 0.01, VA_TEAL, VA_INK, 0.015);
+    K.rr(-0.42, 0.42, 0.08, 0.16, 0.01, VA_STEEL[0], VA_INK, 0.015);
+    // the tower: a frustum in green and steel bands, slit windows
+    const yb = 0.6, yt = -0.34, rb = 0.3, rt = 0.17, at = (t) => [yb + (yt - yb) * t, rb + (rt - rb) * t];
+    const band = (t0, t1, fill) => { const [y0, r0] = at(t0), [y1, r1] = at(t1); K.begin(); K.ov(0, y0, r0, r0 * 0.3, PI, 0); K.l(r1, y1); K.ov(0, y1, r1, r1 * 0.3, 0, PI, true); K.z(); K.paint(fill, 0); };
+    band(0, 1, VA_INK); K.paint(null, VA_INK, 0.09);
+    [[0, 0.2], [0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1]].forEach(([t0, t1], i) => band(t0, t1, i % 2 ? K.lin(-0.3, 0, 0.3, 0, H.lite, [0.4, H.front], H.sideLo) : K.lin(-0.3, 0, 0.3, 0, VA_STEEL[3], [0.45, VA_STEEL[2]], VA_STEEL[0])));
+    [0.1, 0.5, 0.9].forEach((t) => { const [y] = at(t); K.rr(-0.025, y - 0.04, 0.05, 0.08, 0.02, VA_TEAL, VA_INK, 0.015); });
+    // the gallery and its rail
+    K.drum(0, yt - 0.04, yt + 0.02, 0.28, 0.08, K.lin(-0.28, 0, 0.28, 0, VA_STEEL[3], VA_STEEL[1]), K.lin(-0.28, 0, 0.28, 0, H.top, H.side), 0.04);
+    for (let i = 0; i <= 6; i++) { const a = PI * (0.08 + i * 0.14), x = 0.28 * Math.cos(a), y = yt - 0.04 + 0.08 * Math.sin(a); K.line([x, y, x, y - 0.08], VA_STEEL[3], 0.015); }
+    K.begin(); K.ov(0, yt - 0.12, 0.28, 0.08, PI * 0.02, PI * 0.98); K.paint(null, VA_STEEL[3], 0.02);
+    // the lantern: glass round a white light, a hologram ring, the cap
+    K.begin(); K.ov(0, ly, 0.36, 0.1, PI, PI * 2); K.paint(null, rgbaColor(VA_TEAL, 0.8), 0.025);
+    K.drum(0, -0.62, yt - 0.05, 0.15, 0.045, vaLitGlass(K, -0.15, -0.62, 0.15, yt, vaMix(VA_TEAL, '#ffffff', 0.3)), vaMix(VA_TEAL, '#ffffff', 0.5), 0.035);
+    K.bloom('#ffffff', 0.4, () => K.oval(0, ly + 0.01, 0.07, 0.07, K.ball(0, ly + 0.01, 0.07, '#ffffff', vaMix(VA_TEAL, '#ffffff', 0.5)), 0));
+    K.bloom(VA_TEAL, 0.16, () => { K.begin(); K.ov(0, ly, 0.36, 0.1, 0, PI); K.paint(null, VA_TEAL, 0.03); });
+    K.poly([-0.19, -0.62, 0, -0.84, 0.19, -0.62], K.lin(-0.19, 0, 0.19, 0, H.lite, [0.5, H.front], H.sideLo), VA_INK, 0.04);
+    K.begin(); K.ov(0, -0.62, 0.19, 0.055, 0, PI); K.paint(null, VA_INK, 0.04);
+    K.line([0, -0.86, 0, -0.98], VA_INK, 0.05); K.line([0, -0.86, 0, -0.98], VA_STEEL[3], 0.02);
+    K.bloom(P.col, 0.2, () => K.oval(0, -0.88, 0.04, 0.04, K.ball(0, -0.88, 0.04, '#ffffff', P.lite, P.col), VA_INK, 0.02));
+  },
+
+  // T6 landmark -- the Tree of Light: a crown of glowing lobes on a veined trunk, roots over a round planter, drops of light.
+  lm_drzewo(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.62), PI = Math.PI;
+    K.base(0.84, 1.0);
+    K.glow(0, -0.5, 1.08, P.col, 0.26);
+    K.drum(0, 0.5, 0.7, 0.88, 0.24, K.lin(-0.88, 0, 0.88, 0, VA_STEEL[3], [0.5, VA_STEEL[1]], VA_STEEL[0]), K.lin(-0.88, 0, 0.88, 0, vaMix(P.col, VA_STEEL[1], 0.55), vaMix(P.col, VA_STEEL[0], 0.75)));
+    K.bloom(P.col, 0.16, () => { K.begin(); K.ov(0, 0.6, 0.88, 0.24, PI * 0.06, PI * 0.94); K.paint(null, P.col, 0.03); });
+    // roots over the planter
+    [[-1, 0.52, 0.62], [-1, 0.3, 0.7], [1, 0.5, 0.62], [1, 0.26, 0.7]].forEach(([s, ex, ey]) => {
+      K.begin(); K.m(s * 0.1, 0.46); K.q(s * 0.22, 0.52, s * ex, ey); K.paint(null, VA_INK, 0.1);
+      K.begin(); K.m(s * 0.1, 0.46); K.q(s * 0.22, 0.52, s * ex, ey); K.paint(null, H.side, 0.055);
+      K.begin(); K.m(s * 0.12, 0.47); K.q(s * 0.22, 0.52, s * ex, ey); K.paint(null, P.lite, 0.012, 0.8);
+    });
+    // the trunk and three branches
+    K.begin();
+    K.m(-0.17, 0.5); K.q(-0.08, 0.22, -0.1, 0.0); K.q(-0.2, -0.16, -0.44, -0.34); K.l(-0.36, -0.42); K.q(-0.16, -0.26, -0.04, -0.14);
+    K.l(-0.06, -0.52); K.l(0.06, -0.52); K.l(0.05, -0.14); K.q(0.18, -0.28, 0.36, -0.44); K.l(0.44, -0.36); K.q(0.2, -0.16, 0.1, 0.0); K.q(0.08, 0.22, 0.17, 0.5); K.z();
+    K.paint(K.lin(-0.2, 0, 0.2, 0, H.hi, [0.45, H.side], H.sideLo), VA_INK, 0.05);
+    K.bloom(P.col, 0.14, () => { K.line([-0.04, 0.46, -0.04, 0.0, -0.22, -0.2], P.lite, 0.018, 0.85); K.line([0.06, 0.4, 0.04, 0.02, 0.24, -0.22], P.lite, 0.015, 0.7); });
+    // the crown: lobes from the back to the front
+    const lobe = (x, y, rr, back) => K.oval(x, y, rr, rr * 0.94, K.ball(x, y, rr, back ? P.hi : '#ffffff', back ? P.col : P.lite, back ? vaMix(P.col, VA_SHADE, 0.4) : P.col, back ? vaMix(P.col, VA_NIGHT, 0.6) : P.frontLo), VA_INK, 0.04);
+    K.bloom(P.col, 0.3, () => {
+      [[0.52, -0.5, 0.3], [-0.52, -0.48, 0.3], [0, -0.78, 0.32], [-0.3, -0.72, 0.28], [0.34, -0.74, 0.28]].forEach(([x, y, rr]) => lobe(x, y, rr, true));
+      [[-0.6, -0.26, 0.23], [0.62, -0.28, 0.23], [0, -0.46, 0.33], [-0.28, -0.3, 0.24], [0.3, -0.3, 0.24]].forEach(([x, y, rr]) => lobe(x, y, rr, false));
+    });
+    // lights in the crown, one violet; drops of light hanging from it
+    K.bloom('#ffffff', 0.12, () => [[-0.5, -0.52], [0.42, -0.62], [0, -0.86], [0.12, -0.36], [-0.32, -0.24], [0.58, -0.24], [-0.14, -0.66]].forEach(([x, y]) => K.oval(x, y, 0.03, 0.03, '#ffffff')));
+    K.bloom('#9875FF', 0.14, () => K.oval(0.26, -0.56, 0.035, 0.035, '#9875FF', VA_INK, 0.015));
+    [[-0.66, -0.06, 0.12], [0.66, -0.08, 0.16], [-0.22, -0.08, 0.2], [0.34, -0.08, 0.1]].forEach(([x, y, l]) => {
+      K.line([x, y, x, y + l], P.lite, 0.012, 0.8);
+      K.bloom(VA_TEAL, 0.16, () => K.oval(x, y + l + 0.02, 0.026, 0.036, K.ball(x, y + l + 0.02, 0.03, '#ffffff', VA_TEAL), 0));
+    });
+  },
+
+  // T6 landmark -- the Main Server: a rack tower of glowing blades behind glass, cooling fins, a side unit, a data cloud above.
+  lm_serwer(c, r, col) {
+    const K = vaKit(c, r, col), P = K.P, H = vaHull(col, 0.58), PI = Math.PI;
+    K.base(0.86, 1.04);
+    K.glow(-0.1, -0.7, 0.7, P.col, 0.2);
+    K.box(-0.86, 0.7, 1.22, 0.12, 0.84, { front: K.lin(0, 0.7, 0, 0.82, VA_STEEL[3], VA_STEEL[1]), top: K.lin(-1, 0, 1, 0, VA_STEEL[3], VA_STEEL[2]), side: VA_STEEL[0], under: VA_STEEL[2] });
+    // the rack tower
+    const z = 0.06, fx = -0.72 + z * VA_DX, fy = 0.7 - 1.16 + z * VA_DY, w = 0.72, h = 1.16, d = 0.62;
+    const B = K.box(fx, fy, w, h, d, vaFaces(K, H, fx, fy, w, h, d));
+    for (let i = 1; i < 9; i++) K.line([...B.side(i / 9, 0.06), ...B.side(i / 9, 0.94)], VA_STEEL[0], 0.025, 0.85);
+    K.bloom(P.col, 0.14, () => K.line([...B.side(0.04, 0.03), ...B.side(0.96, 0.03)], P.col, 0.025));
+    K.poly(vaTq(B, 0.12, 0.15, 0.88, 0.85), vaMix(P.col, VA_STEEL[0], 0.7), VA_INK, 0.02);
+    // the glass door over the blades
+    const gx = fx + 0.07, gy = fy + 0.08, gw = w - 0.14, gh = h - 0.16;
+    K.rr(gx, gy, gw, gh, 0.02, K.lin(gx, gy, gx + gw, gy + gh, '#14235A', '#05101F'), VA_INK, 0.035);
+    for (let i = 0; i < 9; i++) {
+      const by = gy + 0.05 + i * (gh - 0.08) / 9, bh = (gh - 0.08) / 9 - 0.025;
+      K.rr(gx + 0.04, by, gw - 0.08, bh, 0.01, VA_STEEL[1], VA_STEEL[0], 0.012);
+      const leds = [P.lite, VA_TEAL, P.lite, i % 4 === 1 ? VA_PINK : P.col];
+      K.bloom(P.col, 0.08, () => leds.forEach((lc, k) => K.rr(gx + 0.07 + k * 0.05, by + bh / 2 - 0.016, 0.03, 0.032, 0.006, lc)));
+      K.rr(gx + 0.3, by + bh / 2 - 0.008, (gw - 0.4) * (0.4 + ((i * 3) % 5) * 0.12), 0.016, 0.008, vaMix(VA_TEAL, '#0B2A4A', 0.3), 0);
+    }
+    K.poly([gx + 0.06, gy + gh - 0.04, gx + 0.3, gy + 0.04, gx + 0.38, gy + 0.04, gx + 0.14, gy + gh - 0.04], '#ffffff', 0, 0, 0.12);
+    K.line([gx + gw - 0.04, gy + gh * 0.42, gx + gw - 0.04, gy + gh * 0.58], P.lite, 0.025);
+    // the cooling unit beside the tower: two fans
+    const uz = 0.2, ux = 0.08 + uz * VA_DX, uy = 0.7 - 0.52 + uz * VA_DY;
+    K.box(ux, uy, 0.3, 0.52, 0.5, vaFaces(K, H, ux, uy, 0.3, 0.52, 0.5));
+    [0.14, 0.38].forEach((t) => {
+      const cx = ux + 0.15, cy = uy + t + 0.02;
+      K.oval(cx, cy, 0.1, 0.1, VA_STEEL[0], VA_INK, 0.025);
+      for (let k = 0; k < 4; k++) { const a = k * PI / 2 + 0.3; K.line([cx, cy, cx + Math.cos(a) * 0.08, cy + Math.sin(a) * 0.08], VA_STEEL[3], 0.03); }
+      K.oval(cx, cy, 0.025, 0.025, P.lite, 0);
+    });
+    // the data cloud above, linked by beams of packets
+    const tq = B.top(0.5, 0.5), cx = tq[0] + 0.02, cy = -0.9;
+    if (!K.icon) [-0.12, 0, 0.12].forEach((o, i) => { K.line([cx + o, tq[1] - 0.02, cx + o * 1.2, cy + 0.08], rgbaColor(VA_TEAL, 0.7), 0.012); K.rr(cx + o * 1.1 - 0.015, tq[1] - 0.12 - i * 0.04, 0.03, 0.03, 0.004, P.lite); });
+    K.bloom(P.col, 0.3, () => {
+      K.begin(); K.ov(cx - 0.16, cy + 0.03, 0.13, 0.1, PI * 0.5, PI * 1.5); K.ov(cx + 0.01, cy - 0.04, 0.17, 0.14, PI, PI * 2, true); K.ov(cx + 0.18, cy + 0.03, 0.12, 0.1, PI * 1.5, PI * 2.5, true); K.z();
+      K.paint(K.lin(cx - 0.3, cy - 0.18, cx + 0.3, cy + 0.13, vaMix(P.lite, '#ffffff', 0.4), [0.5, P.col], vaMix(P.col, '#0B2A4A', 0.4)), VA_INK, 0.04);
+    });
+    K.begin(); K.ov(cx + 0.01, cy - 0.04, 0.12, 0.09, PI * 1.1, PI * 1.5); K.paint(null, '#ffffff', 0.03, 0.6);
   }
 };
 
-/** GG-OBJECTS-03: the T3/T4 looks of VA_ART (their sprites stay at 2x). */
-const VA_BIG = new Set(['samochod', 'wezel', 'pylon', 'zasilacz', 'lustro', 'mostek', 'pawilon', 'billboard', 'magazyn', 'landmark', 'lm_kino', 'lm_fontanna', 'portal']);
+/* GG-OBJECTS-04 (T5/T6): what the biggest looks share -- the same kit and
+   camera; their metal is the class color laid over cool steel (silver T5,
+   green T6), T5 light is ice blue, T6 light is teal. */
+const VA_ICE = vaMix(VA_CYAN, '#ffffff', 0.45);
+const VA_TEAL = vaMix('#46D99A', VA_CYAN, 0.35);
+/** The class color laid over cool steel: k = the share of the class color. */
+function vaHull(col, k) {
+  const P = vaPalette(col), m = (c, t) => vaMix(c, VA_STEEL[1], Math.max(0, Math.min(1, t)));
+  return {
+    lite: m(P.lite, (1 - k) * 0.4), top: m(P.top, (1 - k) * 0.5), hi: m(P.hi, (1 - k) * 0.45),
+    front: m(P.col, 1 - k), frontLo: m(vaMix(P.col, VA_SHADE, 0.3), 1.15 - k),
+    side: m(vaMix(P.col, VA_SHADE, 0.45), 1.05 - k * 0.8), sideLo: m(vaMix(P.col, VA_NIGHT, 0.72), 1 - k * 0.55)
+  };
+}
+/** box() fills from a hull: the front darkens downward, the top is lit, the right side falls into violet steel. */
+function vaFaces(K, H, x, y, w, h, d, extra) {
+  return Object.assign({
+    front: K.lin(0, y, 0, y + h, H.front, H.frontLo), top: K.lin(x + d * VA_DX, y + d * VA_DY, x + w, y, H.lite, H.top),
+    side: K.lin(x + w, y, x + w + d * VA_DX, y + h, H.side, H.sideLo), under: H.front
+  }, extra || {});
+}
+/** Lit glass of a hue between two points. */
+function vaLitGlass(K, x0, y0, x1, y1, hue) {
+  return K.lin(x0, y0, x1, y1, vaMix(hue, '#ffffff', 0.4), [0.5, vaMix(hue, '#0B2A4A', 0.45)], vaMix(hue, '#0B2A4A', 0.78));
+}
+/** A wheel on a vehicle's right side (the y-z plane at x): tyre, rim, hub. */
+function vaWheel(K, P, x, cy, z, rad) {
+  const ring = (q) => { const pts = []; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; pts.push(...vaP(x, cy + Math.sin(a) * q, z + Math.cos(a) * q)); } return pts; };
+  K.poly(ring(rad), VA_STEEL[0], VA_INK, 0.045);
+  K.poly(ring(rad * 0.58), VA_STEEL[3], VA_STEEL[1], 0.025);
+  K.poly(ring(rad * 0.22), P.hi, 0);
+}
+/** A quad on a box's right side (u = depth, v = height) / on its top (u = width, v = depth). */
+const vaSq = (B, u0, v0, u1, v1) => [...B.side(u0, v0), ...B.side(u1, v0), ...B.side(u1, v1), ...B.side(u0, v1)];
+const vaTq = (B, u0, v0, u1, v1) => [...B.top(u0, v0), ...B.top(u1, v0), ...B.top(u1, v1), ...B.top(u0, v1)];
+
+/** GG-OBJECTS-03 / -04: the T3-T6 looks of VA_ART (their sprites stay at 2x). */
+const VA_BIG = new Set(['samochod', 'wezel', 'pylon', 'zasilacz', 'lustro', 'mostek', 'pawilon', 'billboard', 'magazyn', 'landmark', 'lm_kino', 'lm_fontanna', 'portal',
+  // GG-OBJECTS-04: T5 / T6 and their landmarks
+  'autobus', 'tramwaj', 'ciezarowka', 'wiezowiec', 'maszt', 'kopula', 'lm_dzwig', 'lm_galeria', 'lm_iglica', 'lm_stacja', 'lm_bazar',
+  'lm_rdzen', 'lm_fabryka', 'lm_latarnia', 'lm_drzewo', 'lm_serwer']);
 /** Lettering on a board sprite, painted after the art (text goes through the
  *  language layer, so it is not part of the shape the icons replay). */
 const VA_DECALS = {
@@ -5842,310 +6523,10 @@ const OBJECT_ART = {
   // pawilon, billboard, magazyn, landmark, lm_kino, lm_fontanna, portal --
   // also VA_ART (same kit, same camera).
 
-  /* ---------- v10: T5 (silver) heavy vehicles ---------- */
-
-  // T5 -- city bus: long body, window band, destination sign.
-  autobus(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.25);
-    c.beginPath(); c.ellipse(0, r * 0.5, r * 1.1, r * 0.12, 0, 0, Math.PI * 2); c.fill();
-    roundRectPath(c, -r * 1.05, -r * 0.55, r * 2.1, r * 0.95, r * 0.18);
-    paintBody(c, col, -r * 0.55, r * 0.4, { light: 0.5, dark: -0.45, glow: 12 });
-    const glass = c.createLinearGradient(0, -r * 0.45, 0, -r * 0.1);
-    glass.addColorStop(0, '#ffffff'); glass.addColorStop(1, shadeColor(col, 0.55));
-    c.fillStyle = glass;
-    for (let i = 0; i < 6; i++) { roundRectPath(c, -r * 0.92 + i * r * 0.3, -r * 0.42, r * 0.24, r * 0.3, r * 0.04); c.fill(); }
-    c.fillStyle = shadeColor(col, -0.45); c.fillRect(-r * 1.0, -r * 0.02, r * 2.0, r * 0.07);
-    c.save(); c.shadowBlur = 10; c.shadowColor = '#fff'; c.fillStyle = '#fff';
-    roundRectPath(c, r * 0.55, -r * 0.62, r * 0.4, r * 0.1, r * 0.03); c.fill(); c.restore();
-    [-r * 0.62, r * 0.6].forEach(x => {
-      c.beginPath(); c.arc(x, r * 0.4, r * 0.18, 0, Math.PI * 2); c.fillStyle = '#0a0f18'; c.fill();
-      c.lineWidth = r * 0.05; c.strokeStyle = shadeColor(col, 0.2); c.stroke();
-    });
-  },
-
-  // T5 -- two-car tram with a pantograph.
-  tramwaj(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.25);
-    c.beginPath(); c.ellipse(0, r * 0.52, r * 1.1, r * 0.12, 0, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = shadeColor(col, 0.3); c.lineWidth = r * 0.04;
-    c.beginPath(); c.moveTo(-r * 0.2, -r * 0.5); c.lineTo(r * 0.1, -r * 0.85); c.lineTo(r * 0.35, -r * 0.5); c.moveTo(-r * 0.15, -r * 0.85); c.lineTo(r * 0.4, -r * 0.85); c.stroke();
-    [[-r * 1.05, r * 1.0], [r * 0.05, r * 1.0]].forEach(([x, w]) => {
-      roundRectPath(c, x, -r * 0.5, w, r * 0.9, r * 0.14);
-      paintBody(c, col, -r * 0.5, r * 0.4, { light: 0.5, dark: -0.45, glow: 12 });
-      const glass = c.createLinearGradient(0, -r * 0.4, 0, -r * 0.05);
-      glass.addColorStop(0, '#ffffff'); glass.addColorStop(1, shadeColor(col, 0.55));
-      c.fillStyle = glass;
-      for (let i = 0; i < 3; i++) { roundRectPath(c, x + r * 0.1 + i * r * 0.3, -r * 0.38, r * 0.22, r * 0.32, r * 0.04); c.fill(); }
-    });
-    c.fillStyle = shadeColor(col, -0.45); c.fillRect(-r * 1.0, r * 0.08, r * 2.0, r * 0.05);
-    [-r * 0.75, -r * 0.3, r * 0.35, r * 0.8].forEach(x => { c.beginPath(); c.arc(x, r * 0.42, r * 0.12, 0, Math.PI * 2); c.fillStyle = '#0a0f18'; c.fill(); });
-  },
-
-  // T5 -- heavy truck: cab + ribbed cargo box.
-  ciezarowka(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.25);
-    c.beginPath(); c.ellipse(0, r * 0.55, r * 1.1, r * 0.12, 0, 0, Math.PI * 2); c.fill();
-    roundRectPath(c, -r * 1.05, -r * 0.65, r * 1.45, r * 1.0, r * 0.06);
-    paintBody(c, col, -r * 0.65, r * 0.35, { light: 0.45, dark: -0.5 });
-    c.strokeStyle = shadeColor(col, -0.3); c.lineWidth = r * 0.04;
-    for (let x = -r * 0.85; x < r * 0.35; x += r * 0.2) { c.beginPath(); c.moveTo(x, -r * 0.6); c.lineTo(x, r * 0.3); c.stroke(); }
-    c.beginPath(); c.moveTo(r * 0.45, r * 0.35); c.lineTo(r * 0.45, -r * 0.4); c.lineTo(r * 0.85, -r * 0.4); c.lineTo(r * 1.05, -r * 0.05); c.lineTo(r * 1.05, r * 0.35); c.closePath();
-    paintBody(c, shadeColor(col, -0.25), -r * 0.4, r * 0.35, { light: 0.4, dark: -0.4 });
-    c.fillStyle = '#ffffff';
-    c.beginPath(); c.moveTo(r * 0.55, -r * 0.05); c.lineTo(r * 0.55, -r * 0.3); c.lineTo(r * 0.8, -r * 0.3); c.lineTo(r * 0.95, -r * 0.05); c.closePath(); c.fill();
-    [-r * 0.7, -r * 0.3, r * 0.75].forEach(x => {
-      c.beginPath(); c.arc(x, r * 0.38, r * 0.17, 0, Math.PI * 2); c.fillStyle = '#0a0f18'; c.fill();
-      c.lineWidth = r * 0.05; c.strokeStyle = shadeColor(col, 0.2); c.stroke();
-    });
-  },
-
-  /* ---------- v10: T6 (green) towers ---------- */
-
-  // T6 -- stepped skyscraper with a lit window grid and an antenna.
-  wiezowiec(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.28);
-    c.beginPath(); c.ellipse(0, r * 0.92, r * 0.75, r * 0.14, 0, 0, Math.PI * 2); c.fill();
-    const blocks = [[-r * 0.55, r * 1.1, r * 1.65], [-r * 0.4, r * 0.8, r * 0.45], [-r * 0.22, r * 0.44, r * 0.3]];
-    let top = r * 0.9;
-    blocks.forEach(([x, w, h]) => {
-      roundRectPath(c, x, top - h, w, h, r * 0.03);
-      paintBody(c, col, top - h, top, { light: 0.4, dark: -0.6, glow: 14 });
-      c.fillStyle = 'rgba(255,255,255,0.8)';
-      for (let y = top - h + r * 0.08; y < top - r * 0.06; y += r * 0.14) {
-        for (let xx = x + w * 0.12; xx < x + w - w * 0.12; xx += w / 5) c.fillRect(xx, y, w / 10, r * 0.05);
-      }
-      top -= h;
-    });
-    c.strokeStyle = shadeColor(col, 0.5); c.lineWidth = r * 0.04;
-    c.beginPath(); c.moveTo(0, top); c.lineTo(0, top - r * 0.3); c.stroke();
-  },
-
-  // T6 -- lattice radio mast with dishes (live: blinking beacon).
-  maszt(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.28);
-    c.beginPath(); c.ellipse(0, r * 0.95, r * 0.6, r * 0.12, 0, 0, Math.PI * 2); c.fill();
-    c.save(); c.shadowBlur = 10; c.shadowColor = col;
-    c.strokeStyle = shadeColor(col, 0.15); c.lineWidth = r * 0.07; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(-r * 0.45, r * 0.92); c.lineTo(-r * 0.06, -r * 0.95); c.moveTo(r * 0.45, r * 0.92); c.lineTo(r * 0.06, -r * 0.95); c.stroke();
-    c.restore();
-    c.strokeStyle = shadeColor(col, -0.2); c.lineWidth = r * 0.035;
-    c.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const y0 = r * 0.9 - i * r * 0.3, y1 = y0 - r * 0.3;
-      const w0 = r * 0.45 * (1 - i / 6.5), w1 = r * 0.45 * (1 - (i + 1) / 6.5);
-      c.moveTo(-w0, y0); c.lineTo(w1, y1); c.moveTo(w0, y0); c.lineTo(-w1, y1); c.moveTo(-w1, y1); c.lineTo(w1, y1);
-    }
-    c.stroke();
-    [[-1, -r * 0.2], [1, -r * 0.5]].forEach(([dir, y]) => {
-      c.beginPath(); c.ellipse(dir * r * 0.32, y, r * 0.16, r * 0.24, dir * 0.4, 0, Math.PI * 2);
-      paintBody(c, col, y - r * 0.24, y + r * 0.24, { light: 0.5, dark: -0.3, glow: 8 });
-    });
-  },
-
-  // T6 -- glass dome hall with ribs on a ringed base.
-  kopula(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.28);
-    c.beginPath(); c.ellipse(0, r * 0.82, r * 1.05, r * 0.16, 0, 0, Math.PI * 2); c.fill();
-    roundRectPath(c, -r * 0.95, r * 0.35, r * 1.9, r * 0.45, r * 0.06);
-    paintBody(c, col, r * 0.35, r * 0.8, { light: 0.2, dark: -0.6 });
-    c.fillStyle = 'rgba(255,255,255,0.8)';
-    for (let x = -r * 0.82; x < r * 0.82; x += r * 0.22) c.fillRect(x, r * 0.5, r * 0.1, r * 0.14);
-    c.beginPath(); c.arc(0, r * 0.35, r * 0.85, Math.PI, 0); c.closePath();
-    const dome = c.createRadialGradient(-r * 0.3, -r * 0.2, r * 0.05, 0, r * 0.35, r * 0.9);
-    dome.addColorStop(0, '#ffffff'); dome.addColorStop(0.35, shadeColor(col, 0.4)); dome.addColorStop(1, shadeColor(col, -0.4));
-    c.save(); c.shadowBlur = 18; c.shadowColor = col; c.fillStyle = dome; c.fill(); c.restore();
-    c.strokeStyle = rgbaColor('#ffffff', 0.55); c.lineWidth = 1.2;
-    for (let i = 1; i < 6; i++) { const a = Math.PI + (i / 6) * Math.PI; c.beginPath(); c.moveTo(0, -r * 0.5); c.quadraticCurveTo(Math.cos(a) * r * 0.6, r * 0.35 + Math.sin(a) * r * 0.6, Math.cos(a) * r * 0.85, r * 0.35); c.stroke(); }
-    c.save(); c.shadowBlur = 12; c.shadowColor = '#fff'; c.fillStyle = '#fff'; c.beginPath(); c.arc(0, -r * 0.55, r * 0.07, 0, Math.PI * 2); c.fill(); c.restore();
-  },
-
-  /* ---------- v10: boss landmarks as illustrated sprites (T5 / T6; kino and fontanna are VA_ART) ---------- */
-
-  lm_dzwig(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(-r * 0.3, r * 0.9, r * 0.6, r * 0.14, 0, 0, Math.PI * 2); c.fill();
-    c.save(); c.shadowBlur = 12; c.shadowColor = col;
-    c.strokeStyle = col; c.lineWidth = r * 0.07; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(-r * 0.5, r * 0.88); c.lineTo(-r * 0.5, -r * 0.7); c.moveTo(-r * 0.25, r * 0.88); c.lineTo(-r * 0.25, -r * 0.7); c.stroke();
-    c.beginPath(); c.moveTo(-r * 0.8, -r * 0.7); c.lineTo(r * 1.0, -r * 0.7); c.moveTo(-r * 0.8, -r * 0.55); c.lineTo(r * 1.0, -r * 0.55); c.stroke();
-    c.restore();
-    c.strokeStyle = shadeColor(col, -0.2); c.lineWidth = r * 0.03;
-    c.beginPath();
-    for (let y = r * 0.8; y > -r * 0.65; y -= r * 0.2) { c.moveTo(-r * 0.5, y); c.lineTo(-r * 0.25, y - r * 0.2); }
-    for (let x = -r * 0.7; x < r * 0.95; x += r * 0.18) { c.moveTo(x, -r * 0.7); c.lineTo(x + r * 0.09, -r * 0.55); }
-    c.stroke();
-    c.beginPath(); c.moveTo(-r * 0.6, -r * 0.7); c.lineTo(-r * 0.375, -r * 1.05); c.lineTo(-r * 0.15, -r * 0.7); c.closePath();
-    paintBody(c, col, -r * 1.05, -r * 0.7, { glow: 8 });
-    roundRectPath(c, -r * 0.95, -r * 0.62, r * 0.3, r * 0.3, r * 0.03); paintBody(c, col, -r * 0.62, -r * 0.32, { light: 0.3, dark: -0.6 });
-    c.strokeStyle = '#ffffff'; c.lineWidth = r * 0.02;
-    c.beginPath(); c.moveTo(r * 0.75, -r * 0.55); c.lineTo(r * 0.75, r * 0.1); c.stroke();
-    roundRectPath(c, r * 0.55, r * 0.1, r * 0.4, r * 0.3, r * 0.03); paintBody(c, shadeColor(col, 0.3), r * 0.1, r * 0.4, { glow: 10 });
-  },
-
-  lm_galeria(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.85, r * 1.0, r * 0.16, 0, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.moveTo(-r * 0.95, -r * 0.35); c.lineTo(0, -r * 0.85); c.lineTo(r * 0.95, -r * 0.35); c.closePath();
-    paintBody(c, col, -r * 0.85, -r * 0.35, { light: 0.5, dark: -0.2, glow: 16 });
-    roundRectPath(c, -r * 0.85, -r * 0.35, r * 1.7, r * 1.15, r * 0.03);
-    paintBody(c, col, -r * 0.35, r * 0.8, { light: 0.2, dark: -0.6 });
-    for (let i = 0; i < 4; i++) {
-      const x = -r * 0.7 + i * r * 0.42;
-      roundRectPath(c, x, -r * 0.2, r * 0.14, r * 0.95, r * 0.04);
-      paintBody(c, col, -r * 0.2, r * 0.75, { light: 0.5, dark: -0.2, glow: 4 });
-    }
-    const art = ['#ffffff', shadeColor(col, 0.55), shadeColor(col, 0.3)];
-    art.forEach((ac, i) => {
-      c.save(); c.shadowBlur = 10; c.shadowColor = ac; c.fillStyle = ac;
-      roundRectPath(c, -r * 0.5 + i * r * 0.42, r * 0.0, r * 0.2, r * 0.3, r * 0.03); c.fill(); c.restore();
-    });
-    c.save(); c.shadowBlur = 12; c.shadowColor = '#fff'; c.fillStyle = '#fff';
-    c.beginPath(); c.arc(0, -r * 0.55, r * 0.09, 0, Math.PI * 2); c.fill(); c.restore();
-  },
-
-  lm_iglica(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.92, r * 0.7, r * 0.14, 0, 0, Math.PI * 2); c.fill();
-    c.beginPath();
-    c.moveTo(-r * 0.4, r * 0.9); c.lineTo(-r * 0.4, r * 0.25); c.lineTo(-r * 0.18, -r * 0.1); c.lineTo(-r * 0.18, -r * 0.5);
-    c.lineTo(0, -r * 1.05); c.lineTo(r * 0.18, -r * 0.5); c.lineTo(r * 0.18, -r * 0.1); c.lineTo(r * 0.4, r * 0.25); c.lineTo(r * 0.4, r * 0.9); c.closePath();
-    paintBody(c, col, -r * 1.05, r * 0.9, { light: 0.55, dark: -0.55, glow: 20 });
-    c.fillStyle = 'rgba(255,255,255,0.8)';
-    for (let y = r * 0.8; y > -r * 0.45; y -= r * 0.14) {
-      const w = y > r * 0.2 ? r * 0.28 : r * 0.1;
-      c.fillRect(-w, y, w * 2, r * 0.04);
-    }
-    c.save(); c.shadowBlur = 18; c.shadowColor = '#fff'; c.fillStyle = '#fff';
-    c.beginPath(); c.arc(0, -r * 1.05, r * 0.06, 0, Math.PI * 2); c.fill(); c.restore();
-  },
-
-  lm_rdzen(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.88, r * 0.9, r * 0.16, 0, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.moveTo(0, -r * 0.95); c.lineTo(r * 0.75, -r * 0.05); c.lineTo(0, r * 0.85); c.lineTo(-r * 0.75, -r * 0.05); c.closePath();
-    paintBody(c, col, -r * 0.95, r * 0.85, { light: 0.5, dark: -0.6, glow: 22 });
-    c.beginPath(); c.moveTo(0, -r * 0.55); c.lineTo(r * 0.42, -r * 0.05); c.lineTo(0, r * 0.45); c.lineTo(-r * 0.42, -r * 0.05); c.closePath();
-    const core = c.createRadialGradient(0, -r * 0.05, 0, 0, -r * 0.05, r * 0.5);
-    core.addColorStop(0, '#ffffff'); core.addColorStop(0.5, shadeColor(col, 0.55)); core.addColorStop(1, shadeColor(col, -0.3));
-    c.save(); c.shadowBlur = 20; c.shadowColor = col; c.fillStyle = core; c.fill(); c.restore();
-    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.4;
-    c.beginPath(); c.moveTo(0, -r * 0.95); c.lineTo(0, r * 0.85); c.moveTo(-r * 0.75, -r * 0.05); c.lineTo(r * 0.75, -r * 0.05); c.stroke();
-  },
-
-  /* ---------- v15: Rozdział II boss landmarks + the golden byte ---------- */
-
-  lm_stacja(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.86, r * 1.0, r * 0.15, 0, 0, Math.PI * 2); c.fill();
-    roundRectPath(c, -r * 0.92, -r * 0.2, r * 1.84, r * 1.04, r * 0.05);
-    paintBody(c, col, -r * 0.2, r * 0.84, { light: 0.2, dark: -0.62 });
-    // the arched tunnel mouth
-    c.beginPath(); c.moveTo(-r * 0.5, r * 0.84); c.lineTo(-r * 0.5, r * 0.25); c.arc(0, r * 0.25, r * 0.5, Math.PI, 0); c.lineTo(r * 0.5, r * 0.84); c.closePath();
-    c.fillStyle = shadeColor(col, -0.82); c.fill();
-    c.strokeStyle = shadeColor(col, 0.5); c.lineWidth = r * 0.05; c.stroke();
-    c.strokeStyle = rgbaColor('#ffffff', 0.5); c.lineWidth = r * 0.025;
-    c.beginPath(); c.moveTo(-r * 0.22, r * 0.84); c.lineTo(-r * 0.1, r * 0.4); c.moveTo(r * 0.22, r * 0.84); c.lineTo(r * 0.1, r * 0.4); c.stroke();
-    // the "M" roundel on a mast
-    c.strokeStyle = col; c.lineWidth = r * 0.05;
-    c.beginPath(); c.moveTo(0, -r * 0.2); c.lineTo(0, -r * 0.5); c.stroke();
-    c.beginPath(); c.arc(0, -r * 0.72, r * 0.26, 0, Math.PI * 2);
-    paintBody(c, col, -r * 0.98, -r * 0.46, { light: 0.6, glow: 18 });
-    c.save(); c.shadowBlur = 8; c.shadowColor = '#fff'; c.fillStyle = '#fff';
-    c.font = `${Math.round(r * 0.3)}px 'Russo One', sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText('M', 0, -r * 0.7); c.restore();
-  },
-
-  lm_bazar(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.88, r * 1.0, r * 0.15, 0, 0, Math.PI * 2); c.fill();
-    [-1, 1].forEach(d => { roundRectPath(c, d * r * 0.72 - r * 0.1, -r * 0.35, r * 0.2, r * 1.22, r * 0.04); paintBody(c, col, -r * 0.35, r * 0.87, { light: 0.3, dark: -0.55 }); });
-    // curved double roof
-    c.beginPath(); c.moveTo(-r * 1.05, -r * 0.32); c.quadraticCurveTo(0, -r * 0.62, r * 1.05, -r * 0.32); c.lineTo(r * 0.9, -r * 0.5); c.quadraticCurveTo(0, -r * 0.82, -r * 0.9, -r * 0.5); c.closePath();
-    paintBody(c, col, -r * 0.82, -r * 0.32, { light: 0.5, glow: 16 });
-    c.beginPath(); c.moveTo(-r * 0.7, -r * 0.62); c.quadraticCurveTo(0, -r * 0.95, r * 0.7, -r * 0.62); c.lineTo(r * 0.55, -r * 0.76); c.quadraticCurveTo(0, -r * 1.06, -r * 0.55, -r * 0.76); c.closePath();
-    paintBody(c, col, -r * 1.06, -r * 0.62, { light: 0.6, glow: 12 });
-    // hanging lanterns between the pillars
-    for (let i = -2; i <= 2; i++) {
-      const x = i * r * 0.26, y = -r * 0.1 + Math.abs(i) * r * 0.05;
-      c.strokeStyle = rgbaColor('#ffffff', 0.4); c.lineWidth = 1; c.beginPath(); c.moveTo(x, -r * 0.36); c.lineTo(x, y - r * 0.08); c.stroke();
-      c.save(); c.shadowBlur = 10; c.shadowColor = i % 2 ? '#FF54AD' : col; c.fillStyle = i % 2 ? '#FF54AD' : shadeColor(col, 0.5);
-      c.beginPath(); c.ellipse(x, y, r * 0.08, r * 0.11, 0, 0, Math.PI * 2); c.fill(); c.restore();
-    }
-    roundRectPath(c, -r * 0.5, r * 0.35, r * 1.0, r * 0.5, r * 0.04); c.fillStyle = shadeColor(col, -0.7); c.fill();
-  },
-
-  lm_fabryka(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.88, r * 1.0, r * 0.15, 0, 0, Math.PI * 2); c.fill();
-    // two chimneys behind
-    [[-0.55, -1.0], [-0.2, -0.82]].forEach(([x, top]) => { roundRectPath(c, x * r, top * r, r * 0.18, r * 1.4, r * 0.03); paintBody(c, col, top * r, r * 0.4, { light: 0.35, dark: -0.5, glow: 6 }); });
-    c.save(); c.strokeStyle = rgbaColor('#ffffff', 0.55); c.lineWidth = r * 0.03;
-    [[-0.46, -1.1, 0.12], [-0.11, -0.93, 0.1]].forEach(([x, y, rr]) => { c.beginPath(); c.arc(x * r, y * r, rr * r, 0, Math.PI * 2); c.stroke(); });
-    c.restore();
-    // sawtooth hall
-    c.beginPath(); c.moveTo(-r * 0.95, r * 0.86); c.lineTo(-r * 0.95, -r * 0.05);
-    for (let i = 0; i < 4; i++) { const x0 = -r * 0.95 + i * r * 0.475; c.lineTo(x0 + r * 0.475, -r * 0.35); c.lineTo(x0 + r * 0.475, -r * 0.05); }
-    c.lineTo(r * 0.95, r * 0.86); c.closePath();
-    paintBody(c, col, -r * 0.35, r * 0.86, { light: 0.25, dark: -0.6 });
-    // pixel windows
-    for (let y = r * 0.1; y < r * 0.6; y += r * 0.18) for (let x = -r * 0.8; x < r * 0.8; x += r * 0.2) {
-      c.fillStyle = (Math.round(x * 7 + y * 3) % 3) ? shadeColor(col, 0.55) : '#ffffff'; c.fillRect(x, y, r * 0.1, r * 0.1);
-    }
-    roundRectPath(c, -r * 0.18, r * 0.62, r * 0.36, r * 0.24, r * 0.02); c.fillStyle = shadeColor(col, -0.75); c.fill();
-  },
-
-  lm_latarnia(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.8, r * 0.15, 0, 0, Math.PI * 2); c.fill();
-    // light beams
-    c.save(); c.globalAlpha = 0.35;
-    [-1, 1].forEach(d => { c.beginPath(); c.moveTo(0, -r * 0.72); c.lineTo(d * r * 1.1, -r * 1.02); c.lineTo(d * r * 1.1, -r * 0.5); c.closePath(); c.fillStyle = shadeColor(col, 0.6); c.fill(); });
-    c.restore();
-    c.beginPath(); c.moveTo(-r * 0.36, r * 0.88); c.lineTo(-r * 0.2, -r * 0.55); c.lineTo(r * 0.2, -r * 0.55); c.lineTo(r * 0.36, r * 0.88); c.closePath();
-    paintBody(c, col, -r * 0.55, r * 0.88, { light: 0.45, dark: -0.55, glow: 10 });
-    // stripes
-    c.save(); c.clip();
-    c.fillStyle = rgbaColor('#ffffff', 0.55);
-    for (let y = -r * 0.35; y < r * 0.85; y += r * 0.36) c.fillRect(-r * 0.4, y, r * 0.8, r * 0.14);
-    c.restore();
-    roundRectPath(c, -r * 0.28, -r * 0.62, r * 0.56, r * 0.1, r * 0.02); paintBody(c, col, -r * 0.62, -r * 0.52, { glow: 4 });
-    roundRectPath(c, -r * 0.16, -r * 0.86, r * 0.32, r * 0.26, r * 0.04);
-    c.save(); c.shadowBlur = 20; c.shadowColor = '#fff'; c.fillStyle = '#ffffff'; c.fill(); c.restore();
-    c.beginPath(); c.moveTo(-r * 0.2, -r * 0.86); c.lineTo(0, -r * 1.04); c.lineTo(r * 0.2, -r * 0.86); c.closePath();
-    paintBody(c, col, -r * 1.04, -r * 0.86, { glow: 8 });
-  },
-
-  lm_drzewo(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.9, r * 0.15, 0, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.moveTo(-r * 0.14, r * 0.88); c.lineTo(-r * 0.08, r * 0.05); c.lineTo(-r * 0.32, -r * 0.25); c.lineTo(-r * 0.22, -r * 0.3); c.lineTo(0, -r * 0.08);
-    c.lineTo(r * 0.24, -r * 0.34); c.lineTo(r * 0.32, -r * 0.26); c.lineTo(r * 0.08, r * 0.05); c.lineTo(r * 0.14, r * 0.88); c.closePath();
-    paintBody(c, col, -r * 0.34, r * 0.88, { light: 0.2, dark: -0.6, glow: 6 });
-    // canopy: layered glowing blobs
-    [[-0.5, -0.45, 0.36], [0.5, -0.45, 0.36], [0, -0.7, 0.42], [-0.25, -0.25, 0.3], [0.27, -0.22, 0.3]].forEach(([x, y, rr], i) => {
-      c.beginPath(); c.arc(x * r, y * r, rr * r, 0, Math.PI * 2);
-      paintBody(c, col, (y - rr) * r, (y + rr) * r, { light: 0.35 + i * 0.05, dark: -0.45, glow: 14 });
-    });
-    c.save(); c.shadowBlur = 8; c.shadowColor = '#fff'; c.fillStyle = '#ffffff';
-    [[-0.5, -0.5], [0.42, -0.6], [0, -0.85], [0.15, -0.3], [-0.3, -0.2]].forEach(([x, y]) => { c.beginPath(); c.arc(x * r, y * r, r * 0.045, 0, Math.PI * 2); c.fill(); });
-    c.restore();
-  },
-
-  lm_serwer(c, r, col) {
-    c.fillStyle = rgbaColor(col, 0.3);
-    c.beginPath(); c.ellipse(0, r * 0.9, r * 0.9, r * 0.15, 0, 0, Math.PI * 2); c.fill();
-    for (let i = 0; i < 5; i++) {
-      const y = r * 0.68 - i * r * 0.3;
-      roundRectPath(c, -r * 0.55, y, r * 1.1, r * 0.24, r * 0.04);
-      paintBody(c, col, y, y + r * 0.24, { light: 0.3, dark: -0.6, glow: i === 4 ? 14 : 4 });
-      for (let k = 0; k < 4; k++) { c.fillStyle = (i + k) % 3 ? '#46D99A' : '#ffffff'; c.fillRect(-r * 0.42 + k * r * 0.1, y + r * 0.09, r * 0.05, r * 0.05); }
-      c.fillStyle = rgbaColor('#ffffff', 0.35); c.fillRect(r * 0.05, y + r * 0.1, r * 0.4, r * 0.03);
-    }
-    // the cloud on top
-    c.beginPath();
-    c.arc(-r * 0.32, -r * 0.72, r * 0.2, Math.PI * 0.5, Math.PI * 1.5); c.arc(-r * 0.05, -r * 0.86, r * 0.26, Math.PI, 0); c.arc(r * 0.3, -r * 0.74, r * 0.2, Math.PI * 1.3, Math.PI * 0.5); c.closePath();
-    paintBody(c, col, -r * 1.12, -r * 0.52, { light: 0.65, glow: 20 });
-  },
+  // T5 / T6 and their boss landmarks (GG-OBJECTS-04): autobus, tramwaj,
+  // ciezarowka, wiezowiec, maszt, kopula, lm_dzwig, lm_galeria, lm_iglica,
+  // lm_stacja, lm_bazar, lm_rdzen, lm_fabryka, lm_latarnia, lm_drzewo,
+  // lm_serwer -- also VA_ART.
 
   // v15 runner: a golden data byte -- a faceted gem with bit-ticks.
   bajt(c, r, col) {
@@ -13051,7 +13432,15 @@ class Game {
   /** Icon + color for one authored objective step (shared by the in-round
    *  goal box and the v14 mission briefing cards). */
   objectiveIconDef(st, setup) {
-    if (st.landmark) return { icon: GOAL_ICONS.landmark, color: SIZE_TIER_COLORS[LANDMARK_TIERS[st.landmark]] };
+    // GG-OBJECTS-04: a named boss shows its own board art (the spire's gate
+    // and the spire share one look, in their own tier colors); the
+    // monument stays the icon of a landmark the goal does not name.
+    if (st.landmark) {
+      const color = SIZE_TIER_COLORS[LANDMARK_TIERS[st.landmark]], art = LANDMARK_ART[st.landmark];
+      // (a canvas path may open with lineTo, which canvas treats as moveTo --
+      // the fountain's water edge does; SVG needs the M, so it is restored here)
+      return { icon: art ? vaIconSvg([[art, color]]).replace(/ d="L/g, ' d="M') : GOAL_ICONS.landmark, color };
+    }
     if (st.tier) return { icon: GOAL_ICONS.tier, color: CAMPAIGN_TIERS[st.tier - 1].color };
     // CONTENT-1: an eat/activate goal shows the look its objects are drawn
     // with on the board (goalArtKind()); a class icon only when the step
