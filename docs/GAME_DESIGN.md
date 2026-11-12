@@ -364,6 +364,18 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   przeciwny neon. Obiekt nie obraca się; ikona celu to ta sama grafika
   odtworzona jako SVG. Reguły: `docs/GG_OBJECTS_02_ART_RULES.md`.
   Klasy, progi, promienie i punkty bez zmian.
+- **Wygląd obiektów T3 i T4 (GG-OBJECTS-03):** 13 wyglądów w tym samym
+  systemie — T3 (złoto): samochód (i pojazd konwoju), węzeł energii,
+  pylon, zasilacz, lustro, mostek; T4 (fiolet): pawilon, billboard,
+  magazyn, pomnik Areny, kino, fontanna, portal finiszu Areny. Kolor
+  klasy niesie bryłę, cyjan to szyby, woda i światła, róż małe akcenty,
+  grafit cokoły. Ikony celów T3/T4 (pojazd, węzeł, pylon, zasilacz,
+  lustro, mostek, pawilon, billboard, magazyn i klasa „budowle”) to te
+  same grafiki; cel-landmark zachowuje wspólną ikonę z kolumnami.
+  Stany specjalne bez zmian (zużyty węzeł i lustro przygaszone,
+  niezasilony mostek półprzezroczysty, zablokowany landmark z kłódką).
+  T5, T6 i ich landmarki mają jeszcze dawne grafiki. Klasy, progi,
+  promienie, punkty i mechanika bez zmian.
 - **Kamera misji (CONTENT-1):** kadr stały, dopóki wir nie przekroczy
   24% krótszego boku ekranu (ta sama zasada co w Arenie,
   `holeScreenFrac`); dalej kamera się oddala, ale nie dalej niż cały
