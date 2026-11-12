@@ -4,6 +4,18 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-HOLE-01 „Premium Vortex” — nowy wygląd wszystkich wirów (zapis nadal v13, klucz bez zmian; mechanika pochłaniania, promienie, hitboxy, sterowanie, wzrost, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
+- **10 skórek + style rywali narysowane od nowa** (`HOLE_LOOKS`): każdy wygląd ma własne wnętrze, serce, obręcz i koronę zamiast
+  wspólnej spirali z inną obwódką — Horyzont (czarna dziura, pierścień fotonowy), Cyjan (obwody), Gorący Róż (plazma), Toksyczna
+  Zieleń (maź i bąble), Ultrafiolet (galaktyka), Neonowe Złoto (słońce), Biała Plazma (burza), Aurora Finału (zorza), Kryształ
+  (szlifowana przesłona), Pryzmat (widmo). Identyfikatory, własność, ceny, nagrody i `SKIN_STYLES` bez zmian.
+- **Ruch:** warstwy obracają się z różną prędkością, materia i cienkie pierścienie zbiegają się do środka, obręcz błyska przy
+  pochłonięciu; większy wir wciąga mocniej (płynnie od promienia, bez progów). Smuga, Efekt pochłaniania i Finisz bez zmian.
+- **Wydajność:** warstwy są rysowane raz (`holeSprite()`, poświata wypalona w sprite) i stemplowane z obrotem — żadna klatka nie
+  płaci za `shadowBlur` obręczy; Pryzmat nie jest już malowany na żywo. Jakość 0 pomija opad materii i pierścienie.
+- **QA:** `node qa/hole1-shots.mjs --root DIR` (PRZED/PO z gry: katalog, rozmiary, 8 klatek ruchu, Arena początek/środek/koniec,
+  misja, Wyzwanie dnia, Warsztat; 390×844, 800×450, 1366×768; jakość 0; identyczny układ i losowania; koszt klatki obok bazy).
+
 ## GG-OBJECTS-04 „Premium Vector Objects” — nowe grafiki obiektów T5 i T6 oraz ich landmarków (zapis nadal v13, klucz bez zmian; mechanika, progi T1–T6, promienie, hitboxy, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
 - **16 wyglądów T5/T6 narysowanych od nowa w systemie z GG-OBJECTS-02/-03** (`VA_ART`, `vaKit()` — ta sama kamera, światło, kontur,
   podłoże): T5 (srebro) autobus, tramwaj, ciężarówka, landmarki dźwig, galeria, iglica, Stacja Centralna, Brama Bazaru; T6 (zieleń)

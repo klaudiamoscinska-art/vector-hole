@@ -7,7 +7,16 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `docs/claude/ARCHITECTU
 **Wir startowy „Horyzont” (CRAZYGAMES-BASIC-1):** czarna dziura, nie tęczowy portal: czarny
 środek, ramiona w grafit, ciemny granat i stal, jedno cyjanowe, cyjanowy pierścień z jasnymi
 łukami, które pokazują obrót nawet przy małej dziurze na telefonie. W zapisie to nadal `rainbow`,
-więc postęp i zakupy zostają. Pryzmat (nagroda Core City) i pozostałe wyglądy są bez zmian.
+więc postęp i zakupy zostają.
+
+**Wygląd wirów (GG-HOLE-01):** każdy wir to osobny projekt, nie ta sama spirala w innym kolorze —
+własne wnętrze, serce, obręcz i korona, obracające się z różną prędkością; materia i cienkie pierścienie
+zbiegają się do środka (wir wciąga), przy pochłonięciu obręcz błyska. Horyzont — czarna dziura z pierścieniem
+fotonowym; Cyjan — obwody i przesłona; Gorący Róż — plazma z segmentami energii; Toksyczna Zieleń — kipiąca
+maź z bąblami; Ultrafiolet — galaktyka z orbitą; Neonowe Złoto — słońce z rozbłyskami; Biała Plazma — burza
+z wyładowaniami; Aurora Finału — wstęgi zorzy; Kryształ — szlifowana przesłona z odłamkami; Pryzmat — rozszczepione
+światło. Większy wir wciąga mocniej (płynnie, bez progów). To wyłącznie wygląd: promień, zasięg, tempo
+i punktacja są takie same dla każdej skórki. Rywale noszą te same wyglądy w swoich kolorach.
 
 ## 1. Premisa i ton
 

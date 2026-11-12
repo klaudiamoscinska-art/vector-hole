@@ -6725,54 +6725,720 @@ function drawSpiralArms(ctx, r, colors, angle, arms, steps = 22) {
   ctx.restore();
 }
 
-/** The inside of a hole, centered at (0,0): a tinted depth gradient, the arms
- *  and a black core, clipped to the circle. */
-function paintVortex(ctx, r, base, colors, angle, steps) {
-  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.clip();
-  const depth = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-  depth.addColorStop(0, 'rgba(0,0,0,1)');
-  depth.addColorStop(0.6, rgbaColor(base, 0.12));
-  depth.addColorStop(1, rgbaColor(base, 0.38));
-  ctx.fillStyle = depth;
-  ctx.fillRect(-r, -r, r * 2, r * 2);
-  drawSpiralArms(ctx, r * 1.02, colors, angle, 4, steps);
-  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.55);
-  core.addColorStop(0, 'rgba(0,0,0,1)');
-  core.addColorStop(0.45, 'rgba(0,0,0,0.85)');
-  core.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = core;
-  ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+/* ----------------------- Premium vortices (GG-HOLE-01) -----------------------
+   A hole is a stack of pre-drawn layers, each one turning at its own speed:
+     under  -- the vortex's disk;
+     inner  -- the faster heart of the vortex around the black core;
+     flow   -- sparse matter stamped shrinking toward the middle (the pull);
+     rim    -- the gravity well on the floor and the look's ring;
+     crown  -- what orbits outside it, turning against the ring;
+     ring   -- rim + crown in one stamp: rivals and quality 0 (half the fill).
+   Every look (HOLE_LOOKS, one per SKIN_STYLES value) paints its own layers, so
+   skins differ in structure, not only in color. A layer is drawn once per
+   look, color and size at device scale (its glow is baked in, so no frame pays
+   for shadowBlur) and stamped rotated; device radii are bucketed 8% apart and
+   capped, the stamp is scaled to the exact radius. */
+const HOLE_SPRITES = new Map();
+const HOLE_SPRITE_MAX_ENTRIES = 150, HOLE_SPRITE_MAX_PIXELS = 12e6, HOLE_SPRITE_MAX_R = 192;
+const HOLE_LAYER_EXTENT = { under: 1, inner: 0.72, flow: 1 };   // rim, crown, ring: the look's own `ext`
+const HOLE_TAU = Math.PI * 2;
+let holeSpritePixels = 0;
+// Pryzmat's spectrum, in the asset bible's accents.
+const HOLE_SPECTRUM = ['#FF54AD', '#EFCB63', '#46D99A', '#50F0FA', '#9875FF', '#E8F1FF'];
+
+/** `hex` moved toward white (t > 0) or black (t < 0), as a hex color. */
+function holeShade(hex, t) {
+  const [r, g, b] = hexToRgb(hex);
+  const target = t > 0 ? 255 : 0, k = Math.abs(t);
+  const h = v => Math.round(v + (target - v) * k).toString(16).padStart(2, '0');
+  return '#' + h(r) + h(g) + h(b);
 }
 
-/* PERF-06: the vortex only turns, and repainting its wide translucent arms
-   through an antialiased clip was the GPU's largest cost per hole. It is drawn
-   once per color and size at device scale and stamped rotated (radii bucketed
-   as PERF-01's ring glow). Rainbow skins change color every frame and stay live. */
-const VORTEX_CACHE = new Map();
-const VORTEX_MAX_ENTRIES = 64, VORTEX_MAX_PIXELS = 8e6;
-let vortexPixels = 0;
+function holeRand(seed) {
+  let s = seed;
+  return () => (s = (s * 9301 + 49297) % 233280) / 233280;
+}
 
-function vortexSprite(base, colors, devR, steps) {
-  const step = devR < 128 ? 1.03 : 1.06;
-  const r = Math.pow(step, Math.round(Math.log(Math.max(1, devR)) / Math.log(step)));
-  const key = base + '|' + colors.join() + '|' + steps + '|' + r.toFixed(1);
-  let sprite = VORTEX_CACHE.get(key);
-  if (sprite) { VORTEX_CACHE.delete(key); VORTEX_CACHE.set(key, sprite); return sprite; }
-  const half = Math.ceil(r) + 2;
+/** Path of a tapered arm winding from radius r0 out to r1 over `sweep` radians. */
+function holeArmPath(c, a0, sweep, r0, r1, w0, w1, pow = 1.25, steps = 26) {
+  c.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const f = i / steps, th = a0 + f * sweep;
+    const rad = r0 + (r1 - r0) * Math.pow(f, pow) + (w0 + (w1 - w0) * f) / 2;
+    c.lineTo(Math.cos(th) * rad, Math.sin(th) * rad);
+  }
+  for (let i = steps; i >= 0; i--) {
+    const f = i / steps, th = a0 + f * sweep;
+    const rad = r0 + (r1 - r0) * Math.pow(f, pow) - (w0 + (w1 - w0) * f) / 2;
+    c.lineTo(Math.cos(th) * rad, Math.sin(th) * rad);
+  }
+  c.closePath();
+}
+
+/** `n` arms around the center; radii and widths are fractions of R. */
+function holeArms(c, R, n, a0, sweep, r0, r1, w0, w1, fill, alpha = 1, pow = 1.25) {
+  c.globalAlpha = alpha;
+  for (let i = 0; i < n; i++) {
+    c.fillStyle = typeof fill === 'function' ? fill(i) : fill;
+    holeArmPath(c, a0 + i / n * HOLE_TAU, sweep, R * r0, R * r1, R * w0, R * w1, pow);
+    c.fill();
+  }
+  c.globalAlpha = 1;
+}
+
+/** A color that fades in from the middle to the rim. */
+function holeFade(c, R, hex, a0, a1, from = 0.15) {
+  const g = c.createRadialGradient(0, 0, R * from, 0, 0, R);
+  g.addColorStop(0, rgbaColor(hex, a0));
+  g.addColorStop(1, rgbaColor(hex, a1));
+  return g;
+}
+
+function holeBase(c, R, deep, edge) {
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, R);
+  g.addColorStop(0, '#000');
+  g.addColorStop(0.3, '#000');
+  g.addColorStop(0.72, deep);
+  g.addColorStop(1, edge);
+  c.fillStyle = g;
+  c.fillRect(-R, -R, R * 2, R * 2);
+}
+
+/** The black heart (k = its reach) and the shadow the rim casts into the pit. */
+function holeDepth(c, R, k) {
+  const core = c.createRadialGradient(0, 0, 0, 0, 0, R * k);
+  core.addColorStop(0, 'rgba(0,0,0,1)');
+  core.addColorStop(0.5, 'rgba(0,0,0,0.92)');
+  core.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = core;
+  c.beginPath(); c.arc(0, 0, R * k, 0, HOLE_TAU); c.fill();
+  const lip = c.createRadialGradient(0, 0, R * 0.74, 0, 0, R);
+  lip.addColorStop(0, 'rgba(0,0,0,0)');
+  lip.addColorStop(1, 'rgba(0,0,0,0.6)');
+  c.fillStyle = lip;
+  c.beginPath(); c.arc(0, 0, R, 0, HOLE_TAU); c.fill();
+}
+
+/** The usual inner layer: `n` hot arms fading out at 0.68 R around a black core. */
+function holeHeart(c, R, n, fill, hot, core = 0.3, sweep = 3.4) {
+  c.globalCompositeOperation = 'lighter';
+  holeArms(c, R * 0.7, n, 0.4, sweep, 0.2, 1, 0.02, 0.3, fill, 0.75);
+  holeArms(c, R * 0.7, n, 0.52, sweep, 0.3, 1, 0.005, 0.07, hot, 0.9);
+  c.globalCompositeOperation = 'destination-in';
+  const mask = c.createRadialGradient(0, 0, R * 0.42, 0, 0, R * 0.69);
+  mask.addColorStop(0, 'rgba(0,0,0,1)');
+  mask.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = mask;
+  c.fillRect(-R, -R, R * 2, R * 2);
+  c.globalCompositeOperation = 'source-over';
+  const g = c.createRadialGradient(0, 0, R * core * 0.7, 0, 0, R * core * 1.25);
+  g.addColorStop(0, 'rgba(0,0,0,1)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = g;
+  c.beginPath(); c.arc(0, 0, R * core * 1.25, 0, HOLE_TAU); c.fill();
+}
+
+function holeArc(c, r, a0, a1, color, lw) {
+  c.beginPath(); c.arc(0, 0, r, a0, a1);
+  c.strokeStyle = color; c.lineWidth = lw; c.stroke();
+}
+
+function holeGlow(c, color, blur) { c.shadowColor = color; c.shadowBlur = blur; }
+
+/** A filled polygon from [angle, radius] pairs. */
+function holePoly(c, pts, fill) {
+  c.beginPath();
+  for (const [a, r] of pts) c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  c.closePath();
+  c.fillStyle = fill; c.fill();
+}
+
+/* Each look: ext = how far its ring and crown reach (in radii), spin = [under,
+   inner, rim, crown] in rad/s (the sign is the direction), flow = what falls in, p = its palette (holePalette()). */
+const HOLE_LOOKS = {
+  // Horyzont, the starter: a black hole. The largest dark core of all, steel
+  // matter streaks, a photon ring that is brighter on one side, a steel lip.
+  horizon: {
+    ext: 1.24, spin: [1.5, 2.6, -1.5, 0], flow: 'streak', flowCol: '#D6FCFF', core: 0.5,
+    disk(c, R) {
+      holeBase(c, R, '#0A1826', '#1D4258');
+      holeArms(c, R, 8, 0, 2.7, 0.22, 1.03, 0.01, 0.11, i => holeFade(c, R, HORIZON_ARMS[i % 4], 0, 0.9));
+      holeArms(c, R, 8, 0.2, 2.7, 0.4, 1.03, 0.003, 0.02, holeFade(c, R, '#A9EEF4', 0, 0.75));
+      holeDepth(c, R, 0.74);
+    },
+    inner(c, R) {
+      c.fillStyle = '#000';
+      c.beginPath(); c.arc(0, 0, R * 0.47, 0, HOLE_TAU); c.fill();
+      holeGlow(c, '#50F0FA', R * 0.12);
+      const lw = Math.max(1.2, R * 0.035);
+      for (let i = 0; i < 28; i++) {
+        const a = i / 28 * HOLE_TAU;
+        c.globalAlpha = 0.06 + 0.94 * Math.pow(0.5 + 0.5 * Math.cos(a), 2);
+        holeArc(c, R * 0.47, a, a + HOLE_TAU / 28 + 0.02, '#D6FCFF', lw);
+      }
+    },
+    rim(c, R, lw) {
+      holeArc(c, R, 0, HOLE_TAU, '#25384A', lw * 1.5);
+      holeGlow(c, '#50F0FA', Math.max(6, R * 0.2));
+      holeArc(c, R, 0, HOLE_TAU, '#50F0FA', Math.max(1.5, lw * 0.55));
+      holeGlow(c, '#50F0FA', Math.max(3, R * 0.08));
+      for (let i = 0; i < 3; i++) for (let k = 0; k < 7; k++) {   // three comets on the lip
+        const a = i / 3 * HOLE_TAU - k * 0.13;
+        c.globalAlpha = 1 - k / 7;
+        holeArc(c, R, a - 0.14, a, '#D6FCFF', Math.max(2, lw * 0.62) * (1 - k * 0.07));
+      }
+      c.globalAlpha = 0.5; c.shadowBlur = 0;
+      for (let i = 0; i < 2; i++) holeArc(c, R * 1.15, i * Math.PI + 0.5, i * Math.PI + 2.3, '#50F0FA', Math.max(1, lw * 0.2));
+    }
+  },
+  // Cyjan: circuits. Stepped traces with nodes instead of arms, a counter-turning
+  // segmented iris, tick marks and three brackets outside the ring.
+  tech: {
+    ext: 1.36, spin: [1.1, -1.9, 0.5, -0.9], flow: 'square',
+    disk(c, R, p) {
+      holeBase(c, R, p.deep, p.lo);
+      c.lineCap = 'butt'; c.lineJoin = 'miter';
+      const nodes = [];
+      c.beginPath();
+      for (let i = 0; i < 6; i++) {
+        let a = i / 6 * HOLE_TAU, rad = R * 0.99;
+        c.moveTo(Math.cos(a) * rad, Math.sin(a) * rad);
+        for (let k = 0; k < 4; k++) {
+          c.arc(0, 0, rad, a, a + 0.44);
+          a += 0.44; rad -= R * 0.165;
+          c.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+          nodes.push([a, rad]);
+        }
+      }
+      c.globalAlpha = 0.28; c.strokeStyle = p.c; c.lineWidth = Math.max(3, R * 0.09); c.stroke();
+      c.globalAlpha = 1; c.strokeStyle = p.c; c.lineWidth = Math.max(1.2, R * 0.03); c.stroke();
+      c.fillStyle = p.hi;
+      const s = Math.max(1.5, R * 0.035);
+      for (const [a, rad] of nodes) c.fillRect(Math.cos(a) * rad - s, Math.sin(a) * rad - s, s * 2, s * 2);
+      c.globalAlpha = 0.4; c.setLineDash([R * 0.13, R * 0.07]);
+      holeArc(c, R * 0.8, 0, HOLE_TAU, p.hi, Math.max(1, R * 0.018));
+      c.setLineDash([]); c.globalAlpha = 1;
+      holeDepth(c, R, 0.5);
+    },
+    inner(c, R, p) {
+      c.lineCap = 'butt';
+      c.fillStyle = '#000';
+      c.beginPath(); c.arc(0, 0, R * 0.56, 0, HOLE_TAU); c.fill();
+      holeGlow(c, p.c, R * 0.08);
+      for (let i = 0; i < 3; i++) holeArc(c, R * 0.52, i / 3 * HOLE_TAU, i / 3 * HOLE_TAU + 1.5, p.c, Math.max(1.5, R * 0.06));
+      holeArc(c, R * 0.37, 0, HOLE_TAU, p.hi, Math.max(1, R * 0.02));
+      c.shadowBlur = 0; c.strokeStyle = p.hi; c.lineWidth = Math.max(1, R * 0.02);
+      c.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * HOLE_TAU + 0.3;
+        c.moveTo(Math.cos(a) * R * 0.37, Math.sin(a) * R * 0.37);
+        c.lineTo(Math.cos(a) * R * 0.47, Math.sin(a) * R * 0.47);
+      }
+      c.stroke();
+    },
+    rim(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(6, R * 0.18));
+      holeArc(c, R, 0, HOLE_TAU, p.c, lw);
+      c.shadowBlur = 0; c.lineCap = 'butt';
+      c.strokeStyle = p.hi; c.lineWidth = Math.max(1, lw * 0.32); c.globalAlpha = 0.8;
+      c.beginPath();
+      for (let i = 0; i < 24; i++) {
+        const a = i / 24 * HOLE_TAU, r0 = R * (i % 4 ? 0.86 : 0.8);
+        c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+        c.lineTo(Math.cos(a) * R * 0.92, Math.sin(a) * R * 0.92);
+      }
+      c.stroke();
+    },
+    crown(c, R, lw, p) {
+      c.lineCap = 'butt';
+      holeGlow(c, p.c, Math.max(4, R * 0.1));
+      const rr = R * (1 + 0.09 * 2);
+      for (let i = 0; i < 3; i++) {
+        const a = i / 3 * HOLE_TAU;
+        holeArc(c, rr, a, a + 0.95, p.hi, lw * 0.75);
+        holeArc(c, rr + R * 0.08, a + 0.12, a + 0.5, p.c, Math.max(1, lw * 0.3));
+        c.fillStyle = p.hi;
+        const d = a + 1.52, s = Math.max(1.5, lw * 0.4);
+        c.fillRect(Math.cos(d) * rr - s, Math.sin(d) * rr - s, s * 2, s * 2);
+      }
+    }
+  },
+  // Gorący Róż: plasma. Three fat arms with white-hot edges over violet, a
+  // rippling ring, and pink + cyan energy segments turning against it.
+  plasma: {
+    ext: 1.38, spin: [1.9, 3.3, -0.8, 1.3], flow: 'streak', pulse: 0.035,
+    disk(c, R, p) {
+      holeBase(c, R, p.deep, p.lo);
+      c.globalCompositeOperation = 'lighter';
+      holeArms(c, R, 3, 0.9, 4.2, 0.12, 1.02, 0.04, 0.56, holeFade(c, R, '#9875FF', 0, 0.5));
+      holeArms(c, R, 3, 0, 4.2, 0.12, 1.02, 0.02, 0.34, holeFade(c, R, p.c, 0.05, 0.9));
+      holeArms(c, R, 3, 0.16, 4.2, 0.2, 1.02, 0.004, 0.07, holeFade(c, R, '#FFFFFF', 0, 0.85));
+      c.globalCompositeOperation = 'source-over';
+      holeDepth(c, R, 0.5);
+    },
+    inner(c, R, p) { holeHeart(c, R, 3, p.c, p.hi, 0.28, 4); },
+    rim(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(7, R * 0.22));
+      wobblePath(c, R, th => 0.035 * Math.sin(7 * th) + 0.02 * Math.sin(11 * th + 1), 96);
+      c.strokeStyle = p.c; c.lineWidth = lw; c.stroke();
+      c.shadowBlur = 0; c.globalAlpha = 0.7;
+      holeArc(c, R * 0.95, 0, HOLE_TAU, p.hi, Math.max(1, lw * 0.22));
+    },
+    crown(c, R, lw, p) {
+      const seg = [[0, 0.9], [1.25, 0.45], [2.1, 1.1], [3.6, 0.6], [4.6, 1.0]];
+      seg.forEach(([a, len], i) => {
+        const col = i % 2 ? '#50F0FA' : p.hi;
+        holeGlow(c, i % 2 ? '#50F0FA' : p.c, Math.max(4, R * 0.1));
+        holeArc(c, R * (1 + 0.09 * 1.9), a, a + len, col, lw * (i % 2 ? 0.5 : 0.75));
+      });
+      c.globalAlpha = 0.75;
+      [[0.6, 0.5], [2.6, 0.35], [4.1, 0.6], [5.5, 0.4]].forEach(([a, len], i) => holeArc(c, R * (1 + 0.09 * 3.2), a, a + len, i % 2 ? p.hi : '#50F0FA', Math.max(1, lw * 0.28)));
+    }
+  },
+  // Toksyczna Zieleń: a boiling pit. Lumpy arms made of blobs, bubbles in the
+  // disk, a dripping goo ring and bubbles drifting round it.
+  toxic: {
+    ext: 1.42, spin: [1.2, 2.1, 0.35, -0.5], flow: 'bubble',
+    disk(c, R, p) {
+      holeBase(c, R, p.deep, p.lo);
+      holeArms(c, R, 4, 0, 3.3, 0.14, 1.02, 0.03, 0.3, holeFade(c, R, p.c, 0, 0.55));
+      const rnd = holeRand(7);
+      c.fillStyle = holeFade(c, R, p.c, 0.1, 0.95);
+      for (let i = 0; i < 4; i++) for (let k = 0; k < 8; k++) {
+        const f = (k + 0.6) / 8.4, th = i / 4 * HOLE_TAU + f * 3.3 + 0.08;
+        const rad = R * (0.14 + 0.88 * Math.pow(f, 1.25));
+        c.beginPath(); c.arc(Math.cos(th) * rad, Math.sin(th) * rad, R * (0.03 + 0.085 * f) * (0.7 + rnd() * 0.5), 0, HOLE_TAU); c.fill();
+      }
+      c.strokeStyle = p.hi; c.lineWidth = Math.max(1, R * 0.014);
+      for (let i = 0; i < 12; i++) {
+        const a = rnd() * HOLE_TAU, rad = R * (0.45 + rnd() * 0.45), s = R * (0.025 + rnd() * 0.04);
+        c.globalAlpha = 0.75;
+        c.beginPath(); c.arc(Math.cos(a) * rad, Math.sin(a) * rad, s, 0, HOLE_TAU); c.stroke();
+      }
+      c.globalAlpha = 1;
+      holeDepth(c, R, 0.52);
+    },
+    inner(c, R, p) { holeHeart(c, R, 4, p.c, p.hi, 0.28, 3); },
+    rim(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(6, R * 0.18));
+      const goo = th => 0.03 * Math.sin(5 * th) + 0.022 * Math.sin(9 * th + 2);
+      wobblePath(c, R * 1.01, goo, 96);
+      c.strokeStyle = p.c; c.lineWidth = lw * 1.25; c.stroke();
+      c.fillStyle = p.c;
+      [0.3, 1.5, 2.4, 3.9, 5.2].forEach((a, i) => {   // drips
+        const d = R * (1.01 + goo(a)) + lw * (0.7 + (i % 2) * 0.5);
+        c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, lw * (0.62 - (i % 3) * 0.1), 0, HOLE_TAU); c.fill();
+      });
+      c.shadowBlur = 0; c.globalAlpha = 0.75;
+      for (let i = 0; i < 5; i++) holeArc(c, R * 0.985, i * 1.26 + 0.2, i * 1.26 + 0.75, p.hi, Math.max(1, lw * 0.22));
+    },
+    crown(c, R, lw, p) {
+      const rnd = holeRand(23);
+      c.strokeStyle = p.hi;
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * HOLE_TAU + rnd() * 0.5, d = R * (1.17 + rnd() * 0.14), s = Math.max(1.5, R * (0.03 + rnd() * 0.045));
+        c.globalAlpha = 0.9; c.lineWidth = Math.max(1.2, lw * 0.25);
+        c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, s, 0, HOLE_TAU); c.stroke();
+        c.globalAlpha = 0.25; c.fillStyle = p.c; c.fill();
+      }
+    },
+    live(ctx, r, t, p, detailed) {
+      ctx.strokeStyle = p.hi; ctx.lineWidth = Math.max(1.2, r * 0.03);
+      const a0 = ctx.globalAlpha;
+      for (let i = 0; i < (detailed ? 6 : 3); i++) {
+        const ph = (t * 0.6 + i * 0.37) % 1, a = i * 2.1 + Math.sin(t + i) * 0.3, rad = r * (1.04 + ph * 0.32);
+        ctx.globalAlpha = a0 * (1 - ph) * 0.9;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * rad, Math.sin(a) * rad, Math.max(1.5, r * 0.075 * (1 - ph * 0.5)), 0, HOLE_TAU); ctx.stroke();
+      }
+      ctx.globalAlpha = a0;
+    }
+  },
+  // Ultrafiolet: a galaxy. Two grand arms and two faint ones full of star dust,
+  // a glowing bulge, a tilted orbit with two planets, twinkling stars.
+  galaxy: {
+    ext: 1.48, spin: [0.9, 1.7, 0, 0.5], flow: 'dot', flowCol: '#FFFFFF',
+    disk(c, R, p) {
+      holeBase(c, R, holeShade(p.c, -0.88), p.lo);
+      c.globalCompositeOperation = 'lighter';
+      holeArms(c, R, 2, 0, 5, 0.1, 1.02, 0.05, 0.42, holeFade(c, R, p.c, 0.1, 0.7));
+      holeArms(c, R, 2, Math.PI / 2, 5, 0.1, 1.02, 0.02, 0.2, holeFade(c, R, '#FF54AD', 0, 0.4));
+      holeArms(c, R, 2, 0.1, 5, 0.2, 1.02, 0.005, 0.06, holeFade(c, R, p.hi, 0, 0.9));
+      c.globalCompositeOperation = 'source-over';
+      const rnd = holeRand(41);
+      for (let i = 0; i < 90; i++) {
+        const f = 0.25 + rnd() * 0.75, th = (i % 4) * Math.PI / 2 + f * 5 + (rnd() - 0.5) * 0.5;
+        const rad = R * (0.1 + 0.92 * Math.pow(f, 1.25)) * (0.96 + rnd() * 0.08);
+        const s = Math.max(0.6, R * 0.011) * (0.6 + rnd());
+        c.globalAlpha = 0.5 + rnd() * 0.5;
+        c.fillStyle = i % 5 === 0 ? '#50F0FA' : i % 3 ? '#FFFFFF' : p.hi;
+        c.beginPath(); c.arc(Math.cos(th) * rad, Math.sin(th) * rad, s, 0, HOLE_TAU); c.fill();
+      }
+      c.globalAlpha = 1;
+      holeDepth(c, R, 0.42);
+    },
+    inner(c, R, p) {
+      const bulge = c.createRadialGradient(0, 0, R * 0.2, 0, 0, R * 0.68);
+      bulge.addColorStop(0, rgbaColor(p.hi, 0.95));
+      bulge.addColorStop(0.45, rgbaColor(p.c, 0.5));
+      bulge.addColorStop(1, rgbaColor(p.c, 0));
+      c.fillStyle = bulge;
+      c.beginPath(); c.arc(0, 0, R * 0.68, 0, HOLE_TAU); c.fill();
+      holeArms(c, R * 0.7, 2, 0.4, 5, 0.3, 1, 0.01, 0.12, '#FFFFFF', 0.5);
+      c.fillStyle = '#000';
+      c.beginPath(); c.arc(0, 0, R * 0.27, 0, HOLE_TAU); c.fill();
+      holeGlow(c, '#FFFFFF', R * 0.07);
+      holeArc(c, R * 0.27, 0, HOLE_TAU, '#FFFFFF', Math.max(1, R * 0.018));
+    },
+    rim(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(7, R * 0.2));
+      holeArc(c, R, 0, HOLE_TAU, p.c, lw * 0.8);
+      c.shadowBlur = 0; c.globalAlpha = 0.55;
+      holeArc(c, R * 0.94, 0, HOLE_TAU, p.hi, Math.max(1, lw * 0.16));
+    },
+    crown(c, R, lw, p) {
+      c.save(); c.scale(1, 0.4);
+      holeGlow(c, p.c, Math.max(4, R * 0.1));
+      c.globalAlpha = 0.85;
+      holeArc(c, R * 1.38, 0, HOLE_TAU, p.hi, Math.max(1.5, lw * 0.5));
+      c.restore();
+      c.fillStyle = '#FFFFFF'; c.globalAlpha = 1;
+      [[R * 1.38, 0, 0.55], [-R * 1.38, 0, 0.38]].forEach(([x, y, k]) => { c.beginPath(); c.arc(x, y, lw * k, 0, HOLE_TAU); c.fill(); });
+      c.shadowBlur = 0;
+      [[1.1, 1.2], [3.0, 1.24], [4.7, 1.17]].forEach(([a, d], i) => {   // four-point sparks
+        const x = Math.cos(a) * R * d, y = Math.sin(a) * R * d, s = lw * (0.75 - i * 0.12);
+        c.beginPath();
+        c.moveTo(x, y - s); c.quadraticCurveTo(x, y, x + s, y); c.quadraticCurveTo(x, y, x, y + s);
+        c.quadraticCurveTo(x, y, x - s, y); c.quadraticCurveTo(x, y, x, y - s);
+        c.fill();
+      });
+    },
+    live(ctx, r, t, p, detailed) {
+      const a0 = ctx.globalAlpha, s = Math.max(1, r * 0.028);
+      for (let i = 0; i < (detailed ? 12 : 6); i++) {
+        const a = i * 2.399 + t * (0.3 + (i % 4) * 0.12), rad = r * (0.4 + ((i * 0.618) % 1) * 0.5);
+        ctx.globalAlpha = a0 * (0.5 + 0.5 * Math.sin(t * 4 + i * 1.7));
+        ctx.fillStyle = i % 3 ? '#ffffff' : p.hi;
+        ctx.fillRect(Math.cos(a) * rad - s, Math.sin(a) * rad - s, s * 2, s * 2);
+      }
+      ctx.globalAlpha = a0;
+    }
+  },
+  // Neonowe Złoto: a sun. Flame tongues curling into the core, a hot inner
+  // corona, a double ring with flares and a breathing ring of prominences.
+  sun: {
+    ext: 1.5, spin: [1.5, 2.7, 0.4, -0.6], flow: 'streak', pulse: 0.045,
+    disk(c, R, p) {
+      holeBase(c, R, holeShade(p.c, -0.86), holeShade(p.c, -0.45));
+      c.globalCompositeOperation = 'lighter';
+      holeArms(c, R, 14, 0, 1.5, 0.3, 1.02, 0.01, 0.17, i => holeFade(c, R, i % 2 ? p.c : holeShade(p.c, -0.25), 0, 0.85, i % 2 ? 0.3 : 0.5));
+      holeArms(c, R, 14, 0.1, 1.5, 0.5, 1.02, 0.003, 0.035, holeFade(c, R, '#FFFFFF', 0, 0.8, 0.5));
+      const heat = c.createRadialGradient(0, 0, R * 0.7, 0, 0, R);
+      heat.addColorStop(0, rgbaColor(p.c, 0));
+      heat.addColorStop(1, rgbaColor(p.c, 0.5));
+      c.fillStyle = heat; c.fillRect(-R, -R, R * 2, R * 2);
+      c.globalCompositeOperation = 'source-over';
+      holeDepth(c, R, 0.5);
+    },
+    inner(c, R, p) { holeHeart(c, R, 8, p.c, '#FFFFFF', 0.3, 1.8); },
+    rim(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(7, R * 0.2));
+      c.fillStyle = p.c;
+      c.beginPath();
+      for (let i = 0; i < 16; i++) {   // flares swept by the turn, long and short
+        const a = i / 16 * HOLE_TAU, len = R * (i % 2 ? 0.12 : 0.24), w = 0.13;
+        c.moveTo(Math.cos(a - w) * R, Math.sin(a - w) * R);
+        c.quadraticCurveTo(Math.cos(a) * (R + len * 0.5), Math.sin(a) * (R + len * 0.5), Math.cos(a + 0.2) * (R + len), Math.sin(a + 0.2) * (R + len));
+        c.quadraticCurveTo(Math.cos(a + 0.14) * (R + len * 0.4), Math.sin(a + 0.14) * (R + len * 0.4), Math.cos(a + w) * R, Math.sin(a + w) * R);
+      }
+      c.fill();
+      holeArc(c, R, 0, HOLE_TAU, p.hi, lw * 1.05);
+      c.shadowBlur = 0;
+      holeArc(c, R * 0.93, 0, HOLE_TAU, '#FFFFFF', Math.max(1, lw * 0.18));
+    },
+    crown(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(4, R * 0.1));
+      c.fillStyle = p.hi;
+      for (let i = 0; i < 8; i++) {
+        holeArmPath(c, i / 8 * HOLE_TAU, 0.5, R * 1.18, R * (i % 2 ? 1.3 : 1.38), 0, lw * 0.55, 1, 10);
+        c.globalAlpha = i % 2 ? 0.7 : 0.95;
+        c.fill();
+      }
+    }
+  },
+  // Biała Plazma: a storm. Lightning arms over cloud bands, a ring of silver
+  // plates, cyan and violet arcs outside and live bolts jumping off it.
+  storm: {
+    ext: 1.34, spin: [1.7, 2.8, 0.6, -1.1], flow: 'streak', flowCol: '#50F0FA',
+    disk(c, R, p) {
+      holeBase(c, R, '#0B1424', '#3A4D6B');
+      holeArms(c, R, 4, 0.5, 3.6, 0.14, 1.02, 0.04, 0.44, holeFade(c, R, '#CBD5E1', 0, 0.3));
+      const rnd = holeRand(13);
+      c.lineJoin = 'miter'; c.lineCap = 'butt';
+      for (let i = 0; i < 4; i++) {
+        c.beginPath();
+        for (let k = 0; k <= 11; k++) {
+          const f = k / 11, th = i / 4 * HOLE_TAU + f * 3.6;
+          const rad = R * (0.16 + 0.88 * Math.pow(f, 1.25)) + (k % 2 ? 1 : -1) * R * (0.03 + rnd() * 0.05) * f;
+          c.lineTo(Math.cos(th) * rad, Math.sin(th) * rad);
+        }
+        c.globalAlpha = 0.4; c.strokeStyle = i % 2 ? '#9875FF' : '#50F0FA'; c.lineWidth = Math.max(3, R * 0.085); c.stroke();
+        c.globalAlpha = 1; c.strokeStyle = p.c; c.lineWidth = Math.max(1.2, R * 0.026); c.stroke();
+      }
+      holeDepth(c, R, 0.5);
+    },
+    inner(c, R) { holeHeart(c, R, 4, '#50F0FA', '#FFFFFF', 0.28, 3.2); },
+    rim(c, R, lw, p) {
+      c.lineCap = 'butt';
+      holeGlow(c, '#50F0FA', Math.max(7, R * 0.2));
+      for (let i = 0; i < 6; i++) holeArc(c, R, i / 6 * HOLE_TAU + 0.07, (i + 1) / 6 * HOLE_TAU - 0.07, i % 2 ? '#CBD5E1' : p.c, lw * 1.2);
+      c.shadowBlur = 0;
+      holeArc(c, R * 0.91, 0, HOLE_TAU, '#50F0FA', Math.max(1, lw * 0.22));
+    },
+    crown(c, R, lw) {
+      for (let i = 0; i < 6; i++) {
+        const col = i % 2 ? '#9875FF' : '#50F0FA', a = i / 6 * HOLE_TAU - 0.22;
+        holeGlow(c, col, Math.max(4, R * 0.1));
+        holeArc(c, R * (1 + 0.09 * 1.9), a, a + 0.44, col, Math.max(1.5, lw * 0.42));
+      }
+    },
+    live(ctx, r, t, p, detailed) {
+      // Crackling bolts, re-rolled ~12x per second from a stable seed.
+      const tick = Math.floor(t * 12);
+      for (let b = 0; b < (detailed ? 3 : 2); b++) {
+        const rnd = holeRand((tick * 31 + b * 97) % 1000);
+        const a0 = rnd() * HOLE_TAU;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a0) * r, Math.sin(a0) * r);
+        for (let k = 1; k <= 4; k++) {
+          const a = a0 + (rnd() - 0.5) * 0.5, rad = r * (1 + k * 0.095);
+          ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+        }
+        ctx.strokeStyle = rgbaColor(b % 2 ? '#50F0FA' : '#9875FF', 0.45); ctx.lineWidth = Math.max(3, r * 0.07); ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.2, r * 0.022); ctx.stroke();
+      }
+    }
+  },
+  // Aurora Finału: curtains of light. Wide green, cyan and violet ribbons, and
+  // three wavy bands whose turning against each other makes them shimmer.
+  aurora: {
+    ext: 1.42, spin: [1.0, 1.8, 0.45, -0.7], flow: 'streak', flowCol: '#E8FFF6', pulse: 0.03,
+    disk(c, R) {
+      const bands = ['#46D99A', '#50F0FA', '#9875FF'];
+      holeBase(c, R, '#04141C', '#0E3B3F');
+      c.globalCompositeOperation = 'lighter';
+      holeArms(c, R, 6, 0, 4.4, 0.1, 1.02, 0.03, 0.4, i => holeFade(c, R, bands[i % 3], 0, 0.6));
+      holeArms(c, R, 6, 0.14, 4.4, 0.25, 1.02, 0.003, 0.04, holeFade(c, R, '#FFFFFF', 0, 0.6));
+      c.globalCompositeOperation = 'source-over';
+      holeDepth(c, R, 0.5);
+    },
+    inner(c, R) {
+      const bands = ['#46D99A', '#50F0FA', '#9875FF'];
+      holeHeart(c, R, 6, i => bands[(i + 1) % 3], '#E8FFF6', 0.28, 4);
+    },
+    rim(c, R, lw) {
+      holeGlow(c, '#46D99A', Math.max(7, R * 0.2));
+      wobblePath(c, R, th => 0.035 * Math.sin(4 * th), 96);
+      c.strokeStyle = '#46D99A'; c.lineWidth = lw; c.stroke();
+      c.shadowBlur = 0; c.globalAlpha = 0.6;
+      holeArc(c, R * 0.94, 0, HOLE_TAU, '#E8FFF6', Math.max(1, lw * 0.18));
+    },
+    crown(c, R, lw) {
+      holeGlow(c, '#50F0FA', Math.max(5, R * 0.14));
+      wobblePath(c, R * 1.11, th => 0.045 * Math.sin(5 * th), 96);
+      c.globalAlpha = 0.85; c.strokeStyle = '#50F0FA'; c.lineWidth = lw * 0.7; c.stroke();
+      holeGlow(c, '#9875FF', Math.max(5, R * 0.14));
+      wobblePath(c, R * 1.23, th => 0.05 * Math.sin(3 * th + 1), 96);
+      c.globalAlpha = 0.7; c.strokeStyle = '#9875FF'; c.lineWidth = lw * 0.5; c.stroke();
+    }
+  },
+  // Kryształ: cut stone. An aperture of flat-shaded blades instead of arms, a
+  // second one turning against it, a faceted bezel and orbiting shards.
+  crystal: {
+    ext: 1.48, spin: [0.8, -1.5, -0.3, 0.6], flow: 'diamond',
+    blades(c, R, p, n, rim, eye, twist, tones) {
+      for (let i = 0; i < n; i++) {
+        const a0 = i / n * HOLE_TAU, a1 = a0 + HOLE_TAU / n, am = (a0 + a1) / 2, q = [a0 + twist, R * eye];
+        holePoly(c, [[a0, R * rim], [am, R * rim], q], holeShade(p.c, tones[i % tones.length]));
+        holePoly(c, [[am, R * rim], [a1, R * rim], [a1 + twist, R * eye], q], holeShade(p.c, tones[(i + 2) % tones.length] - 0.3));
+      }
+      c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(1, R * 0.012); c.lineJoin = 'bevel';
+      c.beginPath();
+      for (let i = 0; i < n; i++) {
+        const a0 = i / n * HOLE_TAU;
+        c.moveTo(Math.cos(a0) * R * rim, Math.sin(a0) * R * rim);
+        c.lineTo(Math.cos(a0 + twist) * R * eye, Math.sin(a0 + twist) * R * eye);
+      }
+      c.stroke();
+      const eyePts = [];
+      for (let i = 0; i < n; i++) eyePts.push([i / n * HOLE_TAU + twist, R * eye]);
+      holePoly(c, eyePts, '#000');
+    },
+    disk(c, R, p) {
+      holeBase(c, R, p.deep, p.lo);
+      this.blades(c, R, p, 7, 1.04, 0.52, -1.0, [-0.25, -0.52, -0.38, -0.6, -0.12, -0.45, -0.55]);
+      const lip = c.createRadialGradient(0, 0, R * 0.45, 0, 0, R);
+      lip.addColorStop(0, 'rgba(0,0,0,0.55)');
+      lip.addColorStop(0.5, 'rgba(0,0,0,0)');
+      lip.addColorStop(0.8, 'rgba(0,0,0,0)');
+      lip.addColorStop(1, 'rgba(0,0,0,0.5)');
+      c.fillStyle = lip; c.fillRect(-R, -R, R * 2, R * 2);
+    },
+    inner(c, R, p) { this.blades(c, R, p, 7, 0.62, 0.34, 0.9, [0.5, 0.05, 0.3, -0.1, 0.6, 0.15, -0.05]); },
+    rim(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(6, R * 0.18));
+      const n = 14, tones = [0.5, -0.1, 0.2, -0.35];
+      for (let i = 0; i < n; i++) {
+        const a0 = i / n * HOLE_TAU, a1 = a0 + HOLE_TAU / n;
+        holePoly(c, [[a0, R - lw * 0.55], [a0, R + lw * 0.75], [a1, R + lw * 0.75], [a1, R - lw * 0.55]], holeShade(p.c, tones[i % 4]));
+        if (i === 0) c.shadowBlur = Math.max(2, R * 0.05);
+      }
+    },
+    crown(c, R, lw, p) {
+      holeGlow(c, p.c, Math.max(4, R * 0.1));
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * HOLE_TAU, d = R * (i % 2 ? 1.18 : 1.21), s = R * (i % 2 ? 0.085 : 0.13);
+        c.save();
+        c.translate(Math.cos(a) * d, Math.sin(a) * d); c.rotate(a + 0.5);
+        c.beginPath(); c.moveTo(s * 1.4, 0); c.lineTo(0, s * 0.6); c.lineTo(-s * 0.8, 0); c.closePath();
+        c.fillStyle = holeShade(p.c, 0.5); c.fill();
+        c.shadowBlur = 0;
+        c.beginPath(); c.moveTo(s * 1.4, 0); c.lineTo(0, -s * 0.6); c.lineTo(-s * 0.8, 0); c.closePath();
+        c.fillStyle = holeShade(p.c, -0.25); c.fill();
+        c.restore();
+        holeGlow(c, p.c, Math.max(4, R * 0.1));
+      }
+    }
+  },
+  // Pryzmat: split light. Six arms in the spectrum, a white-hot heart, a ring of
+  // spectrum segments and glass prisms orbiting against it.
+  prism: {
+    ext: 1.46, spin: [1.4, 2.6, 1.2, -0.8], flow: 'streak', flowCol: null, tint: '#9875FF',
+    disk(c, R) {
+      holeBase(c, R, '#070A14', '#1B2338');
+      c.globalCompositeOperation = 'lighter';
+      holeArms(c, R, 6, 0, 3.9, 0.12, 1.02, 0.03, 0.4, i => holeFade(c, R, HOLE_SPECTRUM[i], 0, 0.6));
+      holeArms(c, R, 6, 0.1, 3.9, 0.2, 1.02, 0.01, 0.1, i => holeFade(c, R, HOLE_SPECTRUM[i], 0.1, 1));
+      c.globalCompositeOperation = 'source-over';
+      holeDepth(c, R, 0.46);
+    },
+    inner(c, R) {
+      holeHeart(c, R, 6, i => HOLE_SPECTRUM[(i + 3) % 6], '#FFFFFF', 0.27, 3.6);
+      holeGlow(c, '#FFFFFF', R * 0.08);
+      holeArc(c, R * 0.29, 0, HOLE_TAU, '#FFFFFF', Math.max(1, R * 0.02));
+    },
+    rim(c, R, lw) {
+      c.lineCap = 'butt';
+      const n = 36;
+      for (let i = 0; i < n; i++) holeArc(c, R, i / n * HOLE_TAU, (i + 1) / n * HOLE_TAU + 0.02, `hsl(${i * 10}, 92%, 66%)`, lw);
+      holeGlow(c, '#FFFFFF', Math.max(6, R * 0.16));
+      c.globalAlpha = 0.75;
+      holeArc(c, R + lw * 0.5, 0, HOLE_TAU, '#FFFFFF', Math.max(1, lw * 0.14));
+      c.shadowBlur = 0;
+      holeArc(c, R * 0.93, 0, HOLE_TAU, '#FFFFFF', Math.max(1, lw * 0.14));
+    },
+    crown(c, R, lw) {
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * HOLE_TAU, d = R * 1.24, s = Math.max(2.5, R * 0.1);
+        c.save();
+        c.translate(Math.cos(a) * d, Math.sin(a) * d); c.rotate(a);
+        holeGlow(c, HOLE_SPECTRUM[i], Math.max(4, R * 0.1));
+        c.beginPath(); c.moveTo(s, 0); c.lineTo(-s * 0.6, s * 0.85); c.lineTo(-s * 0.6, -s * 0.85); c.closePath();
+        c.fillStyle = HOLE_SPECTRUM[i]; c.fill();
+        c.shadowBlur = 0;
+        c.strokeStyle = '#FFFFFF'; c.lineWidth = Math.max(1, lw * 0.16); c.lineJoin = 'round'; c.stroke();
+        c.restore();
+      }
+    }
+  }
+};
+
+const HOLE_PALETTES = new Map();
+function holePalette(col) {
+  let p = HOLE_PALETTES.get(col);
+  if (!p) {
+    p = { c: col, hi: holeShade(col, 0.55), lo: holeShade(col, -0.6), deep: holeShade(col, -0.84) };
+    if (HOLE_PALETTES.size < 64) HOLE_PALETTES.set(col, p);
+  }
+  return p;
+}
+
+/** What the flow layer carries inward: nine pieces spread over the disk. */
+function paintHoleFlow(c, R, look, p) {
+  const rnd = holeRand(5);
+  for (let i = 0; i < 9; i++) {
+    const a = i / 9 * HOLE_TAU + rnd() * 0.4, rad = R * (0.52 + rnd() * 0.4), s = R * (0.03 + rnd() * 0.025);
+    const col = look.flowCol === null ? HOLE_SPECTRUM[i % 6] : look.flowCol || p.hi;
+    c.fillStyle = c.strokeStyle = col;
+    if (look.flow === 'streak') {
+      holeArmPath(c, a, 0.55, rad * 0.84, rad, 0, Math.max(1.2, s * 1.1), 1, 8);
+      c.fill();
+      continue;
+    }
+    const x = Math.cos(a) * rad, y = Math.sin(a) * rad;
+    c.beginPath();
+    if (look.flow === 'square') c.rect(x - s, y - s, s * 2, s * 2);
+    else if (look.flow === 'diamond') { c.moveTo(x + s * 1.5, y); c.lineTo(x, y + s); c.lineTo(x - s * 1.5, y); c.lineTo(x, y - s); c.closePath(); }
+    else c.arc(x, y, look.flow === 'dot' ? s * 0.6 : s * 1.2, 0, HOLE_TAU);
+    if (look.flow === 'bubble') { c.lineWidth = Math.max(1, R * 0.014); c.stroke(); } else c.fill();
+  }
+}
+
+function paintHoleLayer(c, layer, R, look, p) {
+  const lw = Math.max(2.5, R * 0.09);
+  c.lineCap = c.lineJoin = 'round';
+  if (layer === 'under') {
+    c.fillStyle = '#000';
+    c.beginPath(); c.arc(0, 0, R, 0, HOLE_TAU); c.fill();
+    c.clip();
+    look.disk(c, R, p);
+  } else if (layer === 'flow') paintHoleFlow(c, R, look, p);
+  else if (layer === 'inner') look.inner(c, R, p);
+  else {
+    if (layer !== 'crown') {
+      // Gravity well: the city floor sags dark right at the rim, then a soft glow
+      // in the look's color fades out -- the hole reads as a dent, not a disc.
+      const well = c.createRadialGradient(0, 0, R * 0.9, 0, 0, R * look.ext);
+      well.addColorStop(0, 'rgba(0, 0, 0, 0.66)');
+      well.addColorStop(0.3 / (look.ext - 0.9), rgbaColor(look.tint || p.c, 0.2));
+      well.addColorStop(1, rgbaColor(look.tint || p.c, 0));
+      c.fillStyle = well;
+      c.beginPath(); c.arc(0, 0, R * look.ext, 0, HOLE_TAU); c.arc(0, 0, R, 0, HOLE_TAU, true); c.fill();
+      c.save(); look.rim(c, R, lw, p); c.restore();
+    }
+    if (layer !== 'rim' && look.crown) look.crown(c, R, lw, p);
+  }
+}
+
+function holeSprite(style, layer, col, devR) {
+  const capped = Math.min(HOLE_SPRITE_MAX_R, Math.max(6, devR));
+  const r = Math.pow(1.08, Math.round(Math.log(capped) / Math.log(1.08)));
+  const key = style + '|' + layer + '|' + col + '|' + r.toFixed(1);
+  let sprite = HOLE_SPRITES.get(key);
+  if (sprite) { HOLE_SPRITES.delete(key); HOLE_SPRITES.set(key, sprite); return sprite; }
+  const half = Math.ceil(r * (HOLE_LAYER_EXTENT[layer] || HOLE_LOOKS[style].ext)) + 2;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = half * 2;
   const c = canvas.getContext('2d');
   c.translate(half, half);
-  paintVortex(c, r, base, colors, 0, steps);
+  paintHoleLayer(c, layer, r, HOLE_LOOKS[style], holePalette(col || '#9875FF'));
   sprite = { canvas, half, r };
-  VORTEX_CACHE.set(key, sprite);
-  vortexPixels += canvas.width * canvas.height;
-  while (VORTEX_CACHE.size > VORTEX_MAX_ENTRIES || (vortexPixels > VORTEX_MAX_PIXELS && VORTEX_CACHE.size > 1)) {
-    const oldest = VORTEX_CACHE.keys().next().value;
-    vortexPixels -= VORTEX_CACHE.get(oldest).canvas.width ** 2;
-    VORTEX_CACHE.delete(oldest);
+  HOLE_SPRITES.set(key, sprite);
+  holeSpritePixels += canvas.width * canvas.height;
+  while (HOLE_SPRITES.size > HOLE_SPRITE_MAX_ENTRIES || (holeSpritePixels > HOLE_SPRITE_MAX_PIXELS && HOLE_SPRITES.size > 1)) {
+    const oldest = HOLE_SPRITES.keys().next().value;
+    holeSpritePixels -= HOLE_SPRITES.get(oldest).canvas.width ** 2;
+    HOLE_SPRITES.delete(oldest);
   }
   return sprite;
+}
+
+/** Stamps a layer at (0,0) for a hole of radius r, turned by `rot`. */
+function stampHoleLayer(ctx, style, layer, col, devR, r, rot, scale = 1) {
+  const s = holeSprite(style, layer, col, devR);
+  const k = r * s.half / s.r * scale;
+  if (rot) ctx.rotate(rot);
+  ctx.drawImage(s.canvas, -k, -k, k * 2, k * 2);
+  if (rot) ctx.rotate(-rot);
 }
 
 /** Cheap stable per-object phase so neighbours don't bob in sync. */
@@ -9457,6 +10123,7 @@ class Hole {
     const pop = popT < 1 ? Math.sin(popT * Math.PI) : 0;
     const realRadius = this.radius;
     this.radius = realRadius * (1 + 0.14 * pop);
+    this.growPop = pop;
     try {
       this.drawBody(ctx, time, inner);
     } finally {
@@ -9474,35 +10141,14 @@ class Hole {
     return this.skin === 'custom' ? this.edgeColor : (SKIN_MAP[this.skin] || this.edgeColor);
   }
 
-  /** Spinning vortex inside the hole (player feedback: the hole should
-   *  have a swirl inside, in shades of its own color). A faint tinted
-   *  depth gradient, four spiral arms in light/base/dark shades of the
-   *  skin color (rainbow hues for the rainbow skins) turning inward, and a
-   *  black event-horizon core. Drawn by every hole -- player, bots and
-   *  the Warsztat previews -- so the shop shows exactly what the round does. */
-  drawVortex(ctx, time) {
-    const r = this.radius;
-    const solid = this.skinColor();
-    const horizon = this.isHorizon();
-    const base = horizon ? '#1D4258' : solid || '#9875FF';
-    const colors = horizon ? HORIZON_ARMS : solid
-      ? [shadeColor(solid, 0.5), solid, shadeColor(solid, -0.2), shadeColor(solid, 0.25)]
-      : [0, 1, 2, 3].map(i => `hsl(${(i * 90 + time * 60) % 360}, 100%, 65%)`);
-    // Bots spin a touch slower/offset so a crowd doesn't turn in lockstep.
-    const spin = this.isPlayer ? 2.4 : 1.9;
-    const angle = -time * spin + (this.isPlayer ? 0 : r);
-    const steps = horizon ? 44 : undefined;
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    // Below 15 the arms' minimum widths stop scaling with the radius.
-    if ((solid || horizon) && r >= 15 && ctx.globalAlpha === 1) {
-      const m = ctx.getTransform(), z = Math.hypot(m.a, m.b);
-      const s = vortexSprite(base, colors, r * z, steps);
-      const k = r * s.half / s.r;
-      ctx.rotate(angle);
-      ctx.drawImage(s.canvas, -k, -k, k * 2, k * 2);
-    } else paintVortex(ctx, r, base, colors, angle, steps);
-    ctx.restore();
+  /** A stable turn offset per hole, so a crowd doesn't spin in lockstep. */
+  spinPhase() {
+    if (this._spinPhase == null) {
+      let h = 0;
+      if (!this.isPlayer) for (let i = 0; i < this.name.length; i++) h = (h * 31 + this.name.charCodeAt(i)) % 628;
+      this._spinPhase = h / 100;
+    }
+    return this._spinPhase;
   }
 
   /** Golden Shot v9: which signature look this hole wears -- every Rdzeń
@@ -9530,33 +10176,43 @@ class Hole {
       }
     }
 
+    // GG-HOLE-01: the look's layers (HOLE_LOOKS), each turning at its own
+    // speed. Drawn by every hole -- player, bots and the Warsztat previews --
+    // so the shop shows exactly what the round does.
     const r = this.radius;
     const horizon = this.isHorizon();
-    const style = horizon ? 'horizon' : this.holeStyle();
+    const wanted = horizon ? 'horizon' : this.holeStyle();
+    const style = HOLE_LOOKS[wanted] ? wanted : 'tech';
+    const look = HOLE_LOOKS[style];
     const solid = this.skinColor();
-    const tint = horizon ? '#50F0FA' : solid || '#9875FF';
-    const rimColor = solid || `hsl(${(time * 60) % 360}, 100%, 62%)`;
+    const col = horizon ? '#50F0FA' : style === 'prism' ? '' : solid || '#9875FF';
+    const alpha = this.invulnerable ? 0.55 + 0.35 * Math.sin(time * 12) : 1;
+    // gfx level 0 (applyGfx()) drops the flow and the pull rings and stamps one ring.
+    const lite = Object.prototype.hasOwnProperty.call(ctx, 'shadowBlur');
+    const m = ctx.getTransform(), devR = r * Math.hypot(m.a, m.b);
+    const phase = this.spinPhase();
+    const T = time * (this.isPlayer ? 1 : 0.8) + phase;
+    const sp = look.spin;
+    // A bigger vortex pulls harder: more flow, stronger rings (no thresholds).
+    const power = clamp((r - BASE_RADIUS) / 140, 0, 1);
     ctx.save();
-    if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
-
-    // Gravity well, one gradient: the city floor sags dark right at the rim
-    // (v12, now that there is a lit floor to darken), then a soft glow in
-    // the skin color fades out -- the hole reads as a dent, not a disc.
-    const well = ctx.createRadialGradient(this.x, this.y, r * 0.9, this.x, this.y, r * 1.7);
-    well.addColorStop(0, 'rgba(0, 0, 0, 0.66)');
-    well.addColorStop(0.42, rgbaColor(tint, 0.2));
-    well.addColorStop(1, rgbaColor(tint, 0));
-    ctx.fillStyle = well;
-    ctx.beginPath(); ctx.arc(this.x, this.y, r * 1.7, 0, Math.PI * 2); ctx.fill();
-
-    drawAccretionDisk(ctx, this.x, this.y, r, horizon ? '#A9EEF4' : solid, time, this.isPlayer ? 14 : 7);
-
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#000';
-    ctx.fill();
+    ctx.translate(this.x, this.y);
+    stampHoleLayer(ctx, style, 'under', col, devR, r, T * sp[0]);
+    stampHoleLayer(ctx, style, 'inner', col, devR, r, T * sp[1]);
+    // Matter falling in: the flow layer shrinks toward the core as it turns.
+    // A rival's fades out as it fills the screen (fill cost grows with its area).
+    const flow = lite ? 0 : this.isPlayer ? 1 : clamp((100 - devR) / 30, 0, 1);
+    if (flow > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      const n = this.isPlayer ? 2 : 1;
+      for (let i = 0; i < n; i++) {
+        const ph = (time * 0.55 + i / n + phase) % 1;
+        ctx.globalAlpha = flow * Math.sin(ph * Math.PI) * (0.65 + 0.35 * power);
+        stampHoleLayer(ctx, style, 'flow', col, devR, r, T * sp[0] + i * 2.1 + ph * 1.6, 1 - 0.62 * ph);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.restore();
-    this.drawVortex(ctx, time);
     if (inner) {
       ctx.save();
       ctx.beginPath(); ctx.arc(this.x, this.y, r * 0.97, 0, Math.PI * 2); ctx.clip();
@@ -9572,14 +10228,35 @@ class Hole {
     }
 
     ctx.save();
-    if (this.invulnerable) ctx.globalAlpha = 0.55 + 0.35 * Math.sin(time * 12);
+    ctx.globalAlpha = alpha;
     ctx.translate(this.x, this.y);
-    drawHoleRim(ctx, style, solid, rimColor, r, time, this.isPlayer);
-    // Photon ring: a thin bright line just inside the edge.
-    ctx.globalAlpha *= 0.35;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.93, 0, Math.PI * 2); ctx.stroke();
+    const breathe = look.pulse ? 1 + look.pulse * Math.sin(time * 3.1 + phase) : 1;
+    if (this.isPlayer && !lite && look.crown) {
+      stampHoleLayer(ctx, style, 'rim', col, devR, r, T * sp[2]);
+      stampHoleLayer(ctx, style, 'crown', col, devR, r, T * sp[3], breathe);
+    } else stampHoleLayer(ctx, style, look.crown ? 'ring' : 'rim', col, devR, r, T * (look.crown && sp[3] || sp[2]), look.crown ? 1 + (breathe - 1) * 0.5 : 1);
+    drawAccretionDisk(ctx, 0, 0, r, horizon ? '#A9EEF4' : style === 'prism' ? null : col, time, this.isPlayer ? 14 : 7, alpha);
+    if (!lite) {
+      // The pull: thin rings closing on the rim.
+      const rings = this.isPlayer ? 2 : 1;
+      ctx.strokeStyle = horizon ? '#A9EEF4' : style === 'prism' ? '#E8F1FF' : holePalette(col).hi;
+      ctx.lineWidth = Math.max(1, r * 0.022);
+      for (let i = 0; i < rings; i++) {
+        const ph = (time * 0.7 + i / rings + phase) % 1;
+        ctx.globalAlpha = alpha * Math.sin(ph * Math.PI) * (0.2 + 0.3 * power);
+        ctx.beginPath(); ctx.arc(0, 0, r * (1.44 - 0.4 * ph), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = alpha;
+    }
+    if (look.live) look.live(ctx, r, time, holePalette(col || '#9875FF'), this.isPlayer);
+    const pop = this.growPop || 0;
+    if (pop > 0) {
+      // The gulp: the rim flashes white with the growth pop.
+      ctx.globalAlpha = alpha * pop * 0.65;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.5, r * 0.05);
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+    }
     ctx.restore();
 
     if (!this.name) return; // Warsztat previews draw a nameless hole
@@ -9618,8 +10295,8 @@ class Hole {
 
 /* ----------------------- Hole signature looks (Golden Shot v9) -----------------------
    Player feedback: "dziura bez pomysłu" -- every skin was the same ring in a
-   different color. Each Rdzeń skin now has its own rim design, drawn by
-   drawHoleRim() around the shared vortex, plus an orbiting accretion disk. */
+   different color. Each Rdzeń skin has its own look (HOLE_LOOKS, GG-HOLE-01):
+   its own disk, heart, ring and crown, plus an orbiting accretion disk. */
 
 const SKIN_STYLES = {
   rainbow: 'prism', cyan: 'tech', pink: 'plasma', green: 'toxic', purple: 'galaxy',
@@ -9631,20 +10308,20 @@ const BOT_STYLES = ['tech', 'plasma', 'toxic', 'galaxy', 'crystal', 'sun'];
 const HORIZON_ARMS = ['#3B5266', '#16283C', '#6E8497', '#2FB7C6'];
 
 /** Motes of matter orbiting just outside the rim and spiraling in. */
-function drawAccretionDisk(ctx, x, y, r, color, t, count) {
+function drawAccretionDisk(ctx, x, y, r, color, t, count, alpha = 1) {
   for (let i = 0; i < count; i++) {
     const phase = (t * 0.45 + i / count) % 1;            // 0 = far out, 1 = swallowed
     const ang = i * 2.399 + t * (1.6 + (i % 3) * 0.3) + phase * 3;
     const rad = r * (1.45 - phase * 0.5);
     const a = Math.sin(phase * Math.PI);
-    ctx.globalAlpha = a * 0.85;
-    ctx.fillStyle = color || `hsl(${(i * 47 + t * 80) % 360}, 100%, 65%)`;
+    ctx.globalAlpha = alpha * a * 0.85;
+    ctx.fillStyle = color || HOLE_SPECTRUM[i % 6];
     const size = Math.max(1.2, r * 0.05) * (1 - phase * 0.5);
     ctx.beginPath();
     ctx.arc(x + Math.cos(ang) * rad, y + Math.sin(ang) * rad, size, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = alpha;
 }
 
 /** Path of a circle whose radius is wobbled by `fn(theta)` (0 = round). */
@@ -9715,176 +10392,6 @@ function drawGlowRing(ctx, x, y, r, color, lw, blur) {
   if (live) { ctx.shadowBlur = blur; ctx.shadowColor = color; }
   ctx.stroke();
   if (live) ctx.shadowBlur = 0;
-}
-
-/** Signature rim for each hole style, drawn centered at (0,0). `solid` is
- *  null for rainbow skins; `c` is then a cycling hue. */
-function drawHoleRim(ctx, style, solid, c, r, t, detailed) {
-  const lw = Math.max(2.5, r * 0.09);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const glowStroke = (color, width, blur) => {
-    ctx.strokeStyle = color; ctx.lineWidth = width;
-    ctx.shadowBlur = blur; ctx.shadowColor = color;
-    ctx.stroke(); ctx.shadowBlur = 0;
-  };
-  switch (style) {
-    case 'tech': {
-      drawGlowRing(ctx, 0, 0, r, c, lw, 16);
-      // Three rotating bracket arcs + counter-rotating tick ring.
-      for (let i = 0; i < 3; i++) {
-        const a = t * 1.4 + (i / 3) * Math.PI * 2;
-        ctx.beginPath(); ctx.arc(0, 0, r + lw * 1.8, a, a + 0.7);
-        glowStroke(shadeColor(c, 0.35), lw * 0.7, 8);
-      }
-      ctx.strokeStyle = rgbaColor(c, 0.7); ctx.lineWidth = Math.max(1, lw * 0.35);
-      for (let i = 0; i < 16; i++) {
-        const a = -t * 0.8 + (i / 16) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * r * 0.82, Math.sin(a) * r * 0.82);
-        ctx.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
-        ctx.stroke();
-      }
-      break;
-    }
-    case 'plasma': {
-      wobblePath(ctx, r, th => 0.07 * Math.sin(8 * th + t * 6) + 0.04 * Math.sin(13 * th - t * 9));
-      glowStroke(c, lw, 20);
-      wobblePath(ctx, r * 1.08, th => 0.06 * Math.sin(6 * th - t * 7));
-      ctx.globalAlpha *= 0.5; glowStroke(shadeColor(c, 0.4), lw * 0.5, 10); ctx.globalAlpha *= 2;
-      break;
-    }
-    case 'toxic': {
-      wobblePath(ctx, r, th => 0.05 * Math.sin(5 * th + t * 3) + 0.03 * Math.sin(9 * th - t * 2));
-      glowStroke(c, lw * 1.2, 16);
-      // Bubbles boiling off the rim.
-      for (let i = 0; i < (detailed ? 7 : 4); i++) {
-        const ph = (t * 0.6 + i * 0.37) % 1;
-        const a = i * 2.1 + Math.sin(t + i) * 0.3;
-        const rad = r * (1.02 + ph * 0.35);
-        ctx.globalAlpha = (1 - ph) * 0.9;
-        ctx.beginPath(); ctx.arc(Math.cos(a) * rad, Math.sin(a) * rad, Math.max(1.5, r * 0.08 * (1 - ph * 0.5)), 0, Math.PI * 2);
-        ctx.strokeStyle = shadeColor(c, 0.3); ctx.lineWidth = 1.5; ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case 'galaxy': {
-      drawGlowRing(ctx, 0, 0, r, c, lw, 18);
-      ctx.save(); ctx.rotate(t * 0.5); ctx.scale(1, 0.38);
-      ctx.beginPath(); ctx.arc(0, 0, r * 1.35, 0, Math.PI * 2);
-      ctx.globalAlpha *= 0.55; glowStroke(shadeColor(c, 0.3), Math.max(1.5, lw * 0.6), 10);
-      ctx.restore();
-      for (let i = 0; i < (detailed ? 16 : 8); i++) {
-        const a = i * 2.399 + t * (0.3 + (i % 4) * 0.12);
-        const rad = r * (0.35 + ((i * 0.618) % 1) * 0.55);
-        ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 4 + i * 1.7);
-        ctx.fillStyle = i % 3 ? '#ffffff' : shadeColor(c, 0.5);
-        ctx.fillRect(Math.cos(a) * rad - 1, Math.sin(a) * rad - 1, 2, 2);
-      }
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case 'sun': {
-      const spikes = 14;
-      ctx.beginPath();
-      for (let i = 0; i < spikes; i++) {
-        const a = t * 0.4 + (i / spikes) * Math.PI * 2;
-        const len = r * (0.22 + 0.1 * Math.sin(t * 5 + i * 1.3));
-        const w = Math.PI / spikes * 0.55;
-        ctx.moveTo(Math.cos(a - w) * r, Math.sin(a - w) * r);
-        ctx.lineTo(Math.cos(a) * (r + len), Math.sin(a) * (r + len));
-        ctx.lineTo(Math.cos(a + w) * r, Math.sin(a + w) * r);
-      }
-      ctx.fillStyle = rgbaColor(c, 0.75); ctx.shadowBlur = 18; ctx.shadowColor = c; ctx.fill(); ctx.shadowBlur = 0;
-      drawGlowRing(ctx, 0, 0, r, shadeColor(c, 0.3), lw * 1.1, 14);
-      break;
-    }
-    case 'storm': {
-      drawGlowRing(ctx, 0, 0, r, c, lw, 18);
-      // Crackling arcs: re-rolled ~12x per second from a stable seed.
-      const tick = Math.floor(t * 12);
-      for (let b = 0; b < (detailed ? 3 : 2); b++) {
-        let seed = (tick * 31 + b * 97) % 1000;
-        const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-        const a0 = rnd() * Math.PI * 2;
-        ctx.beginPath();
-        let rad = r;
-        ctx.moveTo(Math.cos(a0) * rad, Math.sin(a0) * rad);
-        for (let k = 1; k <= 4; k++) {
-          rad = r * (1 + k * 0.1);
-          const a = a0 + (rnd() - 0.5) * 0.5;
-          ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
-        }
-        glowStroke(b % 2 ? '#50F0FA' : '#9875FF', 1.6, 12);
-      }
-      break;
-    }
-    case 'aurora': {
-      const bands = ['#46D99A', '#50F0FA', '#9875FF'];
-      bands.forEach((col, i) => {
-        wobblePath(ctx, r * (1 + i * 0.07), th => 0.05 * Math.sin(4 * th + t * (2 + i) + i * 2));
-        ctx.globalAlpha = 0.9 - i * 0.25;
-        glowStroke(col, lw * (1 - i * 0.25), 14);
-      });
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case 'crystal': {
-      drawGlowRing(ctx, 0, 0, r, c, lw * 0.8, 14);
-      const shards = 8;
-      for (let i = 0; i < shards; i++) {
-        const a = t * 0.6 + (i / shards) * Math.PI * 2;
-        const d = r * (1.14 + 0.04 * Math.sin(t * 3 + i));
-        const s = r * 0.14;
-        ctx.save();
-        ctx.translate(Math.cos(a) * d, Math.sin(a) * d);
-        ctx.rotate(a);
-        ctx.beginPath();
-        ctx.moveTo(s * 1.4, 0); ctx.lineTo(0, s * 0.6); ctx.lineTo(-s * 0.8, 0); ctx.lineTo(0, -s * 0.6); ctx.closePath();
-        ctx.fillStyle = rgbaColor(c, 0.85);
-        ctx.shadowBlur = 10; ctx.shadowColor = c; ctx.fill();
-        ctx.restore();
-      }
-      break;
-    }
-    case 'horizon': {
-      // A steel lip with a cyan photon ring on it, and bright arcs running
-      // round it: the motion a player can read on a phone at r = 12 px.
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.strokeStyle = '#25384A'; ctx.lineWidth = lw * 1.5; ctx.stroke();
-      drawGlowRing(ctx, 0, 0, r, '#50F0FA', Math.max(1.5, lw * 0.42), Math.max(6, r * 0.22));
-      const arcs = detailed ? 3 : 2;
-      for (let i = 0; i < arcs; i++) {
-        const a0 = -t * 1.5 + (i / arcs) * Math.PI * 2;
-        ctx.beginPath(); ctx.arc(0, 0, r, a0, a0 + 0.8);
-        ctx.strokeStyle = '#D6FCFF'; ctx.lineWidth = Math.max(2, lw * 0.6); ctx.stroke();
-      }
-      break;
-    }
-    case 'prism':
-    default: {
-      const segments = 24;
-      const rot = t * 1.2;
-      for (let i = 0; i < segments; i++) {
-        const a0 = (i / segments) * Math.PI * 2 + rot;
-        const col = `hsl(${((i / segments) * 360 + rot * 40) % 360}, 100%, 62%)`;
-        ctx.beginPath(); ctx.arc(0, 0, r, a0, a0 + (Math.PI * 2) / segments + 0.02);
-        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.stroke();
-      }
-      ctx.globalAlpha *= 0.4; drawGlowRing(ctx, 0, 0, r, '#ffffff', 1, 14); ctx.globalAlpha /= 0.4;
-      for (let i = 0; i < (detailed ? 6 : 3); i++) {
-        const a = -t * 1.8 + (i / 6) * Math.PI * 2;
-        const d = r + lw * 2;
-        ctx.fillStyle = `hsl(${(i * 60 + t * 90) % 360}, 100%, 70%)`;
-        ctx.save(); ctx.translate(Math.cos(a) * d, Math.sin(a) * d); ctx.rotate(t * 3);
-        const s = Math.max(1.5, r * 0.06);
-        ctx.fillRect(-s, -s, s * 2, s * 2);
-        ctx.restore();
-      }
-      break;
-    }
-  }
 }
 
 const SKIN_MAP = SKINS.reduce((acc, s) => {
