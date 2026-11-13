@@ -1,0 +1,178 @@
+{
+ "small-kapsula": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 15,
+  "radiusAfter": 33,
+  "randomCalls": 81,
+  "gfx": 2,
+  "zoom": 0.92
+ },
+ "q0:small-kapsula": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 15,
+  "radiusAfter": 33,
+  "randomCalls": 81,
+  "gfx": 0,
+  "zoom": 0.92
+ },
+ "anim:small-kapsula": {
+  "frames": 44,
+  "cell": 150
+ },
+ "small-drzewo": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 15,
+  "radiusAfter": 54.1429,
+  "randomCalls": 143,
+  "gfx": 2,
+  "zoom": 0.822
+ },
+ "q0:small-drzewo": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 15,
+  "radiusAfter": 54.1429,
+  "randomCalls": 143,
+  "gfx": 0,
+  "zoom": 0.822
+ },
+ "anim:small-drzewo": {
+  "frames": 44,
+  "cell": 150
+ },
+ "medium-samochod": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 30,
+  "radiusAfter": 72.88,
+  "randomCalls": 303,
+  "gfx": 2,
+  "zoom": 0.762
+ },
+ "q0:medium-samochod": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 30,
+  "radiusAfter": 72.88,
+  "randomCalls": 303,
+  "gfx": 0,
+  "zoom": 0.762
+ },
+ "anim:medium-samochod": {
+  "frames": 44,
+  "cell": 150
+ },
+ "medium-pawilon": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 80,
+  "radiusAfter": 105.6,
+  "randomCalls": 303,
+  "gfx": 2,
+  "zoom": 0.68
+ },
+ "q0:medium-pawilon": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 80,
+  "radiusAfter": 105.6,
+  "randomCalls": 303,
+  "gfx": 0,
+  "zoom": 0.68
+ },
+ "anim:medium-pawilon": {
+  "frames": 44,
+  "cell": 150
+ },
+ "large-autobus": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 120,
+  "radiusAfter": 143.4,
+  "randomCalls": 303,
+  "gfx": 2,
+  "zoom": 0.601
+ },
+ "q0:large-autobus": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 120,
+  "radiusAfter": 143.4,
+  "randomCalls": 303,
+  "gfx": 0,
+  "zoom": 0.601
+ },
+ "anim:large-autobus": {
+  "frames": 44,
+  "cell": 150
+ },
+ "large-wiezowiec": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 200,
+  "radiusAfter": 184,
+  "randomCalls": 303,
+  "gfx": 2,
+  "zoom": 0.58
+ },
+ "q0:large-wiezowiec": {
+  "ate": true,
+  "eatFrames": 17,
+  "scoreGain": 200,
+  "radiusAfter": 184,
+  "randomCalls": 303,
+  "gfx": 0,
+  "zoom": 0.58
+ },
+ "anim:large-wiezowiec": {
+  "frames": 44,
+  "cell": 150
+ },
+ "boss-landmark": {
+  "ate": true,
+  "eatFrames": 48,
+  "scoreGain": 320,
+  "radiusAfter": 154.4,
+  "randomCalls": 918,
+  "gfx": 2,
+  "zoom": 0.965
+ },
+ "q0:boss-landmark": {
+  "ate": true,
+  "eatFrames": 48,
+  "scoreGain": 320,
+  "radiusAfter": 154.4,
+  "randomCalls": 918,
+  "gfx": 0,
+  "zoom": 0.965
+ },
+ "anim:boss-landmark": {
+  "frames": 72,
+  "cell": 150
+ },
+ "rival": {
+  "ate": true,
+  "eatFrames": 27,
+  "scoreGain": 96,
+  "radiusAfter": 96.7843,
+  "randomCalls": 306,
+  "gfx": 2,
+  "zoom": 0.695
+ },
+ "q0:rival": {
+  "ate": true,
+  "eatFrames": 27,
+  "scoreGain": 96,
+  "radiusAfter": 96.7843,
+  "randomCalls": 306,
+  "gfx": 0,
+  "zoom": 0.695
+ },
+ "anim:rival": {
+  "frames": 72,
+  "cell": 150
+ }
+}

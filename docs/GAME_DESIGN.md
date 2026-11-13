@@ -9,6 +9,14 @@ Historia wersji: `docs/CHANGELOG.md`. Architektura kodu: `docs/claude/ARCHITECTU
 łukami, które pokazują obrót nawet przy małej dziurze na telefonie. W zapisie to nadal `rainbow`,
 więc postęp i zakupy zostają.
 
+**Pochłanianie (GG-VFX-01):** to, co widać, zależy od tego, co wpada — przy tym samym czasie pochłonięcia
+(0,28 s; boss dzielnicy 0,8 s; rywal 0,45 s) i tych samych zasadach. Małe obiekty (T1/T2) wślizgują się szybko
+i lekko. Średnie (T3/T4) są wciągane całą sylwetką: rozciągają się ku środkowi, zostawiają powidoki, a wir
+odpowiada pierścieniem i akcentem swojej skórki. Duże (T5/T6) i bossowie mają ciężar: wir bierze wdech, bryła
+zapada się, z obręczy wychodzi podwójna fala i wir chwilę drga. Rywal wpada jako własny wir, rozrywany na łuki.
+Obiekt zawsze zachowuje własną sylwetkę (ten sam rysunek co na planszy). Kęsy rywali i jakość 0 rysują mniej.
+Kosmetyk „Efekt pochłaniania” barwi całą energię kęsa gracza. Wyłącznie obraz — nic z tego nie zmienia gry.
+
 **Wygląd wirów (GG-HOLE-01):** każdy wir to osobny projekt, nie ta sama spirala w innym kolorze —
 własne wnętrze, serce, obręcz i korona, obracające się z różną prędkością; materia i cienkie pierścienie
 zbiegają się do środka (wir wciąga), przy pochłonięciu obręcz błyska. Horyzont — czarna dziura z pierścieniem
