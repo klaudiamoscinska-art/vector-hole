@@ -1,0 +1,58 @@
+/* GG-UI-01 variant A -- PREMIUM MINIMAL.
+   One quiet material: near-black glass, a hairline, no glow, no blur.
+   Colour only where it carries meaning: the tier's colour on the tier bar,
+   gold on the score star and the leader, cyan on "you", pink when time runs out. */
+#ui1-hud.ui1-a .u-pause,
+#ui1-hud.ui1-a .u-core,
+#ui1-hud.ui1-a .u-rank,
+#ui1-hud.ui1-a .u-goal,
+#ui1-hud.ui1-a .u-combo,
+#ui1-hud.ui1-a .u-challenge,
+#ui1-hud.ui1-a .u-nela,
+#ui1-hud.ui1-a .u-np { background: rgba(4, 12, 22, 0.86); border: 1px solid rgba(242, 248, 255, 0.12); border-radius: 12px; }
+
+.ui1-a .u-pause { color: rgba(242, 248, 255, 0.92); }
+.ui1-a .u-time svg { color: rgba(242, 248, 255, 0.55); }
+.ui1-a .u-score svg { color: #EFCB63; }
+.ui1-a .u-core.urgent .u-time, .ui1-a .u-core.urgent .u-time svg { color: #FF54AD; }
+.ui1-a .u-badge { color: var(--tier); }
+.ui1-a .u-bar { background: rgba(242, 248, 255, 0.12); }
+.ui1-a .u-bar b { background: var(--tier); }
+.ui1-a .u-next { color: rgba(242, 248, 255, 0.45); }
+
+.ui1-a .u-rank-title { color: rgba(242, 248, 255, 0.5); }
+.ui1-a .u-place { color: #f2f8ff; }
+.ui1-a .u-rank li { border-radius: 6px; color: rgba(242, 248, 255, 0.78); }
+.ui1-a .u-pos { color: rgba(242, 248, 255, 0.42); }
+.ui1-a .u-rank li.first .u-pos { color: #EFCB63; }
+.ui1-a .u-rank li.me { background: rgba(80, 240, 250, 0.13); color: #ffffff; font-weight: 700; }
+.ui1-a .u-rank li.me::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 2px; border-radius: 1px; background: #50F0FA; }
+.ui1-a .u-rank li.me .u-pts { color: #50F0FA; }
+
+.ui1-a .u-goal-head { color: rgba(242, 248, 255, 0.5); }
+.ui1-a .u-chip { color: rgba(242, 248, 255, 0.7); background: rgba(242, 248, 255, 0.08); }
+.ui1-a .u-goal-row + .u-goal-row { border-top: 1px solid rgba(242, 248, 255, 0.08); }
+.ui1-a .u-gcount { color: #f2f8ff; }
+.ui1-a .u-gbar { background: rgba(242, 248, 255, 0.12); }
+.ui1-a .u-gbar b { background: var(--gc); }
+.ui1-a .u-goal-row.done .u-glabel, .ui1-a .u-goal-row.done .u-gcount { color: #46D99A; }
+.ui1-a .u-goal-row.done .u-gbar b { background: #46D99A; }
+.ui1-a .u-goal-row.twist-danger .u-glabel, .ui1-a .u-goal-row.twist-danger .u-gcount { color: #ff8fb0; }
+.ui1-a .u-goal-row.twist-shield .u-glabel, .ui1-a .u-goal-row.twist-shield .u-gcount { color: #EFCB63; }
+
+.ui1-a .u-combo-t b { color: rgba(242, 248, 255, 0.5); }
+.ui1-a .u-combo-bar { background: rgba(242, 248, 255, 0.12); }
+.ui1-a .u-ch-icon { color: #EFCB63; }
+.ui1-a .u-ch-t b { color: rgba(242, 248, 255, 0.5); }
+.ui1-a .u-ch-t em { color: #EFCB63; }
+.ui1-a .u-ch-bar { background: rgba(242, 248, 255, 0.12); }
+.ui1-a .u-ch-bar b { background: #EFCB63; }
+.ui1-a .u-challenge.beaten .u-ch-t em, .ui1-a .u-challenge.beaten .u-ch-icon { color: #46D99A; }
+.ui1-a .u-challenge.beaten .u-ch-bar b { background: #46D99A; }
+
+#ui1-hud.ui1-a .u-nela { background: rgba(4, 12, 22, 0.92); border-radius: 14px; }
+.ui1-a .u-nela-av { color: #FF54AD; }
+.ui1-a .u-nela-body b { color: #FF54AD; }
+.ui1-a .u-nela-body em { color: #f2f8ff; }
+#ui1-hud.ui1-a .u-np { border-radius: 999px; color: rgba(242, 248, 255, 0.85); }
+.ui1-a .u-np svg { color: #9875FF; }

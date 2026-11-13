@@ -1,0 +1,1193 @@
+{
+ "s1-arena-early": {
+  "title": "Arena · telefon · wczesna faza",
+  "viewport": "390x844",
+  "mode": "arena",
+  "daily": false,
+  "challenge": null,
+  "seed": 4242,
+  "mission": null,
+  "missionName": null,
+  "time": "1:47",
+  "score": 315,
+  "radius": 58.143,
+  "tier": "T3",
+  "tierPct": "60.7%",
+  "rank": "#1/6",
+  "camera": [
+   1052.588,
+   1693.544
+  ],
+  "zoom": 0.81323,
+  "layout": "phone",
+  "uiScale": 1,
+  "width": 390,
+  "height": 844,
+  "dpr": 2,
+  "minimap": {
+   "size": 104,
+   "l": 270,
+   "t": 724,
+   "r": 374,
+   "b": 828
+  },
+  "combo": 9,
+  "banner": null,
+  "goals": null,
+  "nela": null,
+  "holes": 6,
+  "objects": 300,
+  "stateHash": "bcab44eb",
+  "randomCalls": 4407,
+  "vnow": 714000.0000000163,
+  "plates": {
+   "before": "cbc1764c282fadb2d2baf0d8ec023444f0e8b4522097a906ae04dfaa8d3dcbbe",
+   "a": "cbc1764c282fadb2d2baf0d8ec023444f0e8b4522097a906ae04dfaa8d3dcbbe",
+   "b": "cbc1764c282fadb2d2baf0d8ec023444f0e8b4522097a906ae04dfaa8d3dcbbe"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 36,
+      "h": 36,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 152,
+      "h": 35,
+      "x": 58,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 140,
+      "h": 103,
+      "x": 238,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 150,
+      "h": 62,
+      "x": 8,
+      "y": 58
+     }
+    ],
+    "area": 30336,
+    "pct": 9.22
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 95,
+      "x": 236,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 109,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     }
+    ],
+    "area": 28377,
+    "pct": 8.62
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 100,
+      "x": 236,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 109,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     }
+    ],
+    "area": 29087,
+    "pct": 8.84
+   }
+  },
+  "identical": true,
+  "errors": []
+ },
+ "s2-arena-late": {
+  "title": "Arena · telefon · późna faza",
+  "viewport": "390x844",
+  "mode": "arena",
+  "daily": false,
+  "challenge": null,
+  "seed": 4242,
+  "mission": null,
+  "missionName": null,
+  "time": "0:17",
+  "score": 5354,
+  "radius": 274.8,
+  "tier": "T6",
+  "tierPct": "100%",
+  "rank": "#1/6",
+  "camera": [
+   2265.694,
+   1581.381
+  ],
+  "zoom": 0.34769,
+  "layout": "phone",
+  "uiScale": 1,
+  "width": 390,
+  "height": 844,
+  "dpr": 2,
+  "minimap": {
+   "size": 104,
+   "l": 270,
+   "t": 724,
+   "r": 374,
+   "b": 828
+  },
+  "combo": 8,
+  "banner": null,
+  "goals": null,
+  "nela": null,
+  "holes": 6,
+  "objects": 299,
+  "stateHash": "6e0a8aa",
+  "randomCalls": 34796,
+  "vnow": 804000.0000001211,
+  "plates": {
+   "before": "8259b31aa28337966d869455929c683cc9d2a7a02385b2ef4cc3fe8e5cc4ca61",
+   "a": "8259b31aa28337966d869455929c683cc9d2a7a02385b2ef4cc3fe8e5cc4ca61",
+   "b": "8259b31aa28337966d869455929c683cc9d2a7a02385b2ef4cc3fe8e5cc4ca61"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 36,
+      "h": 36,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 152,
+      "h": 35,
+      "x": 58,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 147,
+      "h": 103,
+      "x": 231,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 150,
+      "h": 62,
+      "x": 8,
+      "y": 58
+     }
+    ],
+    "area": 31057,
+    "pct": 9.44
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 95,
+      "x": 236,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 111,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     }
+    ],
+    "area": 28479,
+    "pct": 8.65
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 100,
+      "x": 236,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 111,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     }
+    ],
+    "area": 29189,
+    "pct": 8.87
+   }
+  },
+  "identical": true,
+  "errors": []
+ },
+ "s3-campaign": {
+  "title": "Kampania · misja z bossem",
+  "viewport": "390x844",
+  "mode": "campaign",
+  "daily": false,
+  "challenge": null,
+  "seed": null,
+  "mission": "M24",
+  "missionName": "Miasto na nowo",
+  "time": "0:29",
+  "score": 2336,
+  "radius": 160.7,
+  "tier": "T6",
+  "tierPct": "100%",
+  "rank": null,
+  "camera": [
+   1717.111,
+   1500
+  ],
+  "zoom": 0.59748,
+  "layout": "phone",
+  "uiScale": 1,
+  "width": 390,
+  "height": 844,
+  "dpr": 2,
+  "minimap": {
+   "size": 104,
+   "l": 270,
+   "t": 724,
+   "r": 374,
+   "b": 828
+  },
+  "combo": 1,
+  "banner": null,
+  "goals": [
+   "Wyłącz 3 węzły 2/3",
+   "Pochłoń rdzeń miasta 0/1"
+  ],
+  "nela": "Wielki finał. Wyłącz trzy węzły i pochłoń rdzeń miasta — obiekt T6.",
+  "holes": 3,
+  "objects": 61,
+  "stateHash": "d69be74e",
+  "randomCalls": 8584,
+  "vnow": 752000.0000000605,
+  "plates": {
+   "before": "4806e3209945028dbbe6334180fb4cd6ea04110d785090e264257181be9bbeb2",
+   "a": "4806e3209945028dbbe6334180fb4cd6ea04110d785090e264257181be9bbeb2",
+   "b": "4806e3209945028dbbe6334180fb4cd6ea04110d785090e264257181be9bbeb2"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 36,
+      "h": 36,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 142,
+      "h": 35,
+      "x": 58,
+      "y": 12
+     },
+     {
+      "name": "goal",
+      "w": 170,
+      "h": 81,
+      "x": 208,
+      "y": 12
+     },
+     {
+      "name": "nela",
+      "w": 359,
+      "h": 73,
+      "x": 195,
+      "y": 595
+     }
+    ],
+    "area": 46243,
+    "pct": 14.05
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 140,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "goal",
+      "w": 170,
+      "h": 99,
+      "x": 208,
+      "y": 12
+     },
+     {
+      "name": "nela",
+      "w": 359,
+      "h": 69,
+      "x": 195,
+      "y": 599
+     }
+    ],
+    "area": 49697,
+    "pct": 15.1
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 140,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "goal",
+      "w": 170,
+      "h": 100,
+      "x": 208,
+      "y": 12
+     },
+     {
+      "name": "nela",
+      "w": 359,
+      "h": 69,
+      "x": 195,
+      "y": 599
+     }
+    ],
+    "area": 49867,
+    "pct": 15.15
+   }
+  },
+  "identical": true,
+  "errors": []
+ },
+ "s4-daily": {
+  "title": "Wyzwanie dnia · telefon",
+  "viewport": "390x844",
+  "mode": "arena",
+  "daily": true,
+  "challenge": null,
+  "seed": 1162589281,
+  "mission": null,
+  "missionName": null,
+  "time": "1:15",
+  "score": 739,
+  "radius": 103.3,
+  "tier": "T5",
+  "tierPct": "47.5%",
+  "rank": "#3/6",
+  "camera": [
+   2299.037,
+   622.017
+  ],
+  "zoom": 0.67844,
+  "layout": "phone",
+  "uiScale": 1,
+  "width": 390,
+  "height": 844,
+  "dpr": 2,
+  "minimap": {
+   "size": 104,
+   "l": 270,
+   "t": 724,
+   "r": 374,
+   "b": 828
+  },
+  "combo": 1,
+  "banner": null,
+  "goals": null,
+  "nela": null,
+  "holes": 6,
+  "objects": 300,
+  "stateHash": "1cfdf5b5",
+  "randomCalls": 14290,
+  "vnow": 746000.0000000536,
+  "plates": {
+   "before": "d99b72d33f62ce0aba59d1860c994f038a2dc0b228d308516255bca2a2907001",
+   "a": "d99b72d33f62ce0aba59d1860c994f038a2dc0b228d308516255bca2a2907001",
+   "b": "d99b72d33f62ce0aba59d1860c994f038a2dc0b228d308516255bca2a2907001"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 36,
+      "h": 36,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 152,
+      "h": 35,
+      "x": 58,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 138,
+      "h": 103,
+      "x": 240,
+      "y": 12
+     }
+    ],
+    "area": 20830,
+    "pct": 6.33
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 95,
+      "x": 236,
+      "y": 12
+     }
+    ],
+    "area": 22818,
+    "pct": 6.93
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 100,
+      "x": 236,
+      "y": 12
+     }
+    ],
+    "area": 23528,
+    "pct": 7.15
+   }
+  },
+  "identical": true,
+  "errors": []
+ },
+ "s5-crazygames": {
+  "title": "CrazyGames 800×450 · Arena",
+  "viewport": "800x450",
+  "mode": "arena",
+  "daily": false,
+  "challenge": null,
+  "seed": 4242,
+  "mission": null,
+  "missionName": null,
+  "time": "1:09",
+  "score": 505,
+  "radius": 85.68,
+  "tier": "T4",
+  "tierPct": "82%",
+  "rank": "#3/6",
+  "camera": [
+   2449.285,
+   1035.736
+  ],
+  "zoom": 0.72633,
+  "layout": "compact",
+  "uiScale": 1,
+  "width": 800,
+  "height": 450,
+  "dpr": 2,
+  "minimap": {
+   "size": 92,
+   "l": 698,
+   "t": 348,
+   "r": 790,
+   "b": 440
+  },
+  "combo": 3,
+  "banner": "AWANS NA 3. MIEJSCE",
+  "goals": null,
+  "nela": null,
+  "holes": 6,
+  "objects": 300,
+  "stateHash": "a67650d2",
+  "randomCalls": 10907,
+  "vnow": 752000.0000000605,
+  "plates": {
+   "before": "bf02612238052014bf40e45df90bd440f5358536ad1fc21701b33c1790afbd3b",
+   "a": "bf02612238052014bf40e45df90bd440f5358536ad1fc21701b33c1790afbd3b",
+   "b": "bf02612238052014bf40e45df90bd440f5358536ad1fc21701b33c1790afbd3b"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 36,
+      "h": 36,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 550,
+      "h": 40,
+      "x": 58,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 168,
+      "h": 79,
+      "x": 620,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 150,
+      "h": 62,
+      "x": 8,
+      "y": 58
+     }
+    ],
+    "area": 45868,
+    "pct": 12.74
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 336,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 168,
+      "h": 74,
+      "x": 620,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 109,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     }
+    ],
+    "area": 34711,
+    "pct": 9.64
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 336,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 168,
+      "h": 79,
+      "x": 620,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 109,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     }
+    ],
+    "area": 35551,
+    "pct": 9.88
+   }
+  },
+  "identical": true,
+  "errors": []
+ },
+ "s5b-crazygames-campaign": {
+  "title": "CrazyGames 800×450 · Kampania",
+  "viewport": "800x450",
+  "mode": "campaign",
+  "daily": false,
+  "challenge": null,
+  "seed": null,
+  "mission": "M24",
+  "missionName": "Miasto na nowo",
+  "time": "0:29",
+  "score": 2336,
+  "radius": 160.7,
+  "tier": "T6",
+  "tierPct": "100%",
+  "rank": null,
+  "camera": [
+   1619.788,
+   1815.221
+  ],
+  "zoom": 0.6894,
+  "layout": "compact",
+  "uiScale": 1,
+  "width": 800,
+  "height": 450,
+  "dpr": 2,
+  "minimap": {
+   "size": 92,
+   "l": 698,
+   "t": 348,
+   "r": 790,
+   "b": 440
+  },
+  "combo": 1,
+  "banner": null,
+  "goals": [
+   "Wyłącz 3 węzły 2/3",
+   "Pochłoń rdzeń miasta 0/1"
+  ],
+  "nela": null,
+  "holes": 3,
+  "objects": 61,
+  "stateHash": "d69be74e",
+  "randomCalls": 8584,
+  "vnow": 752000.0000000605,
+  "plates": {
+   "before": "789e4c41d6865e5856cd3f0077347d5f2519b91d66a221a13a985a606c5ab812",
+   "a": "789e4c41d6865e5856cd3f0077347d5f2519b91d66a221a13a985a606c5ab812",
+   "b": "789e4c41d6865e5856cd3f0077347d5f2519b91d66a221a13a985a606c5ab812"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 36,
+      "h": 36,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 538,
+      "h": 40,
+      "x": 58,
+      "y": 12
+     },
+     {
+      "name": "goal",
+      "w": 184,
+      "h": 81,
+      "x": 604,
+      "y": 12
+     }
+    ],
+    "area": 37720,
+    "pct": 10.48
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 336,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "goal",
+      "w": 184,
+      "h": 99,
+      "x": 604,
+      "y": 12
+     }
+    ],
+    "area": 34936,
+    "pct": 9.7
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 336,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "goal",
+      "w": 184,
+      "h": 100,
+      "x": 604,
+      "y": 12
+     }
+    ],
+    "area": 35120,
+    "pct": 9.76
+   }
+  },
+  "identical": true,
+  "errors": []
+ },
+ "s6-desktop": {
+  "title": "Desktop 1366×768 · Arena",
+  "viewport": "1366x768",
+  "mode": "arena",
+  "daily": false,
+  "challenge": null,
+  "seed": 4242,
+  "mission": null,
+  "missionName": null,
+  "time": "0:51",
+  "score": 1463,
+  "radius": 122.55,
+  "tier": "T6",
+  "tierPct": "100%",
+  "rank": "#1/6",
+  "camera": [
+   2265.928,
+   1294.366
+  ],
+  "zoom": 0.93043,
+  "layout": "wide",
+  "uiScale": 1.238709677419355,
+  "width": 1366,
+  "height": 768,
+  "dpr": 2,
+  "minimap": {
+   "size": 161.03225806451613,
+   "l": 1185.1483870967743,
+   "t": 587.1483870967742,
+   "r": 1346.1806451612904,
+   "b": 748.1806451612903
+  },
+  "combo": 1,
+  "banner": "T6 · KOLOSALNY!",
+  "goals": null,
+  "nela": null,
+  "holes": 6,
+  "objects": 299,
+  "stateHash": "d7ee311b",
+  "randomCalls": 16490,
+  "vnow": 770000.0000000815,
+  "plates": {
+   "before": "405bfd23a265348ab75ad50dcab4fd3d9fcc64550cd6ff7c394c962c31e8201c",
+   "a": "405bfd23a265348ab75ad50dcab4fd3d9fcc64550cd6ff7c394c962c31e8201c",
+   "b": "405bfd23a265348ab75ad50dcab4fd3d9fcc64550cd6ff7c394c962c31e8201c"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44.6,
+      "h": 44.6,
+      "x": 14.9,
+      "y": 14.9
+     },
+     {
+      "name": "core",
+      "w": 569.8,
+      "h": 49.5,
+      "x": 71.8,
+      "y": 14.9
+     },
+     {
+      "name": "rank",
+      "w": 235.4,
+      "h": 140,
+      "x": 1116.1,
+      "y": 14.9
+     }
+    ],
+    "area": 63150,
+    "pct": 6.02
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 54.5,
+      "h": 54.5,
+      "x": 14.9,
+      "y": 14.9
+     },
+     {
+      "name": "core",
+      "w": 416.2,
+      "h": 54.5,
+      "x": 76.8,
+      "y": 14.9
+     },
+     {
+      "name": "rank",
+      "w": 220.5,
+      "h": 117.7,
+      "x": 1130.9,
+      "y": 14.9
+     }
+    ],
+    "area": 51606,
+    "pct": 4.92
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 54.5,
+      "h": 54.5,
+      "x": 14.9,
+      "y": 14.9
+     },
+     {
+      "name": "core",
+      "w": 416.2,
+      "h": 54.5,
+      "x": 76.8,
+      "y": 14.9
+     },
+     {
+      "name": "rank",
+      "w": 220.5,
+      "h": 123.9,
+      "x": 1130.9,
+      "y": 14.9
+     }
+    ],
+    "area": 52973,
+    "pct": 5.05
+   }
+  },
+  "identical": true,
+  "errors": []
+ },
+ "s8-friend": {
+  "title": "Wyzwanie znajomego · telefon",
+  "viewport": "390x844",
+  "mode": "arena",
+  "daily": false,
+  "challenge": {
+   "score": 1500,
+   "from": "Maja"
+  },
+  "seed": 777,
+  "mission": null,
+  "missionName": null,
+  "time": "1:31",
+  "score": 463,
+  "radius": 78.96,
+  "tier": "T4",
+  "tierPct": "54%",
+  "rank": "#2/6",
+  "camera": [
+   1370.946,
+   778.881
+  ],
+  "zoom": 0.74051,
+  "layout": "phone",
+  "uiScale": 1,
+  "width": 390,
+  "height": 844,
+  "dpr": 2,
+  "minimap": {
+   "size": 104,
+   "l": 270,
+   "t": 724,
+   "r": 374,
+   "b": 828
+  },
+  "combo": 2,
+  "banner": null,
+  "goals": null,
+  "nela": null,
+  "holes": 6,
+  "objects": 299,
+  "stateHash": "e33f669",
+  "randomCalls": 10596,
+  "vnow": 730000.0000000349,
+  "plates": {
+   "before": "dacd5e5d7539bbffb60c1ee18bb14a2acc9880ceacecda466bc1ed56f901d83d",
+   "a": "dacd5e5d7539bbffb60c1ee18bb14a2acc9880ceacecda466bc1ed56f901d83d",
+   "b": "dacd5e5d7539bbffb60c1ee18bb14a2acc9880ceacecda466bc1ed56f901d83d"
+  },
+  "boxes": {
+   "before": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 36,
+      "h": 36,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 152,
+      "h": 35,
+      "x": 58,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 143,
+      "h": 103,
+      "x": 235,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 150,
+      "h": 62,
+      "x": 8,
+      "y": 58
+     },
+     {
+      "name": "challenge",
+      "w": 158,
+      "h": 40,
+      "x": 8,
+      "y": 128
+     }
+    ],
+    "area": 36965,
+    "pct": 11.23
+   },
+   "a": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 95,
+      "x": 236,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 108,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     },
+     {
+      "name": "challenge",
+      "w": 158,
+      "h": 54,
+      "x": 12,
+      "y": 121
+     }
+    ],
+    "area": 36858,
+    "pct": 11.2
+   },
+   "b": {
+    "panels": [
+     {
+      "name": "pause",
+      "w": 44,
+      "h": 44,
+      "x": 12,
+      "y": 12
+     },
+     {
+      "name": "core",
+      "w": 168,
+      "h": 44,
+      "x": 62,
+      "y": 12
+     },
+     {
+      "name": "rank",
+      "w": 142,
+      "h": 100,
+      "x": 236,
+      "y": 12
+     },
+     {
+      "name": "combo",
+      "w": 108,
+      "h": 51,
+      "x": 12,
+      "y": 64
+     },
+     {
+      "name": "challenge",
+      "w": 158,
+      "h": 54,
+      "x": 12,
+      "y": 121
+     }
+    ],
+    "area": 37568,
+    "pct": 11.41
+   }
+  },
+  "identical": true,
+  "errors": []
+ }
+}
