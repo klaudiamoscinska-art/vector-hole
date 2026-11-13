@@ -1,0 +1,495 @@
+{
+ "cta": [
+  {
+   "frame": "320x568",
+   "variant": "before",
+   "cta": {
+    "top": 541,
+    "bottom": 600,
+    "h": 59
+   },
+   "navTop": 506,
+   "viewport": 568,
+   "visiblePx": 0,
+   "hit": "bottomNav",
+   "tappable": false,
+   "scrollTop": 0,
+   "scrollMax": 896,
+   "cardTop": 216
+  },
+  {
+   "frame": "320x568",
+   "variant": "a",
+   "cta": {
+    "top": 426,
+    "bottom": 484,
+    "h": 59
+   },
+   "navTop": 506,
+   "viewport": 568,
+   "visiblePx": 59,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 914,
+   "cardTop": 218
+  },
+  {
+   "frame": "320x568",
+   "variant": "b",
+   "cta": {
+    "top": 426,
+    "bottom": 484,
+    "h": 58
+   },
+   "navTop": 505,
+   "viewport": 568,
+   "visiblePx": 58,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 922,
+   "cardTop": 240
+  },
+  {
+   "frame": "360x640",
+   "variant": "before",
+   "cta": {
+    "top": 511,
+    "bottom": 570,
+    "h": 59
+   },
+   "navTop": 578,
+   "viewport": 640,
+   "visiblePx": 59,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 794,
+   "cardTop": 216
+  },
+  {
+   "frame": "360x640",
+   "variant": "a",
+   "cta": {
+    "top": 529,
+    "bottom": 588,
+    "h": 59
+   },
+   "navTop": 578,
+   "viewport": 640,
+   "visiblePx": 49,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 812,
+   "cardTop": 218
+  },
+  {
+   "frame": "360x640",
+   "variant": "b",
+   "cta": {
+    "top": 498,
+    "bottom": 556,
+    "h": 58
+   },
+   "navTop": 577,
+   "viewport": 640,
+   "visiblePx": 58,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 820,
+   "cardTop": 240
+  },
+  {
+   "frame": "375x667",
+   "variant": "before",
+   "cta": {
+    "top": 511,
+    "bottom": 570,
+    "h": 59
+   },
+   "navTop": 605,
+   "viewport": 667,
+   "visiblePx": 59,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 767,
+   "cardTop": 216
+  },
+  {
+   "frame": "375x667",
+   "variant": "a",
+   "cta": {
+    "top": 529,
+    "bottom": 588,
+    "h": 59
+   },
+   "navTop": 605,
+   "viewport": 667,
+   "visiblePx": 59,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 785,
+   "cardTop": 218
+  },
+  {
+   "frame": "375x667",
+   "variant": "b",
+   "cta": {
+    "top": 525,
+    "bottom": 583,
+    "h": 58
+   },
+   "navTop": 604,
+   "viewport": 667,
+   "visiblePx": 58,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 793,
+   "cardTop": 240
+  },
+  {
+   "frame": "390x844",
+   "variant": "before",
+   "cta": {
+    "top": 511,
+    "bottom": 570,
+    "h": 59
+   },
+   "navTop": 782,
+   "viewport": 844,
+   "visiblePx": 59,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 570,
+   "cardTop": 216
+  },
+  {
+   "frame": "390x844",
+   "variant": "a",
+   "cta": {
+    "top": 529,
+    "bottom": 588,
+    "h": 59
+   },
+   "navTop": 782,
+   "viewport": 844,
+   "visiblePx": 59,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 588,
+   "cardTop": 218
+  },
+  {
+   "frame": "390x844",
+   "variant": "b",
+   "cta": {
+    "top": 702,
+    "bottom": 760,
+    "h": 58
+   },
+   "navTop": 781,
+   "viewport": 844,
+   "visiblePx": 58,
+   "hit": "btn btn-primary btn-mega mc-play",
+   "tappable": true,
+   "scrollTop": 0,
+   "scrollMax": 772,
+   "cardTop": 416
+  }
+ ],
+ "big": [
+  {
+   "run": 0,
+   "scene": "hub",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "mainMenu",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2209,
+    1408
+   ],
+   "fillW": 0.67,
+   "fillH": 0.96
+  },
+  {
+   "run": 0,
+   "scene": "campaign",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "campaignScreen",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2205,
+    1744
+   ],
+   "fillW": 0.67,
+   "fillH": 1.19
+  },
+  {
+   "run": 0,
+   "scene": "briefing",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "campaignScreen",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    },
+    {
+     "id": "missionBriefing",
+     "z": "130",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2205,
+    1744
+   ],
+   "fillW": 0.67,
+   "fillH": 1.19
+  },
+  {
+   "run": 1,
+   "scene": "hub",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "mainMenu",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2213,
+    1408
+   ],
+   "fillW": 0.67,
+   "fillH": 0.96
+  },
+  {
+   "run": 1,
+   "scene": "campaign",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "campaignScreen",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2205,
+    1744
+   ],
+   "fillW": 0.67,
+   "fillH": 1.19
+  },
+  {
+   "run": 1,
+   "scene": "briefing",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "campaignScreen",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    },
+    {
+     "id": "missionBriefing",
+     "z": "130",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2205,
+    1744
+   ],
+   "fillW": 0.67,
+   "fillH": 1.19
+  },
+  {
+   "run": 2,
+   "scene": "hub",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "mainMenu",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2209,
+    1408
+   ],
+   "fillW": 0.67,
+   "fillH": 0.96
+  },
+  {
+   "run": 2,
+   "scene": "campaign",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "campaignScreen",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2205,
+    1744
+   ],
+   "fillW": 0.67,
+   "fillH": 1.19
+  },
+  {
+   "run": 2,
+   "scene": "briefing",
+   "body": "wide board-idle",
+   "uiScale": "1.600",
+   "appZoom": "1",
+   "visible": [
+    {
+     "id": "campaignScreen",
+     "z": "100",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    },
+    {
+     "id": "missionBriefing",
+     "z": "130",
+     "op": "1",
+     "box": [
+      0,
+      0,
+      2560,
+      1440
+     ]
+    }
+   ],
+   "content": [
+    502,
+    29,
+    2205,
+    1744
+   ],
+   "fillW": 0.67,
+   "fillH": 1.19
+  }
+ ]
+}

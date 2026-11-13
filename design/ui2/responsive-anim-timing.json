@@ -1,0 +1,6 @@
+{
+ "what": "ms from openCampaignScreen() to opacity 1 of #campaignScreen and its .screen-inner (entry animation v12-rise, nominal 340 ms); 4 fresh pages per frame; headless Chromium, software rendering",
+ "390x844": [{"full":374,"frames":21},{"full":377,"frames":21},{"full":408,"frames":22},{"full":435,"frames":22}],
+ "1366x768": [{"full":503,"frames":14},{"full":501,"frames":14},{"full":496,"frames":15},{"full":507,"frames":12}],
+ "2560x1440": [{"full":652,"frames":6,"at":{"t":549,"opacity":0.94}},{"full":1150,"frames":8,"at":{"t":543,"opacity":0}},{"full":848,"frames":6,"at":{"t":603,"opacity":0.65}},{"full":674,"frames":6,"at":{"t":577,"opacity":0.98}}]
+}
