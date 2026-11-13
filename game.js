@@ -4667,11 +4667,18 @@ class Particle {
       const r = this.radius * (0.5 + 0.5 * t);
       ctx.fillRect(-r / 2, -r / 2, r, r);
     } else {
+      // GG-VFX-01: the glow is a stamp (it was a shadowBlur per dot, per
+      // frame); quality 0 never had one.
+      const r = this.radius * t;
+      if (!OBJECT_ART_LITE) {
+        const g = r + 9;
+        ctx.globalAlpha = t * 0.7;
+        ctx.drawImage(fxGlow(this.color), this.x - g, this.y - g, g * 2, g * 2);
+        ctx.globalAlpha = t;
+      }
       ctx.fillStyle = this.color;
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = this.color;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius * t, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -9685,6 +9692,7 @@ function beginSwallow(obj, hole) {
   const h = Math.sin(obj.x * 12.9898 + obj.y * 78.233) * 43758.5453;
   const f = h - Math.floor(h);
   obj.swSpin = (f < 0.5 ? -1 : 1) * (2.2 + f * 1.2);
+  obj.swW = swallowWeight(obj);
 }
 
 /** World position + look of a swallowed thing at progress k (0..1). */
@@ -9696,6 +9704,284 @@ function swallowPose(obj, hole, k) {
   const fx = (obj.swFromX || 0) * (1 - fall), fy = (obj.swFromY || 0) * (1 - fall);
   return { x: hole.x + fx * c - fy * s, y: hole.y + fx * s + fy * c, rot: ang * 0.7, scale: Math.max(0.06, 1 - 0.88 * k), alpha: 1 - 0.55 * k };
 }
+
+/* ----------------------- Premium swallow effects (GG-VFX-01) -----------------------
+   What the player SEES of an eat, scaled by what was eaten. Display only:
+   the timing (eatT / EAT_ANIM_TIME), swallowPose()'s x/y that the eaten
+   object itself follows, the reach, the scores and every Math.random() draw
+   are exactly as before -- nothing here reads or writes game state, and all
+   variety comes from the object's own seed (swSeed / swSpin).
+   One family in three weights (swallowWeight()): 0 = T1/T2 (quick and
+   light, they are eaten many times a second), 1 = T3/T4 (the whole
+   silhouette is dragged in, the vortex answers), 2 = T5/T6 and boss
+   landmarks (the vortex inhales, the body is torn down, a shock leaves the
+   rim); 3 = a rival vortex. Drawn by Game.drawSwallowed() (the fall, inside
+   the eater's clipped vortex), Game.drawSwallowRim() (the rim's answer) and
+   Game.drawGulpCore() / drawGulps() (what follows the swallow). */
+const SWALLOW_RIVAL = 3;
+
+/** 0 small (T1/T2), 1 medium (T3/T4), 2 large (T5/T6, boss landmarks), 3 a rival. */
+function swallowWeight(obj) {
+  if (obj.ghost) return SWALLOW_RIVAL;
+  if (obj.type === 'landmark') return 2;
+  const t = obj.stats ? obj.stats.minTier - 1 : TIERS[obj.tier] ? TIERS[obj.tier].minSizeTier : -1;
+  if (t >= 0) return Math.min(2, t >> 1);
+  return swallowWeightOfRadius(obj.radius);
+}
+function swallowWeightOfRadius(r) { return r <= 24 ? 0 : r <= 60 ? 1 : 2; }
+
+// Per weight: how late the plunge starts, the lift before it, the stretch
+// toward the core, the after-images and the shards the body sheds.
+const SWALLOW_FALL = [2, 2.3, 2.7, 2.2];
+const SWALLOW_LIFT = [0, 0.05, 0.09, 0.06];
+const SWALLOW_STRETCH = [0.16, 0.26, 0.36, 0.5];
+const SWALLOW_ECHOES = [0, 1, 2, 2];
+const SWALLOW_SHARDS = [0, 3, 6, 0];
+
+/** How a swallowed thing LOOKS at progress k (0..1): where it is drawn, its
+ *  turn, its size, its stretch toward the eater's core (`ang` = the
+ *  direction to the core) and its alpha. The path is the same spiral as
+ *  swallowPose(); a heavier body slips later and plunges harder. `out`
+ *  is reused (no garbage in the render loop). */
+function swallowLook(obj, hole, k, out) {
+  k = clamp(k, 0, 1);
+  const w = obj.swW || 0;
+  const fall = Math.pow(k, SWALLOW_FALL[w]);
+  const spin = obj.swSpin || 2.6;
+  const ang = spin * (0.55 * k + 0.45 * k * k);
+  const c = Math.cos(ang), s = Math.sin(ang);
+  const fx = (obj.swFromX || 0) * (1 - fall), fy = (obj.swFromY || 0) * (1 - fall);
+  const dx = fx * c - fy * s, dy = fx * s + fy * c;
+  const o = out || {};
+  o.dx = dx; o.dy = dy;
+  o.x = hole.x + dx; o.y = hole.y + dy;
+  o.ang = Math.atan2(-dy, -dx);
+  o.rot = spin * Math.pow(k, 1.5) * (w === SWALLOW_RIVAL ? 2.4 : 0.85);
+  // The lift: a heavy body rises on the lip for a moment, then drops.
+  const lift = SWALLOW_LIFT[w] * Math.sin(Math.PI * Math.min(1, k / 0.3));
+  o.scale = Math.max(0.05, (1 + lift) * (1 - 0.92 * Math.pow(k, 1.45)));
+  o.stretch = SWALLOW_STRETCH[w] * Math.sin(Math.PI * Math.pow(k, 0.85));
+  o.alpha = k < 0.5 ? 1 : 1 - 0.72 * (k - 0.5) / 0.5;
+  return o;
+}
+
+const SWALLOW_TMP = {}, SWALLOW_TMP2 = {};
+
+/** Alpha of the part of a swallowed thing that is still outside the rim. */
+function swallowOutsideAlpha(k) { return clamp(1.55 - 2.6 * k, 0, 1); }
+
+/** True while a swallowed thing (its look `p`, its sprite reaching `reach`)
+ *  still shows outside the rim of `hole` -- once it is wholly inside, only
+ *  the eater draws it. */
+function swallowShowsOutside(p, hole, reach) {
+  const far = Math.hypot(p.dx, p.dy) + reach * p.scale * (1 + p.stretch);
+  return far > hole.radius * 0.95;
+}
+
+/** Sets the transform of a swallowed thing (see swallowLook()). */
+function applySwallowLook(ctx, p) {
+  ctx.translate(p.x, p.y);
+  if (p.stretch > 0.01) {
+    ctx.rotate(p.ang);
+    ctx.scale(p.scale * (1 + p.stretch), p.scale * (1 - p.stretch * 0.55));
+    ctx.rotate(p.rot - p.ang);
+  } else {
+    ctx.rotate(p.rot);
+    ctx.scale(p.scale, p.scale);
+  }
+}
+
+/** A stable 0..1 value for effect variety (never Math.random()). */
+function fxHash(seed, i) {
+  const h = Math.sin(seed * 127.1 + i * 311.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+
+/** A soft round glow in `color` (white-hot middle), painted once and stamped
+ *  with 'lighter' -- what shadowBlur would cost every frame. */
+const FX_GLOWS = new Map();
+function fxGlow(color) {
+  let cv = FX_GLOWS.get(color);
+  if (cv) return cv;
+  cv = document.createElement('canvas');
+  cv.width = cv.height = 64;
+  const c = cv.getContext('2d');
+  const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,0.95)');
+  g.addColorStop(0.22, rgbaColor(color, 0.85));
+  g.addColorStop(0.6, rgbaColor(color, 0.24));
+  g.addColorStop(1, rgbaColor(color, 0));
+  c.fillStyle = g;
+  c.fillRect(0, 0, 64, 64);
+  if (FX_GLOWS.size >= 32) FX_GLOWS.delete(FX_GLOWS.keys().next().value);
+  FX_GLOWS.set(color, cv);
+  return cv;
+}
+
+// A gulp by weight (small, medium, large, rival): how long the vortex
+// answers (ms), how far its shock ring travels (in radii), the ring's alpha
+// and width, the glow in its throat, and how much it inhales beforehand.
+const GULP_MS = [200, 340, 560, 620];
+const GULP_REACH = [0.2, 0.42, 0.85, 1.05];
+const GULP_RING_ALPHA = [0.42, 0.7, 0.9, 0.95];
+const GULP_RING_WIDTH = [0.03, 0.05, 0.085, 0.09];
+const GULP_CORE = [0.8, 0.95, 1.1, 1.1];
+const GULP_CORE_ALPHA = [0.34, 0.6, 0.95, 1];
+const GULP_INHALE = [0, 0.012, 0.035, 0.03];
+
+/* What each look adds to a medium or large gulp, in its own character (drawn
+   at the hole's center, in radii; t 0..1, a = alpha, big = a T5/T6 or rival
+   gulp, seed = the event's own). Strokes and small fills only. */
+const GULP_ACCENTS = {
+  // Horyzont: the dark swells past the lip, then the photon ring snaps shut.
+  horizon(ctx, r, t, a, p, big) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = a * 0.5 * (1 - t);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = r * (big ? 0.34 : 0.22) * (1 - t * 0.5);
+    ctx.beginPath(); ctx.arc(0, 0, r * (1.1 + 0.12 * t), 0, HOLE_TAU); ctx.stroke();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = a * Math.sin(Math.PI * t);
+    ctx.strokeStyle = '#D6FCFF';
+    ctx.lineWidth = Math.max(1, r * 0.03);
+    ctx.beginPath(); ctx.arc(0, 0, r * (1.42 - 0.4 * t), 0, HOLE_TAU); ctx.stroke();
+  },
+  // Cyjan: exact, segmented impulses stepping out from the ring.
+  tech(ctx, r, t, a, p, big) {
+    ctx.strokeStyle = p.hi;
+    ctx.lineWidth = Math.max(1.2, r * 0.045);
+    for (let i = 0; i < (big ? 3 : 2); i++) {
+      const tt = t * 1.25 - i * 0.16;
+      if (tt <= 0 || tt >= 1) continue;
+      const rad = r * (1.1 + (0.5 + 0.12 * i) * tt), seg = HOLE_TAU / 8;
+      ctx.globalAlpha = a * (1 - tt);
+      ctx.beginPath();
+      for (let s = 0; s < 8; s++) { const a0 = s * seg + i * 0.39; ctx.moveTo(Math.cos(a0) * rad, Math.sin(a0) * rad); ctx.arc(0, 0, rad, a0, a0 + seg * 0.62); }
+      ctx.stroke();
+    }
+  },
+  // Gorący Róż: a thick plasma ring that wobbles as it swells.
+  plasma(ctx, r, t, a, p, big, seed) {
+    ctx.globalAlpha = a * (1 - t) * 0.85;
+    ctx.strokeStyle = p.c;
+    ctx.lineWidth = r * (big ? 0.16 : 0.11) * (1 - t * 0.6);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let i = 0; i <= 28; i++) {
+      const th = i / 28 * HOLE_TAU;
+      const rad = r * (1.12 + 0.34 * t + 0.07 * Math.sin(th * 5 + seed + t * 9) * (0.4 + t));
+      ctx.lineTo(Math.cos(th) * rad, Math.sin(th) * rad);
+    }
+    ctx.closePath(); ctx.stroke();
+  },
+  // Toksyna: bubbles belched out of the rim.
+  toxic(ctx, r, t, a, p, big, seed) {
+    ctx.strokeStyle = p.hi;
+    ctx.lineWidth = Math.max(1, r * 0.03);
+    const n = big ? 9 : 6;
+    for (let i = 0; i < n; i++) {
+      const th = i / n * HOLE_TAU + fxHash(seed, i) * 0.7, f = 0.6 + 0.4 * fxHash(seed, i + 9);
+      const rad = r * (1.08 + 0.55 * t * f), s = r * (0.045 + 0.05 * fxHash(seed, i + 20)) * (1 + t * 0.6);
+      ctx.globalAlpha = a * (1 - t) * 0.9;
+      ctx.beginPath(); ctx.arc(Math.cos(th) * rad, Math.sin(th) * rad, s, 0, HOLE_TAU); ctx.stroke();
+    }
+  },
+  // Galaktyka: two arms thrown off as the disk spins up.
+  galaxy(ctx, r, t, a, p, big, seed) {
+    ctx.strokeStyle = p.hi;
+    ctx.lineCap = 'round';
+    const n = big ? 3 : 2;
+    for (let i = 0; i < n; i++) {
+      const a0 = seed + i / n * HOLE_TAU + t * 2.4;
+      ctx.globalAlpha = a * (1 - t);
+      ctx.lineWidth = r * 0.07 * (1 - t * 0.5);
+      ctx.beginPath();
+      for (let j = 0; j <= 10; j++) { const f = j / 10, th = a0 + f * 1.5, rad = r * (1.06 + (0.25 + 0.5 * t) * f); ctx.lineTo(Math.cos(th) * rad, Math.sin(th) * rad); }
+      ctx.stroke();
+    }
+  },
+  // Złoty: a corona of flares.
+  sun(ctx, r, t, a, p, big, seed) {
+    ctx.fillStyle = p.hi;
+    const n = big ? 14 : 10;
+    ctx.globalAlpha = a * (1 - t);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const th = i / n * HOLE_TAU + seed, len = r * (0.2 + 0.36 * fxHash(seed, i)) * Math.sin(Math.PI * Math.min(1, t * 1.4)) * (big ? 1.3 : 1);
+      const r0 = r * 1.08, hw = 0.055;
+      ctx.moveTo(Math.cos(th - hw) * r0, Math.sin(th - hw) * r0);
+      ctx.lineTo(Math.cos(th) * (r0 + len), Math.sin(th) * (r0 + len));
+      ctx.lineTo(Math.cos(th + hw) * r0, Math.sin(th + hw) * r0);
+    }
+    ctx.fill();
+  },
+  // Burza: forks of lightning jump off the rim.
+  storm(ctx, r, t, a, p, big, seed) {
+    if (t > 0.7) return;
+    ctx.strokeStyle = '#F2F8FF';
+    ctx.lineWidth = Math.max(1.2, r * 0.035);
+    ctx.lineJoin = 'miter';
+    const n = big ? 5 : 3, flick = Math.floor(t * 9);
+    ctx.globalAlpha = a * (1 - t / 0.7);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const th = i / n * HOLE_TAU + fxHash(seed, i + flick) * 1.1;
+      let rad = r * 1.02;
+      ctx.moveTo(Math.cos(th) * rad, Math.sin(th) * rad);
+      for (let j = 1; j <= 4; j++) {
+        rad += r * 0.13;
+        const tj = th + (fxHash(seed + j, i + flick * 3) - 0.5) * 0.3;
+        ctx.lineTo(Math.cos(tj) * rad, Math.sin(tj) * rad);
+      }
+    }
+    ctx.stroke();
+  },
+  // Zorza: wide, soft veils in two colors drifting off the ring.
+  aurora(ctx, r, t, a, p, big, seed) {
+    ctx.lineCap = 'round';
+    const cols = ['#46D99A', '#9875FF', '#50F0FA'];
+    const n = big ? 5 : 3;
+    for (let i = 0; i < n; i++) {
+      const a0 = seed + i * 2.2 + t * (i % 2 ? 0.9 : -0.9), span = 0.9 + 0.5 * fxHash(seed, i);
+      ctx.globalAlpha = a * (1 - t) * 0.6;
+      ctx.strokeStyle = cols[i % 3];
+      ctx.lineWidth = r * 0.13 * (1 - t * 0.4);
+      ctx.beginPath(); ctx.arc(0, 0, r * (1.14 + 0.1 * i / n + 0.3 * t), a0, a0 + span); ctx.stroke();
+    }
+  },
+  // Kryształ: a hexagon of light and four-point glints.
+  crystal(ctx, r, t, a, p, big, seed) {
+    ctx.strokeStyle = p.hi;
+    ctx.lineWidth = Math.max(1.2, r * 0.04);
+    ctx.lineJoin = 'miter';
+    ctx.globalAlpha = a * (1 - t);
+    const rad = r * (1.14 + 0.36 * t);
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) { const th = i / 6 * HOLE_TAU + seed * 0.2 + t * 0.5; ctx.lineTo(Math.cos(th) * rad, Math.sin(th) * rad); }
+    ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = '#FFFFFF';
+    const n = big ? 6 : 3, g = Math.sin(Math.PI * t);
+    ctx.globalAlpha = a * g;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const th = (i + 0.5) / n * HOLE_TAU + seed * 0.2, x = Math.cos(th) * rad, y = Math.sin(th) * rad, s = r * 0.13 * g;
+      ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.2, y - s * 0.2); ctx.lineTo(x + s, y); ctx.lineTo(x + s * 0.2, y + s * 0.2);
+      ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.2, y + s * 0.2); ctx.lineTo(x - s, y); ctx.lineTo(x - s * 0.2, y - s * 0.2);
+      ctx.closePath();
+    }
+    ctx.fill();
+  },
+  // Pryzmat: the gulp splits into its spectrum.
+  prism(ctx, r, t, a, p, big) {
+    ctx.lineWidth = Math.max(1.2, r * 0.035);
+    const n = big ? 6 : 4;
+    for (let i = 0; i < n; i++) {
+      ctx.globalAlpha = a * (1 - t) * 0.8;
+      ctx.strokeStyle = HOLE_SPECTRUM[i % 6];
+      ctx.beginPath(); ctx.arc(0, 0, r * (1.1 + (0.2 + 0.07 * i) * t * 1.6), 0, HOLE_TAU); ctx.stroke();
+    }
+  }
+};
 
 /** v13: a random point on one of the city's road lanes (the grid lines
  *  between blocks, see CITY_PITCH/CITY_ROAD). `next` returns 0..1. */
@@ -9775,12 +10061,16 @@ class WorldObject {
     // (drawSwallowed()); out here only the part over the rim fades away.
     const scale = this.eating ? 1 - this.eatT * 0.35 : 1;
     if (this.eating) {
-      const a = 1 - this.eatT * 4;
+      // GG-VFX-01: in the same pose as the part inside the vortex, so the
+      // silhouette is whole across the rim while it slides in.
+      const a = swallowOutsideAlpha(this.eatT);
       if (a <= 0) return;
+      const look = this.eater ? swallowLook(this, this.eater, this.eatT, SWALLOW_TMP) : null;
+      if (look && !swallowShowsOutside(look, this.eater, this.radius * 1.5)) return;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.translate(this.x, this.y);
-      ctx.scale(scale, scale);
+      if (look) applySwallowLook(ctx, look);
+      else { ctx.translate(this.x, this.y); ctx.scale(scale, scale); }
       drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, this.swSeed || 0, { live: false });
       ctx.restore();
       return;
@@ -9923,11 +10213,13 @@ class CampaignEntity {
   draw(ctx, isGoal) {
     if (!this.live || this.consumed) return;
     if (this.eating && this.eater) {
-      const a = 1 - this.eatT * 4;
+      const a = swallowOutsideAlpha(this.eatT);
       if (a <= 0) return;
+      const look = swallowLook(this, this.eater, this.eatT, SWALLOW_TMP);
+      if (!swallowShowsOutside(look, this.eater, this.radius * 1.5)) return;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.translate(this.x, this.y);
+      applySwallowLook(ctx, look);
       const art = this.artKind();
       if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[this.stats.minTier], this.radius, performance.now() / 1000, artSeed(this.x, this.y), { live: false, variant: this.glyph === 'konwoj' ? 'konwoj' : undefined });
       ctx.restore();
@@ -10117,15 +10409,18 @@ class Hole {
   }
 
   /** `inner` (optional): v12 callback drawing whatever this hole is
-   *  swallowing, called inside its clipped vortex before the rim. */
-  draw(ctx, time, inner) {
+   *  swallowing, called inside its clipped vortex before the rim; `over`
+   *  (optional, GG-VFX-01): the rim's answer, drawn on top of the ring. */
+  draw(ctx, time, inner, over) {
     const popT = this.growPopAt ? (performance.now() - this.growPopAt) / 260 : 1;
     const pop = popT < 1 ? Math.sin(popT * Math.PI) : 0;
     const realRadius = this.radius;
-    this.radius = realRadius * (1 + 0.14 * pop);
+    // fxSquash (GG-VFX-01, set by Game.swallowPass()): the drawn vortex
+    // inhales while something heavy falls in and rings after the gulp.
+    this.radius = realRadius * (1 + 0.14 * pop + (this.fxSquash || 0));
     this.growPop = pop;
     try {
-      this.drawBody(ctx, time, inner);
+      this.drawBody(ctx, time, inner, over);
     } finally {
       this.radius = realRadius;
     }
@@ -10158,7 +10453,15 @@ class Hole {
     return SKIN_STYLES[this.skin] || 'tech';
   }
 
-  drawBody(ctx, time, inner) {
+  /** The look this hole is drawn in: HOLE_LOOKS key + sprite color. */
+  lookOf() {
+    const horizon = this.isHorizon();
+    const wanted = horizon ? 'horizon' : this.holeStyle();
+    const style = HOLE_LOOKS[wanted] ? wanted : 'tech';
+    return { style, col: horizon ? '#50F0FA' : style === 'prism' ? '' : this.skinColor() || '#9875FF' };
+  }
+
+  drawBody(ctx, time, inner, over) {
     if (this.auraId && this.auraId !== 'none') {
       const aura = AURAS.find(a => a.id === this.auraId);
       if (aura && aura.color) {
@@ -10258,6 +10561,7 @@ class Hole {
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.restore();
+    if (over) over(ctx);
 
     if (!this.name) return; // Warsztat previews draw a nameless hole
     // labelScale (v12): Arena's camera zooms far out late in a round, so
@@ -10538,6 +10842,7 @@ class Game {
     // growth-driven camera zoom-out (1 = Campaign's fixed framing).
     this.floatTexts = [];
     this.swallowGhosts = [];
+    this.gulps = [];
     this.flashAlpha = 0;
     this.flashColor = '#ffffff';
     this.banner = null;
@@ -14770,6 +15075,7 @@ class Game {
     this.particles = [];
     this.ripples = [];
     this.swallowGhosts = [];
+    this.gulps = [];
     this.comboCount = 0;
     this.comboMultiplier = 1;
     this.comboTimer = 0;
@@ -15179,7 +15485,7 @@ class Game {
     this.syncCampaignRadius();
     const pts = Math.round(stats.score * multiplier);
     this.player.score += pts;
-    this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true, this.player);
+    this.triggerEatFeedback(e.x, e.y, this.campaignEntityColor(e), e.radius, true, this.player, e.swW);
     this.addScorePop(this.player, pts, multiplier > 1.01 ? '#EFCB63' : this.campaignEntityColor(e));
     this.vibrate(e.type === 'landmark' ? [60, 40, 60] : 30);
 
@@ -15364,7 +15670,7 @@ class Game {
         this.player.score += Math.round(bot.radius * 2 * multiplier);
         m.rivalsEaten++;
         this.rivalsEatenThisRun++;
-        this.triggerEatFeedback(bot.x, bot.y, bot.edgeColor, bot.radius, true, this.player);
+        this.triggerEatFeedback(bot.x, bot.y, bot.edgeColor, bot.radius, true, this.player, SWALLOW_RIVAL);
         this.sound.rivalEaten();
         this.vibrate(40);
         this.analytics.track('mission_rival_eaten', { missionId: m.def.id, rival: bot.name });
@@ -16168,7 +16474,7 @@ class Game {
     const holes = [...this.bots, this.player];
     holes.sort((a, b) => a.radius - b.radius);
     const swallowed = this.collectSwallowed();
-    for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
+    for (const h of holes) if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed), this.swallowOver(h, swallowed));
     this.drawNeutralRings(ctx);
     this.drawPlayerOverlapMarker(ctx, holes, 1);
 
@@ -16464,6 +16770,7 @@ class Game {
     this.ripples = [];
     this.floatTexts = [];
     this.swallowGhosts = [];
+    this.gulps = [];
     this.banner = null;
     this.flashAlpha = 0;
     this.hitStopUntil = 0;
@@ -17277,7 +17584,10 @@ class Game {
 
   /** Per-frame upkeep for the v8 juice layer, shared by Arena and Campaign. */
   updateJuice(dt) {
-    for (const g of this.swallowGhosts) g.t += dt / 0.45;
+    for (const g of this.swallowGhosts) {
+      g.t += dt / 0.45;
+      if (g.t >= 1) this.addGulp(g.eater, SWALLOW_RIVAL, g.color, g.radius);
+    }
     if (this.swallowGhosts.length) this.swallowGhosts = this.swallowGhosts.filter(g => g.t < 1);
     this.floatTexts.forEach(f => f.update(dt));
     this.floatTexts = this.floatTexts.filter(f => !f.dead);
@@ -17518,7 +17828,7 @@ class Game {
   /** Eat feedback scaled by what got eaten: tiny = a subtle tick, medium =
    *  pulse + particles, giant = heavier shake + particles + a ring ripple
    *  (GDD 5.4 — "eat feedback zależny od wielkości"). */
-  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved, eater) {
+  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved, eater, weight) {
     const { tinyMaxRadius, mediumMaxRadius } = CONFIG.juice.eatTiers;
     const size = eatenRadius <= tinyMaxRadius ? 0 : (eatenRadius <= mediumMaxRadius ? 1 : 2);
     // GDD 4.0 §5.3 "Efekt pochłaniania" cosmetic: the player's selected
@@ -17532,6 +17842,10 @@ class Game {
     const suck = [6, 11, 18][size];
     if (eater) this.spawnSuck(x, y, burstColor, isPlayerInvolved ? suck : Math.ceil(suck / 3), eater, Math.max(6, eatenRadius));
     else this.spawnParticles(x, y, burstColor, suck);
+    // GG-VFX-01: the vortex answers the gulp (a rival's comes when its
+    // collapse ends, see updateJuice()). Display only, no random draws.
+    const fxW = weight != null ? weight : swallowWeightOfRadius(eatenRadius);
+    if (eater && fxW !== SWALLOW_RIVAL) this.addGulp(eater, fxW, burstColor, x * 0.013 + y * 0.029);
     if (!isPlayerInvolved) return;
     if (eater && eater.isPlayer && this.sound) this.sound.eat(eatenRadius, this.comboCount);
     if (size === 2) {
@@ -17655,7 +17969,7 @@ class Game {
           const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
           a.score += rivalPts;
           if (isBounty) this.bountyTarget = null;
-          this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);
+          this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a, SWALLOW_RIVAL);
           if (a.isPlayer) {
             this.addFloatText(b.x, b.y - b.radius - 10, `ZJEDZONY! +${rivalPts}`, '#EFCB63', 22, 1.2, 40);
             this.sound.rivalEaten();
@@ -18099,7 +18413,7 @@ class Game {
         const frenzyMult = hole.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1;
         const pts = Math.round(obj.value * multiplier * frenzyMult);
         hole.score += pts;
-        this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer, hole);
+        this.triggerEatFeedback(obj.x, obj.y, obj.color, obj.radius, hole.isPlayer, hole, obj.swW);
         if (hole.isPlayer) {
           this.addScorePop(hole, pts, multiplier > 1.01 || frenzyMult > 1 ? '#EFCB63' : obj.color);
           if (this.coachState) this.coachState.bites++;
@@ -18604,7 +18918,7 @@ class Game {
     const labelScale = clamp(1 / this.zoom, 1, 2.6);
     for (const h of holes) {
       h.labelScale = labelScale;
-      if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed));
+      if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed), this.swallowOver(h, swallowed));
     }
     this.drawNeutralRings(ctx, labelScale);
     this.drawPlayerOverlapMarker(ctx, holes, labelScale);
@@ -18678,47 +18992,326 @@ class Game {
     return map;
   }
 
+  /** The `inner` pass of `h` (Hole.draw()): what it is swallowing and the
+   *  light of what it just swallowed, inside its clipped vortex. Also sets
+   *  how the drawn vortex breathes this frame (Hole.fxSquash). */
   swallowPass(h, swallowed) {
-    const items = swallowed.get(h);
-    return items ? (ctx) => this.drawSwallowed(ctx, h, items) : null;
+    const items = swallowed.get(h), gulps = this.gulpsOf(h);
+    h.fxSquash = items || gulps ? this.holeSquash(items, gulps) : 0;
+    if (!items && !gulps) return null;
+    return (ctx) => {
+      if (items) this.drawSwallowed(ctx, h, items);
+      if (gulps) this.drawGulpCore(ctx, h, gulps);
+    };
+  }
+
+  /** The `over` pass of `h`: the rim's answer, on top of its ring. */
+  swallowOver(h, swallowed) {
+    const items = swallowed.get(h), gulps = this.gulpsOf(h);
+    if (!items && !gulps) return null;
+    return (ctx) => {
+      if (items) this.drawSwallowRim(ctx, h, items);
+      if (gulps) this.drawGulps(ctx, h, gulps);
+    };
+  }
+
+  /** GG-VFX-01: `eater` has just swallowed something of `weight` (see
+   *  swallowWeight()): its vortex answers for a moment. A short, capped list
+   *  on the wall clock (like Hole.growPopAt); display only. A rival's small
+   *  bites stay quiet, and a chain of small bites restarts one light pulse
+   *  instead of stacking them. */
+  addGulp(eater, weight, color, seed) {
+    if (!eater || (weight === 0 && !eater.isPlayer)) return;
+    const now = performance.now(), list = this.gulps;
+    for (let i = list.length - 1; i >= 0; i--) if (now - list[i].at >= list[i].dur) list.splice(i, 1);
+    if (weight === 0) for (const g of list) if (g.hole === eater && g.w === 0 && now - g.at < 90) return;
+    const cap = this.gfxLevel === 0 ? 8 : 16;
+    while (list.length >= cap) list.shift();
+    list.push({ hole: eater, w: weight, color, at: now, dur: GULP_MS[weight], seed: seed || 0 });
+  }
+
+  /** The live gulps of `h` (null when it has none). */
+  gulpsOf(h) {
+    const list = this.gulps;
+    if (!list.length) return null;
+    const now = performance.now();
+    let out = null;
+    for (const g of list) if (g.hole === h && now - g.at < g.dur) (out || (out = [])).push(g);
+    return out;
+  }
+
+  /** How much the drawn vortex of a hole shrinks (inhaling something heavy)
+   *  or rings (after a heavy gulp) this frame, as a part of its radius. */
+  holeSquash(items, gulps) {
+    let s = 0;
+    if (items) for (const o of items) {
+      const w = o.swW || 0;
+      if (w) s -= GULP_INHALE[w] * Math.sin(Math.PI * clamp(o.ghost ? o.t : o.eatT, 0, 1));
+    }
+    if (gulps) {
+      const now = performance.now();
+      for (const g of gulps) if (g.w >= 2) { const t = (now - g.at) / 1000; s += 0.05 * Math.exp(-t * 7) * Math.sin(t * 26); }
+    }
+    return clamp(s, -0.07, 0.07);
+  }
+
+  /** The color of the player's "Efekt pochłaniania" (null = each object's own). */
+  eatTint() {
+    const id = this.save && this.save.effects && this.save.effects.selected;
+    const effect = EAT_EFFECTS.find(e => e.id === id);
+    return (effect && effect.color) || null;
+  }
+
+  swallowColor(o) {
+    return o.ghost || o instanceof WorldObject ? o.color : this.campaignEntityColor(o);
   }
 
   /** Draws what `h` is swallowing, inside its clipped vortex (see
-   *  swallowPose()): objects spin down and shrink; a swallowed rival hole
-   *  is a collapsing ring in its color. */
+   *  swallowLook()): each thing keeps its own silhouette while it spirals
+   *  down, stretched toward the core, leaving a wake; heavier bodies also
+   *  leave after-images and shed shards. A swallowed rival is its own
+   *  vortex, wrung out. Rivals' eats, quality 0, a far zoom and a crowd of
+   *  small bites draw less (the fall always stays). */
   drawSwallowed(ctx, h, items) {
     const t = performance.now() / 1000;
+    const lite = this.gfxLevel === 0;
+    const far = h.radius * this.zoom < 14;
+    const rich = h.isPlayer && !lite && !far;
+    const busy = items.length > 6;
+    const tint = h.isPlayer ? this.eatTint() : null;
     for (const o of items) {
-      const k = o.ghost ? o.t : o.eatT;
-      const p = swallowPose(o, h, k);
+      const k = clamp(o.ghost ? o.t : o.eatT, 0, 1);
+      const w = o.swW || 0;
+      const color = tint || this.swallowColor(o);
+      const quiet = far || (w === 0 && (busy || !h.isPlayer));
+      if (!quiet) this.drawSwallowWake(ctx, h, o, k, w, color, rich);
+      const echoes = quiet ? 0 : rich && !busy ? SWALLOW_ECHOES[w] : w >= 2 ? 1 : 0;
+      for (let j = echoes; j >= 1; j--) {
+        const kk = k - j * 0.085;
+        if (kk <= 0) continue;
+        const e = swallowLook(o, h, kk, SWALLOW_TMP2);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = e.alpha * 0.4 / j;
+        applySwallowLook(ctx, e);
+        this.drawSwallowBody(ctx, o, t, kk);
+        ctx.restore();
+      }
+      const p = swallowLook(o, h, k, SWALLOW_TMP);
       ctx.save();
       ctx.globalAlpha = p.alpha;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot);
-      ctx.scale(p.scale, p.scale);
-      if (o.ghost) {
-        ctx.fillStyle = '#000';
-        ctx.beginPath(); ctx.arc(0, 0, o.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = o.color;
-        ctx.lineWidth = Math.max(2, o.radius * 0.16);
-        ctx.shadowBlur = 14;
-        ctx.shadowColor = o.color;
-        ctx.stroke();
-      } else if (o instanceof WorldObject) {
-        drawObjectArt(ctx, o.subtype, o.color, o.radius, t, o.swSeed || 0, { live: false });
-      } else {
-        const art = o.artKind();
-        if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[o.stats.minTier], o.radius, t, artSeed(o.x, o.y), { live: false, variant: o.glyph === 'konwoj' ? 'konwoj' : undefined });
-      }
+      applySwallowLook(ctx, p);
+      this.drawSwallowBody(ctx, o, t, k);
       ctx.restore();
+      if (rich && !busy && SWALLOW_SHARDS[w]) this.drawSwallowShards(ctx, h, o, k, w, color);
     }
+  }
+
+  /** The swallowed thing itself, at the current origin. */
+  drawSwallowBody(ctx, o, t, k) {
+    if (o.ghost) {
+      // A rival: its own vortex (its look, at the size it had), and its ring
+      // breaking into arcs as it is wrung out.
+      const r = o.radius, devR = r * this.zoom * this.dpr;
+      const style = HOLE_LOOKS[o.style] ? o.style : 'tech';
+      stampHoleLayer(ctx, style, 'under', o.col, devR, r, 0);
+      stampHoleLayer(ctx, style, 'ring', o.col, devR, r, 0);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = o.color;
+      ctx.lineWidth = Math.max(2, r * 0.12);
+      ctx.setLineDash([r * (1.05 - 0.75 * k), r * (0.08 + 0.7 * k)]);
+      ctx.lineDashOffset = -k * r * 3;
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.02, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (o instanceof WorldObject) {
+      drawObjectArt(ctx, o.subtype, o.color, o.radius, t, o.swSeed || 0, { live: false });
+    } else {
+      const art = o.artKind();
+      if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[o.stats.minTier], o.radius, t, artSeed(o.x, o.y), { live: false, variant: o.glyph === 'konwoj' ? 'konwoj' : undefined });
+    }
+  }
+
+  /** The wake a swallowed thing drags along its spiral: a tapered streak of
+   *  light, and for a heavier body two swirl lines around the core. */
+  drawSwallowWake(ctx, h, o, k, w, color, rich) {
+    if (k < 0.05) return;
+    const p = swallowLook(o, h, k, SWALLOW_TMP);
+    const n = w === 0 ? 2 : 4, span = w === 0 ? 0.2 : 0.3;
+    const width = clamp(o.radius * (w === 0 ? 0.55 : 0.5), 1.5, h.radius * 0.34) * (0.35 + 0.65 * p.scale);
+    const fade = Math.min(1, k * 6);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    let px = p.x, py = p.y;
+    const dist0 = Math.hypot(p.dx, p.dy), th0 = Math.atan2(p.dy, p.dx);
+    for (let i = 1; i <= n; i++) {
+      const kk = k - span * i / n;
+      if (kk <= 0) break;
+      const e = swallowLook(o, h, kk, SWALLOW_TMP2);
+      ctx.globalAlpha = 0.6 * fade * (1 - i / (n + 1));
+      ctx.lineWidth = width * (1 - i / (n + 1.5));
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(e.x, e.y); ctx.stroke();
+      px = e.x; py = e.y;
+    }
+    if (rich && w >= 1 && dist0 > 2) {
+      const back = (o.swSpin < 0 ? 1 : -1) * (0.5 + 0.7 * Math.sin(Math.PI * k));
+      ctx.lineWidth = Math.max(1, h.radius * 0.018);
+      ctx.globalAlpha = 0.5 * Math.sin(Math.PI * k);
+      for (const f of w >= 2 ? [1.16, 0.82, 0.62] : [1.14, 0.8]) {
+        const rad = Math.min(dist0 * f, h.radius * 0.95);
+        ctx.beginPath(); ctx.arc(h.x, h.y, rad, th0, th0 + back * f, back < 0); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  /** Pieces torn off a heavier body, falling ahead of it into the core. */
+  drawSwallowShards(ctx, h, o, k, w, color) {
+    if (k < 0.1) return;
+    const n = SWALLOW_SHARDS[w], seed = o.swSeed || 0;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = color;
+    for (let i = 0; i < n; i++) {
+      const kk = Math.min(1, k * (1.12 + 0.3 * fxHash(seed, i)) + 0.04);
+      if (kk >= 1) continue;
+      const e = swallowLook(o, h, kk, SWALLOW_TMP2);
+      const side = (fxHash(seed, i + 7) - 0.5) * 1.9 * o.radius * (1 - kk);
+      const x = e.x - Math.sin(e.ang) * side, y = e.y + Math.cos(e.ang) * side;
+      const sz = Math.max(1.6, o.radius * (0.08 + 0.08 * fxHash(seed, i + 3)) * (1 - kk * 0.6));
+      const rot = seed + i * 2.1 + kk * 9;
+      ctx.globalAlpha = Math.min(1, (k - 0.1) * 8) * (1 - kk) * 0.9;
+      ctx.beginPath();
+      for (let v = 0; v < 3; v++) { const a = rot + v * 2.094; ctx.lineTo(x + Math.cos(a) * sz * (v ? 1 : 1.7), y + Math.sin(a) * sz * (v ? 1 : 1.7)); }
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /** The rim's answer while things fall in: it lights up where each body
+   *  crosses it (the light follows the body around), and the pull tightens
+   *  around something heavy. */
+  drawSwallowRim(ctx, h, items) {
+    const lite = this.gfxLevel === 0;
+    const R = h.radius;
+    if (R * this.zoom < 14) return;
+    const busy = items.length > 6;
+    const tint = h.isPlayer ? this.eatTint() : null;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (const o of items) {
+      const w = o.swW || 0;
+      if (w === 0 && (busy || lite || !h.isPlayer)) continue;
+      const k = clamp(o.ghost ? o.t : o.eatT, 0, 1);
+      const p = swallowLook(o, h, k, SWALLOW_TMP);
+      const th = Math.atan2(p.dy, p.dx);
+      const env = Math.sin(Math.PI * Math.pow(k, 0.6));
+      const half = clamp(o.radius / R, 0.14, 0.85) * (0.75 + 0.6 * k);
+      const color = tint || this.swallowColor(o);
+      ctx.strokeStyle = color;
+      if (w >= 1 && !lite) {
+        ctx.globalAlpha = env * 0.26;
+        ctx.lineWidth = R * 0.11;
+        ctx.beginPath(); ctx.arc(h.x, h.y, R * 1.02, th - half * 1.15, th + half * 1.15); ctx.stroke();
+      }
+      ctx.globalAlpha = env * (0.5 + 0.15 * Math.min(w, 2));
+      ctx.lineWidth = Math.max(1.5, R * (0.04 + 0.014 * Math.min(w, 2)));
+      ctx.beginPath(); ctx.arc(h.x, h.y, R, th - half, th + half); ctx.stroke();
+      if (w >= 2) {
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.globalAlpha = env * 0.7;
+        ctx.lineWidth = Math.max(1, R * 0.022);
+        ctx.beginPath(); ctx.arc(h.x, h.y, R, th - half * 0.55, th + half * 0.55); ctx.stroke();
+        if (!lite && h.isPlayer) {
+          // The pull tightens: rings closing on the rim, faster than the idle ones.
+          ctx.strokeStyle = color;
+          ctx.lineWidth = Math.max(1, R * 0.02);
+          for (let i = 0; i < 3; i++) {
+            const ph = (k * 1.6 + i / 3) % 1;
+            ctx.globalAlpha = env * 0.45 * Math.sin(ph * Math.PI);
+            ctx.beginPath(); ctx.arc(h.x, h.y, R * (1.7 - 0.66 * ph), 0, Math.PI * 2); ctx.stroke();
+          }
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  /** The light of a gulp in the throat of the vortex (clipped to it; the
+   *  event horizon is drawn over its middle, so it reads as a glowing wall). */
+  drawGulpCore(ctx, h, gulps) {
+    const now = performance.now(), R = h.radius;
+    const dark = h.isHorizon() ? 0.55 : 1;   // Horyzont swallows its own light
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const least = this.gfxLevel === 0 || !h.isPlayer ? 2 : 1;   // a small bite lights nothing: it is eaten many times a second
+    for (const g of gulps) {
+      if (g.w < least) continue;
+      const t = clamp((now - g.at) / g.dur, 0, 1);
+      const size = R * GULP_CORE[g.w] * (0.75 + 0.45 * t);
+      ctx.globalAlpha = (1 - t) * (1 - t) * GULP_CORE_ALPHA[g.w] * dark;
+      ctx.drawImage(fxGlow(g.color), h.x - size, h.y - size, size * 2, size * 2);
+    }
+    ctx.restore();
+  }
+
+  /** What leaves the rim after a gulp: a shock ring sized by the weight of
+   *  what was swallowed (a second one for T5/T6, a double
+   *  ring and rays in the rival's color for a rival), plus the look's own
+   *  accent (GULP_ACCENTS) on the player's medium and large gulps. */
+  drawGulps(ctx, h, gulps) {
+    const now = performance.now(), R = h.radius;
+    const lite = this.gfxLevel === 0;
+    const far = R * this.zoom < 14;
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const g of gulps) {
+      const w = g.w, t = clamp((now - g.at) / g.dur, 0, 1), out = 1 - (1 - t) * (1 - t);
+      ctx.strokeStyle = g.color;
+      ctx.globalAlpha = (1 - t) * GULP_RING_ALPHA[w];
+      ctx.lineWidth = Math.max(1, R * GULP_RING_WIDTH[w] * (1 - t * 0.7));
+      ctx.beginPath(); ctx.arc(0, 0, R * (1.03 + GULP_REACH[w] * out), 0, Math.PI * 2); ctx.stroke();
+      if (far) continue;
+      if (w >= 2) {
+        const t2 = (t - 0.2) / 0.8;
+        if (t2 > 0) {
+          ctx.strokeStyle = w === SWALLOW_RIVAL ? '#FFFFFF' : g.color;
+          ctx.globalAlpha = (1 - t2) * 0.6;
+          ctx.lineWidth = Math.max(1, R * 0.04 * (1 - t2 * 0.7));
+          ctx.beginPath(); ctx.arc(0, 0, R * (1.03 + GULP_REACH[w] * 0.72 * (1 - (1 - t2) * (1 - t2))), 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      if (w === SWALLOW_RIVAL) {
+        // A rival's energy bursts out in rays of its own color.
+        ctx.strokeStyle = g.color;
+        ctx.lineWidth = Math.max(1.5, R * 0.045 * (1 - t));
+        ctx.globalAlpha = (1 - t) * 0.85;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = i / 8 * Math.PI * 2 + g.seed, r0 = R * (1.1 + 0.5 * out), r1 = r0 + R * 0.34 * Math.sin(Math.PI * t) * (i % 2 ? 0.6 : 1);
+          ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+        }
+        ctx.stroke();
+      }
+      if (w >= 1 && !lite && (h.isPlayer || w >= 2)) {
+        const look = h.lookOf();
+        ctx.save();
+        GULP_ACCENTS[look.style](ctx, R, t, w >= 2 ? 1 : 0.75, holePalette(look.col || '#9875FF'), w >= 2, g.seed);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
   }
 
   /** A rival hole `b` was just eaten by `a`: its ring collapses into a's
    *  vortex over ~0.45 s (b itself respawns immediately). */
   addSwallowGhost(a, b, color) {
     if (this.swallowGhosts.length >= 8) this.swallowGhosts.shift();
-    const g = { ghost: true, eater: a, radius: b.radius, color, t: 0 };
+    const look = b.lookOf();
+    const g = { ghost: true, eater: a, radius: b.radius, color, t: 0, style: look.style, col: look.col };
     beginSwallow(g, a);
     g.swFromX = b.x - a.x;
     g.swFromY = b.y - a.y;
