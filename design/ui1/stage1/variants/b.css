@@ -1,0 +1,84 @@
+/* GG-UI-01 variant B -- PREMIUM NEON.
+   A deeper material in the game's own palette: a top-lit navy plate, a
+   cyan -> violet -> pink edge (the vortex's colours), one soft glow per
+   panel. Numbers in the display face with their own light; the tier is a
+   six-step ladder; the standings carry score bars; goals are counted in
+   pips. Still the same zones and the same footprint as A.
+   Moving accents (in the game, not in a still): a slow sheen along the
+   filling tier step, a pulse on the clock in the last 10 s -- both off
+   with prefers-reduced-motion. No backdrop-filter. */
+#ui1-hud.ui1-b .u-pause,
+#ui1-hud.ui1-b .u-core,
+#ui1-hud.ui1-b .u-rank,
+#ui1-hud.ui1-b .u-goal,
+#ui1-hud.ui1-b .u-combo,
+#ui1-hud.ui1-b .u-challenge,
+#ui1-hud.ui1-b .u-nela,
+#ui1-hud.ui1-b .u-np {
+  border: 1.5px solid transparent; border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(13, 40, 62, 0.94), rgba(4, 16, 29, 0.94)) padding-box,
+    linear-gradient(135deg, rgba(80, 240, 250, 0.95), rgba(152, 117, 255, 0.55) 55%, rgba(255, 84, 173, 0.75)) border-box;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(80, 240, 250, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+.ui1-b .u-pause { color: #50F0FA; }
+.ui1-b .u-pause i { box-shadow: 0 0 6px rgba(80, 240, 250, 0.8); }
+.ui1-b .u-time { color: #f2f8ff; text-shadow: 0 0 10px rgba(80, 240, 250, 0.55); }
+.ui1-b .u-time svg { color: #50F0FA; }
+.ui1-b .u-score { color: #EFCB63; text-shadow: 0 0 10px rgba(239, 203, 99, 0.5); }
+.ui1-b .u-score svg { color: #EFCB63; }
+.ui1-b .u-core.urgent .u-time, .ui1-b .u-core.urgent .u-time svg { color: #FF54AD; text-shadow: 0 0 12px rgba(255, 84, 173, 0.8); }
+.ui1-b .u-badge { color: #04101D; background: var(--tier); padding: 2.5px 5px; border-radius: 4px; box-shadow: 0 0 8px var(--tier); }
+.ui1-b .u-ladder i { background: rgba(242, 248, 255, 0.10); transform: skewX(-18deg); border-radius: 1.5px; }
+.ui1-b .u-ladder i b { background: var(--tier); }
+.ui1-b .u-ladder i.full b { opacity: 0.55; }
+.ui1-b .u-ladder i.now { box-shadow: 0 0 6px var(--tier); background: rgba(242, 248, 255, 0.16); }
+.ui1-b .u-ladder i.now b { background: linear-gradient(90deg, var(--tier), #ffffff 240%); }
+
+.ui1-b .u-rank-title { color: #50F0FA; }
+.ui1-b .u-place { color: #04101D; background: linear-gradient(90deg, #68F5FC, #37DCEB); padding: 3px 6px; border-radius: 5px; font-size: 11px; box-shadow: 0 0 8px rgba(80, 240, 250, 0.5); }
+.ui1-b .u-rank li { border-radius: 6px; color: rgba(242, 248, 255, 0.86); background: rgba(242, 248, 255, 0.04); overflow: hidden; }
+.ui1-b .u-rank li::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p); background: linear-gradient(90deg, rgba(152, 117, 255, 0.05), rgba(152, 117, 255, 0.3)); }
+.ui1-b .u-rank li.gap { background: none; }
+.ui1-b .u-rank li.gap::before { display: none; }
+.ui1-b .u-pos { position: relative; color: rgba(242, 248, 255, 0.55); }
+.ui1-b .u-rank li.first .u-pos { color: #EFCB63; filter: drop-shadow(0 0 4px rgba(239, 203, 99, 0.8)); }
+.ui1-b .u-rank li.me { color: #ffffff; font-weight: 700; background: rgba(80, 240, 250, 0.10); box-shadow: inset 0 0 0 1px rgba(80, 240, 250, 0.75), 0 0 8px rgba(80, 240, 250, 0.3); }
+.ui1-b .u-rank li.me::before { background: linear-gradient(90deg, rgba(80, 240, 250, 0.08), rgba(80, 240, 250, 0.42)); }
+.ui1-b .u-rank li.me .u-pts { color: #68F5FC; }
+
+.ui1-b .u-goal-head { color: #EFCB63; }
+.ui1-b .u-chip { color: #04101D; background: #EFCB63; }
+.ui1-b .u-goal-row + .u-goal-row { border-top: 1px solid rgba(242, 248, 255, 0.08); }
+.ui1-b .u-gicon { filter: drop-shadow(0 0 4px var(--gc)); }
+.ui1-b .u-gcount { color: #EFCB63; }
+.ui1-b .u-gbar { background: rgba(242, 248, 255, 0.10); }
+.ui1-b .u-gbar b { background: var(--gc); box-shadow: 0 0 6px var(--gc); }
+.ui1-b .u-pips i { background: rgba(242, 248, 255, 0.12); transform: skewX(-18deg); border-radius: 1px; }
+.ui1-b .u-pips i.on { background: var(--gc); box-shadow: 0 0 6px var(--gc); }
+.ui1-b .u-goal-row.done .u-glabel, .ui1-b .u-goal-row.done .u-gcount { color: #46D99A; }
+.ui1-b .u-goal-row.done .u-pips i.on, .ui1-b .u-goal-row.done .u-gbar b { background: #46D99A; box-shadow: 0 0 6px #46D99A; }
+.ui1-b .u-goal-row.twist-danger .u-glabel, .ui1-b .u-goal-row.twist-danger .u-gcount { color: #ff8fb0; }
+.ui1-b .u-goal-row.twist-shield .u-glabel, .ui1-b .u-goal-row.twist-shield .u-gcount { color: #EFCB63; }
+
+#ui1-hud.ui1-b .u-combo { background: linear-gradient(180deg, rgba(13, 40, 62, 0.94), rgba(4, 16, 29, 0.94)) padding-box, linear-gradient(135deg, var(--cc), rgba(152, 117, 255, 0.35)) border-box; }
+.ui1-b .u-combo-n { text-shadow: 0 0 12px var(--cc); }
+.ui1-b .u-combo-t b { color: rgba(242, 248, 255, 0.6); }
+.ui1-b .u-combo-bar { background: rgba(242, 248, 255, 0.10); }
+.ui1-b .u-combo-bar b { box-shadow: 0 0 6px var(--cc); }
+#ui1-hud.ui1-b .u-challenge { background: linear-gradient(180deg, rgba(13, 40, 62, 0.94), rgba(4, 16, 29, 0.94)) padding-box, linear-gradient(135deg, #EFCB63, rgba(152, 117, 255, 0.35)) border-box; }
+.ui1-b .u-ch-icon { color: #EFCB63; filter: drop-shadow(0 0 4px rgba(239, 203, 99, 0.8)); }
+.ui1-b .u-ch-t b { color: rgba(242, 248, 255, 0.6); }
+.ui1-b .u-ch-t em { color: #EFCB63; text-shadow: 0 0 10px rgba(239, 203, 99, 0.5); }
+.ui1-b .u-ch-bar { background: rgba(242, 248, 255, 0.10); }
+.ui1-b .u-ch-bar b { background: #EFCB63; box-shadow: 0 0 6px #EFCB63; }
+.ui1-b .u-challenge.beaten .u-ch-t em, .ui1-b .u-challenge.beaten .u-ch-icon { color: #46D99A; }
+.ui1-b .u-challenge.beaten .u-ch-bar b { background: #46D99A; }
+
+#ui1-hud.ui1-b .u-nela { border-radius: 16px; background: linear-gradient(180deg, rgba(34, 16, 44, 0.95), rgba(8, 14, 28, 0.95)) padding-box, linear-gradient(135deg, rgba(255, 84, 173, 0.95), rgba(152, 117, 255, 0.6)) border-box; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 84, 173, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.10); }
+.ui1-b .u-nela-av { color: #FF54AD; filter: drop-shadow(0 0 6px rgba(255, 84, 173, 0.8)); }
+.ui1-b .u-nela-body b { color: #FF54AD; }
+.ui1-b .u-nela-body em { color: #f2f8ff; }
+#ui1-hud.ui1-b .u-np { border-radius: 999px; color: #f2f8ff; }
+.ui1-b .u-np svg { color: #9875FF; filter: drop-shadow(0 0 4px rgba(152, 117, 255, 0.8)); }

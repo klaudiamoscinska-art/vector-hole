@@ -4,6 +4,27 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-UI-01 „Premium Game HUD” — nowy interfejs aktywnej rozgrywki (zapis nadal v13, klucz bez zmian; punktacja, ranking i jego sortowanie, czas rundy, progi T1–T6, pochłanianie, promienie, sterowanie, boty, RNG, seedy, cele misji, zakres danych mapki, ekonomia i reklamy bez zmian)
+- **Hybryda B + A** (zatwierdzona po etapie 1, `design/ui1/stage1/`): panele główne w materiale Premium Neon (płyta z krawędzią
+  cyjan → fiolet → róż, jedna poświata), panele drugiego planu w Premium Minimal (ciemne szkło, cienka linia). Bez `backdrop-filter`.
+- **Czas · tier · wynik:** pauza 44×44 (ikona zamiast znaku tekstowego), kapsuła z dużym zegarem i wynikiem, plakietka tieru w jego
+  kolorze i **drabinka T1–T6** (ukończone stopnie pełne, bieżący wypełnia się rzeczywistym postępem, T6 świeci cały); awans = krótki
+  błysk; ostatnie 10 s — różowy, pulsujący zegar. Zapisy nadal przez `Game.hudSet()` — tylko gdy wartość się zmienia.
+- **Ranking:** plakietka miejsca, wiersz gracza w cyjanowej ramce, lider z koroną, w tle wierszy paski = udział w wyniku lidera.
+  Wyzwanie dnia nazywa się w osobnej linii nad nagłówkiem „PUNKTY”. Wiersze nie przechwytują dotyku (tylko nagłówek zwija listę).
+- **Cel misji:** kod misji z odprawy, segmenty (do 8 kroków) lub pasek postępu, wyróżniony wiersz **bossa**, długie opisy zawijają się.
+- **Combo, cel wyzwania znajomego, SZAŁ** (canvas): jedna kolumna pod zegarem, skalowana z interfejsem (na desktopie ×1,24 płytka
+  combo nachodziła na górny pasek), nigdy jedno na drugim. „TERAZ GRA” przeniesione do lewego dolnego rogu.
+- **Cztery poprawki z odbioru:** (1) „WYZWANIE DNIA” / „DAILY CHALLENGE” nie wypycha plakietki miejsca (320–402 px, 800×450,
+  desktop, PL/EN); (2) baner na środku („AWANS NA 3. MIEJSCE” na 800×450) zajmuje wolny pas obok combo albo — gdy byłby za mały —
+  zostaje, a widżety przygasają; podtytuł łamie się na dwie linie zamiast wychodzić poza ekran 320 px; (3) dymek **NELA** w misji
+  stoi pod zegarem, obok celu — nie na wirze; pod wirem przygasa, nie skacze; (4) **mapka**: siatka ulic i kwartały w barwach
+  dzielnic z bufora (malowane raz), hierarchia znaczników (gracz największy, większy rywal czerwony, ważne obiekty jako romby, boss
+  z otworem), plakietka dzielnicy; w misji z ciemnością nadal tylko plansza i wiry.
+- **Wąskie telefony:** układ sprawdzony od 320×568; poniżej 380 px kapsuła gubi ikony, poniżej 350 px ranking i cel są węższe.
+- **QA:** `node qa/ui1.mjs` (20 testów), `node qa/ui1-shots.mjs` (osiem kadrów etapu 1 na bazie i kandydacie: świat, kamera, wynik,
+  losowania i kadr bez HUD identyczne) + `node qa/ui1-gallery.mjs` (`design/ui1/gallery.html`). Raport: `docs/GG_UI_01_REPORT.md`.
+
 ## GG-VFX-01 „Premium Swallow Effects” — nowy wygląd samego pochłaniania (zapis nadal v13, klucz bez zmian; czas pochłaniania, progi, promienie, hitboxy, punktacja, wzrost, combo, walka wirów, sterowanie, `hitStop()`, RNG, seedy, balans i ekonomia bez zmian)
 - **Jedna rodzina efektów w trzech wagach + rywal** (`swallowWeight()`): małe T1/T2 — szybko i lekko (obiekt wślizguje się po
   spirali, cienka smuga, jeden krótki pierścień; łańcuch małych kęsów odnawia jeden puls, nie mnoży ich); średnie T3/T4 — cała

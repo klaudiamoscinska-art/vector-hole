@@ -1,0 +1,115 @@
+/* GG-UI-01 stage 1 -- structure shared by variants A and B (test page only).
+   Zones are the game's own: pause + clock/tier/score top-left, standings or
+   mission goal top-right, combo / friend challenge under the top-left
+   cluster, NELA above the bottom edge (phone) or under the top bar
+   (compact), the minimap bottom-right (canvas). Sizes in CSS px inside the
+   game's --ui-scale zoom, safe areas respected. */
+body[data-ui1] #hud > .hud-panel,
+body[data-ui1] #hud > #btnPause,
+body[data-ui1] #hud > .nela-toast,
+body[data-ui1] #hud > .now-playing { visibility: hidden !important; }
+
+#ui1-hud { position: absolute; inset: 0; z-index: 11; pointer-events: none; font-family: 'Exo 2', 'Segoe UI', system-ui, sans-serif; color: #f2f8ff; font-variant-numeric: tabular-nums; }
+#ui1-hud svg { display: block; }
+#ui1-hud em { font-style: normal; }
+#ui1-hud b { font-weight: inherit; }
+#ui1-hud .u-under { opacity: 0.3; }
+
+/* ---- top-left: pause + clock / tier / score ---- */
+.u-top { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); display: flex; align-items: stretch; gap: 6px; }
+.u-pause { flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 5px; box-sizing: border-box; }
+.u-pause i { width: 4px; height: 14px; border-radius: 1.5px; background: currentColor; }
+.u-core { box-sizing: border-box; width: 168px; height: 44px; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-content: center; row-gap: 5px; padding: 0 10px; }
+.u-time, .u-score { display: flex; align-items: center; gap: 4px; font-family: 'Russo One', 'Exo 2', sans-serif; font-size: 17px; line-height: 1; }
+.u-time svg { width: 12px; height: 12px; }
+.u-score svg { width: 12px; height: 12px; }
+.u-time { grid-column: 1; grid-row: 1; }
+.u-score { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+.u-tier { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.u-badge { flex: none; font-family: 'Russo One', 'Exo 2', sans-serif; font-size: 10px; line-height: 1; }
+.u-bar { flex: 1; height: 4px; border-radius: 2px; overflow: hidden; }
+.u-bar b { display: block; height: 100%; border-radius: 2px; }
+.u-next { flex: none; font-size: 9px; font-weight: 800; line-height: 1; letter-spacing: 0.04em; }
+.u-ladder { flex: 1; display: flex; gap: 2px; height: 6px; }
+.u-ladder i { flex: 1; overflow: hidden; }
+.u-ladder i b { display: block; height: 100%; }
+
+/* wide / compact frames: one row, a fixed width -- the middle of the top edge stays free */
+body.wide .u-core { width: 336px; grid-template-columns: auto 1fr auto; grid-template-rows: auto; column-gap: 14px; padding: 0 14px; }
+body.wide .u-time, body.wide .u-score { font-size: 18px; }
+body.wide .u-tier { grid-column: 2; grid-row: 1; }
+body.wide .u-score { grid-column: 3; }
+
+/* ---- top-right: standings ---- */
+.u-rank, .u-goal { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); box-sizing: border-box; }
+.u-rank { width: 142px; padding: 7px 8px 8px; }
+body.wide .u-rank { width: 178px; }
+body.compact .u-rank { width: 168px; }
+.u-rank-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 3px 5px; }
+.u-rank-title { display: flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 800; letter-spacing: 0.14em; line-height: 1; white-space: nowrap; }
+.u-rank-title svg { width: 11px; height: 11px; }
+.u-place { font-family: 'Russo One', 'Exo 2', sans-serif; font-size: 12px; line-height: 1; }
+.u-rank ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.u-rank li { position: relative; display: flex; align-items: center; gap: 6px; height: 19px; padding: 0 6px; font-size: 12px; font-weight: 600; line-height: 1; box-sizing: border-box; }
+.u-rank li.gap { height: 6px; justify-content: center; font-size: 9px; letter-spacing: 3px; opacity: 0.45; }
+.u-pos { flex: none; width: 13px; text-align: center; font-size: 10px; font-weight: 800; }
+.u-pos svg { width: 13px; height: 13px; }
+.u-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; line-height: 19px; }
+.u-pts { flex: none; font-weight: 700; position: relative; }
+/* compact (a short landscape frame): the leader and you, as the game does today */
+body.compact .u-rank li:not(.first):not(.me):not(.first.me + li), body.compact .u-rank li.gap { display: none; }
+
+/* ---- top-right: mission goal ---- */
+.u-goal { width: max-content; min-width: 150px; max-width: 184px; padding: 7px 9px 8px; }
+@media (max-width: 420px) { .u-goal { max-width: 170px; } }
+.u-goal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 9px; font-weight: 800; letter-spacing: 0.14em; line-height: 1; padding-bottom: 6px; }
+.u-chip { font-family: 'Russo One', 'Exo 2', sans-serif; font-size: 9px; letter-spacing: 0.04em; padding: 2px 5px; border-radius: 4px; }
+.u-goal-row { display: grid; grid-template-columns: 16px 1fr auto; column-gap: 6px; row-gap: 3px; align-items: center; padding: 3px 0 4px; }
+.u-gicon { width: 16px; height: 16px; color: var(--gc); }
+.u-gicon svg { width: 100%; height: 100%; }
+.u-glabel { font-size: 11.5px; font-weight: 700; line-height: 1.15; }
+.u-gcount { font-family: 'Russo One', 'Exo 2', sans-serif; font-size: 13px; line-height: 1; }
+.u-gbar, .u-pips { grid-column: 2 / -1; }
+.u-gbar { height: 3px; border-radius: 2px; overflow: hidden; }
+.u-gbar b { display: block; height: 100%; border-radius: 2px; }
+.u-pips { display: flex; gap: 3px; height: 4px; }
+.u-pips i { flex: 1; }
+.u-goal-row.done .u-glabel { text-decoration: line-through; text-decoration-color: rgba(70, 217, 154, 0.6); }
+
+/* ---- under the top-left cluster: combo, friend challenge ---- */
+.u-left { position: absolute; top: calc(64px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.u-combo { display: grid; grid-template-columns: auto auto; column-gap: 8px; align-items: center; padding: 6px 10px 8px; box-sizing: border-box; }
+.u-combo-n { font-family: 'Russo One', 'Exo 2', sans-serif; font-size: 26px; line-height: 1; color: var(--cc); }
+.u-combo-t { display: flex; flex-direction: column; gap: 3px; line-height: 1; }
+.u-combo-t b { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; }
+.u-combo-t em { font-size: 12px; font-weight: 800; }
+.u-combo-bar { grid-column: 1 / -1; height: 3px; margin-top: 6px; border-radius: 2px; overflow: hidden; }
+.u-combo-bar b { display: block; height: 100%; background: var(--cc); border-radius: 2px; }
+.u-challenge { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; width: 158px; padding: 6px 10px 8px; box-sizing: border-box; }
+.u-ch-icon svg { width: 16px; height: 16px; }
+.u-ch-t { display: flex; flex-direction: column; gap: 3px; line-height: 1; min-width: 0; }
+.u-ch-t b { font-size: 9px; font-weight: 800; letter-spacing: 0.08em; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.u-ch-t em { font-family: 'Russo One', 'Exo 2', sans-serif; font-size: 14px; }
+.u-ch-bar { grid-column: 1 / -1; height: 3px; margin-top: 6px; border-radius: 2px; overflow: hidden; }
+.u-ch-bar b { display: block; height: 100%; border-radius: 2px; }
+
+/* ---- NELA: where the game puts her ---- */
+.u-nela { position: absolute; left: 50%; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; width: max-content; max-width: min(92vw, 420px); padding: 9px 14px 9px 9px; box-sizing: border-box; }
+.u-nela-av { flex: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
+.u-nela-av svg { width: 30px; height: 30px; }
+.u-nela-body { display: flex; flex-direction: column; gap: 3px; }
+.u-nela-body b { font-size: 9.5px; font-weight: 800; letter-spacing: 0.24em; line-height: 1; }
+.u-nela-body em { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+body.compact .u-nela { top: calc(64px + env(safe-area-inset-top, 0px)); bottom: auto; left: calc(12px + env(safe-area-inset-left, 0px)); transform: none; max-width: min(46%, 360px); }
+
+/* ---- now playing: bottom-left (it shared the combo's spot under the pause button) ---- */
+.u-np { position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 9px; font-size: 12px; font-weight: 700; line-height: 1; max-width: 46vw; }
+.u-np svg { flex: none; width: 14px; height: 14px; }
+.u-np em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; }
+
+/* phone: the clock capsule takes what the right-hand panel leaves (never under it) */
+body:not(.wide) .u-top { right: calc(12px + 142px + 6px + env(safe-area-inset-right, 0px)); }
+body:not(.wide) .is-campaign .u-top { right: calc(12px + 170px + 6px + env(safe-area-inset-right, 0px)); }
+body:not(.wide) .u-core { flex: 1 1 auto; width: auto; max-width: 168px; min-width: 0; }
+body:not(.wide) .is-campaign .u-core { padding: 0 8px; }
+body:not(.wide) .is-campaign .u-time, body:not(.wide) .is-campaign .u-score { font-size: 16px; }

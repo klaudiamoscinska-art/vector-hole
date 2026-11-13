@@ -1,0 +1,304 @@
+<title>GG-UI-01 HUD produkcyjny</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* layout: one column of frame cards; landscape frames span the full width, portrait frames sit two or three abreast on a wide screen */
+:root { --bg: #04101D; --panel: #0A2032; --line: rgba(242, 248, 255, 0.12); --fg: #f2f8ff; --dim: rgba(242, 248, 255, 0.62); --cyan: #50F0FA; --gold: #EFCB63; --pink: #FF54AD; --green: #46D99A;
+  --display: 'Russo One', 'Arial Black', 'Segoe UI', sans-serif; --text: 'Exo 2', 'Segoe UI', system-ui, sans-serif; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--text); padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1 { font: 400 26px/1.15 var(--display); letter-spacing: 0.03em; margin: 0; text-wrap: balance; }
+h2 { font: 400 18px/1.2 var(--display); letter-spacing: 0.04em; margin: 0; color: var(--cyan); text-wrap: balance; }
+h3 { font: 800 14px/1.3 var(--text); margin: 0; }
+p { margin: 0; color: var(--dim); max-width: 68ch; }
+.lead { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font: 800 11px/1 var(--text); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+section { display: flex; flex-direction: column; gap: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
+.card { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.card.wide, .card.maps { grid-column: 1 / -1; }
+.card header { display: flex; flex-direction: column; gap: 4px; }
+.card header p { font-size: 13px; }
+figure { margin: 0; }
+figure img { display: block; width: 100%; height: auto; border-radius: 8px; background: #000; }
+.card:not(.wide):not(.maps) figure img { max-width: 390px; margin: 0 auto; }
+.seg { display: flex; gap: 4px; padding: 3px; background: rgba(4, 16, 29, 0.8); border: 1px solid var(--line); border-radius: 10px; }
+.seg button { flex: 1; min-width: 0; min-height: 40px; padding: 6px 4px; border: 0; border-radius: 7px; background: none; color: var(--dim); font: 800 12px/1.1 var(--text); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+.seg button[aria-selected="true"] { background: var(--cyan); color: var(--bg); }
+.seg button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.facts { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.facts div { display: flex; gap: 5px; }
+.facts dt { color: var(--dim); }
+.facts dd { margin: 0; font-weight: 700; }
+.facts .ok dd { color: var(--green); }
+.facts .bad dd { color: var(--pink); }
+.fix { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 15px; }
+.fix span { font: 400 12px/1 var(--display); letter-spacing: 0.06em; color: var(--bg); background: var(--gold); padding: 4px 7px; border-radius: 5px; }
+.maprow { display: flex; flex-wrap: wrap; gap: 12px; }
+.maprow figure { flex: 0 1 auto; display: flex; flex-direction: column; gap: 5px; }
+.maprow img { width: auto; max-width: 100%; image-rendering: auto; }
+.maprow figcaption { font-size: 12px; color: var(--dim); }
+</style>
+<main>
+  <div class="lead">
+    <span class="eyebrow">GLITCH GULP · GG-UI-01 · etap 2</span>
+    <h1>Premium Game HUD w grze</h1>
+    <p>Hybryda Premium Neon (panele główne) i Premium Minimal (panele pomocnicze). Każdy obraz pochodzi z renderera gry: ta sama scena, ten sam seed, ten sam bot. Kadr „Przed” to baza <code>b337835</code>, „Wzorzec” to zatwierdzona makieta etapu 1, „Produkcja” to wdrożony kod.</p>
+  </div>
+  <section>
+    <h2>Osiem kadrów referencyjnych</h2>
+    <p>Przełącz wersję, żeby porównać ten sam kadr. Pod obrazem: stan gry i kontrola zgodności z bazą (świat, kamera, wynik, liczba losowań, obraz bez warstw HUD).</p>
+    <div class="grid"><article class="card" data-compare>
+  <header><h3>Arena · telefon · wczesna faza</h3><p>Kapsuła czasu z drabinką T1–T6, ranking z paskami wyniku, combo w spokojnym materiale.</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s1-arena-early-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s1-arena-early-b.jpg">Wzorzec B</button>
+    <button role="tab" aria-selected="true" data-src="prod/s1-arena-early-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s1-arena-early-prod.jpg" alt="Arena · telefon · wczesna faza" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>390×844</dd></div>
+    <div><dt>Czas</dt><dd>1:47</dd></div>
+    <div><dt>Wynik</dt><dd>315</dd></div>
+    <div><dt>Tier</dt><dd>T3</dd></div>
+    <div><dt>Miejsce</dt><dd>#1/6</dd></div>
+    <div><dt>Losowania</dt><dd>4407</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · 136638fb57a9</dd></div>
+  </dl>
+</article>
+<article class="card" data-compare>
+  <header><h3>Arena · telefon · późna faza</h3><p>T6: cała drabinka świeci. Ostatnie sekundy: zegar różowy.</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s2-arena-late-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s2-arena-late-b.jpg">Wzorzec B</button>
+    <button role="tab" aria-selected="true" data-src="prod/s2-arena-late-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s2-arena-late-prod.jpg" alt="Arena · telefon · późna faza" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>390×844</dd></div>
+    <div><dt>Czas</dt><dd>0:17</dd></div>
+    <div><dt>Wynik</dt><dd>5354</dd></div>
+    <div><dt>Tier</dt><dd>T6</dd></div>
+    <div><dt>Miejsce</dt><dd>#1/6</dd></div>
+    <div><dt>Losowania</dt><dd>34796</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · caa9681bac7e</dd></div>
+  </dl>
+</article>
+<article class="card" data-compare>
+  <header><h3>Kampania · M24 (boss)</h3><p>Cel misji z segmentami i wierszem bossa. NELA pod zegarem, nie na wirze. Kod misji taki jak w odprawie (misja o id M24 to M60 w kolejności dzielnic).</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s3-campaign-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s3-campaign-b.jpg">Wzorzec B</button>
+    <button role="tab" aria-selected="true" data-src="prod/s3-campaign-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s3-campaign-prod.jpg" alt="Kampania · M24 (boss)" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>390×844</dd></div>
+    <div><dt>Czas</dt><dd>0:29</dd></div>
+    <div><dt>Wynik</dt><dd>2336</dd></div>
+    <div><dt>Tier</dt><dd>T6</dd></div>
+    <div><dt>Miejsce</dt><dd>—</dd></div>
+    <div><dt>Losowania</dt><dd>8584</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · b9cf67694260</dd></div>
+  </dl>
+</article>
+<article class="card" data-compare>
+  <header><h3>Wyzwanie dnia · telefon</h3><p>Wyzwanie dnia ma własną linię nad nagłówkiem; plakietka miejsca zostaje w panelu.</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s4-daily-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s4-daily-b.jpg">Wzorzec B</button>
+    <button role="tab" aria-selected="true" data-src="prod/s4-daily-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s4-daily-prod.jpg" alt="Wyzwanie dnia · telefon" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>390×844</dd></div>
+    <div><dt>Czas</dt><dd>1:15</dd></div>
+    <div><dt>Wynik</dt><dd>739</dd></div>
+    <div><dt>Tier</dt><dd>T5</dd></div>
+    <div><dt>Miejsce</dt><dd>#3/6</dd></div>
+    <div><dt>Losowania</dt><dd>14290</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · dd12807472b2</dd></div>
+  </dl>
+</article>
+<article class="card wide" data-compare>
+  <header><h3>CrazyGames 800×450 · Arena</h3><p>„AWANS NA 3. MIEJSCE” obok płytki combo, nie na niej.</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s5-crazygames-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s5-crazygames-b.jpg">Wzorzec B</button>
+    <button role="tab" aria-selected="true" data-src="prod/s5-crazygames-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s5-crazygames-prod.jpg" alt="CrazyGames 800×450 · Arena" width="1600" height="900" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>800×450</dd></div>
+    <div><dt>Czas</dt><dd>1:09</dd></div>
+    <div><dt>Wynik</dt><dd>505</dd></div>
+    <div><dt>Tier</dt><dd>T4</dd></div>
+    <div><dt>Miejsce</dt><dd>#3/6</dd></div>
+    <div><dt>Losowania</dt><dd>10907</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · 4e37e87ae003</dd></div>
+  </dl>
+</article>
+<article class="card wide" data-compare>
+  <header><h3>CrazyGames 800×450 · Kampania</h3><p>Układ poziomy: kapsuła o stałej szerokości, środek górnej krawędzi wolny.</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s5b-crazygames-campaign-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s5b-crazygames-campaign-b.jpg">Wzorzec B</button>
+    <button role="tab" aria-selected="true" data-src="prod/s5b-crazygames-campaign-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s5b-crazygames-campaign-prod.jpg" alt="CrazyGames 800×450 · Kampania" width="1600" height="900" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>800×450</dd></div>
+    <div><dt>Czas</dt><dd>0:29</dd></div>
+    <div><dt>Wynik</dt><dd>2336</dd></div>
+    <div><dt>Tier</dt><dd>T6</dd></div>
+    <div><dt>Miejsce</dt><dd>—</dd></div>
+    <div><dt>Losowania</dt><dd>8584</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · f809d484eb2f</dd></div>
+  </dl>
+</article>
+<article class="card wide" data-compare>
+  <header><h3>Desktop 1366×768 · Arena</h3><p>Skala interfejsu ×1,24: widżety canvas skalują się razem z panelami.</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s6-desktop-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s6-desktop-b.jpg">Wzorzec B</button>
+    <button role="tab" aria-selected="true" data-src="prod/s6-desktop-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s6-desktop-prod.jpg" alt="Desktop 1366×768 · Arena" width="2732" height="1536" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>1366×768</dd></div>
+    <div><dt>Czas</dt><dd>0:51</dd></div>
+    <div><dt>Wynik</dt><dd>1463</dd></div>
+    <div><dt>Tier</dt><dd>T6</dd></div>
+    <div><dt>Miejsce</dt><dd>#1/6</dd></div>
+    <div><dt>Losowania</dt><dd>16490</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · 32c3340805fe</dd></div>
+  </dl>
+</article>
+<article class="card" data-compare>
+  <header><h3>Wyzwanie znajomego · telefon</h3><p>Cel wyzwania znajomego pod licznikiem combo, w tym samym spokojnym materiale.</p></header>
+  <div class="seg" role="tablist" aria-label="Wersja kadru">
+    <button role="tab" aria-selected="false" data-src="prod/s8-friend-before.jpg">Przed</button>
+    <button role="tab" aria-selected="false" data-src="stage1/shots/s8-friend-a.jpg">Wzorzec A</button>
+    <button role="tab" aria-selected="true" data-src="prod/s8-friend-prod.jpg">Produkcja</button>
+  </div>
+  <figure><img src="prod/s8-friend-prod.jpg" alt="Wyzwanie znajomego · telefon" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts">
+    <div><dt>Kadr</dt><dd>390×844</dd></div>
+    <div><dt>Czas</dt><dd>1:31</dd></div>
+    <div><dt>Wynik</dt><dd>463</dd></div>
+    <div><dt>Tier</dt><dd>T4</dd></div>
+    <div><dt>Miejsce</dt><dd>#2/6</dd></div>
+    <div><dt>Losowania</dt><dd>10596</dd></div>
+    <div class="ok"><dt>Świat i kadr bez HUD</dt><dd>identyczne z bazą · 15ae71b3eb38</dd></div>
+  </dl>
+</article></div>
+  </section>
+  <section>
+    <h2>Cztery poprawki z odbioru</h2>
+    <div class="grid">
+      <h3 class="fix"><span>Poprawka 1</span>Wyzwanie dnia i język angielski: pełny tytuł, plakietka miejsca w panelu</h3>
+      <article class="card">
+  <header><h3>Poprawka 1 · DAILY CHALLENGE · EN · 320×568</h3></header>
+  <figure><img src="prod/f1-daily-en-320-prod.jpg" alt="Poprawka 1 · DAILY CHALLENGE · EN · 320×568" width="640" height="1136" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>320×568</dd></div><div><dt>Tryb</dt><dd>Wyzwanie dnia</dd></div></dl>
+</article>
+<article class="card">
+  <header><h3>Poprawka 1 · DAILY CHALLENGE · EN · 390×844</h3></header>
+  <figure><img src="prod/f1-daily-en-390-prod.jpg" alt="Poprawka 1 · DAILY CHALLENGE · EN · 390×844" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>390×844</dd></div><div><dt>Tryb</dt><dd>Wyzwanie dnia</dd></div></dl>
+</article>
+<article class="card">
+  <header><h3>Poprawka 1 · WYZWANIE DNIA · PL · 320×568</h3></header>
+  <figure><img src="prod/f1-daily-pl-320-prod.jpg" alt="Poprawka 1 · WYZWANIE DNIA · PL · 320×568" width="640" height="1136" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>320×568</dd></div><div><dt>Tryb</dt><dd>Wyzwanie dnia</dd></div></dl>
+</article>
+<article class="card wide">
+  <header><h3>Poprawka 1 · DAILY CHALLENGE · EN · 800×450</h3></header>
+  <figure><img src="prod/f1-daily-en-cg-prod.jpg" alt="Poprawka 1 · DAILY CHALLENGE · EN · 800×450" width="1600" height="900" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>800×450</dd></div><div><dt>Tryb</dt><dd>Wyzwanie dnia</dd></div></dl>
+</article>
+      <h3 class="fix"><span>Poprawka 2</span>Baner awansu nie leży na combo: wolny pas albo przygaszone widżety</h3>
+      <article class="card wide">
+  <header><h3>Poprawka 2 · awans obok combo · 800×450</h3></header>
+  <figure><img src="prod/f2-banner-cg-prod.jpg" alt="Poprawka 2 · awans obok combo · 800×450" width="1600" height="900" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>800×450</dd></div><div><dt>Tryb</dt><dd>Wyzwanie znajomego</dd></div></dl>
+</article>
+<article class="card wide">
+  <header><h3>Poprawka 2 · awans, combo przygasa · 640×360</h3></header>
+  <figure><img src="prod/f2-banner-640-prod.jpg" alt="Poprawka 2 · awans, combo przygasa · 640×360" width="1280" height="720" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>640×360</dd></div><div><dt>Tryb</dt><dd>Wyzwanie znajomego</dd></div></dl>
+</article>
+<article class="card wide">
+  <header><h3>Poprawka 2 · awans · 1366×768</h3></header>
+  <figure><img src="prod/f2-banner-desktop-prod.jpg" alt="Poprawka 2 · awans · 1366×768" width="2732" height="1536" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>1366×768</dd></div><div><dt>Tryb</dt><dd>Wyzwanie znajomego</dd></div></dl>
+</article>
+      <h3 class="fix"><span>Poprawka 3</span>NELA nie zasłania wiru: dymek pod zegarem, także przy wirze T6</h3>
+      <article class="card">
+  <header><h3>Poprawka 3 · NELA przy wirze T6 · telefon</h3></header>
+  <figure><img src="prod/f3-nela-big-prod.jpg" alt="Poprawka 3 · NELA przy wirze T6 · telefon" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>390×844</dd></div><div><dt>Tryb</dt><dd>Kampania M24</dd></div></dl>
+</article>
+<article class="card wide">
+  <header><h3>Poprawka 3 · NELA przy wirze T6 · 800×450</h3></header>
+  <figure><img src="prod/f3-nela-big-cg-prod.jpg" alt="Poprawka 3 · NELA przy wirze T6 · 800×450" width="1600" height="900" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>800×450</dd></div><div><dt>Tryb</dt><dd>Kampania M24</dd></div></dl>
+</article>
+<article class="card">
+  <header><h3>Poprawka 3 · NELA przy wirze T6 · 320×568</h3></header>
+  <figure><img src="prod/f3-nela-big-320-prod.jpg" alt="Poprawka 3 · NELA przy wirze T6 · 320×568" width="640" height="1136" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>320×568</dd></div><div><dt>Tryb</dt><dd>Kampania M24</dd></div></dl>
+</article>
+      <h3 class="fix"><span>Poprawka 4</span>Minimapa w misji z ciemnością: plansza i wiry, żadnego obiektu</h3>
+      <article class="card maps"><header><h3>Misja M15 (ciemność), mapka 1:1</h3></header><div class="maprow"><figure><img src="prod/f4-dark-minimap-prod.png" alt="W grze: ciemność, obiekty ukryte" loading="lazy"><figcaption>W grze: ciemność, obiekty ukryte</figcaption></figure><figure><img src="prod/f4-dark-lit-minimap-prod.png" alt="Ta sama plansza przy świetle (tylko test): obiekty widoczne" loading="lazy"><figcaption>Ta sama plansza przy świetle (tylko test): obiekty widoczne</figcaption></figure></div></article>
+      <article class="card">
+  <header><h3>Poprawka 4 · misja z ciemnością (M15) · minimapa 1:1</h3></header>
+  <figure><img src="prod/f4-dark-prod.jpg" alt="Poprawka 4 · misja z ciemnością (M15) · minimapa 1:1" width="780" height="1688" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>390×844</dd></div><div><dt>Tryb</dt><dd>Kampania M15</dd></div></dl>
+</article>
+    </div>
+  </section>
+  <section>
+    <h2>Minimapa 1:1</h2>
+    <div class="grid">
+      <article class="card maps"><header><h3>Arena, telefon, 104 px</h3></header><div class="maprow"><figure><img src="prod/s1-arena-early-minimap-before.png" alt="Przed" loading="lazy"><figcaption>Przed</figcaption></figure><figure><img src="prod/s1-arena-early-minimap-prod.png" alt="Produkcja" loading="lazy"><figcaption>Produkcja</figcaption></figure></div></article>
+<article class="card maps"><header><h3>Arena późna, duże oddalenie</h3></header><div class="maprow"><figure><img src="prod/s2-arena-late-minimap-before.png" alt="Przed" loading="lazy"><figcaption>Przed</figcaption></figure><figure><img src="prod/s2-arena-late-minimap-prod.png" alt="Produkcja" loading="lazy"><figcaption>Produkcja</figcaption></figure></div></article>
+<article class="card maps"><header><h3>Kampania, boss</h3></header><div class="maprow"><figure><img src="prod/s3-campaign-minimap-before.png" alt="Przed" loading="lazy"><figcaption>Przed</figcaption></figure><figure><img src="prod/s3-campaign-minimap-prod.png" alt="Produkcja" loading="lazy"><figcaption>Produkcja</figcaption></figure></div></article>
+<article class="card maps"><header><h3>CrazyGames, 92 px</h3></header><div class="maprow"><figure><img src="prod/s5-crazygames-minimap-before.png" alt="Przed" loading="lazy"><figcaption>Przed</figcaption></figure><figure><img src="prod/s5-crazygames-minimap-prod.png" alt="Produkcja" loading="lazy"><figcaption>Produkcja</figcaption></figure></div></article>
+<article class="card maps"><header><h3>Desktop, 161 px</h3></header><div class="maprow"><figure><img src="prod/s6-desktop-minimap-before.png" alt="Przed" loading="lazy"><figcaption>Przed</figcaption></figure><figure><img src="prod/s6-desktop-minimap-prod.png" alt="Produkcja" loading="lazy"><figcaption>Produkcja</figcaption></figure></div></article>
+    </div>
+  </section>
+  <section>
+    <h2>Małe telefony</h2>
+    <div class="grid"><article class="card">
+  <header><h3>Telefon 320×568 · Arena</h3></header>
+  <figure><img src="prod/p320-arena-prod.jpg" alt="Telefon 320×568 · Arena" width="640" height="1136" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>320×568</dd></div><div><dt>Tryb</dt><dd>Arena</dd></div></dl>
+</article>
+<article class="card">
+  <header><h3>Telefon 320×568 · Kampania</h3></header>
+  <figure><img src="prod/p320-campaign-prod.jpg" alt="Telefon 320×568 · Kampania" width="640" height="1136" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>320×568</dd></div><div><dt>Tryb</dt><dd>Kampania M24</dd></div></dl>
+</article>
+<article class="card">
+  <header><h3>Telefon 360×800 · Arena</h3></header>
+  <figure><img src="prod/p360-arena-prod.jpg" alt="Telefon 360×800 · Arena" width="720" height="1600" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>360×800</dd></div><div><dt>Tryb</dt><dd>Arena</dd></div></dl>
+</article>
+<article class="card">
+  <header><h3>Telefon 360×800 · Kampania</h3></header>
+  <figure><img src="prod/p360-campaign-prod.jpg" alt="Telefon 360×800 · Kampania" width="720" height="1600" loading="lazy"></figure>
+  <dl class="facts"><div><dt>Kadr</dt><dd>360×800</dd></div><div><dt>Tryb</dt><dd>Kampania M24</dd></div></dl>
+</article></div>
+  </section>
+</main>
+<script>
+document.querySelectorAll('[data-compare]').forEach(function (card) {
+  var img = card.querySelector('figure img'), tabs = card.querySelectorAll('.seg button');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      tabs.forEach(function (t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+      img.src = tab.dataset.src;
+    });
+  });
+});
+</script>

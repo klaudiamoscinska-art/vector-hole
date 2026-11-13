@@ -573,7 +573,8 @@ z melodią, forma):
   melodie i pady mają echo i pogłos.
 - **Pauza** — muzyka schodzi „pod wodę” (filtr dolnoprzepustowy); arkusz
   pauzy pokazuje „TERAZ GRA” i przycisk **NASTĘPNY**. W rundzie nowy utwór
-  przedstawia się małą plakietką „TERAZ GRA” pod paskiem czasu.
+  przedstawia się małą plakietką „TERAZ GRA” w lewym dolnym rogu (GG-UI-01;
+  wcześniej pod paskiem czasu, w miejscu licznika combo).
 - **Szafa grająca** (Profil): lista utworów (tempo opisane słowami);
   dotknięcie odtwarza pełną aranżację od refrenu i ustawia ulubiony na
   stałe (Miasto, rundy, misje), „Mieszanka” wraca do zmian. Motywy Rozdziału I
@@ -682,8 +683,9 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   telefon obrócony, Poki 640×360 / 836×470 / 1031×580, CrazyGames
   800×450): węższy pasek nawigacji, niższe nagłówki; pierwszy ekran = demo
   po lewej, logo i GRAJ po prawej; Ewolucja — trzy karty obok siebie; w
-  rundzie ranking pokazuje lidera i gracza, mniejsza mapka, NELA i
-  podpowiedzi przy krawędziach, baner wyżej i mniejszy (nie zasłania wiru).
+  rundzie ranking pokazuje lidera i gracza, mniejsza mapka, NELA pod
+  zegarem, podpowiedzi przy krawędziach, baner wyżej i mniejszy (nie
+  zasłania wiru).
   Okno, które mimo to się nie mieści, przewija się w środku, a jego główny
   przycisk zostaje na ekranie.
 - Menu, arkusze i HUD rosną z ekranem (do 1,6×), **nigdy nie maleją
@@ -701,6 +703,57 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   kafli).
 - Pasek dzielnic (wąskie okna) przewija się kółkiem myszy, a ucięta
   krawędź się rozmywa.
+
+## 5b3. HUD w rundzie (GG-UI-01 „Premium Game HUD”)
+
+Interfejs aktywnej rozgrywki (Arena, Wyzwanie dnia, wyzwanie znajomego,
+Kampania). Hybryda dwóch zatwierdzonych kierunków: **panele główne** w
+materiale Premium Neon (granatowa płyta, krawędź cyjan → fiolet → róż, jedna
+miękka poświata), **panele drugiego planu** w materiale Premium Minimal
+(ciemne szkło i cienka linia, bez poświaty). Bez `backdrop-filter`. Tylko
+obraz: wartości, kolejność rankingu, progi, cele i dane mapki są te same.
+
+- **Strefy:** lewy górny róg — pauza (44×44) i kapsuła *czas · drabinka
+  tieru · wynik*; prawy górny — ranking (Arena) albo cel misji (Kampania);
+  pod zegarem — kolumna: dymek NELA (misje), licznik combo, cel wyzwania
+  znajomego, licznik SZAŁ; prawy dolny — mapka z plakietką dzielnicy; lewy
+  dolny — „TERAZ GRA” (ustępuje linii podpowiedzi).
+- **Drabinka T1–T6:** sześć stopni; ukończone pełne, bieżący wypełnia się
+  postępem trybu do następnego tieru, na T6 świeci cała. Plakietka i
+  drabinka w kolorze tieru (T1 cyjan, T2 róż, T3 złoto, T4 fiolet, T5
+  srebro, T6 zieleń). Awans = krótki błysk plakietki i stopnia. Ostatnie
+  10 s: zegar różowy, pulsuje.
+- **Ranking:** nagłówek „PUNKTY” (022) z plakietką miejsca `#3/6`; wiersz
+  gracza w cyjanowej ramce, lider z koroną; w tle wiersza pasek = udział
+  w wyniku lidera. Wyzwanie dnia ma własną linię „WYZWANIE DNIA” nad
+  nagłówkiem (w jednym wierszu wypychała plakietkę miejsca poza telefon).
+  Tylko nagłówek reaguje na dotyk (zwija listę); wiersze przepuszczają
+  dotyk do planszy.
+- **Cel misji:** kod misji z odprawy (`missionCode()`), wiersz = ikona z
+  planszy, opis, licznik; cel liczony ma segmenty (do 8 kroków) albo pasek;
+  **boss** (landmark dzielnicy) ma własny, wyróżniony wiersz; długi opis
+  zawija się w panelu. Wiersze złodzieja / kruchego wiru / tarczy bez zmian.
+- **NELA w misji:** dymek pod zegarem, obok celu — nigdy na środku planszy
+  (zasłaniał wir). Stoi w miejscu; gdy wir pod niego wjedzie, przygasa jak
+  każdy panel. Combo przesuwa się pod dymek. Dotknięcie zamyka. Teksty,
+  czas i kolejność bez zmian.
+- **Combo / wyzwanie znajomego / SZAŁ** (canvas, `drawHudStack()`): jedna
+  kolumna, skalowana z interfejsem, nigdy jedno na drugim.
+- **Baner na środku a kolumna pod zegarem:** jeśli napis mieści się
+  czytelnie obok widżetów, zajmuje wolny pas (decyzja raz na baner — nie
+  skacze); jeśli nie, zostaje na miejscu, a widżety na ten czas przygasają.
+  Podtytuł, który nie mieści się w 10 px, łamie się na dwie linie.
+- **Mapka:** ten sam prostokąt, skala, dane i reguły co wcześniej (każdy
+  obiekt, rywale, gracz, kadr kamery, strefy glitcha, nazwa dzielnicy; w
+  **ciemności** tylko plansza i wiry). Nowy jest rysunek: prawdziwa siatka
+  ulic i kwartały w barwach dzielnic (dzielnica gracza jaśniejsza — ta sama
+  informacja co plakietka), tło malowane raz i buforowane; drobne obiekty to
+  ciche kropki, ważne (węzeł, pylon, brama, złoty rdzeń) — romby, boss —
+  romb z otworem; rywal większy od gracza = czerwona kropka, mniejszy =
+  jasny pierścień; gracz = największy znacznik (cyjan z białym środkiem).
+- **Wąskie telefony:** poniżej 380 px z kapsuły znikają ikony zegara /
+  gwiazdki (kolor nadal odróżnia czas od wyniku), poniżej 350 px ranking i
+  cel są węższe. Test: `node qa/ui1.mjs`.
 
 ## 5c. Języki, platformy i zapis (v19 „Premiera”)
 
