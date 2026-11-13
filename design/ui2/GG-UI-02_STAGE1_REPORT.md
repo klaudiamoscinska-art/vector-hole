@@ -6,7 +6,7 @@ Baza: `origin/main` = `1395c18814f4b775850d39b45859908e4c552704` (GG-UI-01, PR #
 Gałąź: `claude/funny-tesla-kjrbsc`. Zakres: wyłącznie projekt. `game.js`, `style.css`, `index.html` są
 bajt w bajt równe bazie (QA Q1). Nic nie zostało scalone ani opublikowane, PR nie został otwarty.
 
-Galeria: `design/ui2/gallery.html` (w repozytorium, obrazy obok) · prywatny artefakt Claude — link w HANDOFF.
+Galeria: `design/ui2/gallery.html` (w repozytorium, obrazy obok) · prywatny artefakt Claude: https://claude.ai/artifact/FmzEKLR1BQjMW2v1CDXU3M (widoczny tylko dla właścicielki, dopóki go nie udostępni).
 
 ## Jak powstały makiety
 
