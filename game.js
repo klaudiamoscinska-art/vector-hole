@@ -16831,8 +16831,10 @@ class Game {
     ctx.globalAlpha = fade;
     ctx.drawImage(this.cityFloor.hudMinimap(Math.round(size * this.dpr), this.campaignTheme(), b, null, size), px, py, size, size);
     this.drawMinimapLabel(ctx, px, py, size, this.campaignTheme());
+    // (a plain rectangle: an anti-aliased rounded clip costs more per frame than the marks it holds)
     ctx.save();
-    roundRectPath(ctx, px + 1.5, py + 1.5, size - 3, size - 3, 8);
+    ctx.beginPath();
+    ctx.rect(px + 1.5, py + 1.5, size - 3, size - 3);
     ctx.clip();
 
     const toMini = (x, y) => ({ x: px + (x - b.minX) * scaleX, y: py + (y - b.minY) * scaleY });
@@ -19055,8 +19057,10 @@ class Game {
     ctx.globalAlpha = fade;
     ctx.drawImage(this.cityFloor.hudMinimap(Math.round(size * this.dpr), null, { minX: 0, minY: 0, maxX: WORLD_W, maxY: WORLD_H }, here, size), px, py, size, size);
     this.drawMinimapLabel(ctx, px, py, size, here);
+    // (a plain rectangle: an anti-aliased rounded clip costs more per frame than the marks it holds)
     ctx.save();
-    roundRectPath(ctx, px + 1.5, py + 1.5, size - 3, size - 3, 8);
+    ctx.beginPath();
+    ctx.rect(px + 1.5, py + 1.5, size - 3, size - 3);
     ctx.clip();
 
     // Every object gets a mark, as before: what a small vortex eats is a
