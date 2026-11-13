@@ -62,7 +62,7 @@ działają na nich jak dotąd.
 
 ## 4. Przed / po z prawdziwej gry
 
-Galeria (telefon): `design/ui1/gallery.html` · obrazy `design/ui1/prod/` · wzorce `design/ui1/stage1/shots/`.
+Galeria (prywatny artefakt Claude): https://claude.ai/artifact/Jz1dvECw3u4DRgSAL9dGgV · w repo: `design/ui1/gallery.html` · obrazy `design/ui1/prod/` · wzorce `design/ui1/stage1/shots/`.
 Osiem kadrów etapu 1 ustawionych identycznie (seed, wirtualny zegar, ten sam bot) na bazie i
 kandydacie — `node qa/ui1-shots.mjs --compare`:
 
@@ -192,7 +192,38 @@ GO_CORE: **tak**.
 
 ### Zestawy celowane na ostatecznym kodzie
 
-FINAL_TABLE
+Kod gry = ostateczny (`e87dc3f`: `game.js` po optymalizacji przycięcia mapki; późniejsze commity to tylko
+dokumentacja, QA i dowody). Logi: `qa/out/ui1-final/`.
+
+| Zestaw | Wynik na ostatecznym kodzie | Baza |
+|---|---|---|
+| `qa/ui1.mjs` (nowy) | **20/20 PASS** | — |
+| `qa/ui1-shots.mjs --compare` (8 kadrów etapu 1) | **8/8 PASS** | — |
+| `qa/responsive.mjs` | 524/526 — FAIL: 320×568 campaign (lista Dzielnic), 2560×1440 briefing „layer not visible” | 522/526 — FAIL: 320×568 campaign, 2560×1440 hub / hubConsent / challenges |
+| `qa/flow.mjs` | 35/35 PASS | 35/35 |
+| `qa/visual.mjs` | 20/20 PASS | 20/20 |
+| `qa/design.mjs` | 29/29 PASS | 29/29 |
+| `qa/v19.mjs` (PL/EN) | 16/16 PASS | 16/16 |
+| `qa/v21.mjs` | 62/62 PASS | 62/62 |
+| `qa/devices.mjs` | 75/75 PASS | 75/75 |
+| `qa/deviceqa1.mjs` | 50/50 PASS | 50/50 |
+| `qa/content.mjs` (240 misji) | 11/11 PASS | 11/11 |
+| `qa/save-safety.mjs` | 107/107 PASS | 107/107 |
+| `qa/px02-isolation.mjs` | 95/95 PASS | 95/95 |
+| `qa/release.mjs` · `qa/release-recovery.mjs` | 93/93 · 81/81 PASS | 93/93 · 81/81 |
+| `qa/cg-lang1.mjs` (język paczki CrazyGames) | 50/50 PASS | 50/50 |
+| `qa/instructions.mjs` | 4/4 PASS | 4/4 |
+| `check_pages_workflow.py --repo .` | PASS (kontrola statyczna) | PASS |
+| `qa/ui1-bench.mjs` (pary baza/kandydat) | wykonany, sekcja 8 | — |
+
+Zestawy 2560×1440 w `responsive` to ekrany menu; na tej maszynie nie przechodzą niestabilnie (inny ekran
+w każdym przebiegu, także na bazie) — poza HUD.
+
+**Wykonane na poprzednim commicie (`54edd6e` + QA, przed czteroliniową zmianą przycięcia mapki), nie
+powtarzane na ostatecznym — decyzja właścicielki o skróceniu końcówki:** pozostałe zestawy pełnej regresji
+(tabela wyżej: 2357/2368), w tym `qa/perf1.mjs` (25/25 w powtórce), `qa/crazygames-basic1.mjs` (88/92,
+identycznie jak baza), `qa/v22.mjs` 49/49, `qa/ftue1.mjs` 78/78, `qa/leave-run.mjs` 22/22,
+`qa/balance1.mjs` 19/19, `qa/vfx1.mjs` 39/39.
 
 ### NOT RUN / NOT VERIFIED
 

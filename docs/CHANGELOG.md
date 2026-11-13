@@ -22,7 +22,7 @@ są w historii gita (`git log -- docs/`).
   dzielnic z bufora (malowane raz), hierarchia znaczników (gracz największy, większy rywal czerwony, ważne obiekty jako romby, boss
   z otworem), plakietka dzielnicy; w misji z ciemnością nadal tylko plansza i wiry.
 - **Wąskie telefony:** układ sprawdzony od 320×568; poniżej 380 px kapsuła gubi ikony, poniżej 350 px ranking i cel są węższe.
-- **QA:** `node qa/ui1.mjs` (21 testów), `node qa/ui1-shots.mjs` (osiem kadrów etapu 1 na bazie i kandydacie: świat, kamera, wynik,
+- **QA:** `node qa/ui1.mjs` (20 testów), `node qa/ui1-shots.mjs` (osiem kadrów etapu 1 na bazie i kandydacie: świat, kamera, wynik,
   losowania i kadr bez HUD identyczne) + `node qa/ui1-gallery.mjs` (`design/ui1/gallery.html`). Raport: `docs/GG_UI_01_REPORT.md`.
 
 ## GG-VFX-01 „Premium Swallow Effects” — nowy wygląd samego pochłaniania (zapis nadal v13, klucz bez zmian; czas pochłaniania, progi, promienie, hitboxy, punktacja, wzrost, combo, walka wirów, sterowanie, `hitStop()`, RNG, seedy, balans i ekonomia bez zmian)
