@@ -226,164 +226,6 @@ body.touch-input #gameCanvas {
   z-index: 10;
 }
 
-.hud-panel {
-  position: absolute;
-  padding: 12px 18px;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 0 18px rgba(80, 240, 250, 0.15);
-}
-
-/* ---- Pause button (top-left corner, safe-area aware) ---- */
-
-.hud-icon-btn {
-  position: absolute;
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  left: calc(12px + env(safe-area-inset-left, 0px));
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  color: var(--text-main);
-  font-size: 13px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  pointer-events: auto;
-  z-index: 20;
-}
-
-.tier-progress-track {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(70, 217, 154, 0.15);
-  overflow: hidden;
-  margin: 4px 0 6px;
-}
-
-.tier-progress-bar {
-  height: 100%;
-  width: 0%;
-  background: var(--neon-green);
-  box-shadow: 0 0 6px var(--neon-green);
-  transition: width 0.2s ease;
-}
-
-/* ---- Live standings: top-right, visible by default ----
-   Shows the full "who's ahead of you" list always; tapping the header
-   collapses it to just the rank line for players who want less on
-   screen, but the default view is the complete list (GDD 5.3 — this was
-   collapsed-by-default in an earlier pass and read as "missing"). */
-
-#hud-topright {
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  right: calc(12px + env(safe-area-inset-right, 0px));
-  min-width: 190px;
-  max-width: 240px;
-  pointer-events: auto;
-}
-
-.standings-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  background: none;
-  border: none;
-  padding: 0;
-  margin-bottom: 6px;
-  cursor: pointer;
-  font-family: inherit;
-  color: inherit;
-}
-
-.hud-value.rank {
-  color: var(--neon-cyan);
-  text-shadow: 0 0 8px var(--neon-cyan);
-  font-size: 15px;
-}
-
-.hud-standings.collapsed #leaderboardList {
-  display: none;
-}
-
-.hud-standings.collapsed .standings-header {
-  margin-bottom: 0;
-}
-
-.hud-label {
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: rgba(230, 250, 255, 0.6);
-}
-
-.hud-value {
-  font-size: 20px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.hud-value.timer {
-  color: var(--neon-cyan);
-  text-shadow: 0 0 8px var(--neon-cyan);
-}
-
-.hud-value.score {
-  color: var(--neon-gold);
-  text-shadow: 0 0 8px var(--neon-gold);
-}
-
-.leaderboard-title {
-  font-size: 12px;
-  letter-spacing: 1px;
-  color: rgba(230, 250, 255, 0.7);
-}
-
-#leaderboardList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-#leaderboardList li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-  padding: 3px 6px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.03);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#leaderboardList li.is-player {
-  background: rgba(80, 240, 250, 0.12);
-  border: 1px solid rgba(80, 240, 250, 0.4);
-  color: var(--neon-cyan);
-  font-weight: 700;
-}
-
-#leaderboardList .lb-rank {
-  opacity: 0.6;
-  margin-right: 6px;
-}
-
-#leaderboardList .lb-size {
-  opacity: 0.75;
-  font-variant-numeric: tabular-nums;
-}
 
 #mobile-hint {
   position: absolute;
@@ -1288,178 +1130,6 @@ body.touch-input #gameCanvas {
 
 /* ---- In-round HUD top strip: shared by Arena and Campaign ---- */
 
-/* Left cluster beside the pause button: Czas pill / pasek ładowania /
-   Wynik pill, all one compact row -- replaces the old stacked "POZIOM
-   POŻERANIA" text block (Campaign) and the separate timer-ring + size/
-   score panel (Arena) with just a bar + tier badge (player feedback: the
-   growth tier is secondary info, it doesn't need its own titled section,
-   and the two modes' in-round HUD should look and behave the same). In
-   Campaign, CEL RUNDY sits in its own box on the right (below); in Arena
-   that corner shows the standings panel instead (.clears-standings below). */
-#hud-tier-strip {
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  left: calc(58px + env(safe-area-inset-left, 0px));
-  /* Clears #hud-goal's own right:12px + max-width:150px footprint, plus an
-     8px gap between the two panels. */
-  right: calc(170px + env(safe-area-inset-right, 0px));
-  padding: 6px 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Arena shows the (wider) standings panel in the same corner Campaign
-   uses for CEL RUNDY -- reserve enough right-side clearance for its
-   max-width:240px/160px (desktop/mobile) footprint instead of the goal
-   box's narrower 150px one. */
-#hud-tier-strip.clears-standings {
-  right: calc(260px + env(safe-area-inset-right, 0px));
-}
-
-.hud-pill {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.hud-pill .hud-label {
-  font-size: 9px;
-}
-
-.hud-pill .hud-value {
-  font-size: 12px;
-}
-
-.hud-tier-bar {
-  flex: 1 1 auto;
-  min-width: 32px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.hud-tier-bolt {
-  flex: none;
-  width: 12px;
-  height: 12px;
-  color: var(--neon-cyan);
-}
-
-.hud-tier-bar .tier-progress-track {
-  flex: 1;
-  height: 4px;
-  margin: 0;
-}
-
-.hud-tier-badge {
-  flex: none;
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 6px rgba(80, 240, 250, 0.4);
-  cursor: default;
-}
-
-/* CEL RUNDY: its own box on the right (the corner Arena's standings panel
-   uses, empty during Campaign) instead of a wide strip next to the pause
-   button. */
-#hud-goal {
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  right: calc(12px + env(safe-area-inset-right, 0px));
-  max-width: 150px;
-  padding: 8px 10px;
-}
-
-#hud-goal .hud-label {
-  font-size: 9px;
-}
-
-.hud-goal-section-title {
-  font-size: 9px;
-  letter-spacing: 0.6px;
-  font-weight: 700;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 6px rgba(80, 240, 250, 0.4);
-  margin-bottom: 3px;
-}
-
-/* One icon+label+count row per goal shape (two for activateAndDevour --
-   see Game.campaignGoalItems()) instead of one combined string+number, so
-   each part of a multi-step goal reads on its own line. */
-.mission-goal-items {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.mission-goal-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.mission-goal-icon {
-  flex: none;
-  width: 13px;
-  height: 13px;
-}
-
-.mission-goal-icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.mission-goal-text {
-  flex: 1;
-  font-size: 10px;
-  line-height: 1.25;
-  color: var(--text-main);
-}
-
-.mission-goal-count {
-  flex: none;
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--neon-gold);
-  text-shadow: 0 0 8px rgba(239, 203, 99, 0.6);
-}
-
-.hud-goal-footer-icon {
-  width: 11px;
-  height: 11px;
-  vertical-align: -1px;
-  margin-right: 2px;
-  color: currentColor;
-}
-
-.nela-toast {
-  position: absolute;
-  /* Cleared below #hud-goal's new, shorter, top-docked footprint (was
-     tuned for the old full-width panel that ran much taller). */
-  top: calc(175px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%) translateY(-6px);
-  max-width: min(88vw, 380px);
-  padding: 8px 16px;
-  background: var(--panel-bg);
-  border: 1px solid rgba(239, 203, 99, 0.4);
-  border-radius: 16px;
-  font-size: 12px;
-  font-style: italic;
-  color: rgba(239, 203, 99, 0.9);
-  text-align: center;
-  opacity: 0;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  pointer-events: none;
-  z-index: 15;
-}
-
-.nela-toast.visible {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
 
 .evolution-cards.count-2 {
   grid-template-columns: repeat(2, 1fr);
@@ -2115,36 +1785,6 @@ body.touch-input #gameCanvas {
     font-size: 34px;
   }
 
-  #hud-topright {
-    padding: 8px 12px;
-    min-width: 110px;
-    max-width: 160px;
-  }
-
-  /* #hud-topright's own max-width shrinks to 160px above -- match the
-     tier strip's reserved clearance to it here too, same as the
-     170px/#hud-goal pairing it's based on (see #hud-tier-strip.clears-
-     standings), otherwise the 260px desktop value starves the strip of
-     width on small screens and its pills wrap under the standings box. */
-  #hud-tier-strip.clears-standings {
-    right: calc(180px + env(safe-area-inset-right, 0px));
-  }
-
-  .hud-value {
-    font-size: 16px;
-  }
-
-  .hud-label {
-    font-size: 9px;
-  }
-
-  #leaderboardList li {
-    font-size: 11px;
-  }
-
-  .hud-value.rank {
-    font-size: 13px;
-  }
 
   .thumbpad-base {
     width: 92px;
@@ -3635,18 +3275,13 @@ body.touch-input #gameCanvas {
 .result-xp-card.leveled { border-color: var(--nc-gold); box-shadow: 0 0 18px rgba(239, 203, 99, 0.35); }
 .result-xp-card.leveled .result-xp-level { animation: v8-tile-bounce 0.9s ease-in-out infinite; }
 
-/* ---------- In-round HUD: final-10-seconds urgency ---------- */
-.hud-pill.hud-urgent { border-color: var(--nc-pink) !important; animation: v8-urgent 0.5s ease-in-out infinite alternate; }
-.hud-pill.hud-urgent .hud-value { color: var(--nc-pink) !important; }
-@keyframes v8-urgent {
-  from { box-shadow: 0 0 0 rgba(255, 84, 173, 0); transform: scale(1); }
-  to { box-shadow: 0 0 18px rgba(255, 84, 173, 0.7); transform: scale(1.06); }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
   .screen:not(.overlay-screen)::before, .btn-primary::after, #btnStart, .btn-mega,
   .result-anim > *, .confetti-layer i, .hub-chest-row.ready, .hub-chest-row.ready .hub-chest-icon,
-  .login-tile.current, .result-newbie-tag, .hud-pill.hud-urgent { animation: none !important; }
+  .login-tile.current, .result-newbie-tag { animation: none !important; }
 }
 
 /* =====================================================================
@@ -3656,7 +3291,7 @@ body.touch-input #gameCanvas {
 
 /* ---------- Typography: one display face for every heading & number ---------- */
 .app-title, .section-title, .result-hero-score, .result-eyebrow,
-.result-badge-value, .hud-value, .hub-city-lvl, .hub-city-pct > span:first-child,
+.result-badge-value, .hub-city-lvl, .hub-city-pct > span:first-child,
 .unlock-title, .unlock-kicker, .evolution-title, .login-kicker,
 .result-xp-level, .btn-primary, .btn-mega, .coin-display span:last-child, #missionResultTitle, .skin-name, .warsztat-look strong  {
   font-family: var(--font-display);
@@ -3666,10 +3301,8 @@ body.touch-input #gameCanvas {
 .btn { font-family: var(--font-ui); font-weight: 800; letter-spacing: 0.06em; }
 .btn-primary, .btn-mega { font-weight: 400; }
 .result-hero-score { font-size: 54px; }
-.hud-value { font-variant-numeric: tabular-nums; }
 
-/* Inline SVG icons that replaced emoji. */
-.inline-icon { width: 14px; height: 14px; vertical-align: -2px; color: var(--nc-gold); }
+
 .streak-flame { color: var(--nc-pink); display: inline-flex; }
 .streak-flame svg { width: 20px; height: 20px; }
 
@@ -3773,11 +3406,7 @@ body.touch-input #gameCanvas {
 #mainMenu.first-run .welcome-stage { height: min(58vh, 480px); }
 #mobile-hint { white-space: normal; max-width: calc(100% - 32px); text-align: center; width: max-content; }
 
-/* v10: CEL RUNDY box a bit wider (objective lists), completed rows ticked. */
-#hud-goal { max-width: 168px; }
-#hud-tier-strip { right: calc(188px + env(safe-area-inset-right, 0px)); }
-.mission-goal-item.done .mission-goal-text { color: var(--nc-green); text-decoration: line-through; text-decoration-color: rgba(70, 217, 154, 0.6); }
-.mission-goal-item.done .mission-goal-count { color: var(--nc-green); }
+
 /* Skin names wrap instead of truncating ("Toxic Gre…"). */
 .skin-name { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; }
 
@@ -3881,27 +3510,6 @@ body:has(#adOverlay:not(.hidden)) .consent-bar { display: none; }
 
 /* ===================== Golden Shot v12 „VISUAL” ===================== */
 
-/* In-round HUD: glassier panels over the new Neon City floor. */
-#hud .hud-panel {
-  background: linear-gradient(180deg, rgba(10, 32, 50, 0.86), rgba(5, 16, 28, 0.8));
-  border-color: rgba(80, 240, 250, 0.26);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-}
-.hud-icon-btn { background: linear-gradient(180deg, rgba(10, 32, 50, 0.9), rgba(5, 16, 28, 0.85)); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
-.hud-pill-score { transform-origin: 70% 50%; }
-.hud-tier-bar .tier-progress-track { height: 5px; background: rgba(255, 255, 255, 0.08); }
-
-/* Compact standings: podium + your row. */
-#hud-topright { padding: 8px 10px; }
-#leaderboardList { gap: 3px; }
-#leaderboardList li { font-size: 12px; padding: 3px 7px; gap: 6px; }
-#leaderboardList li .lb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-#leaderboardList li .lb-rank { flex: none; min-width: 18px; margin-right: 0; }
-#leaderboardList li.lb-first .lb-rank { color: var(--nc-gold); opacity: 1; text-shadow: 0 0 8px rgba(239, 203, 99, 0.7); }
-#leaderboardList li.lb-gap { justify-content: center; background: none; padding: 0; font-size: 10px; line-height: 8px; opacity: 0.45; letter-spacing: 3px; }
-@media (max-width: 600px) {
-  #leaderboardList li { font-size: 11px; padding: 2px 6px; }
-}
 
 /* In-round hint line (v22: ARENA_COACH's first-round hints + Rush Hour):
    left of the minimap, never on top of it, never catching a touch. */
@@ -3915,7 +3523,7 @@ body:has(#adOverlay:not(.hidden)) .consent-bar { display: none; }
   margin: 0 auto;
   line-height: 1.3;
 }
-#leaderboardList .lb-crown { width: 13px; height: 13px; vertical-align: -2px; }
+
 
 /* Screen entrance: the content column rises in (backwards fill only, so no
    transform lingers on .screen-inner after the animation). */
@@ -3993,23 +3601,15 @@ body[data-gfx="0"] #hud::before { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .mission-hero, .mission-hero .mh-ring, .mission-hero .mh-check, .mission-hero .mh-clock { animation: none; stroke-dashoffset: 0; }
 }
-/* Desktop: the tier strip no longer stretches across the whole top edge. */
-@media (min-width: 900px) {
-  #hud-tier-strip, #hud-tier-strip.clears-standings { right: auto; width: 460px; }
-}
+
 
 /* ---- v12 review fixes ---- */
 
 /* In-round strip on narrow phones: captions go, the growth bar becomes a
    3 px line along the panel's bottom edge, so time and score never clip. */
 @media (max-width: 400px) {
-  #hud-tier-strip { padding: 5px 9px 11px; gap: 6px; justify-content: space-between; }
-  #hud-tier-strip .hud-pill .hud-label { display: none; }
-  #hud-tier-strip .hud-tier-bar { position: absolute; left: 9px; right: 9px; bottom: 3px; min-width: 0; gap: 4px; }
-  #hud-tier-strip .hud-tier-bolt { display: none; }
-  #hud-tier-strip .tier-progress-track { height: 3px; }
-  #hud-tier-strip .hud-tier-badge { font-size: 8px; line-height: 1; }
-  #hud-tier-strip .hud-pill .hud-value { font-size: 14px; }
+
+
   #mobile-hint { right: calc(136px + env(safe-area-inset-right, 0px)); }
 }
 
@@ -4118,13 +3718,7 @@ body[data-gfx="0"] #hud::before { display: none; }
 .nela-name { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.22em; color: var(--nc-pink); }
 .nela-line { font-size: 14px; line-height: 1.4; font-weight: 600; color: var(--nc-text); }
 
-/* In-mission transmission (was a small italic strip). */
-.nela-toast { display: flex; align-items: center; gap: 10px; width: max-content; max-width: min(92vw, 420px); padding: 9px 14px 9px 9px; text-align: left; font-style: normal;
-  background: linear-gradient(135deg, rgba(48, 12, 44, 0.94), rgba(10, 32, 50, 0.94)); border: 1px solid rgba(255, 84, 173, 0.65);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 22px rgba(255, 84, 173, 0.25); color: var(--nc-text); }
-.nela-toast .nela-avatar { width: 34px; height: 34px; }
-.nela-toast .nela-line { font-size: 13.5px; }
-.nela-toast.visible .nela-avatar { animation: nela-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
 @keyframes nela-pop { from { transform: scale(0.4); } }
 
 /* ---- Dzielnice ---- */
@@ -4243,26 +3837,16 @@ body[data-gfx="0"] #hud::before { display: none; }
 .mission-result-row { display: flex; gap: 8px; }
 .mission-result-row .btn { flex: 1 1 0; min-width: 0; padding: 11px 8px; font-size: 13px; }
 
-/* ---- In-mission goal box: bigger, bolder rows ---- */
-#hud-goal { max-width: 184px; }
-#hud-tier-strip { right: calc(204px + env(safe-area-inset-right, 0px)); }
-.mission-goal-icon { width: 15px; height: 15px; }
-.mission-goal-text { font-size: 11.5px; font-weight: 700; }
-.mission-goal-count { font-size: 13px; }
-#hud-goal { transform-origin: top right; }
-#hud-goal.goal-intro { animation: goal-intro 2.6s ease-out; }
+
 @keyframes goal-intro {
   0% { transform: scale(1.08); box-shadow: 0 0 0 2px var(--nc-gold), 0 0 34px rgba(239, 203, 99, 0.7); }
   25% { transform: scale(1); }
   100% { box-shadow: 0 0 0 0 rgba(239, 203, 99, 0); }
 }
-@media (max-width: 400px) {
-  #hud-goal { max-width: 170px; }
-  #hud-tier-strip { right: calc(190px + env(safe-area-inset-right, 0px)); }
-}
+
 
 @media (prefers-reduced-motion: reduce) {
-  .nela-avatar .nela-eye, .nela-toast.visible .nela-avatar, .briefing-overlay > .briefing-sheet, #hud-goal.goal-intro { animation: none; }
+  .nela-avatar .nela-eye, .briefing-overlay > .briefing-sheet { animation: none; }
 }
 
 /* v14 layout: Miasto fills the screen top-down (no floating, no centred
@@ -4322,11 +3906,7 @@ body[data-gfx="0"] #hud::before { display: none; }
 #challengesScreen #btnPlayDaily { max-width: 440px; }
 
 /* ---- v14 review round ---- */
-/* NELA's in-mission bubble sits low (above the minimap), never over the
-   goal ahead; a tap closes it. */
-.nela-toast { top: auto; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(8px); pointer-events: auto; cursor: pointer; }
-.nela-toast.visible { transform: translateX(-50%) translateY(0); }
-@media (max-height: 700px) { .nela-toast { bottom: calc(160px + env(safe-area-inset-bottom, 0px)); } }
+
 
 /* Miasto: Core City card no taller than it needs; LVL as a chip. */
 #mainMenu:not(.first-run) .hub-city { flex: 0 1 auto; height: clamp(178px, 30vh, 250px); max-height: 250px; min-height: 160px; }
@@ -4431,9 +4011,6 @@ body[data-gfx="0"] #hud::before { display: none; }
 .start-tap { margin: -4px 0 0; text-align: center; font-size: 11.5px; color: var(--nc-text-dim); animation: start-blink 1.6s ease-in-out infinite; }
 @keyframes start-blink { 50% { opacity: 0.45; } }
 
-/* In-round twist rows under the goals. */
-.mission-goal-item.twist-danger .mission-goal-text, .mission-goal-item.twist-danger .mission-goal-count { color: #ff8fb0; }
-.mission-goal-item.twist-shield .mission-goal-text, .mission-goal-item.twist-shield .mission-goal-count { color: var(--nc-gold); }
 
 /* Mission list row: stars + difficulty bars. */
 #missionList .mission-row-medal { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
@@ -4486,19 +4063,10 @@ body[data-gfx="0"] #hud::before { display: none; }
 /* v15 review: the briefing's GRAJ stays in view however long the card. */
 .briefing-sheet .mc-play { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 18px rgba(7, 23, 37, 0.85); }
 
-/* ---- v16 „Brzmienie”: now playing, pause track row, Szafa grająca ---- */
-.now-playing { position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); top: calc(58px + env(safe-area-inset-top, 0px));
-  display: flex; align-items: center; gap: 6px; max-width: min(46vw, 300px); padding: 6px 12px 6px 9px; border-radius: 999px;
-  background: rgba(7, 23, 37, 0.78); border: 1px solid rgba(152, 117, 255, 0.5); color: var(--nc-text); font-size: 11.5px;
-  pointer-events: none; opacity: 0; transform: translateY(-6px); transition: opacity 0.35s ease, transform 0.35s ease; z-index: 6; }
-.now-playing.visible { opacity: 1; transform: translateY(0); }
-.now-playing .np-icon { width: 15px; height: 15px; flex: none; color: var(--nc-violet, #9875FF); }
-.now-playing.visible .np-icon { animation: np-bob 0.9s ease-in-out infinite alternate; }
+
 @keyframes np-bob { to { transform: translateY(-2px) rotate(-8deg); } }
-.np-label { font-size: 9.5px; letter-spacing: 0.14em; font-weight: 700; color: var(--nc-violet, #9875FF); flex: none; }
-.np-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Phones: the note icon says "music"; the name alone keeps the chip clear of CEL MISJI. */
-@media (max-width: 440px) { .now-playing .np-label { display: none; } }
+
+
 .pause-track { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px 8px 14px; border-radius: 10px;
   background: rgba(152, 117, 255, 0.08); border: 1px solid rgba(152, 117, 255, 0.3); }
 .pause-track .np-icon { width: 18px; height: 18px; flex: none; color: var(--nc-violet, #9875FF); }
@@ -4889,13 +4457,11 @@ html { overscroll-behavior: none; }
 
 /* Tiny labels were 6–8 px on screen (unreadable at DPR 1). */
 .daily-countdown-label { font-size: 9px !important; }
-.hud-tier-badge { font-size: 9.5px !important; }
+
 .evolution-card-tag { font-size: 9.5px; }
 .daily-reward-label { font-size: 9px; }
 .nav-tab.is-new .nav-tab-icon::after, .hub-quick-campaign.is-intro::after { font-size: 9px; }
-#hud-tier-strip .hud-tier-badge { line-height: 1; }
-/* The standings header toggles the list: a real tap target, not 16 px. */
-.standings-header { min-height: 28px; margin-top: -4px; margin-bottom: 2px; }
+
 
 /* --- compact: rail, headers ----------------------------------------- */
 body.compact .bottom-nav { width: 76px; padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px)) calc(4px + env(safe-area-inset-left, 0px)); gap: 4px; }
@@ -4993,14 +4559,7 @@ body.compact .revive-panel .section-title { font-size: 24px; margin: 0 0 6px; }
 body.compact .briefing-overlay > .briefing-sheet { max-height: calc(100% - 12px); }
 body.compact .start-card { max-height: calc(100% - 12px); overflow-y: auto; }
 
-/* --- compact HUD: the leader and you in the standings, a smaller minimap,
-   NELA and hints along the edges (never over the vortex) ------------- */
-body.compact #hud-topright { min-width: 0; width: 168px; max-width: 168px; padding: 6px 10px; }
-/* (leading: you and the runner-up) */
-body.compact #leaderboardList li:not(.lb-first):not(.is-player):not(.lb-first.is-player + li), body.compact #leaderboardList li.lb-gap { display: none; }
-body.compact #leaderboardList li { font-size: 11px; padding: 2px 6px; }
-body.compact #hud-tier-strip.clears-standings { right: calc(192px + env(safe-area-inset-right, 0px)); }
-body.compact .nela-toast { top: calc(58px + env(safe-area-inset-top, 0px)); bottom: auto; left: calc(12px + env(safe-area-inset-left, 0px)); transform: none; max-width: min(46%, 360px); }
+
 body.compact #mobile-hint { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 
 /* --- the consent bar reserves its height instead of covering the screen
@@ -5060,9 +4619,7 @@ body:not(.wide).consent-open #mainMenu:not(.first-run) .hub-city { min-height: 1
 body:not(.wide) #btnPlayDaily { position: sticky; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 2; box-shadow: 0 -8px 22px rgba(4, 16, 29, 0.85); }
 /* Warsztat on a short phone: a smaller preview, the first items in view. */
 @media (max-height: 640px) { body:not(.wide) .warsztat-preview-stage { height: 120px; } }
-/* A narrow campaign HUD: TERAZ GRA goes to the bottom edge instead of
-   under the goal box. */
-@media (max-width: 420px) { #hud:has(#hud-goal:not(.hidden)) .now-playing { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); } }
+
 
 /* ===================== FTUE-2 FIX: real devices (iPhone 13 Chrome,
    iPhone 16 Pro home-screen app, a Windows laptop) =====================
@@ -5078,8 +4635,6 @@ body.board-idle #gameCanvas { visibility: hidden; }
    rule that hides a scrollbar. */
 :where(#app) * { scrollbar-width: thin; scrollbar-color: rgba(80, 240, 250, 0.32) transparent; }
 
-/* A HUD panel the vortex is under fades (Game.fadeHudUnderHole()). */
-#hud .under-hole { opacity: 0.3; transition: opacity 0.18s; }
 
 /* Daily reward: the claim burst flies inside the panel's own box -- its
    particles made the panel scroll (a scrollbar for nothing). */
@@ -5258,4 +4813,221 @@ body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-prev
   body.compact #shopScreen .warsztat-action { margin-top: 6px; }
   body.compact #shopScreen .shop-tabs { flex-wrap: nowrap; }
   body.compact #shopScreen .shop-tabs .toggle-btn { flex: 1 1 0; min-width: 0; padding: 6px 2px; }
+}
+
+/* =====================================================================
+   GG-UI-01 — PREMIUM GAME HUD (the in-round interface)
+   One system from two approved directions:
+   * PRIMARY panels (clock / tier ladder / score, the standings, the mission
+     goal, NELA) — "Premium Neon": a top-lit navy plate, a cyan -> violet ->
+     pink edge (the vortex's colours), ONE soft glow each.
+   * SECONDARY panels (pause, "now playing"; combo / friend challenge / SZAŁ
+     are drawn on the canvas in the same quiet material, Game.drawHudStack())
+     — "Premium Minimal": dark glass and a hairline, no glow.
+   No backdrop-filter. Sizes are CSS px inside the game's --ui-scale zoom;
+   safe areas respected; nothing here takes a touch except the pause button,
+   the standings header and NELA's bubble (a tap closes it).
+   ===================================================================== */
+#hud {
+  --gh-plate: linear-gradient(180deg, rgba(13, 40, 62, 0.94), rgba(4, 16, 29, 0.94));
+  --gh-edge: linear-gradient(135deg, rgba(80, 240, 250, 0.95), rgba(152, 117, 255, 0.55) 55%, rgba(255, 84, 173, 0.75));
+  --gh-quiet: rgba(4, 12, 22, 0.86);
+  --gh-hair: rgba(242, 248, 255, 0.12);
+  --gh-top: calc(12px + env(safe-area-inset-top, 0px));
+  --gh-left: calc(12px + env(safe-area-inset-left, 0px));
+  --gh-right: calc(12px + env(safe-area-inset-right, 0px));
+  --gh-rank-w: 142px;   /* the standings' width */
+  --gh-goal-w: 170px;   /* the mission goal's widest */
+  font-variant-numeric: tabular-nums;
+}
+body.wide #hud { --gh-rank-w: 178px; --gh-goal-w: 184px; }
+body.compact #hud { --gh-rank-w: 168px; }
+@media (min-width: 421px) { #hud { --gh-goal-w: 184px; } }
+@media (max-width: 349px) { #hud { --gh-rank-w: 126px; --gh-goal-w: 142px; } }
+
+/* ---- the primary plate ---- */
+#hud .hud-panel, #hud .nela-toast {
+  position: absolute; box-sizing: border-box; padding: 0;
+  border: 1.5px solid transparent; border-radius: 13px;
+  background: var(--gh-plate) padding-box, var(--gh-edge) border-box;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(80, 240, 250, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  color: var(--nc-text); pointer-events: none;
+  transition: opacity 0.18s;
+}
+/* A HUD panel the vortex is under fades (Game.fadeHudUnderHole()). */
+#hud .hud-panel.under-hole { opacity: 0.3; }
+
+/* ---- pause: 44 x 44, the quiet material ---- */
+#hud .hud-icon-btn {
+  position: absolute; top: var(--gh-top); left: var(--gh-left); width: 44px; height: 44px; padding: 0; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gh-quiet); border: 1px solid var(--gh-hair); border-radius: 12px; color: var(--nc-text);
+  cursor: pointer; pointer-events: auto; z-index: 20; -webkit-tap-highlight-color: transparent;
+}
+#hud .hud-icon-btn:active { background: rgba(13, 40, 62, 0.95); }
+#hud .hud-icon-btn:focus-visible { outline: 2px solid var(--nc-cyan); outline-offset: 2px; }
+.gh-pause { display: flex; gap: 5px; }
+.gh-pause i { display: block; width: 4px; height: 14px; border-radius: 1.5px; background: currentColor; }
+
+/* ---- clock / tier ladder / score ---- */
+#hud #hud-tier-strip {
+  --tier: var(--nc-cyan);
+  top: var(--gh-top); left: calc(var(--gh-left) + 50px); right: calc(var(--gh-right) + var(--gh-goal-w) + 6px);
+  max-width: 168px; height: 44px; padding: 0 10px;
+  display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-content: center; row-gap: 5px;
+}
+#hud #hud-tier-strip.clears-standings { right: calc(var(--gh-right) + var(--gh-rank-w) + 6px); }
+.gh-time, .gh-score { display: flex; align-items: center; gap: 4px; min-width: 0; font-family: var(--font-display); font-size: 17px; line-height: 1; white-space: nowrap; }
+.gh-time svg, .gh-score svg { flex: none; width: 12px; height: 12px; }
+.gh-time { grid-column: 1; grid-row: 1; color: var(--nc-text); text-shadow: 0 0 10px rgba(80, 240, 250, 0.55); }
+.gh-time svg { color: var(--nc-cyan); }
+.gh-score { grid-column: 2; grid-row: 1; justify-content: flex-end; color: var(--nc-gold); text-shadow: 0 0 10px rgba(239, 203, 99, 0.5); transform-origin: 80% 50%; }
+.gh-tier { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; gap: 6px; min-width: 0; }
+#hud .hud-tier-badge { flex: none; font-family: var(--font-display); font-size: 10px; line-height: 1; letter-spacing: 0.02em; color: var(--nc-bg); background: var(--tier); padding: 2.5px 5px; border-radius: 4px; box-shadow: 0 0 8px var(--tier); cursor: default; }
+.gh-ladder { flex: 1; display: flex; gap: 2px; height: 6px; min-width: 0; }
+.gh-ladder i { flex: 1; overflow: hidden; background: rgba(242, 248, 255, 0.10); transform: skewX(-18deg); border-radius: 1.5px; }
+.gh-ladder i b { display: block; height: 100%; background: var(--tier); transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.2s ease; }
+.gh-ladder i.full b { opacity: 0.55; }
+.gh-ladder i.now { background: rgba(242, 248, 255, 0.16); box-shadow: 0 0 6px var(--tier); }
+.gh-ladder i.now b { background: linear-gradient(90deg, var(--tier), #ffffff 240%); }
+/* T6: the whole ladder is lit. */
+#hud-tier-strip.is-max .gh-ladder i.full b { opacity: 1; }
+#hud-tier-strip.is-max .gh-ladder { filter: drop-shadow(0 0 4px var(--tier)); }
+/* the last 10 seconds */
+#hud-tier-strip.hud-urgent .gh-time, #hud-tier-strip.hud-urgent .gh-time svg { color: var(--nc-pink); text-shadow: 0 0 12px rgba(255, 84, 173, 0.8); }
+#hud-tier-strip.hud-urgent .gh-time { animation: gh-urgent 0.5s ease-in-out infinite alternate; transform-origin: 20% 50%; }
+@keyframes gh-urgent { to { transform: scale(1.12); } }
+
+/* landscape (wide / compact): one row, a fixed width -- the middle of the top edge stays free */
+body.wide #hud #hud-tier-strip { right: auto; width: 336px; max-width: none; grid-template-columns: auto 1fr auto; grid-template-rows: auto; column-gap: 14px; padding: 0 14px; }
+body.wide .gh-time, body.wide .gh-score { font-size: 18px; }
+body.wide .gh-tier { grid-column: 2; grid-row: 1; }
+body.wide .gh-score { grid-column: 3; }
+/* phones: the capsule takes what the right-hand panel leaves; on the narrowest the icons go first */
+body:not(.wide) #hud-tier-strip:not(.clears-standings) { padding: 0 8px; }
+body:not(.wide) #hud-tier-strip:not(.clears-standings) .gh-time, body:not(.wide) #hud-tier-strip:not(.clears-standings) .gh-score { font-size: 16px; }
+@media (max-width: 380px) {
+  body:not(.wide) #hud #hud-tier-strip { padding: 0 8px; }
+  body:not(.wide) .gh-time, body:not(.wide) .gh-score { font-size: 16px; }
+  body:not(.wide) .gh-time svg { display: none; }
+  body:not(.wide) #hud-tier-strip:not(.clears-standings) { padding: 0 7px; }
+  body:not(.wide) #hud-tier-strip:not(.clears-standings) .gh-time, body:not(.wide) #hud-tier-strip:not(.clears-standings) .gh-score { font-size: 15px; }
+  body:not(.wide) #hud-tier-strip:not(.clears-standings) .gh-score svg { display: none; }
+}
+@media (max-width: 349px) {
+  body:not(.wide) .gh-time, body:not(.wide) .gh-score { font-size: 15px; }
+  body:not(.wide) .gh-score svg { display: none; }
+}
+
+/* ---- the standings (Arena, Daily Challenge, a friend's challenge) ---- */
+#hud #hud-topright { top: var(--gh-top); right: var(--gh-right); width: var(--gh-rank-w); padding: 7px 8px 8px; }
+.gh-mode { display: none; align-items: center; gap: 5px; padding: 0 3px 2px; font-size: 9px; font-weight: 800; letter-spacing: 0.08em; line-height: 1.2; color: var(--nc-gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gh-mode::before { content: ''; flex: none; width: 5px; height: 5px; background: currentColor; transform: rotate(45deg); }
+#hud-topright.is-daily .gh-mode { display: flex; }
+#hud-topright.is-daily .standings-header { margin-top: 0; }
+@media (max-width: 349px) { body:not(.wide) #hud .leaderboard-title .inline-icon { display: none; } }
+#hud .standings-header { width: 100%; min-height: 24px; margin: -4px 0 1px; padding: 0 3px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 6px; background: none; border: none; font-family: inherit; color: inherit; cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent; }
+#hud .standings-header:focus-visible { outline: 2px solid var(--nc-cyan); outline-offset: 1px; border-radius: 6px; }
+#hud .leaderboard-title { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 9px; font-weight: 800; letter-spacing: 0.14em; line-height: 1; color: var(--nc-cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud .leaderboard-title .inline-icon { flex: none; width: 11px; height: 11px; }
+#hud .hud-value.rank { flex: none; font-family: var(--font-display); font-size: 11px; font-weight: 400; line-height: 1; letter-spacing: 0.02em; color: var(--nc-bg); background: linear-gradient(90deg, var(--nc-cyan-bright), var(--nc-cyan-dim)); padding: 3px 6px; border-radius: 5px; box-shadow: 0 0 8px rgba(80, 240, 250, 0.5); }
+#hud #leaderboardList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+#hud #leaderboardList li { position: relative; display: flex; align-items: center; gap: 6px; height: 19px; padding: 0 6px; box-sizing: border-box; overflow: hidden; font-size: 12px; font-weight: 600; line-height: 1; border-radius: 6px; color: rgba(242, 248, 255, 0.86); background: rgba(242, 248, 255, 0.04); }
+/* the score as a share of the leader's: the gap to #1 without reading the numbers */
+#hud #leaderboardList li::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: linear-gradient(90deg, rgba(152, 117, 255, 0.05), rgba(152, 117, 255, 0.3)); }
+#hud #leaderboardList .lb-rank { position: relative; flex: none; width: 13px; text-align: center; font-size: 10px; font-weight: 800; color: rgba(242, 248, 255, 0.55); }
+#hud #leaderboardList .lb-crown { display: block; width: 13px; height: 13px; }
+#hud #leaderboardList li.lb-first .lb-rank { color: var(--nc-gold); }
+#hud #leaderboardList .lb-name { position: relative; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; line-height: 19px; }
+#hud #leaderboardList .lb-size { position: relative; flex: none; font-weight: 700; }
+#hud #leaderboardList li.is-player { color: #ffffff; font-weight: 700; background: rgba(80, 240, 250, 0.10); box-shadow: inset 0 0 0 1px rgba(80, 240, 250, 0.75); }
+#hud #leaderboardList li.is-player::before { background: linear-gradient(90deg, rgba(80, 240, 250, 0.08), rgba(80, 240, 250, 0.42)); }
+#hud #leaderboardList li.is-player .lb-size { color: var(--nc-cyan-bright); }
+#hud #leaderboardList li.lb-gap { height: 6px; justify-content: center; background: none; font-size: 9px; letter-spacing: 3px; opacity: 0.45; }
+#hud #leaderboardList li.lb-gap::before { display: none; }
+#hud .hud-standings.collapsed #leaderboardList { display: none; }
+#hud .hud-standings.collapsed .standings-header { margin-bottom: -4px; }
+/* compact (a short landscape frame): the leader and you (leading: you and the runner-up) */
+body.compact #hud #leaderboardList li:not(.lb-first):not(.is-player):not(.lb-first.is-player + li), body.compact #hud #leaderboardList li.lb-gap { display: none; }
+
+/* ---- the mission goal (Campaign) ---- */
+#hud #hud-goal { top: var(--gh-top); right: var(--gh-right); width: max-content; min-width: min(150px, var(--gh-goal-w)); max-width: var(--gh-goal-w); padding: 7px 9px 8px; transform-origin: top right; }
+#hud #hud-goal.goal-intro { animation: goal-intro 2.6s ease-out; }
+.hud-goal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 6px; }
+#hud .hud-goal-section-title { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; line-height: 1; color: var(--nc-gold); }
+.gh-chip { flex: none; font-family: var(--font-display); font-size: 9px; line-height: 1; letter-spacing: 0.04em; padding: 2px 5px; border-radius: 4px; color: var(--nc-bg); background: var(--nc-gold); }
+.gh-chip:empty { display: none; }
+#hud .mission-goal-items { display: block; }
+#hud .mission-goal-item { --gc: var(--nc-cyan); display: grid; grid-template-columns: 16px 1fr auto; column-gap: 6px; row-gap: 3px; align-items: center; padding: 3px 0 4px; }
+#hud .mission-goal-item + .mission-goal-item { border-top: 1px solid rgba(242, 248, 255, 0.08); }
+#hud .mission-goal-icon { width: 16px; height: 16px; color: var(--gc); }
+#hud .mission-goal-icon svg { display: block; width: 100%; height: 100%; }
+#hud .mission-goal-text { min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 1.15; color: var(--nc-text); overflow-wrap: anywhere; }
+#hud .mission-goal-count { font-family: var(--font-display); font-size: 13px; line-height: 1; color: var(--nc-gold); white-space: nowrap; }
+.goal-pips, .goal-bar { grid-column: 2 / -1; }
+.goal-pips { display: flex; gap: 3px; height: 4px; }
+.goal-pips i { flex: 1; background: rgba(242, 248, 255, 0.12); transform: skewX(-18deg); border-radius: 1px; }
+.goal-pips i.on { background: var(--gc); box-shadow: 0 0 5px var(--gc); }
+.goal-bar { height: 3px; border-radius: 2px; overflow: hidden; background: rgba(242, 248, 255, 0.10); }
+.goal-bar b { display: block; height: 100%; border-radius: 2px; background: var(--gc); }
+/* the district's landmark -- the boss -- reads as its own kind of row */
+#hud .mission-goal-item.is-boss { margin-top: 3px; padding: 4px 6px 5px 5px; border-top: none; border-left: 2px solid var(--gc); border-radius: 3px 6px 6px 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--gc) 20%, transparent), transparent 85%); }
+#hud .mission-goal-item.is-boss .mission-goal-icon { filter: drop-shadow(0 0 4px var(--gc)); }
+#hud .mission-goal-item.done .mission-goal-text { color: var(--nc-green); text-decoration: line-through; text-decoration-color: rgba(70, 217, 154, 0.6); }
+#hud .mission-goal-item.done .mission-goal-count { color: var(--nc-green); }
+#hud .mission-goal-item.done .goal-pips i.on, #hud .mission-goal-item.done .goal-bar b { background: var(--nc-green); box-shadow: none; }
+#hud .mission-goal-item.done.is-boss { border-left-color: var(--nc-green); }
+/* twist rows under the goals: a threat / a shield, not a goal */
+#hud .mission-goal-item.twist-danger .mission-goal-text, #hud .mission-goal-item.twist-danger .mission-goal-count { color: #ff8fb0; }
+#hud .mission-goal-item.twist-shield .mission-goal-text, #hud .mission-goal-item.twist-shield .mission-goal-count { color: var(--nc-gold); }
+
+/* ---- NELA in a mission: docked under the clock, beside the goal box --
+   never over the vortex in the middle of the board (it sat on it), clear of
+   the goal and the minimap. The canvas widgets of that column move below
+   it while it shows (Game.drawHudStack()). A tap closes it. ---- */
+#hud .nela-toast {
+  top: calc(var(--gh-top) + 52px); left: var(--gh-left);
+  width: max-content; max-width: min(340px, calc(100% - var(--gh-left) - var(--gh-right) - var(--gh-goal-w) - 6px));
+  display: grid; grid-template-columns: auto 1fr; column-gap: 7px; row-gap: 4px; align-items: center; padding: 8px 11px 9px 9px;
+  border-radius: 14px; text-align: left; font-style: normal;
+  background: linear-gradient(180deg, rgba(34, 16, 44, 0.95), rgba(8, 14, 28, 0.95)) padding-box, linear-gradient(135deg, rgba(255, 84, 173, 0.95), rgba(152, 117, 255, 0.6)) border-box;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px rgba(255, 84, 173, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  opacity: 0; transform: translateY(-6px); transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none; cursor: pointer; z-index: 15;
+}
+#hud .nela-toast.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+#hud .nela-toast.visible.under-hole, #hud .nela-toast.visible.under-banner { opacity: 0.3; }
+#hud .nela-toast .nela-avatar { width: 20px; height: 20px; filter: drop-shadow(0 0 5px rgba(255, 84, 173, 0.7)); }
+#hud .nela-toast .nela-bubble-body { display: contents; }
+#hud .nela-toast .nela-name { font-size: 9.5px; letter-spacing: 0.24em; line-height: 1; }
+#hud .nela-toast .nela-line { grid-column: 1 / -1; font-size: 12.5px; font-weight: 600; line-height: 1.32; color: var(--nc-text); overflow-wrap: anywhere; }
+#hud .nela-toast.visible .nela-avatar { animation: nela-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+/* room for a real sentence: the avatar beside the text */
+body.wide #hud .nela-toast { grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 3px; padding: 9px 14px 9px 9px; }
+body.wide #hud .nela-toast .nela-avatar { grid-row: 1 / span 2; width: 30px; height: 30px; }
+body.wide #hud .nela-toast .nela-line { grid-column: 2; font-size: 13px; }
+body.compact #hud .nela-toast { max-width: min(300px, calc(100% - var(--gh-left) - var(--gh-right) - var(--gh-goal-w) - 6px)); }
+
+/* ---- "now playing": bottom-left, the quiet material (it shared the combo's
+   spot under the pause button); it yields to the in-round hint line ---- */
+#hud .now-playing {
+  position: absolute; left: var(--gh-left); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 7px; max-width: min(46%, 300px); padding: 6px 12px 6px 9px; box-sizing: border-box;
+  border-radius: 999px; background: var(--gh-quiet); border: 1px solid var(--gh-hair); color: rgba(242, 248, 255, 0.85);
+  font-size: 12px; font-weight: 700; line-height: 1.35;
+  pointer-events: none; opacity: 0; transform: translateY(6px); transition: opacity 0.35s ease, transform 0.35s ease; z-index: 6;
+}
+#hud .now-playing.visible { opacity: 1; transform: translateY(0); }
+#hud .now-playing .np-icon { flex: none; width: 14px; height: 14px; color: var(--nc-violet); }
+#hud .now-playing.visible .np-icon { animation: np-bob 0.9s ease-in-out infinite alternate; }
+#hud .np-label { flex: none; font-size: 9.5px; letter-spacing: 0.14em; color: var(--nc-violet); }
+#hud .np-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* phones: the note icon says "music"; the name alone keeps the chip short */
+body:not(.wide) #hud .np-label { display: none; }
+body.compact #hud .now-playing { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+#hud:has(#mobile-hint:not(.hidden)) .now-playing { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  #hud-tier-strip.hud-urgent .gh-time, #hud .nela-toast.visible .nela-avatar, #hud #hud-goal.goal-intro, #hud .now-playing.visible .np-icon { animation: none; }
+  .gh-ladder i b, #hud .hud-panel, #hud .nela-toast, #hud .now-playing { transition: none; }
 }

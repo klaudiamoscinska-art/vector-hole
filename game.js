@@ -510,6 +510,8 @@ const GFX_LEVELS = [
 
 const FONT_DISPLAY = "'Russo One', 'Exo 2', 'Segoe UI', sans-serif";
 const FONT_UI = "'Exo 2', 'Segoe UI', system-ui, sans-serif";
+/** GG-UI-01: the HUD's tier ladder has one step per growth tier (T1..T6 in both modes). */
+const HUD_TIER_STEPS = 6;
 
 const WORLD_W = CONFIG.world.width;
 const WORLD_H = CONFIG.world.height;
@@ -9669,6 +9671,75 @@ class CityFloor {
     this.minimaps.set(key, cv);
     return cv;
   }
+
+  /** GG-UI-01: the in-round minimap's backdrop, painted ONCE per (district
+   *  theme, size, bounds, highlighted district) and blitted every frame:
+   *  the plate, the real street grid (CITY_PITCH / CITY_ROAD) with lane
+   *  lines, the blocks tinted by CITY_DISTRICT_MAP -- the district the
+   *  player is in (`here`, the same fact as the label over the map) a
+   *  step brighter -- and the frame. `cssSize` = the map's side in CSS px
+   *  (line widths stay crisp at any DPR). The menu's Daily preview keeps
+   *  minimap() above. */
+  hudMinimap(sizePx, theme, bounds, here, cssSize) {
+    const key = `hud|${theme || '*'}|${sizePx}|${bounds.minX},${bounds.minY},${bounds.maxX},${bounds.maxY}|${here || ''}`;
+    let cv = this.minimaps.get(key);
+    if (cv) return cv;
+    if (this.minimaps.size > 28) this.minimaps.clear(); // (a window dragged through many sizes)
+    cv = document.createElement('canvas');
+    cv.width = cv.height = sizePx;
+    const c = cv.getContext('2d');
+    const u = sizePx / cssSize, rad = 9 * u;
+    const sx = sizePx / (bounds.maxX - bounds.minX), sy = sizePx / (bounds.maxY - bounds.minY);
+    c.save();
+    roundRectPath(c, 0, 0, sizePx, sizePx, rad);
+    c.clip();
+    const plate = c.createLinearGradient(0, 0, 0, sizePx);
+    plate.addColorStop(0, 'rgba(10, 32, 50, 0.96)'); plate.addColorStop(1, 'rgba(4, 16, 29, 0.96)');
+    c.fillStyle = plate;
+    c.fillRect(0, 0, sizePx, sizePx);
+    c.fillStyle = 'rgba(80, 240, 250, 0.10)'; // the streets: what the blocks leave
+    c.fillRect(0, 0, sizePx, sizePx);
+    const P = CITY_PITCH, R = CITY_ROAD;
+    for (let j = 0; j < CITY_CELLS; j++) {
+      for (let i = 0; i < CITY_CELLS; i++) {
+        const x0 = Math.max(bounds.minX, i * P + R / 2), y0 = Math.max(bounds.minY, j * P + R / 2);
+        const x1 = Math.min(bounds.maxX, (i + 1) * P - R / 2), y1 = Math.min(bounds.maxY, (j + 1) * P - R / 2);
+        if (x1 <= x0 || y1 <= y0) continue;
+        const d = cityDistrict(i, j, theme), col = DISTRICT_COLORS[d] || '#50F0FA', cur = !theme && d === here;
+        const bx = (x0 - bounds.minX) * sx, by = (y0 - bounds.minY) * sy, bw = (x1 - x0) * sx, bh = (y1 - y0) * sy;
+        roundRectPath(c, bx, by, bw, bh, 2.2 * u);
+        c.fillStyle = '#071725';
+        c.fill();
+        c.fillStyle = rgbaColor(col, theme ? 0.26 : cur ? 0.46 : 0.24);
+        c.fill();
+        if (bh > 4 * u) { c.fillStyle = rgbaColor(col, cur || theme ? 0.5 : 0.22); c.fillRect(bx + 1.2 * u, by + 0.4 * u, bw - 2.4 * u, 0.8 * u); }
+      }
+    }
+    // Lane lines: the grid reads as roads, not as gaps.
+    c.strokeStyle = 'rgba(242, 248, 255, 0.16)';
+    c.lineWidth = 0.6 * u;
+    c.setLineDash([2 * u, 2 * u]);
+    for (let L = 1; L < CITY_CELLS; L++) {
+      const v = (L * P - bounds.minX) * sx, hz = (L * P - bounds.minY) * sy;
+      if (L * P > bounds.minX && L * P < bounds.maxX) { c.beginPath(); c.moveTo(v, 0); c.lineTo(v, sizePx); c.stroke(); }
+      if (L * P > bounds.minY && L * P < bounds.maxY) { c.beginPath(); c.moveTo(0, hz); c.lineTo(sizePx, hz); c.stroke(); }
+    }
+    c.setLineDash([]);
+    c.restore();
+    // The frame: the vortex's colours, one inner hairline.
+    const edge = c.createLinearGradient(0, 0, sizePx, sizePx);
+    edge.addColorStop(0, 'rgba(80, 240, 250, 0.95)'); edge.addColorStop(0.55, 'rgba(152, 117, 255, 0.7)'); edge.addColorStop(1, 'rgba(255, 84, 173, 0.8)');
+    c.strokeStyle = edge;
+    c.lineWidth = 1.5 * u;
+    roundRectPath(c, 0.75 * u, 0.75 * u, sizePx - 1.5 * u, sizePx - 1.5 * u, rad);
+    c.stroke();
+    c.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+    c.lineWidth = u;
+    roundRectPath(c, 2.5 * u, 2.5 * u, sizePx - 5 * u, sizePx - 5 * u, rad - 2 * u);
+    c.stroke();
+    this.minimaps.set(key, cv);
+    return cv;
+  }
 }
 
 /** Floor instance for menu-screen art (the first-run welcome scene). */
@@ -12670,29 +12741,33 @@ class Game {
     this.vibrate([40, 30, 80]);
   }
 
-  drawChallengeTarget(ctx) {
+  /** The friend challenge's target while you chase it (GG-UI-01: a hudStack
+   *  widget, drawn at 0,0 in UI px; returns its height). */
+  drawChallengeTarget(ctx, plate) {
     const ch = this.challenge;
-    if (!ch) return;
-    const x = 8, y = 128, w = 158, h = 40;
+    if (!ch) return 0;
+    const w = 158, h = 49;
     const frac = clamp(this.player.score / ch.score, 0, 1);
     const color = this.challengeBeaten ? '#46D99A' : '#EFCB63';
-    ctx.save();
-    ctx.fillStyle = 'rgba(4, 16, 29, 0.62)';
-    roundRectPath(ctx, x, y, w, h, 10);
-    ctx.fill();
+    plate(w, h);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(18, 20, 6.2, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(18, 20, 2.4, 0, Math.PI * 2); ctx.fill();
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = `800 10px ${FONT_UI}`;
-    ctx.fillStyle = 'rgba(242, 248, 255, 0.7)';
-    ctx.fillText(`WYZWANIE · ${String(ch.from).toUpperCase().slice(0, 12)}`, x + 8, y + 14);
-    ctx.font = `15px ${FONT_DISPLAY}`;
+    ctx.font = `800 9px ${FONT_UI}`;
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.5)';
+    ctx.fillText(`WYZWANIE · ${String(ch.from).toUpperCase().slice(0, 12)}`, 32, 16, w - 40);
+    ctx.font = `14px ${FONT_DISPLAY}`;
     ctx.fillStyle = color;
-    ctx.fillText(this.challengeBeaten ? 'POBITE ✓' : `${this.player.score} / ${ch.score}`, x + 8, y + 30);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(x + 8, y + 34, w - 16, 3);
+    ctx.fillText(this.challengeBeaten ? 'POBITE ✓' : `${this.player.score} / ${ch.score}`, 32, 32, w - 40);
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.12)';
+    roundRectPath(ctx, 10, 39, w - 20, 3, 1.5); ctx.fill();
     ctx.fillStyle = color;
-    ctx.fillRect(x + 8, y + 34, (w - 16) * frac, 3);
-    ctx.restore();
+    roundRectPath(ctx, 10, 39, (w - 20) * frac, 3, 1.5); ctx.fill();
+    return h;
   }
 
   /** 1080x1350 PNG "score card" for social sharing, drawn with the same
@@ -14640,7 +14715,7 @@ class Game {
           const iconDef = this.objectiveIconDef(st, m.def.setup);
           const display = st.tier ? `T${Math.min(progress, target)}/T${target}`
             : st.score ? `${Math.min(progress, target)}/${target}` : null;
-          return { ...iconDef, label: st.label, progress, target, display, done: progress >= target };
+          return { ...iconDef, label: st.label, progress, target, display, done: progress >= target, boss: !!st.landmark };
         });
       case 'eatCount': {
         const progress = m.goalGlyph ? (m.eatenByGlyph[m.goalGlyph] || 0) : (m.eatenByType[g.entityType] || 0);
@@ -14654,7 +14729,7 @@ class Game {
         const activated = g.activator === 'node' ? m.nodesDisabled : m.pylonsCharged;
         return [
           { ...this.campaignGoalIcon(g.activator), label: g.activatorLabel || g.label, progress: Math.min(activated, g.count), target: g.count },
-          { ...this.campaignGoalIcon('landmark'), label: g.landmarkLabel || 'Pochłoń cel', progress: (m.landmark && m.landmark.consumed) ? 1 : 0, target: 1 }
+          { ...this.campaignGoalIcon('landmark'), label: g.landmarkLabel || 'Pochłoń cel', progress: (m.landmark && m.landmark.consumed) ? 1 : 0, target: 1, boss: true }
         ];
       }
       default:
@@ -15885,6 +15960,7 @@ class Game {
     const el = document.getElementById('nelaToast');
     el.classList.remove('visible');
     el.classList.add('hidden');
+    this.hudBoxes = null;
   }
 
   /** v14: NELA's line as a speech bubble with her avatar and a chirp
@@ -15893,7 +15969,10 @@ class Game {
     const el = document.getElementById('nelaToast');
     document.getElementById('nelaToastText').textContent = text;
     el.classList.remove('hidden');
-    requestAnimationFrame(() => el.classList.add('visible'));
+    // GG-UI-01: her bubble docks under the clock (never over the vortex in
+    // the middle); the canvas widgets of that column move below it -- the
+    // HUD boxes are re-read once it shows (fadeHudUnderHole()).
+    requestAnimationFrame(() => { el.classList.add('visible'); this.hudBoxes = null; });
     this.sound.nela();
     clearTimeout(this.nelaTimer);
     const secs = CONFIG.campaign.nelaDisplaySeconds + Math.min(2.5, text.length / 40);
@@ -15903,7 +15982,8 @@ class Game {
   updateCampaignHUD() {
     const m = this.mission;
     this.hudSet('missionTimerValue', 'text', formatClock(m.timeRemaining));
-    document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', m.timeRemaining <= 10);
+    this.setHudUrgent(m.timeRemaining <= 10);
+    this.hudSet('missionCode', 'text', missionCode(m.def)); // the code the briefing and the mission list show
 
     // "CEL RUNDY" section: one icon+label+progress row per goal shape (two
     // for activateAndDevour, so activator progress and the landmark bite
@@ -15933,14 +16013,23 @@ class Game {
     if (s.racer) extra.push({ icon: GOAL_ICONS.racer, color: '#EFCB63', label: 'Złodziej', count: m.raceStarted ? `${m.racerCount}/${s.raceTarget}` : 'czeka', cls: 'twist-danger' });
     if (s.fragile && !m.shields) extra.push({ icon: GOAL_ICONS.fragile, color: '#50F0FA', label: 'Kruchy wir', count: '', cls: 'twist-danger' });
     if (m.shields) extra.push({ icon: CARD_ICONS.shield, color: '#EFCB63', label: 'Tarcza', count: `×${m.shields}`, cls: 'twist-shield' });
-    this.hudSet('missionGoalItems', 'html', goalItems.map(it => `
-      <div class="mission-goal-item${it.progress >= it.target ? ' done' : ''}">
-        <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
+    // GG-UI-01: a counted goal shows its progress as segments (up to 8
+    // steps) or a bar; the district's landmark -- the boss -- gets its own
+    // framed row. Re-parsed only when a row really changed (hudSet()).
+    this.hudSet('missionGoalItems', 'html', goalItems.map(it => {
+      const done = it.progress >= it.target, p = Math.max(0, Math.min(it.progress, it.target));
+      const prog = it.target <= 1 ? ''
+        : it.target <= 8 ? `<span class="goal-pips" aria-hidden="true">${'<i class="on"></i>'.repeat(p)}${'<i></i>'.repeat(it.target - p)}</span>`
+          : `<span class="goal-bar" aria-hidden="true"><b style="width:${Math.round(p / it.target * 100)}%"></b></span>`;
+      return `
+      <div class="mission-goal-item${done ? ' done' : ''}${it.boss ? ' is-boss' : ''}" style="--gc:${it.color}">
+        <span class="mission-goal-icon"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
         <span class="mission-goal-text">${it.label}</span>
-        <span class="mission-goal-count">${it.display || `${Math.min(it.progress, it.target)}/${it.target}`}</span>
-      </div>`).join('') + extra.map(it => `
-      <div class="mission-goal-item ${it.cls}">
-        <span class="mission-goal-icon" style="color:${it.color}"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
+        <span class="mission-goal-count">${it.display || `${p}/${it.target}`}</span>${prog}
+      </div>`;
+    }).join('') + extra.map(it => `
+      <div class="mission-goal-item ${it.cls}" style="--gc:${it.color}">
+        <span class="mission-goal-icon"><svg viewBox="0 0 24 24">${it.icon}</svg></span>
         <span class="mission-goal-text">${it.label}</span>
         <span class="mission-goal-count">${it.count}</span>
       </div>`).join(''));
@@ -15953,7 +16042,7 @@ class Game {
     const idx = CAMPAIGN_TIERS.indexOf(tier);
     const next = CAMPAIGN_TIERS[idx + 1];
     const pct = next ? clamp((m.growthUnits - tier.minUnits) / (next.minUnits - tier.minUnits), 0, 1) * 100 : 100;
-    this.setTierBadge(tier.id, tier.color, `${tier.name}${next ? ` · Postęp do ${next.id}` : ' · Poziom maksymalny'}`, pct);
+    this.setTierBadge(tier.id, tier.color, `${tier.name}${next ? ` · Postęp do ${next.id}` : ' · Poziom maksymalny'}`, pct, idx);
     this.setHudScore(this.player.score);
   }
 
@@ -15970,19 +16059,43 @@ class Game {
     if (prop === 'text') el.textContent = value;
     else if (prop === 'html') el.innerHTML = value;
     else if (prop === 'title') el.title = value;
+    else if (prop.charCodeAt(0) === 46) el.classList.toggle(prop.slice(1), !!value); // '.name' = a class
+    else if (prop.charCodeAt(0) === 45) el.style.setProperty(prop, value);          // '--name' = a custom property
     else el.style[prop] = value;
     return true;
   }
 
-  setTierBadge(label, color, title, pct) {
-    this.hudSet('missionTierBar', 'width', pct.toFixed(1) + '%');
+  /** GG-UI-01: the tier badge and the six-step ladder (T1..T6): the steps
+   *  below the current tier are full, the current one fills with `pct`
+   *  (0..100, the mode's own progress to the next tier), the rest are
+   *  empty; on the last tier the whole ladder is lit. `idx` = the tier's
+   *  index in the mode's ladder. Whole percents only -- a DOM write when
+   *  the bar really moves. */
+  setTierBadge(label, color, title, pct, idx) {
     this.hudSet('missionTierBadge', 'text', label);
-    this.hudSet('missionTierBadge', 'color', color);
-    this.hudSet('missionTierBadge', 'textShadow', `0 0 6px ${color}`);
     this.hudSet('missionTierBadge', 'title', title);
-    this.hudSet('missionTierBar', 'background', color);
-    this.hudSet('missionTierBar', 'boxShadow', `0 0 8px ${color}`);
+    this.hudSet('hud-tier-strip', '--tier', color);
+    const max = idx >= HUD_TIER_STEPS - 1;
+    this.hudSet('hud-tier-strip', '.is-max', max);
+    for (let i = 0; i < HUD_TIER_STEPS; i++) {
+      const fill = i < idx || max ? 1 : i === idx ? Math.round(pct) / 100 : 0;
+      this.hudSet('tierFill' + i, 'transform', `scaleX(${fill})`);
+      this.hudSet('tierStep' + i, '.full', i < idx || max);
+      this.hudSet('tierStep' + i, '.now', i === idx && !max);
+    }
+    // A tier gained: the badge and the ladder answer once (not on a new round's reset).
+    const prev = this.hudTierIdx;
+    this.hudTierIdx = idx;
+    if (prev == null || idx <= prev || !this.running) return;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const badge = document.getElementById('missionTierBadge');
+    if (badge && badge.animate) badge.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.45)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+    const step = document.getElementById('tierStep' + idx);
+    if (step && step.animate) step.animate([{ filter: 'brightness(2.4)' }, { filter: 'brightness(1)' }], { duration: 520, easing: 'ease-out' });
   }
+
+  /** GG-UI-01: the clock turns pink for the last 10 s (one class write when it flips). */
+  setHudUrgent(on) { this.hudSet('hud-tier-strip', '.hud-urgent', !!on); }
 
   /** Score pill: write + a quick pop whenever the score goes up. */
   setHudScore(score) {
@@ -15992,7 +16105,7 @@ class Game {
     const now = performance.now();
     if (now - (this.lastScoreBump || 0) < 160) return;
     this.lastScoreBump = now;
-    const pill = document.querySelector('.hud-pill-score');
+    const pill = document.querySelector('#hud-tier-strip .gh-score');
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (pill && pill.animate) pill.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
   }
@@ -16639,73 +16752,128 @@ class Game {
     ctx.restore();
   }
 
-  /** Player + rival markers shared by both minimaps (player feedback: the
-   *  player's cyan dot and bots' palette-colored dots blended into the
-   *  object dots). Objects are small squares; holes are rings -- the player
-   *  a bright white dot with a cyan halo, rivals hollow rings: red when
-   *  bigger than the player (danger), white when smaller (prey). */
-  drawMinimapHoles(ctx, toMini) {
+  /** Player + rival markers shared by both minimaps. GG-UI-01: a clear
+   *  hierarchy on a 92-104 px map -- a rival bigger than you is a solid red
+   *  dot (danger), a smaller one a light ring (prey), you are the largest
+   *  marker: a cyan disc with a white core and a ring. Which rival counts
+   *  as danger is the rule it always was (EAT_HOLE_RATIO). `mk` scales the
+   *  markers with the map. */
+  drawMinimapHoles(ctx, toMini, mk = 1) {
+    const TAU = Math.PI * 2;
     for (const bot of this.bots) {
       const p = toMini(bot.x, bot.y);
       const danger = bot.radius > this.player.radius * EAT_HOLE_RATIO;
-      ctx.strokeStyle = danger ? '#ff3860' : 'rgba(242, 248, 255, 0.9)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(p.x, p.y, danger ? 3.5 : 2.8, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#04101D';
+      ctx.beginPath(); ctx.arc(p.x, p.y, (danger ? 4.6 : 3.8) * mk, 0, TAU); ctx.fill();
+      if (danger) {
+        ctx.fillStyle = '#ff3860';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3.4 * mk, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#04101D';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.2 * mk, 0, TAU); ctx.fill();
+      } else {
+        ctx.strokeStyle = 'rgba(242, 248, 255, 0.95)';
+        ctx.lineWidth = 1.4 * mk;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2.7 * mk, 0, TAU); ctx.stroke();
+      }
     }
     const pp = toMini(this.player.x, this.player.y);
-    ctx.fillStyle = 'rgba(80, 240, 250, 0.35)';
-    ctx.beginPath(); ctx.arc(pp.x, pp.y, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(80, 240, 250, 0.22)';
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, 8.5 * mk, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(80, 240, 250, 0.55)';
+    ctx.lineWidth = mk;
+    ctx.stroke();
+    ctx.fillStyle = '#04101D';
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, 6.2 * mk, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#50F0FA';
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, 5.2 * mk, 0, TAU); ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(pp.x, pp.y, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, 2.9 * mk, 0, TAU); ctx.fill();
   }
 
+  /** GG-UI-01: an important thing on the minimap (a node, a pylon, a gate,
+   *  a golden core; `boss` = a landmark, bigger, with an open centre). */
+  drawMinimapDiamond(ctx, x, y, color, r, boss) {
+    const d = (k) => { ctx.beginPath(); ctx.moveTo(x, y - k); ctx.lineTo(x + k, y); ctx.lineTo(x, y + k); ctx.lineTo(x - k, y); ctx.closePath(); ctx.fill(); };
+    ctx.fillStyle = '#04101D'; d(r + 1.2);
+    ctx.fillStyle = color; d(r);
+    if (boss) { ctx.fillStyle = '#04101D'; d(r * 0.38); }
+  }
+
+  /** GG-UI-01: the camera on the minimap -- four corners, a faint fill. */
+  drawMinimapView(ctx, x, y, w, h, mk) {
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.07)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(242, 248, 255, 0.95)';
+    ctx.lineWidth = 1.2 * mk;
+    const k = Math.min(4 * mk, w / 3, h / 3);
+    ctx.beginPath();
+    ctx.moveTo(x + k, y); ctx.lineTo(x, y); ctx.lineTo(x, y + k);
+    ctx.moveTo(x + w - k, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + k);
+    ctx.moveTo(x + k, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - k);
+    ctx.moveTo(x + w - k, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - k);
+    ctx.stroke();
+  }
+
+  /** GG-UI-01: the mission's board. The same rectangle, world bounds and
+   *  data as before -- every live entity, the glitch zones, the rivals,
+   *  you, the fixed camera hint -- and the same rule in a blackout
+   *  (setup.dark): the board and the holes only, no entity. */
   drawCampaignMinimap(ctx) {
     const size = this.minimapSize();
-    const { l: px, t: py } = this.minimapRect();
+    const rect = this.minimapRect(), px = rect.l, py = rect.t;
     const b = CONFIG.campaign.bounds;
     const scaleX = size / (b.maxX - b.minX), scaleY = size / (b.maxY - b.minY);
+    const mk = clamp(size / 104, 0.9, 1.5);
 
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.globalAlpha = this.hudFade('minimap', this.minimapRect());
-    ctx.drawImage(this.cityFloor.minimap(Math.round(size * this.dpr), this.campaignTheme(), b), px, py, size, size);
-    ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(px, py, size, size);
+    const fade = this.hudFade('minimap', rect);
+    ctx.globalAlpha = fade;
+    ctx.drawImage(this.cityFloor.hudMinimap(Math.round(size * this.dpr), this.campaignTheme(), b, null, size), px, py, size, size);
     this.drawMinimapLabel(ctx, px, py, size, this.campaignTheme());
+    ctx.save();
+    roundRectPath(ctx, px + 1.5, py + 1.5, size - 3, size - 3, 8);
+    ctx.clip();
 
-    // Every live entity gets a dot, not just landmark/node/pylon -- the
-    // minimap used to hide fragments/props/vehicles/capsules/markers/gates
-    // entirely (player feedback: the map should represent everything).
     const toMini = (x, y) => ({ x: px + (x - b.minX) * scaleX, y: py + (y - b.minY) * scaleY });
     // v15: in a blackout the map shows only the board and the holes.
     const dark = this.mission && this.mission.def.setup.dark;
     for (const z of (this.glitchZones || [])) {
       const c = toMini(z.x, z.y);
-      ctx.fillStyle = 'rgba(255, 84, 173, 0.35)';
+      ctx.fillStyle = 'rgba(255, 84, 173, 0.3)';
       ctx.beginPath(); ctx.arc(c.x, c.y, z.r * scaleX, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 84, 173, 0.8)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
     }
-    for (const e of this.campaignEntities) {
-      if (e.consumed || !e.live || dark) continue;
-      const big = e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate';
-      const size = big ? 3.5 : 2.2;
-      const p = toMini(e.x, e.y);
-      ctx.fillStyle = this.campaignEntityColor(e);
-      ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
+    // Small things first and quiet, the important ones on top.
+    const late = [];
+    if (!dark) {
+      const dot = 2.1 * mk;
+      ctx.globalAlpha = fade * 0.8;
+      for (const e of this.campaignEntities) {
+        if (e.consumed || !e.live) continue;
+        if (e.type === 'landmark' || e.type === 'node' || e.type === 'pylon' || e.type === 'gate') { late.push(e); continue; }
+        ctx.fillStyle = this.campaignEntityColor(e);
+        ctx.fillRect(px + (e.x - b.minX) * scaleX - dot / 2, py + (e.y - b.minY) * scaleY - dot / 2, dot, dot);
+      }
+      ctx.globalAlpha = fade;
+      for (const e of late) {
+        const boss = e.type === 'landmark';
+        this.drawMinimapDiamond(ctx, px + (e.x - b.minX) * scaleX, py + (e.y - b.minY) * scaleY, this.campaignEntityColor(e), (boss ? 4.2 : 2.6) * mk, boss);
+      }
     }
-    this.drawMinimapHoles(ctx, toMini);
 
     // Viewport-frame hint: a small square centered on the camera, not a
     // rectangle proportional to the actual (non-square) screen aspect --
     // the bounds box is only 1400x1400, so a true proportional viewport
     // rect reads as too big/rectangular on a 130px-square minimap (player
-    // feedback). Kept minimal and square instead, same spirit as Arena's
-    // frame (shows roughly where the camera is) without the screen-shape
-    // baggage.
+    // feedback).
     const camMini = toMini(this.camera.x, this.camera.y);
     const frameSize = 16;
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.strokeRect(camMini.x - frameSize / 2, camMini.y - frameSize / 2, frameSize, frameSize);
+    this.drawMinimapView(ctx, camMini.x - frameSize / 2, camMini.y - frameSize / 2, frameSize, frameSize, mk);
+    this.drawMinimapHoles(ctx, toMini, mk);
+    ctx.restore();
     ctx.restore();
   }
 
@@ -17618,9 +17786,9 @@ class Game {
       ctx.globalAlpha = 1;
     }
     this.drawFrenzyVignette(ctx);
-    this.drawComboHud(ctx);
-    if (this.mode === 'arena') this.drawChallengeTarget(ctx);
+    this.drawHudStack(ctx);
     const b = this.banner;
+    let stackDim = false;
     if (b) {
       const age = 1 - b.life / b.maxLife;
       const pop = age < 0.12 ? 0.4 + (age / 0.12) * 0.8 : (age < 0.22 ? 1.2 - ((age - 0.12) / 0.1) * 0.2 : 1);
@@ -17643,15 +17811,60 @@ class Game {
         if (h.t < by + size * 1.3 && h.b > by - size * 0.8) { right = Math.min(right, h.l - 6); below = Math.max(below, h.b); }
       }
       if (right - left < 0.6 * (this.width - sf.l - sf.r)) { right = this.width - sf.r; by = below + size * 0.9; }
-      const room = right - left - 28;
-      ctx.font = `${size}px ${FONT_DISPLAY}`;
-      const tw = ctx.measureText(b.text).width + 8;
-      if (tw * 1.2 > room) size *= room / (tw * 1.2);
+      // GG-UI-01: the line and its sub-line laid out for a band [L, R]: the
+      // sizes that fit it (the pop's 1.2x peak included), the sub-line on
+      // two lines when it would not fit at 10 px (it ran off a 320 px phone).
+      const base = size, subText = b.sub ? T(b.sub) : null;
+      const fit = (L, R) => {
+        const room = R - L - 28;
+        ctx.font = `${base}px ${FONT_DISPLAY}`;
+        const tw = ctx.measureText(b.text).width + 8;
+        const s = tw * 1.2 > room ? base * room / (tw * 1.2) : base;
+        const lay = { s, half: Math.min(tw * 1.2, room) / 2, mainHalf: Math.min(tw * 1.2, room) / 2, ss: 0, lines: null, subHalf: 0, fits: true };
+        if (!subText) return lay;
+        let ss = Math.max(12, s * 0.26), lines = [subText];
+        ctx.font = `800 ${ss}px ${FONT_UI}`;
+        let w = ctx.measureText(subText).width + 8;
+        if (w * 1.2 > room) {
+          const one = ss * room / (w * 1.2);
+          if (one >= 10) { ss = one; w = room / 1.2; } else {
+            const mid = subText.length / 2;
+            let cut = -1;
+            for (let i = 1; i < subText.length - 1; i++) if (subText[i] === ' ' && (cut < 0 || Math.abs(i - mid) < Math.abs(cut - mid))) cut = i;
+            if (cut > 0) lines = [subText.slice(0, cut).replace(/\s*[·—–-]$/, ''), subText.slice(cut + 1).replace(/^[·—–-]\s*/, '')];
+            w = Math.max(...lines.map(t => ctx.measureText(t).width)) + 8;
+            const two = ss * room / (w * 1.2);
+            if (two < ss) { w = w * Math.max(10, two) / ss; ss = Math.max(10, two); }
+            lay.fits = w * 1.2 <= room + 0.5;
+          }
+        }
+        Object.assign(lay, { ss, lines, subHalf: w * 1.2 / 2, half: Math.max(lay.half, w * 1.2 / 2) });
+        return lay;
+      };
+      let lay = fit(left, right);
+      // The widgets under the clock (combo, friend challenge, SZAŁ, NELA's
+      // bubble) at the banner's height. Decided once per banner, so it
+      // never jumps: if the line still reads well in the band they leave,
+      // it takes that band ("AWANS NA 3. MIEJSCE" lay on the combo plate
+      // at 800x450); otherwise it keeps its place and the widgets step
+      // back (dimmed) while it shows.
+      let edge = left;
+      for (const h of this.hudObstacles()) {
+        if (h.t < by + base * 1.3 && h.b > by - base * 0.8) edge = Math.max(edge, h.r + 6);
+      }
+      if (edge > left || b.band) {
+        const hit = edge > left && (left + right) / 2 - lay.half < edge;
+        if (b.band == null) {
+          const n = fit(edge, right);
+          b.band = !hit ? 'free' : (n.fits && n.s >= Math.max(22, base * 0.6) ? 'narrow' : 'dim');
+          b.edge = edge;
+        } else if (b.band === 'free' && hit) b.band = 'dim';
+        if (b.band === 'narrow') { left = b.edge; lay = fit(left, right); stackDim = edge > b.edge + 1; } else if (b.band === 'dim') stackDim = hit;
+      }
+      size = lay.s;
       ctx.globalAlpha = alpha;
       const bx = (left + right) / 2;
-      ctx.font = `${size}px ${FONT_DISPLAY}`;
-      const bw = (ctx.measureText(b.text).width + 8) * 1.2;
-      this.lastBannerBox = { l: bx - bw / 2, r: bx + bw / 2, t: by - size * 0.72, b: by + size * 0.72, size }; // (QA: at the pop's 1.2x peak)
+      this.lastBannerBox = { l: bx - lay.mainHalf, r: bx + lay.mainHalf, t: by - size * 0.72, b: by + size * 0.72, size }; // (QA: at the pop's 1.2x peak)
       ctx.translate(bx, by);
       ctx.scale(pop, pop);
       ctx.rotate(-0.04);
@@ -17665,21 +17878,73 @@ class Game {
       ctx.shadowBlur = 26;
       ctx.shadowColor = b.color;
       ctx.fillText(b.text, 0, 0);
-      if (b.sub) {
+      if (lay.lines) {
         ctx.shadowBlur = 0;
-        let subSize = Math.max(12, size * 0.26);
+        const subSize = lay.ss;
         ctx.font = `800 ${subSize}px ${FONT_UI}`;
-        const sw = ctx.measureText(b.sub).width + 8;
-        if (sw * 1.2 > room) { subSize = Math.max(10, subSize * room / (sw * 1.2)); ctx.font = `800 ${subSize}px ${FONT_UI}`; }
-        const sw2 = (ctx.measureText(b.sub).width + 8) * 1.2;
-        Object.assign(this.lastBannerBox, { subL: bx - sw2 / 2, subR: bx + sw2 / 2, b: by + size * 0.72 + subSize });
+        Object.assign(this.lastBannerBox, { subL: bx - lay.subHalf, subR: bx + lay.subHalf, b: by + size * 0.72 + subSize * (lay.lines.length * 1.2 - 0.2), subSize, subLines: lay.lines.length });
         ctx.lineWidth = 4;
-        ctx.strokeText(b.sub, 0, size * 0.72);
-        ctx.fillStyle = '#f2f8ff';
-        ctx.fillText(b.sub, 0, size * 0.72);
+        lay.lines.forEach((line, i) => {
+          ctx.strokeText(line, 0, size * 0.72 + i * subSize * 1.2);
+          ctx.fillStyle = '#f2f8ff';
+          ctx.fillText(line, 0, size * 0.72 + i * subSize * 1.2);
+        });
       }
     }
+    this.hudStackDim = stackDim;
+    this.hudSet('nelaToast', '.under-banner', stackDim);
     ctx.restore();
+  }
+
+  /** GG-UI-01: what stands in the column under the clock this frame (CSS
+   *  px): the canvas widgets drawHudStack() just drew and NELA's bubble. */
+  hudObstacles() {
+    const out = (this.hudStack || []).slice();
+    for (const h of this.hudBoxes || []) if (h.el.id === 'nelaToast') out.push(h);
+    return out;
+  }
+
+  /** GG-UI-01: the secondary widgets drawn on the canvas -- the combo
+   *  counter, the friend-challenge target, the SZAŁ timer -- as one column
+   *  under the pause button and the clock: placed inside the safe area,
+   *  sized with the UI scale (they were fixed screen px: on a desktop at
+   *  x1.24 the top bar ended at 64 px and the combo plate began at 58), one
+   *  under the other (never on each other), below NELA's bubble while it
+   *  shows. A quiet material: dark glass and a hairline, no glow. They fade
+   *  under the vortex like every HUD box and step back under a banner
+   *  that needs their room (drawJuiceScreen()). */
+  drawHudStack(ctx) {
+    const k = this.uiScale || 1, sf = this.safe || { t: 0, l: 0 };
+    const x = sf.l + 12 * k;
+    let y = sf.t + 64 * k;
+    for (const h of this.hudBoxes || []) if (h.el.id === 'nelaToast') y = Math.max(y, h.b + 8 * k);
+    const stack = this.hudStack || (this.hudStack = []);
+    stack.length = 0;
+    const now = performance.now();
+    const dimTo = this.hudStackDim ? 0.2 : 1, prev = this.hudStackDimA == null ? 1 : this.hudStackDimA;
+    const dim = this.hudStackDimA = prev + (dimTo - prev) * Math.min(1, (now - (this.hudStackDimT || now)) / 140);
+    this.hudStackDimT = now;
+    const widgets = [this.drawComboHud, this.mode === 'arena' ? this.drawChallengeTarget : null, this.drawFrenzyTimer];
+    for (const draw of widgets) {
+      if (!draw) continue;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(k, k);
+      const size = draw.call(this, ctx, (w, h, a = 1) => {
+        const box = { l: x, t: y, r: x + w * k, b: y + h * k };
+        ctx.globalAlpha = a * dim * this.hudFade('stack' + stack.length, box);
+        roundRectPath(ctx, 0, 0, w, h, 12);
+        ctx.fillStyle = 'rgba(4, 12, 22, 0.86)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(242, 248, 255, 0.12)';
+        ctx.lineWidth = 1;
+        roundRectPath(ctx, 0.5, 0.5, w - 1, h - 1, 12);
+        ctx.stroke();
+        stack.push(box);
+      });
+      ctx.restore();
+      if (size) y += (size + 6) * k;
+    }
   }
 
   /** Golden Shot v9 SZAŁ (frenzy): active while the round clock is above
@@ -17742,70 +18007,67 @@ class Game {
   /** Gold edge vignette + "SZAŁ" timer bar while frenzy runs. */
   drawFrenzyVignette(ctx) {
     if (!this.frenzyActive) return;
-    const left = this.timeRemaining - this.frenzyEndsAt;
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 120);
     const g = ctx.createRadialGradient(this.width / 2, this.height / 2, Math.min(this.width, this.height) * 0.35, this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.75);
     g.addColorStop(0, 'rgba(239, 203, 99, 0)');
     g.addColorStop(1, `rgba(239, 203, 99, ${0.22 + 0.12 * pulse})`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, this.width, this.height);
-    const w = 134, x = 16, y = 186;
-    ctx.fillStyle = 'rgba(4, 16, 29, 0.75)';
-    roundRectPath(ctx, x - 8, y - 26, w + 16, 40, 12);
-    ctx.fill();
-    ctx.font = `16px ${FONT_DISPLAY}`;
+  }
+
+  /** The "SZAŁ" timer (a hudStack widget: drawn at 0,0 in UI px; returns its height). */
+  drawFrenzyTimer(ctx, plate) {
+    if (!this.frenzyActive) return 0;
+    const left = this.timeRemaining - this.frenzyEndsAt;
+    const w = 150, h = 40;
+    plate(w, h);
+    ctx.font = `14px ${FONT_DISPLAY}`;
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#EFCB63';
-    ctx.fillText(`SZAŁ ×2 · ${Math.ceil(left)} s`, x, y - 6);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(x, y + 2, w, 5);
+    ctx.fillText(`SZAŁ ×2 · ${Math.ceil(left)} s`, 10, 21);
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.12)';
+    roundRectPath(ctx, 10, 28, w - 20, 3, 1.5); ctx.fill();
     ctx.fillStyle = '#EFCB63';
-    ctx.fillRect(x, y + 2, w * clamp(left / CONFIG.golden.frenzySeconds, 0, 1), 5);
+    roundRectPath(ctx, 10, 28, (w - 20) * clamp(left / CONFIG.golden.frenzySeconds, 0, 1), 3, 1.5); ctx.fill();
+    return h;
   }
 
   /** Combo counter in a fixed screen spot (left, under the top HUD strip)
    *  instead of floating over the hole, where it collided with banners and
-   *  score pops. Pops on every new link; the bar is the time left to chain. */
-  drawComboHud(ctx) {
-    if (this.comboCount < 2 || this.comboDisplayAlpha <= 0) return;
+   *  score pops. Pops on every new link; the bar is the time left to chain.
+   *  GG-UI-01: a hudStack widget (drawn at 0,0 in UI px; returns its height). */
+  drawComboHud(ctx, plate) {
+    if (this.comboCount < 2 || this.comboDisplayAlpha <= 0) return 0;
     const popT = this.comboPopAt ? (performance.now() - this.comboPopAt) / 200 : 1;
-    const pop = popT < 1 ? 1 + 0.25 * Math.sin(popT * Math.PI) : 1;
+    const pop = popT < 1 ? 1 + 0.2 * Math.sin(popT * Math.PI) : 1;
     const m = this.comboMultiplier;
     const color = m >= 2.5 ? '#FF54AD' : (m >= 1.9 ? '#9875FF' : (m >= 1.4 ? '#EFCB63' : '#50F0FA'));
-    const x = 16, y = 96;
-    ctx.save();
-    ctx.globalAlpha = this.comboDisplayAlpha;
-    ctx.fillStyle = 'rgba(4, 16, 29, 0.62)';
-    roundRectPath(ctx, x - 8, y - 38, 150, 62, 12);
-    ctx.fill();
-    ctx.translate(x, y);
-    ctx.scale(pop, pop);
+    const label = `×${this.comboCount}`, pts = `PKT x${m.toFixed(1)}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.font = `800 11px ${FONT_UI}`;
-    ctx.fillStyle = 'rgba(242, 248, 255, 0.75)';
-    ctx.fillText('COMBO', 0, -22);
-    ctx.font = `30px ${FONT_DISPLAY}`;
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
-    const label = `×${this.comboCount}`;
-    ctx.strokeText(label, 0, 6);
-    ctx.fillStyle = color;
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = color;
-    ctx.fillText(label, 0, 6);
-    const w = ctx.measureText(label).width;
-    ctx.shadowBlur = 0;
-    ctx.font = `800 13px ${FONT_UI}`;
+    ctx.font = `26px ${FONT_DISPLAY}`;
+    const nw = ctx.measureText(label).width;
+    ctx.font = `800 12px ${FONT_UI}`;
+    const tw = Math.max(46, ctx.measureText(pts).width);
+    const w = Math.ceil(10 + nw + 8 + tw + 10), h = 51;
+    plate(w, h, this.comboDisplayAlpha);
     ctx.fillStyle = '#f2f8ff';
-    ctx.fillText(`PKT x${m.toFixed(1)}`, w + 8, 4);
+    ctx.fillText(pts, 18 + nw, 33);
+    ctx.font = `800 9px ${FONT_UI}`;
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.5)';
+    ctx.fillText('COMBO', 18 + nw, 18);
     const windowS = this.comboWindowOverride || CONFIG.juice.combo.windowSeconds;
     const frac = clamp(this.comboTimer / windowS, 0, 1);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(0, 14, 110, 4);
+    ctx.fillStyle = 'rgba(242, 248, 255, 0.12)';
+    roundRectPath(ctx, 10, 41, w - 20, 3, 1.5); ctx.fill();
     ctx.fillStyle = color;
-    ctx.fillRect(0, 14, 110 * frac, 4);
-    ctx.restore();
+    roundRectPath(ctx, 10, 41, (w - 20) * frac, 3, 1.5); ctx.fill();
+    ctx.translate(10, 34);
+    ctx.scale(pop, pop);
+    ctx.font = `26px ${FONT_DISPLAY}`;
+    ctx.fillText(label, 0, 0);
+    return h;
   }
 
   /** 0 (first runs: guaranteed easy wins) .. 1 (full difficulty wall), from
@@ -18558,12 +18820,16 @@ class Game {
     const tierPct = next
       ? clamp((this.player.radius - floor) / (next.minRadius - floor), 0, 1) * 100
       : 100;
-    this.setTierBadge(tier.shortId, tier.color, `${tier.label}${next ? ` · Postęp do ${next.shortId}` : ' · Poziom maksymalny'}`, tierPct);
+    this.setTierBadge(tier.shortId, tier.color, `${tier.label}${next ? ` · Postęp do ${next.shortId}` : ' · Poziom maksymalny'}`, tierPct, tierIdx);
 
     const ranked = rankHoles([this.player, ...this.bots]);
     ranked.forEach((h, i) => { h.isLeader = i === 0 && h.score > 0; });
     const place = ranked.indexOf(this.player) + 1;
     this.hudSet('rankValue', 'text', `#${place}/${ranked.length}`);
+    // GG-UI-01: the Daily Challenge names itself on its own line over the
+    // header (the live standings stay "PUNKTY" -- playtest 022; the long
+    // title pushed the place badge off a phone's edge in one row).
+    this.hudSet('hud-topright', '.is-daily', !!this.isDailyRun);
     const nowMs = performance.now();
     // Golden Shot v8: celebrate climbing into the podium mid-round (v13:
     // at most every 8 s -- a see-saw lead fired it 3x in 2 s).
@@ -18585,11 +18851,14 @@ class Game {
       this.showBanner(`BRAKUJE ${formatNum(ranked[0].score - this.player.score + 1)} PKT`, `do 1. miejsca · zostało ${Math.ceil(this.timeRemaining)} s`, '#EFCB63', 1.4, 2);
     }
     this.lastPlace = place;
-    document.getElementById('missionTimerValue').parentElement.parentElement.classList.toggle('hud-urgent', this.timeRemaining <= 10);
+    this.setHudUrgent(this.timeRemaining <= 10);
 
     // v12 compact standings: the podium plus your own row (with a gap
     // marker when you're below it) -- less of the play field covered.
-    const row = (h, i) => `<li class="${h.isPlayer ? 'is-player' : ''}${i === 0 ? ' lb-first' : ''}"><span class="lb-rank">${i === 0 ? '<svg class="lb-crown" viewBox="0 0 24 24" aria-label="#1"><path d="M3 19h18l-1.6-11-5.2 4.2L12 4.5l-2.2 7.7L4.6 8z" fill="currentColor"/></svg>' : '#' + (i + 1)}</span><span class="lb-name"${h.isPlayer && !this.save.displayName ? '' : ' translate="no"'}>${escapeHtml(h.name)}</span><span class="lb-size">${h.score}</span></li>`;
+    // GG-UI-01: each row carries its score as a share of the leader's (--p:
+    // the bar behind the row -- the gap to #1 reads without the numbers).
+    const top = Math.max(1, ranked[0].score);
+    const row = (h, i) => `<li class="${h.isPlayer ? 'is-player' : ''}${i === 0 ? ' lb-first' : ''}" style="--p:${Math.round(clamp(h.score / top, 0, 1) * 100)}%"><span class="lb-rank">${i === 0 ? '<svg class="lb-crown" viewBox="0 0 24 24" aria-label="#1"><path d="M3 19h18l-1.6-11-5.2 4.2L12 4.5l-2.2 7.7L4.6 8z" fill="currentColor"/></svg>' : i + 1}</span><span class="lb-name"${h.isPlayer && !this.save.displayName ? '' : ' translate="no"'}>${escapeHtml(h.name)}</span><span class="lb-size">${h.score}</span></li>`;
     let html = ranked.slice(0, 3).map(row).join('');
     if (place > 3) html += (place > 4 ? '<li class="lb-gap" aria-hidden="true">···</li>' : '') + row(this.player, place - 1);
     this.hudSet('leaderboardList', 'html', html);
@@ -18648,20 +18917,30 @@ class Game {
     return (d && d.id) || 'plac';
   }
 
-  /** District name over the minimap, in the district's color. */
+  /** District name over the minimap: a plate in the district's color
+   *  (GG-UI-01: sized with the UI scale, like the map under it). */
   drawMinimapLabel(ctx, px, py, size, districtId) {
     const d = DISTRICTS.find(x => x.id === districtId);
     if (!d) return;
-    const label = d.name.toUpperCase();
-    ctx.font = `800 10px ${FONT_UI}`;
-    const tw = ctx.measureText(label).width;
-    ctx.fillStyle = 'rgba(2, 8, 16, 0.78)';
-    roundRectPath(ctx, px + size - tw - 10, py - 19, tw + 10, 16, 5);
+    const label = d.name.toUpperCase(), col = DISTRICT_COLORS[districtId] || '#50F0FA', k = this.uiScale || 1;
+    ctx.save();
+    ctx.translate(px + size, py);
+    ctx.scale(k, k);
+    ctx.font = `10px ${FONT_DISPLAY}`;
+    const w = ctx.measureText(label).width + 21, h = 16, x = -w, y = -20;
+    roundRectPath(ctx, x, y, w, h, 5);
+    ctx.fillStyle = 'rgba(4, 16, 29, 0.92)';
     ctx.fill();
-    ctx.textAlign = 'right';
+    ctx.strokeStyle = rgbaColor(col, 0.75);
+    ctx.lineWidth = 1;
+    roundRectPath(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 5);
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x + 8.5, y + h / 2, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = DISTRICT_COLORS[districtId] || '#50F0FA';
-    ctx.fillText(label, px + size - 5, py - 11);
+    ctx.fillText(label, x + 15, y + h / 2 + 0.5);
+    ctx.restore();
   }
 
   /** v12: a smaller minimap on narrow phones (130 px was 36 % of a 360 px screen). */
@@ -18687,9 +18966,10 @@ class Game {
     this.hudFadeTick = (this.hudFadeTick || 0) + 1;
     if (!this.hudBoxes || this.hudFadeTick % 20 === 0) {
       const s = this.uiScale || 1;
-      this.hudBoxes = ['btnPause', 'hud-topright', 'hud-goal', 'hud-tier-strip'].map(id => {
+      this.hudBoxes = ['btnPause', 'hud-topright', 'hud-goal', 'hud-tier-strip', 'nelaToast'].map(id => {
         const el = document.getElementById(id);
         if (!el || el.classList.contains('hidden') || !el.offsetWidth) return null;
+        if (id === 'nelaToast' && !el.classList.contains('visible')) return null;
         let x = 0, y = 0;
         for (let a = el; a && a.id !== 'hud'; a = a.offsetParent) { x += a.offsetLeft; y += a.offsetTop; }
         return { el, l: x * s, t: y * s, r: (x + el.offsetWidth) * s, b: (y + el.offsetHeight) * s };
@@ -18757,41 +19037,55 @@ class Game {
     return a;
   }
 
+  /** GG-UI-01: Arena's city. The same rectangle, scale and data as before
+   *  (every object, every rival, you, the real camera frame, the district
+   *  you are in); new is how it is drawn -- streets and districts from the
+   *  cached backdrop, quiet dots for small things, diamonds for the ones
+   *  worth steering to. */
   drawMinimap(ctx) {
     const size = this.minimapSize();
-    const { l: px, t: py } = this.minimapRect();
+    const rect = this.minimapRect(), px = rect.l, py = rect.t;
     const scale = size / WORLD_W;
+    const mk = clamp(size / 104, 0.9, 1.5);
+    const here = cityDistrictAt(this.player.x, this.player.y);
 
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.globalAlpha = this.hudFade('minimap', this.minimapRect());
-    ctx.drawImage(this.cityFloor.minimap(Math.round(size * this.dpr), null, { minX: 0, minY: 0, maxX: WORLD_W, maxY: WORLD_H }), px, py, size, size);
-    ctx.strokeStyle = 'rgba(80, 240, 250,0.4)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(px, py, size, size);
-    this.drawMinimapLabel(ctx, px, py, size, cityDistrictAt(this.player.x, this.player.y));
+    const fade = this.hudFade('minimap', rect);
+    ctx.globalAlpha = fade;
+    ctx.drawImage(this.cityFloor.hudMinimap(Math.round(size * this.dpr), null, { minX: 0, minY: 0, maxX: WORLD_W, maxY: WORLD_H }, here, size), px, py, size, size);
+    this.drawMinimapLabel(ctx, px, py, size, here);
+    ctx.save();
+    roundRectPath(ctx, px + 1.5, py + 1.5, size - 3, size - 3, 8);
+    ctx.clip();
 
-    // Every object type gets a dot, not just the biggest ones -- previously
-    // the minimap only showed large (green) objects, which read as "the map
-    // only tracks green things" (player feedback). Sizing matches
-    // drawCampaignMinimap()'s own convention (node/pylon/landmark bigger
-    // than the rest) now that Arena's TIERS keys are the same type names.
+    // Every object gets a mark, as before: what a small vortex eats is a
+    // quiet dot, bigger things a clearer one; nodes, pylons, landmarks and
+    // the golden core are diamonds, drawn last.
+    const late = [];
+    let alpha = -1, color = null;
     for (const obj of this.objects) {
-      const tierDef = TIERS[obj.tier];
-      const big = obj.tier === 'node' || obj.tier === 'pylon' || obj.tier === 'landmark';
-      const dotSize = obj.tier === 'golden' ? 6 : (big ? 3.5 : 2);
-      ctx.fillStyle = tierDef.color;
-      ctx.fillRect(px + obj.x * scale - dotSize / 2, py + obj.y * scale - dotSize / 2, dotSize, dotSize);
+      const t = obj.tier;
+      if (t === 'golden' || t === 'node' || t === 'pylon' || t === 'landmark') { late.push(obj); continue; }
+      const def = TIERS[t], small = (def.minSizeTier || 0) <= 1;
+      const a = small ? 0.55 : 0.9, dot = (small ? 1.5 : 2.3) * mk;
+      if (a !== alpha) { alpha = a; ctx.globalAlpha = fade * a; }
+      if (def.color !== color) { color = def.color; ctx.fillStyle = color; }
+      ctx.fillRect(px + obj.x * scale - dot / 2, py + obj.y * scale - dot / 2, dot, dot);
     }
-    this.drawMinimapHoles(ctx, (x, y) => ({ x: px + x * scale, y: py + y * scale }));
+    ctx.globalAlpha = fade;
+    for (const obj of late) {
+      const gold = obj.tier === 'golden';
+      this.drawMinimapDiamond(ctx, px + obj.x * scale, py + obj.y * scale, TIERS[obj.tier].color, (gold ? 4 : 2.6) * mk, false);
+    }
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.strokeRect(
+    this.drawMinimapView(ctx,
       px + (this.camera.x - this.viewHalfW) * scale,
       py + (this.camera.y - this.viewHalfH) * scale,
       this.viewHalfW * 2 * scale,
-      this.viewHalfH * 2 * scale
-    );
+      this.viewHalfH * 2 * scale, mk);
+    this.drawMinimapHoles(ctx, (x, y) => ({ x: px + x * scale, y: py + y * scale }), mk);
+    ctx.restore();
     ctx.restore();
   }
 

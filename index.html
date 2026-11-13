@@ -39,43 +39,36 @@
 
   <!-- ===================== IN-GAME HUD ===================== -->
   <div id="hud" class="hidden">
-    <button id="btnPause" class="hud-icon-btn" aria-label="Pauza">❚❚</button>
+    <!-- GG-UI-01: the premium in-round HUD. Zones as before: pause + clock /
+         tier ladder / score top-left, the standings (Arena, Daily) or the
+         mission goal (Campaign) top-right. Every value is written by
+         Game.updateHUD() / updateCampaignHUD() through Game.hudSet(). -->
+    <button id="btnPause" class="hud-icon-btn" aria-label="Pauza"><span class="gh-pause" aria-hidden="true"><i></i><i></i></span></button>
 
     <div id="hud-topright" class="hud-panel hud-standings">
+      <div class="gh-mode"><span id="rankMode">WYZWANIE DNIA</span></div>
       <button id="hud-rankBadge" class="standings-header" aria-label="Zwiń/rozwiń pełny ranking">
-        <span class="leaderboard-title"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/></svg> PUNKTY</span>
+        <span class="leaderboard-title"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0V4z"/><path d="M7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3"/></svg><span id="rankTitle">PUNKTY</span></span>
         <span id="rankValue" class="hud-value rank">#1/6</span>
       </button>
       <ol id="leaderboardList"></ol>
     </div>
 
-    <!-- Shared in-round top strip (GDD §06 HUD zones: "Pod górą: Cel + pasek
-         wzrostu"), used by both Arena and Campaign -- Czas/pasek ładowania/
-         Wynik cluster beside the pause button. In Campaign, CEL RUNDY sits
-         in its own box on the right; in Arena that same corner shows the
-         standings panel above instead, since Arena rounds have no mission
-         goal (player feedback: the two modes' in-round HUD should look and
-         behave the same). -->
+    <!-- Shared by Arena and Campaign: the clock, the T1-T6 ladder (finished
+         steps full, the current one filling -- Game.setTierBadge()) and the
+         score. In Campaign the goal box sits on the right; in Arena that
+         corner shows the standings. -->
     <div id="hud-tier-strip" class="hud-panel hud-tier-strip hidden">
-      <div class="hud-pill hud-pill-time">
-        <span class="hud-label">Czas</span>
-        <span class="hud-value timer"><svg class="hud-goal-footer-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.2" fill="none"/></svg><span id="missionTimerValue">0:00</span></span>
-      </div>
-
-      <div class="hud-tier-bar">
-        <svg class="hud-tier-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z" fill="currentColor"/></svg>
-        <div class="tier-progress-track"><div id="missionTierBar" class="tier-progress-bar"></div></div>
-        <span class="hud-tier-badge" id="missionTierBadge">T1</span>
-      </div>
-
-      <div class="hud-pill hud-pill-score">
-        <span class="hud-label">Wynik</span>
-        <span class="hud-value score"><svg class="hud-goal-footer-icon" viewBox="0 0 24 24"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z" fill="currentColor"/></svg><span id="missionScoreValue">0</span></span>
-      </div>
+      <span class="gh-time"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><span id="missionTimerValue">0:00</span></span>
+      <span class="gh-tier">
+        <span class="hud-tier-badge" id="missionTierBadge" translate="no">T1</span>
+        <span class="gh-ladder" aria-hidden="true"><i id="tierStep0"><b id="tierFill0"></b></i><i id="tierStep1"><b id="tierFill1"></b></i><i id="tierStep2"><b id="tierFill2"></b></i><i id="tierStep3"><b id="tierFill3"></b></i><i id="tierStep4"><b id="tierFill4"></b></i><i id="tierStep5"><b id="tierFill5"></b></i></span>
+      </span>
+      <span class="gh-score"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z" fill="currentColor"/></svg><span id="missionScoreValue">0</span></span>
     </div>
 
     <div id="hud-goal" class="hud-panel hud-goal-box hidden">
-      <div class="hud-goal-section-title">CEL MISJI</div>
+      <div class="hud-goal-head"><span class="hud-goal-section-title">CEL MISJI</span><span id="missionCode" class="gh-chip" translate="no"></span></div>
       <div id="missionGoalItems" class="mission-goal-items"></div>
     </div>
 
