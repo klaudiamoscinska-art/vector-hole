@@ -4,6 +4,30 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-VFX-01 „Premium Swallow Effects” — nowy wygląd samego pochłaniania (zapis nadal v13, klucz bez zmian; czas pochłaniania, progi, promienie, hitboxy, punktacja, wzrost, combo, walka wirów, sterowanie, `hitStop()`, RNG, seedy, balans i ekonomia bez zmian)
+- **Jedna rodzina efektów w trzech wagach + rywal** (`swallowWeight()`): małe T1/T2 — szybko i lekko (obiekt wślizguje się po
+  spirali, cienka smuga, jeden krótki pierścień; łańcuch małych kęsów odnawia jeden puls, nie mnoży ich); średnie T3/T4 — cała
+  sylwetka jest wciągana i rozciągana ku środkowi, zostawia powidoki i odłamki, obręcz rozświetla się tam, gdzie obiekt ją
+  przekracza, a po połknięciu wir odpowiada pierścieniem i akcentem skórki; duże T5/T6 i bossowie dzielnic — wir bierze wdech
+  (rysowany promień na chwilę maleje), bryła unosi się na krawędzi i zapada, przyciąganie się zacieśnia, po połknięciu gardziel
+  rozbłyska, z obręczy wychodzi podwójna fala, a wir jeszcze przez chwilę drga. **Rywal** wpada jako własny wir (jego wygląd i
+  kolor), wyżymany i rozrywany na łuki; odpowiedzią jest podwójny pierścień z promieniami w kolorze rywala.
+- **Sylwetka zostaje:** obiekt jest rysowany tym samym sprite'em co na planszy — część nad krawędzią i część w wirze w jednej
+  pozie (`swallowLook()`), bez zastępowania go kulą światła. Grafiki T1–T6, tło A2.1 i skórki wirów bez zmian.
+- **Akcent każdej skórki** (`GULP_ACCENTS`): Horyzont — ciemność wylewa się za krawędź i pierścień fotonowy się zaciska; Cyjan —
+  segmentowe impulsy; Gorący Róż — falujący pierścień plazmy; Toksyczna Zieleń — bąble; Ultrafiolet — odrzucone ramiona;
+  Neonowe Złoto — korona rozbłysków; Biała Plazma — wyładowania; Aurora — welony; Kryształ — sześciokąt i błyski; Pryzmat —
+  widmo. **Efekt pochłaniania** z Warsztatu barwi teraz całą energię kęsa gracza (smugę, obręcz, pierścień), nie tylko cząsteczki.
+- **Tylko obraz:** obiekt porusza się po tej samej ścieżce (`swallowPose()` bez zmian), pochłonięcie trwa tyle samo klatek
+  (0,28 s / boss 0,8 s / rywal 0,45 s), a nowy kod nie losuje ani jednej liczby (różnorodność z ziarna obiektu) — te same
+  cząsteczki, wstrząsy i `hitStop()` co wcześniej.
+- **Wydajność:** poświata cząsteczek to stempel zamiast `shadowBlur` na każdą kropkę w każdej klatce; w nowych efektach nie ma
+  `shadowBlur` ani filtrów; odpowiedzi wiru są na krótkiej liście (16, na jakości 0 — 8); kęsy rywali, tłum małych kęsów, daleki
+  zoom i jakość 0 rysują mniej (sam upadek zostaje zawsze).
+- **QA:** `node qa/vfx1.mjs` (39 testów), `node qa/vfx1-shots.mjs --root DIR` + `node qa/vfx1-publish.mjs` (PRZED/PO z gry:
+  klatki każdej wagi, każda skórka, jakość 0, ekrany 390×844 / 800×450 / 1366×768, podgląd ruchu `design/vfx1/preview.html`).
+  Raport: `docs/GG_VFX_01_REPORT.md`.
+
 ## GG-HOLE-01 „Premium Vortex” — nowy wygląd wszystkich wirów (zapis nadal v13, klucz bez zmian; mechanika pochłaniania, promienie, hitboxy, sterowanie, wzrost, punktacja, RNG, seedy, układ map, balans i ekonomia bez zmian)
 - **10 skórek + style rywali narysowane od nowa** (`HOLE_LOOKS`): każdy wygląd ma własne wnętrze, serce, obręcz i koronę zamiast
   wspólnej spirali z inną obwódką — Horyzont (czarna dziura, pierścień fotonowy), Cyjan (obwody), Gorący Róż (plazma), Toksyczna
