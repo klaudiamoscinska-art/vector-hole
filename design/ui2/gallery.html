@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html{color-scheme:dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>GG-UI-02 Premium Experience</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700;800&family=Russo+One&display=swap">
+<style>
+/* layout: a sticky filter bar over one grid of frame cards; portrait frames sit side by side on a wide screen, landscape frames span the row. One dark world (the game's own palette, design/reference/asset_bible.svg). */
+:root { --bg: #04101D; --panel: #0A2032; --panel-2: #071725; --line: rgba(242, 248, 255, 0.12); --fg: #f2f8ff; --dim: rgba(242, 248, 255, 0.66); --cyan: #50F0FA; --gold: #EFCB63; --pink: #FF54AD; --green: #46D99A; --violet: #9875FF; --scrim: rgba(2, 8, 16, 0.96);
+  --display: 'Russo One', 'Arial Black', 'Segoe UI', sans-serif; --text: 'Exo 2', 'Segoe UI', system-ui, sans-serif; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 500 15px/1.5 var(--text); padding-block: 20px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+h1 { font: 400 26px/1.15 var(--display); letter-spacing: 0.03em; margin: 0; text-wrap: balance; }
+h2 { font: 400 18px/1.2 var(--display); letter-spacing: 0.04em; margin: 0; color: var(--cyan); text-wrap: balance; }
+h3 { font: 800 14px/1.3 var(--text); margin: 0; }
+p { margin: 0; color: var(--dim); max-width: 70ch; }
+.eyebrow { font: 800 11px/1 var(--text); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+.lead { display: flex; flex-direction: column; gap: 8px; }
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 10px; }
+.verdict div { padding: 10px 12px; border-left: 3px solid var(--cyan); background: var(--panel-2); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.verdict b { font: 400 13px/1.2 var(--display); letter-spacing: 0.05em; color: var(--fg); }
+.verdict span { font-size: 13px; color: var(--dim); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; margin: 0 -4px; padding: 8px 4px; background: var(--bg); display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button, .seg button { flex: none; min-height: 40px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--dim); font: 800 12px/1.1 var(--text); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.global { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dim); }
+.seg { display: flex; gap: 4px; padding: 3px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; }
+.seg button { flex: 1; min-width: 0; border: 0; border-radius: 7px; background: none; padding: 6px 4px; }
+.seg button[aria-selected="true"] { background: var(--cyan); color: var(--bg); }
+.seg button.side { flex: 0 0 auto; padding: 6px 10px; color: var(--gold); }
+.seg button.side[aria-pressed="true"] { background: var(--gold); color: var(--bg); }
+.global .seg { flex: 1; max-width: 320px; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
+.card { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.card.wide, .card.open { grid-column: 1 / -1; }
+.card header { display: flex; flex-direction: column; gap: 3px; }
+.card header p, .note { font-size: 13px; }
+.frame { font: 800 10px/1 var(--text); letter-spacing: 0.08em; color: var(--bg); background: var(--gold); padding: 3px 6px; border-radius: 5px; white-space: nowrap; }
+figure { margin: 0; min-width: 0; }
+figure img { display: block; width: 100%; height: auto; border-radius: 8px; background: #000; }
+.zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.card:not(.wide):not(.open) > figure { max-width: 390px; width: 100%; margin: 0 auto; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 8px; overflow-x: auto; }
+.card.wide .trio { grid-template-columns: repeat(3, minmax(420px, 1fr)); }
+.trio figcaption { font: 800 11px/1 var(--text); letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); padding: 0 0 5px; }
+.note { color: var(--fg); }
+.facts { font-size: 12px; font-variant-numeric: tabular-nums; }
+.facts span { font-weight: 800; color: var(--green); }
+.facts.bad span { color: var(--pink); }
+.vx .anim { max-width: 300px; margin: 0 auto; image-rendering: auto; }
+details { font-size: 13px; }
+summary { cursor: pointer; color: var(--cyan); font-weight: 700; min-height: 32px; display: flex; align-items: center; }
+.scroll { overflow-x: auto; }
+.scroll img { max-width: none; width: auto; height: auto; border-radius: 8px; }
+section { display: flex; flex-direction: column; gap: 12px; }
+table { border-collapse: collapse; font-size: 13px; width: 100%; min-width: 560px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--gold); font: 800 11px/1.2 var(--text); letter-spacing: 0.08em; text-transform: uppercase; }
+.box { position: fixed; inset: 0; z-index: 20; background: var(--scrim); display: flex; flex-direction: column; padding: calc(8px + env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); gap: 8px; }
+.box .top { display: flex; gap: 8px; align-items: center; }
+.box .seg { flex: 1; }
+.box .x { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 400 20px/1 var(--display); cursor: pointer; }
+.box .pane { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; text-align: center; }
+.box .pane img { border-radius: 6px; max-width: none; height: auto; display: block; margin: 0 auto; }
+.box .pane.fit { display: grid; place-items: center; overflow: hidden; }
+.box .pane.fit img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.box .hint { font-size: 12px; color: var(--dim); text-align: center; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+<main>
+  <div class="lead">
+    <span class="eyebrow">GLITCH GULP · GG-UI-02 · etap 1 · projekt, bez wdrożenia</span>
+    <h1>Miasto, Dzielnice, Warsztat i nagrody: PRZED / A / B</h1>
+    <p>Każdy kadr pochodzi z prawdziwej gry (commit 1395c18) na odizolowanym profilu testowym. Warianty A i B to nakładki CSS i DOM dodane w pamięci przeglądarki po ustawieniu sceny, więc saldo, postęp, ceny i odblokowania są w trzech wersjach identyczne. Pliki gry nie zostały zmienione.</p>
+  </div>
+  <div class="verdict">
+    <div><b>A · Premium Evolution</b><span>Te same układy, materiały i krawędzie z HUD GG-UI-01, czytelniejsze stany. Małe ryzyko.</span></div>
+    <div style="border-color: var(--pink)"><b>B · Premium Experience</b><span>Nowa kompozycja: miasto jako tło, szyna LVL 1–6, 12 dzielnic naraz, karty kolekcjonerskie, scena wyniku.</span></div>
+    <div style="border-color: var(--gold)"><b>Rekomendacja: hybryda</b><span>B dla Miasta, Dzielnic (telefon), Warsztatu i kart nagród; A dla wyniku Areny i arkuszy; układy poziome zostają przy siatce gry.</span></div>
+  </div>
+  <div class="bar">
+    <div class="chips" id="filters" role="toolbar" aria-label="Filtr ekranów">
+      <button data-f="all" aria-pressed="true">Wszystko</button><button data-f="miasto" aria-pressed="false">Miasto</button><button data-f="dzielnice" aria-pressed="false">Dzielnice</button><button data-f="warsztat" aria-pressed="false">Warsztat</button><button data-f="nagrody" aria-pressed="false">Nagrody</button><button data-f="inne" aria-pressed="false">Powiązane</button><button data-f="responsive" aria-pressed="false">Rozdzielczości</button><button data-f="en" aria-pressed="false">EN</button><button data-f="wir" aria-pressed="false">Wir</button>
+    </div>
+    <div class="global"><span>Wszystkie kadry:</span><div class="seg" id="globalSeg" role="tablist" aria-label="Wariant dla wszystkich kadrów"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button></div></div>
+  </div>
+  <section data-sec="screens"><h2>Ekrany · iPhone 390×844</h2><div class="grid">
+<article class="card" data-group="miasto" data-base="shots/m0-welcome-iphone">
+  <header><h3>Pierwsze uruchomienie</h3><p>Nowy profil przed pierwszą rundą (ekran powitalny)</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m0-welcome-iphone-b.jpg" alt="Pierwsze uruchomienie" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m0-welcome-iphone-before.jpg" alt="Pierwsze uruchomienie — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m0-welcome-iphone-a.jpg" alt="Pierwsze uruchomienie — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m0-welcome-iphone-b.jpg" alt="Pierwsze uruchomienie — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;Ekran powitalny: bez zmian kompozycji w obu kierunkach (poza zakresem — FTUE).&quot;,&quot;Tylko wspólne materiały.&quot;,&quot;Tylko wspólne materiały.&quot;]">Tylko wspólne materiały.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 0 · ◆ 0 · Core City LVL 1 · 0% · poziom 1 · misje 0/240</p>
+</article>
+<article class="card" data-group="miasto" data-base="shots/m1-early-iphone">
+  <header><h3>Miasto · wczesny etap</h3><p>Nowy profil po pierwszej ukończonej rundzie Areny (LVL 1)</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m1-early-iphone-b.jpg" alt="Miasto · wczesny etap" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m1-early-iphone-before.jpg" alt="Miasto · wczesny etap — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m1-early-iphone-a.jpg" alt="Miasto · wczesny etap — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m1-early-iphone-b.jpg" alt="Miasto · wczesny etap — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Karta miasta z krawędzią HUD, pasek postępu w barwach wiru, mocniejszy GRAJ.&quot;,&quot;Miasto jako tło ekranu, herb LVL, szyna sześciu poziomów, kapsuła następnej nagrody.&quot;]">Miasto jako tło ekranu, herb LVL, szyna sześciu poziomów, kapsuła następnej nagrody.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 354 · ◆ 0 · Core City LVL 1 · 27% · poziom 2 · misje 0/240</p>
+</article>
+<article class="card" data-group="miasto" data-base="shots/m2-mid-iphone">
+  <header><h3>Miasto · Core City LVL 3</h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-iphone-b.jpg" alt="Miasto · Core City LVL 3" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-iphone-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-iphone-a.jpg" alt="Miasto · Core City LVL 3 — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-iphone-b.jpg" alt="Miasto · Core City LVL 3 — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="miasto" data-base="shots/m3-max-iphone">
+  <header><h3>Miasto · Core City LVL 6</h3><p>Najwyższy poziom miasta, skrzynia na liczniku</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m3-max-iphone-b.jpg" alt="Miasto · Core City LVL 6" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m3-max-iphone-before.jpg" alt="Miasto · Core City LVL 6 — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m3-max-iphone-a.jpg" alt="Miasto · Core City LVL 6 — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m3-max-iphone-b.jpg" alt="Miasto · Core City LVL 6 — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;LVL 6: karta jak wyżej.&quot;,&quot;LVL 6: cała szyna świeci, pełna panorama miasta bez ramki.&quot;]">LVL 6: cała szyna świeci, pełna panorama miasta bez ramki.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 5320 · ◆ 64 · Core City LVL 6 · 72% · poziom 19 · misje 124/240</p>
+</article>
+<article class="card" data-group="miasto" data-base="shots/m4-roadmap-iphone">
+  <header><h3>Core City · droga nagród</h3><p>Arkusz poziomów i nagród (dotknięcie karty miasta)</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m4-roadmap-iphone-b.jpg" alt="Core City · droga nagród" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m4-roadmap-iphone-before.jpg" alt="Core City · droga nagród — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m4-roadmap-iphone-a.jpg" alt="Core City · droga nagród — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m4-roadmap-iphone-b.jpg" alt="Core City · droga nagród — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Arkusz nagród w materiale HUD.&quot;,&quot;Jak A (arkusz zostaje listą — to czytelne).&quot;]">Jak A (arkusz zostaje listą — to czytelne).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="dzielnice" data-base="shots/d1-list-iphone">
+  <header><h3>Dzielnice · 12 dzielnic</h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-iphone-b.jpg" alt="Dzielnice · 12 dzielnic" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-iphone-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-iphone-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-iphone-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="dzielnice" data-base="shots/d2-current-iphone">
+  <header><h3>Dzielnice · aktualna misja</h3><p>Karta następnej misji i lista misji dzielnicy</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d2-current-iphone-b.jpg" alt="Dzielnice · aktualna misja" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d2-current-iphone-before.jpg" alt="Dzielnice · aktualna misja — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d2-current-iphone-a.jpg" alt="Dzielnice · aktualna misja — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d2-current-iphone-b.jpg" alt="Dzielnice · aktualna misja — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Bieżąca misja na liście w złotej ramie, złote gwiazdki.&quot;,&quot;Lista misji jako trasa: zielone węzły ukończonych, złoty węzeł bieżącej.&quot;]">Lista misji jako trasa: zielone węzły ukończonych, złoty węzeł bieżącej.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="dzielnice" data-base="shots/d3-states-iphone">
+  <header><h3>Dzielnice · ukończona / zablokowana</h3><p>Ukończony Plac Neonów; dalej zablokowane dzielnice</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d3-states-iphone-b.jpg" alt="Dzielnice · ukończona / zablokowana" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d3-states-iphone-before.jpg" alt="Dzielnice · ukończona / zablokowana — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d3-states-iphone-a.jpg" alt="Dzielnice · ukończona / zablokowana — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d3-states-iphone-b.jpg" alt="Dzielnice · ukończona / zablokowana — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ukończona dzielnica: zielony status na kaflu.&quot;,&quot;Ukończone, bieżąca, następna (przerywana ramka) i zablokowane — rozróżnialne bez czytania.&quot;]">Ukończone, bieżąca, następna (przerywana ramka) i zablokowane — rozróżnialne bez czytania.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="dzielnice" data-base="shots/d4-briefing-boss-iphone">
+  <header><h3>Odprawa · misja z bossem</h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-iphone-b.jpg" alt="Odprawa · misja z bossem" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-iphone-before.jpg" alt="Odprawa · misja z bossem — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-iphone-a.jpg" alt="Odprawa · misja z bossem — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-iphone-b.jpg" alt="Odprawa · misja z bossem — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="dzielnice" data-base="shots/d5-locked-iphone">
+  <header><h3>Dzielnica zablokowana</h3><p>Arkusz informacji o zablokowanej dzielnicy</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d5-locked-iphone-b.jpg" alt="Dzielnica zablokowana" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d5-locked-iphone-before.jpg" alt="Dzielnica zablokowana — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d5-locked-iphone-a.jpg" alt="Dzielnica zablokowana — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d5-locked-iphone-b.jpg" alt="Dzielnica zablokowana — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Arkusz w materiale HUD.&quot;,&quot;Jak A.&quot;]">Jak A.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="warsztat" data-base="shots/w1-skins-iphone">
+  <header><h3>Warsztat · skórki wirów</h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-iphone-b.jpg" alt="Warsztat · skórki wirów" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-iphone-before.jpg" alt="Warsztat · skórki wirów — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-iphone-a.jpg" alt="Warsztat · skórki wirów — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-iphone-b.jpg" alt="Warsztat · skórki wirów — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="warsztat" data-base="shots/w2-equipped-iphone">
+  <header><h3>Warsztat · wybrana i wyposażona</h3><p>Siatka skórek: POSIADANE / WYPOSAŻONE / do kupienia</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w2-equipped-iphone-b.jpg" alt="Warsztat · wybrana i wyposażona" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w2-equipped-iphone-before.jpg" alt="Warsztat · wybrana i wyposażona — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w2-equipped-iphone-a.jpg" alt="Warsztat · wybrana i wyposażona — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w2-equipped-iphone-b.jpg" alt="Warsztat · wybrana i wyposażona — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wyposażona skórka: krawędź HUD + wypełniona pigułka.&quot;,&quot;Wyposażona: krawędź HUD i znacznik; posiadane: obrys cyjan; do kupienia: złota cena.&quot;]">Wyposażona: krawędź HUD i znacznik; posiadane: obrys cyjan; do kupienia: złota cena.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="warsztat" data-base="shots/w3-buy-iphone">
+  <header><h3>Warsztat · skórka do kupienia</h3><p>Podgląd „Toksycznej Zieleni” (700 monet) z ofertą zakupu</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w3-buy-iphone-b.jpg" alt="Warsztat · skórka do kupienia" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w3-buy-iphone-before.jpg" alt="Warsztat · skórka do kupienia — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w3-buy-iphone-a.jpg" alt="Warsztat · skórka do kupienia — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w3-buy-iphone-b.jpg" alt="Warsztat · skórka do kupienia — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Skórka, na którą gracza stać: złota krawędź i złota cena.&quot;,&quot;Plakietka DO KUPIENIA przy podglądzie; cena i saldo bez zmian (700 z 1240).&quot;]">Plakietka DO KUPIENIA przy podglądzie; cena i saldo bez zmian (700 z 1240).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="warsztat" data-base="shots/w4-locked-iphone">
+  <header><h3>Warsztat · skórka zablokowana</h3><p>Podgląd skórki z nagrody („Pryzmat” — Core City LVL 6)</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w4-locked-iphone-b.jpg" alt="Warsztat · skórka zablokowana" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w4-locked-iphone-before.jpg" alt="Warsztat · skórka zablokowana — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w4-locked-iphone-a.jpg" alt="Warsztat · skórka zablokowana — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w4-locked-iphone-b.jpg" alt="Warsztat · skórka zablokowana — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Nagroda Core City: zielona pigułka źródła.&quot;,&quot;Plakietka NAGRODA; karta przygaszona, ale czytelna.&quot;]">Plakietka NAGRODA; karta przygaszona, ale czytelna.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="warsztat" data-base="shots/w5-auras-iphone">
+  <header><h3>Warsztat · smugi</h3><p>Inna kategoria: SMUGA (monety i pryzmaty)</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w5-auras-iphone-b.jpg" alt="Warsztat · smugi" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w5-auras-iphone-before.jpg" alt="Warsztat · smugi — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w5-auras-iphone-a.jpg" alt="Warsztat · smugi — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w5-auras-iphone-b.jpg" alt="Warsztat · smugi — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Smugi: ten sam system kart; ceny w pryzmatach.&quot;,&quot;Smugi: te same karty kolekcjonerskie; znak ◆ dla pryzmatów.&quot;]">Smugi: te same karty kolekcjonerskie; znak ◆ dla pryzmatów.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r1-first-arena-iphone">
+  <header><h3>Wynik · pierwsza Arena</h3><p>Pierwsza ukończona runda nowego profilu (zasady FTUE)</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r1-first-arena-iphone-b.jpg" alt="Wynik · pierwsza Arena" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r1-first-arena-iphone-before.jpg" alt="Wynik · pierwsza Arena — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r1-first-arena-iphone-a.jpg" alt="Wynik · pierwsza Arena — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r1-first-arena-iphone-b.jpg" alt="Wynik · pierwsza Arena — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;Pierwszy wynik: bez ×2 za reklamę, „Menu główne”, zapowiedź Warsztatu — zasady FTUE.&quot;,&quot;Te same elementy i kolejność; materiały HUD.&quot;,&quot;Te same elementy i kolejność; wynik na scenie, nagrody jako dwa kafle + karta Core City.&quot;]">Te same elementy i kolejność; wynik na scenie, nagrody jako dwa kafle + karta Core City.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 345 · ◆ 0 · Core City LVL 1 · 27% · poziom 2 · misje 0/240 · wynik 3 153 · +195 monet</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r2-later-arena-iphone">
+  <header><h3>Wynik · późniejsza Arena</h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-iphone-b.jpg" alt="Wynik · późniejsza Arena" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-iphone-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-iphone-a.jpg" alt="Wynik · późniejsza Arena — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-iphone-b.jpg" alt="Wynik · późniejsza Arena — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1665 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 19 766 · +265 monet</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r3-mission-iphone">
+  <header><h3>Wynik · misja ukończona</h3><p>Misja Portu Syntez zaliczona, gwiazdki i następna misja</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r3-mission-iphone-b.jpg" alt="Wynik · misja ukończona" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r3-mission-iphone-before.jpg" alt="Wynik · misja ukończona — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r3-mission-iphone-a.jpg" alt="Wynik · misja ukończona — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r3-mission-iphone-b.jpg" alt="Wynik · misja ukończona — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Złote gwiazdki z poświatą, kafle w szkle.&quot;,&quot;Gwiazdki na własnej płycie, czas jako pigułka.&quot;]">Gwiazdki na własnej płycie, czas jako pigułka.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1720 · ◆ 30 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r4-core-level-iphone">
+  <header><h3>Wynik · awans Core City</h3><p>Runda, która dobija Core City do LVL 4</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r4-core-level-iphone-b.jpg" alt="Wynik · awans Core City" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r4-core-level-iphone-before.jpg" alt="Wynik · awans Core City — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r4-core-level-iphone-a.jpg" alt="Wynik · awans Core City — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r4-core-level-iphone-b.jpg" alt="Wynik · awans Core City — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Postęp Core City z plakietką LVL 4.&quot;,&quot;Karta Core City na pełną szerokość z krawędzią HUD.&quot;]">Karta Core City na pełną szerokość z krawędzią HUD.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1933 · ◆ 20 · Core City LVL 4 · 11% · poziom 8 · misje 29/240 · wynik 23 133 · +283 monet</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r5-core-reward-iphone">
+  <header><h3>Nagroda Core City</h3><p>Karta nagrody za LVL 4: efekt „Pikselowy Wybuch”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r5-core-reward-iphone-b.jpg" alt="Nagroda Core City" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r5-core-reward-iphone-before.jpg" alt="Nagroda Core City — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r5-core-reward-iphone-a.jpg" alt="Nagroda Core City — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r5-core-reward-iphone-b.jpg" alt="Nagroda Core City — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Karta nagrody w ramie koloru nagrody.&quot;,&quot;Karta-trofeum: wstążka ODBLOKOWANO, tytuł z gradientem, plakietka źródła.&quot;]">Karta-trofeum: wstążka ODBLOKOWANO, tytuł z gradientem, plakietka źródła.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1936 · ◆ 20 · Core City LVL 4 · 11% · poziom 8 · misje 29/240 · wynik 23 716 · +286 monet · Efekt „Pikselowy Wybuch”</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r6-chest-iphone">
+  <header><h3>Darmowa skrzynia</h3><p>Otwarcie darmowej skrzyni z Miasta</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r6-chest-iphone-b.jpg" alt="Darmowa skrzynia" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r6-chest-iphone-before.jpg" alt="Darmowa skrzynia — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r6-chest-iphone-a.jpg" alt="Darmowa skrzynia — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r6-chest-iphone-b.jpg" alt="Darmowa skrzynia — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Jak karta nagrody (złota).&quot;,&quot;Wstążka SKRZYNIA OTWARTA, złota rama.&quot;]">Wstążka SKRZYNIA OTWARTA, złota rama.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1323 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240 · +83 monet</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r7-login-iphone">
+  <header><h3>Nagroda dzienna</h3><p>Kalendarz 7 dni — dzień 4</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r7-login-iphone-b.jpg" alt="Nagroda dzienna" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r7-login-iphone-before.jpg" alt="Nagroda dzienna — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r7-login-iphone-a.jpg" alt="Nagroda dzienna — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r7-login-iphone-b.jpg" alt="Nagroda dzienna — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Kalendarz w materiale HUD.&quot;,&quot;Plakietka CODZIENNA NAGRODA, kafle dni w szkle.&quot;]">Plakietka CODZIENNA NAGRODA, kafle dni w szkle.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="nagrody" data-base="shots/r8-district-unlock-iphone">
+  <header><h3>Odblokowanie dzielnicy</h3><p>Boss Portu pokonany: otwiera się Galeria Glitch</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r8-district-unlock-iphone-b.jpg" alt="Odblokowanie dzielnicy" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r8-district-unlock-iphone-before.jpg" alt="Odblokowanie dzielnicy — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r8-district-unlock-iphone-a.jpg" alt="Odblokowanie dzielnicy — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r8-district-unlock-iphone-b.jpg" alt="Odblokowanie dzielnicy — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Karta odblokowania dzielnicy.&quot;,&quot;Wstążka i rama w kolorze dzielnicy.&quot;]">Wstążka i rama w kolorze dzielnicy.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1900 · ◆ 30 · Core City LVL 3 · 46% · poziom 7 · misje 30/240 · GALERIA GLITCH</p>
+</article>
+<article class="card" data-group="inne" data-base="shots/x1-wyzwania-iphone">
+  <header><h3>Wyzwania</h3><p>Audyt: ekran Wyzwań</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/x1-wyzwania-iphone-b.jpg" alt="Wyzwania" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/x1-wyzwania-iphone-before.jpg" alt="Wyzwania — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/x1-wyzwania-iphone-a.jpg" alt="Wyzwania — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/x1-wyzwania-iphone-b.jpg" alt="Wyzwania — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;Audyt: ekran poza zakresem etapu 2 (priorytet 2).&quot;,&quot;Dziedziczy wspólne materiały (nawigacja, portfel).&quot;,&quot;Dziedziczy wspólne materiały + pływająca nawigacja.&quot;]">Dziedziczy wspólne materiały + pływająca nawigacja.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="inne" data-base="shots/x2-profil-iphone">
+  <header><h3>Profil i ustawienia</h3><p>Audyt: Profil</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/x2-profil-iphone-b.jpg" alt="Profil i ustawienia" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/x2-profil-iphone-before.jpg" alt="Profil i ustawienia — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/x2-profil-iphone-a.jpg" alt="Profil i ustawienia — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/x2-profil-iphone-b.jpg" alt="Profil i ustawienia — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;Audyt: ekran poza zakresem etapu 2 (priorytet 3).&quot;,&quot;Bez zmian.&quot;,&quot;Bez zmian.&quot;]">Bez zmian.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+  </div></section>
+  <section data-sec="responsive"><h2>Rozdzielczości</h2><p>Cztery kluczowe sceny na każdym kadrze: 320×568, 360×800, CrazyGames 800×450, telefon poziomo 844×390, desktop 1366×768 i 2560×1440.</p><div class="grid">
+<article class="card" data-group="responsive" data-base="shots/m2-mid-p320">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">Telefon 320×568</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-p320-b.jpg" alt="Miasto · Core City LVL 3" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-p320-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-p320-a.jpg" alt="Miasto · Core City LVL 3 — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-p320-b.jpg" alt="Miasto · Core City LVL 3 — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/d1-list-p320">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">Telefon 320×568</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-p320-b.jpg" alt="Dzielnice · 12 dzielnic" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-p320-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-p320-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-p320-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/d4-briefing-boss-p320">
+  <header><h3>Odprawa · misja z bossem <span class="frame">Telefon 320×568</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-p320-b.jpg" alt="Odprawa · misja z bossem" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-p320-before.jpg" alt="Odprawa · misja z bossem — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-p320-a.jpg" alt="Odprawa · misja z bossem — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-p320-b.jpg" alt="Odprawa · misja z bossem — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/w1-skins-p320">
+  <header><h3>Warsztat · skórki wirów <span class="frame">Telefon 320×568</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-p320-b.jpg" alt="Warsztat · skórki wirów" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-p320-before.jpg" alt="Warsztat · skórki wirów — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-p320-a.jpg" alt="Warsztat · skórki wirów — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-p320-b.jpg" alt="Warsztat · skórki wirów — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/r2-later-arena-p320">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">Telefon 320×568</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-p320-b.jpg" alt="Wynik · późniejsza Arena" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-p320-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-p320-a.jpg" alt="Wynik · późniejsza Arena — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-p320-b.jpg" alt="Wynik · późniejsza Arena — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1673 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 21 297 · +273 monet</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/m2-mid-p360">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">Telefon 360×800</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-p360-b.jpg" alt="Miasto · Core City LVL 3" width="720" height="1600" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-p360-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="720" height="1600"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-p360-a.jpg" alt="Miasto · Core City LVL 3 — A" width="720" height="1600"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-p360-b.jpg" alt="Miasto · Core City LVL 3 — B" width="720" height="1600"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/d1-list-p360">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">Telefon 360×800</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-p360-b.jpg" alt="Dzielnice · 12 dzielnic" width="720" height="1600" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-p360-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="720" height="1600"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-p360-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="720" height="1600"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-p360-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="720" height="1600"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/d4-briefing-boss-p360">
+  <header><h3>Odprawa · misja z bossem <span class="frame">Telefon 360×800</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-p360-b.jpg" alt="Odprawa · misja z bossem" width="720" height="1600" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-p360-before.jpg" alt="Odprawa · misja z bossem — Przed" width="720" height="1600"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-p360-a.jpg" alt="Odprawa · misja z bossem — A" width="720" height="1600"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-p360-b.jpg" alt="Odprawa · misja z bossem — B" width="720" height="1600"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/w1-skins-p360">
+  <header><h3>Warsztat · skórki wirów <span class="frame">Telefon 360×800</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-p360-b.jpg" alt="Warsztat · skórki wirów" width="720" height="1600" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-p360-before.jpg" alt="Warsztat · skórki wirów — Przed" width="720" height="1600"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-p360-a.jpg" alt="Warsztat · skórki wirów — A" width="720" height="1600"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-p360-b.jpg" alt="Warsztat · skórki wirów — B" width="720" height="1600"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="responsive" data-base="shots/r2-later-arena-p360">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">Telefon 360×800</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-p360-b.jpg" alt="Wynik · późniejsza Arena" width="720" height="1600" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-p360-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="720" height="1600"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-p360-a.jpg" alt="Wynik · późniejsza Arena — A" width="720" height="1600"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-p360-b.jpg" alt="Wynik · późniejsza Arena — B" width="720" height="1600"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1685 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 23 471 · +285 monet</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/m2-mid-cg">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">CrazyGames 800×450</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-cg-b.jpg" alt="Miasto · Core City LVL 3" width="1200" height="675" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-cg-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="1200" height="675"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-cg-a.jpg" alt="Miasto · Core City LVL 3 — A" width="1200" height="675"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-cg-b.jpg" alt="Miasto · Core City LVL 3 — B" width="1200" height="675"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d1-list-cg">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">CrazyGames 800×450</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-cg-b.jpg" alt="Dzielnice · 12 dzielnic" width="1200" height="675" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-cg-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="1200" height="675"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-cg-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="1200" height="675"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-cg-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="1200" height="675"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d4-briefing-boss-cg">
+  <header><h3>Odprawa · misja z bossem <span class="frame">CrazyGames 800×450</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-cg-b.jpg" alt="Odprawa · misja z bossem" width="1200" height="675" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-cg-before.jpg" alt="Odprawa · misja z bossem — Przed" width="1200" height="675"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-cg-a.jpg" alt="Odprawa · misja z bossem — A" width="1200" height="675"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-cg-b.jpg" alt="Odprawa · misja z bossem — B" width="1200" height="675"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/w1-skins-cg">
+  <header><h3>Warsztat · skórki wirów <span class="frame">CrazyGames 800×450</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-cg-b.jpg" alt="Warsztat · skórki wirów" width="1200" height="675" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-cg-before.jpg" alt="Warsztat · skórki wirów — Przed" width="1200" height="675"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-cg-a.jpg" alt="Warsztat · skórki wirów — A" width="1200" height="675"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-cg-b.jpg" alt="Warsztat · skórki wirów — B" width="1200" height="675"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/r2-later-arena-cg">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">CrazyGames 800×450</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-cg-b.jpg" alt="Wynik · późniejsza Arena" width="1200" height="675" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-cg-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="1200" height="675"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-cg-a.jpg" alt="Wynik · późniejsza Arena — A" width="1200" height="675"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-cg-b.jpg" alt="Wynik · późniejsza Arena — B" width="1200" height="675"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1678 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 22 145 · +278 monet</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/m2-mid-land">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">Telefon poziomo 844×390</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-land-b.jpg" alt="Miasto · Core City LVL 3" width="1266" height="585" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-land-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="1266" height="585"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-land-a.jpg" alt="Miasto · Core City LVL 3 — A" width="1266" height="585"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-land-b.jpg" alt="Miasto · Core City LVL 3 — B" width="1266" height="585"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d1-list-land">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">Telefon poziomo 844×390</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-land-b.jpg" alt="Dzielnice · 12 dzielnic" width="1266" height="585" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-land-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="1266" height="585"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-land-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="1266" height="585"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-land-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="1266" height="585"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d4-briefing-boss-land">
+  <header><h3>Odprawa · misja z bossem <span class="frame">Telefon poziomo 844×390</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-land-b.jpg" alt="Odprawa · misja z bossem" width="1266" height="585" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-land-before.jpg" alt="Odprawa · misja z bossem — Przed" width="1266" height="585"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-land-a.jpg" alt="Odprawa · misja z bossem — A" width="1266" height="585"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-land-b.jpg" alt="Odprawa · misja z bossem — B" width="1266" height="585"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/w1-skins-land">
+  <header><h3>Warsztat · skórki wirów <span class="frame">Telefon poziomo 844×390</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-land-b.jpg" alt="Warsztat · skórki wirów" width="1266" height="585" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-land-before.jpg" alt="Warsztat · skórki wirów — Przed" width="1266" height="585"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-land-a.jpg" alt="Warsztat · skórki wirów — A" width="1266" height="585"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-land-b.jpg" alt="Warsztat · skórki wirów — B" width="1266" height="585"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/r2-later-arena-land">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">Telefon poziomo 844×390</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-land-b.jpg" alt="Wynik · późniejsza Arena" width="1266" height="585" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-land-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="1266" height="585"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-land-a.jpg" alt="Wynik · późniejsza Arena — A" width="1266" height="585"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-land-b.jpg" alt="Wynik · późniejsza Arena — B" width="1266" height="585"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1655 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 18 064 · +255 monet</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/m2-mid-desk">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">Desktop 1366×768</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-desk-b.jpg" alt="Miasto · Core City LVL 3" width="1366" height="768" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-desk-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="1366" height="768"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-desk-a.jpg" alt="Miasto · Core City LVL 3 — A" width="1366" height="768"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-desk-b.jpg" alt="Miasto · Core City LVL 3 — B" width="1366" height="768"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d1-list-desk">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">Desktop 1366×768</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-desk-b.jpg" alt="Dzielnice · 12 dzielnic" width="1366" height="768" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-desk-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="1366" height="768"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-desk-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="1366" height="768"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-desk-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="1366" height="768"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d4-briefing-boss-desk">
+  <header><h3>Odprawa · misja z bossem <span class="frame">Desktop 1366×768</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-desk-b.jpg" alt="Odprawa · misja z bossem" width="1366" height="768" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-desk-before.jpg" alt="Odprawa · misja z bossem — Przed" width="1366" height="768"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-desk-a.jpg" alt="Odprawa · misja z bossem — A" width="1366" height="768"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-desk-b.jpg" alt="Odprawa · misja z bossem — B" width="1366" height="768"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/w1-skins-desk">
+  <header><h3>Warsztat · skórki wirów <span class="frame">Desktop 1366×768</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-desk-b.jpg" alt="Warsztat · skórki wirów" width="1366" height="768" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-desk-before.jpg" alt="Warsztat · skórki wirów — Przed" width="1366" height="768"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-desk-a.jpg" alt="Warsztat · skórki wirów — A" width="1366" height="768"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-desk-b.jpg" alt="Warsztat · skórki wirów — B" width="1366" height="768"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/r2-later-arena-desk">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">Desktop 1366×768</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-desk-b.jpg" alt="Wynik · późniejsza Arena" width="1366" height="768" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-desk-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="1366" height="768"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-desk-a.jpg" alt="Wynik · późniejsza Arena — A" width="1366" height="768"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-desk-b.jpg" alt="Wynik · późniejsza Arena — B" width="1366" height="768"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1652 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 17 592 · +252 monet</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/m2-mid-qhd">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">Desktop 2560×1440</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-qhd-b.jpg" alt="Miasto · Core City LVL 3" width="1280" height="720" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-qhd-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="1280" height="720"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-qhd-a.jpg" alt="Miasto · Core City LVL 3 — A" width="1280" height="720"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-qhd-b.jpg" alt="Miasto · Core City LVL 3 — B" width="1280" height="720"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d1-list-qhd">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">Desktop 2560×1440</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-qhd-b.jpg" alt="Dzielnice · 12 dzielnic" width="1280" height="720" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-qhd-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="1280" height="720"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-qhd-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="1280" height="720"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-qhd-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="1280" height="720"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/d4-briefing-boss-qhd">
+  <header><h3>Odprawa · misja z bossem <span class="frame">Desktop 2560×1440</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-qhd-b.jpg" alt="Odprawa · misja z bossem" width="1280" height="720" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-qhd-before.jpg" alt="Odprawa · misja z bossem — Przed" width="1280" height="720"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-qhd-a.jpg" alt="Odprawa · misja z bossem — A" width="1280" height="720"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-qhd-b.jpg" alt="Odprawa · misja z bossem — B" width="1280" height="720"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/w1-skins-qhd">
+  <header><h3>Warsztat · skórki wirów <span class="frame">Desktop 2560×1440</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-qhd-b.jpg" alt="Warsztat · skórki wirów" width="1280" height="720" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-qhd-before.jpg" alt="Warsztat · skórki wirów — Przed" width="1280" height="720"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-qhd-a.jpg" alt="Warsztat · skórki wirów — A" width="1280" height="720"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-qhd-b.jpg" alt="Warsztat · skórki wirów — B" width="1280" height="720"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card wide" data-group="responsive" data-base="shots/r2-later-arena-qhd">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">Desktop 2560×1440</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-qhd-b.jpg" alt="Wynik · późniejsza Arena" width="1280" height="720" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-qhd-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="1280" height="720"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-qhd-a.jpg" alt="Wynik · późniejsza Arena — A" width="1280" height="720"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-qhd-b.jpg" alt="Wynik · późniejsza Arena — B" width="1280" height="720"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1621 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 12 747 · +221 monet</p>
+</article>
+  </div></section>
+  <section data-sec="en"><h2>Angielski</h2><p>Te same sceny z językiem EN (dłuższe napisy) na 390×844 i 320×568.</p><div class="grid">
+<article class="card" data-group="en" data-base="shots/m2-mid-iphone-en">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">EN · iPhone 390×844</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-iphone-en-b.jpg" alt="Miasto · Core City LVL 3" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-iphone-en-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-iphone-en-a.jpg" alt="Miasto · Core City LVL 3 — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-iphone-en-b.jpg" alt="Miasto · Core City LVL 3 — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/d1-list-iphone-en">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">EN · iPhone 390×844</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-iphone-en-b.jpg" alt="Dzielnice · 12 dzielnic" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-iphone-en-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-iphone-en-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-iphone-en-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/d4-briefing-boss-iphone-en">
+  <header><h3>Odprawa · misja z bossem <span class="frame">EN · iPhone 390×844</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-iphone-en-b.jpg" alt="Odprawa · misja z bossem" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-iphone-en-before.jpg" alt="Odprawa · misja z bossem — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-iphone-en-a.jpg" alt="Odprawa · misja z bossem — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-iphone-en-b.jpg" alt="Odprawa · misja z bossem — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/w1-skins-iphone-en">
+  <header><h3>Warsztat · skórki wirów <span class="frame">EN · iPhone 390×844</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-iphone-en-b.jpg" alt="Warsztat · skórki wirów" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-iphone-en-before.jpg" alt="Warsztat · skórki wirów — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-iphone-en-a.jpg" alt="Warsztat · skórki wirów — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-iphone-en-b.jpg" alt="Warsztat · skórki wirów — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/r2-later-arena-iphone-en">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">EN · iPhone 390×844</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-iphone-en-b.jpg" alt="Wynik · późniejsza Arena" width="780" height="1688" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-iphone-en-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="780" height="1688"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-iphone-en-a.jpg" alt="Wynik · późniejsza Arena — A" width="780" height="1688"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-iphone-en-b.jpg" alt="Wynik · późniejsza Arena — B" width="780" height="1688"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1648 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 16 960 · +248 monet</p>
+</article>
+<article class="card" data-group="en" data-base="shots/m2-mid-p320-en">
+  <header><h3>Miasto · Core City LVL 3 <span class="frame">EN · Telefon 320×568</span></h3><p>Core City częściowo odbudowane: LVL 3, 46%</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/m2-mid-p320-en-b.jpg" alt="Miasto · Core City LVL 3" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/m2-mid-p320-en-before.jpg" alt="Miasto · Core City LVL 3 — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/m2-mid-p320-en-a.jpg" alt="Miasto · Core City LVL 3 — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/m2-mid-p320-en-b.jpg" alt="Miasto · Core City LVL 3 — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Ten sam układ; kafle Kampanii i Wyzwania dnia z akcentem koloru, skrzynia w złotej ramie.&quot;,&quot;Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.&quot;]">Szyna LVL 1–6 pokazuje realny postęp (LVL 3 · 46%). GRAJ z emblematem wiru, kafle trybów z nagłówkiem-pasem.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/d1-list-p320-en">
+  <header><h3>Dzielnice · 12 dzielnic <span class="frame">EN · Telefon 320×568</span></h3><p>Lista wszystkich dzielnic; bieżąca: Port Syntez</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d1-list-p320-en-b.jpg" alt="Dzielnice · 12 dzielnic" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d1-list-p320-en-before.jpg" alt="Dzielnice · 12 dzielnic — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d1-list-p320-en-a.jpg" alt="Dzielnice · 12 dzielnic — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d1-list-p320-en-b.jpg" alt="Dzielnice · 12 dzielnic — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Pasek dzielnic zostaje przewijany; wyraźniejsze stany i karta misji z krawędzią w kolorze dzielnicy.&quot;,&quot;Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.&quot;]">Wszystkie 12 dzielnic naraz (siatka 4×3, numery 01–12, znaczniki: ukończona / postęp / kłódka), licznik 2/12 i 29/240, cel bossa wyróżniony.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/d4-briefing-boss-p320-en">
+  <header><h3>Odprawa · misja z bossem <span class="frame">EN · Telefon 320×568</span></h3><p>Boss Portu Syntez — cele i ich ikony</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/d4-briefing-boss-p320-en-b.jpg" alt="Odprawa · misja z bossem" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/d4-briefing-boss-p320-en-before.jpg" alt="Odprawa · misja z bossem — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/d4-briefing-boss-p320-en-a.jpg" alt="Odprawa · misja z bossem — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/d4-briefing-boss-p320-en-b.jpg" alt="Odprawa · misja z bossem — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;Ikony celów = obiekty z planszy (zasilacz, dźwig).&quot;,&quot;Odprawa w materiale HUD, większe ikony celów.&quot;,&quot;Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.&quot;]">Nagłówek odprawy w kolorze dzielnicy, wiersz bossa z plakietką BOSS i większą ikoną dźwigu.</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/w1-skins-p320-en">
+  <header><h3>Warsztat · skórki wirów <span class="frame">EN · Telefon 320×568</span></h3><p>Lista skórek; wyposażony „Kryształ”</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/w1-skins-p320-en-b.jpg" alt="Warsztat · skórki wirów" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/w1-skins-p320-en-before.jpg" alt="Warsztat · skórki wirów — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/w1-skins-p320-en-a.jpg" alt="Warsztat · skórki wirów — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/w1-skins-p320-en-b.jpg" alt="Warsztat · skórki wirów — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Zakładki i karty w materiale HUD, statusy jako pigułki (ZAŁÓŻ / ZAŁOŻONE / cena / nagroda).&quot;,&quot;Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).&quot;]">Scena podglądu z siatką, plakietka statusu WYPOSAŻONE, zakładki jako przełącznik, karty kolekcjonerskie 3 w rzędzie ze znakiem źródła (start / monety / pryzmaty / nagroda).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1240 · ◆ 18 · Core City LVL 3 · 46% · poziom 7 · misje 29/240</p>
+</article>
+<article class="card" data-group="en" data-base="shots/r2-later-arena-p320-en">
+  <header><h3>Wynik · późniejsza Arena <span class="frame">EN · Telefon 320×568</span></h3><p>Runda nr 24 profilu LVL 3</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant"><button role="tab" data-v="before" aria-selected="false">Przed</button><button role="tab" data-v="a" aria-selected="false">A</button><button role="tab" data-v="b" aria-selected="true">B</button><button class="side" data-side aria-pressed="false" title="Trzy warianty obok siebie">Obok siebie</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="shots/r2-later-arena-p320-en-b.jpg" alt="Wynik · późniejsza Arena" width="640" height="1136" loading="lazy"></button></figure>
+  <div class="trio" hidden><figure><figcaption>Przed</figcaption><img data-lazy="shots/r2-later-arena-p320-en-before.jpg" alt="Wynik · późniejsza Arena — Przed" width="640" height="1136"></figure><figure><figcaption>A</figcaption><img data-lazy="shots/r2-later-arena-p320-en-a.jpg" alt="Wynik · późniejsza Arena — A" width="640" height="1136"></figure><figure><figcaption>B</figcaption><img data-lazy="shots/r2-later-arena-p320-en-b.jpg" alt="Wynik · późniejsza Arena — B" width="640" height="1136"></figure></div>
+  <p class="note" data-notes="[&quot;&quot;,&quot;Wynik z gradientem, karta nagród z krawędzią HUD.&quot;,&quot;Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).&quot;]">Scena wyniku, pigułki rozmiaru i miejsca, kafle monet i XP, podium w rankingu (złoto / srebro / brąz).</p>
+  <p class="facts ok"><span>Ten sam stan w trzech wariantach</span> ◇ 1715 · ◆ 20 · Core City LVL 3 · 63% · poziom 8 · misje 29/240 · wynik 29 452 · +315 monet</p>
+</article>
+  </div></section>
+  <section data-sec="wir"><h2>Kierunek obrotu wiru — audyt i podgląd</h2>
+    <p>Prototyp tylko do oceny: przeglądarka dostała w pamięci zmodyfikowaną kopię game.js, plik w repozytorium jest bez zmian. Stan rundy jest identyczny we wszystkich wariantach (wynik 880, promień 92, 9153 losowania).</p>
+    <div class="scroll"><table>
+      <tr><th>Wariant</th><th>Co się zmienia</th><th>Ocena</th></tr>
+      <tr><td><b>W0 · obecny</b></td><td>Warstwy wiru kręcą się w kierunkach zapisanych per skórka (część przeciwbieżnie), pyłki dysku zgodnie z zegarem, cząstki pochłaniania przeciwnie, a połykany obiekt losowo w lewo albo w prawo.</td><td>Wir wygląda dobrze, ale materia wpada „pod prąd” w połowie przypadków.</td></tr>
+      <tr><td><b>W1 · pełne odwrócenie</b></td><td>Cały wir w lustrze (ramiona nadal ciągną się za obrotem), cząstki też.</td><td>Ani lepiej, ani gorzej — to ten sam wir w odbiciu. Zmiana bez zysku.</td></tr>
+      <tr><td><b>W2 · spójny lej</b> (rekomendowany)</td><td>Wygląd wiru bez zmian; połykane obiekty i cząstki zawsze wirują zgodnie z ramionami wiru.</td><td>Najmocniejsze wrażenie zasysania: wszystko spływa jednym nurtem. Czytelność bez zmian.</td></tr>
+      <tr><td><b>W3 · tylko wir gracza</b></td><td>Wir gracza w lustrze, rywale jak dziś.</td><td>Różnica prawie niezauważalna w ruchu; nie pomaga odróżnić gracza.</td></tr>
+    </table></div>
+    <div class="grid">
+<article class="card vx" data-group="wir" data-vx="vortex/anim-rainbow">
+  <header><h3>Wir „Horyzont (startowy)”</h3><p>Ta sama runda (seed 4242, 26. sekunda, wynik 880, T4), 40 klatek po 1/30 s. Zmienia się wyłącznie rysowanie wiru.</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant wiru"><button role="tab" data-vx="v0" aria-selected="true">W0 · obecny</button><button role="tab" data-vx="v1" aria-selected="false">W1 · odwrócony</button><button role="tab" data-vx="v2" aria-selected="false">W2 · spójny lej</button><button role="tab" data-vx="v3" aria-selected="false">W3 · tylko gracz</button></div>
+  <figure><img class="anim" src="vortex/anim-rainbow-v0.webp" alt="Animacja wiru Horyzont (startowy)" width="300" height="300" loading="lazy"></figure>
+  <details><summary>Wszystkie cztery obok siebie (animacja)</summary><div class="scroll"><img data-lazy="vortex/anim-rainbow.webp" alt="Cztery warianty obok siebie" width="1052" height="260"></div></details>
+  <details><summary>Sekwencja 6 klatek co 0,1 s</summary><div class="scroll"><img data-lazy="vortex/strip-rainbow.jpg" alt="Sekwencja klatek" width="1210" height="808"></div></details>
+</article>
+<article class="card vx" data-group="wir" data-vx="vortex/anim-krysztal">
+  <header><h3>Wir „Kryształ”</h3><p>Ta sama runda (seed 4242, 26. sekunda, wynik 880, T4), 40 klatek po 1/30 s. Zmienia się wyłącznie rysowanie wiru.</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant wiru"><button role="tab" data-vx="v0" aria-selected="true">W0 · obecny</button><button role="tab" data-vx="v1" aria-selected="false">W1 · odwrócony</button><button role="tab" data-vx="v2" aria-selected="false">W2 · spójny lej</button><button role="tab" data-vx="v3" aria-selected="false">W3 · tylko gracz</button></div>
+  <figure><img class="anim" src="vortex/anim-krysztal-v0.webp" alt="Animacja wiru Kryształ" width="300" height="300" loading="lazy"></figure>
+  <details><summary>Wszystkie cztery obok siebie (animacja)</summary><div class="scroll"><img data-lazy="vortex/anim-krysztal.webp" alt="Cztery warianty obok siebie" width="1052" height="260"></div></details>
+  <details><summary>Sekwencja 6 klatek co 0,1 s</summary><div class="scroll"><img data-lazy="vortex/strip-krysztal.jpg" alt="Sekwencja klatek" width="1210" height="808"></div></details>
+</article>
+<article class="card vx" data-group="wir" data-vx="vortex/anim-pink">
+  <header><h3>Wir „Gorący Róż”</h3><p>Ta sama runda (seed 4242, 26. sekunda, wynik 880, T4), 40 klatek po 1/30 s. Zmienia się wyłącznie rysowanie wiru.</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant wiru"><button role="tab" data-vx="v0" aria-selected="true">W0 · obecny</button><button role="tab" data-vx="v1" aria-selected="false">W1 · odwrócony</button><button role="tab" data-vx="v2" aria-selected="false">W2 · spójny lej</button><button role="tab" data-vx="v3" aria-selected="false">W3 · tylko gracz</button></div>
+  <figure><img class="anim" src="vortex/anim-pink-v0.webp" alt="Animacja wiru Gorący Róż" width="300" height="300" loading="lazy"></figure>
+  <details><summary>Wszystkie cztery obok siebie (animacja)</summary><div class="scroll"><img data-lazy="vortex/anim-pink.webp" alt="Cztery warianty obok siebie" width="1052" height="260"></div></details>
+  <details><summary>Sekwencja 6 klatek co 0,1 s</summary><div class="scroll"><img data-lazy="vortex/strip-pink.jpg" alt="Sekwencja klatek" width="1210" height="808"></div></details>
+</article>
+<article class="card vx" data-group="wir" data-vx="vortex/anim-pryzmat">
+  <header><h3>Wir „Pryzmat”</h3><p>Ta sama runda (seed 4242, 26. sekunda, wynik 880, T4), 40 klatek po 1/30 s. Zmienia się wyłącznie rysowanie wiru.</p></header>
+  <div class="seg" role="tablist" aria-label="Wariant wiru"><button role="tab" data-vx="v0" aria-selected="true">W0 · obecny</button><button role="tab" data-vx="v1" aria-selected="false">W1 · odwrócony</button><button role="tab" data-vx="v2" aria-selected="false">W2 · spójny lej</button><button role="tab" data-vx="v3" aria-selected="false">W3 · tylko gracz</button></div>
+  <figure><img class="anim" src="vortex/anim-pryzmat-v0.webp" alt="Animacja wiru Pryzmat" width="300" height="300" loading="lazy"></figure>
+  <details><summary>Wszystkie cztery obok siebie (animacja)</summary><div class="scroll"><img data-lazy="vortex/anim-pryzmat.webp" alt="Cztery warianty obok siebie" width="1052" height="260"></div></details>
+  <details><summary>Sekwencja 6 klatek co 0,1 s</summary><div class="scroll"><img data-lazy="vortex/strip-pryzmat.jpg" alt="Sekwencja klatek" width="1210" height="808"></div></details>
+</article>
+<article class="card" data-group="wir" data-base="vortex/full">
+  <header><h3>Pełny kadr gry z HUD</h3><p>Ta sama klatka rundy w czterech wariantach (wir „Horyzont”).</p></header>
+  <div class="seg" role="tablist"><button role="tab" data-v="v0" aria-selected="true">W0</button><button role="tab" data-v="v1" aria-selected="false">W1</button><button role="tab" data-v="v2" aria-selected="false">W2</button><button role="tab" data-v="v3" aria-selected="false">W3</button></div>
+  <figure><button class="zoom" aria-label="Powiększ kadr"><img src="vortex/full-v0.jpg" alt="Pełny kadr" width="780" height="1688" loading="lazy"></button></figure>
+</article>
+  </div></section>
+</main>
+<div class="box" id="box" hidden role="dialog" aria-modal="true" aria-label="Powiększony kadr">
+  <div class="top"><div class="seg" id="boxSeg" role="tablist"></div><button class="x" id="boxFit" aria-label="Pełny kadr albo powiększenie" title="Pełny kadr / powiększenie">⤢</button><button class="x" id="boxClose" aria-label="Zamknij">×</button></div>
+  <div class="pane fit" id="boxPane"><img id="boxImg" alt=""></div>
+  <div class="hint" id="boxHint">Pełny kadr. Dotknij ⤢, żeby powiększyć i przesuwać.</div>
+</div>
+<script>
+(function () {
+  const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
+  function setCard(card, v) {
+    const base = card.dataset.base; if (!base) return;
+    const btn = card.querySelector('.seg [data-v="' + v + '"]'); if (!btn) return;
+    $$('.seg [data-v]', card).forEach(b => b.setAttribute('aria-selected', String(b === btn)));
+    card.querySelector('figure img').src = base + '-' + v + '.jpg';
+    card.dataset.cur = v;
+    const note = card.querySelector('.note');
+    if (note) { const n = JSON.parse(note.dataset.notes); const t = n[['before', 'a', 'b'].indexOf(v)] || n[2]; note.textContent = t; note.hidden = !t; }
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    const card = t.closest('.card');
+    if (t.dataset.f) {
+      $$('#filters button').forEach(b => b.setAttribute('aria-pressed', String(b === t)));
+      const f = t.dataset.f;
+      $$('.card').forEach(c => { c.hidden = !(f === 'all' || c.dataset.group === f); });
+      $$('section[data-sec]').forEach(s => { s.hidden = !$$('.card', s).some(c => !c.hidden); });
+      window.scrollTo(0, 0);
+    } else if (t.closest('#globalSeg')) {
+      $$('#globalSeg button').forEach(b => b.setAttribute('aria-selected', String(b === t)));
+      $$('.card[data-base]').forEach(c => { if (!c.dataset.base.startsWith('vortex/')) setCard(c, t.dataset.v); });
+    } else if (t.closest('#boxSeg')) {
+      box.cur = t.dataset.v; drawBox();
+    } else if (t.id === 'boxClose') { boxEl.hidden = true; document.body.style.overflow = ''; if (box.back) box.back.focus(); }
+    else if (t.id === 'boxFit') { pane.classList.toggle('fit'); hint.textContent = pane.classList.contains('fit') ? 'Pełny kadr. Dotknij ⤢, żeby powiększyć i przesuwać.' : 'Powiększenie — przesuwaj palcem; ⤢ wraca do pełnego kadru.'; sizeBox(); }
+    else if (card && t.dataset.v) setCard(card, t.dataset.v);
+    else if (card && t.dataset.vx) {
+      $$('.seg [data-vx]', card).forEach(b => b.setAttribute('aria-selected', String(b === t)));
+      card.querySelector('.anim').src = card.dataset.vx + '-' + t.dataset.vx + '.webp';
+    } else if (card && t.hasAttribute('data-side')) {
+      const on = t.getAttribute('aria-pressed') !== 'true';
+      t.setAttribute('aria-pressed', String(on));
+      const trio = card.querySelector('.trio');
+      $$('img[data-lazy]', trio).forEach(i => { i.src = i.dataset.lazy; i.removeAttribute('data-lazy'); });
+      trio.hidden = !on; card.querySelector(':scope > figure').hidden = on; card.classList.toggle('open', on);
+    } else if (card && t.classList.contains('zoom')) {
+      box.base = card.dataset.base; box.cur = card.dataset.cur || card.querySelector('.seg [aria-selected="true"]').dataset.v; box.back = t;
+      box.vs = $$('.seg [data-v]', card).map(b => [b.dataset.v, b.textContent]);
+      boxEl.hidden = false; document.body.style.overflow = 'hidden'; pane.classList.add('fit'); drawBox();
+    }
+  });
+  const boxEl = document.getElementById('box'), pane = document.getElementById('boxPane'), img = document.getElementById('boxImg'), hint = document.getElementById('boxHint'), box = {};
+  function sizeBox() { img.style.width = pane.classList.contains('fit') ? '' : (img.naturalWidth > img.naturalHeight ? '260%' : '220%'); }
+  function drawBox() {
+    document.getElementById('boxSeg').innerHTML = box.vs.map(([v, l]) => '<button role="tab" data-v="' + v + '" aria-selected="' + (v === box.cur) + '">' + l + '</button>').join('');
+    img.src = box.base + '-' + box.cur + '.jpg';
+  }
+  img.addEventListener('load', sizeBox);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !boxEl.hidden) document.getElementById('boxClose').click(); });
+  document.addEventListener('toggle', (e) => { if (e.target.open) $$('img[data-lazy]', e.target).forEach(i => { i.src = i.dataset.lazy; i.removeAttribute('data-lazy'); }); }, true);
+})();
+</script>
+</body>
+</html>

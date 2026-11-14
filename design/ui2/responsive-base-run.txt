@@ -1,0 +1,16 @@
+node qa/responsive.mjs on base 1395c18 (game files unchanged), headless Chromium, software rendering; the machine was also rendering mock-up frames in parallel for part of the run
+FAIL  320x568 campaign: fits (no page scroll, nothing cut off or covered, main action in view)  — main action not hit (under #btnNavWarsztat)
+FAIL  768x1024 unlock: fits (no page scroll, nothing cut off or covered, main action in view)  — main action missing #btnUnlockLater
+FAIL  1280x720 challenges: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  1280x720 leaveConfirm: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  1280x720 missionStart: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  1920x1080 hub: fits (no page scroll, nothing cut off or covered, main action in view)  — main action missing #btnStart ; #hubCampaignTile missing ; #btnDaily missing ; #hubHeroStage missing
+FAIL  1920x1080 campaign: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  1920x1080 briefing: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  2560x1440 hub: fits (no page scroll, nothing cut off or covered, main action in view)  — main action missing #btnStart ; #hubCampaignTile missing ; #btnDaily missing ; #hubHeroStage missing
+FAIL  2560x1440 campaign: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  2560x1440 briefing: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  2560x1440 shop: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  2560x1440 challenges: fits (no page scroll, nothing cut off or covered, main action in view)  — layer not visible
+FAIL  1536x864 hub: fits (no page scroll, nothing cut off or covered, main action in view)  — main action missing #btnStart ; #hubCampaignTile missing ; #btnDaily missing ; #hubHeroStage missing
+512/526 responsive checks passed
