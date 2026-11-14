@@ -244,7 +244,8 @@ export const SCENES = {
   login: { stage: async (p) => { await veteran(p, { loginDue: true }); await p.evaluate(() => { const gm = window.game; gm.bootFirstRun = false; gm.maybeShowLoginReward(); }); await p.waitForTimeout(500); },
     audit: { root: '#loginRewardScreen', primary: '#btnLoginClaim' } },
   campaign: { stage: async (p) => { await veteran(p); await p.evaluate(() => window.game.openCampaignScreen()); await p.waitForTimeout(500); },
-    audit: { root: '#campaignScreen', primary: '#missionNextCard [data-mc-play], #missionNextCard button', mustSee: ['#districtMap', '#bottomNav'] } },
+    // GG-UI-02: on a short phone GRAJ is sticky above the navigation -- what lies under it must scroll clear (checked at the scroll end; qa/ui2.mjs checks every datum).
+    audit: { root: '#campaignScreen', primary: '#missionNextCard [data-mc-play], #missionNextCard button', mustSee: ['#districtMap', '#bottomNav'], ctaScrollsClear: true } },
   briefing: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.openCampaignScreen(); gm.openMissionBriefing('M31'); }); await p.waitForTimeout(600); },
     audit: { root: '#missionBriefing', primary: '#briefingCard .mc-play', mustSee: ['#btnBriefingClose'] } },
   shop: { stage: async (p) => { await veteran(p); await p.evaluate(() => window.game.openWarsztatScreen()); await p.waitForTimeout(500); },

@@ -54,6 +54,7 @@ node qa/balance1.mjs             # BALANCE-1: simulated careers (5 min-10 h), bo
 node qa/perf1.mjs                # MOBILE-PERF-1 gates (--bench paired before/after, --equiv base vs candidate, --gpu, --profile)
 node qa/responsive.mjs           # FTUE-2: every platform frame, iframe host, resize/turn/fullscreen, input
 node qa/crazygames-basic1.mjs     # CrazyGames Basic package (built by tools/export-crazygames-basic.mjs; report docs/CRAZYGAMES_BASIC1_REPORT.md)
+node qa/ui2.mjs                  # GG-UI-02 menu screens: Miasto, Dzielnice, Warsztat, results, navigation, PL/EN (--only=miasto,dzielnice,warsztat,wyniki,nav)
 node qa/instructions.mjs         # no browser: CLAUDE.md rules, paths named here and in docs/claude/*, HANDOFF fields
 ```
 

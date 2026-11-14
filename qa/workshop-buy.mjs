@@ -16,7 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve, openGame, veteranSave, report, expectAll, holds, isMain, OUT } from './lib.mjs';
-import { MATRIX } from './responsive.mjs';
+import { MATRIX, settled } from './responsive.mjs';
 
 const OUT_DIR = path.join(OUT, 'workshop-buy');
 const allOf = (name, checks, context) => expectAll(name, Object.fromEntries(Object.entries(checks).map(([k, v]) => [k, holds(!!v)])), context);
@@ -89,6 +89,9 @@ async function layoutChecks(url) {
   for (const [w, h, kind, name, , dpr] of frames) {
     const g = await openOn(url, w, h, kind, { dpr });
     const p = g.page, tag = `${w}x${h}`, m = {};
+    // GG-UI-02: measure once the screen's entrance has finished (on a slow 2560x1440 frame the
+    // rising column was still moving at the first measurement and read as a layout shift).
+    await settled(p, '#shopScreen');
     for (const st of ['idle', 'buy', 'short', 'reward']) {
       await LOOK(p, st);
       m[st] = await p.evaluate(MEASURE);

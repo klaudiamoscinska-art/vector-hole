@@ -263,7 +263,8 @@ const CITY = () => {
   const labelOk = !lab || lab.y >= textBottom - 1 || lab.x > pitch.offsetLeft + pitch.offsetWidth || lab.x + lab.w < pitch.offsetLeft;
   const skyOk = !sky || sky.top >= textBottom - 2;
   const b = badge.getBoundingClientRect(), p = pitch.getBoundingClientRect();
-  const badgeOk = b.bottom <= p.top + 1 || b.top >= p.bottom - 1;
+  // GG-UI-02: the level badge sits beside the headline (left of it) -- clear means the two boxes do not intersect, in either direction.
+  const badgeOk = b.bottom <= p.top + 1 || b.top >= p.bottom - 1 || b.right <= p.left + 1 || b.left >= p.right - 1;
   return { ok: labelOk && skyOk && badgeOk, labelOk, skyOk, badgeOk, textBottom: Math.round(textBottom), label: lab && { y: Math.round(lab.y), above: lab.above }, skyline: sky && Math.round(sky.top), W: innerWidth, H: innerHeight };
 };
 async function screenChecks(url) {

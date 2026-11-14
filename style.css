@@ -3531,6 +3531,10 @@ body:has(#adOverlay:not(.hidden)) .consent-bar { display: none; }
 /* GG-UI-02: the screen rises in but is never invisible -- an entrance from opacity 0 left the
    whole menu unseen for up to a second where frames are slow (2560x1440 without a GPU). */
 @keyframes v12-rise { from { opacity: 0.4; transform: translateY(14px); } }
+/* ... and the layer itself: a full screen (not a sheet over one) comes in from half-visible, not from
+   nothing -- `.screen`'s own fade-in started the whole layer at opacity 0. Sheets keep their fade. */
+.screen:not(.overlay-screen) { animation-name: screen-in; }
+@keyframes screen-in { from { opacity: 0.45; } to { opacity: 1; } }
 
 /* Settings: full-width rows, label left, pill switch right. */
 .settings-block { width: 100%; box-sizing: border-box; text-align: left; padding: 12px 14px; background: linear-gradient(180deg, rgba(10, 32, 50, 0.7), rgba(5, 16, 28, 0.6)); border-color: rgba(80, 240, 250, 0.16); }
@@ -4701,7 +4705,6 @@ body.compact #campaignScreen .district-tile-info { padding: 6px 8px 5px; gap: 1p
 body.compact #campaignScreen .district-tile .district-node-name { line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 body.compact #missionNextCard .mc-name { font-size: 19px; }
 body.compact #missionNextCard .mc-goal { padding: 5px 9px; }
-body.compact #missionNextCard .mc-stars { display: none; }
 
 /* Mission result on a short landscape frame: a smaller hero and stats, so
    the stars, NELA and the reward fit with less scrolling. */
@@ -5235,16 +5238,22 @@ body:not(.wide) #campaignScreen .district-tile .district-node-status { display: 
 /* Wide screens keep the game's grid; the status line stays, the marks sit above it. */
 body.wide .u2-route { max-width: none; margin: 0; }
 body.wide #campaignScreen .district-tile { height: 72px; }
-/* (landscape phones / the CrazyGames frame: low tiles -- the mark says the state, the status line gives its room to a two-line name) */
+/* (landscape phones / the CrazyGames frame: low tiles -- the number goes in front of the name, and the status line (with the TERAZ / NASTĘPNA chip) says the state, so no mark is needed above a two-line name) */
 body.compact #campaignScreen .district-tile { height: 58px; }
-body.compact #campaignScreen .district-tile .district-node-status { display: none; }
-body.compact #campaignScreen .district-tile .district-node-name { font-size: 10.5px; }
+body.compact #campaignScreen .district-tile .u2-num, body.compact #campaignScreen .district-tile .u2-state { display: none; }
+body.compact #campaignScreen .district-tile .district-node-name::before { content: attr(data-num); margin-right: 4px; padding: 0 3px; border-radius: 4px; font-family: var(--font-display); font-weight: 400; font-size: 9px; color: #04101D; background: var(--district-color); }
+body.compact #campaignScreen .district-tile.locked .district-node-name::before { background: #223848; color: rgba(255, 255, 255, 0.65); }
 
-/* CRITICAL FIX 2 -- a short phone: GRAJ rides the bottom of the view (above the navigation) while the
-   mission's goals, time, reward and star conditions scroll above it; at the card's end it sits in its
-   own place, so nothing stays covered. */
+/* CRITICAL FIX 2 -- wherever the next mission's card is taller than the room above the navigation
+   (short phones, tall narrow ones with the 4 x 3 grid, landscape frames): GRAJ rides the bottom of the
+   view while the mission's goals, time, reward and star conditions scroll above it; at the card's end
+   it sits in its own place, so nothing stays covered. Where the card fits, nothing changes. */
+#missionNextCard .mc-play { position: sticky; bottom: 8px; z-index: 3; box-shadow: 0 -10px 16px rgba(4, 16, 29, 0.92), 0 8px 22px rgba(80, 240, 250, 0.3); }
+/* (landscape frames hid the star conditions to make the card fit; with GRAJ riding the column's bottom they are back) */
+body.compact #missionNextCard .mc-stars { display: flex; }
+body.compact #missionNextCard .mc-play { bottom: 2px; }
+body.compact .mission-card .mc-goal.is-boss .mc-goal-icon { width: 26px; height: 26px; }
 @media (max-height: 700px) {
-  body:not(.wide) #missionNextCard .mc-play { position: sticky; bottom: 8px; z-index: 3; box-shadow: 0 -10px 16px rgba(4, 16, 29, 0.92), 0 8px 22px rgba(80, 240, 250, 0.3); }
   body:not(.wide) #missionNextCard .mc-stars { flex-wrap: nowrap; gap: 4px; }
   body:not(.wide) #missionNextCard .mc-star { padding: 3px 6px; font-size: 10.5px; white-space: nowrap; }
   body:not(.wide) #campaignScreen #districtRouteDone, body:not(.wide) #campaignScreen #districtRouteMissions { font-size: 11px; }
@@ -5315,8 +5324,6 @@ body:not(.wide):not(.compact) #shopScreen .warsztat-preview::before { content: '
 body.wide #shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
 body.wide:not(.compact) #shopScreen .skin-card .hole-swatch { width: 80px; height: 80px; }
 body.wide:not(.compact) #shopScreen .skin-card .skin-look { display: block; font-size: 10px; color: var(--nc-text-dim); min-height: 2.5em; }
-body.compact #shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-body.compact #shopScreen .skin-card .hole-swatch { width: 56px; height: 56px; }
 body.compact #shopScreen .shop-tabs .toggle-btn { padding: 6px 2px; min-height: 34px; }
 
 /* ---------- WYNIK ARENY (A + B's reward tiles): fast to read, one tap to the next round ---------- */
@@ -5370,5 +5377,56 @@ body.compact .unlock-overlay .unlock-panel { max-width: 680px; padding: 30px 30p
 #loginRewardScreen .login-panel { overflow: visible; }
 #loginRewardScreen .login-tile.claimed { opacity: 1; border-color: rgba(70, 217, 154, 0.4); }
 #loginRewardScreen .login-tile.claimed > :not(.login-tile-check) { opacity: 0.6; }
-#loginRewardScreen .login-tile-check { inset: auto; top: -6px; right: -6px; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; font-weight: 900; line-height: 1;
+#loginRewardScreen .login-tile-check { inset: auto; top: -8px; right: -7px; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; font-weight: 900; line-height: 1;
   color: #04101D; background: var(--nc-green); text-shadow: none; box-shadow: 0 0 0 2px #06182a; }
+/* WORKSHOP-BUY holds with the new card: a tap on a card moves nothing. Wide screens reserve the
+   lines a long name / description can take; landscape frames let the preview alone set the row's height. */
+body.wide:not(.compact) #shopScreen .warsztat-preview-name { min-height: 2.2em; display: flex; align-items: flex-end; }
+body.wide:not(.compact) #shopScreen .warsztat-look strong { min-height: 2.3em; }
+body.wide:not(.compact) #shopScreen .warsztat-look-label { min-height: 2.5em; }
+body.compact #shopScreen .warsztat-preview-labels { height: 120px; gap: 4px; justify-content: center; overflow: hidden; }
+body.compact #shopScreen .warsztat-preview-name { font-size: 17px; flex: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.compact #shopScreen .warsztat-look-label { display: none; }
+body.compact #shopScreen .warsztat-look strong { -webkit-line-clamp: 1; font-size: 12px; }
+body.compact #shopScreen .u2-status { padding: 3px 8px; font-size: 9.5px; flex: none; }
+body.compact #shopScreen .warsztat-preview-loadout { flex: none; }
+@media (max-height: 430px) {
+  body.compact #shopScreen .warsztat-preview-labels { height: 92px; gap: 2px; }
+  body.compact #shopScreen .warsztat-look strong { font-size: 11px; }
+  body.compact #shopScreen .warsztat-preview-name { font-size: 15px; -webkit-line-clamp: 1; }
+  body.compact #shopScreen .u2-status { padding: 2px 7px; font-size: 9px; }
+  body.compact #shopScreen .warsztat-preview-loadout { font-size: 10px; line-height: 1.3; min-height: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
+/* Landscape frames: low cards (the vortex beside its name), so a whole category stays in view. */
+body.compact #shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(144px, 1fr)); gap: 6px; }
+body.compact #shopScreen .skin-card { flex-direction: row; align-items: center; text-align: left; gap: 8px; padding: 6px 8px 6px 6px; }
+body.compact #shopScreen .skin-card .hole-swatch { width: 46px; height: 46px; flex: none; }
+body.compact #shopScreen .skin-card .skin-swatch { width: 34px; height: 34px; margin: 6px; flex: none; }
+body.compact #shopScreen .skin-card-body { align-items: flex-start; gap: 3px; min-width: 0; }
+body.compact #shopScreen .skin-card .skin-name { min-height: 0; display: block; font-size: 11.5px; }
+body.compact #shopScreen .skin-card .skin-owned-badge, body.compact #shopScreen .skin-card .skin-price { align-self: flex-start; padding: 2px 6px; font-size: 9px; letter-spacing: 0.02em; }
+body.compact #shopScreen .skin-card .u2-src { top: 3px; left: 3px; width: 13px; height: 13px; font-size: 8px; }
+body.compact #shopScreen .skin-card-lock { top: auto; bottom: 6px; right: 7px; }
+/* A phone: the preview sets the showroom row's height in every state (plain, short screen, pinned) --
+   the name, the status plate, the look's description and the loadout / price line fit beside it. */
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview-stage { height: 172px; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview-labels { height: 172px; justify-content: center; overflow: hidden; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview-name { flex: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body:not(.wide):not(.compact) #shopScreen .u2-status, body:not(.wide):not(.compact) #shopScreen .warsztat-look { flex: none; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview-loadout { flex: none; min-height: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-height: 640px), (max-width: 340px) {
+  body:not(.wide):not(.compact) #shopScreen .warsztat-preview-stage, body:not(.wide):not(.compact) #shopScreen .warsztat-preview-labels { height: 126px; }
+  body:not(.wide):not(.compact) #shopScreen .warsztat-preview-labels { gap: 3px; }
+  body:not(.wide):not(.compact) #shopScreen .warsztat-preview-name { font-size: 17px; }
+  body:not(.wide):not(.compact) #shopScreen .u2-status { padding: 3px 8px; font-size: 9.5px; }
+  body:not(.wide):not(.compact) #shopScreen .warsztat-look-label { display: none; }
+  body:not(.wide):not(.compact) #shopScreen .warsztat-preview-loadout { font-size: 10px; line-height: 1.35; }
+}
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-preview-labels { height: 96px; gap: 3px; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-preview-name { font-size: 17px; -webkit-line-clamp: 1; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .u2-status { padding: 3px 8px; font-size: 9.5px; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-preview-loadout { font-size: 10px; line-height: 1.35; -webkit-line-clamp: 2; }
+/* Desktop: a lower stage, so the four category tabs stay in view under the taller label column. */
+body.wide:not(.compact) #shopScreen .warsztat-preview-stage { height: 186px; }
+body.compact #shopScreen .skin-card .u2-src { font-size: 9px; }
+@media (max-height: 360px) { body.compact #campaignScreen .district-tile { height: 52px; } body.compact .u2-route { margin: -4px 0; } }

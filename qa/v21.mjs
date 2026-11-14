@@ -138,7 +138,7 @@ export async function runV21Checks(url) {
       const cols = new Set([...document.querySelectorAll('#skinGrid > *')].map(n => Math.round(n.getBoundingClientRect().left))).size;
       return { previewLeft: pv.r <= grid.l, cols, previewInView: pv.b <= innerHeight, sideways };
     }, measure.toString());
-    results.push(report(`${tag}: Warsztat — the live preview on the left, the items in 2 columns on the right`, ws.previewLeft && ws.cols === 2 && ws.previewInView && !ws.sideways, JSON.stringify(ws)));
+    results.push(report(`${tag}: Warsztat — the live preview on the left, the items in columns (2 or more, GG-UI-02: as many collector cards as fit) on the right`, ws.previewLeft && ws.cols >= 2 && ws.previewInView && !ws.sideways, JSON.stringify(ws)));
     await g.page.click('#btnNavWyzwania'); await g.page.waitForTimeout(500);
     const wy = await g.page.evaluate((m) => {
       const { R, sideways } = eval(`(${m})`)();
@@ -177,7 +177,9 @@ export async function runV21Checks(url) {
 
   // --- District strip (narrow windows): wheel, edge fades, picked district in view
   {
-    const g = await seeded(url, [1000, 1300], true);
+    // GG-UI-02: a tall phone shows all twelve districts as a 4 x 3 grid (nothing to scroll); the strip
+    // and its fades remain on short portrait frames, so that is where they are checked.
+    const g = await seeded(url, [520, 680], true);
     const r = await g.page.evaluate(async () => {
       const gm = window.game;
       gm.openCampaignScreen();

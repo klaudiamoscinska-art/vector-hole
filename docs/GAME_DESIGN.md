@@ -701,8 +701,9 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   przewija się nad przyciskami. Panel HUD lub mapka, pod którą jest wir,
   przygasa. Pasek zgody rezerwuje swoje miejsce (nie zasłania GRAJ ani
   kafli).
-- Pasek dzielnic (wąskie okna) przewija się kółkiem myszy, a ucięta
-  krawędź się rozmywa.
+- Pasek dzielnic (niskie, wąskie okna — od GG-UI-02 tylko tam, gdzie nie
+  mieści się siatka 4×3) przewija się kółkiem myszy, a ucięta krawędź się
+  rozmywa.
 
 ## 5b3. HUD w rundzie (GG-UI-01 „Premium Game HUD”)
 
@@ -754,6 +755,68 @@ obraz: wartości, kolejność rankingu, progi, cele i dane mapki są te same.
 - **Wąskie telefony:** poniżej 380 px z kapsuły znikają ikony zegara /
   gwiazdki (kolor nadal odróżnia czas od wyniku), poniżej 350 px ranking i
   cel są węższe. Test: `node qa/ui1.mjs`.
+
+## 5b4. Ekrany menu (GG-UI-02 „Premium Game Experience”)
+
+Miasto, Dzielnice, odprawa, Warsztat, wyniki i karty nagród w rodzinie HUD
+(GG-UI-01): **panel główny** ekranu = granatowa płyta z krawędzią cyjan →
+fiolet → róż, **panele pomocnicze** = ciemne szkło z cienką linią, **złota
+krawędź** = nagroda albo zakup. Kolor coś znaczy: cyjan — Twoje / aktywne /
+główna akcja, złoto — nagroda i cena, zieleń — ukończone / do odebrania, róż
+— zagrożenie i boss. Bez `backdrop-filter`. Zatwierdzona hybryda makiet A i B
+(`design/ui2/`). Tylko obraz: żadna reguła, cena, nagroda ani pole zapisu.
+
+- **Miasto:** panorama Core City jest tłem ekranu (na telefonie od krawędzi
+  do krawędzi; `drawCityScene()` bez zmian), herb **LVL**, kapsuła
+  „Następna nagroda” z procentem i **szyną LVL 1–6** (poziomy osiągnięte
+  pełne, bieżący z rzeczywistym ładunkiem; zbudowane miasto LVL 6 zachowuje
+  pasek swojej powtarzalnej premii). **GRAJ** to największy przycisk, z
+  wirem gracza w aktualnie założonym wyglądzie. Kafle Kampanii i Wyzwania
+  dnia mają pas nagłówka w kolorze trybu; gotowa skrzynia — złotą krawędź.
+  Na bardzo niskiej panoramie (320×568) dźwig stoi, ale plakietka „NOWY
+  BUDYNEK” nie jest rysowana (nachodziła na tekst).
+- **Dzielnice:** liczniki całej kampanii („ODBUDOWANE DZIELNICE x/12”,
+  „MISJE x/240”); kafle z numerem **01–12** i jednym znacznikiem stanu
+  (odbudowana ✓ / otwarta „9/10” / zamknięta), wybrana w białej ramie,
+  następna w przerywanej. Telefon wysoki: **wszystkie 12 naraz, siatka
+  4×3**. Telefon niski (do 700 px wysokości): jeden rząd całych kafli — po
+  cztery, na 320 px po trzy — przyciągany do krawędzi kafla, żeby karta
+  następnej misji została w widoku. Poziomo i desktop: dotychczasowa siatka
+  gry (na desktopie z numerem i znacznikiem; w niskich ramkach numer stoi
+  przed nazwą, a stan mówi linia statusu z plakietką TERAZ / NASTĘPNA).
+  Nagłówek dzielnicy w jej kolorze. Lista misji to **trasa** (węzeł na
+  misję: zielony = ukończona, złoty = do zagrania); misja z bossem ma znak
+  **BOSS**.
+- **Karta misji / odprawa:** cel bossa (krok z landmarkiem) na własnej,
+  różowej płytce z większą ikoną i znakiem BOSS; odprawa ma nagłówek w
+  kolorze dzielnicy. Na niskim telefonie **GRAJ jest przypięty nad
+  nawigacją**, a cele, czas, nagroda i warunki gwiazdek przewijają się nad
+  nim (na końcu karty przycisk stoi na swoim miejscu — nic nie zostaje
+  zakryte).
+- **Warsztat:** scena podglądu z nazwą, **plakietką stanu** (WYPOSAŻONE /
+  DO KUPIENIA / ZA MAŁO MONET albo PRYZMATÓW / NAGRODA) i opisem wyglądu,
+  który zostaje przy podglądzie w każdym układzie; kategorie jako jeden
+  przełącznik; **karty kolekcjonerskie** (duży żywy wir, nazwa, jedna
+  pigułka stanu lub ceny, w rogu znak źródła: zestaw startowy / monety /
+  pryzmaty / nagroda). Liczba kolumn zależy od szerokości: 2 na 320 px, 3 od
+  360 px, więcej na szerokich ekranach; w niskich ramkach poziomych karty są
+  niskie (wir obok nazwy). **Rzadkości kosmetyków nie ma** — znak mówi
+  tylko, skąd przedmiot pochodzi. Wysokość wiersza podglądu wyznacza sam
+  podgląd, więc dotknięcie karty niczego nie przesuwa (WORKSHOP-BUY).
+- **Wynik Areny:** kompozycja jak dotąd (wynik, kafle rozmiaru i miejsca,
+  zapowiedź, nagrody, ranking, pasek akcji); nagrody jako **dwa kafle
+  (monety, XP) i szeroka karta Core City**. Zasady pierwszego wyniku (bez
+  ×2, „Menu główne”), reklam, kolejność i animacje bez zmian.
+- **Wynik misji:** gwiazdki na złotej płycie; reszta w materiałach rodziny.
+- **Karty nagród** (Core City, skrzynia, odblokowania): karta-trofeum w
+  kolorze nagrody, tytuł zdarzenia na wstążce u góry, źródło w pigułce.
+- **Nagroda dzienna, arkusze:** spokojny materiał; znacznik odebranego dnia
+  to mały znak w rogu kafla (wcześniej leżał na kwocie).
+- **Nawigacja:** zwykły pasek przy dolnej krawędzi (bez pływającego doku), z
+  odstępem na wskaźnik gestów; zakładki min. 44 px.
+- **Wejście ekranu:** kolumna wsuwa się, ale nigdy nie startuje od pełnej
+  przezroczystości (na wolnych klatkach menu bywało niewidoczne do sekundy).
+- Test: `node qa/ui2.mjs`. Raport: `docs/GG_UI_02_REPORT.md`.
 
 ## 5c. Języki, platformy i zapis (v19 „Premiera”)
 

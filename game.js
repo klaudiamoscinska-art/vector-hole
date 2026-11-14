@@ -14895,7 +14895,7 @@ class Game {
         : (unlocked ? `<span class="u2-state now" translate="no">${doneCount}/${d.missions.length}</span>` : `<span class="u2-state lock">${U2_LOCK}</span>`);
       node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"${isNext ? ' data-next="1"' : ''}></canvas>` +
         `<span class="u2-num" translate="no">${String(DISTRICTS.indexOf(d) + 1).padStart(2, '0')}</span>${mark}` +
-        `<span class="district-tile-info"><span class="district-node-name">${d.name}</span>` +
+        `<span class="district-tile-info"><span class="district-node-name" data-num="${String(DISTRICTS.indexOf(d) + 1).padStart(2, '0')}">${d.name}</span>` +
         `<span class="district-node-status">${chip}<span class="district-status-text">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : (isNext ? '' : 'ZABLOKOWANA'))}</span></span>` +
         `<span class="district-tile-bar"><span style="width:${unlocked ? pctDone : 0}%"></span></span></span>`;
       node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
