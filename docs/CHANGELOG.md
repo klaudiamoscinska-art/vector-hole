@@ -4,6 +4,26 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-UX-03 „Final gameplay UX & vortex visual corrections” — dwa tryby sterowania, minimapa po lewej, finisz bez zaciemnienia, lustrzane wiry (zapis nadal v13, klucz bez zmian; reguły, ekonomia, RNG, seedy, balans Overdrive, HUD poza minimapą, obiekty i VFX bez zmian)
+- **Sterowanie:** dokładnie dwa tryby dotyku — **PRZECIĄGANIE** (domyślne, bez zmian) i **JOYSTICK** (opcja). Joystick jest
+  dynamiczny: pojawia się tam, gdzie palec dotknie planszy (góra, środek, dół — koniec strefy dolnych 35 %,
+  `CONFIG.input.zoneHeightFraction` usunięte), kierunek z wychylenia, bez skoku przy dotknięciu, natychmiastowe zatrzymanie.
+  Naprawione: drugi palec przestawiał kotwicę pierwszego; pauza / wznowienie / obrót telefonu / start rundy zostawiały aktywny
+  joystick. Panel HUD i minimapa nie uruchamiają joysticka. Etykiety PL/EN „Przeciąganie” / „Drag to move”, „Joystick”;
+  podpowiedź „Dotknij planszy i przesuń kciuk…”. Zapisy: `legacy` → Przeciąganie, `thumbpad` → Joystick, brak / nieznane →
+  Przeciąganie (gałąź migracji v2→v3 nietknięta).
+- **Minimapa:** domyślnie w **lewym dolnym** rogu (Arena, Kampania, Wyzwanie dnia, wyzwania znajomych); Profil → Ustawienia →
+  „Położenie minimapy” LEWA | PRAWA (`settings.minimapSide`, nowe pole w `defaultSave()`, zła wartość → `left`), zapisywane,
+  także w kodzie kopii zapasowej. Plakietka dzielnicy przy zewnętrznej krawędzi mapy, podpowiedź i „TERAZ GRA” po drugiej stronie.
+- **Wielki finisz:** bez czarnej warstwy `rgba(0,0,0,0.55)` i bez napisu „ZACIEMNIENIE” w ostatnich 12 s Areny; losowanie
+  wariantu, moment, punkty, Burza portali (10 × 15) i wynik identyczne z bazą na sparowanych rundach z ziarnem. Ciemność misji
+  Kampanii zostaje.
+- **Wiry:** każda warstwa sprite'a odbita lustrzanie przy budowie pamięci podręcznej, obrót bez zmian (te same `look.spin`,
+  kierunki i prędkości; dane wyglądów, `drawBody()` i `stampHoleLayer()` identyczne z bazą). Warsztat, rywale i połykane wiry
+  używają tej samej ścieżki. Ta sama liczba i rozmiar sprite'ów (bez dodatkowej pamięci).
+- **QA:** `qa/ux3.mjs` (w `run-all`), `qa/ui1.mjs` liczy plakietkę dzielnicy po stronie mapy. Dowody: `design/ux3/`
+  (`tools/ux3-shots.mjs`, `tools/ux3-gallery.mjs`), raport `docs/GG_UX_03_REPORT.md`.
+
 ## GG-UI-02 „Premium Game Experience” — Miasto, Dzielnice, odprawa, Warsztat, wyniki i nagrody w rodzinie HUD (zapis nadal v13, klucz bez zmian; reguły, ceny, waluty, nagrody i moment ich przyznania, Core City, FTUE, reklamy, 12 dzielnic i 240 misji, RNG, seedy, sterowanie, HUD GG-UI-01, tła, obiekty, wiry i VFX bez zmian)
 - **Zatwierdzona hybryda makiet A + B** (`design/ui2/`, etap 1): B — Miasto, Dzielnice na telefonie, odprawa, Warsztat, wynik misji,
   karty nagród; A — wynik Areny (z kaflami nagród z B), nagroda dzienna, arkusze, nawigacja (bez pływającego doku). Materiały

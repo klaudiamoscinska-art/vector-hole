@@ -25,6 +25,10 @@ maź z bąblami; Ultrafiolet — galaktyka z orbitą; Neonowe Złoto — słońc
 z wyładowaniami; Aurora Finału — wstęgi zorzy; Kryształ — szlifowana przesłona z odłamkami; Pryzmat — rozszczepione
 światło. Większy wir wciąga mocniej (płynnie, bez progów). To wyłącznie wygląd: promień, zasięg, tempo
 i punktacja są takie same dla każdej skórki. Rywale noszą te same wyglądy w swoich kolorach.
+**Lustrzane wiry (GG-UX-03, decyzja właścicielki):** rysunek każdej warstwy jest odbity lustrzanie (lewo ↔ prawo)
+już w pamięci podręcznej sprite'a, a potem obracany o ten sam kąt co wcześniej — kierunki i prędkości obrotu
+(`look.spin`), kolory, promienie, hitboxy, pochłanianie, smugi, dysk akrecyjny i cząstki bez zmian. Ramiona
+większości warstw „ciągną się” teraz za obrotem, jak w lejku czy galaktyce (pomiar: `qa/ux3.mjs` V3).
 
 ## 1. Premisa i ton
 
@@ -215,8 +219,12 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   **Magnes (Arena, R5-03):** pole 160 od środka dziury, siła 90 × (1 − d/160); widać falę przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Od promienia 160 pole jest w środku dziury i nic nie przyciąga (zmiana zasięgu to decyzja właścicielki).
 - **Złoty Rdzeń:** po 10 s, potem co 20 s; kto zje — SZAŁ na 7 s
   (punkty ×2, zasięg ×1,35, prędkość ×1,2, obiekty o rozmiar większe).
-- **Wielki finisz:** ostatnie 12 s — losowo (z ziarna) Zaciemnienie albo
-  Burza portali (10 bonusowych obiektów).
+- **Wielki finisz:** ostatnie 12 s — losowo (z ziarna) jeden z dwóch
+  wariantów: zwykły finisz albo Burza portali (10 bonusowych obiektów).
+  GG-UX-03 (decyzja właścicielki): wariant wewnętrznie nazwany `blackout`
+  nie przyciemnia już planszy i nie ma napisu „ZACIEMNIENIE” — baner mówi
+  tylko „WIELKI FINISZ!”. Losowanie, moment, punkty i bonusy bez zmian.
+  Ciemność misji Kampanii (`setup.dark`) zostaje.
 - **Kamera:** oddala się z rozmiarem (1,08 → 0,58), a dalej tak, by dziura
   zajmowała ≤ 24% krótszego boku ekranu. Przy krawędzi miasta zatrzymuje
   jego brzeg na granicy obszaru bezpiecznego telefonu (notch, Dynamic
@@ -225,11 +233,24 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 
 ## 3. Sterowanie
 
-- Domyślnie **bezpośrednie przeciąganie**: dziura jedzie w stronę palca /
-  kursora. Od v13 pozycja palca na ekranie jest przeliczana co klatkę
-  (trzymany palec prowadzi dalej), nic się nie rusza przed pierwszym
-  dotykiem, puszczenie palca zatrzymuje dziurę.
-- Opcjonalnie pływający joystick (Ustawienia) i WASD/strzałki.
+- Dokładnie **dwa tryby dotyku** (GG-UX-03): **Przeciąganie** (domyślne
+  dla każdego nowego profilu) i **Joystick** (opcja). Zapis: `legacy` →
+  Przeciąganie, `thumbpad` → Joystick, brak / nieznana wartość →
+  Przeciąganie; wybór gracza nie jest nadpisywany.
+- **Przeciąganie**: dziura jedzie w stronę palca / kursora. Od v13 pozycja
+  palca na ekranie jest przeliczana co klatkę (trzymany palec prowadzi
+  dalej), nic się nie rusza przed pierwszym dotykiem, puszczenie palca
+  zatrzymuje dziurę.
+- **Joystick** (dynamiczny): podstawa pojawia się tam, gdzie palec dotknie
+  planszy — u góry, na środku albo na dole (dawna strefa dolnych 35 %
+  zniknęła); ten punkt jest kotwicą, kierunek i siła wychylenia (martwa
+  strefa 10 px, promień 55 px, krzywa ^1,6) sterują ruchem. Dotknięcie nie
+  przesuwa wiru, puszczenie od razu zatrzymuje, joystick gaśnie po 0,4 s.
+  Drugi palec nie zmienia kotwicy; podniesienie palca joysticka zatrzymuje
+  wir, nawet gdy drugi zostaje. Panel HUD i minimapa nie uruchamiają
+  joysticka. Pauza, wznowienie, utrata fokusu, `touchcancel`, obrót
+  telefonu, start rundy / misji i wybór karty zerują kotwicę.
+- WASD/strzałki i mysz bez zmian (desktop, paczka CrazyGames).
 - **Mysz w paczce CrazyGames (CRAZYGAMES-BASIC-1):** portal wymaga blokady myszy w grach
   z widokiem z góry. Tylko w paczce: kliknięcie planszy w trwającej rundzie blokuje kursor
   (Pointer Lock), a wir jedzie za wirtualnym wskaźnikiem tak samo jak za zwykłym kursorem.
@@ -717,8 +738,14 @@ obraz: wartości, kolejność rankingu, progi, cele i dane mapki są te same.
 - **Strefy:** lewy górny róg — pauza (44×44) i kapsuła *czas · drabinka
   tieru · wynik*; prawy górny — ranking (Arena) albo cel misji (Kampania);
   pod zegarem — kolumna: dymek NELA (misje), licznik combo, cel wyzwania
-  znajomego, licznik SZAŁ; prawy dolny — mapka z plakietką dzielnicy; lewy
-  dolny — „TERAZ GRA” (ustępuje linii podpowiedzi).
+  znajomego, licznik SZAŁ; **lewy dolny — mapka z plakietką dzielnicy**
+  (GG-UX-03; prawy kciuk jej nie zasłania), prawy dolny — „TERAZ GRA”
+  (ustępuje linii podpowiedzi), linia podpowiedzi obok mapki. Profil →
+  Ustawienia → „Położenie minimapy” (LEWA | PRAWA, `settings.minimapSide`,
+  domyślnie / przy złej wartości `left`) przenosi mapkę na prawo, a „TERAZ
+  GRA” i podpowiedź na drugą stronę; widoczność (`settings.minimap`)
+  osobno, bez zmian. Plakietka dzielnicy przylega do zewnętrznej krawędzi
+  mapki. Strona nie zmienia się sama w trakcie gry.
 - **Drabinka T1–T6:** sześć stopni; ukończone pełne, bieżący wypełnia się
   postępem trybu do następnego tieru, na T6 świeci cała. Plakietka i
   drabinka w kolorze tieru (T1 cyjan, T2 róż, T3 złoto, T4 fiolet, T5
@@ -835,7 +862,7 @@ główna akcja, złoto — nagroda i cena, zieleń — ukończone / do odebrania
   dnia) nie idą przez słownik: `formatDayMonth()` pisze je w języku gry
   („29 PAŹDZIERNIKA” / „OCTOBER 29”, GAME-READY-1).
 - **Ustawienia sterowania (pauza → STEROWANIE; CG-QA-06, R2-02/03):** „Czułość” zawsze. „Tryb
-  sterowania” (pad kciuka / przeciąganie) tylko na urządzeniach z dotykiem (zdarzenia dotyku lub
+  sterowania” (PRZECIĄGANIE | JOYSTICK, GG-UX-03) tylko na urządzeniach z dotykiem (zdarzenia dotyku lub
   `maxTouchPoints`, także laptop dotykowy) — zmienia wyłącznie sterowanie dotykiem. „Haptyka” tylko
   tam, gdzie wibracja może zadziałać: przeglądarka ma `navigator.vibrate`, główny wskaźnik to palec
   (`(pointer: coarse) and (hover: none)`) i strona nie jest w ramce innej domeny (Chrome blokuje tam
