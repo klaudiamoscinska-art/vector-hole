@@ -626,7 +626,7 @@ export async function runPlatformInputChecks(url) {
     const rows = [];
     for (const [scene, open, opts] of [
       ['hub', () => window.game.showScreen('mainMenu'), { root: '#mainMenu', primary: '#btnStart', mustSee: ['#hubCampaignTile', '#btnDaily'] }],
-      ['campaign', () => window.game.openCampaignScreen(), { root: '#campaignScreen', primary: '#missionNextCard .mc-play' }],
+      ['campaign', () => window.game.openCampaignScreen(), { root: '#campaignScreen', primary: '#missionNextCard .mc-play', ctaScrollsClear: true }],
       ['shop', () => window.game.openWarsztatScreen(), { root: '#shopScreen', mustSee: ['#tabSkins'] }],
       ['challenges', () => window.game.openChallengesScreen(), { root: '#challengesScreen', primary: '#btnPlayDaily' }],
     ]) {

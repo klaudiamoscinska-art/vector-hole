@@ -5155,8 +5155,10 @@ body.wide #mainMenu .u2-play-orb { width: 72px; height: 72px; }
 body.wide #mainMenu .hub-quick-row .hub-quick-tile { padding: 0 0 12px; }
 body.compact #mainMenu .hub-play { padding: 8px 14px 8px 10px !important; }
 body.compact #mainMenu .u2-play-orb { width: 46px; height: 46px; }
-body.compact #mainMenu .hub-quick-row .hub-quick-tile { padding: 0 0 7px; gap: 4px; }
-body.compact #mainMenu .hub-quick-tile .hub-quick-icon { width: auto; height: 22px; padding: 3px 9px; }
+/* (landscape frames: the two mode tiles stay low rows -- icon beside the text -- so the chest fits under them even with the consent bar or a friend's challenge on screen) */
+body.compact #mainMenu .hub-quick-row .hub-quick-tile { flex-direction: row; align-items: flex-start; padding: 8px 9px; gap: 7px; border-left: 3px solid var(--q); }
+body.compact #mainMenu .hub-quick-tile .hub-quick-icon { width: 18px; height: 18px; padding: 0; background: none; border: 0; flex: none; }
+body.compact #mainMenu .hub-quick-tile .hub-quick-text { padding: 0; }
 body.compact #mainMenu .hub-city-badge .hub-city-lvl { font-size: 19px; }
 body.compact #mainMenu .hub-city-pitch { left: 104px; }
 body.compact #mainMenu .hub-city-foot { padding: 6px 11px 8px; }
@@ -5429,4 +5431,5 @@ body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-prev
 /* Desktop: a lower stage, so the four category tabs stay in view under the taller label column. */
 body.wide:not(.compact) #shopScreen .warsztat-preview-stage { height: 186px; }
 body.compact #shopScreen .skin-card .u2-src { font-size: 9px; }
-@media (max-height: 360px) { body.compact #campaignScreen .district-tile { height: 52px; } body.compact .u2-route { margin: -4px 0; } }
+/* The lowest landscape frames (640x360, 775x328): the twelve tiles keep their height and come first; the campaign counters follow right under them. */
+@media (max-height: 360px) { body.compact #campaignScreen #districtMap { order: -1; } body.compact .u2-route { margin: -2px 0; } }

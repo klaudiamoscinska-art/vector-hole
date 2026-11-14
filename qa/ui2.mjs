@@ -23,9 +23,18 @@
 //  5. Navigation (CRITICAL FIX 4: the plain bar, no floating dock; safe
 //     area; nothing under it at a list's end), English, the screen entrance
 //     never invisible, SAVE v13 with no new field.
-// Usage: node qa/ui2.mjs [--only=miasto,dzielnice,warsztat,wyniki,nav]
+//  6. Scope: every changed line of game.js sits in a menu-screen display
+//     function; no random draw, no save write, no new export.
+// Usage: node qa/ui2.mjs [--only=scope,miasto,dzielnice,warsztat,wyniki,nav]
 import { serve, openGame, veteranSave, report, expectAll, holds, isMain, ARENA_BOT, QA_RANDOM, frozenDateScript } from './lib.mjs';
 import { safeArea, settled } from './responsive.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
+import { ROOT } from './lib.mjs';
+
+/** The stage's base (origin/main before GG-UI-02: GG-UI-01, PR #100). */
+const BASE_REV = process.env.VH_UI2_BASE || '1395c18814f4b775850d39b45859908e4c552704';
 
 const READY = () => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state;
 const allOf = (name, checks, context) => expectAll(name, Object.fromEntries(Object.entries(checks).map(([k, v]) => [k, holds(!!v)])), context);
@@ -787,8 +796,39 @@ async function navChecks(url) {
   return out;
 }
 
+/** Scope: what the stage changed in game.js, by function -- display code of the menu screens only. */
+function scopeChecks() {
+  const out = [];
+  const OK = /^(renderCoreRail|renderHubCity|startScreenAnim|updateCoinDisplays|renderCampaignMap|missionStepRows|missionCardHtml|showMissionStartCard|selectCampaignDistrict|renderCosmeticGrid|renderWarsztatAction|<top> function drawCityScene|<top> const U2_CHECK|<top> const U2_LOCK|<top> const U2_BOSS_TAG|<top> const I18N_EN)$/;
+  let diff = null;
+  try { diff = execSync(`git diff -U0 ${BASE_REV} -- game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { diff = null; }
+  if (diff == null) { console.log(`NOT RUN  ui2 scope: changed lines vs the base revision ${BASE_REV.slice(0, 7)} (git does not have it here)`); return out; }
+  const src = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8'), lines = src.split('\n');
+  const owner = (n) => { for (let i = Math.min(n, lines.length) - 1; i >= 0; i--) { const m = /^  (?:async |get |static )?([A-Za-z_]\w*)\([^)]*\) \{$/.exec(lines[i]); if (m) return m[1]; if (/^(const|let|function|class) /.test(lines[i])) return '<top> ' + lines[i].split(/[ =(]/).slice(0, 2).join(' '); } return '<top>'; };
+  const owners = new Set(), outside = [];
+  for (const m of diff.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
+    const start = +m[1], len = m[2] == null ? 1 : +m[2];
+    let o = owner(start + Math.max(len, 1) - 1);
+    let k = start - 1; while (k < lines.length && /^\s*(\/\*\*|\/\*|\*|\/\/)/.test(lines[k])) k++;
+    if (len && /^  (?:async |get |static )?[A-Za-z_]\w*\([^)]*\) \{$/.test(lines[k] || '')) o = owner(k + 1);
+    if (len && /^(const|let|function|class) /.test(lines[k] || '')) o = '<top> ' + lines[k].split(/[ =(]/).slice(0, 2).join(' ');
+    owners.add(o);
+    if (!OK.test(o)) outside.push(`${o} @${start}`);
+  }
+  const added = diff.split('\n').filter(l => /^\+[^+]/.test(l)).join('\n');
+  const exportsOf = (t) => { const m = /\nexport \{([\s\S]*?)\};/.exec(t); return m ? m[1].replace(/\s+/g, ' ').trim() : null; };
+  let baseSrc = null; try { baseSrc = execSync(`git show ${BASE_REV}:game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { /* reported above */ }
+  out.push(expectAll(`ui2 scope: every line of game.js changed since ${BASE_REV.slice(0, 7)} is inside a menu-screen display function (Miasto rail and vortex, the district map, mission cards, the Warsztat grid and status plate, the crane's tag, I18N_EN); no random draw, no save write, no new export; SAVE_SCHEMA_VERSION stays 13`, {
+    outside: holds(outside.length === 0, outside.join(' ; ')), functions: holds(owners.size >= 8, owners.size, '>= 8 display functions touched'),
+    newRandomDraws: holds(!/Math\.random|\brand(Int)?\(|SeededRNG/.test(added), 'none'), saveWrites: holds(!/saveGame\(|localStorage|SAVE_SLOT|this\.save[\w.]*\.push\(|this\.save\.[\w.]+\s*(\+=|-=|\+\+|--|=[^=])/.test(added), 'none'),
+    exportsUnchanged: holds(baseSrc != null && exportsOf(baseSrc) === exportsOf(src), 'the module export list is the base revision\'s'),
+    schema: holds(/SAVE_SCHEMA_VERSION = 13\b/.test(src) && /'vectorHoleSave_v1'/.test(src), 'v13, vectorHoleSave_v1')
+  }, [...owners].join(', ')));
+  return out;
+}
+
 export async function runUi2Checks(url, only = null) {
-  const parts = { miasto: miastoChecks, dzielnice: dzielniceChecks, warsztat: warsztatChecks, wyniki: wynikiChecks, nav: navChecks };
+  const parts = { scope: async () => scopeChecks(), miasto: miastoChecks, dzielnice: dzielniceChecks, warsztat: warsztatChecks, wyniki: wynikiChecks, nav: navChecks };
   const out = [];
   for (const [name, fn] of Object.entries(parts)) {
     if (only && !only.includes(name)) continue;

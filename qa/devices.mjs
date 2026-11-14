@@ -224,10 +224,14 @@ async function bleedChecks(url) {
       await g.page.evaluate(([id, t]) => { document.getElementById(id).click(); document.getAnimations().forEach(a => { try { a.pause(); a.currentTime = t; } catch (e) { /* finished */ } }); }, [tab, at]);
       const share = await vividShare(g.page);
       const canvasShown = await g.page.evaluate(() => getComputedStyle(window.game.canvas).visibility !== 'hidden' && !document.body.classList.contains('board-idle'));
-      frames.push({ tab, at, vivid: +(share * 100).toFixed(2), canvasShown });
-      if (frames.length === 1) await shot(g.page, `bleed-${key}-mid-transition`);
+      if (frames.length === 0) await shot(g.page, `bleed-${key}-mid-transition`);
       await g.page.evaluate(() => document.getAnimations().forEach(a => { try { a.finish(); } catch (e) { /* infinite */ } }));
       await g.page.waitForTimeout(80);
+      // GG-UI-02: a menu has vivid colours of its own now (Warsztat's big live vortices, the vortex on GRAJ),
+      // so the frame caught mid-transition is judged against the same screen at rest: the round showing
+      // through would add colour the settled screen does not have.
+      const rest = await vividShare(g.page);
+      frames.push({ tab, at, vivid: +(share * 100).toFixed(2), rest: +(rest * 100).toFixed(2), canvasShown });
     }
     // the same, fast: six switches inside a second, a frame caught after each
     const fast = [];
@@ -238,7 +242,7 @@ async function bleedChecks(url) {
       fast.push(+((await vividShare(g.page)) * 100).toFixed(2));
       await g.page.evaluate(() => document.getAnimations().forEach(a => { try { a.play(); } catch (e) { /* ok */ } }));
     }
-    const bad = frames.filter(f => f.vivid > 1.5 || f.canvasShown);
+    const bad = frames.filter(f => f.vivid > f.rest + 1.5 || f.canvasShown);
     out.push(report(`${DEVICES[key][2]}: switching Miasto ↔ Dzielnice ↔ Warsztat ↔ Wyzwania after a round never shows the round (frames caught mid-transition: no vortex colours, the board hidden)`,
       bad.length === 0 && fast.every(v => v <= 1.5), JSON.stringify({ frames, fast })));
     // and a new round shows the board again

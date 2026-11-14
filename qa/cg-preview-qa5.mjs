@@ -81,6 +81,16 @@ async function tileChecks(pkgUrl) {
             const name = t.querySelector('.district-node-name');
             const status = t.querySelector('.district-node-status');
             if (!chip) continue;
+            // GG-UI-02: on a phone the tile carries no status line (so no chip) -- the frame, the number and the
+            // state mark say it. There the same question is asked of those marks: nothing over the name, the text inside its tile.
+            if (getComputedStyle(status).display === 'none') {
+              const T = t.getBoundingClientRect(), info = t.querySelector('.district-tile-info').getBoundingClientRect(), rg = document.createRange(); rg.selectNodeContents(name);
+              const b = rg.getBoundingClientRect(), marks = [...t.querySelectorAll('.u2-num, .u2-state')].map(m => m.getBoundingClientRect());
+              const framed = t.classList.contains('next-up') ? getComputedStyle(t).borderTopStyle === 'dashed' : t.classList.contains('current');
+              names++;
+              out.push({ n: name.textContent, chip: chip.textContent + ' (marks)', hit: marks.some(a => a.left < b.right && b.left < a.right && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5), chipIn: marks.length === 2 && marks.every(a => a.width > 0 && a.left >= T.left - 0.5 && a.right <= T.right + 0.5 && a.top >= T.top - 0.5 && a.bottom <= T.bottom + 0.5), infoIn: info.top >= T.top - 0.5, statusFits: framed, wrong: t.classList.contains('next-up') !== chip.classList.contains('next') });
+              continue;
+            }
             const a = chip.getBoundingClientRect(), b = name.getBoundingClientRect(), T = t.getBoundingClientRect(), info = t.querySelector('.district-tile-info').getBoundingClientRect();
             const hit = a.left < b.right && b.left < a.right && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
             names++;
