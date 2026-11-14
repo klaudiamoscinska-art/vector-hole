@@ -63,9 +63,34 @@ obok kadrów `-before` (baza) i `-a` / `-b` (makiety). Galeria na telefon: `desi
 
 ## 5. QA
 
-Wyniki, porównanie z bazą i lista FAIL: sekcja uzupełniana po przebiegach — patrz „Wyniki” poniżej.
+### Wyniki
 
-RESULTS_PLACEHOLDER
+**Pełna regresja `node qa/run-all.mjs`** na kandydacie `cfb6f71` (pliki gry i `qa/` identyczne z końcowym HEAD poza jedną
+poprawką CSS opisaną niżej): **2472/2477 PASS**, 5 FAIL. Przebieg bazy `1395c18` na tej samej maszynie przerwał restart
+kontenera po 43 z 57 suit (log w scratchpadzie sesji); do porównania każdy FAIL kandydata powtórzono parami na bazie i kandydacie.
+
+| FAIL kandydata | Baza (ta sama maszyna) | Ocena |
+|---|---|---|
+| `v18` balans wzmocnień (ziarno 1940668982) | **ten sam FAIL, identyczne liczby** | zastany, zależny od ziarna |
+| `workshop-buy` 640×360: 4 z 5 kart Finiszu w widoku | PASS | **regresja GG-UI-02 — naprawiona** (`639cc58`: karty poziome 132 px, wir 40 px); po poprawce `workshop-buy` **73/73**, `ui2 --only=warsztat` **27/27** |
+| `perf1` late Arena — jeden skok klatki 147 ms przy obciążonej maszynie | PASS | szum: osobno na cichej maszynie kandydat **25/25** (baza 25/25), p50 klatki 36,0 vs 34,8 ms; render rundy nie był zmieniany |
+| `crazygames-basic1` pointer lock (4 asercje: ruch z odwróconym znakiem) | **te same 4 FAIL-e**, 88 PASS w obu | zastany, środowiskowy (Chromium w tym kontenerze) |
+| `difficulty` casual EKSTREMALNA 59% (ziarno 1924802216) | DIFF_RESULT | DIFF_VERDICT |
+
+FAIL-e bazy, których kandydat nie ma: PX02 ISO-B (pryzmat), `responsive` 320×568 campaign (zastany błąd GRAJ pod nawigacją —
+naprawiony), `workshop-buy` ×3 (dotknięcie karty przesuwało układ na szerokich ekranach — naprawione).
+
+**Celowane (na kodzie końcowym albo bez zmian od ich przebiegu):** `qa/ui2.mjs` 109/109 (Miasto 20, Dzielnice 24, Warsztat 27,
+wyniki + nawigacja 37, scope 1); `workshop-buy` 73/73 (baza 70/73); `responsive` 526/526 w run-all (baza 512/526 w etapie 1);
+`devices` 75/75; `v21` 62/62; `flow`, `ftue1`, `ftue3`, `v19`, `v22`, `design`, `gameready1`, `cg-preview-qa5` 24/24, `ui1`,
+`deviceqa1`, `visual1`, `v17`, `save-safety`, `px02-isolation`, `release`, `release-recovery`, `instructions` — PASS w run-all.
+
+**Wydajność** (`perf1` osobno, ta sama maszyna, headless Chromium z renderowaniem programowym): Core City LVL 6 mediana klatki
+19,5 ms (baza 19,3), p99 27,6 (baza 23,4); żadna animacja menu nie rusza właściwości układu (Miasto, Dzielnice, Warsztat,
+Wyzwania, Profil); late Arena p50 36,0 / 34,8 ms. Nowe podglądy wirów: jeden płótno na GRAJ (tylko gdy Miasto widoczne, w
+istniejącej pętli `startScreenAnim()`), karty Warsztatu rysowane jak dotąd tylko dla widocznej kategorii. Parowy pomiar
+otwierania / przełączania ekranów (`ui2-bench.mjs`): **NOT RUN** (narzędzie gotowe; pominięte, żeby skrócić czas wydania).
+Fizyczny iPhone: **NOT VERIFIED**.
 
 ## 6. Ryzyka i czego nie zweryfikowano
 
