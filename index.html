@@ -299,14 +299,20 @@
             <span id="hubChargeValue" class="hub-city-pct">0%</span>
           </div>
           <div class="hub-city-progress"><div id="hubCityBar" class="hub-city-progress-fill"></div></div>
+          <!-- GG-UI-02: the whole road LVL 1-6 (levels reached, the current one and its real charge) -- renderCoreRail(). -->
+          <div id="hubCoreRail" class="u2-rail" aria-hidden="true"></div>
         </div>
       </div>
 
       <!-- v14: GRAJ sits in the page flow right under the city it builds --
            no more sticky plate floating over the content. -->
       <button id="btnStart" class="btn btn-primary btn-mega hub-play hub-full-only">
-        <span class="hub-play-main">GRAJ<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></span>
-        <span id="hubPlaySub" class="hub-play-sub">Arena · runda 2:00 · monety i odbudowa Core City</span>
+        <!-- GG-UI-02: the player's own vortex (the worn look, Hole.draw()) on the main action. -->
+        <canvas id="hubPlayOrb" class="u2-play-orb" aria-hidden="true"></canvas>
+        <span class="u2-play-text">
+          <span class="hub-play-main">GRAJ<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></span>
+          <span id="hubPlaySub" class="hub-play-sub">Arena · runda 2:00 · monety i odbudowa Core City</span>
+        </span>
       </button>
 
       <div class="hub-quick-row hub-full-only">
@@ -545,6 +551,8 @@
            effect) and the two columns of the landscape layout on a big
            screen (body.wide). Phone order is kept with CSS order. -->
       <div class="wide-col wide-col-a">
+      <!-- GG-UI-02: the whole campaign in two numbers (renderCampaignMap()). -->
+      <div class="u2-route" id="districtRoute"><span>ODBUDOWANE DZIELNICE <b id="districtRouteDone" translate="no">0/12</b></span><span>MISJE <b id="districtRouteMissions" translate="no">0/240</b></span></div>
       <div id="districtMap" class="district-strip"></div>
 
       <div class="district-head">

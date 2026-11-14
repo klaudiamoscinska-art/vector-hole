@@ -4046,9 +4046,9 @@ body[data-gfx="0"] #hud::before { display: none; }
 }
 /* PX02 review: „WARSZTAT” fits next to a 5-digit wallet down to 320 px. */
 @media (max-width: 340px) {
-  #shopScreen .app-title { font-size: 17px; }
-  #shopScreen .coin-display { padding: 5px 7px; gap: 3px; }
-  #shopScreen .currency-row { gap: 4px; }
+  #shopScreen .app-title, #campaignScreen .app-title { font-size: 17px; } /* GG-UI-02: „DZIELNICE” too (it was cut to „DZIELNI…”) */
+  #shopScreen .coin-display, #campaignScreen .coin-display { padding: 5px 7px; gap: 3px; }
+  #shopScreen .currency-row, #campaignScreen .currency-row { gap: 4px; }
 }
 .inline-bolt { width: 0.95em; height: 0.95em; vertical-align: -0.12em; }
 .mc-boost.off { opacity: 0.38; cursor: not-allowed; }
@@ -4829,10 +4829,11 @@ body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-prev
    the standings header and NELA's bubble (a tap closes it).
    ===================================================================== */
 #hud {
-  --gh-plate: linear-gradient(180deg, rgba(13, 40, 62, 0.94), rgba(4, 16, 29, 0.94));
-  --gh-edge: linear-gradient(135deg, rgba(80, 240, 250, 0.95), rgba(152, 117, 255, 0.55) 55%, rgba(255, 84, 173, 0.75));
-  --gh-quiet: rgba(4, 12, 22, 0.86);
-  --gh-hair: rgba(242, 248, 255, 0.12);
+  /* GG-UI-02: the four materials are the menu screens' too -- one value, on :root (--u2-*). */
+  --gh-plate: var(--u2-plate);
+  --gh-edge: var(--u2-edge);
+  --gh-quiet: var(--u2-quiet);
+  --gh-hair: var(--u2-hair);
   --gh-top: calc(12px + env(safe-area-inset-top, 0px));
   --gh-left: calc(12px + env(safe-area-inset-left, 0px));
   --gh-right: calc(12px + env(safe-area-inset-right, 0px));
@@ -5030,4 +5031,222 @@ body.compact #hud .now-playing { bottom: calc(10px + env(safe-area-inset-bottom,
 @media (prefers-reduced-motion: reduce) {
   #hud-tier-strip.hud-urgent .gh-time, #hud .nela-toast.visible .nela-avatar, #hud #hud-goal.goal-intro, #hud .now-playing.visible .np-icon { animation: none; }
   .gh-ladder i b, #hud .hud-panel, #hud .nela-toast, #hud .now-playing { transition: none; }
+}
+
+/* =====================================================================
+   GG-UI-02 — PREMIUM GAME EXPERIENCE (Miasto, Dzielnice, the briefing,
+   Warsztat, results, reward cards)
+   The approved hybrid of the stage 1 mock-ups (design/ui2/): the HUD's
+   family (GG-UI-01) carried to the menu screens.
+   * Materials: --u2-plate (a top-lit navy plate) with --u2-edge (cyan ->
+     violet -> pink) for a screen's main panel, --u2-quiet + --u2-hair
+     (dark glass, a hairline) for helpers, --u2-edge-gold for rewards and
+     purchases. One soft glow per main panel. No backdrop-filter, no blur.
+   * Colour means something: cyan = yours / active / the main action,
+     gold = a reward or a price, green = done / a reward to collect,
+     pink = danger / the boss.
+   * Display only: every number and state is the game's own (save.hub,
+     save.campaign, the cosmetics' price / unlockSource); no rule, reward
+     or save field is touched.
+   ===================================================================== */
+:root {
+  --u2-plate: linear-gradient(180deg, rgba(13, 40, 62, 0.94), rgba(4, 16, 29, 0.94));
+  --u2-plate-hi: linear-gradient(180deg, rgba(18, 52, 78, 0.96), rgba(6, 22, 38, 0.97));
+  --u2-edge: linear-gradient(135deg, rgba(80, 240, 250, 0.95), rgba(152, 117, 255, 0.55) 55%, rgba(255, 84, 173, 0.75));
+  --u2-edge-gold: linear-gradient(135deg, rgba(239, 203, 99, 0.95), rgba(255, 84, 173, 0.45) 60%, rgba(152, 117, 255, 0.6));
+  --u2-quiet: rgba(4, 12, 22, 0.86);
+  --u2-hair: rgba(242, 248, 255, 0.12);
+  --u2-glow: 0 0 22px rgba(80, 240, 250, 0.16), 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- shared: wallet, gear, navigation (variant A -- no floating dock) ---------- */
+.nav-screen .coin-display, #mainMenu .coin-display { background: var(--u2-quiet); border: 1px solid var(--u2-hair); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+.nav-screen .hub-gear-btn, #mainMenu .hub-gear-btn { background: var(--u2-quiet); border: 1px solid var(--u2-hair); }
+#bottomNav.bottom-nav { background: linear-gradient(180deg, #06141f, #030a14); border-top: 1px solid var(--u2-hair); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5); }
+body.wide #bottomNav.bottom-nav { border-top: 0; border-right: 1px solid var(--u2-hair); box-shadow: 10px 0 30px rgba(0, 0, 0, 0.35); }
+#bottomNav .nav-tab { min-height: 44px; justify-content: center; }
+#bottomNav .nav-tab.active .nav-tab-icon { filter: drop-shadow(0 0 6px rgba(80, 240, 250, 0.6)); }
+
+/* ---------- MIASTO (B): Core City is the screen ---------- */
+#mainMenu .hub-player-chip { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 999px; padding: 4px 12px 4px 4px; }
+#mainMenu:not(.first-run) .hub-city { border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; min-height: 214px; }
+#mainMenu .hub-city-canvas { inset: 0 0 76px 0; height: calc(100% - 76px); -webkit-mask-image: linear-gradient(180deg, #000 0, #000 86%, transparent 100%); mask-image: linear-gradient(180deg, #000 0, #000 86%, transparent 100%); }
+#mainMenu .hub-city-badge { top: 4px; left: 0; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 13px 6px; border-radius: 6px 16px 6px 16px;
+  border: 1.5px solid transparent; background: var(--u2-plate) padding-box, var(--u2-edge) border-box; box-shadow: var(--u2-glow); }
+#mainMenu .hub-city-badge .hub-city-sub { font-size: 9px; letter-spacing: 0.22em; color: var(--nc-cyan); }
+#mainMenu .hub-city-badge .hub-city-lvl { font-size: 25px; line-height: 1; color: #fff; text-shadow: 0 0 14px rgba(80, 240, 250, 0.7); white-space: nowrap; }
+#mainMenu .hub-city-pitch { left: 116px; right: 0; top: 6px; }
+#mainMenu .hub-city-pitch strong { font-size: 16px; }
+#mainMenu .hub-city-pitch span { font-size: 11px; }
+#mainMenu .hub-city-foot { left: 0; right: 0; bottom: 0; height: auto; padding: 9px 13px 11px; gap: 0; border-radius: 16px; border: 1.5px solid transparent;
+  background: var(--u2-plate) padding-box, var(--u2-edge) border-box; box-shadow: var(--u2-glow); }
+#mainMenu .hub-city-next { gap: 10px; }
+#mainMenu .hub-city-next-icon { width: 32px; height: 32px; padding: 7px; box-sizing: border-box; border-radius: 50%; background: rgba(239, 203, 99, 0.12); border: 1px solid rgba(239, 203, 99, 0.6); }
+#mainMenu .hub-city-next-text { white-space: normal; overflow: visible; display: flex; flex-direction: column; line-height: 1.2; }
+#mainMenu .hub-city-next-prefix { display: block; font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--nc-gold); }
+#mainMenu .hub-city-next-text strong { font-size: 12.5px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#mainMenu .hub-city .hub-city-pct { font-size: 22px; color: #fff; text-shadow: 0 0 12px rgba(80, 240, 250, 0.6); }
+/* The road LVL 1-6 replaces the plain bar; a built city (LVL 6) keeps the bar for its repeating premium. */
+#mainMenu .hub-city .hub-city-progress { display: none; }
+#mainMenu .hub-city.is-built .hub-city-progress { display: block; height: 5px; margin-top: 8px; }
+.u2-rail { display: flex; align-items: center; margin-top: 8px; }
+.u2-rail-node { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-size: 10.5px; line-height: 1;
+  color: rgba(255, 255, 255, 0.5); background: #06182a; border: 1.5px solid rgba(255, 255, 255, 0.18); box-sizing: border-box; }
+.u2-rail-node.on { color: #04101D; background: var(--nc-cyan); border-color: #fff; box-shadow: 0 0 8px rgba(80, 240, 250, 0.6); }
+.u2-rail-node.now { color: #fff; background: #0b2c44; border-color: var(--nc-cyan); box-shadow: 0 0 10px rgba(80, 240, 250, 0.75); transform: scale(1.16); }
+.u2-rail-bar { flex: 1; height: 5px; margin: 0 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.u2-rail-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--nc-cyan), var(--nc-violet)); }
+/* GRAJ: the biggest thing on the screen, with the player's own vortex on it. */
+#mainMenu .hub-play { flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; padding: 10px 18px 10px 12px !important; border-radius: 22px; text-align: left;
+  border: 1.5px solid rgba(255, 255, 255, 0.6); box-shadow: 0 0 0 4px rgba(80, 240, 250, 0.12), 0 14px 34px rgba(80, 240, 250, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.5); }
+#mainMenu .u2-play-orb { flex: none; width: 56px; height: 56px; border-radius: 50%; background: #04101D; box-shadow: 0 0 0 2px rgba(4, 16, 29, 0.85), 0 0 14px rgba(4, 16, 29, 0.5); }
+#mainMenu .u2-play-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+#mainMenu .hub-play .hub-play-main { font-size: 32px; justify-content: space-between; }
+#mainMenu .hub-play .hub-play-sub { font-size: 10.5px; line-height: 1.2; }
+/* Kampania / Wyzwanie dnia: cards with a header band in the mode's colour. */
+#mainMenu .hub-quick-tile { flex-direction: column; align-items: stretch; gap: 6px; padding: 0 0 10px; overflow: hidden; border-radius: 16px; border: 1px solid var(--u2-hair); background: var(--u2-plate); }
+#mainMenu .hub-quick-campaign { --q: var(--nc-cyan); }
+#mainMenu .hub-quick-tile .hub-quick-icon { width: auto; height: 28px; box-sizing: border-box; padding: 5px 10px; display: flex; justify-content: flex-start; filter: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--q) 28%, transparent), transparent); border-bottom: 1px solid color-mix(in srgb, var(--q) 38%, transparent); }
+#mainMenu .hub-quick-tile .hub-quick-icon svg { width: 18px; height: 18px; }
+#mainMenu .hub-quick-tile .hub-quick-text { padding: 0 10px; }
+#mainMenu .hub-quick-campaign.is-intro { overflow: visible; }
+#mainMenu .hub-quick-campaign.is-intro .hub-quick-icon { border-radius: 15px 15px 0 0; }
+#mainMenu .hub-chest-row { border-radius: 16px; border: 1.5px solid transparent; background: linear-gradient(90deg, rgba(20, 30, 44, 0.95), rgba(8, 14, 24, 0.96)) padding-box, linear-gradient(135deg, var(--u2-hair), var(--u2-hair)) border-box; }
+#mainMenu .hub-chest-row.ready { background: linear-gradient(90deg, rgba(60, 46, 12, 0.92), rgba(10, 14, 22, 0.95)) padding-box, var(--u2-edge-gold) border-box; }
+/* A phone: the panorama runs edge to edge behind the level badge and the reward capsule. */
+@media (max-width: 559px) {
+  body:not(.wide) #mainMenu:not(.first-run) .hub-city { max-width: none; width: calc(100% + 32px); margin: 0 -16px; }
+  body:not(.wide) #mainMenu .hub-city-badge { left: 16px; }
+  body:not(.wide) #mainMenu .hub-city-pitch { left: 132px; right: 16px; }
+  body:not(.wide) #mainMenu .hub-city-foot { left: 16px; right: 16px; }
+}
+/* Short phones (320x568 ...): a smaller panorama; the rail, the reward and GRAJ stay whole. */
+@media (max-height: 700px) {
+  body:not(.wide) #mainMenu:not(.first-run) .hub-city { min-height: 160px; }
+  body:not(.wide) #mainMenu .hub-city-canvas { inset: 0 0 68px 0; height: calc(100% - 68px); }
+  body:not(.wide) #mainMenu .hub-city-badge .hub-city-lvl { font-size: 20px; }
+  body:not(.wide) #mainMenu .hub-city-pitch strong { font-size: 13.5px; }
+  body:not(.wide) #mainMenu .hub-city-pitch span { font-size: 10px; }
+  body:not(.wide) #mainMenu .hub-city-foot { padding: 7px 11px 9px; }
+  body:not(.wide) #mainMenu .hub-city-next-icon { width: 28px; height: 28px; padding: 6px; }
+  body:not(.wide) #mainMenu .hub-play { padding: 7px 14px 7px 9px !important; gap: 11px; }
+  body:not(.wide) #mainMenu .u2-play-orb { width: 46px; height: 46px; }
+  body:not(.wide) #mainMenu .hub-play .hub-play-main { font-size: 26px; }
+  body:not(.wide) #mainMenu .hub-quick-tile { gap: 4px; padding-bottom: 7px; }
+  body:not(.wide) #mainMenu .hub-quick-tile .hub-quick-icon { height: 22px; padding: 3px 9px; }
+  body:not(.wide) #mainMenu .hub-quick-tile .hub-quick-icon svg { width: 15px; height: 15px; }
+}
+@media (max-width: 350px) {
+  #mainMenu .hub-player-chip { padding: 0; border-color: transparent; background: none; }
+  body:not(.wide) #mainMenu .hub-city-pitch { left: 112px; }
+  body:not(.wide) #mainMenu .hub-city-badge { padding: 6px 10px 5px; }
+}
+/* Desktop / landscape: the city keeps its column; the same badge, capsule and rail inside it. */
+body.wide #mainMenu:not(.first-run) .hub-city { min-height: 0; }
+body.wide #mainMenu .hub-city-badge { left: 0; top: 0; }
+body.wide #mainMenu .hub-play { padding: 18px 22px 18px 16px !important; }
+body.wide #mainMenu .u2-play-orb { width: 72px; height: 72px; }
+body.wide #mainMenu .hub-quick-row .hub-quick-tile { padding: 0 0 12px; }
+body.compact #mainMenu .hub-play { padding: 8px 14px 8px 10px !important; }
+body.compact #mainMenu .u2-play-orb { width: 46px; height: 46px; }
+body.compact #mainMenu .hub-quick-row .hub-quick-tile { padding: 0 0 7px; gap: 4px; }
+body.compact #mainMenu .hub-quick-tile .hub-quick-icon { width: auto; height: 22px; padding: 3px 9px; }
+body.compact #mainMenu .hub-city-badge .hub-city-lvl { font-size: 19px; }
+body.compact #mainMenu .hub-city-pitch { left: 104px; }
+body.compact #mainMenu .hub-city-foot { padding: 6px 11px 8px; }
+body.compact #mainMenu .hub-city-next-icon { width: 26px; height: 26px; padding: 5px; }
+body.compact #mainMenu .u2-rail { margin-top: 5px; }
+body.wide #mainMenu .hub-city-canvas { border-radius: 16px; }
+
+/* ---------- DZIELNICE (B on a phone; the game's own grid + B's marks, route and boss on wide screens) ---------- */
+.u2-route { order: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; max-width: 440px; margin: -2px auto -4px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: var(--nc-text-dim); white-space: nowrap; }
+.u2-route b { color: var(--nc-cyan); font-family: var(--font-display); font-weight: 400; font-size: 12px; letter-spacing: 0.04em; }
+#campaignScreen .district-tile { border-radius: 12px; border: 1.5px solid color-mix(in srgb, var(--district-color) 55%, transparent); }
+#campaignScreen .district-tile .u2-num { position: absolute; z-index: 2; top: 4px; left: 5px; padding: 1px 4px; border-radius: 5px; font-family: var(--font-display); font-size: 9px; line-height: 1.3;
+  color: #04101D; background: var(--district-color); }
+#campaignScreen .district-tile .u2-state { position: absolute; z-index: 2; top: 4px; right: 4px; height: 15px; min-width: 15px; padding: 0 3px; box-sizing: border-box; border-radius: 8px;
+  display: grid; place-items: center; font-family: var(--font-display); font-size: 8px; letter-spacing: 0.04em; line-height: 1; }
+#campaignScreen .u2-state svg { width: 9px; height: 9px; display: block; }
+#campaignScreen .u2-state.done { background: var(--nc-green); color: #04101D; }
+#campaignScreen .u2-state.now { background: var(--nc-gold); color: #04101D; padding: 0 5px; }
+#campaignScreen .u2-state.lock { background: rgba(4, 16, 29, 0.85); color: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.2); }
+#campaignScreen .district-tile.active { border-color: #fff; box-shadow: 0 0 0 2px var(--district-color), 0 0 16px color-mix(in srgb, var(--district-color) 55%, transparent); }
+#campaignScreen .district-tile.locked { opacity: 1; border-color: rgba(255, 255, 255, 0.12); }
+#campaignScreen .district-tile.locked .district-tile-canvas { filter: grayscale(0.6) brightness(0.8); }
+#campaignScreen .district-tile.locked .u2-num { background: #223848; color: rgba(255, 255, 255, 0.65); }
+#campaignScreen .district-tile.locked.next-up { border: 1.5px dashed var(--district-color); }
+#campaignScreen .district-tile.rebuilt .district-status-text { color: var(--nc-green); }
+/* The district's header in its own colour. */
+#campaignScreen .district-head { padding: 8px 12px; box-sizing: border-box; border-radius: 12px 12px 0 0; border-left: 3px solid var(--d-color, var(--nc-cyan));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--d-color, #50F0FA) 28%, transparent), transparent 85%); }
+#campaignScreen .district-head-bar { margin-top: -12px; }
+/* The next mission: the screen's main panel. */
+#campaignScreen .mission-card-next, #missionBriefing .briefing-sheet .mission-card, #missionResultScreen .mission-card-mini, #missionStartOverlay .mission-card {
+  border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, linear-gradient(135deg, var(--d-color), rgba(152, 117, 255, 0.5) 60%, rgba(255, 84, 173, 0.6)) border-box; }
+.mission-card .mc-goal { background: rgba(255, 255, 255, 0.04); border: 1px solid var(--u2-hair); }
+.mission-card .mc-goal.is-boss { border: 1.5px solid rgba(255, 84, 173, 0.7); background: linear-gradient(90deg, rgba(255, 84, 173, 0.16), rgba(152, 117, 255, 0.08)); box-shadow: 0 0 14px rgba(255, 84, 173, 0.18); }
+.mission-card .mc-goal.is-boss .mc-goal-icon { width: 34px; height: 34px; filter: drop-shadow(0 0 6px rgba(255, 84, 173, 0.6)); }
+.mission-card-mini .mc-goal.is-boss .mc-goal-icon { width: 26px; height: 26px; }
+.mission-card .mc-goal-text { flex: 1; min-width: 0; }
+.u2-boss-tag { flex: none; margin-left: auto; padding: 2px 7px; border-radius: 6px; font-family: var(--font-display); font-weight: 400; font-size: 9.5px; line-height: 1.3; letter-spacing: 0.14em; color: #04101D; background: var(--nc-pink); }
+/* All missions as a route: a node per mission, the one to play now in gold, the boss marked. */
+#campaignScreen .mission-list { position: relative; }
+#missionList .mission-row { position: relative; margin-left: 18px; width: calc(100% - 18px); background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 12px; }
+#missionList .mission-row::before { content: ''; position: absolute; left: -15px; top: 50%; width: 9px; height: 9px; margin-top: -5px; box-sizing: border-box; border-radius: 50%; background: #0b2233; border: 2px solid rgba(255, 255, 255, 0.25); z-index: 1; }
+#missionList .mission-row::after { content: ''; position: absolute; left: -11.5px; top: -8px; bottom: 50%; width: 2px; background: rgba(255, 255, 255, 0.14); }
+#missionList .mission-row:first-child::after { display: none; }
+#missionList .mission-row.done::before { background: var(--nc-green); border-color: var(--nc-green); }
+#missionList .mission-row.done::after { background: rgba(70, 217, 154, 0.55); }
+#missionList .mission-row.current { border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge-gold) border-box; box-shadow: 0 0 16px rgba(239, 203, 99, 0.2); }
+#missionList .mission-row.current::before { width: 13px; height: 13px; left: -17.5px; margin-top: -7px; background: var(--nc-gold); border-color: #fff; }
+#missionList .mission-row.current .mission-row-id { color: var(--nc-gold); }
+#missionList .mission-row.is-boss:not(.done)::before { border-color: var(--nc-pink); }
+#missionList .mission-row-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#missionList .mission-row-name .u2-boss-tag { margin-left: 0; font-size: 8.5px; padding: 1px 5px; }
+/* The briefing: a header band in the district's colour. */
+#missionBriefing .briefing-sheet .mc-head { padding: 8px 46px 8px 10px; border-radius: 12px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--d-color) 34%, transparent), transparent 90%); border-left: 3px solid var(--d-color); }
+#missionBriefing .briefing-sheet .mc-name { margin-top: 2px; }
+
+/* A phone, tall enough: all twelve districts at once, 4 x 3. */
+@media (min-height: 701px) {
+  body:not(.wide) #campaignScreen .district-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; overflow: visible; padding: 2px 0 0; -webkit-mask-image: none; mask-image: none; }
+  body:not(.wide) #campaignScreen .district-tile { flex: none; width: auto; min-width: 0; height: 66px; }
+}
+/* A short phone (320x568, 375x667 ...): one row of whole tiles -- three or four to a page, snapping, the cut edge fading -- so the next mission and GRAJ stay in view. */
+@media (max-height: 700px) {
+  body:not(.wide) #campaignScreen .district-strip { gap: 8px; padding: 2px 0 4px; scroll-snap-type: x mandatory; }
+  body:not(.wide) #campaignScreen .district-tile { flex: 0 0 calc((100% - 24px) / 4); height: 58px; scroll-snap-align: start; }
+}
+@media (max-height: 700px) and (max-width: 359px) {
+  body:not(.wide) #campaignScreen .district-tile { flex-basis: calc((100% - 16px) / 3); }
+}
+body:not(.wide) #campaignScreen .district-tile .district-tile-info { padding: 3px 5px 4px; gap: 2px; background: linear-gradient(180deg, transparent, rgba(4, 16, 29, 0.94) 45%); }
+body:not(.wide) #campaignScreen .district-tile .district-node-name { font-size: 9.5px; line-height: 1.08; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body:not(.wide) #campaignScreen .district-tile .district-node-status { display: none; }
+@media (max-width: 359px) {
+  body:not(.wide) #campaignScreen .district-tile .district-node-name { font-size: 10px; }
+  .u2-route { font-size: 9px; letter-spacing: 0.06em; }
+}
+/* Wide screens keep the game's grid; the status line stays, the marks sit above it. */
+body.wide .u2-route { max-width: none; margin: 0; }
+body.wide #campaignScreen .district-tile { height: 72px; }
+/* (landscape phones / the CrazyGames frame: low tiles -- the mark says the state, the status line gives its room to a two-line name) */
+body.compact #campaignScreen .district-tile { height: 58px; }
+body.compact #campaignScreen .district-tile .district-node-status { display: none; }
+body.compact #campaignScreen .district-tile .district-node-name { font-size: 10.5px; }
+
+/* CRITICAL FIX 2 -- a short phone: GRAJ rides the bottom of the view (above the navigation) while the
+   mission's goals, time, reward and star conditions scroll above it; at the card's end it sits in its
+   own place, so nothing stays covered. */
+@media (max-height: 700px) {
+  body:not(.wide) #missionNextCard .mc-play { position: sticky; bottom: 8px; z-index: 3; box-shadow: 0 -10px 16px rgba(4, 16, 29, 0.92), 0 8px 22px rgba(80, 240, 250, 0.3); }
+  body:not(.wide) #missionNextCard .mc-stars { flex-wrap: nowrap; gap: 4px; }
+  body:not(.wide) #missionNextCard .mc-star { padding: 3px 6px; font-size: 10.5px; white-space: nowrap; }
+  body:not(.wide) #campaignScreen #districtRouteDone, body:not(.wide) #campaignScreen #districtRouteMissions { font-size: 11px; }
+  body:not(.wide) #campaignScreen .district-strip.more-right { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent); }
+  body:not(.wide) #campaignScreen .district-strip.more-left { -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px); mask-image: linear-gradient(90deg, transparent, #000 16px); }
+  body:not(.wide) #campaignScreen .district-strip.more-left.more-right { -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 }
