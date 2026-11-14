@@ -75,7 +75,7 @@ kontenera po 43 z 57 suit (log w scratchpadzie sesji); do porównania każdy FAI
 | `workshop-buy` 640×360: 4 z 5 kart Finiszu w widoku | PASS | **regresja GG-UI-02 — naprawiona** (`639cc58`: karty poziome 132 px, wir 40 px); po poprawce `workshop-buy` **73/73**, `ui2 --only=warsztat` **27/27** |
 | `perf1` late Arena — jeden skok klatki 147 ms przy obciążonej maszynie | PASS | szum: osobno na cichej maszynie kandydat **25/25** (baza 25/25), p50 klatki 36,0 vs 34,8 ms; render rundy nie był zmieniany |
 | `crazygames-basic1` pointer lock (4 asercje: ruch z odwróconym znakiem) | **te same 4 FAIL-e**, 88 PASS w obu | zastany, środowiskowy (Chromium w tym kontenerze) |
-| `difficulty` casual EKSTREMALNA 59% (ziarno 1924802216) | DIFF_RESULT | DIFF_VERDICT |
+| `difficulty` casual EKSTREMALNA 59% (ziarno 1924802216) | **ten sam FAIL, identyczne liczby** (59%; ekspert: 94%, nieukończone M112 M180 w obu) | zastany, zależny od ziarna; Kampania nie była zmieniana |
 
 FAIL-e bazy, których kandydat nie ma: PX02 ISO-B (pryzmat), `responsive` 320×568 campaign (zastany błąd GRAJ pod nawigacją —
 naprawiony), `workshop-buy` ×3 (dotknięcie karty przesuwało układ na szerokich ekranach — naprawione).
