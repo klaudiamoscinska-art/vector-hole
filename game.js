@@ -8171,7 +8171,7 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   canvas.__siteLabel = null;
   // v17.1: the building a round grows, called out -- the hook made visible
   // (not while a new stage's banner has the stage).
-  if (site && opts.siteLabel && !reveal) {
+  if (site && opts.siteLabel && !opts.noSiteTag && !reveal) {
     ctx.save();
     ctx.font = `700 10px ${FONT_UI}`;
     const label = opts.siteLabel, tw = ctx.measureText(label).width;
@@ -8274,6 +8274,11 @@ function splitMissionCard(card, footerSel) {
   card.prepend(scroll);
   return scroll;
 }
+
+/* GG-UI-02: marks shared by the district tiles and the mission cards. */
+const U2_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const U2_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
+const U2_BOSS_TAG = '<span class="u2-boss-tag">BOSS</span>';
 
 const DISTRICT_COLORS = { plac: '#50F0FA', park: '#46D99A', port: '#EFCB63', galeria: '#FF54AD', dachy: '#9875FF', rdzen: '#CBD5E1' };
 CHAPTER_II.forEach(d => { DISTRICT_COLORS[d.id] = d.color; });
@@ -11843,6 +11848,14 @@ class Game {
         swatch.style.borderColor = 'rgba(255,255,255,0.3)';
       }
       card.appendChild(swatch);
+      // GG-UI-02: where the item comes from -- its real source only (the
+      // starting set, coins, prisms, a reward); the game has no rarity.
+      const src = document.createElement('span');
+      const kind = item.unlockSource ? 'reward' : (prisms ? 'prism' : (price > 0 ? 'coin' : 'start'));
+      src.className = 'u2-src ' + kind;
+      src.setAttribute('aria-hidden', 'true');
+      src.innerHTML = { reward: '<svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z" fill="currentColor"/></svg>', prism: '◆', coin: '◇', start: '<i></i>' }[kind];
+      card.appendChild(src);
 
       const body = document.createElement('div');
       body.className = 'skin-card-body';
@@ -12011,6 +12024,13 @@ class Game {
     buy.classList.toggle('hidden', !offer || offer.state === 'reward');
     document.getElementById('btnWarsztatEarn').classList.toggle('hidden', !offer || offer.state !== 'short');
     document.querySelectorAll('#shopScreen .skin-card.looking').forEach(c => c.classList.remove('looking'));
+    // GG-UI-02: the state of what the showroom shows, in one plate -- worn
+    // (nothing is being looked at), for sale and affordable, out of reach
+    // (in its real currency), or a reward. Always there: no layout shift.
+    const st = !f ? ['worn', 'WYPOSAŻONE'] : offer.state === 'buy' ? ['buy', 'DO KUPIENIA']
+      : offer.state === 'short' ? ['short', offer.prisms ? 'ZA MAŁO PRYZMATÓW' : 'ZA MAŁO MONET'] : ['reward', 'NAGRODA'];
+    const badge = document.getElementById('warsztatStatus');
+    if (badge) { badge.className = 'u2-status ' + st[0]; if (badge.textContent !== st[1]) badge.textContent = st[1]; }
     if (!f) return;
     const card = document.querySelector(`#shopScreen .skin-card[data-item="${f.item.id}"]`);
     if (card && !card.closest('.hidden')) card.classList.add('looking');
@@ -12286,7 +12306,7 @@ class Game {
       let any = false;
       if (visible('mainMenu')) {
         if (this.isFirstRun()) drawWelcomeScene(document.getElementById('hubWelcomeScene'), t);
-        else this.renderHubCity(t);
+        else { this.renderHubCity(t); this.drawHoleThumb(document.getElementById('hubPlayOrb'), this.save.selected, 'none', t); }
         any = true;
       }
       if (visible('campaignScreen')) { this.renderDistrictTiles(t); any = true; }
@@ -12296,6 +12316,26 @@ class Game {
       this.screenAnimRaf = any ? requestAnimationFrame(tick) : null;
     };
     this.screenAnimRaf = requestAnimationFrame(tick);
+  }
+
+  /** GG-UI-02: the road LVL 1-6 under the next reward -- display only, read
+   *  from save.hub (levels below the current one are reached, the current
+   *  one carries its real charge toward the next; a built LVL6 city keeps
+   *  the plain bar for the charge of its repeating premium). */
+  renderCoreRail(level, pct) {
+    const rail = document.getElementById('hubCoreRail');
+    if (!rail) return;
+    const top = 6, L = clamp(level, 1, top), c = clamp(pct, 0, 100);
+    const key = L + ':' + Math.round(c);
+    if (rail.dataset.key === key) return;
+    rail.dataset.key = key;
+    let h = '';
+    for (let n = 1; n <= top; n++) {
+      h += `<span class="u2-rail-node${n < L ? ' on' : n === L ? ' now' : ''}">${n}</span>`;
+      if (n < top) h += `<span class="u2-rail-bar"><i style="width:${n < L ? 100 : n === L ? Math.round(c) : 0}%"></i></span>`;
+    }
+    rail.innerHTML = h;
+    document.getElementById('hubHeroStage').classList.toggle('is-built', level >= top);
   }
 
   /** 0..1 share of the Core City skyline standing: one sixth per level
@@ -12339,7 +12379,9 @@ class Game {
       if (age >= 0 && age < CITY_REVEAL_SECONDS) reveal = { level: this.hubCityReveal.level, age, still: prefersReducedMotion() };
       else this.hubCityReveal = null;
     }
-    drawCityScene(cv, this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK', skyTop: this.hubCityReserve, reveal });
+    // GG-UI-02: on a very short panorama (320x568) the crane's tag has no sky
+    // left under the headline -- the crane stays, the tag is not drawn.
+    drawCityScene(cv, this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK', noSiteTag: cv.clientHeight - this.hubCityReserve < 56, skyTop: this.hubCityReserve, reveal });
   }
 
   renderDistrictTiles(t) {
@@ -13067,6 +13109,7 @@ class Game {
     document.getElementById('hubChargeValue').textContent = Math.round(pct) + '%';
     document.getElementById('hubLevelLabel').textContent = `LVL ${level}`;
     document.getElementById('hubCityBar').style.width = pct + '%';
+    this.renderCoreRail(level, pct);
     const nextReward = CORE_CITY_LEVEL_REWARDS[level + 1];
     const nextRewardLabel = nextReward ? nextReward.label : 'Premia';
     const nextRewardCoins = nextReward ? nextReward.coins : CONFIG.hub.milestoneFallbackCoins;
@@ -14347,7 +14390,7 @@ class Game {
    *  progress, for the cards shown before a mission starts. */
   missionStepRows(def) {
     const g = def.goal;
-    if (g.type === 'objectives') return g.steps.map(st => ({ ...this.objectiveIconDef(st, def.setup), label: st.label }));
+    if (g.type === 'objectives') return g.steps.map(st => ({ ...this.objectiveIconDef(st, def.setup), label: st.label, boss: !!st.landmark }));
     return [{ ...this.campaignGoalIcon(g.entityType || 'fragment'), label: g.label }];
   }
 
@@ -14370,7 +14413,7 @@ class Game {
     const D = DIFFICULTY[def.diff || 1];
     const diff = `<span class="mc-diff" style="--diff-color:${D.color}">${this.diffBarsHtml(def.diff || 1)}${D.label}</span>`;
     const rows = this.missionStepRows(def).map((r, i) =>
-      `<li class="mc-goal"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span></li>`).join('');
+      `<li class="mc-goal${r.boss ? ' is-boss' : ''}"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span>${r.boss ? U2_BOSS_TAG : ''}</li>`).join('');
     const reward = done
       ? '✓ nagroda odebrana'
       : `◇ +${def.reward.coins} monet${def.reward.unlockDistrict ? (FREE_TRACK_DISTRICTS.includes(def.reward.unlockDistrict) ? ' · nowa dzielnica' : ' · nowa dzielnica i jej utwór') : ''}${def.reward.unlockSkin ? ' · Wir finałowy' : ''}`;
@@ -14606,7 +14649,7 @@ class Game {
     const card = document.getElementById('missionStartCard');
     card.style.setProperty('--d-color', DISTRICT_COLORS[def.district] || '#50F0FA');
     const rows = this.missionStepRows(def).map((r, i) =>
-      `<li class="mc-goal"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span></li>`).join('');
+      `<li class="mc-goal${r.boss ? ' is-boss' : ''}"><span class="mc-goal-num">${i + 1}</span><span class="mc-goal-icon" style="color:${r.color}"><svg viewBox="0 0 24 24">${r.icon}</svg></span><span class="mc-goal-text">${r.label}</span>${r.boss ? U2_BOSS_TAG : ''}</li>`).join('');
     const twists = (def.twists || []).map(t => `<span class="mc-twist" style="--t-color:${TWIST_INFO[t].color}"><svg viewBox="0 0 24 24">${GOAL_ICONS[t] || GOAL_ICONS.runner}</svg>${TWIST_INFO[t].label}</span>`).join('');
     const boosts = (this.mission.boosters || []).map(id => { const b = MISSION_BOOSTERS.find(x => x.id === id); return `<span class="mc-twist boost" style="--t-color:${b.color}"><svg viewBox="0 0 24 24">${CARD_ICONS[b.icon]}</svg>${b.name.toUpperCase()}</span>`; }).join('');
     card.innerHTML = `<div class="mc-head"><span class="mc-code">${missionCode(def)}</span><span class="mc-eyebrow">${district.name.toUpperCase()}</span>` +
@@ -14815,6 +14858,7 @@ class Game {
     const currentId = nextMission ? nextMission.district : null;
     const nextLocked = DISTRICTS.find(d => !this.save.campaign.unlockedDistricts.includes(d.id));
     this.districtRevealed = this.districtRevealed || new Set();
+    let rebuiltCount = 0;
     DISTRICTS.forEach(d => {
       const unlocked = this.save.campaign.unlockedDistricts.includes(d.id);
       const node = document.createElement('button');
@@ -14842,13 +14886,24 @@ class Game {
       const chip = isCurrent ? '<span class="district-tile-chip">TERAZ</span>' : (isNext ? '<span class="district-tile-chip next">NASTĘPNA</span>' : '');
       // R5-01: the chip sits on the status line -- pinned to the tile's top it ran into a two-line name.
       // (On the next district it replaces "ZABLOKOWANA": both don't fit, and the lock says it.)
+      // GG-UI-02: the district's number on the route (01-12) and one state
+      // mark -- rebuilt (check), open (its own missions done / all), locked.
+      const rebuilt = doneCount === d.missions.length;
+      node.classList.toggle('rebuilt', rebuilt);
+      if (rebuilt) rebuiltCount++;
+      const mark = rebuilt ? `<span class="u2-state done">${U2_CHECK}</span>`
+        : (unlocked ? `<span class="u2-state now" translate="no">${doneCount}/${d.missions.length}</span>` : `<span class="u2-state lock">${U2_LOCK}</span>`);
       node.innerHTML = `<canvas class="district-tile-canvas" data-district="${d.id}"${isNext ? ' data-next="1"' : ''}></canvas>` +
-        `<span class="district-tile-info"><span class="district-node-name">${d.name}</span>` +
+        `<span class="u2-num" translate="no">${String(DISTRICTS.indexOf(d) + 1).padStart(2, '0')}</span>${mark}` +
+        `<span class="district-tile-info"><span class="district-node-name" data-num="${String(DISTRICTS.indexOf(d) + 1).padStart(2, '0')}">${d.name}</span>` +
         `<span class="district-node-status">${chip}<span class="district-status-text">${isNew ? 'NOWA' : (unlocked ? (doneCount === d.missions.length ? '✓ ODBUDOWANA' : `${doneCount}/${d.missions.length} misji`) : (isNext ? '' : 'ZABLOKOWANA'))}</span></span>` +
         `<span class="district-tile-bar"><span style="width:${unlocked ? pctDone : 0}%"></span></span></span>`;
       node.addEventListener('click', () => unlocked ? this.selectCampaignDistrict(d.id) : this.openLockedDistrictInfo(d));
       wrap.appendChild(node);
     });
+    // GG-UI-02: the whole campaign at a glance -- districts rebuilt, missions done (the save's own counts).
+    document.getElementById('districtRouteDone').textContent = `${rebuiltCount}/${DISTRICTS.length}`;
+    document.getElementById('districtRouteMissions').textContent = `${CAMPAIGN_MISSIONS.filter(m => this.save.campaign.completed[m.id]).length}/${CAMPAIGN_MISSIONS.length}`;
     const playableUnlocked = DISTRICTS.filter(d => this.save.campaign.unlockedDistricts.includes(d.id));
     const remembered = this.selectedDistrictId && playableUnlocked.find(d => d.id === this.selectedDistrictId);
     // VISUAL-1: with nothing remembered, Dzielnice opens on the district
@@ -14935,13 +14990,14 @@ class Game {
       const prevDone = i === 0 || c.completed[district.missions[i - 1]];
       const bits = c.stars[id] || 0;
       starCount += Game.starCount(bits);
-      const first = this.missionStepRows(def)[0];
+      const steps = this.missionStepRows(def), first = steps[0];
+      const boss = steps.some(r => r.boss);
       const D = DIFFICULTY[def.diff || 1];
       const row = document.createElement('button');
-      row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '') + (id === nextId ? ' current' : '');
+      row.className = 'mission-row' + (done ? ' done' : '') + (!prevDone ? ' locked' : '') + (id === nextId ? ' current' : '') + (boss ? ' is-boss' : '');
       const icon = done ? CHECK_ICON : (prevDone ? PLAY_ICON : LOCK_ICON);
       row.innerHTML = `<span class="mission-row-id">${missionCode(def)}</span>` +
-        `<span class="mission-row-main"><span class="mission-row-name">${def.name}</span>` +
+        `<span class="mission-row-main"><span class="mission-row-name">${def.name}${boss ? U2_BOSS_TAG : ''}</span>` +
         `<span class="mission-row-goal"><span class="mission-row-goal-icon" style="color:${first.color}"><svg viewBox="0 0 24 24">${first.icon}</svg></span>${first.label}${def.goal.steps && def.goal.steps.length > 1 ? ` <em>+${def.goal.steps.length - 1} ${plural(def.goal.steps.length - 1, ['cel', 'cele', 'celów'])}</em>` : ''}</span></span>` +
         `<span class="mission-row-medal" title="${D.label}">${this.starsHtml(bits, 'mini')}<span class="mission-row-diff" style="--diff-color:${D.color}">${this.diffBarsHtml(def.diff || 1)}</span></span>` +
         `<span class="mission-row-icon">${icon}</span>`;
@@ -22199,6 +22255,15 @@ const I18N_EN = {
   "ZAPISZ": "SAVE",
   "ZATOKA HOLOGRAMÓW": "HOLOGRAM BAY",
   "ZAŁOŻONE": "EQUIPPED",
+  // GG-UI-02 (Dzielnice counters, the boss mark, the Warsztat status plate)
+  "ODBUDOWANE DZIELNICE": "DISTRICTS REBUILT",
+  "MISJE": "MISSIONS",
+  "BOSS": "BOSS",
+  "WYPOSAŻONE": "EQUIPPED",
+  "DO KUPIENIA": "AVAILABLE TO BUY",
+  "ZA MAŁO MONET": "NOT ENOUGH COINS",
+  "ZA MAŁO PRYZMATÓW": "NOT ENOUGH PRISMS",
+  "NAGRODA": "REWARD",
   "ZAŁÓŻ": "EQUIP",
   "ZAŁÓŻ W WARSZTACIE": "EQUIP IN WORKSHOP",
   "ZDOBYTE MONETY": "COINS EARNED",

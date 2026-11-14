@@ -1,0 +1,83 @@
+{
+ "base": "1395c18814f4b775850d39b45859908e4c552704",
+ "results": [
+  {
+   "id": "Q1",
+   "name": "pliki gry bez zmian",
+   "status": "PASS",
+   "detail": "game.js = 1395c18, style.css = 1395c18, index.html = 1395c18; zmiany poza design/ui2: brak"
+  },
+  {
+   "id": "Q2",
+   "name": "zgodność danych PRZED/A/B",
+   "status": "PASS",
+   "detail": "65/65 scen × kadr z identycznym zapisem i wartościami na ekranie"
+  },
+  {
+   "id": "Q3",
+   "name": "wartości profilu na ekranie = zapis",
+   "status": "PASS",
+   "detail": "36/36 kadrów Miasta: monety, pryzmaty, LVL i % zgodne z zapisem"
+  },
+  {
+   "id": "Q4",
+   "name": "brak błędów konsoli (gra + nakładki)",
+   "status": "PASS",
+   "detail": "195/195 kadrów bez błędów"
+  },
+  {
+   "id": "Q5",
+   "name": "makiety: brak poziomego przewijania strony gry",
+   "status": "PASS",
+   "detail": "195/195"
+  },
+  {
+   "id": "Q6",
+   "name": "ucięte napisy PL (A/B względem PRZED)",
+   "status": "PASS",
+   "detail": "55 scen × kadr; nowe ucięcia: brak"
+  },
+  {
+   "id": "Q7",
+   "name": "dłuższe napisy EN (A/B względem PRZED)",
+   "status": "PASS",
+   "detail": "10 scen × kadr; nowe ucięcia: brak"
+  },
+  {
+   "id": "Q8a",
+   "name": "Dzielnice 320×568: GRAJ dostępny",
+   "status": "PASS",
+   "detail": "PRZED: zakryty (GRAJ od 541 px, nawigacja od 506 px); A: dostępny; B: dostępny"
+  },
+  {
+   "id": "Q8b",
+   "name": "2560×1440: warstwy menu / odprawy stabilne",
+   "status": "PASS",
+   "detail": "3 uruchomienia × Miasto, Dzielnice, odprawa: za każdym razem te same widoczne warstwy; skala interfejsu 1.600"
+  },
+  {
+   "id": "Q9",
+   "name": "galeria na iPhonie 390×844",
+   "status": "PASS",
+   "detail": "70 kart, 223 obrazów (brakujących: 0); przewijanie poziome strony: 0 px (obok siebie: 0 px); przełącznik globalny ok, filtr ok, obok siebie ok, powiększenie ok; błędy konsoli: 0"
+  },
+  {
+   "id": "Q10",
+   "name": "wir: identyczny stan rundy w wariantach",
+   "status": "PASS",
+   "detail": "16 nagrań (4 skórki × 4 warianty): wynik/promień/pozycja/losowania = 880/92/774/1493/9153"
+  },
+  {
+   "id": "Q11",
+   "name": "czytelność na fizycznym telefonie",
+   "status": "NOT VERIFIED",
+   "detail": "sprawdzone tylko w emulacji Chromium (390×844, 320×568, 360×800); brak testu na urządzeniu"
+  },
+  {
+   "id": "Q12",
+   "name": "pełna regresja produkcyjna (qa/run-all.mjs)",
+   "status": "NOT RUN",
+   "detail": "celowo — gra nie jest zmieniana; uruchomiony tylko qa/responsive.mjs na bazie dla dwóch znanych problemów"
+  }
+ ]
+}

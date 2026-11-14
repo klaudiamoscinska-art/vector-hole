@@ -40,6 +40,7 @@ import { stage, openScene } from './ui1-shots.mjs';
 const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 const want = (tag) => !ONLY.length || ONLY.includes(tag);
 const BASE_REV = process.env.VH_UI1_BASE || 'b337835ea9d28070744e4b49058c86772b1990a8';
+const HEAD_REV = process.env.VH_UI1_HEAD || '1122a5331ce080868aa35c171e917dd7183ca78c'; // the stage's last commit (PR #100's head)
 const PHONE = { width: 390, height: 844, mobile: true };
 const FRAMES = [
   ['320x568', { width: 320, height: 568, mobile: true }], ['360x800', { width: 360, height: 800, mobile: true }],
@@ -702,10 +703,16 @@ export async function runUi1Checks(baseUrl) {
     // every changed line of game.js sits in a HUD function (vs the base revision)
     const HUD_FN = /^(hudMinimap|setTierBadge|setHudUrgent|setHudScore|hudSet|updateHUD|updateCampaignHUD|campaignGoalItems|drawMinimapHoles|drawMinimapDiamond|drawMinimapView|drawCampaignMinimap|drawMinimap|drawMinimapLabel|fadeHudUnderHole|hideNelaToast|showNelaToast|drawJuiceScreen|hudObstacles|drawHudStack|drawFrenzyVignette|drawFrenzyTimer|drawComboHud|drawChallengeTarget|minimap|<top> const HUD_TIER_STEPS)$/;
     let diff = null;
-    try { diff = execSync(`git diff -U0 ${BASE_REV} -- game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { diff = null; }
-    if (diff == null) console.log(`NOT RUN  U11 changed lines vs the base revision ${BASE_REV.slice(0, 7)} (git does not have it here)`);
+    // GG-UI-02: this is the scope of the GG-UI-01 stage itself, so it is measured on that stage's own
+    // commits (its base .. its head, PR #100) -- later stages change other functions (their suites say
+    // which: qa/ui2.mjs "scope"). The schema check still reads the current game.js.
+    let lines = null;
+    try {
+      diff = execSync(`git diff -U0 ${BASE_REV} ${HEAD_REV} -- game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] });
+      lines = execSync(`git show ${HEAD_REV}:game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }).split('\n');
+    } catch (e) { diff = null; }
+    if (diff == null) console.log(`NOT RUN  U11 changed lines ${BASE_REV.slice(0, 7)}..${HEAD_REV.slice(0, 7)} (git does not have these revisions here)`);
     else {
-      const lines = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8').split('\n');
       const owner = (n) => { for (let i = Math.min(n, lines.length) - 1; i >= 0; i--) { const m = /^  (?:async |get |static )?([A-Za-z_]\w*)\([^)]*\) \{$/.exec(lines[i]); if (m) return m[1]; if (/^(const|let|function|class) /.test(lines[i])) return '<top> ' + lines[i].split(/[ =(]/).slice(0, 2).join(' '); } return '<top>'; };
       const owners = new Set(), outside = [];
       for (const m of diff.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
@@ -717,8 +724,8 @@ export async function runUi1Checks(baseUrl) {
         owners.add(o);
         if (!HUD_FN.test(o)) outside.push(`${o} @${start}`);
       }
-      const save = /SAVE_SCHEMA_VERSION = 13\b/.test(lines.join('\n')), randoms = (diff.match(/^\+.*Math\.random|^\+.*\brand(Int)?\(/gm) || []).length;
-      results.push(expectAll(`U11 scope: every changed line of game.js (vs ${BASE_REV.slice(0, 7)}) is inside a HUD / minimap / banner-layout function; no new random draw; SAVE_SCHEMA_VERSION stays 13`, {
+      const save = /SAVE_SCHEMA_VERSION = 13\b/.test(fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8')), randoms = (diff.match(/^\+.*Math\.random|^\+.*\brand(Int)?\(/gm) || []).length;
+      results.push(expectAll(`U11 scope: every line of game.js the GG-UI-01 stage changed (${BASE_REV.slice(0, 7)}..${HEAD_REV.slice(0, 7)}) is inside a HUD / minimap / banner-layout function; no new random draw; SAVE_SCHEMA_VERSION stays 13`, {
         outside: is(outside.length, 0), functions: holds(owners.size >= 12, owners.size, '>= 12 HUD functions touched'), newRandomDraws: is(randoms, 0), schema: truthy(save)
       }, outside.slice(0, 10).join(' ; ') || [...owners].join(', ')));
     }

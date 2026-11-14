@@ -244,7 +244,8 @@ export const SCENES = {
   login: { stage: async (p) => { await veteran(p, { loginDue: true }); await p.evaluate(() => { const gm = window.game; gm.bootFirstRun = false; gm.maybeShowLoginReward(); }); await p.waitForTimeout(500); },
     audit: { root: '#loginRewardScreen', primary: '#btnLoginClaim' } },
   campaign: { stage: async (p) => { await veteran(p); await p.evaluate(() => window.game.openCampaignScreen()); await p.waitForTimeout(500); },
-    audit: { root: '#campaignScreen', primary: '#missionNextCard [data-mc-play], #missionNextCard button', mustSee: ['#districtMap', '#bottomNav'] } },
+    // GG-UI-02: on a short phone GRAJ is sticky above the navigation -- what lies under it must scroll clear (checked at the scroll end; qa/ui2.mjs checks every datum).
+    audit: { root: '#campaignScreen', primary: '#missionNextCard [data-mc-play], #missionNextCard button', mustSee: ['#districtMap', '#bottomNav'], ctaScrollsClear: true } },
   briefing: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.openCampaignScreen(); gm.openMissionBriefing('M31'); }); await p.waitForTimeout(600); },
     audit: { root: '#missionBriefing', primary: '#briefingCard .mc-play', mustSee: ['#btnBriefingClose'] } },
   shop: { stage: async (p) => { await veteran(p); await p.evaluate(() => window.game.openWarsztatScreen()); await p.waitForTimeout(500); },
@@ -304,6 +305,37 @@ function vpKind(kind) {
   return { mobile: true, deviceScaleFactor: 3 };
 }
 
+/** GG-UI-02: the audit waits for what it measures -- the layer shown and its
+ *  entrance animations finished (finite ones on the layer and its ancestors'
+ *  first content column; endless decorations are not waited for) -- instead
+ *  of a fixed pause that slow frames (2560x1440 in software) outlast. It
+ *  hides nothing: a layer that never shows still fails as "layer not visible",
+ *  only after the bound below. Returns what it waited for (diagnostics). */
+export async function settled(page, root, bound = 6000) {
+  return page.evaluate(async ({ root, bound }) => {
+    const t0 = performance.now(), left = () => bound - (performance.now() - t0);
+    const frame = () => new Promise(r => requestAnimationFrame(() => r()));
+    const el = () => document.querySelector(root);
+    const shown = (e) => { for (let a = e; a && a !== document.documentElement; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.display === 'none' || cs.visibility === 'hidden' || a.classList.contains('hidden')) return false; } return true; };
+    while (left() > 0 && !(el() && shown(el()))) await frame();
+    const e = el();
+    if (!e || !shown(e)) return { shown: false, ms: Math.round(performance.now() - t0) };
+    const finite = (a) => { const t = a.effect && a.effect.getComputedTiming(); return t && Number.isFinite(t.endTime) && a.playState !== 'finished' && a.playState !== 'idle'; };
+    // the layer itself, what it sits in, and its direct content column(s): the entrance, not every button's decoration
+    const targets = new Set([e, ...e.querySelectorAll(':scope > .screen-inner, :scope > *')]);
+    for (let a = e.parentElement; a; a = a.parentElement) targets.add(a);
+    let waited = 0;
+    for (;;) {
+      const run = e.getAnimations({ subtree: true }).concat(document.getAnimations()).filter(a => finite(a) && a.effect.target && targets.has(a.effect.target));
+      if (!run.length || left() <= 0) break;
+      waited += run.length;
+      await Promise.race([Promise.allSettled(run.map(a => a.finished)), new Promise(r => setTimeout(r, Math.max(0, left())))]);
+    }
+    await frame(); await frame();
+    return { shown: true, waited, ms: Math.round(performance.now() - t0), opacity: +getComputedStyle(e).opacity };
+  }, { root, bound });
+}
+
 /** Judges one audit result; returns [ok, problems[]] */
 export function judge(scene, a, vp) {
   const probs = [];
@@ -354,6 +386,7 @@ const HUD_AUDIT = function () {
 export async function auditScene(page, sceneName) {
   const sc = SCENES[sceneName];
   await sc.stage(page);
+  await settled(page, sc.audit.root);
   const a = await page.evaluate(AUDIT, sc.audit);
   if (sc.audit.hud) a.hud = await page.evaluate(HUD_AUDIT);
   return a;
@@ -593,7 +626,7 @@ export async function runPlatformInputChecks(url) {
     const rows = [];
     for (const [scene, open, opts] of [
       ['hub', () => window.game.showScreen('mainMenu'), { root: '#mainMenu', primary: '#btnStart', mustSee: ['#hubCampaignTile', '#btnDaily'] }],
-      ['campaign', () => window.game.openCampaignScreen(), { root: '#campaignScreen', primary: '#missionNextCard .mc-play' }],
+      ['campaign', () => window.game.openCampaignScreen(), { root: '#campaignScreen', primary: '#missionNextCard .mc-play', ctaScrollsClear: true }],
       ['shop', () => window.game.openWarsztatScreen(), { root: '#shopScreen', mustSee: ['#tabSkins'] }],
       ['challenges', () => window.game.openChallengesScreen(), { root: '#challengesScreen', primary: '#btnPlayDaily' }],
     ]) {

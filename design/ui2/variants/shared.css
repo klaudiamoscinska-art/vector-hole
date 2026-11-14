@@ -1,0 +1,33 @@
+/* GG-UI-02 stage 1 -- MOCKUP ONLY (never loaded by the game).
+   Shared tokens of both directions: the GG-UI-01 HUD family (--gh-*),
+   widened for full screens. */
+html[data-ui2] {
+  --u2-plate: linear-gradient(180deg, rgba(13, 40, 62, 0.94), rgba(4, 16, 29, 0.96));
+  --u2-plate-hi: linear-gradient(180deg, rgba(18, 52, 78, 0.96), rgba(6, 22, 38, 0.97));
+  --u2-edge: linear-gradient(135deg, rgba(80, 240, 250, 0.95), rgba(152, 117, 255, 0.55) 55%, rgba(255, 84, 173, 0.75));
+  --u2-edge-gold: linear-gradient(135deg, rgba(239, 203, 99, 0.95), rgba(255, 84, 173, 0.45) 60%, rgba(152, 117, 255, 0.6));
+  --u2-quiet: rgba(4, 12, 22, 0.86);
+  --u2-hair: rgba(242, 248, 255, 0.12);
+  --u2-glow: 0 0 22px rgba(80, 240, 250, 0.16), 0 10px 28px rgba(0, 0, 0, 0.45);
+  --u2-r: 18px;
+}
+/* A plate with the HUD's cyan -> violet -> pink edge (padding-box / border-box, no extra nodes). */
+html[data-ui2] .u2-edge,
+html[data-ui2] .hub-city,
+html[data-ui2] .mission-card,
+html[data-ui2] .warsztat-preview,
+html[data-ui2] .result-rewards,
+html[data-ui2] .login-panel,
+html[data-ui2] .info-sheet-panel,
+html[data-ui2] .challenge-card:first-of-type {
+  border-color: transparent !important; border-style: solid !important;
+  background: var(--u2-plate) padding-box, var(--u2-edge) border-box !important;
+  box-shadow: var(--u2-glow) !important;
+}
+/* Wallet: one capsule in the HUD's quiet glass. */
+html[data-ui2] .coin-display { background: var(--u2-quiet); border: 1px solid var(--u2-hair); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+html[data-ui2] .hub-gear-btn { background: var(--u2-quiet); border: 1px solid var(--u2-hair); }
+/* Bottom navigation: quiet glass, the active tab gets the HUD's plate + a light bar. */
+html[data-ui2] .bottom-nav { background: linear-gradient(180deg, rgba(6, 20, 34, 0.9), rgba(3, 10, 20, 0.98)); border-top: 1px solid var(--u2-hair); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5); }
+html[data-ui2] .nav-tab { position: relative; }
+html[data-ui2] .nav-tab.active .nav-tab-icon { filter: drop-shadow(0 0 6px rgba(80, 240, 250, 0.6)); }

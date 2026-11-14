@@ -4,6 +4,39 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-UI-02 „Premium Game Experience” — Miasto, Dzielnice, odprawa, Warsztat, wyniki i nagrody w rodzinie HUD (zapis nadal v13, klucz bez zmian; reguły, ceny, waluty, nagrody i moment ich przyznania, Core City, FTUE, reklamy, 12 dzielnic i 240 misji, RNG, seedy, sterowanie, HUD GG-UI-01, tła, obiekty, wiry i VFX bez zmian)
+- **Zatwierdzona hybryda makiet A + B** (`design/ui2/`, etap 1): B — Miasto, Dzielnice na telefonie, odprawa, Warsztat, wynik misji,
+  karty nagród; A — wynik Areny (z kaflami nagród z B), nagroda dzienna, arkusze, nawigacja (bez pływającego doku). Materiały
+  `--u2-*` na `:root` (płyta z krawędzią cyjan → fiolet → róż, ciemne szkło z linią, złota krawędź nagród); tokeny HUD `--gh-*`
+  wskazują teraz na nie. Bez `backdrop-filter`, bez nowych zależności.
+- **Miasto:** panorama Core City jako tło ekranu (`drawCityScene()` bez zmian), herb LVL, kapsuła następnej nagrody z procentem i
+  **szyną LVL 1–6** z `save.hub`, GRAJ z wirem gracza (założony wygląd, `Hole.draw()`), kafle trybów z pasem nagłówka, skrzynia w
+  złotej krawędzi. Naprawione nakładanie podtytułu karty i plakietki „NOWY BUDYNEK” na 320×568.
+- **Dzielnice:** liczniki „ODBUDOWANE DZIELNICE x/12” i „MISJE x/240”, kafle 01–12 ze znacznikiem stanu, **siatka 4×3** na wysokim
+  telefonie, rząd całych kafli na niskim; poziomo i na desktopie siatka gry z numerami; lista misji jako trasa; znak **BOSS** na
+  misji i na celu z landmarkiem (karta misji, odprawa, karta startu, wynik).
+- **Cztery poprawki krytyczne:** (1) 320×568 — pełny tytuł „DZIELNICE”, wszystkie 12 dzielnic do przewinięcia, żaden kafel ucięty;
+  (2) **GRAJ przypięty nad nawigacją** w każdym układzie, a cele, czas, nagroda i warunki gwiazdek przewijają się nad nim (także
+  360×800, gdzie większa siatka spychała przycisk pod pasek, i ramki poziome, gdzie warunki gwiazdek były ukryte); (3) Warsztat —
+  karty kolekcjonerskie 2 w rzędzie na 320 px, 3 od 360 px, więcej na szerokich; opis wyglądu zostaje przy podglądzie; (4)
+  nawigacja A: zwykły pasek przy krawędzi, zakładki 44 px, listy kończą się nad nim.
+- **Warsztat:** plakietka stanu przy podglądzie (WYPOSAŻONE / DO KUPIENIA / ZA MAŁO MONET · PRYZMATÓW / NAGRODA), kategorie jako
+  przełącznik, znak **źródła** przedmiotu w rogu karty (zestaw startowy / monety / pryzmaty / nagroda). Rzadkości nie ma i nie
+  została dodana. Dotknięcie karty nadal niczego nie przesuwa (WORKSHOP-BUY) — teraz także na szerokich ekranach.
+- **Wyniki i nagrody:** wynik Areny — monety i XP jako dwa kafle, Core City jako szeroka karta (kolejność, pierwszy wynik bez ×2,
+  „Menu główne”, reklamy, animacje bez zmian); wynik misji — gwiazdki na płycie; karta-trofeum ze wstążką dla nagród Core City,
+  skrzyni i odblokowań; **kalendarz**: znacznik odebranego dnia w rogu kafla (leżał na kwocie).
+- **Wejście ekranu:** warstwa menu nie startuje już od `opacity: 0` (`screen-in`, `v12-rise`) — to była przyczyna niestabilnego
+  „layer not visible” na 2560×1440; `qa/responsive.mjs` czeka na rzeczywisty stan interfejsu i koniec animacji wejścia (`settled()`),
+  nie na stały czas.
+- **EN:** „DISTRICTS REBUILT”, „MISSIONS”, „BOSS”, „EQUIPPED”, „AVAILABLE TO BUY”, „NOT ENOUGH COINS / PRISMS”, „REWARD” w
+  `I18N_EN`. Przy okazji: dwa drugorzędne przyciski wyniku mieszczą „CHALLENGE A FRIEND” na 320 px.
+- **QA:** `node qa/ui2.mjs` (nowa suita), `node design/ui2/tools/ui2-shots.mjs --as=prod` + `ui2-gallery2.mjs`
+  (`design/ui2/gallery-prod.html`: baza / makieta / produkcja), `ui2-bench.mjs --base=DIR`. Dostosowane testy: `qa/v21.mjs`
+  (kolumny Warsztatu, pasek dzielnic na niskiej ramce), `qa/devices.mjs` (herb obok nagłówka; kolor ekranu względem stanu
+  spoczynku), `qa/workshop-buy.mjs` i `qa/responsive.mjs` (czekanie na interfejs), `qa/cg-preview-qa5.mjs` (kafle telefonu bez
+  plakietek TERAZ / NASTĘPNA), `qa/ui1.mjs` (zakres GG-UI-01 mierzony na jego własnych commitach). Raport: `docs/GG_UI_02_REPORT.md`.
+
 ## GG-UI-01 „Premium Game HUD” — nowy interfejs aktywnej rozgrywki (zapis nadal v13, klucz bez zmian; punktacja, ranking i jego sortowanie, czas rundy, progi T1–T6, pochłanianie, promienie, sterowanie, boty, RNG, seedy, cele misji, zakres danych mapki, ekonomia i reklamy bez zmian)
 - **Hybryda B + A** (zatwierdzona po etapie 1, `design/ui1/stage1/`): panele główne w materiale Premium Neon (płyta z krawędzią
   cyjan → fiolet → róż, jedna poświata), panele drugiego planu w Premium Minimal (ciemne szkło, cienka linia). Bez `backdrop-filter`.

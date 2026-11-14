@@ -1,0 +1,64 @@
+/* ===== VARIANT A -- PREMIUM EVOLUTION: the same layouts, the HUD's materials and a clearer hierarchy. ===== */
+/* ---------- Miasto ---------- */
+html[data-ui2="a"] .hub-player-chip { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 999px; padding: 4px 12px 4px 4px; }
+html[data-ui2="a"] .hub-city-badge { background: var(--u2-quiet); border: 1px solid rgba(80, 240, 250, 0.5); padding: 5px 12px; }
+html[data-ui2="a"] .hub-city-badge .hub-city-lvl { font-size: 17px; color: var(--nc-cyan); }
+html[data-ui2="a"] .hub-city-foot { background: linear-gradient(180deg, rgba(4, 16, 29, 0.2), rgba(4, 16, 29, 0.92)); border-top: 1px solid var(--u2-hair); }
+html[data-ui2="a"] .hub-city .hub-city-progress { height: 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); }
+html[data-ui2="a"] .hub-city-progress-fill { background: linear-gradient(90deg, var(--nc-cyan), var(--nc-violet), var(--nc-pink)) !important; box-shadow: 0 0 10px rgba(80, 240, 250, 0.5); }
+html[data-ui2="a"] .hub-city .hub-city-pct { font-size: 17px; }
+html[data-ui2="a"] .hub-play { border: 1.5px solid rgba(255, 255, 255, 0.55); box-shadow: 0 0 0 4px rgba(80, 240, 250, 0.12), 0 12px 30px rgba(80, 240, 250, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.5) !important; }
+html[data-ui2="a"] .hub-quick-tile { border: 1px solid var(--u2-hair); background: var(--u2-plate); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05); position: relative; overflow: hidden; }
+html[data-ui2="a"] .hub-quick-tile::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--nc-cyan); }
+html[data-ui2="a"] .hub-quick-daily::before { background: var(--nc-pink); }
+html[data-ui2="a"] .hub-quick-campaign .hub-quick-eyebrow { color: var(--nc-cyan); }
+html[data-ui2="a"] .hub-chest-row { background: linear-gradient(180deg, rgba(40, 32, 12, 0.9), rgba(10, 14, 22, 0.95)) padding-box, var(--u2-edge-gold) border-box; border: 1.5px solid transparent; }
+/* ---------- Dzielnice ---------- */
+html[data-ui2="a"] .district-tile { border-radius: 14px; border: 1.5px solid color-mix(in srgb, var(--district-color) 45%, transparent); box-shadow: inset 0 -30px 30px -10px rgba(4, 16, 29, 0.9); }
+html[data-ui2="a"] .district-tile.active { border-color: transparent; background: var(--u2-plate) padding-box, linear-gradient(135deg, var(--district-color), rgba(255, 255, 255, 0.5)) border-box; box-shadow: 0 0 18px color-mix(in srgb, var(--district-color) 45%, transparent); }
+html[data-ui2="a"] .district-tile.locked:not(.next-up) { filter: saturate(0.35) brightness(0.75); }
+html[data-ui2="a"] .district-tile:not(.locked):not(.current) .district-status-text { color: var(--nc-green); font-weight: 800; }
+html[data-ui2="a"] .district-head .district-name { background: linear-gradient(90deg, #fff, var(--nc-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+html[data-ui2="a"] .district-head-bar { height: 6px; border-radius: 4px; }
+html[data-ui2="a"] .mission-card-next { background: var(--u2-plate-hi) padding-box, linear-gradient(135deg, var(--d-color), rgba(152, 117, 255, 0.5) 60%, rgba(255, 84, 173, 0.6)) border-box !important; }
+html[data-ui2="a"] .mc-code { box-shadow: 0 0 12px color-mix(in srgb, var(--d-color) 55%, transparent); }
+html[data-ui2="a"] .mc-goal { background: rgba(255, 255, 255, 0.04); border: 1px solid var(--u2-hair); border-radius: 12px; }
+html[data-ui2="a"] .mc-goal-icon { width: 30px; height: 30px; }
+html[data-ui2="a"] .mission-row { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 14px; }
+html[data-ui2="a"] .mission-row.done .mission-row-id { color: var(--nc-green); }
+html[data-ui2="a"] .mission-row.current { border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge-gold) border-box; box-shadow: 0 0 16px rgba(239, 203, 99, 0.18); }
+html[data-ui2="a"] .mission-row.current .mission-row-id { color: var(--nc-gold); }
+html[data-ui2="a"] .star-row i.on { color: var(--nc-gold); text-shadow: 0 0 6px rgba(239, 203, 99, 0.6); }
+html[data-ui2="a"] .briefing-sheet .mission-card { background: var(--u2-plate-hi) padding-box, linear-gradient(135deg, var(--d-color), rgba(152, 117, 255, 0.5) 60%, rgba(255, 84, 173, 0.6)) border-box !important; }
+/* ---------- Warsztat ---------- */
+html[data-ui2="a"] .warsztat-preview-stage { border-radius: 16px; border: 1px solid rgba(80, 240, 250, 0.35); box-shadow: inset 0 0 30px rgba(80, 240, 250, 0.12); }
+html[data-ui2="a"] .shop-tabs .toggle-btn { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 12px; }
+html[data-ui2="a"] .shop-tabs .toggle-btn.active { border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge) border-box; color: var(--nc-cyan); box-shadow: 0 0 14px rgba(80, 240, 250, 0.2); }
+html[data-ui2="a"] .skin-card { background: var(--u2-plate); border: 1px solid var(--u2-hair); border-radius: 16px; }
+html[data-ui2="a"] .skin-card.selected { border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge) border-box; box-shadow: 0 0 18px rgba(80, 240, 250, 0.25); }
+html[data-ui2="a"] .skin-card .skin-owned-badge { display: inline-block; width: fit-content; align-self: flex-start; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(80, 240, 250, 0.5); font-size: 10px; letter-spacing: 0.08em; }
+html[data-ui2="a"] .skin-card.selected .skin-owned-badge { background: var(--nc-cyan); color: #04101D; border-color: var(--nc-cyan); }
+html[data-ui2="a"] .skin-card.is-buyable { border: 1.5px solid transparent; background: var(--u2-plate) padding-box, var(--u2-edge-gold) border-box; }
+html[data-ui2="a"] .skin-card.is-short, html[data-ui2="a"] .skin-card.is-reward { opacity: 1; }
+html[data-ui2="a"] .skin-card.is-short .hole-swatch, html[data-ui2="a"] .skin-card.is-reward .hole-swatch { filter: saturate(0.55) brightness(0.8); }
+html[data-ui2="a"] .skin-card.is-short .skin-price { display: inline-block; width: fit-content; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(239, 203, 99, 0.35); color: rgba(239, 203, 99, 0.8); }
+html[data-ui2="a"] .skin-card.is-reward .skin-price { display: inline-block; width: fit-content; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(70, 217, 154, 0.45); color: var(--nc-green); font-size: 9.5px; }
+html[data-ui2="a"] .store-card { background: var(--u2-plate) padding-box, var(--u2-edge-gold) border-box; border: 1.5px solid transparent; }
+/* ---------- Wyniki i nagrody ---------- */
+html[data-ui2="a"] .result-hero-score { background: linear-gradient(180deg, #fff 30%, var(--nc-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 14px rgba(80, 240, 250, 0.45)); }
+html[data-ui2="a"] .result-badge, html[data-ui2="a"] .mr-stat { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 14px; }
+html[data-ui2="a"] .result-next { background: var(--u2-plate) padding-box, var(--u2-edge-gold) border-box; border: 1.5px solid transparent; }
+html[data-ui2="a"] .result-rewards-title { color: var(--nc-gold); letter-spacing: 0.16em; }
+html[data-ui2="a"] .result-rewards .result-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--u2-hair); border-radius: 12px; padding: 10px 12px; }
+html[data-ui2="a"] .result-xp-track, html[data-ui2="a"] .result-core-track { height: 8px; border-radius: 6px; }
+html[data-ui2="a"] .final-leaderboard li { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 10px; }
+html[data-ui2="a"] .final-leaderboard li.is-player, html[data-ui2="a"] .final-leaderboard li.player { border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge) border-box; }
+html[data-ui2="a"] .mr-stars { filter: drop-shadow(0 0 12px rgba(239, 203, 99, 0.5)); }
+html[data-ui2="a"] .result-xp-card { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 14px; }
+html[data-ui2="a"] .unlock-panel { padding: 22px 18px; border-radius: 22px; border: 1.5px solid transparent; background: linear-gradient(180deg, rgba(13, 40, 62, 0.82), rgba(4, 16, 29, 0.9)) padding-box, linear-gradient(135deg, var(--unlock-color), rgba(152, 117, 255, 0.5) 60%, rgba(255, 84, 173, 0.6)) border-box; box-shadow: 0 0 40px color-mix(in srgb, var(--unlock-color) 30%, transparent); max-width: 360px; }
+html[data-ui2="a"] .login-day, html[data-ui2="a"] .login-cell { border-radius: 12px; }
+/* Known problem 1 (Dzielnice on a 320x568 phone): the next mission's GRAJ stays above the navigation. */
+@media (max-height: 620px) {
+  html[data-ui2="a"] body:not(.wide):not(.compact) .mission-card-next .mc-play { position: sticky; bottom: 6px; z-index: 3; box-shadow: 0 -10px 18px rgba(4, 16, 29, 0.9), 0 8px 22px rgba(80, 240, 250, 0.3); }
+}
+@media (max-width: 350px) { html[data-ui2="a"] .hub-player-chip { padding: 0; border-color: transparent; background: none; } }
