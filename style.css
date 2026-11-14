@@ -5400,9 +5400,9 @@ body.compact #shopScreen .warsztat-preview-loadout { flex: none; }
   body.compact #shopScreen .warsztat-preview-loadout { font-size: 10px; line-height: 1.3; min-height: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 }
 /* Landscape frames: low cards (the vortex beside its name), so a whole category stays in view. */
-body.compact #shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(144px, 1fr)); gap: 6px; }
-body.compact #shopScreen .skin-card { flex-direction: row; align-items: center; text-align: left; gap: 8px; padding: 6px 8px 6px 6px; }
-body.compact #shopScreen .skin-card .hole-swatch { width: 46px; height: 46px; flex: none; }
+body.compact #shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; }
+body.compact #shopScreen .skin-card { flex-direction: row; align-items: center; text-align: left; gap: 6px; padding: 6px 6px 6px 5px; }
+body.compact #shopScreen .skin-card .hole-swatch { width: 40px; height: 40px; flex: none; }
 body.compact #shopScreen .skin-card .skin-swatch { width: 34px; height: 34px; margin: 6px; flex: none; }
 body.compact #shopScreen .skin-card-body { align-items: flex-start; gap: 3px; min-width: 0; }
 body.compact #shopScreen .skin-card .skin-name { min-height: 0; display: block; font-size: 11.5px; }
