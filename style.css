@@ -5433,3 +5433,9 @@ body.wide:not(.compact) #shopScreen .warsztat-preview-stage { height: 186px; }
 body.compact #shopScreen .skin-card .u2-src { font-size: 9px; }
 /* The lowest landscape frames (640x360, 775x328): the twelve tiles keep their height and come first; the campaign counters follow right under them. */
 @media (max-height: 360px) { body.compact #campaignScreen #districtMap { order: -1; } body.compact .u2-route { margin: -2px 0; } }
+/* A 320 px phone (found while checking English): the two secondary result actions kept their desktop
+   tracking and the share glyph, so "CHALLENGE A FRIEND" ran out of its button. Same buttons, tighter type. */
+@media (max-width: 350px) {
+  body:not(.wide) #gameOverScreen .result-actions-row .btn { min-width: 0; padding-left: 4px; padding-right: 4px; font-size: 10.5px; letter-spacing: 0.02em; gap: 4px; }
+  body:not(.wide) #gameOverScreen .result-actions-row #btnShare svg { display: none; }
+}
