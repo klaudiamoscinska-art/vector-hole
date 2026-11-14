@@ -1,0 +1,134 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>GG-UX-03 Gallery</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Russo+One&display=swap">
+<style>
+/* Layout: one column of evidence groups on the game's own night-city ground; shots in a wrapping grid, vortex pairs side by side. Single dark theme on purpose (the game's look). */
+:root {
+  --bg: #04101D; --panel: #0B1A2A; --hair: rgba(232, 241, 255, 0.12); --fg: #E8F1FF; --mute: #9FB3C8;
+  --cyan: #50F0FA; --pink: #FF54AD; --violet: #9875FF; --gold: #EFCB63;
+  --display: 'Russo One', 'Exo 2', 'Segoe UI', sans-serif; --text: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--text); margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { border-bottom: 1px solid var(--hair); background: linear-gradient(180deg, #0B1A2A, var(--bg)); }
+.top .wrap { padding-block: 28px 18px; display: grid; gap: 10px; }
+.eyebrow { margin: 0; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan); }
+h1 { margin: 0; font: 400 clamp(24px, 5vw, 38px)/1.1 var(--display); text-wrap: balance; }
+h2 { margin: 0; font: 400 22px/1.2 var(--display); color: var(--fg); }
+.lead { margin: 0; max-width: 68ch; color: var(--mute); }
+code { font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; color: var(--gold); }
+nav { display: flex; flex-wrap: wrap; gap: 8px; }
+nav a { color: var(--fg); text-decoration: none; border: 1px solid var(--hair); border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 13px; }
+nav a:hover, nav a:focus-visible { border-color: var(--cyan); outline: none; }
+main { display: grid; gap: 36px; padding-block: 28px 40px; }
+.grp { display: grid; gap: 12px; }
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 16px; align-items: start; }
+.shot { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.shot img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--hair); background: var(--panel); }
+figcaption { display: grid; gap: 2px; font-size: 13px; }
+figcaption span { color: var(--mute); }
+.ctl { margin: 0; }
+button { font: 600 14px var(--text); color: var(--bg); background: var(--cyan); border: 0; border-radius: 8px; padding: 9px 14px; min-height: 44px; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 18px; }
+.vrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; padding: 12px; border: 1px solid var(--hair); border-radius: 12px; background: var(--panel); min-width: 0; }
+.vname { grid-column: 1 / -1; font: 400 15px var(--display); }
+.vcell { display: grid; gap: 4px; justify-items: center; min-width: 0; }
+.vcell small { font-size: 11px; letter-spacing: 0.1em; color: var(--mute); }
+.vcell:nth-child(3) small { color: var(--cyan); }
+.flip { width: 100%; max-width: 100%; aspect-ratio: 1; background-size: 1200% 100%; background-repeat: no-repeat; border-radius: 8px; animation: turn 0.8s steps(12, jump-none) infinite; }
+.paused .flip { animation-play-state: paused; }
+@keyframes turn { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+.strip { grid-column: 1 / -1; overflow-x: auto; }
+.strip img { height: 70px; width: auto; max-width: none; display: block; border-radius: 6px; }
+footer { color: var(--mute); font-size: 13px; border-top: 1px solid var(--hair); padding-top: 16px; }
+@media (prefers-reduced-motion: reduce) { .flip { animation: none; } }
+</style></head><body>
+<header class="top"><div class="wrap">
+  <p class="eyebrow">GLITCH GULP · GG-UX-03 · dowody z prawdziwego renderera</p>
+  <h1>Sterowanie, minimapa, finisz i lustrzane wiry</h1>
+  <p class="lead">Każdy obraz to zrzut ekranu albo płótno narysowane przez samą grę: baza <code>339ec77d0c9a</code> (PRZED) i kandydat GG-UX-03 (PO).</p>
+  <nav><a href="#sterowanie">Sterowanie</a><a href="#minimapa">Minimapa</a><a href="#finisz">Koniec rundy</a><a href="#wiry">Wiry</a><a href="#gra">Rozgrywka</a></nav>
+</div></header>
+<main class="wrap">
+<section class="grp" id="sterowanie"><h2>Sterowanie</h2><p class="lead">Dwa tryby dotyku: PRZECIĄGANIE (domyślne, bez zmian) i JOYSTICK, który pojawia się tam, gdzie palec dotknie planszy — u góry, na środku albo na dole.</p><div class="shots"><figure class="shot"><img loading="lazy" src="shots/joystick-middle.jpg" alt="Joystick — środek planszy"><figcaption><b>Joystick — środek planszy</b><span>Podstawa pojawia się pod palcem; biały okrąg = miejsce palca (dorysowany tylko na zrzucie).</span></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/joystick-top.jpg" alt="Joystick — góra planszy"><figcaption><b>Joystick — góra planszy</b><span>Podstawa pojawia się pod palcem; biały okrąg = miejsce palca (dorysowany tylko na zrzucie).</span></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/joystick-bottom.jpg" alt="Joystick — dół planszy"><figcaption><b>Joystick — dół planszy</b><span>Podstawa pojawia się pod palcem; biały okrąg = miejsce palca (dorysowany tylko na zrzucie).</span></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/controls-pl.jpg" alt="Pauza → Sterowanie: PRZECIĄGANIE | JOYSTICK (nowy profil)"><figcaption><b>Pauza → Sterowanie: PRZECIĄGANIE | JOYSTICK (nowy profil)</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/controls-before.jpg" alt="PRZED: Kciuk (pad) | Przeciąganie"><figcaption><b>PRZED: Kciuk (pad) | Przeciąganie</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/controls-en.jpg" alt="Controls (EN): DRAG TO MOVE | JOYSTICK"><figcaption><b>Controls (EN): DRAG TO MOVE | JOYSTICK</b></figcaption></figure></div></section>
+<section class="grp" id="minimapa"><h2>Minimapa</h2><p class="lead">Domyślnie w lewym dolnym rogu, żeby prawy kciuk jej nie zasłaniał. Strona do zmiany w Profil → Ustawienia; wybór zostaje po ponownym uruchomieniu.</p><div class="shots"><figure class="shot"><img loading="lazy" src="shots/minimap-left-iphone.jpg" alt="Minimapa LEWA (domyślna) — 390×844"><figcaption><b>Minimapa LEWA (domyślna) — 390×844</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/minimap-right-iphone.jpg" alt="Minimapa PRAWA (z Ustawień) — 390×844"><figcaption><b>Minimapa PRAWA (z Ustawień) — 390×844</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/minimap-left-320.jpg" alt="Minimapa LEWA (domyślna) — 320×568"><figcaption><b>Minimapa LEWA (domyślna) — 320×568</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/minimap-left-landscape.jpg" alt="Minimapa LEWA (domyślna) — 844×390"><figcaption><b>Minimapa LEWA (domyślna) — 844×390</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/minimap-before.jpg" alt="PRZED: minimapa po prawej (390×844)"><figcaption><b>PRZED: minimapa po prawej (390×844)</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/settings-pl.jpg" alt="Profil → Ustawienia: POŁOŻENIE MINIMAPY (PL)"><figcaption><b>Profil → Ustawienia: POŁOŻENIE MINIMAPY (PL)</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/settings-en.jpg" alt="Profile → Settings: MINIMAP POSITION (EN)"><figcaption><b>Profile → Settings: MINIMAP POSITION (EN)</b></figcaption></figure></div></section>
+<section class="grp" id="finisz"><h2>Koniec rundy</h2><p class="lead">Ta sama runda z tego samego ziarna (seed 303, wariant „blackout”) na bazie i po zmianie. Wynik, obiekty i moment końca są identyczne; znika tylko czarna warstwa i napis ZACIEMNIENIE.</p><div class="shots"><figure class="shot"><img loading="lazy" src="shots/finish-11s-before.jpg" alt="PRZED: 11 s do końca — wariant „blackout”"><figcaption><b>PRZED: 11 s do końca — wariant „blackout”</b><span>Czarna warstwa rgba(0,0,0,0.55) nad planszą.</span></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/finish-6s-before.jpg" alt="PRZED: 6 s do końca — wariant „blackout”"><figcaption><b>PRZED: 6 s do końca — wariant „blackout”</b><span>Czarna warstwa rgba(0,0,0,0.55) nad planszą.</span></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/finish-11s-after.jpg" alt="PO: 11 s do końca — wariant „blackout”"><figcaption><b>PO: 11 s do końca — wariant „blackout”</b><span>Ta sama runda (seed 303), bez ciemnej warstwy.</span></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/finish-6s-after.jpg" alt="PO: 6 s do końca — wariant „blackout”"><figcaption><b>PO: 6 s do końca — wariant „blackout”</b><span>Ta sama runda (seed 303), bez ciemnej warstwy.</span></figcaption></figure></div></section>
+<section class="grp" id="wiry"><h2>Wiry — PRZED / PO</h2>
+<p class="lead">Dziesięć skórek jako Twój wir i jako rywal. Animacje pokazują 0,8 s gry (12 klatek co 1/15 s): kierunek i tempo obrotu są takie same, odwrócona jest tylko skrętność ramion. Pod każdą parą pełny pasek klatek po zmianie.</p>
+<p class="ctl"><button id="toggleAnim" type="button" aria-pressed="false">Zatrzymaj animacje</button></p>
+<div class="vgrid"><div class="vrow"><div class="vname">Horyzont</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-rainbow-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-rainbow-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-rainbow-after.webp" alt="Horyzont: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Horyzont (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-rainbow-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-rainbow-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-rainbow-rival-after.webp" alt="Horyzont (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Cyjan</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-cyan-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-cyan-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-cyan-after.webp" alt="Cyjan: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Cyjan (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-cyan-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-cyan-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-cyan-rival-after.webp" alt="Cyjan (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Gorący Róż</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pink-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pink-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-pink-after.webp" alt="Gorący Róż: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Gorący Róż (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pink-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pink-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-pink-rival-after.webp" alt="Gorący Róż (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Toksyczna Zieleń</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-green-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-green-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-green-after.webp" alt="Toksyczna Zieleń: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Toksyczna Zieleń (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-green-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-green-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-green-rival-after.webp" alt="Toksyczna Zieleń (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Ultrafiolet</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-purple-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-purple-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-purple-after.webp" alt="Ultrafiolet: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Ultrafiolet (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-purple-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-purple-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-purple-rival-after.webp" alt="Ultrafiolet (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Neonowe Złoto</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-gold-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-gold-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-gold-after.webp" alt="Neonowe Złoto: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Neonowe Złoto (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-gold-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-gold-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-gold-rival-after.webp" alt="Neonowe Złoto (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Biała Plazma</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-white-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-white-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-white-after.webp" alt="Biała Plazma: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Biała Plazma (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-white-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-white-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-white-rival-after.webp" alt="Biała Plazma (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Aurora Finału</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-aurora-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-aurora-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-aurora-after.webp" alt="Aurora Finału: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Aurora Finału (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-aurora-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-aurora-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-aurora-rival-after.webp" alt="Aurora Finału (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Kryształ</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-krysztal-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-krysztal-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-krysztal-after.webp" alt="Kryształ: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Kryształ (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-krysztal-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-krysztal-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-krysztal-rival-after.webp" alt="Kryształ (rywal): 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Pryzmat</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pryzmat-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pryzmat-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-pryzmat-after.webp" alt="Pryzmat: 12 klatek po zmianie"></div></div><div class="vrow"><div class="vname">Pryzmat (rywal)</div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pryzmat-rival-before.webp')"></div><small>PRZED</small></div>
+    <div class="vcell"><div class="flip" style="background-image:url('shots/vortex-pryzmat-rival-after.webp')"></div><small>PO — odbity</small></div>
+    <div class="strip"><img loading="lazy" src="shots/vortex-pryzmat-rival-after.webp" alt="Pryzmat (rywal): 12 klatek po zmianie"></div></div></div></section>
+<section class="grp" id="gra"><h2>Rozgrywka</h2><p class="lead">Zrzuty z prawdziwej gry po zmianie: Arena i Kampania na telefonie, ramka CrazyGames 800×450 i Warsztat.</p><div class="shots"><figure class="shot"><img loading="lazy" src="shots/arena-phone.jpg" alt="Arena — telefon 390×844 (wiry odbite, minimapa po lewej)"><figcaption><b>Arena — telefon 390×844 (wiry odbite, minimapa po lewej)</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/campaign-phone.jpg" alt="Kampania (M05) — telefon 390×844"><figcaption><b>Kampania (M05) — telefon 390×844</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/warsztat-phone.jpg" alt="Warsztat — podgląd wiru = ten sam rysunek co w grze"><figcaption><b>Warsztat — podgląd wiru = ten sam rysunek co w grze</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/crazygames-800x450.jpg" alt="CrazyGames 800×450 — Arena"><figcaption><b>CrazyGames 800×450 — Arena</b></figcaption></figure><figure class="shot"><img loading="lazy" src="shots/warsztat-before.jpg" alt="PRZED: Warsztat (wir nieodbity)"><figcaption><b>PRZED: Warsztat (wir nieodbity)</b></figcaption></figure></div></section>
+<footer><p>Wygenerowano: <code>node design/ux3/tools/ux3-shots.mjs</code>, potem <code>node design/ux3/tools/ux3-gallery.mjs</code>. Testy: <code>node qa/ux3.mjs</code>.</p></footer>
+</main>
+<script>
+(function () {
+  var b = document.getElementById('toggleAnim');
+  b.addEventListener('click', function () {
+    var on = document.body.classList.toggle('paused');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.textContent = on ? 'Wznów animacje' : 'Zatrzymaj animacje';
+  });
+})();
+</script></body></html>

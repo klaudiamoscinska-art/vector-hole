@@ -37,8 +37,9 @@ const ADDED_SINCE_BASE = {
   'window:keydown': 1 + 1, 'window:pointerdown': 1, 'window:wheel': 1, 'window:blur': 1,
   // WORKSHOP-BUY (the second keydown above: Escape ends a look): the action
   // slot's buy, cancel and "how to get them" buttons. R2-01: minus the pause
-  // sheet's ZMIEŃ WYGLĄD button (removed).
-  'el:click': 3 - 1,
+  // sheet's ZMIEŃ WYGLĄD button (removed). GG-UX-03: Profil's minimap
+  // side buttons (LEWA, PRAWA).
+  'el:click': 3 - 1 + 2,
   // FTUE-2 FIX (real devices): re-measure after a turn once the app box
   // settles (an iPhone home-screen app's resize came too early).
   'window:orientationchange': 1,

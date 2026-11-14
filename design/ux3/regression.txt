@@ -1,0 +1,23 @@
+# GG-UX-03 regression evidence (same machine, 4 vCPU, headless Chromium)
+
+## run-all base
+env: node v22.23.4 · playwright 1.63.0 · chromium 153.0.8010.12 · HEAD 339ec77d0c9a91a868ed3c7215e172c24f22bff1 (0 changed paths) · index.html e491c3485774 · game.js 314dc57c40e5 · style.css 4162a6a6a28f
+2475/2477 checks passed
+  FAIL crazygames-basic1: step crashed (pointerLockChecks(pkg.gameDir, sit) Error: not visible: #pauseSheet button
+  FAIL difficulty: the hardest missions stop a casual player about half the time (casual ≤ 55% at EKSTREMALNA) 56%
+real	110m41.933s
+
+## run-all cand
+env: node v22.23.4 · playwright 1.63.0 · chromium 153.0.8010.12 · HEAD cac4f0366dd09fb5675a4b2b898d2c65f3259390 (0 changed paths) · index.html 93f7428cc008 · game.js 3050186c722f · style.css be8bdb972467
+2515/2519 checks passed
+  FAIL boot: the same event listeners (per target and type) as the classic base plus the ones declared since -- none doubled or lost el:click: base 114 + added 2, module 118
+  FAIL ui2 scope: every line of game.js changed since 1395c18 is inside a menu-screen display function (Miasto rail and vortex, the district map, mission cards, the Warsztat grid and status plate, the crane's tag, I18N_EN); no random draw, no save write, no ne
+  FAIL English 844x390: no text clipped in English that the Polish layout shows in full results: #btnPlayAgain "PLAY AGAIN"
+  FAIL crazygames-basic1: step crashed (pointerLockChecks(pkg.gameDir, sit) Error: not visible: #pauseSheet button
+real	112m56.385s
+
+## re-runs on the final QA commit (candidate runtime unchanged)
+qa/bridge.mjs: 20/20 bridge checks passed
+qa/ui2.mjs --only=scope: 1 PASS
+qa/gameready1.mjs candidate x2: 20/21 (375x667 PLAY AGAIN), 21/21; base x3: 21/21, 19/21 (375x667 + 360x640 PLAY AGAIN), 21/21
+qa/crazygames-basic1.mjs alone: candidate and base -- the same 3 FAIL + pointerLockChecks crash (Pointer Lock in this headless container)

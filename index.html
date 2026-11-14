@@ -126,8 +126,8 @@
         <div id="inputModeRow" class="control-row">
           <span class="control-label">Tryb sterowania</span>
           <div class="control-toggle">
-            <button id="btnInputThumbpad" class="toggle-btn">Kciuk (pad)</button>
             <button id="btnInputLegacy" class="toggle-btn">Przeciąganie</button>
+            <button id="btnInputThumbpad" class="toggle-btn">Joystick</button>
           </div>
         </div>
         <div class="control-row">
@@ -434,6 +434,14 @@
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="haptics" data-value="1">Wł.</button>
             <button class="toggle-btn" data-setting="haptics" data-value="0">Wył.</button>
+          </div>
+        </div>
+        <!-- GG-UX-03: which bottom corner the minimap sits in (save.settings.minimapSide). -->
+        <div id="minimapSideRow" class="control-row">
+          <span class="control-label">Położenie minimapy</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-minimap-side="left">Lewa</button>
+            <button class="toggle-btn" data-minimap-side="right">Prawa</button>
           </div>
         </div>
       </div>

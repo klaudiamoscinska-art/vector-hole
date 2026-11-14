@@ -1,0 +1,259 @@
+{
+  "base": "339ec77d0c9a91a868ed3c7215e172c24f22bff1",
+  "shots": [
+    {
+      "file": "joystick-middle.jpg",
+      "title": "Joystick — środek planszy",
+      "group": "Sterowanie",
+      "note": "Podstawa pojawia się pod palcem; biały okrąg = miejsce palca (dorysowany tylko na zrzucie)."
+    },
+    {
+      "file": "joystick-top.jpg",
+      "title": "Joystick — góra planszy",
+      "group": "Sterowanie",
+      "note": "Podstawa pojawia się pod palcem; biały okrąg = miejsce palca (dorysowany tylko na zrzucie)."
+    },
+    {
+      "file": "joystick-bottom.jpg",
+      "title": "Joystick — dół planszy",
+      "group": "Sterowanie",
+      "note": "Podstawa pojawia się pod palcem; biały okrąg = miejsce palca (dorysowany tylko na zrzucie)."
+    },
+    {
+      "file": "controls-pl.jpg",
+      "title": "Pauza → Sterowanie: PRZECIĄGANIE | JOYSTICK (nowy profil)",
+      "group": "Sterowanie",
+      "note": ""
+    },
+    {
+      "file": "controls-before.jpg",
+      "title": "PRZED: Kciuk (pad) | Przeciąganie",
+      "group": "Sterowanie",
+      "note": ""
+    },
+    {
+      "file": "controls-en.jpg",
+      "title": "Controls (EN): DRAG TO MOVE | JOYSTICK",
+      "group": "Sterowanie",
+      "note": ""
+    },
+    {
+      "file": "minimap-left-iphone.jpg",
+      "title": "Minimapa LEWA (domyślna) — 390×844",
+      "group": "Minimapa",
+      "note": ""
+    },
+    {
+      "file": "minimap-right-iphone.jpg",
+      "title": "Minimapa PRAWA (z Ustawień) — 390×844",
+      "group": "Minimapa",
+      "note": ""
+    },
+    {
+      "file": "minimap-left-320.jpg",
+      "title": "Minimapa LEWA (domyślna) — 320×568",
+      "group": "Minimapa",
+      "note": ""
+    },
+    {
+      "file": "minimap-left-landscape.jpg",
+      "title": "Minimapa LEWA (domyślna) — 844×390",
+      "group": "Minimapa",
+      "note": ""
+    },
+    {
+      "file": "minimap-before.jpg",
+      "title": "PRZED: minimapa po prawej (390×844)",
+      "group": "Minimapa",
+      "note": ""
+    },
+    {
+      "file": "settings-pl.jpg",
+      "title": "Profil → Ustawienia: POŁOŻENIE MINIMAPY (PL)",
+      "group": "Minimapa",
+      "note": ""
+    },
+    {
+      "file": "settings-en.jpg",
+      "title": "Profile → Settings: MINIMAP POSITION (EN)",
+      "group": "Minimapa",
+      "note": ""
+    },
+    {
+      "file": "finish-11s-before.jpg",
+      "title": "PRZED: 11 s do końca — wariant „blackout”",
+      "group": "Koniec rundy",
+      "note": "Czarna warstwa rgba(0,0,0,0.55) nad planszą."
+    },
+    {
+      "file": "finish-6s-before.jpg",
+      "title": "PRZED: 6 s do końca — wariant „blackout”",
+      "group": "Koniec rundy",
+      "note": "Czarna warstwa rgba(0,0,0,0.55) nad planszą."
+    },
+    {
+      "file": "finish-11s-after.jpg",
+      "title": "PO: 11 s do końca — wariant „blackout”",
+      "group": "Koniec rundy",
+      "note": "Ta sama runda (seed 303), bez ciemnej warstwy."
+    },
+    {
+      "file": "finish-6s-after.jpg",
+      "title": "PO: 6 s do końca — wariant „blackout”",
+      "group": "Koniec rundy",
+      "note": "Ta sama runda (seed 303), bez ciemnej warstwy."
+    },
+    {
+      "file": "arena-phone.jpg",
+      "title": "Arena — telefon 390×844 (wiry odbite, minimapa po lewej)",
+      "group": "Rozgrywka",
+      "note": ""
+    },
+    {
+      "file": "campaign-phone.jpg",
+      "title": "Kampania (M05) — telefon 390×844",
+      "group": "Rozgrywka",
+      "note": ""
+    },
+    {
+      "file": "warsztat-phone.jpg",
+      "title": "Warsztat — podgląd wiru = ten sam rysunek co w grze",
+      "group": "Rozgrywka",
+      "note": ""
+    },
+    {
+      "file": "crazygames-800x450.jpg",
+      "title": "CrazyGames 800×450 — Arena",
+      "group": "Rozgrywka",
+      "note": ""
+    },
+    {
+      "file": "warsztat-before.jpg",
+      "title": "PRZED: Warsztat (wir nieodbity)",
+      "group": "Rozgrywka",
+      "note": ""
+    }
+  ],
+  "vortices": [
+    {
+      "key": "rainbow",
+      "name": "Horyzont",
+      "before": "vortex-rainbow-before.webp",
+      "after": "vortex-rainbow-after.webp"
+    },
+    {
+      "key": "rainbow-rival",
+      "name": "Horyzont (rywal)",
+      "before": "vortex-rainbow-rival-before.webp",
+      "after": "vortex-rainbow-rival-after.webp"
+    },
+    {
+      "key": "cyan",
+      "name": "Cyjan",
+      "before": "vortex-cyan-before.webp",
+      "after": "vortex-cyan-after.webp"
+    },
+    {
+      "key": "cyan-rival",
+      "name": "Cyjan (rywal)",
+      "before": "vortex-cyan-rival-before.webp",
+      "after": "vortex-cyan-rival-after.webp"
+    },
+    {
+      "key": "pink",
+      "name": "Gorący Róż",
+      "before": "vortex-pink-before.webp",
+      "after": "vortex-pink-after.webp"
+    },
+    {
+      "key": "pink-rival",
+      "name": "Gorący Róż (rywal)",
+      "before": "vortex-pink-rival-before.webp",
+      "after": "vortex-pink-rival-after.webp"
+    },
+    {
+      "key": "green",
+      "name": "Toksyczna Zieleń",
+      "before": "vortex-green-before.webp",
+      "after": "vortex-green-after.webp"
+    },
+    {
+      "key": "green-rival",
+      "name": "Toksyczna Zieleń (rywal)",
+      "before": "vortex-green-rival-before.webp",
+      "after": "vortex-green-rival-after.webp"
+    },
+    {
+      "key": "purple",
+      "name": "Ultrafiolet",
+      "before": "vortex-purple-before.webp",
+      "after": "vortex-purple-after.webp"
+    },
+    {
+      "key": "purple-rival",
+      "name": "Ultrafiolet (rywal)",
+      "before": "vortex-purple-rival-before.webp",
+      "after": "vortex-purple-rival-after.webp"
+    },
+    {
+      "key": "gold",
+      "name": "Neonowe Złoto",
+      "before": "vortex-gold-before.webp",
+      "after": "vortex-gold-after.webp"
+    },
+    {
+      "key": "gold-rival",
+      "name": "Neonowe Złoto (rywal)",
+      "before": "vortex-gold-rival-before.webp",
+      "after": "vortex-gold-rival-after.webp"
+    },
+    {
+      "key": "white",
+      "name": "Biała Plazma",
+      "before": "vortex-white-before.webp",
+      "after": "vortex-white-after.webp"
+    },
+    {
+      "key": "white-rival",
+      "name": "Biała Plazma (rywal)",
+      "before": "vortex-white-rival-before.webp",
+      "after": "vortex-white-rival-after.webp"
+    },
+    {
+      "key": "aurora",
+      "name": "Aurora Finału",
+      "before": "vortex-aurora-before.webp",
+      "after": "vortex-aurora-after.webp"
+    },
+    {
+      "key": "aurora-rival",
+      "name": "Aurora Finału (rywal)",
+      "before": "vortex-aurora-rival-before.webp",
+      "after": "vortex-aurora-rival-after.webp"
+    },
+    {
+      "key": "krysztal",
+      "name": "Kryształ",
+      "before": "vortex-krysztal-before.webp",
+      "after": "vortex-krysztal-after.webp"
+    },
+    {
+      "key": "krysztal-rival",
+      "name": "Kryształ (rywal)",
+      "before": "vortex-krysztal-rival-before.webp",
+      "after": "vortex-krysztal-rival-after.webp"
+    },
+    {
+      "key": "pryzmat",
+      "name": "Pryzmat",
+      "before": "vortex-pryzmat-before.webp",
+      "after": "vortex-pryzmat-after.webp"
+    },
+    {
+      "key": "pryzmat-rival",
+      "name": "Pryzmat (rywal)",
+      "before": "vortex-pryzmat-rival-before.webp",
+      "after": "vortex-pryzmat-rival-after.webp"
+    }
+  ]
+}

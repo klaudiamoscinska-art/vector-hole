@@ -35,6 +35,9 @@ import { ROOT } from './lib.mjs';
 
 /** The stage's base (origin/main before GG-UI-02: GG-UI-01, PR #100). */
 const BASE_REV = process.env.VH_UI2_BASE || '1395c18814f4b775850d39b45859908e4c552704';
+// GG-UX-03: the scope check measures the GG-UI-02 stage on its own commits (its base .. its head,
+// PR #101's head) -- later stages change other functions (their suites say which: qa/ux3.mjs).
+const HEAD_REV = process.env.VH_UI2_HEAD || 'da975e4985e7089155967bb69ba44b8e3590f24a';
 
 const READY = () => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state;
 const allOf = (name, checks, context) => expectAll(name, Object.fromEntries(Object.entries(checks).map(([k, v]) => [k, holds(!!v)])), context);
@@ -801,9 +804,13 @@ function scopeChecks() {
   const out = [];
   const OK = /^(renderCoreRail|renderHubCity|startScreenAnim|updateCoinDisplays|renderCampaignMap|missionStepRows|missionCardHtml|showMissionStartCard|selectCampaignDistrict|renderCosmeticGrid|renderWarsztatAction|<top> function drawCityScene|<top> const U2_CHECK|<top> const U2_LOCK|<top> const U2_BOSS_TAG|<top> const I18N_EN)$/;
   let diff = null;
-  try { diff = execSync(`git diff -U0 ${BASE_REV} -- game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { diff = null; }
-  if (diff == null) { console.log(`NOT RUN  ui2 scope: changed lines vs the base revision ${BASE_REV.slice(0, 7)} (git does not have it here)`); return out; }
-  const src = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8'), lines = src.split('\n');
+  let src = null;
+  try {
+    diff = execSync(`git diff -U0 ${BASE_REV} ${HEAD_REV} -- game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] });
+    src = execSync(`git show ${HEAD_REV}:game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch (e) { diff = null; }
+  if (diff == null) { console.log(`NOT RUN  ui2 scope: changed lines ${BASE_REV.slice(0, 7)}..${HEAD_REV.slice(0, 7)} (git does not have these revisions here)`); return out; }
+  const lines = src.split('\n'), current = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8');
   const owner = (n) => { for (let i = Math.min(n, lines.length) - 1; i >= 0; i--) { const m = /^  (?:async |get |static )?([A-Za-z_]\w*)\([^)]*\) \{$/.exec(lines[i]); if (m) return m[1]; if (/^(const|let|function|class) /.test(lines[i])) return '<top> ' + lines[i].split(/[ =(]/).slice(0, 2).join(' '); } return '<top>'; };
   const owners = new Set(), outside = [];
   for (const m of diff.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
@@ -818,11 +825,11 @@ function scopeChecks() {
   const added = diff.split('\n').filter(l => /^\+[^+]/.test(l)).join('\n');
   const exportsOf = (t) => { const m = /\nexport \{([\s\S]*?)\};/.exec(t); return m ? m[1].replace(/\s+/g, ' ').trim() : null; };
   let baseSrc = null; try { baseSrc = execSync(`git show ${BASE_REV}:game.js`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { /* reported above */ }
-  out.push(expectAll(`ui2 scope: every line of game.js changed since ${BASE_REV.slice(0, 7)} is inside a menu-screen display function (Miasto rail and vortex, the district map, mission cards, the Warsztat grid and status plate, the crane's tag, I18N_EN); no random draw, no save write, no new export; SAVE_SCHEMA_VERSION stays 13`, {
+  out.push(expectAll(`ui2 scope: every line of game.js the GG-UI-02 stage changed (${BASE_REV.slice(0, 7)}..${HEAD_REV.slice(0, 7)}) is inside a menu-screen display function (Miasto rail and vortex, the district map, mission cards, the Warsztat grid and status plate, the crane's tag, I18N_EN); no random draw, no save write, no new export; SAVE_SCHEMA_VERSION stays 13`, {
     outside: holds(outside.length === 0, outside.join(' ; ')), functions: holds(owners.size >= 8, owners.size, '>= 8 display functions touched'),
     newRandomDraws: holds(!/Math\.random|\brand(Int)?\(|SeededRNG/.test(added), 'none'), saveWrites: holds(!/saveGame\(|localStorage|SAVE_SLOT|this\.save[\w.]*\.push\(|this\.save\.[\w.]+\s*(\+=|-=|\+\+|--|=[^=])/.test(added), 'none'),
     exportsUnchanged: holds(baseSrc != null && exportsOf(baseSrc) === exportsOf(src), 'the module export list is the base revision\'s'),
-    schema: holds(/SAVE_SCHEMA_VERSION = 13\b/.test(src) && /'vectorHoleSave_v1'/.test(src), 'v13, vectorHoleSave_v1')
+    schema: holds(/SAVE_SCHEMA_VERSION = 13\b/.test(current) && /'vectorHoleSave_v1'/.test(current), 'v13, vectorHoleSave_v1 (the current game.js)')
   }, [...owners].join(', ')));
   return out;
 }

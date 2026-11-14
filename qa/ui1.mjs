@@ -78,7 +78,9 @@ const AUDIT = () => {
     const d = DISTRICTS.find(x => x.id === (g.mode === 'campaign' ? g.campaignTheme() : null)) || DISTRICTS[0];
     const c = g.ctx; c.save(); c.font = "10px 'Russo One', 'Exo 2', 'Segoe UI', sans-serif";
     const lw = Math.max(...DISTRICTS.map(x => c.measureText(x.name.toUpperCase()).width)) + 21; c.restore();
-    boxes.push({ id: 'maplabel', l: m.r - lw * k, t: m.t - 20 * k, r: m.r, b: m.t - 4 * k, w: lw * k, h: 16 * k, d: d.id });
+    // GG-UX-03: the plate is flush with the map's outer edge -- its right edge on the right, its left edge on the left
+    const onRight = g.minimapOnRight ? g.minimapOnRight() : true;
+    boxes.push({ id: 'maplabel', l: onRight ? m.r - lw * k : m.l, t: m.t - 20 * k, r: onRight ? m.r : m.l + lw * k, b: m.t - 4 * k, w: lw * k, h: 16 * k, d: d.id });
   }
   const out = boxes.filter(b => b.l < sf.l - 1 || b.t < sf.t - 1 || b.r > W - sf.r + 1 || b.b > H - sf.b + 1).map(b => b.id);
   const overlaps = [];
