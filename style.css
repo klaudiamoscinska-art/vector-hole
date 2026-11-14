@@ -3528,7 +3528,9 @@ body:has(#adOverlay:not(.hidden)) .consent-bar { display: none; }
 /* Screen entrance: the content column rises in (backwards fill only, so no
    transform lingers on .screen-inner after the animation). */
 .screen:not(.overlay-screen) > .screen-inner { animation: v12-rise 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-@keyframes v12-rise { from { opacity: 0; transform: translateY(14px); } }
+/* GG-UI-02: the screen rises in but is never invisible -- an entrance from opacity 0 left the
+   whole menu unseen for up to a second where frames are slow (2560x1440 without a GPU). */
+@keyframes v12-rise { from { opacity: 0.4; transform: translateY(14px); } }
 
 /* Settings: full-width rows, label left, pill switch right. */
 .settings-block { width: 100%; box-sizing: border-box; text-align: left; padding: 12px 14px; background: linear-gradient(180deg, rgba(10, 32, 50, 0.7), rgba(5, 16, 28, 0.6)); border-color: rgba(80, 240, 250, 0.16); }
@@ -4796,13 +4798,13 @@ body.compact .result-actions > .result-actions-row { max-width: none; }
 /* Phone: pinned above a scrolled list, slimmer while pinned (setupWarsztatStickyCard()). */
 body:not(.wide):not(.compact) #shopScreen .warsztat-preview { position: sticky; top: 0; z-index: 5; }
 body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck { box-shadow: 0 -24px 0 var(--nc-bg); }
-body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-look { display: none; }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-look-label { display: none; } /* GG-UI-02: the look's description stays, its caption goes */
 body:not(.wide):not(.compact) #shopScreen .warsztat-preview.stuck .warsztat-preview-stage { height: 96px; }
 /* The tightest frames: the name and the status line stay, the description goes,
    so the preview alone sets the row's height and a long name moves nothing. */
-@media (max-height: 480px) { body.compact #shopScreen .warsztat-look { display: none; } }
+@media (max-height: 480px) { body.compact #shopScreen .warsztat-look-label { display: none; } }
 @media (max-width: 340px) {
-  body:not(.wide):not(.compact) #shopScreen .warsztat-look { display: none; }
+  body:not(.wide):not(.compact) #shopScreen .warsztat-look-label { display: none; }
   body:not(.wide):not(.compact) #shopScreen .shop-tabs { flex-wrap: nowrap; }
   body:not(.wide):not(.compact) #shopScreen .shop-tabs .toggle-btn { flex: 1 1 0; min-width: 0; }
 }
@@ -5167,7 +5169,7 @@ body.wide #mainMenu .hub-city-canvas { border-radius: 16px; }
 #campaignScreen .district-tile .u2-num { position: absolute; z-index: 2; top: 4px; left: 5px; padding: 1px 4px; border-radius: 5px; font-family: var(--font-display); font-size: 9px; line-height: 1.3;
   color: #04101D; background: var(--district-color); }
 #campaignScreen .district-tile .u2-state { position: absolute; z-index: 2; top: 4px; right: 4px; height: 15px; min-width: 15px; padding: 0 3px; box-sizing: border-box; border-radius: 8px;
-  display: grid; place-items: center; font-family: var(--font-display); font-size: 8px; letter-spacing: 0.04em; line-height: 1; }
+  display: grid; place-items: center; font-family: var(--font-display); font-size: 9px; letter-spacing: 0.02em; line-height: 1; }
 #campaignScreen .u2-state svg { width: 9px; height: 9px; display: block; }
 #campaignScreen .u2-state.done { background: var(--nc-green); color: #04101D; }
 #campaignScreen .u2-state.now { background: var(--nc-gold); color: #04101D; padding: 0 5px; }
@@ -5204,7 +5206,7 @@ body.wide #mainMenu .hub-city-canvas { border-radius: 16px; }
 #missionList .mission-row.current .mission-row-id { color: var(--nc-gold); }
 #missionList .mission-row.is-boss:not(.done)::before { border-color: var(--nc-pink); }
 #missionList .mission-row-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
-#missionList .mission-row-name .u2-boss-tag { margin-left: 0; font-size: 8.5px; padding: 1px 5px; }
+#missionList .mission-row-name .u2-boss-tag { margin-left: 0; font-size: 9px; padding: 1px 5px; }
 /* The briefing: a header band in the district's colour. */
 #missionBriefing .briefing-sheet .mc-head { padding: 8px 46px 8px 10px; border-radius: 12px;
   background: linear-gradient(90deg, color-mix(in srgb, var(--d-color) 34%, transparent), transparent 90%); border-left: 3px solid var(--d-color); }
@@ -5250,3 +5252,123 @@ body.compact #campaignScreen .district-tile .district-node-name { font-size: 10.
   body:not(.wide) #campaignScreen .district-strip.more-left { -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px); mask-image: linear-gradient(90deg, transparent, #000 16px); }
   body:not(.wide) #campaignScreen .district-strip.more-left.more-right { -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 }
+
+/* ---------- WARSZTAT (B): a showroom and collector cards ---------- */
+/* (opaque: on a phone the card is pinned over the scrolling list -- setupWarsztatStickyCard()) */
+#shopScreen .warsztat-preview { border: 1.5px solid transparent; background: linear-gradient(180deg, #0d283e, #04101d) padding-box, var(--u2-edge) border-box; box-shadow: var(--u2-glow); }
+body:not(.wide):not(.compact) #shopScreen .warsztat-preview::before { content: ''; position: absolute; left: -2px; right: -2px; bottom: 100%; height: 12px; margin-bottom: 1.5px; background: var(--nc-bg); pointer-events: none; }
+#shopScreen .warsztat-preview-stage { border-radius: 14px; border: 1px solid rgba(80, 240, 250, 0.4); }
+#shopScreen .warsztat-preview-labels { gap: 5px; align-items: flex-start; }
+#shopScreen .warsztat-preview-name { font-size: 21px; }
+/* The description of the look stays next to the big preview (bold), its caption under it. */
+#shopScreen .warsztat-look { margin: 0; padding: 0; border: 0; background: none; flex-direction: column; gap: 1px; min-width: 0; max-width: 100%; }
+#shopScreen .warsztat-look strong { order: -1; font-size: 13px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#shopScreen .warsztat-look-label { font-size: 9px; line-height: 1.25; }
+.u2-status { display: inline-block; align-self: flex-start; padding: 4px 10px; border-radius: 999px; border: 1px solid transparent; font-family: var(--font-display); font-weight: 400; font-size: 10.5px; line-height: 1.2; letter-spacing: 0.1em; white-space: nowrap; }
+.u2-status.worn { color: #04101D; background: var(--nc-cyan); }
+.u2-status.buy { color: #04101D; background: var(--nc-gold); }
+.u2-status.short { color: var(--nc-gold); border-color: rgba(239, 203, 99, 0.6); }
+.u2-status.reward { color: var(--nc-green); border-color: var(--nc-green); }
+/* The four categories: one switch. */
+#shopScreen .shop-tabs { flex-wrap: nowrap; padding: 4px; gap: 4px; box-sizing: border-box; border-radius: 16px; background: var(--u2-quiet); border: 1px solid var(--u2-hair); }
+#shopScreen .shop-tabs .toggle-btn { flex: 1 1 0; min-width: 0; min-height: 40px; border: 0; background: none; border-radius: 12px; flex-direction: row; justify-content: center; gap: 6px; padding: 9px 4px; }
+#shopScreen .shop-tabs .toggle-btn.active { background: linear-gradient(180deg, #68F5FC, #37DCEB); color: #04101D; box-shadow: 0 0 14px rgba(80, 240, 250, 0.4); }
+/* Collector cards: a big live vortex, the name, one plate for the state or the price, the source in the corner.
+   The number of columns follows the width: two on a 320 px phone, three from 360 px, more on wide screens. */
+#shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+#shopScreen .skin-card { flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 10px 6px 9px; min-height: 0; border-radius: 16px; overflow: hidden;
+  background: var(--u2-plate); border: 1.5px solid var(--u2-hair); opacity: 1; }
+#shopScreen .skin-card .hole-swatch { width: 68px; height: 68px; }
+#shopScreen .skin-card .skin-swatch { width: 52px; height: 52px; margin: 8px 0; box-sizing: border-box; border-width: 5px; }
+#shopScreen .skin-card-body { align-items: center; width: 100%; gap: 5px; }
+#shopScreen .skin-card .skin-name { font-size: 12px; line-height: 1.1; min-height: 2.2em; display: grid; place-items: center; }
+#shopScreen .skin-card .skin-look { display: none; }
+#shopScreen .skin-card .skin-owned-badge, #shopScreen .skin-card .skin-price { display: inline-block; align-self: center; width: fit-content; max-width: 100%; margin: 0; box-sizing: border-box; padding: 3px 8px; border-radius: 999px;
+  border: 1px solid transparent; font-family: var(--font-display); font-weight: 400; font-size: 9.5px; line-height: 1.25; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#shopScreen .skin-card .skin-owned-badge { color: var(--nc-cyan); border-color: rgba(80, 240, 250, 0.6); background: none; }
+#shopScreen .skin-card.selected { border-color: transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge) border-box; box-shadow: 0 0 18px rgba(80, 240, 250, 0.3); }
+#shopScreen .skin-card.selected .skin-owned-badge { color: #04101D; background: var(--nc-cyan); border-color: var(--nc-cyan); }
+#shopScreen .skin-card.is-buyable { border-color: transparent; background: var(--u2-plate) padding-box, var(--u2-edge-gold) border-box; }
+#shopScreen .skin-card.is-buyable .skin-price { color: #04101D; background: var(--nc-gold); box-shadow: none; }
+#shopScreen .skin-card.is-short .skin-price { color: rgba(239, 203, 99, 0.9); border-color: rgba(239, 203, 99, 0.4); }
+#shopScreen .skin-card.is-reward .skin-price { color: var(--nc-green); border-color: rgba(70, 217, 154, 0.5); font-size: 9px; white-space: normal; overflow: visible; border-radius: 9px; line-height: 1.15; }
+#shopScreen .skin-card.is-short .hole-swatch, #shopScreen .skin-card.is-reward .hole-swatch, #shopScreen .skin-card.is-short .skin-swatch, #shopScreen .skin-card.is-reward .skin-swatch { filter: saturate(0.5) brightness(0.75); }
+#shopScreen .skin-card-lock { top: 8px; right: 8px; bottom: auto; }
+#shopScreen .skin-card-check { top: 6px; right: 6px; }
+#shopScreen .skin-card .u2-src { position: absolute; top: 7px; left: 7px; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; display: grid; place-items: center; font-size: 9px; line-height: 1;
+  background: rgba(4, 16, 29, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); }
+#shopScreen .u2-src svg { width: 9px; height: 9px; display: block; }
+#shopScreen .u2-src i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+#shopScreen .u2-src.coin { color: var(--nc-gold); } #shopScreen .u2-src.prism { color: var(--nc-violet); } #shopScreen .u2-src.reward { color: var(--nc-green); } #shopScreen .u2-src.start { color: var(--nc-cyan); }
+#shopScreen .store-card { border: 1.5px solid transparent; background: var(--u2-plate) padding-box, var(--u2-edge-gold) border-box; }
+/* CRITICAL FIX 3 -- a 320 px phone: two bigger cards to a row, the look's description on the card too. */
+@media (max-width: 359px) {
+  body:not(.wide) #shopScreen .skin-card { padding: 10px 8px; }
+  body:not(.wide) #shopScreen .skin-card .hole-swatch { width: 76px; height: 76px; }
+  body:not(.wide) #shopScreen .skin-card .skin-name { font-size: 13px; min-height: 0; }
+  body:not(.wide) #shopScreen .skin-card .skin-look { display: block; font-size: 10px; color: var(--nc-text-dim); }
+  body:not(.wide) #shopScreen .skin-card .skin-owned-badge, body:not(.wide) #shopScreen .skin-card .skin-price { font-size: 10.5px; padding: 4px 10px; }
+  body:not(.wide) #shopScreen .skin-card.is-reward .skin-price { font-size: 9.5px; }
+  #shopScreen .shop-tabs .toggle-btn { gap: 4px; font-size: 9.5px; }
+  #shopScreen .shop-tabs .toggle-btn svg { width: 13px; height: 13px; }
+}
+body.wide #shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+body.wide:not(.compact) #shopScreen .skin-card .hole-swatch { width: 80px; height: 80px; }
+body.wide:not(.compact) #shopScreen .skin-card .skin-look { display: block; font-size: 10px; color: var(--nc-text-dim); min-height: 2.5em; }
+body.compact #shopScreen .skin-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+body.compact #shopScreen .skin-card .hole-swatch { width: 56px; height: 56px; }
+body.compact #shopScreen .shop-tabs .toggle-btn { padding: 6px 2px; min-height: 34px; }
+
+/* ---------- WYNIK ARENY (A + B's reward tiles): fast to read, one tap to the next round ---------- */
+#gameOverScreen .result-hero-score { background: linear-gradient(180deg, #fff 30%, var(--nc-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 14px rgba(80, 240, 250, 0.45)); }
+#gameOverScreen .result-badge, #missionResultScreen .mr-stat { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 14px; }
+#gameOverScreen .result-next { border: 1.5px solid transparent; background: var(--u2-plate) padding-box, var(--u2-edge-gold) border-box; }
+/* Coins and XP as two tiles, Core City as one wide card under them. */
+#gameOverScreen .result-rewards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+#gameOverScreen .result-rewards-title { grid-column: 1 / -1; margin: 0; display: flex; align-items: center; gap: 10px; text-align: center; letter-spacing: 0.3em; color: var(--nc-gold); }
+#gameOverScreen .result-rewards-title::before, #gameOverScreen .result-rewards-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(239, 203, 99, 0.6)); }
+#gameOverScreen .result-rewards-title::after { transform: scaleX(-1); }
+#gameOverScreen .result-rewards > .result-card { min-width: 0; box-sizing: border-box; padding: 10px 12px; border-radius: 16px; border: 1px solid var(--u2-hair); background: var(--u2-plate); }
+#gameOverScreen .result-rewards > .result-coins-card { flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; border-color: rgba(239, 203, 99, 0.5); }
+#gameOverScreen .result-rewards .result-coins-icon { font-size: 20px; line-height: 1; }
+#gameOverScreen .result-rewards .result-coins-value { font-size: 19px; }
+#gameOverScreen .result-rewards .result-newbie-tag { position: static; align-self: flex-start; margin: 0; font-size: 9px; white-space: normal; text-align: left; }
+#gameOverScreen .result-rewards > .result-xp-card { justify-content: center; border-color: rgba(239, 203, 99, 0.3); }
+#gameOverScreen .result-rewards .result-xp-head { flex-direction: column-reverse; align-items: flex-start; gap: 2px; }
+#gameOverScreen .result-rewards .result-xp-gain { font-size: 19px; }
+#gameOverScreen .result-rewards > .result-core-card { grid-column: 1 / -1; border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge) border-box; }
+#gameOverScreen .result-rewards > .result-core-card.leveled { background: var(--u2-plate-hi) padding-box, var(--u2-edge-gold) border-box; box-shadow: 0 0 18px rgba(239, 203, 99, 0.18); }
+#gameOverScreen .result-xp-track, #gameOverScreen .result-core-track, #missionResultScreen .result-xp-track { height: 8px; border-radius: 6px; }
+#gameOverScreen .final-leaderboard li { background: var(--u2-quiet); border: 1px solid var(--u2-hair); border-radius: 10px; }
+#gameOverScreen .final-leaderboard li.is-player { border: 1.5px solid transparent; background: var(--u2-plate-hi) padding-box, var(--u2-edge) border-box; }
+body.compact #gameOverScreen .result-rewards > .result-card { padding: 7px 10px; }
+body.compact #gameOverScreen .result-rewards .result-coins-value, body.compact #gameOverScreen .result-rewards .result-xp-gain { font-size: 16px; }
+
+/* ---------- WYNIK MISJI (B): the stars on a plate ---------- */
+#missionResultScreen .mr-stars { margin: 0; padding: 10px 26px 6px; border-radius: 22px; border: 1.5px solid transparent;
+  background: radial-gradient(80% 120% at 50% 0%, rgba(239, 203, 99, 0.2), transparent 70%) padding-box, var(--u2-plate) padding-box, var(--u2-edge-gold) border-box; box-shadow: 0 0 18px rgba(239, 203, 99, 0.2); }
+#missionResultScreen .result-xp-card { background: var(--u2-plate); border: 1px solid var(--u2-hair); border-radius: 16px; }
+body.compact #missionResultScreen .mr-stars { padding: 4px 18px 2px; border-radius: 16px; }
+
+/* ---------- NAGRODY (B): Core City rewards, chests, unlocks -- a trophy card in the reward's colour ---------- */
+.unlock-overlay .unlock-panel { position: relative; box-sizing: border-box; max-width: 350px; padding: 34px 18px 18px; border-radius: 8px 26px 8px 26px; border: 1.5px solid transparent;
+  background: linear-gradient(180deg, rgba(13, 40, 62, 0.9), rgba(4, 16, 29, 0.95)) padding-box, linear-gradient(135deg, var(--unlock-color), rgba(152, 117, 255, 0.5) 60%, rgba(255, 84, 173, 0.6)) border-box;
+  box-shadow: 0 0 46px color-mix(in srgb, var(--unlock-color) 32%, transparent); }
+.unlock-overlay .unlock-panel > .unlock-kicker { position: absolute; top: -1.5px; left: 50%; z-index: 2; width: max-content; max-width: calc(100% - 44px); box-sizing: border-box; padding: 6px 20px; border-radius: 0 0 14px 14px;
+  font-size: 13px; letter-spacing: 0.14em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #04101D; -webkit-text-fill-color: #04101D; background: var(--unlock-color); translate: -50% 0; }
+.unlock-overlay .unlock-eyebrow { display: inline-block; padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--unlock-color) 60%, transparent); }
+.unlock-overlay .unlock-title { background: linear-gradient(180deg, #fff 40%, var(--unlock-color)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+body.compact .unlock-overlay .unlock-panel { max-width: 680px; padding: 30px 30px 12px; }
+
+/* ---------- NAGRODA DZIENNA, ARKUSZE (A): calm material, a readable week ---------- */
+#loginRewardScreen .login-panel, #infoSheet .info-sheet-panel { border: 1.5px solid transparent; background: var(--u2-plate) padding-box, var(--u2-edge) border-box; box-shadow: var(--u2-glow); }
+#loginRewardScreen .login-tile { border-radius: 12px; background: var(--u2-quiet); border: 1px solid var(--u2-hair); }
+#loginRewardScreen .login-tile.big { background: linear-gradient(135deg, rgba(152, 117, 255, 0.25), rgba(239, 203, 99, 0.2)); border-color: var(--nc-violet); }
+#loginRewardScreen .login-tile.current { border-color: var(--nc-gold); }
+/* CALENDAR FIX: a collected day's check is a small mark on the tile's corner -- it lay across the amounts.
+   The amounts stay readable (dimmed, not covered). */
+#loginRewardScreen .login-panel { overflow: visible; }
+#loginRewardScreen .login-tile.claimed { opacity: 1; border-color: rgba(70, 217, 154, 0.4); }
+#loginRewardScreen .login-tile.claimed > :not(.login-tile-check) { opacity: 0.6; }
+#loginRewardScreen .login-tile-check { inset: auto; top: -6px; right: -6px; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; font-weight: 900; line-height: 1;
+  color: #04101D; background: var(--nc-green); text-shadow: none; box-shadow: 0 0 0 2px #06182a; }

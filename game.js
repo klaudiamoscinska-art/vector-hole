@@ -11848,6 +11848,14 @@ class Game {
         swatch.style.borderColor = 'rgba(255,255,255,0.3)';
       }
       card.appendChild(swatch);
+      // GG-UI-02: where the item comes from -- its real source only (the
+      // starting set, coins, prisms, a reward); the game has no rarity.
+      const src = document.createElement('span');
+      const kind = item.unlockSource ? 'reward' : (prisms ? 'prism' : (price > 0 ? 'coin' : 'start'));
+      src.className = 'u2-src ' + kind;
+      src.setAttribute('aria-hidden', 'true');
+      src.innerHTML = { reward: '<svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z" fill="currentColor"/></svg>', prism: '◆', coin: '◇', start: '<i></i>' }[kind];
+      card.appendChild(src);
 
       const body = document.createElement('div');
       body.className = 'skin-card-body';
@@ -12016,6 +12024,13 @@ class Game {
     buy.classList.toggle('hidden', !offer || offer.state === 'reward');
     document.getElementById('btnWarsztatEarn').classList.toggle('hidden', !offer || offer.state !== 'short');
     document.querySelectorAll('#shopScreen .skin-card.looking').forEach(c => c.classList.remove('looking'));
+    // GG-UI-02: the state of what the showroom shows, in one plate -- worn
+    // (nothing is being looked at), for sale and affordable, out of reach
+    // (in its real currency), or a reward. Always there: no layout shift.
+    const st = !f ? ['worn', 'WYPOSAŻONE'] : offer.state === 'buy' ? ['buy', 'DO KUPIENIA']
+      : offer.state === 'short' ? ['short', offer.prisms ? 'ZA MAŁO PRYZMATÓW' : 'ZA MAŁO MONET'] : ['reward', 'NAGRODA'];
+    const badge = document.getElementById('warsztatStatus');
+    if (badge) { badge.className = 'u2-status ' + st[0]; if (badge.textContent !== st[1]) badge.textContent = st[1]; }
     if (!f) return;
     const card = document.querySelector(`#shopScreen .skin-card[data-item="${f.item.id}"]`);
     if (card && !card.closest('.hidden')) card.classList.add('looking');
@@ -22240,6 +22255,15 @@ const I18N_EN = {
   "ZAPISZ": "SAVE",
   "ZATOKA HOLOGRAMÓW": "HOLOGRAM BAY",
   "ZAŁOŻONE": "EQUIPPED",
+  // GG-UI-02 (Dzielnice counters, the boss mark, the Warsztat status plate)
+  "ODBUDOWANE DZIELNICE": "DISTRICTS REBUILT",
+  "MISJE": "MISSIONS",
+  "BOSS": "BOSS",
+  "WYPOSAŻONE": "EQUIPPED",
+  "DO KUPIENIA": "AVAILABLE TO BUY",
+  "ZA MAŁO MONET": "NOT ENOUGH COINS",
+  "ZA MAŁO PRYZMATÓW": "NOT ENOUGH PRISMS",
+  "NAGRODA": "REWARD",
   "ZAŁÓŻ": "EQUIP",
   "ZAŁÓŻ W WARSZTACIE": "EQUIP IN WORKSHOP",
   "ZDOBYTE MONETY": "COINS EARNED",
