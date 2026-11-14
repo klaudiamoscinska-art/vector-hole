@@ -243,9 +243,10 @@ body.touch-input #gameCanvas {
 
 
 /* ===================== FLOATING THUMB PAD ===================== */
-/* Anchors wherever the thumb touches down inside the lower control zone
-   (see CONFIG.input.zoneHeightFraction in game.js). Translucent, fades
-   out ~0.4s after release, never a fixed on-screen joystick graphic. */
+/* The "Joystick" control (GG-UX-03): anchors wherever the thumb touches
+   down on the board -- top, middle or bottom. Translucent, fades out ~0.4s
+   after release, never a fixed on-screen joystick graphic; never takes a
+   touch itself (pointer-events: none, inherited by the knob). */
 
 .thumbpad-base {
   position: absolute;
@@ -5439,3 +5440,19 @@ body.compact #shopScreen .skin-card .u2-src { font-size: 9px; }
   body:not(.wide) #gameOverScreen .result-actions-row .btn { min-width: 0; padding-left: 4px; padding-right: 4px; font-size: 10.5px; letter-spacing: 0.02em; gap: 4px; }
   body:not(.wide) #gameOverScreen .result-actions-row #btnShare svg { display: none; }
 }
+
+
+/* ===================== GG-UX-03: minimap on the left by default ===================== */
+/* The minimap sits in the bottom-LEFT corner unless the player picks the
+   right one (Profil → Ustawienia, body.minimap-left / .minimap-right set by
+   Game.applyMinimapSide()). The bottom HUD lines keep to the other side:
+   the coach hint runs right of the map, "now playing" takes the right
+   corner. Sizes as before (162 / 136 px = the map + its margin + a gap). */
+body.minimap-left #mobile-hint {
+  left: calc(162px + env(safe-area-inset-left, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+}
+@media (max-width: 400px) {
+  body.minimap-left #mobile-hint { left: calc(136px + env(safe-area-inset-left, 0px)); right: calc(16px + env(safe-area-inset-right, 0px)); }
+}
+body.minimap-left #hud .now-playing { left: auto; right: var(--gh-right); }

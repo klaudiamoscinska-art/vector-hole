@@ -243,10 +243,10 @@ const CONFIG = {
     rivalLinger: 2,    // s a smaller rival must stay on screen uneaten first
     showSeconds: 5     // one-off hints (rival, danger) stay this long
   },
-  // Floating Thumb Pad tuning (Phase 2). Legacy direct-drag stays available
-  // via settings.inputMode and is unaffected by these values.
+  // Joystick tuning (settings.inputMode 'thumbpad'; GG-UX-03: a dynamic
+  // joystick anchored wherever a finger lands on the board -- no bottom
+  // zone any more). Legacy direct-drag (the default) is unaffected.
   input: {
-    zoneHeightFraction: 0.35, // bottom % of screen height that anchors the pad
     deadZonePx: 10,
     maxRadiusPx: 55,
     curveExponent: 1.6,       // >1 = more precision near center, speed at full deflection
@@ -2368,7 +2368,7 @@ const EAT_EFFECTS = [
 // GDD 4.0 §5.3 Warsztat category 4: "Overdrive" -- a cosmetic tint on
 // Arena's existing seeded Overdrive finish (see checkOverdriveTrigger()).
 // Doesn't change which variant (blackout/portal_rain) is picked -- only
-// the banner/glow color.
+// the banner/glow color. (GG-UX-03: 'blackout' no longer darkens anything.)
 const OVERDRIVE_SKINS = [
   { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
   { id: 'fala', name: 'Fala', priceCoins: null, color: '#50F0FA', unlockSource: { type: 'coreCity', level: 5 } },
@@ -4011,7 +4011,9 @@ function defaultSave() {
     // Player feedback: default to legacy direct-drag (chase the pointer/
     // touch point) rather than the Floating Thumb Pad -- still switchable
     // in Ustawienia (syncControlsPanel()'s "Tryb sterowania" toggle).
-    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', sfx: true, music: true, gfxLevel: 2, musicPick: 'auto', lang: 'auto' },
+    // GG-UX-03: minimapSide = which bottom corner the minimap sits in
+    // ('left' default -- a right thumb steering no longer covers it; 'right').
+    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', minimapSide: 'left', sfx: true, music: true, gfxLevel: 2, musicPick: 'auto', lang: 'auto' },
     stats: { runsPlayed: 0, bestArenaScore: 0, recentArenaScores: [] },
     // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
     // coreCharge is the 0-100 progress toward the *next* level.
@@ -4121,6 +4123,11 @@ function sanitizeSave(save, issues) {
   if (!out.owned.includes('rainbow')) out.owned.unshift('rainbow');
   if (!out.campaign.unlockedDistricts.includes('plac')) out.campaign.unlockedDistricts.unshift('plac');
   out.settings.sensitivity = out.settings.sensitivity || 1;
+  // GG-UX-03: two controls only -- 'thumbpad' (Joystick) or 'legacy'
+  // (Przeciąganie, the default); only 'right' moves the minimap, anything
+  // else is the default left.
+  if (out.settings.inputMode !== 'thumbpad') out.settings.inputMode = 'legacy';
+  if (out.settings.minimapSide !== 'right') out.settings.minimapSide = 'left';
   // v16: a pinned track that no longer exists falls back to the mix.
   if (out.settings.musicPick !== 'auto' && !MUSIC_TRACK_BY_ID[out.settings.musicPick]) out.settings.musicPick = 'auto';
   out.player.level = Math.max(1, Math.floor(out.player.level));
@@ -7429,6 +7436,14 @@ function holeSprite(style, layer, col, devR) {
   canvas.width = canvas.height = half * 2;
   const c = canvas.getContext('2d');
   c.translate(half, half);
+  // GG-UX-03 (owner's decision): every layer is painted mirrored (left <->
+  // right), so the arms wind the other way and read as pulling matter in.
+  // Only the cached picture flips: stampHoleLayer() still turns it by the
+  // same look.spin angle, so every direction and speed of turning is as
+  // before (mirroring the stamped, already turned sprite would reverse the
+  // turn instead). The live strokes (look.live), the accretion disk and
+  // everything being swallowed are drawn per frame and are not mirrored.
+  c.scale(-1, 1);
   paintHoleLayer(c, layer, r, HOLE_LOOKS[style], holePalette(col || '#9875FF'));
   sprite = { canvas, half, r };
   HOLE_SPRITES.set(key, sprite);
@@ -11008,6 +11023,7 @@ class Game {
     this.keyDir = { x: 0, y: 0 };
     this.thumbpadTouchId = null;
     this.thumbpadFadeTimer = null;
+    this.releaseThumbpad = () => {}; // bindInput() puts the real one in
 
     // Re-probe one level above the remembered one each session, so a
     // one-off slow session can't pin a device to low quality forever.
@@ -11075,8 +11091,11 @@ class Game {
     // v13.4: measure the app box, not innerHeight -- on iOS home-screen apps
     // innerHeight can be the screen minus the status bar.
     const box = document.getElementById('app').getBoundingClientRect();
+    const was = this.width + 'x' + this.height;
     this.width = Math.round(box.width) || window.innerWidth;
     this.height = Math.round(box.height) || window.innerHeight;
+    // GG-UX-03: a turned phone (a new frame) leaves no joystick anchor behind.
+    if (was !== this.width + 'x' + this.height) this.releaseThumbpad();
     // (re-sizing a canvas clears it: only when the size really changed)
     if (this.canvas.width !== this.width * dpr || this.canvas.height !== this.height * dpr) {
       this.canvas.width = this.width * dpr;
@@ -11139,6 +11158,7 @@ class Game {
     // explicit "off" now hides it; "auto"/"on" both show it.
     const pref = this.save ? this.save.settings.minimap : 'auto';
     this.showMinimap = pref !== 'off';
+    if (this.save) this.applyMinimapSide();
     // MOBILE-PERF-1: re-sizing the canvas clears it, and a paused round's
     // loop is stopped -- a phone turned (or a window resized) on the pause
     // sheet left a black board under it until the round resumed. Draw the
@@ -11405,19 +11425,24 @@ class Game {
       heldKeys.clear();
       recomputeKeyDir();
       this.pointerScreen = null;
-      if (this.thumbpadTouchId !== null) {
-        this.thumbpadTouchId = null;
-        anchor = null;
-        this.moveVector = { x: 0, y: 0, magnitude: 0 };
-        hideThumbpad();
-      }
+      this.releaseThumbpad();
       if (this.running && !this.paused && !this.monetization.busy) this.pauseGame();
     });
 
-    // ---- Touch: Floating Thumb Pad (default) or legacy full-screen drag. ----
+    // ---- Touch: legacy full-screen drag (the default, "Przeciąganie") or
+    // the joystick ("Joystick", inputMode 'thumbpad'). GG-UX-03: the
+    // joystick is dynamic -- its base appears wherever a finger lands on the
+    // board (top, middle or bottom; the bottom-35 % zone is gone), that
+    // point is the anchor, the deflection steers. ----
     const thumbBase = document.getElementById('thumbpadBase');
     const thumbKnob = document.getElementById('thumbpadKnob');
-    const zoneTop = () => this.height * (1 - CONFIG.input.zoneHeightFraction);
+    // A finger on a HUD panel (standings, goal, clock strip, toast) or on the
+    // minimap is on the HUD, not on the board: no joystick there.
+    const onHud = (sx, sy) => {
+      if (!this.hudBoxes) this.fadeHudUnderHole();
+      const boxes = (this.hudBoxes || []).concat(this.showMinimap ? [this.minimapRect()] : []);
+      return boxes.some(b => sx >= b.l && sx <= b.r && sy >= b.t && sy <= b.b);
+    };
 
     const showThumbpad = (sx, sy) => {
       clearTimeout(this.thumbpadFadeTimer);
@@ -11457,20 +11482,40 @@ class Game {
     };
 
     let anchor = null;
+    /** Drops the joystick's anchor and stops its steering (finger up, a
+     *  second finger left alone, pause, resume, focus lost, a turn of the
+     *  phone, a new round): nothing moves until a finger lands again. */
+    this.releaseThumbpad = () => {
+      if (this.thumbpadTouchId === null && !anchor) return;
+      this.thumbpadTouchId = null;
+      anchor = null;
+      this.moveVector = { x: 0, y: 0, magnitude: 0 };
+      thumbKnob.style.transform = 'translate(0px, 0px)';
+      hideThumbpad();
+    };
 
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      if (this.useThumbpad) {
+        // One joystick, owned by the finger that made it: a second finger
+        // never moves its anchor (or starts another).
+        if (this.thumbpadTouchId !== null) return;
+        const t = e.changedTouches[0];
+        if (t && this.running && !this.paused && !onHud(t.clientX, t.clientY)) {
+          anchor = { x: t.clientX, y: t.clientY };
+          this.thumbpadTouchId = t.identifier;
+          thumbKnob.style.transform = 'translate(0px, 0px)';
+          showThumbpad(anchor.x, anchor.y);
+          this.moveVector = { x: 0, y: 0, magnitude: 0 };
+          return;
+        }
+      }
+      // Legacy drag (unchanged); in joystick mode a touch that makes no
+      // joystick only records the point, as before (it never steers there).
       const t = e.touches[0];
       if (!t) return;
-      if (this.useThumbpad && this.running && !this.paused && t.clientY >= zoneTop()) {
-        anchor = { x: t.clientX, y: t.clientY };
-        this.thumbpadTouchId = t.identifier;
-        showThumbpad(anchor.x, anchor.y);
-        this.moveVector = { x: 0, y: 0, magnitude: 0 };
-      } else {
-        this.thumbpadTouchId = null;
-        updateFromScreen(t.clientX, t.clientY);
-      }
+      this.thumbpadTouchId = null;
+      updateFromScreen(t.clientX, t.clientY);
     }, { passive: false });
 
     this.canvas.addEventListener('touchmove', (e) => {
@@ -11487,13 +11532,10 @@ class Game {
 
     const endThumbTouch = (e) => {
       if (e.touches.length === 0) this.pointerScreen = null; // finger up = stop
+      // The joystick's own finger up (or cancelled) = stop at once, even
+      // while another finger stays on the glass.
       const stillDown = Array.from(e.touches).some(t => t.identifier === this.thumbpadTouchId);
-      if (this.thumbpadTouchId !== null && !stillDown) {
-        this.thumbpadTouchId = null;
-        anchor = null;
-        this.moveVector = { x: 0, y: 0, magnitude: 0 };
-        hideThumbpad();
-      }
+      if (this.thumbpadTouchId !== null && !stillDown) this.releaseThumbpad();
     };
     this.canvas.addEventListener('touchend', endThumbTouch, { passive: true });
     this.canvas.addEventListener('touchcancel', endThumbTouch, { passive: true });
@@ -11770,6 +11812,15 @@ class Game {
       this.save.settings.haptics = false;
       saveGame(this.save);
       this.syncControlsPanel();
+    });
+    // GG-UX-03: Profil → Ustawienia → Położenie minimapy (LEWA / PRAWA).
+    document.querySelectorAll('[data-minimap-side]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.save.settings.minimapSide = btn.dataset.minimapSide === 'right' ? 'right' : 'left';
+        saveGame(this.save);
+        this.applyMinimapSide();
+        this.syncControlsPanel();
+      });
     });
     // Golden Shot v11: on/off toggles shared by the pause sheet and the
     // profile/settings screen (`data-setting` = save.settings key).
@@ -14707,6 +14758,7 @@ class Game {
     el.classList.add('hidden');
     this.introPending = false;
     this.pointerScreen = null;
+    this.releaseThumbpad();
     this.monetization.gameplayStart(); // R3-04: the clock starts now
     this.lastTime = performance.now();
     this.showBanner('START!', this.mission ? this.mission.def.name : '', '#46D99A', 0.9, 3);
@@ -15338,6 +15390,8 @@ class Game {
     this.sound.setScene('campaign', { district: def.district, boss: !!musicDistrict && musicDistrict.missions[musicDistrict.missions.length - 1] === def.id });
 
     this.pointerScreen = null; // no steering until the first touch/mouse move
+    this.releaseThumbpad();
+    this.applyMinimapSide();
     this.running = true;
     this.setBoardLive(true);
     // R3-04: no gameplayStart yet -- the world is frozen behind the start card
@@ -15921,6 +15975,7 @@ class Game {
 
   pickCampaignPower(id) {
     this.pointerScreen = null;
+    this.releaseThumbpad();
     if (!this.evolutionPending) return;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionPending = false;
@@ -17048,6 +17103,8 @@ class Game {
     this.sound.go();
 
     this.pointerScreen = null; // no steering until the first touch/mouse move
+    this.releaseThumbpad();
+    this.applyMinimapSide();
     this.running = true;
     this.setBoardLive(true);
     this.monetization.gameplayStart();
@@ -17505,6 +17562,7 @@ class Game {
   }
 
   pauseGame() {
+    this.releaseThumbpad(); // GG-UX-03: a pause never leaves the joystick steering
     if (!this.running || this.paused) return;
     this.paused = true;
     this.state = GameState.PAUSED;
@@ -17521,6 +17579,7 @@ class Game {
 
   resumeGame() {
     this.pointerScreen = null;
+    this.releaseThumbpad(); // ... nor brings a stale one back
     if (!this.paused) return;
     this.paused = false;
     this.state = GameState.PLAYING;
@@ -17617,7 +17676,9 @@ class Game {
   syncControlsPanel() {
     const mode = this.save.settings.inputMode;
     document.getElementById('btnInputThumbpad').classList.toggle('active', mode === 'thumbpad');
-    document.getElementById('btnInputLegacy').classList.toggle('active', mode === 'legacy');
+    document.getElementById('btnInputLegacy').classList.toggle('active', mode !== 'thumbpad');
+    const side = this.save.settings.minimapSide === 'right' ? 'right' : 'left';
+    document.querySelectorAll('[data-minimap-side]').forEach(btn => btn.classList.toggle('active', btn.dataset.minimapSide === side));
     document.querySelectorAll('[data-sensitivity]').forEach(btn => {
       btn.classList.toggle('active', parseFloat(btn.dataset.sensitivity) === this.save.settings.sensitivity);
     });
@@ -18415,6 +18476,7 @@ class Game {
 
   pickMutation(id) {
     this.pointerScreen = null;
+    this.releaseThumbpad();
     if (!this.evolutionPending) return;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionPending = false;
@@ -18438,6 +18500,7 @@ class Game {
    *  mutations and Campaign powers since they reuse the same overlay. */
   skipEvolutionOffer() {
     this.pointerScreen = null;
+    this.releaseThumbpad();
     if (!this.evolutionPending) return;
     clearTimeout(this.evolutionAutoPickTimer);
     this.evolutionPending = false;
@@ -18489,7 +18552,11 @@ class Game {
     this.overdriveActive = true;
     const variants = CONFIG.overdrive.variants;
     this.overdriveVariant = variants[Math.floor(this.rng.next() * variants.length)];
-    this.overdriveTag = this.overdriveVariant === 'blackout' ? 'ZACIEMNIENIE' : 'BURZA PORTALI';
+    // GG-UX-03 (owner's decision): the 'blackout' finish no longer darkens
+    // the board, so it is not announced as one -- only "WIELKI FINISZ!".
+    // The seeded pick above (the same draw, the same two variants) and
+    // Burza portali's bonus wave are unchanged.
+    this.overdriveTag = this.overdriveVariant === 'portal_rain' ? 'BURZA PORTALI' : null;
     this.analytics.track('overdrive_start', { variant: this.overdriveVariant, runId: this.runId });
     this.vibrate([60, 40, 60]);
     this.flashScreen('#9875FF', 0.25);
@@ -18652,7 +18719,7 @@ class Game {
     if (st.key === 'eat' && st.bites > 0) this.hideCoachHint();
     if (st.key) return;
     if (!c.moved && st.steerT == null && st.t > C.moveAfter) {
-      const how = this.useThumbpad && this.isTouchDevice ? 'Dotknij dołu ekranu i przesuń kciuk — wir jedzie w tę stronę'
+      const how = this.useThumbpad && this.isTouchDevice ? 'Dotknij planszy i przesuń kciuk — wir jedzie w tę stronę'
         : this.isTouchDevice ? 'Przeciągnij palcem po ekranie — wir jedzie za nim'
           : 'Prowadź kursorem myszy — wir jedzie za nim (albo strzałki / WASD)';
       this.showCoachHint('moved', how, 'drag');
@@ -18981,11 +19048,15 @@ class Game {
     const d = DISTRICTS.find(x => x.id === districtId);
     if (!d) return;
     const label = d.name.toUpperCase(), col = DISTRICT_COLORS[districtId] || '#50F0FA', k = this.uiScale || 1;
+    // GG-UX-03: the plate is flush with the map's outer edge (its left edge
+    // for a map on the left, its right edge for one on the right) and runs
+    // toward the middle, so it never leaves the screen.
+    const right = this.minimapOnRight();
     ctx.save();
-    ctx.translate(px + size, py);
+    ctx.translate(right ? px + size : px, py);
     ctx.scale(k, k);
     ctx.font = `10px ${FONT_DISPLAY}`;
-    const w = ctx.measureText(label).width + 21, h = 16, x = -w, y = -20;
+    const w = ctx.measureText(label).width + 21, h = 16, x = right ? -w : 0, y = -20;
     roundRectPath(ctx, x, y, w, h, 5);
     ctx.fillStyle = 'rgba(4, 16, 29, 0.92)';
     ctx.fill();
@@ -19008,9 +19079,20 @@ class Game {
   minimapMargin() { return (this.layout === 'compact' ? 10 : 16) * (this.uiScale || 1); }
   /** FTUE-2 FIX: the minimap's box on screen (CSS px), clear of the
    *  home bar / a side notch (it sat under an iPhone's Dynamic Island). */
+  /** GG-UX-03: bottom LEFT by default, bottom right when the player picks
+   *  it (Profil → Ustawienia, save.settings.minimapSide); the side never
+   *  changes on its own (not while a finger steers either). */
+  minimapOnRight() { return !!this.save && this.save.settings.minimapSide === 'right'; }
+  /** The DOM HUD lines at the bottom (the coach hint, "now playing") keep to
+   *  the side away from the minimap: body.minimap-left / body.minimap-right. */
+  applyMinimapSide() {
+    const right = this.minimapOnRight();
+    document.body.classList.toggle('minimap-right', right);
+    document.body.classList.toggle('minimap-left', !right);
+  }
   minimapRect() {
-    const size = this.minimapSize(), m = this.minimapMargin(), sf = this.safe || { r: 0, b: 0 };
-    const l = this.width - size - m - sf.r, t = this.height - size - m - sf.b;
+    const size = this.minimapSize(), m = this.minimapMargin(), sf = this.safe || { l: 0, r: 0, b: 0 };
+    const l = this.minimapOnRight() ? this.width - size - m - sf.r : m + sf.l, t = this.height - size - m - sf.b;
     return { l, t, r: l + size, b: t + size };
   }
 
@@ -19300,16 +19382,10 @@ class Game {
     this.drawDangerIndicators(ctx);
     this.drawGoldenIndicator(ctx);
     this.drawJuiceScreen(ctx, this.timeRemaining);
-
-    // Overdrive "blackout" City Shift: dims the world layer only (drawn
-    // after ctx.restore(), so HUD/minimap on top stay fully readable).
-    if (this.overdriveActive && this.overdriveVariant === 'blackout') {
-      ctx.save();
-      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(0, 0, this.width, this.height);
-      ctx.restore();
-    }
+    // GG-UX-03 (owner's decision): no dark layer over the board in the
+    // last seconds -- the 'blackout' finish used to dim it with
+    // rgba(0,0,0,0.55). Campaign's dark missions (drawDarkness()) are
+    // a different thing and stay.
   }
 
   /** v12: when a bigger hole is drawn over the player (holes draw small to
@@ -21358,7 +21434,10 @@ const I18N_EN = {
   "Każdy nowy poziom = monety, a co {0}. poziom także": "Every new level = coins, and every {0} levels also",
   "Każdy pakiet tutaj to kawałek miasta.": "Every packet here is a piece of the city.",
   "Każdy piksel tutaj to skażenie.": "Every pixel here is corruption.",
-  "Kciuk (pad)": "Thumb (pad)",
+  "Joystick": "Joystick",
+  "Położenie minimapy": "Minimap position",
+  "Lewa": "Left",
+  "Prawa": "Right",
   "Kieszonkowiec": "Pickpocket",
   "Kino odzyskane. Park Impulsów otwarty!": "Cinema reclaimed. Pulse Park is open!",
   "Kino to obiekt T4 i chronią je dwa węzły. Wyłącz je, urośnij i pochłoń kino.": "The cinema is a T4 object guarded by two nodes. Shut them down, grow and swallow the cinema.",
@@ -21828,7 +21907,7 @@ const I18N_EN = {
   "Pryzmat": "Prism",
   "Pryzmaty": "Prisms",
   "Pryzmaty — co to jest?": "Prisms — what are they?",
-  "Przeciąganie": "Drag",
+  "Przeciąganie": "Drag to move",
   "Przeciążenie": "Overload",
   "Przed każdą misją możesz wziąć Zegar (+15 s), Turbo start, Sprint, Magnes albo Tarczę. Na start dostajesz po jednym w prezencie!": "Before each mission you can take a Clock (+15 s), Turbo Start, Sprint, Magnet or Shield. You get one of each free to start!",
   "Przed restartem": "Before restarting",
@@ -22208,7 +22287,6 @@ const I18N_EN = {
   "ZABLOKOWANA": "LOCKED",
   "ZABLOKOWANE": "LOCKED",
   "ZABLOKOWANY": "LOCKED",
-  "ZACIEMNIENIE": "BLACKOUT",
   "ZACZNIJ MISJĘ OD NOWA": "RESTART MISSION",
   "ZACZNIJ OD NOWA": "START OVER",
   "Odśwież": "Reload",
@@ -22830,7 +22908,7 @@ const I18N_EN = {
   "w Dzielnicach — wystarczy jedno z dwóch.": "in Districts — either one will do.",
   ", żeby je odblokować.": " to unlock them.",
   "Codzienne rundy Areny:": "Daily Arena rounds:",
-  "Dotknij dołu ekranu i przesuń kciuk — wir jedzie w tę stronę": "Touch the bottom of the screen and slide your thumb — the vortex goes that way",
+  "Dotknij planszy i przesuń kciuk — wir jedzie w tę stronę": "Touch the board and slide your thumb — the vortex goes that way",
   "Przeciągnij palcem po ekranie — wir jedzie za nim": "Drag your finger across the screen — the vortex follows it",
   "Prowadź kursorem myszy — wir jedzie za nim (albo strzałki / WASD)": "Move the mouse cursor — the vortex follows it (or arrow keys / WASD)",
   "Najeżdżaj na świecące fragmenty — każdy powiększa wir": "Roll over the glowing fragments — each one grows your vortex",
