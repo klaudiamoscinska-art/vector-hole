@@ -13611,5 +13611,4538 @@
   },
   "errors": [],
   "sha": "b04a2d8649a0cd39"
+ },
+ "m0-welcome-iphone-prod": {
+  "name": "m0-welcome-iphone-prod",
+  "scene": "m0-welcome",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 0,
+    "prisms": 0,
+    "coreLevel": 1,
+    "coreCharge": 0,
+    "level": 1,
+    "xp": 0,
+    "runs": 0,
+    "owned": [
+     "rainbow"
+    ],
+    "selected": "rainbow",
+    "auras": [
+     "none"
+    ],
+    "aura": "none",
+    "completed": 0,
+    "districts": [
+     "plac"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "0",
+    "prismsMenu": "0",
+    "lvl": "LVL 1",
+    "charge": "0%",
+    "nextReward": "Smuga „Impuls” + 150 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "0cb16e36e6046993"
+ },
+ "m2-mid-iphone-prod": {
+  "name": "m2-mid-iphone-prod",
+  "scene": "m2-mid",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "4845a7c97e212e34"
+ },
+ "m3-max-iphone-prod": {
+  "name": "m3-max-iphone-prod",
+  "scene": "m3-max",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 5320,
+    "prisms": 64,
+    "coreLevel": 6,
+    "coreCharge": 72,
+    "level": 19,
+    "xp": 640,
+    "runs": 96,
+    "owned": [
+     "cyan",
+     "green",
+     "krysztal",
+     "pink",
+     "pryzmat",
+     "purple",
+     "rainbow"
+    ],
+    "selected": "pryzmat",
+    "auras": [
+     "ember",
+     "impuls",
+     "none",
+     "pryzmat",
+     "spark"
+    ],
+    "aura": "pryzmat",
+    "completed": 124,
+    "districts": [
+     "plac",
+     "park",
+     "port",
+     "galeria",
+     "dachy",
+     "rdzen",
+     "metro",
+     "bazar",
+     "fabryka"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "5320",
+    "prismsMenu": "64",
+    "lvl": "LVL 6",
+    "charge": "72%",
+    "nextReward": "+100 monet + 10 pryzmatów",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "0ff4710d2a34afaf"
+ },
+ "m4-roadmap-iphone-prod": {
+  "name": "m4-roadmap-iphone-prod",
+  "scene": "m4-roadmap",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu",
+    "infoSheet"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "26fa33a4b6ce41ce"
+ },
+ "m1-early-iphone-prod": {
+  "name": "m1-early-iphone-prod",
+  "scene": "m1-early",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 354,
+    "prisms": 0,
+    "coreLevel": 1,
+    "coreCharge": 27,
+    "level": 2,
+    "xp": 114,
+    "runs": 1,
+    "owned": [
+     "rainbow"
+    ],
+    "selected": "rainbow",
+    "auras": [
+     "none"
+    ],
+    "aura": "none",
+    "completed": 0,
+    "districts": [
+     "plac"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "354",
+    "prismsMenu": "0",
+    "lvl": "LVL 1",
+    "charge": "27%",
+    "nextReward": "Smuga „Impuls” + 150 monet",
+    "finalScore": "3 569",
+    "finalCoins": "204",
+    "place": "1.",
+    "xpGain": "+234 XP",
+    "coreAfter": "27%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "f0af87a85416e8fe"
+ },
+ "d1-list-iphone-prod": {
+  "name": "d1-list-iphone-prod",
+  "scene": "d1-list",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "885f94a551df6d8f"
+ },
+ "d2-current-iphone-prod": {
+  "name": "d2-current-iphone-prod",
+  "scene": "d2-current",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "03b87ecf1448ecb7"
+ },
+ "d3-states-iphone-prod": {
+  "name": "d3-states-iphone-prod",
+  "scene": "d3-states",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "e736f75f73c1e888"
+ },
+ "d4-briefing-boss-iphone-prod": {
+  "name": "d4-briefing-boss-iphone-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": [
+    "PORT SYNTEZ"
+   ]
+  },
+  "errors": [],
+  "sha": "50b61f39ea7e83fa"
+ },
+ "d5-locked-iphone-prod": {
+  "name": "d5-locked-iphone-prod",
+  "scene": "d5-locked",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "infoSheet",
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "99a83d988535e5eb"
+ },
+ "w1-skins-iphone-prod": {
+  "name": "w1-skins-iphone-prod",
+  "scene": "w1-skins",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "28136f934ac6e543"
+ },
+ "w2-equipped-iphone-prod": {
+  "name": "w2-equipped-iphone-prod",
+  "scene": "w2-equipped",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "4a5b90a204af25fd"
+ },
+ "w3-buy-iphone-prod": {
+  "name": "w3-buy-iphone-prod",
+  "scene": "w3-buy",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "30acf0355e6a3ac4"
+ },
+ "w4-locked-iphone-prod": {
+  "name": "w4-locked-iphone-prod",
+  "scene": "w4-locked",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "96c6d6395d97f2b8"
+ },
+ "w5-auras-iphone-prod": {
+  "name": "w5-auras-iphone-prod",
+  "scene": "w5-auras",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "BrakZAŁÓŻ",
+     "◇IskraZAŁÓŻ",
+     "◆Żar◆ 15",
+     "◆Zawirowanie◆ 30",
+     "ImpulsZAŁOŻONE",
+     "PryzmatCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "5a96488deee7da58"
+ },
+ "r1-first-arena-iphone-prod": {
+  "name": "r1-first-arena-iphone-prod",
+  "scene": "r1-first-arena",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 347,
+    "prisms": 0,
+    "coreLevel": 1,
+    "coreCharge": 27,
+    "level": 2,
+    "xp": 106,
+    "runs": 1,
+    "owned": [
+     "rainbow"
+    ],
+    "selected": "rainbow",
+    "auras": [
+     "none"
+    ],
+    "aura": "none",
+    "completed": 0,
+    "districts": [
+     "plac"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "347",
+    "prismsMenu": "0",
+    "lvl": "LVL 1",
+    "charge": "27%",
+    "nextReward": "Smuga „Impuls” + 150 monet",
+    "finalScore": "3 201",
+    "finalCoins": "197",
+    "place": "1.",
+    "xpGain": "+226 XP",
+    "coreAfter": "27%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "5f6f6fc740ba43b8"
+ },
+ "r3-mission-iphone-prod": {
+  "name": "r3-mission-iphone-prod",
+  "scene": "r3-mission",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "missionResultScreen"
+   ],
+   "save": {
+    "coins": 1720,
+    "prisms": 30,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 400,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1720",
+    "prismsMenu": "30",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "7e3823192b288be9"
+ },
+ "r2-later-arena-iphone-prod": {
+  "name": "r2-later-arena-iphone-prod",
+  "scene": "r2-later-arena",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1624,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 143,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1624",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "13 230",
+    "finalCoins": "224",
+    "place": "1.",
+    "xpGain": "+373 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "9f244547ec136bcb"
+ },
+ "r4-core-level-iphone-prod": {
+  "name": "r4-core-level-iphone-prod",
+  "scene": "r4-core-level",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1912,
+    "prisms": 20,
+    "coreLevel": 4,
+    "coreCharge": 11,
+    "level": 8,
+    "xp": 203,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1912",
+    "prismsMenu": "20",
+    "lvl": "LVL 4",
+    "charge": "11%",
+    "nextReward": "Finisz „Fala” + 300 monet",
+    "finalScore": "19 323",
+    "finalCoins": "262",
+    "place": "1.",
+    "xpGain": "+433 XP",
+    "coreAfter": "11%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "e5fee70f6ea22da8"
+ },
+ "r5-core-reward-iphone-prod": {
+  "name": "r5-core-reward-iphone-prod",
+  "scene": "r5-core-reward",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen",
+    "unlockOverlay"
+   ],
+   "save": {
+    "coins": 1917,
+    "prisms": 20,
+    "coreLevel": 4,
+    "coreCharge": 11,
+    "level": 8,
+    "xp": 209,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1917",
+    "prismsMenu": "20",
+    "lvl": "LVL 4",
+    "charge": "11%",
+    "nextReward": "Finisz „Fala” + 300 monet",
+    "finalScore": "20 075",
+    "finalCoins": "267",
+    "place": "1.",
+    "xpGain": "+439 XP",
+    "coreAfter": "11%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": "Efekt „Pikselowy Wybuch”",
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "e82a429689c7cb04"
+ },
+ "r6-chest-iphone-prod": {
+  "name": "r6-chest-iphone-prod",
+  "scene": "r6-chest",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu",
+    "unlockOverlay"
+   ],
+   "save": {
+    "coins": 1323,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1323",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": "+83 monet",
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "dcacd5f7e2245aec"
+ },
+ "r7-login-iphone-prod": {
+  "name": "r7-login-iphone-prod",
+  "scene": "r7-login",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu",
+    "loginRewardScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "58a84b02d186be33"
+ },
+ "x1-wyzwania-iphone-prod": {
+  "name": "x1-wyzwania-iphone-prod",
+  "scene": "x1-wyzwania",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "challengesScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": [
+    "WYZWANIA"
+   ]
+  },
+  "errors": [],
+  "sha": "51e463ddf4b3fa9e"
+ },
+ "r8-district-unlock-iphone-prod": {
+  "name": "r8-district-unlock-iphone-prod",
+  "scene": "r8-district-unlock",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "missionResultScreen",
+    "unlockOverlay"
+   ],
+   "save": {
+    "coins": 1900,
+    "prisms": 30,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 400,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 30,
+    "districts": [
+     "plac",
+     "park",
+     "port",
+     "galeria"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1900",
+    "prismsMenu": "30",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "+180 monet",
+    "unlockTitle": "GALERIA GLITCH",
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": [
+    "NOWA DZIELNICA · GALERIA GLITCH"
+   ]
+  },
+  "errors": [],
+  "sha": "bf5c8d159898e460"
+ },
+ "x2-profil-iphone-prod": {
+  "name": "x2-profil-iphone-prod",
+  "scene": "x2-profil",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "profileScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "ba3939494f78f19b"
+ },
+ "m2-mid-p360-prod": {
+  "name": "m2-mid-p360-prod",
+  "scene": "m2-mid",
+  "frame": "p360",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 360,
+   "winW": 360,
+   "docH": 800,
+   "winH": 800,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "a2eb26ee7161e6a6"
+ },
+ "m2-mid-p320-prod": {
+  "name": "m2-mid-p320-prod",
+  "scene": "m2-mid",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "56b24e8b38a74d67"
+ },
+ "m2-mid-land-prod": {
+  "name": "m2-mid-land-prod",
+  "scene": "m2-mid",
+  "frame": "land",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 844,
+   "winW": 844,
+   "docH": 390,
+   "winH": 390,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "3c69482201190e3b"
+ },
+ "m2-mid-cg-prod": {
+  "name": "m2-mid-cg-prod",
+  "scene": "m2-mid",
+  "frame": "cg",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 800,
+   "winW": 800,
+   "docH": 450,
+   "winH": 450,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "e0d65914ec2ea624"
+ },
+ "m2-mid-qhd-prod": {
+  "name": "m2-mid-qhd-prod",
+  "scene": "m2-mid",
+  "frame": "qhd",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 2560,
+   "winW": 2560,
+   "docH": 1440,
+   "winH": 1440,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "92353337a9ec5232"
+ },
+ "m2-mid-desk-prod": {
+  "name": "m2-mid-desk-prod",
+  "scene": "m2-mid",
+  "frame": "desk",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 1366,
+   "winW": 1366,
+   "docH": 768,
+   "winH": 768,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "def6ac5fb7cf7a47"
+ },
+ "d1-list-p320-prod": {
+  "name": "d1-list-p320-prod",
+  "scene": "d1-list",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": [
+    "NASTĘPNA MISJA"
+   ]
+  },
+  "errors": [],
+  "sha": "18a5046d9665b283"
+ },
+ "d1-list-p360-prod": {
+  "name": "d1-list-p360-prod",
+  "scene": "d1-list",
+  "frame": "p360",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 360,
+   "winW": 360,
+   "docH": 800,
+   "winH": 800,
+   "clipped": [
+    "NASTĘPNA MISJA"
+   ]
+  },
+  "errors": [],
+  "sha": "a8201b9429233f7a"
+ },
+ "d1-list-cg-prod": {
+  "name": "d1-list-cg-prod",
+  "scene": "d1-list",
+  "frame": "cg",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 800,
+   "winW": 800,
+   "docH": 450,
+   "winH": 450,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "e067a77c6ae69451"
+ },
+ "d1-list-land-prod": {
+  "name": "d1-list-land-prod",
+  "scene": "d1-list",
+  "frame": "land",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 844,
+   "winW": 844,
+   "docH": 390,
+   "winH": 390,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "e4a34f5a2b23eca6"
+ },
+ "d1-list-desk-prod": {
+  "name": "d1-list-desk-prod",
+  "scene": "d1-list",
+  "frame": "desk",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 1366,
+   "winW": 1366,
+   "docH": 768,
+   "winH": 768,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "79bae30b48b6217e"
+ },
+ "d1-list-qhd-prod": {
+  "name": "d1-list-qhd-prod",
+  "scene": "d1-list",
+  "frame": "qhd",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 2560,
+   "winW": 2560,
+   "docH": 1440,
+   "winH": 1440,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "7b22b1b02fd402ed"
+ },
+ "d4-briefing-boss-p320-prod": {
+  "name": "d4-briefing-boss-p320-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": [
+    "NASTĘPNA MISJA",
+    "PORT SYNTEZ"
+   ]
+  },
+  "errors": [],
+  "sha": "e9637d1096e977e6"
+ },
+ "d4-briefing-boss-p360-prod": {
+  "name": "d4-briefing-boss-p360-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "p360",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 360,
+   "winW": 360,
+   "docH": 800,
+   "winH": 800,
+   "clipped": [
+    "NASTĘPNA MISJA",
+    "PORT SYNTEZ"
+   ]
+  },
+  "errors": [],
+  "sha": "657d2fbb66797c7b"
+ },
+ "d4-briefing-boss-cg-prod": {
+  "name": "d4-briefing-boss-cg-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "cg",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 800,
+   "winW": 800,
+   "docH": 450,
+   "winH": 450,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "0c2571b64b9220da"
+ },
+ "d4-briefing-boss-land-prod": {
+  "name": "d4-briefing-boss-land-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "land",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 844,
+   "winW": 844,
+   "docH": 390,
+   "winH": 390,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "26a01226c210c843"
+ },
+ "d4-briefing-boss-desk-prod": {
+  "name": "d4-briefing-boss-desk-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "desk",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 1366,
+   "winW": 1366,
+   "docH": 768,
+   "winH": 768,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "f4791cb3a16c362d"
+ },
+ "d4-briefing-boss-qhd-prod": {
+  "name": "d4-briefing-boss-qhd-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "qhd",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 2560,
+   "winW": 2560,
+   "docH": 1440,
+   "winH": 1440,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "f1f9f1baa1bc1edf"
+ },
+ "w1-skins-p320-prod": {
+  "name": "w1-skins-p320-prod",
+  "scene": "w1-skins",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "30b92cdb239e87be"
+ },
+ "w1-skins-p360-prod": {
+  "name": "w1-skins-p360-prod",
+  "scene": "w1-skins",
+  "frame": "p360",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 360,
+   "winW": 360,
+   "docH": 800,
+   "winH": 800,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "dcf81675be2d1be2"
+ },
+ "w1-skins-cg-prod": {
+  "name": "w1-skins-cg-prod",
+  "scene": "w1-skins",
+  "frame": "cg",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 800,
+   "winW": 800,
+   "docH": 450,
+   "winH": 450,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "eb32df51bae5fc66"
+ },
+ "w1-skins-land-prod": {
+  "name": "w1-skins-land-prod",
+  "scene": "w1-skins",
+  "frame": "land",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 844,
+   "winW": 844,
+   "docH": 390,
+   "winH": 390,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "bb6f638aa4d6f20a"
+ },
+ "w1-skins-desk-prod": {
+  "name": "w1-skins-desk-prod",
+  "scene": "w1-skins",
+  "frame": "desk",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 1366,
+   "winW": 1366,
+   "docH": 768,
+   "winH": 768,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "4d6cf43b4350c0ee"
+ },
+ "w1-skins-qhd-prod": {
+  "name": "w1-skins-qhd-prod",
+  "scene": "w1-skins",
+  "frame": "qhd",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HoryzontCzarna dziura — wir startowyZAŁÓŻ",
+     "◇CyjanCyjanowe obwodyZAŁÓŻ",
+     "◇Gorący RóżRóżowa plazmaZAŁÓŻ",
+     "◇Toksyczna ZieleńToksyczne bąble◇ 700",
+     "◇UltrafioletFioletowa galaktyka◇ 1500",
+     "◇Neonowe ZłotoZłote słońce◇ 2500",
+     "◇Biała PlazmaBiała burza z wyładowaniami◇ 3800",
+     "Aurora FinałuZorza — trofeum kampaniiNAGRODA ZA M60",
+     "KryształKryształowe ścianyZAŁOŻONE",
+     "PryzmatTęczowy pryzmat — nagroda Core CityCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 2560,
+   "winW": 2560,
+   "docH": 1440,
+   "winH": 1440,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "0ae316edbb9cd0a1"
+ },
+ "r2-later-arena-p320-prod": {
+  "name": "r2-later-arena-p320-prod",
+  "scene": "r2-later-arena",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1660,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 198,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1660",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "18 860",
+    "finalCoins": "260",
+    "place": "1.",
+    "xpGain": "+428 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": [
+    "VoidRunner",
+    "ToxicSlime",
+    "NeonGhost",
+    "ZeroPulse",
+    "ChromaCat"
+   ]
+  },
+  "errors": [],
+  "sha": "2cfe0010118f7e90"
+ },
+ "r2-later-arena-p360-prod": {
+  "name": "r2-later-arena-p360-prod",
+  "scene": "r2-later-arena",
+  "frame": "p360",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1660,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 198,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1660",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "18 863",
+    "finalCoins": "260",
+    "place": "1.",
+    "xpGain": "+428 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 360,
+   "winW": 360,
+   "docH": 800,
+   "winH": 800,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "49b5810fbb93aa0a"
+ },
+ "r2-later-arena-cg-prod": {
+  "name": "r2-later-arena-cg-prod",
+  "scene": "r2-later-arena",
+  "frame": "cg",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1660,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 199,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1660",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "18 881",
+    "finalCoins": "260",
+    "place": "1.",
+    "xpGain": "+429 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 800,
+   "winW": 800,
+   "docH": 450,
+   "winH": 450,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "b227ea2ab01f007e"
+ },
+ "r2-later-arena-land-prod": {
+  "name": "r2-later-arena-land-prod",
+  "scene": "r2-later-arena",
+  "frame": "land",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1655,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 192,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1655",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "18 118",
+    "finalCoins": "255",
+    "place": "1.",
+    "xpGain": "+422 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 844,
+   "winW": 844,
+   "docH": 390,
+   "winH": 390,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "3b701402822dab48"
+ },
+ "r2-later-arena-desk-prod": {
+  "name": "r2-later-arena-desk-prod",
+  "scene": "r2-later-arena",
+  "frame": "desk",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1685,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 238,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1685",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "23 495",
+    "finalCoins": "285",
+    "place": "1.",
+    "xpGain": "+468 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 1366,
+   "winW": 1366,
+   "docH": 768,
+   "winH": 768,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "e8600d66834f9051"
+ },
+ "r2-later-arena-qhd-prod": {
+  "name": "r2-later-arena-qhd-prod",
+  "scene": "r2-later-arena",
+  "frame": "qhd",
+  "variant": "prod",
+  "locale": "pl-PL",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1657,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 194,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1657",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "Efekt „Pikselowy Wybuch” + 250 monet",
+    "finalScore": "18 386",
+    "finalCoins": "257",
+    "place": "1.",
+    "xpGain": "+424 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 2560,
+   "winW": 2560,
+   "docH": 1440,
+   "winH": 1440,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "93db12ee901ef043"
+ },
+ "m2-mid-p320-en-prod": {
+  "name": "m2-mid-p320-en-prod",
+  "scene": "m2-mid",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "3ed3b3fffc718a15"
+ },
+ "m2-mid-iphone-en-prod": {
+  "name": "m2-mid-iphone-en-prod",
+  "scene": "m2-mid",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "mainMenu"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "b85e414ebd2037e3"
+ },
+ "d1-list-p320-en-prod": {
+  "name": "d1-list-p320-en-prod",
+  "scene": "d1-list",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": [
+    "NEXT MISSION"
+   ]
+  },
+  "errors": [],
+  "sha": "4623f767947175e0"
+ },
+ "d1-list-iphone-en-prod": {
+  "name": "d1-list-iphone-en-prod",
+  "scene": "d1-list",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "campaignScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "55b29001df9c8f8a"
+ },
+ "d4-briefing-boss-p320-en-prod": {
+  "name": "d4-briefing-boss-p320-en-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": [
+    "NEXT MISSION",
+    "SYNTH PORT"
+   ]
+  },
+  "errors": [],
+  "sha": "73398f88c808bce2"
+ },
+ "d4-briefing-boss-iphone-en-prod": {
+  "name": "d4-briefing-boss-iphone-en-prod",
+  "scene": "d4-briefing-boss",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "campaignScreen",
+    "missionBriefing"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 10,
+    "districtTiles": 12
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "15b358798c3bc456"
+ },
+ "w1-skins-p320-en-prod": {
+  "name": "w1-skins-p320-en-prod",
+  "scene": "w1-skins",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HorizonBlack hole — starter vortexEQUIP",
+     "◇CyanCyan circuitsEQUIP",
+     "◇Hot PinkPink plasmaEQUIP",
+     "◇Toxic GreenToxic bubbles◇ 700",
+     "◇UltravioletViolet galaxy◇ 1500",
+     "◇Neon GoldGolden sun◇ 2500",
+     "◇White PlasmaWhite lightning storm◇ 3800",
+     "Finale AuroraAurora — campaign trophyM60 REWARD",
+     "CrystalCrystal facetsEQUIPPED",
+     "PrismRainbow prism — Core City rewardCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "f7b4c9b49ae4f37f"
+ },
+ "w1-skins-iphone-en-prod": {
+  "name": "w1-skins-iphone-en-prod",
+  "scene": "w1-skins",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "shopScreen"
+   ],
+   "save": {
+    "coins": 1240,
+    "prisms": 18,
+    "coreLevel": 3,
+    "coreCharge": 46,
+    "level": 7,
+    "xp": 310,
+    "runs": 23,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1240",
+    "prismsMenu": "18",
+    "lvl": "LVL 3",
+    "charge": "46%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "0",
+    "finalCoins": "0",
+    "place": "#1",
+    "xpGain": "+0 XP",
+    "coreAfter": "0%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [
+     "HorizonBlack hole — starter vortexEQUIP",
+     "◇CyanCyan circuitsEQUIP",
+     "◇Hot PinkPink plasmaEQUIP",
+     "◇Toxic GreenToxic bubbles◇ 700",
+     "◇UltravioletViolet galaxy◇ 1500",
+     "◇Neon GoldGolden sun◇ 2500",
+     "◇White PlasmaWhite lightning storm◇ 3800",
+     "Finale AuroraAurora — campaign trophyM60 REWARD",
+     "CrystalCrystal facetsEQUIPPED",
+     "PrismRainbow prism — Core City rewardCORE CITY LVL 6"
+    ],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "bcd58cd7363a0f6a"
+ },
+ "r2-later-arena-p320-en-prod": {
+  "name": "r2-later-arena-p320-en-prod",
+  "scene": "r2-later-arena",
+  "frame": "p320",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1649,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 182,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1649",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "17 091",
+    "finalCoins": "249",
+    "place": "#1",
+    "xpGain": "+412 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 320,
+   "winW": 320,
+   "docH": 568,
+   "winH": 568,
+   "clipped": [
+    "VoidRunner",
+    "NeonGhost",
+    "ToxicSlime",
+    "ZeroPulse",
+    "ChromaCat"
+   ]
+  },
+  "errors": [],
+  "sha": "c8ed9df3d35389ea"
+ },
+ "r2-later-arena-iphone-en-prod": {
+  "name": "r2-later-arena-iphone-en-prod",
+  "scene": "r2-later-arena",
+  "frame": "iphone",
+  "variant": "prod",
+  "locale": "en-US",
+  "facts": {
+   "screens": [
+    "gameOverScreen"
+   ],
+   "save": {
+    "coins": 1730,
+    "prisms": 20,
+    "coreLevel": 3,
+    "coreCharge": 63,
+    "level": 8,
+    "xp": 184,
+    "runs": 24,
+    "owned": [
+     "cyan",
+     "krysztal",
+     "pink",
+     "rainbow"
+    ],
+    "selected": "krysztal",
+    "auras": [
+     "impuls",
+     "none",
+     "spark"
+    ],
+    "aura": "impuls",
+    "completed": 29,
+    "districts": [
+     "plac",
+     "park",
+     "port"
+    ]
+   },
+   "shown": {
+    "coinsMenu": "1730",
+    "prismsMenu": "20",
+    "lvl": "LVL 3",
+    "charge": "63%",
+    "nextReward": "“Pixel Burst” Effect + 250 coins",
+    "finalScore": "17 297",
+    "finalCoins": "250",
+    "place": "#1",
+    "xpGain": "+414 XP",
+    "coreAfter": "63%",
+    "missionScore": "0",
+    "missionReward": "—",
+    "unlockTitle": null,
+    "prices": [],
+    "missions": 0,
+    "districtTiles": 0
+   }
+  },
+  "layout": {
+   "docW": 390,
+   "winW": 390,
+   "docH": 844,
+   "winH": 844,
+   "clipped": []
+  },
+  "errors": [],
+  "sha": "d976011ff914aea6"
  }
 }
