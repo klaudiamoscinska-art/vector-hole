@@ -36,7 +36,7 @@ Kod testowany: `c56851b` (ostatni commit z kodem/testami; późniejsze commity t
 | `qa/workshop-buy.mjs` | DOM | **PASS 73/73** | Warsztat: kupno, podgląd |
 | `qa/ux3.mjs` | DOM + FN | **PASS 42/42** | C7 i V1 zaktualizowane (Mysz / Klawiatura; warstwy wiru) |
 | `qa/deviceqa1.mjs` | DOM | **PASS 50/50** | |
-| `qa/city2.mjs`, `qa/v17.mjs`, `qa/features.mjs` | DOM + FN | **PASS** (city2, v17 12/12, features bez FAIL) | |
+| `qa/city2.mjs`, `qa/v17.mjs`, `qa/features.mjs` | DOM + FN | **PASS** (city2 76/76, v17 12/12, features bez FAIL) | |
 | `qa/crazygames-basic1.mjs` | DOM (lokalna ramka, nie Preview) | **FAIL** — 3 kontrole Pointer Lock + crash kroku | identycznie na bazie `be58364` (headless) |
 | `qa/v19.mjs` (EN) | DOM | **PASS 16/16** | |
 | `qa/design.mjs` (paleta, język neutralny płciowo) | statyczne + DOM | **PASS 29/29** | |
@@ -77,7 +77,7 @@ Uwaga o świeżości: `uxfix-a`, `responsive`, `arena-fix1`, `ftue1`, `ftue3`, `
 
 ```
 STAN PRAC: GG_UX_FIX_A (Etap A) — gotowe do odbioru; zgłoszenia 1, 2, 3, 6 + opisy Magnes/Turbo/Tarcza. Zgłoszenia 4 i 5 domykają Etapy B i C.
-REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h @ kod c56851b (HEAD = commit raportu), baza origin/main = be583642233be678aff93953646c1e3625dd622f, PR: PR_A
+REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h @ kod c56851b (HEAD = commit raportu), baza origin/main = be583642233be678aff93953646c1e3625dd622f, PR: https://github.com/klaudiamoscinska-art/vector-hole/pull/107
 TESTY: patrz §2 — log: qa/out/final-a/
 ZMIANY: game.js, index.html, style.css; qa/uxfix-a.mjs (nowy, w run-all); qa/arena-fix1, ftue1, responsive, ux3, crazygames-basic1 (decyzja Mysz/Klawiatura); docs GDD/CHANGELOG/qa README; design/ux-fix/a-*.jpg
 NIEDOKOŃCZONE: brak w zakresie A
