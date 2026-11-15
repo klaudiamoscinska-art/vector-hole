@@ -101,6 +101,7 @@ async function miastoChecks(url) {
     seen.push(await g.page.evaluate(async ({ L, c }) => {
       const gm = window.game, u = window.__u2;
       gm.save.hub.coreLevel = L; gm.save.hub.coreCharge = c;
+      gm.hubSector = 'center'; // CITY-2: the Centrum's LVL 1-6 rail (LVL 6+ opens on Drugi brzeg by default -- qa/city2.mjs)
       gm.updateCoinDisplays();
       const nodes = [...document.querySelectorAll('#hubCoreRail .u2-rail-node')], bars = [...document.querySelectorAll('#hubCoreRail .u2-rail-bar i')];
       const chip = document.getElementById('hubRewardChip1').textContent;

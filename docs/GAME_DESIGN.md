@@ -525,10 +525,14 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   budowy (most, puste działki, przerywane zarysy), 7 przyczółek i pierwsza ulica, 8 kwartał niskiej
   zabudowy, 9 usługi i plac, 10 fontanna na placu, 11 wysokie budynki i dominanta, 12 Wieża Brzegu i
   pełne oświetlenie. Miasto ma przełącznik „Centrum / Drugi brzeg” (widok tylko w sesji, nigdy w
-  zapisie): domyślnie sektor rozwijany (Centrum do LVL 6, Drugi brzeg od LVL 7), wybór gracza nie
-  zmienia się sam; przed LVL 6 Drugi brzeg jest widoczny jako zablokowany („odblokuj na poziomie
+  zapisie): bez ręcznego wyboru w sesji — sektor, który buduje ładowanie (Centrum poniżej LVL 6,
+  Drugi brzeg od LVL 6, także po wczytaniu zapisu LVL 6; odsłona LVL 6 gra nad Drugim brzegiem, gdzie
+  zapala się wieża Centrum); wybór gracza nie zmienia się sam; przed LVL 6 Drugi brzeg jest widoczny jako zablokowany („odblokuj na poziomie
   6”). Szyna: Centrum 1–6, Drugi brzeg 7–12; procent i linia „Następny etap · Drugi brzeg” zawsze
-  mówią, co buduje bieżące ładowanie.
+  mówią, co buduje bieżące ładowanie. Od LVL 12 nic nie zapowiada dalszej budowy: mapa nagród mówi
+  „Core City jest ukończone … Każde dalsze 100% daje premię”, GRAJ „+10–17% do premii Core City”, a
+  linia następnej rundy w wyniku „Premia Core City: +100 monet + 10 pryzmatów” (LVL 7–12: „Drugi
+  brzeg LVL n „…”: +100 monet + 10 pryzmatów”).
 - **Poziom gracza (XP):** każda runda/misja; nagroda w monetach,
   co 3. poziom pryzmaty — pokazywana na karcie XP wyniku (bez osobnej
   planszy pełnoekranowej; te zostają dla nowych funkcji i kosmetyków).
