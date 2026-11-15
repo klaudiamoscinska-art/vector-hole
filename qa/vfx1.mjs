@@ -54,7 +54,11 @@ export async function runVfx1Checks() {
     const tef = (s) => { const f = fnSource(s.replace(/\r/g, ''), '  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved, eater'); return f && f.replace(/, weight\) \{/, ') {').replace(/\n    \/\/ GG-VFX-01: the vortex answers[\s\S]*?addGulp\(eater, fxW, burstColor, x \* 0\.013 \+ y \* 0\.029\);/, ''); };
     results.push(expectAll('V1 triggerEatFeedback() keeps every particle, ripple, shake and hit-stop of the base (the gulp is added, nothing is taken)', { same: is(tef(src), tef(base)) }));
     const keep = ['  spawnSuck(x, y, color, count, hole, spread) {', '  spawnParticles(x, y, color, count, speedMult = 1) {', '  hitStop(ms) {', '  handleObjectEating(hole) {', '  handleHoleCollisions() {'];
-    const diff = keep.filter(h => fnSource(src, h) !== fnSource(base, h).replace('this.triggerEatFeedback(b.x, b.y, b.isPlayer ? \'#50F0FA\' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);', 'this.triggerEatFeedback(b.x, b.y, b.isPlayer ? \'#50F0FA\' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a, SWALLOW_RIVAL);'));
+    // ARENA-FIX-1 changed only who respawns where: a waiting rival is off the board, an eaten
+    // rival goes through respawnArenaBot() (qa/arena-fix1.mjs R). Undo exactly those two edits.
+    const fix1 = (f) => f && f.replace('        if (a.waiting || b.waiting) continue; // ARENA-FIX-1: off the board until it respawns\n', '')
+      .replace('          if (b.isPlayer) b.shrinkAndRespawn(phaseEdgeBonus);\n          else this.respawnArenaBot(b);\n', '          b.shrinkAndRespawn(phaseEdgeBonus);\n');
+    const diff = keep.filter(h => fix1(fnSource(src, h)) !== fnSource(base, h).replace('this.triggerEatFeedback(b.x, b.y, b.isPlayer ? \'#50F0FA\' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);', 'this.triggerEatFeedback(b.x, b.y, b.isPlayer ? \'#50F0FA\' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a, SWALLOW_RIVAL);'));
     results.push(report('V1 the eat rules, the rival fight, the particles\' random draws and hitStop() are the base revision\'s source', diff.length === 0, diff.join(' | ')));
     const cfg = (s) => (s.match(/eatAnimTime: [\d.]+|hitStopMs: \d+|SAVE_SCHEMA_VERSION = \d+|const SAVE_KEY = '[^']+'|g\.t \+= dt \/ 0\.45|this\.type === 'landmark' \? 0\.8 : EAT_ANIM_TIME/g) || []).join(' · ');
     results.push(expectAll('V1 eat time, boss time, rival time, hit-stop, save key and save version unchanged', { same: is(cfg(src), cfg(base)), six: holds(cfg(src).split(' · ').length >= 6, cfg(src), 'all six found') }));

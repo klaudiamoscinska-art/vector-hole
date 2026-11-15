@@ -316,7 +316,7 @@ async function lockChecks() {
     await f.evaluate(() => window.focus()); // keys reach a frame once it has focus (a click into it / the portal)
     await page.mouse.move(600, 300);
     await page.keyboard.press('Enter');
-    await f.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+    await waitRunning(f, 8000);
     await f.evaluate(() => { window.game.player.invulnerableUntil = Infinity; window.game.checkEvolutionTriggers = () => {}; });
     await page.mouse.move(700, 340);
     await page.waitForTimeout(300);
@@ -370,7 +370,7 @@ async function lockChecks() {
     await f.evaluate(() => window.focus()); // keys reach a frame once it has focus (a click into it / the portal)
     await page.mouse.move(600, 300);
     await page.keyboard.press('Enter');
-    await f.waitForFunction(() => window.game.running, null, { timeout: 8000 });
+    await waitRunning(f, 8000);
     await f.evaluate(() => { window.game.player.invulnerableUntil = Infinity; window.game.checkEvolutionTriggers = () => {}; });
     await page.waitForTimeout(200);
     const a = await state(f);
@@ -529,6 +529,19 @@ async function respawnChecks(url) {
   return out;
 }
 
+
+/** Waits for a round to start; on a timeout says why (focus, open sheets, the start button). */
+async function waitRunning(t, timeout) {
+  try { await t.waitForFunction(() => window.game.running, null, { timeout }); }
+  catch (e) {
+    const why = await t.evaluate(() => {
+      const g = window.game, a = document.activeElement, menu = document.getElementById('mainMenu');
+      const open = [...document.querySelectorAll('.overlay-screen, [aria-modal="true"], #adOverlay')].filter(x => !x.classList.contains('hidden') && x.getClientRects().length).map(x => x.id || x.className);
+      return { hasFocus: document.hasFocus(), active: a && (a.id || a.tagName), menu: !menu.classList.contains('hidden'), firstRun: menu.classList.contains('first-run'), open, start: !!g.arenaStartButton(), busy: !!(g.monetization && g.monetization.busy) };
+    }).catch((err) => String(err));
+    throw new Error('the round did not start: ' + JSON.stringify(why));
+  }
+}
 export async function runArenaFix1Checks(url, only = null) {
   const want = (k) => !only || only.includes(k);
   const out = [];
