@@ -31,7 +31,19 @@ const CONFIG = {
     // Pressed that far (its centre within this share of its radius of the
     // closest point it may reach), the player's vortex pulls those in too
     // (Game.edgeReach()). Bots are unchanged.
-    edgeReachSlack: 0.25
+    edgeReachSlack: 0.25,
+    // ARENA-FIX-1: an eaten rival never comes back on the player. Its new
+    // centre must lie at least  r_player * sqrt(2) + r_rival + margin  world
+    // units from the player's centre at the moment it appears. r * sqrt(2)
+    // + r_rival is the farthest any swallow rule reaches (the player's edge
+    // reach, edgeReach(); the plain swallow is 0.75 * the bigger radius and
+    // the rims touch at r_player + r_rival); margin = about one second of a
+    // starting vortex's top speed (CONFIG.hole.baseSpeed), so the rival is
+    // never one twitch from the player either. World units only -- the same
+    // on every screen. `tries` random spots per attempt (bounded, no scan);
+    // none safe -> the rival waits off the board and tries again every
+    // `retry` s (Game.respawnArenaBot(), updateWaitingBots()).
+    respawn: { margin: 160, tries: 24, retry: 0.5 }
   },
   // maxRadius (v12): bot careers showed late-round holes snowballing past
   // r 1000 (once r 5800 -- bigger than the 3000x3000 world, sweeping every
@@ -4013,7 +4025,11 @@ function defaultSave() {
     // in Ustawienia (syncControlsPanel()'s "Tryb sterowania" toggle).
     // GG-UX-03: minimapSide = which bottom corner the minimap sits in
     // ('left' default -- a right thumb steering no longer covers it; 'right').
-    settings: { inputMode: 'legacy', sensitivity: 1, haptics: true, minimap: 'auto', minimapSide: 'left', sfx: true, music: true, gfxLevel: 2, musicPick: 'auto', lang: 'auto' },
+    // ARENA-FIX-1: deskControls = how a computer steers in Arena: 'mouse'
+    // (the default -- cursor steering, Pointer Lock in the CrazyGames
+    // package, WASD / arrows still work while held) or 'keyboard' (WASD /
+    // arrows only; the mouse just clicks buttons). Touch is never affected.
+    settings: { inputMode: 'legacy', deskControls: 'mouse', sensitivity: 1, haptics: true, minimap: 'auto', minimapSide: 'left', sfx: true, music: true, gfxLevel: 2, musicPick: 'auto', lang: 'auto' },
     stats: { runsPlayed: 0, bestArenaScore: 0, recentArenaScores: [] },
     // v7: coreLevel starts at 1 (LVL1, "stan startowy" per GDD 4.0 §8.2);
     // coreCharge is the 0-100 progress toward the *next* level.
@@ -4128,6 +4144,8 @@ function sanitizeSave(save, issues) {
   // else is the default left.
   if (out.settings.inputMode !== 'thumbpad') out.settings.inputMode = 'legacy';
   if (out.settings.minimapSide !== 'right') out.settings.minimapSide = 'left';
+  // ARENA-FIX-1: a missing or unknown computer control mode is the mouse.
+  if (out.settings.deskControls !== 'keyboard') out.settings.deskControls = 'mouse';
   // v16: a pinned track that no longer exists falls back to the mix.
   if (out.settings.musicPick !== 'auto' && !MUSIC_TRACK_BY_ID[out.settings.musicPick]) out.settings.musicPick = 'auto';
   out.player.level = Math.max(1, Math.floor(out.player.level));
@@ -10926,6 +10944,7 @@ class Game {
     this.ripples = [];
     this.objects = [];
     this.bots = [];
+    this.waitingBots = []; // ARENA-FIX-1: eaten rivals with no safe spot yet
     this.camera = { x: WORLD_W / 2, y: WORLD_H / 2 };
     this.cityFloor = new CityFloor(); // v12 Neon City floor (chunk cache)
     // Golden Shot v8 game feel: floating score text, full-screen flash,
@@ -11024,6 +11043,8 @@ class Game {
     this.thumbpadTouchId = null;
     this.thumbpadFadeTimer = null;
     this.releaseThumbpad = () => {}; // bindInput() puts the real one in
+    this.releaseKeys = () => {}; // ... and the held-keys reset
+    this.releasePointerLock = () => {}; // bindPointerLock() (package only)
 
     // Re-probe one level above the remembered one each session, so a
     // one-off slow session can't pin a device to low quality forever.
@@ -11224,6 +11245,10 @@ class Game {
     let optIn = false, releasing = false, tried = false, refused = 0, sawMouse = false, vx = 0, vy = 0, realX = null, realY = null;
     const live = () => this.running && !this.paused && this.state === GameState.PLAYING
       && !this.evolutionPending && !this.introPending && !this.revivePending;
+    // ARENA-FIX-1: Keyboard steering never locks the mouse (nothing to steer
+    // with it) -- no lock request, no "click the board" hint, a held lock
+    // is let go. Mouse keeps all of the above.
+    const wanted = () => live() && !this.keyboardSteering;
     let pendingClick = false;
     const refuse = () => { if (pendingClick) refused++; pendingClick = false; };
     const request = (fromClick) => {
@@ -11252,7 +11277,7 @@ class Game {
         if (button && !button.disabled) button.click();
         return;
       }
-      if (!live() || refused >= 3) return;
+      if (!wanted() || refused >= 3) return;
       optIn = true;
       tried = true;
       request(true);
@@ -11278,8 +11303,14 @@ class Game {
       this.lockLostAt = performance.now();
       if (this.running && !this.paused && !this.monetization.busy) this.pauseGame();
     });
+    // A switch to Keyboard lets go of the lock at once (asked: no pause).
+    this.releasePointerLock = () => {
+      if (!this.pointerLocked) return;
+      releasing = true;
+      document.exitPointerLock();
+    };
     setInterval(() => {
-      const want = live();
+      const want = wanted();
       if (this.pointerLocked && !want) {
         releasing = true;
         document.exitPointerLock();
@@ -11294,10 +11325,47 @@ class Game {
     }, 100);
   }
 
+  /** ARENA-FIX-1: the button that starts an Arena round from Miasto (GRAJ;
+   *  the welcome card's GRAJ on a first launch) when Enter may press it:
+   *  Miasto is the open screen, no round runs, no ad plays and nothing
+   *  covers it (a sheet, a dialog, an unlock card, the login calendar).
+   *  Otherwise null. */
+  arenaStartButton() {
+    const menu = document.getElementById('mainMenu');
+    if (this.running || !menu || menu.classList.contains('hidden') || this.monetization.busy) return null;
+    const btn = document.getElementById(menu.classList.contains('first-run') ? 'btnWelcomePlay' : 'btnStart');
+    if (!btn || btn.disabled || !btn.getClientRects().length) return null;
+    // Shown = laid out (a dialog panel inside a hidden sheet has no boxes).
+    const covers = document.querySelectorAll('.overlay-screen, [aria-modal="true"], #adOverlay');
+    for (const el of covers) if (!el.classList.contains('hidden') && el.getClientRects().length) return null;
+    return btn;
+  }
+
   /** True while the Floating Thumb Pad should handle touch (feature flag is
    *  the global kill switch; the player's own setting picks the mode). */
   get useThumbpad() {
     return CONFIG.flags.inputThumbPad && this.save.settings.inputMode === 'thumbpad';
+  }
+
+  /** ARENA-FIX-1: true in an Arena round (and its menus) when the player
+   *  picked Keyboard (save.settings.deskControls): only WASD / arrows steer,
+   *  the mouse cursor never does. Missions keep their own steering. */
+  get keyboardSteering() {
+    return this.mode !== 'campaign' && this.save.settings.deskControls === 'keyboard';
+  }
+
+  /** ARENA-FIX-1: Sterowanie: Mysz / Klawiatura. Saved like every setting;
+   *  a switch drops every old input (held keys, the cursor's steering
+   *  point) so nothing drives on from the other mode, and Keyboard lets go
+   *  of a locked mouse. Mouse locks again the way it always does. */
+  setDeskControls(mode) {
+    const next = mode === 'keyboard' ? 'keyboard' : 'mouse';
+    this.save.settings.deskControls = next;
+    saveGame(this.save);
+    this.pointerScreen = null;
+    this.releaseKeys();
+    if (next === 'keyboard') this.releasePointerLock();
+    this.syncControlsPanel();
   }
 
   bindInput() {
@@ -11326,7 +11394,8 @@ class Game {
     // v13: real mouse only -- a finger tap on a DOM button (coach card,
     // evolution card, resume) also fires an emulated mousemove, which would
     // otherwise leave a phantom steering point behind.
-    window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && !this.pointerLocked) updateFromScreen(e.clientX, e.clientY, true); });
+    // ARENA-FIX-1: in Keyboard mode (Arena) the cursor never steers.
+    window.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && !this.pointerLocked && !this.keyboardSteering) updateFromScreen(e.clientX, e.clientY, true); });
     if (PORTAL_BASIC) this.bindPointerLock(updateFromScreen);
     // FTUE-2: in a portal iframe the cursor can leave the game (to the
     // host page); the vortex then stops instead of driving on toward the
@@ -11352,6 +11421,10 @@ class Game {
       const mag = Math.hypot(x, y);
       this.keyDir = mag > 0 ? { x: x / mag, y: y / mag } : { x: 0, y: 0 };
     };
+    // ARENA-FIX-1: no key stays "held" across a pause, a resume, a new
+    // round or a control switch (a key still down comes back with its
+    // auto-repeat).
+    this.releaseKeys = () => { heldKeys.clear(); recomputeKeyDir(); };
     // FTUE-2: typing in a text field (profile name, backup code, dev code)
     // never steers or pauses.
     const isTextField = (el) => !!el && el.nodeType === 1 && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
@@ -11378,6 +11451,24 @@ class Game {
         e.preventDefault();
         this.togglePause();
       }
+    });
+
+    // ARENA-FIX-1: Enter on Arena's start screen = its GRAJ button (the same
+    // click, so the same start). One press = one round: a held key's
+    // repeats are ignored, and preventDefault() stops a focused GRAJ from
+    // also firing its own Enter click. Never while typing, while another
+    // control has focus (Enter is that control's), under a sheet / dialog /
+    // card, or once a round runs (arenaStartButton() is null then).
+    window.addEventListener('keydown', (e) => {
+      if (e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
+      if (e.repeat || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || isTextField(e.target)) return;
+      const start = this.arenaStartButton();
+      if (!start) return;
+      const f = document.activeElement;
+      if (f && f !== start && f !== document.body && f !== document.documentElement && f.closest
+        && f.closest('button, a[href], [role="button"], [tabindex], select, input, textarea, [contenteditable]')) return;
+      e.preventDefault();
+      start.click();
     });
 
     // ---- FTUE-2: the host page never scrolls or zooms under the game ----
@@ -11422,8 +11513,7 @@ class Game {
     // otherwise play on against a player who isn't looking. Not while an
     // ad is showing (the portal's ad takes focus; the ad flow resumes).
     window.addEventListener('blur', () => {
-      heldKeys.clear();
-      recomputeKeyDir();
+      this.releaseKeys();
       this.pointerScreen = null;
       this.releaseThumbpad();
       if (this.running && !this.paused && !this.monetization.busy) this.pauseGame();
@@ -11742,6 +11832,12 @@ class Game {
     // R2-02: the thumb pad only changes how touch steers (bindInput()), so the
     // control mode is offered only where the device has touch input.
     document.getElementById('inputModeRow').classList.toggle('hidden', !(('ontouchstart' in window) || navigator.maxTouchPoints > 0));
+    // ARENA-FIX-1: Mysz / Klawiatura and the Enter hint only where a mouse
+    // or trackpad is (a phone or tablet has neither: no such choice there).
+    let deskPointer = false;
+    try { deskPointer = matchMedia('(any-pointer: fine) and (any-hover: hover)').matches; } catch (e) { /* no media queries */ }
+    this.hasDeskPointer = deskPointer;
+    document.body.classList.toggle('desk-pointer', deskPointer);
     document.getElementById('btnMenu').addEventListener('click', () => {
       this.analytics.track('result_action', { action: 'menu' });
       this.updateCoinDisplays();
@@ -11794,6 +11890,10 @@ class Game {
       this.save.settings.inputMode = 'legacy';
       saveGame(this.save);
       this.syncControlsPanel();
+    });
+    // ARENA-FIX-1: Sterowanie: Mysz / Klawiatura (pause sheet in Arena, Profil).
+    document.querySelectorAll('[data-desk-controls]').forEach(btn => {
+      btn.addEventListener('click', () => this.setDeskControls(btn.dataset.deskControls));
     });
     document.querySelectorAll('[data-sensitivity]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -14290,6 +14390,7 @@ class Game {
     const speedMult = pick(D.botSpeedMult) * (this.modifier === 'rush_hour' ? 1.3 : 1);
 
     this.bots = [];
+    this.waitingBots = []; // ARENA-FIX-1
     const names = spawns.names;
     for (let i = 0; i < NUM_BOTS; i++) {
       const p = spawns.bots[i];
@@ -15326,6 +15427,7 @@ class Game {
     }
 
     this.bots = [];
+    this.waitingBots = []; // ARENA-FIX-1: Arena only, never filled in a mission
     // v15: rivals never spawn on top of the start (hunters would open the
     // mission with a hit).
     const farSpot = (pad, minD) => {
@@ -17104,6 +17206,7 @@ class Game {
 
     this.pointerScreen = null; // no steering until the first touch/mouse move
     this.releaseThumbpad();
+    this.releaseKeys(); // ARENA-FIX-1: a key held from the menu doesn't steer
     this.applyMinimapSide();
     this.running = true;
     this.setBoardLive(true);
@@ -17186,7 +17289,7 @@ class Game {
    *  skills). */
   abandonRun() {
     this.stopRun();
-    const ranked = rankHoles([this.player, ...this.bots]);
+    const ranked = rankHoles(this.arenaField());
     saveGame(this.save);
     return { ranked, place: ranked.indexOf(this.player) + 1, coinsEarned: 0 };
   }
@@ -17202,7 +17305,7 @@ class Game {
    *  campaign gates; older saves keep the count they have). */
   payLeftRun() {
     this.stopRun();
-    const ranked = rankHoles([this.player, ...this.bots]);
+    const ranked = rankHoles(this.arenaField());
     const score = Math.max(0, this.player.score);
     const E = CONFIG.economy;
     let coinsEarned = Math.round(E.coinsSqrtK * Math.sqrt(score));
@@ -17227,7 +17330,7 @@ class Game {
   finalizeRun() {
     this.stopRun();
 
-    const ranked = rankHoles([this.player, ...this.bots]);
+    const ranked = rankHoles(this.arenaField());
     const place = ranked.indexOf(this.player) + 1;
     const E = CONFIG.economy;
     let coinsEarned = E.coinsBase + Math.round(E.coinsSqrtK * Math.sqrt(Math.max(0, this.player.score))) + (E.coinsPlaceBonus[place - 1] || 0);
@@ -17563,6 +17666,7 @@ class Game {
 
   pauseGame() {
     this.releaseThumbpad(); // GG-UX-03: a pause never leaves the joystick steering
+    this.releaseKeys(); // ARENA-FIX-1: ... nor a key
     if (!this.running || this.paused) return;
     this.paused = true;
     this.state = GameState.PAUSED;
@@ -17580,6 +17684,7 @@ class Game {
   resumeGame() {
     this.pointerScreen = null;
     this.releaseThumbpad(); // ... nor brings a stale one back
+    this.releaseKeys();
     if (!this.paused) return;
     this.paused = false;
     this.state = GameState.PLAYING;
@@ -17677,6 +17782,11 @@ class Game {
     const mode = this.save.settings.inputMode;
     document.getElementById('btnInputThumbpad').classList.toggle('active', mode === 'thumbpad');
     document.getElementById('btnInputLegacy').classList.toggle('active', mode !== 'thumbpad');
+    // ARENA-FIX-1: the pause sheet offers it in Arena only (missions keep their steering).
+    const desk = this.save.settings.deskControls === 'keyboard' ? 'keyboard' : 'mouse';
+    document.querySelectorAll('[data-desk-controls]').forEach(btn => btn.classList.toggle('active', btn.dataset.deskControls === desk));
+    document.getElementById('deskControlsRow').classList.toggle('hidden', !this.hasDeskPointer || this.mode === 'campaign');
+    document.getElementById('profileDeskControlsRow').classList.toggle('hidden', !this.hasDeskPointer);
     const side = this.save.settings.minimapSide === 'right' ? 'right' : 'left';
     document.querySelectorAll('[data-minimap-side]').forEach(btn => btn.classList.toggle('active', btn.dataset.minimapSide === side));
     document.querySelectorAll('[data-sensitivity]').forEach(btn => {
@@ -18340,6 +18450,7 @@ class Game {
       for (let j = 0; j < holes.length; j++) {
         if (i === j) continue;
         const a = holes[i], b = holes[j];
+        if (a.waiting || b.waiting) continue; // ARENA-FIX-1: off the board until it respawns
         if (b.invulnerable) continue;
         if (a.radius <= b.radius * EAT_HOLE_RATIO) continue;
         const d = dist(a.x, a.y, b.x, b.y);
@@ -18374,10 +18485,77 @@ class Game {
           }
           const phaseEdgeBonus = (b.isPlayer && this.activeMutations.has('phase_edge')) ? CONFIG.evolution.phaseEdgeInvulnBonusMs : 0;
           this.addSwallowGhost(a, b, b.isPlayer ? '#50F0FA' : b.edgeColor);
-          b.shrinkAndRespawn(phaseEdgeBonus);
+          if (b.isPlayer) b.shrinkAndRespawn(phaseEdgeBonus);
+          else this.respawnArenaBot(b);
         }
       }
     }
+  }
+
+  /** ARENA-FIX-1: may an Arena rival appear with its centre at (x, y)? Only
+   *  out of every swallow reach of the player as it is right now, plus
+   *  CONFIG.arena.respawn.margin (see there): the player's edge reach
+   *  (edgeReach(): r * sqrt(2) + the rival's radius) is the farthest rule,
+   *  the plain swallow (0.75 * the bigger radius, either way) and the rims
+   *  touching (r + r_rival) lie inside it. */
+  respawnSafeFor(bot, x, y) {
+    const p = this.player;
+    return dist(p.x, p.y, x, y) >= p.radius * Math.SQRT2 + bot.radius + CONFIG.arena.respawn.margin;
+  }
+
+  /** Up to CONFIG.arena.respawn.tries random spots inside the city (the
+   *  rival's radius + 20 from the edge, as Hole.shrinkAndRespawn() keeps);
+   *  the first safe one wins. False when none is. */
+  placeArenaBotSafely(bot) {
+    const pad = bot.radius + 20;
+    for (let i = 0; i < CONFIG.arena.respawn.tries; i++) {
+      const x = rand(pad, WORLD_W - pad), y = rand(pad, WORLD_H - pad);
+      if (this.respawnSafeFor(bot, x, y)) { bot.x = x; bot.y = y; return true; }
+    }
+    return false;
+  }
+
+  /** An eaten Arena rival comes back as before (its start size, a random
+   *  spot, INVULN_TIME of protection) -- but never on the player: an unsafe
+   *  spot is re-rolled (placeArenaBotSafely()); with no safe spot at all it
+   *  leaves the board (this.bots -> this.waitingBots: no collisions, AI,
+   *  drawing or rewards; it keeps its score and place in the standings)
+   *  and updateWaitingBots() tries again. Never a fallback onto the player. */
+  respawnArenaBot(bot) {
+    bot.shrinkAndRespawn(0);
+    bot.x = clamp(bot.x, bot.radius, WORLD_W - bot.radius);
+    bot.y = clamp(bot.y, bot.radius, WORLD_H - bot.radius);
+    if (this.respawnSafeFor(bot, bot.x, bot.y) || this.placeArenaBotSafely(bot)) return;
+    if (bot.waiting) return;
+    const slot = this.bots.indexOf(bot);
+    if (slot < 0) return;
+    this.bots.splice(slot, 1);
+    bot.waiting = true;
+    bot.waitSlot = slot;
+    bot.respawnIn = CONFIG.arena.respawn.retry;
+    this.waitingBots.push(bot);
+  }
+
+  /** Waiting rivals try again every CONFIG.arena.respawn.retry s against the
+   *  player's position and size of that moment; a safe spot puts them back
+   *  (in their old slot) with the usual fresh protection. */
+  updateWaitingBots(dt) {
+    for (let i = this.waitingBots.length - 1; i >= 0; i--) {
+      const bot = this.waitingBots[i];
+      bot.respawnIn -= dt;
+      if (bot.respawnIn > 0) continue;
+      if (!this.placeArenaBotSafely(bot)) { bot.respawnIn = CONFIG.arena.respawn.retry; continue; }
+      this.waitingBots.splice(i, 1);
+      bot.waiting = false;
+      bot.target = { x: bot.x, y: bot.y };
+      bot.invulnerableUntil = performance.now() + INVULN_TIME * 1000;
+      this.bots.splice(Math.min(bot.waitSlot, this.bots.length), 0, bot);
+    }
+  }
+
+  /** Everyone in this round's standings (a waiting rival keeps its place). */
+  arenaField() {
+    return [this.player, ...this.bots, ...this.waitingBots];
   }
 
   /** Fires a `size_tier` analytics event the first time the player's radius
@@ -18673,7 +18851,9 @@ class Game {
       this.player.moveDirection(this.moveVector.x, this.moveVector.y, this.moveVector.magnitude, sensitivity, dt);
       return;
     }
-    if ((!this.useThumbpad || !this.isTouchDevice) && this.pointerScreen) {
+    // ARENA-FIX-1: Keyboard mode ignores a cursor's steering point (a finger's
+    // still steers: the setting is for the mouse only).
+    if ((!this.useThumbpad || !this.isTouchDevice) && this.pointerScreen && !(this.pointerFromMouse && this.keyboardSteering)) {
       const p = this.pointerScreen;
       // Screen -> world through the current camera, so a held finger keeps
       // steering; a finger right over the hole parks it (no jitter).
@@ -18721,7 +18901,8 @@ class Game {
     if (!c.moved && st.steerT == null && st.t > C.moveAfter) {
       const how = this.useThumbpad && this.isTouchDevice ? 'Dotknij planszy i przesuń kciuk — wir jedzie w tę stronę'
         : this.isTouchDevice ? 'Przeciągnij palcem po ekranie — wir jedzie za nim'
-          : 'Prowadź kursorem myszy — wir jedzie za nim (albo strzałki / WASD)';
+          : this.keyboardSteering ? 'Steruj strzałkami albo WASD — wir jedzie w tę stronę'
+            : 'Prowadź kursorem myszy — wir jedzie za nim (albo strzałki / WASD)';
       this.showCoachHint('moved', how, 'drag');
       return;
     }
@@ -18781,6 +18962,7 @@ class Game {
       this.lateRoundAnnounced = true;
       this.showBanner('FINAŁOWE 40 S', 'Rywale przyspieszają!', '#FF54AD', 1.3, 2);
     }
+    this.updateWaitingBots(dt);
     for (const bot of this.bots) {
       bot.tempSpeedMult = (bot.baseSpeedMult || 1) * (late ? 1 + D.lateRoundBotSpeedBonus : 1);
       if (this.botTuning.passive > 0) bot.radius = Math.min(CONFIG.hole.maxRadius, radiusForUnits(unitsForRadius(bot.radius) + this.botTuning.passive * dt));
@@ -18947,7 +19129,7 @@ class Game {
       : 100;
     this.setTierBadge(tier.shortId, tier.color, `${tier.label}${next ? ` · Postęp do ${next.shortId}` : ' · Poziom maksymalny'}`, tierPct, tierIdx);
 
-    const ranked = rankHoles([this.player, ...this.bots]);
+    const ranked = rankHoles(this.arenaField());
     ranked.forEach((h, i) => { h.isLeader = i === 0 && h.score > 0; });
     const place = ranked.indexOf(this.player) + 1;
     this.hudSet('rankValue', 'text', `#${place}/${ranked.length}`);
@@ -19752,7 +19934,7 @@ class Game {
    *  target reticle around it (v12 -- it used to be a gold crown, which now
    *  means "#1 by score" and often sat on the same hole). */
   drawBountyMarker(ctx) {
-    if (!this.bountyTarget) return;
+    if (!this.bountyTarget || this.bountyTarget.waiting) return;
     const b = this.bountyTarget;
     const r = b.radius + 14;
     ctx.save();
@@ -22088,6 +22270,13 @@ const I18N_EN = {
   "Tramwaje wożą eksponaty między salami. Pochłoń dwa — razem z ładunkiem.": "Trams carry exhibits between halls. Swallow two — cargo and all.",
   "Transfer zakończony.": "Transfer complete.",
   "Tryb sterowania": "Controls",
+  // ARENA-FIX-1: Arena steering on a computer, the Enter key cap, the keyboard hint.
+  "Sterowanie": "Controls",
+  "Sterowanie na Arenie": "Arena controls",
+  "Mysz": "Mouse",
+  "Klawiatura": "Keyboard",
+  "Enter": "Enter",
+  "Steruj strzałkami albo WASD — wir jedzie w tę stronę": "Steer with the arrow keys or WASD — the vortex goes that way",
   "Trzy lustra otwierają galerię — obiekt T5. Aktywuj je i urośnij.": "Three mirrors open the gallery — a T5 object. Activate them and grow.",
   "Trzy pylony nadają sygnał przez maszty. Naładuj pylony, potem pochłoń maszty.": "Three pylons broadcast through the masts. Charge the pylons, then swallow the masts.",
   "Trzy węzły blokują zasilanie placu. Urośnij do T3 i pochłoń je.": "Three nodes are cutting power to the square. Grow to T3 and swallow them.",
