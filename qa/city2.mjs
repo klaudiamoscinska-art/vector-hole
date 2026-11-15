@@ -126,7 +126,9 @@ async function progressChecks(url) {
   const s12 = await step(12, 95);
   out.push(report('Past 12: a further 100% pays the premium as before (the stored counter goes on, never lower), the result shows no LVL 13 and no new stage',
     s12.hub.coreLevel === 13 && s12.rewards.length === 1 && s12.rewards[0].coins === 100 && s12.gearSame && !s12.lvlTagShown && s12.stage === '', JSON.stringify(s12)));
-  const card12 = await g.page.evaluate(async (CARDsrc) => { const gm = window.game; gm.showScreen('mainMenu'); gm.updateCoinDisplays(); await new Promise(r => setTimeout(r, 2500)); return (0, eval)('(' + CARDsrc + ')')(); }, CARD.toString());
+  const card12 = await g.page.evaluate(async (CARDsrc) => { const gm = window.game; gm.showScreen('mainMenu'); gm.updateCoinDisplays();
+    // the city eases up to its level (frame-rate bound): wait until it settles, at most 8 s
+    for (let i = 0; i < 80 && (document.getElementById('hubCityCanvas').__skyline || {}).stage !== 12; i++) await new Promise(r => setTimeout(r, 100)); return (0, eval)('(' + CARDsrc + ')')(); }, CARD.toString());
   out.push(report('Past 12: Miasto shows LVL 12, Drugi brzeg complete, no LVL 13', card12.lvl === 'LVL 12' && card12.title === 'Drugi brzeg ukończony' && card12.stage === 12, JSON.stringify(card12)));
   // a reload keeps it
   await g.page.evaluate(() => { const gm = window.game; gm.save.hub.coreLevel = 7; gm.save.hub.coreCharge = 31; saveGame(gm.save); });
