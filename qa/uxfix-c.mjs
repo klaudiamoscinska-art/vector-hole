@@ -122,13 +122,15 @@ async function effectChecks(url) {
       // a small bite (a fragment), then a big one (r > 24)
       const small = g.objects.find(o => o.tier === 'fragment'); small.x = 1500 + 42; small.y = 1500; // at the rim, where bites happen
       const seenShapes = (set) => { for (const q of g.particles) set.add(q.shape || null); };
+      window.__qaSeedRandom(4242); const calls0 = window.__qaRandomCalls;
       const s0 = P.score; let f = 0, smallParts = 0; const ss = new Set(); while (P.score === s0 && f < 120) { A.step(1); f++; } for (let k = 0; k < 6; k++) { A.step(1); smallParts = Math.max(smallParts, g.particles.length); seenShapes(ss); }
       const smallShapes = [...ss];
       const smallFrames = f, smallPts = P.score - s0;
       g.particles.length = 0;
       const big = g.objects.find(o => o.radius > 24 && g.holeCanEat(P, o)); big.x = 1500 + 40; big.y = 1500;
       g.particles.length = 0; const bs = new Set(); let bigParts = 0; f = 0; const s1 = P.score; while (P.score === s1 && f < 200) { A.step(1); f++; } for (let k = 0; k < 6; k++) { A.step(1); bigParts = Math.max(bigParts, g.particles.length); seenShapes(bs); }
-      res[id] = { smallParts, smallShapes, smallFrames, smallPts, bigParts, bigShapes: [...bs], bigFrames: f, bigPts: P.score - s1, cap: bigParts <= CONFIG.juice.maxParticles };
+      const draws = window.__qaRandomCalls - calls0; window.__qaRestoreRandom();
+      res[id] = { draws, smallParts, smallShapes, smallFrames, smallPts, bigParts, bigShapes: [...bs], bigFrames: f, bigPts: P.score - s1, cap: bigParts <= CONFIG.juice.maxParticles };
     }
     window.__uc.clockOff();
     return res;
@@ -140,6 +142,7 @@ async function effectChecks(url) {
   const shapesOk = Object.entries(want).every(([id, sh]) => sh === null ? r[id].smallShapes.every(x => x === null) : r[id].smallShapes.length === 1 && r[id].smallShapes[0] === sh);
   out.push(report('E1 FN: each Efekt draws its own shape on the player\'s bites, small and big (Klasyczny none, Pikselowy Wybuch pixel, Neonowa Róża petal, Fioletowa Szczelina rift, Pryzmat prism)', shapesOk && Object.entries(want).every(([id, sh]) => r[id].bigShapes.includes(sh)), JSON.stringify(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, [v.smallShapes, v.bigShapes]])))));
   out.push(report('E2 FN: a small bite spawns no more than Klasyczny\'s 6 particles for every Efekt (light); a big bite shows more; the cap holds', Object.values(r).every(v => v.smallParts <= 6 && v.cap) && Object.values(r).every(v => v.bigParts > v.smallParts), JSON.stringify(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, [v.smallParts, v.bigParts]])))));
+  out.push(report('E4 FN: a bite with any Efekt draws exactly as many Math.random numbers as with Klasyczny (a cosmetic never shifts the round\'s random stream)', Object.values(r).every(v => v.draws === c.draws) && c.draws > 0, JSON.stringify(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v.draws])))));
   out.push(report('E3 FN: eat time and points are the same for every Efekt as for Klasyczny (small and big bite)', Object.values(r).every(v => v.smallFrames === c.smallFrames && v.bigFrames === c.bigFrames && v.smallPts === c.smallPts && v.bigPts === c.bigPts), JSON.stringify(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, [v.smallFrames, v.bigFrames, v.smallPts, v.bigPts]])))));
   out.push(report('E no page errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
   await g.browser.close();

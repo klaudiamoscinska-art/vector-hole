@@ -51,7 +51,8 @@ export async function runVfx1Checks() {
     mathRandom: is((fx.match(/Math\.random|\brand\(|\brandInt\(|seededRand|\.rng\b/g) || []).length, 0)
   }));
   if (base) {
-    const tef = (s) => { const f = fnSource(s.replace(/\r/g, ''), '  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved, eater'); return f && f.replace(/, weight\) \{/, ') {').replace(/\n    \/\/ GG-VFX-01: the vortex answers[\s\S]*?addGulp\(eater, fxW, burstColor, x \* 0\.013 \+ y \* 0\.029\);/, ''); };
+    // UX-FIX-C: the Efekt shape is one marked block (shapeEatFx(): no random draws, nothing taken).
+    const tef = (s) => { const f = fnSource(s.replace(/\r/g, ''), '  triggerEatFeedback(x, y, color, eatenRadius, isPlayerInvolved, eater'); return f && f.replace(/\n    \/\/ UX-FIX-C \{[\s\S]*?\/\/ \} UX-FIX-C/, '').replace(/, weight\) \{/, ') {').replace(/\n    \/\/ GG-VFX-01: the vortex answers[\s\S]*?addGulp\(eater, fxW, burstColor, x \* 0\.013 \+ y \* 0\.029\);/, ''); };
     results.push(expectAll('V1 triggerEatFeedback() keeps every particle, ripple, shake and hit-stop of the base (the gulp is added, nothing is taken)', { same: is(tef(src), tef(base)) }));
     const keep = ['  spawnSuck(x, y, color, count, hole, spread) {', '  spawnParticles(x, y, color, count, speedMult = 1) {', '  hitStop(ms) {', '  handleObjectEating(hole) {', '  handleHoleCollisions() {'];
     // ARENA-FIX-1 changed only who respawns where: a waiting rival is off the board, an eaten

@@ -18824,14 +18824,45 @@ class Game {
 
   /* ---------- gameplay ---------- */
 
-  spawnParticles(x, y, color, count, speedMult = 1, shape = null) {
+  spawnParticles(x, y, color, count, speedMult = 1) {
     const cap = CONFIG.juice.maxParticles;
     for (let i = 0; i < count; i++) {
       if (this.particles.length >= cap) this.particles.shift();
-      const kind = shape ? 'shape' : i % 4 === 0 ? 'spark' : (i % 3 === 0 ? 'pixel' : 'dot');
-      const p = new Particle(x, y, shape === 'prism' ? PRISM_COLORS[i % 4] : color, kind, speedMult);
-      if (shape) { p.shape = shape; p.radius = rand(3, 5.5); }
-      this.particles.push(p);
+      const kind = i % 4 === 0 ? 'spark' : (i % 3 === 0 ? 'pixel' : 'dot');
+      this.particles.push(new Particle(x, y, color, kind, speedMult));
+    }
+  }
+
+  /** UX-FIX-C: the player's Efekt pochłaniania gives the bite's particles
+   *  (the last `count` spawnSuck() just made -- the same number and the same
+   *  random draws as Klasyczny) its shape, a little more size, the prism's
+   *  colors, and moves them out to the rim toward the bite (the bite ends
+   *  near the core, where they would vanish at once). A bigger bite adds a
+   *  short burst of the shape (spawnShapeBurst(), no random draws). */
+  shapeEatFx(x, y, eater, shape, count, size, color) {
+    const d = Math.hypot(x - eater.x, y - eater.y), rim = eater.radius * 0.9;
+    const dx = d < 1 ? rim : d < rim ? (x - eater.x) * (rim / d - 1) : 0, dy = d < 1 ? 0 : d < rim ? (y - eater.y) * (rim / d - 1) : 0;
+    const list = this.particles, from = Math.max(0, list.length - count);
+    for (let i = from; i < list.length; i++) {
+      const q = list[i];
+      if (q.kind !== 'suck' || q.target !== eater) continue;
+      q.shape = shape; q.radius *= 1.35; q.x += dx; q.y += dy;
+      if (shape === 'prism') q.color = PRISM_COLORS[i % 4];
+    }
+    if (size >= 1) this.spawnShapeBurst(x + dx, y + dy, color, size === 1 ? 4 : 6, shape, 0.8);
+  }
+
+  /** UX-FIX-C: an Efekt's short burst of its shape on a bigger bite. Display
+   *  only and draws NO random numbers (angles and speeds from the bite's
+   *  position), so a cosmetic never shifts the round's Math.random stream. */
+  spawnShapeBurst(x, y, color, count, shape, speedMult = 1) {
+    const cap = CONFIG.juice.maxParticles, s0 = Math.abs(x * 0.013 + y * 0.029) % 1;
+    for (let i = 0; i < count; i++) {
+      if (this.particles.length >= cap) this.particles.shift();
+      const q = Object.create(Particle.prototype), a = (i / count + s0) * Math.PI * 2, sp = (90 + 80 * ((i * 0.618 + s0) % 1)) * speedMult;
+      Object.assign(q, { x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, color: shape === 'prism' ? PRISM_COLORS[i % 4] : color, kind: 'shape', shape,
+        radius: 3.5 + (i % 3), spin: i % 2 ? 8 : -8, rot: a, maxLife: 0.6, life: 0.6, target: null });
+      this.particles.push(q);
     }
   }
 
@@ -18881,16 +18912,15 @@ class Game {
   }
 
   /** Matter from an eaten object streaming into `hole`. */
-  spawnSuck(x, y, color, count, hole, spread, shape = null) {
+  spawnSuck(x, y, color, count, hole, spread) {
     const cap = CONFIG.juice.maxParticles;
     for (let i = 0; i < count; i++) {
       if (this.particles.length >= cap) this.particles.shift();
       const a = rand(0, Math.PI * 2);
-      const p = new Particle(x + Math.cos(a) * spread * rand(0.2, 1), y + Math.sin(a) * spread * rand(0.2, 1), shape === 'prism' ? PRISM_COLORS[i % 4] : color, 'suck');
-      p.shape = shape;
+      const p = new Particle(x + Math.cos(a) * spread * rand(0.2, 1), y + Math.sin(a) * spread * rand(0.2, 1), color, 'suck');
       p.vx = Math.cos(a) * rand(40, 140);
       p.vy = Math.sin(a) * rand(40, 140);
-      p.radius = shape ? rand(3, 4.5) : rand(2, 3.5); // UX-FIX-C: a shape needs a little more room to read
+      p.radius = rand(2, 3.5);
       p.maxLife = p.life = 1.4;
       p.target = hole;
       this.particles.push(p);
@@ -19252,23 +19282,14 @@ class Game {
     const effectId = this.save && this.save.effects && this.save.effects.selected;
     const effect = EAT_EFFECTS.find(e => e.id === effectId);
     const burstColor = (isPlayerInvolved && effect && effect.color) || color;
-    // UX-FIX-C: the effect's shape (null = Klasyczny's streaks), the player's eats only.
-    const shape = (isPlayerInvolved && effect && effect.shape) || null;
     // Golden Shot v9: the eaten matter is sucked into the hole that ate it
     // (it's a black hole -- nothing flies outward except on big eats).
     const suck = [6, 11, 18][size];
-    // UX-FIX-C: a shaped effect starts its particles at the rim, toward the
-    // bite (the bite itself ends near the core, where they would vanish at
-    // once) -- the same count, so a small bite stays light but is seen.
-    let sx = x, sy = y;
-    if (shape && eater) {
-      const d = Math.hypot(x - eater.x, y - eater.y), rim = eater.radius * 0.9;
-      if (d < 1) sx = eater.x + rim; else if (d < rim) { sx = eater.x + (x - eater.x) * rim / d; sy = eater.y + (y - eater.y) * rim / d; }
-    }
-    if (eater) this.spawnSuck(sx, sy, burstColor, isPlayerInvolved ? suck : Math.ceil(suck / 3), eater, Math.max(6, eatenRadius), shape);
+    if (eater) this.spawnSuck(x, y, burstColor, isPlayerInvolved ? suck : Math.ceil(suck / 3), eater, Math.max(6, eatenRadius));
     else this.spawnParticles(x, y, burstColor, suck);
-    // A bigger bite shows the shape once more as a short burst (a small one stays light).
-    if (shape && size >= 1) this.spawnParticles(sx, sy, burstColor, size === 1 ? 4 : 6, 0.8, shape);
+    // UX-FIX-C {
+    if (isPlayerInvolved && eater && effect && effect.shape) this.shapeEatFx(x, y, eater, effect.shape, suck, size, burstColor);
+    // } UX-FIX-C
     // GG-VFX-01: the vortex answers the gulp (a rival's comes when its
     // collapse ends, see updateJuice()). Display only, no random draws.
     const fxW = weight != null ? weight : swallowWeightOfRadius(eatenRadius);
@@ -19276,7 +19297,7 @@ class Game {
     if (!isPlayerInvolved) return;
     if (eater && eater.isPlayer && this.sound) this.sound.eat(eatenRadius, this.comboCount);
     if (size === 2) {
-      this.spawnParticles(x, y, burstColor, 12, 1.3, shape);
+      this.spawnParticles(x, y, burstColor, 12, 1.3);
       this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 2.6, 0.45));
       this.triggerShake(8);
       this.hitStop(CONFIG.juice.hitStopMs * 0.5);
