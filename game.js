@@ -8312,6 +8312,8 @@ function splitMissionCard(card, footerSel) {
 const U2_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const U2_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
 const U2_BOSS_TAG = '<span class="u2-boss-tag">BOSS</span>';
+// MISSION-ENTER-1: the Enter key cap on the mission card's GRAJ (shown on a computer only, style.css .play-key).
+const PLAY_KEY_HTML = '<kbd class="play-key" aria-hidden="true">Enter</kbd>';
 
 const DISTRICT_COLORS = { plac: '#50F0FA', park: '#46D99A', port: '#EFCB63', galeria: '#FF54AD', dachy: '#9875FF', rdzen: '#CBD5E1' };
 CHAPTER_II.forEach(d => { DISTRICT_COLORS[d.id] = d.color; });
@@ -11336,9 +11338,44 @@ class Game {
     const btn = document.getElementById(menu.classList.contains('first-run') ? 'btnWelcomePlay' : 'btnStart');
     if (!btn || btn.disabled || !btn.getClientRects().length) return null;
     // Shown = laid out (a dialog panel inside a hidden sheet has no boxes).
+    return this.startCovered(null) ? null : btn;
+  }
+
+  /** MISSION-ENTER-1: the START button of the tap-to-start card ("Zegar ruszy po
+   *  dotknięciu") when Enter may press it: the card waits for its tap (introPending,
+   *  the mission not ended), no ad plays, and nothing but the card is open. Its click
+   *  is the existing START action (beginMissionPlay() through the card's click
+   *  handler): nothing is launched or charged again. Otherwise null. */
+  missionGoButton() {
+    const card = document.getElementById('missionStartOverlay');
+    const m = this.mission;
+    if (!this.introPending || !m || m.ended || !card || card.classList.contains('hidden') || !card.getClientRects().length || this.monetization.busy) return null;
+    const btn = card.querySelector('#btnMissionGo');
+    if (!btn || btn.disabled || !btn.getClientRects().length) return null;
+    return this.startCovered(card) ? null : btn;
+  }
+
+  /** True when a sheet, dialog, card or ad covers the screen: any visible
+   *  overlay / modal except `allowed` (the screen whose own button Enter
+   *  may press). Shown = laid out. */
+  startCovered(allowed) {
     const covers = document.querySelectorAll('.overlay-screen, [aria-modal="true"], #adOverlay');
-    for (const el of covers) if (!el.classList.contains('hidden') && el.getClientRects().length) return null;
-    return btn;
+    for (const el of covers) if (el !== allowed && !el.classList.contains('hidden') && el.getClientRects().length) return true;
+    return false;
+  }
+
+  /** MISSION-ENTER-1: the GRAJ of the open mission card (the briefing opened
+   *  from Dzielnice or the Miasto shortcut) when Enter may press it: the card
+   *  is the one open overlay, no round runs, no ad plays, GRAJ is playable
+   *  (a locked mission's button has no launch hook). The card is itself a
+   *  modal, so it alone is let through startCovered(); a dialog over it
+   *  (a sheet, a confirm) still blocks. Otherwise null. */
+  missionStartButton() {
+    const sheet = document.getElementById('missionBriefing');
+    if (this.running || !sheet || sheet.classList.contains('hidden') || !sheet.getClientRects().length || this.monetization.busy) return null;
+    const btn = sheet.querySelector('.mc-play[data-mc-launch]');
+    if (!btn || btn.disabled || !btn.getClientRects().length) return null;
+    return this.startCovered(sheet) ? null : btn;
   }
 
   /** True while the Floating Thumb Pad should handle touch (feature flag is
@@ -11453,27 +11490,46 @@ class Game {
       }
     });
 
+    // MISSION-ENTER-1: the same key on an open mission card = that card's GRAJ (missionStartButton(),
+    // the same click, so launchMission() charges the picked boosters once), and on the START card
+    // that follows = its START (a new press; the click only starts the clock). Extends this handler
+    // -- there is no second Enter listener.
     // ARENA-FIX-1: Enter on Arena's start screen = its GRAJ button (the same
     // click, so the same start). One press = one round: a held key's
     // repeats are ignored, and preventDefault() stops a focused GRAJ from
     // also firing its own Enter click. Never while typing, while another
     // control has focus (Enter is that control's), under a sheet / dialog /
     // card, or once a round runs (arenaStartButton() is null then).
+    let enterLaunched = false;   // an Enter press launched a mission and is still down
     window.addEventListener('keydown', (e) => {
       if (e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
       if (e.repeat || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || isTextField(e.target)) return;
-      const start = this.arenaStartButton();
+      const arena = this.arenaStartButton();
+      const brief = arena ? null : this.missionStartButton();
+      const go = arena || brief ? null : this.missionGoButton();
+      const start = arena || brief || go;
       if (!start) return;
+      // The press that launched the mission must not also start its clock: the START card
+      // needs the key released and pressed again (a repeat is already ignored above).
+      if (go && enterLaunched) return;
       // Enter on another visible control is that control's own action. A control that was just
       // hidden (a screen switch) can keep the focus until the next frame: it is not on screen
       // any more, so it does not count (preventDefault() below stops its native activation).
+      // MISSION-ENTER-1: on a mission card, a control OUTSIDE the card (the Dzielnice GRAJ that
+      // opened it) is under the modal and not reachable: only a control inside the card (a
+      // booster, the close button, an ad button) keeps its own Enter.
       const f = document.activeElement;
-      if (f && f !== start && f !== document.body && f !== document.documentElement && f.closest
+      const card = brief ? document.getElementById('missionBriefing') : go ? document.getElementById('missionStartOverlay') : null;
+      const underCard = !!card && !card.contains(f);
+      if (f && f !== start && f !== document.body && f !== document.documentElement && f.closest && !underCard
         && f.closest('button, a[href], [role="button"], [tabindex], select, input, textarea, [contenteditable]')
         && f.getClientRects().length) return;
       e.preventDefault();
+      if (brief) enterLaunched = true;
       start.click();
     });
+    window.addEventListener('keyup', (e) => { if (e.code === 'Enter' || e.code === 'NumpadEnter') enterLaunched = false; });
+    window.addEventListener('blur', () => { enterLaunched = false; });
 
     // ---- FTUE-2: the host page never scrolls or zooms under the game ----
     // In a Poki / CrazyGames iframe, arrow keys, Space, PageUp/Down and the
@@ -14587,11 +14643,13 @@ class Game {
     // A locked mission's button leads to what unlocks it (no dead end).
     const prevPlayable = !playable && prev && this.isMissionPlayable(prev.id);
     const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>';
+    // MISSION-ENTER-1: the briefing's GRAJ shows the quiet Enter key cap (computers only, CSS).
+    const KEY = opts.launch ? PLAY_KEY_HTML : '';
     // v15: in the briefing GRAJ launches (with the boosters); everywhere
     // else it opens the briefing first.
     const attr = opts.launch ? 'data-mc-launch' : 'data-mc-play';
     const play = !opts.play ? ''
-      : playable ? `<button class="btn btn-primary btn-mega mc-play" ${attr}="${def.id}">${done ? 'ZAGRAJ PONOWNIE' : 'GRAJ'}${PLAY_SVG}</button>`
+      : playable ? `<button class="btn btn-primary btn-mega mc-play" ${attr}="${def.id}">${done ? 'ZAGRAJ PONOWNIE' : 'GRAJ'}${PLAY_SVG}${KEY}</button>`
         : prevPlayable ? `<button class="btn btn-secondary mc-play mc-play-prev" data-mc-play="${prev.id}">NAJPIERW ${missionCode(prev)}${PLAY_SVG}</button>`
           : `<button class="btn btn-primary btn-mega mc-play" disabled>ZABLOKOWANA</button>`;
     const boosts = opts.launch && playable && this.boostersUnlocked() ? this.boosterTilesHtml(def) : '';
@@ -14663,7 +14721,7 @@ class Game {
     const cost = this.briefingBoosterCost();
     const btn = card.querySelector('.mc-play[data-mc-launch]');
     if (btn) {
-      btn.innerHTML = `GRAJ${cost ? ` <span class="mc-play-cost">−${cost} ◇</span>` : ''}<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>`;
+      btn.innerHTML = `GRAJ${cost ? ` <span class="mc-play-cost">−${cost} ◇</span>` : ''}<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>${PLAY_KEY_HTML}`;
     }
     const note = card.querySelector('.mc-boost-note');
     if (note) {
@@ -14816,7 +14874,7 @@ class Game {
       (twists || boosts ? `<div class="mc-twists">${twists}${boosts}</div>` : '') +
       ((def.twists || []).length ? `<ul class="mc-twist-hints">${def.twists.map(t => `<li>${TWIST_INFO[t].hint}</li>`).join('')}</ul>` : '') +
       `<div class="start-meta"><span><svg class="inline-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${this.starShortLabel(st)}`).join(' · ')}</span></div>` +
-      `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></button>` +
+      `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>${PLAY_KEY_HTML}</button>` +
       `<p class="start-tap">Zegar ruszy po dotknięciu</p>` +
       // Boosters exist only after their unlock mission: before that the
       // link just backs out to the map (the briefing would offer nothing).

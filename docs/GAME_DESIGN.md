@@ -273,6 +273,15 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   trzymanego klawisza pomijane). Nie działa w polu tekstowym, gdy fokus ma inny przycisk (Enter
   należy do niego), pod arkuszem / oknem / kartą, na innych ekranach ani w trakcie rundy. Na komputerze
   przy GRAJ dyskretna nakładka klawisza „Enter”.
+- **Enter na karcie misji (MISSION-ENTER-1):** na otwartej karcie misji (Dzielnice / skrót kampanii w Mieście)
+  Enter = jej GRAJ, dokładnie jak kliknięcie: ta sama misja, wybrane wzmocnienia naliczone raz (ta sama
+  ścieżka `launchMission()`), jedno naciśnięcie = jeden start. Karta jest dozwolonym ekranem startu mimo
+  że jest oknem; inne okno nad nią, pole tekstowe, inna kontrolka karty (wzmocnienie, ×, reklama),
+  zablokowana misja i rozgrywka blokują Enter. Na następnej karcie „Zegar ruszy po dotknięciu” Enter =
+  START (istniejąca akcja, bez ponownego `launchMission()` i naliczania): potrzebne puszczenie klawisza i nowe
+  naciśnięcie (to samo naciśnięcie, które uruchomiło misję, ani jego powtórzenia nie ruszają zegara); blokują ją
+  inne okno, reklama i pole tekstowe, a inna kontrolka karty (np. „Zmień wzmocnienia”) zachowuje własny Enter.
+  Na komputerze nakładka „Enter” przy GRAJ karty i przy START.
 - WASD/strzałki i mysz poza powyższym bez zmian (desktop, paczka CrazyGames).
 - **Mysz w paczce CrazyGames (CRAZYGAMES-BASIC-1):** portal wymaga blokady myszy w grach
   z widokiem z góry. Tylko w paczce: kliknięcie planszy w trwającej rundzie blokuje kursor

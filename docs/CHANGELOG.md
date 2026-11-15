@@ -4,6 +4,15 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## MISSION-ENTER-1 — Enter na karcie misji = GRAJ (zapis nadal v13; ekonomia, nagrody, Arena, dotyk, Pointer Lock bez zmian)
+- Po ARENA-FIX-1 Enter startował Arenę, ale nie misję z otwartej karty w Dzielnicach. Teraz rozszerzony istniejący handler
+  Enter (`bindInput()`, bez drugiego globalnego) naciska GRAJ aktywnej karty misji (`missionStartButton()`) — ta sama ścieżka co
+  kliknięcie (`launchMission()`: wybrane wzmocnienia naliczone raz, walidacja monet bez zmian). Fokus na przycisku GRAJ pod
+  kartą (ten, który ją otworzył) nie blokuje startu. Dodatkowe okno nad kartą, pole tekstowe, inna kontrolka karty, zablokowana
+  misja i rozgrywka nadal blokują Enter; ochrona startu pod innymi oknami (`startCovered()`) bez zmian. Na komputerze nakładka „Enter” przy GRAJ karty.
+- Karta START („Zegar ruszy po dotknięciu”): Enter = START (`missionGoButton()`, istniejąca akcja, bez ponownego `launchMission()` i naliczania monet / wzmocnień). Naciśnięcie, które uruchomiło misję, ani jego powtórzenia nie ruszają zegara — trzeba puścić klawisz i nacisnąć ponownie; inne okno, reklama, pole tekstowe i inna kontrolka karty (własny Enter) blokują skrót. Nakładka „Enter” także przy START.
+- Testy: `node qa/arena-fix1.mjs --only=M` (21 kontroli).
+
 ## ARENA-FIX-1 — Arena: Mysz / Klawiatura, Enter = GRAJ, bezpieczny respawn rywali (zapis nadal v13, klucz bez zmian; nowe pole `settings.deskControls` w `defaultSave()`; ekonomia, nagrody, progresja, Dzielnice, dotyk, grafika i audio bez zmian)
 - **Sterowanie na komputerze:** „Sterowanie: Mysz / Klawiatura” (Profil → Ustawienia „Sterowanie na Arenie” i pauza Areny →
   STEROWANIE), tylko z myszą / gładzikiem. Mysz domyślna (brak / nieznana wartość → Mysz), działa jak dotąd (z Pointer Lock
