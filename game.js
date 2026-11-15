@@ -11464,9 +11464,13 @@ class Game {
       if (e.repeat || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || isTextField(e.target)) return;
       const start = this.arenaStartButton();
       if (!start) return;
+      // Enter on another visible control is that control's own action. A control that was just
+      // hidden (a screen switch) can keep the focus until the next frame: it is not on screen
+      // any more, so it does not count (preventDefault() below stops its native activation).
       const f = document.activeElement;
       if (f && f !== start && f !== document.body && f !== document.documentElement && f.closest
-        && f.closest('button, a[href], [role="button"], [tabindex], select, input, textarea, [contenteditable]')) return;
+        && f.closest('button, a[href], [role="button"], [tabindex], select, input, textarea, [contenteditable]')
+        && f.getClientRects().length) return;
       e.preventDefault();
       start.click();
     });

@@ -279,6 +279,23 @@ async function enterChecks(url) {
   await p.waitForTimeout(150);
   const e9 = await st(p);
   out.push(report('E3 Enter with GRAJ focused starts exactly one round (no double start from the native activation)', e9.starts === 1 && e9.running, JSON.stringify({ starts: e9.starts })));
+  // A control hidden by a screen switch can keep the focus until the next frame: Enter right
+  // after leaving Profil (its toggle still focused, now off screen) still starts the round.
+  await p.evaluate(() => { document.getElementById('btnPause').click(); document.getElementById('btnLeaveRun').click(); document.getElementById('btnLeaveConfirmYes').click(); });
+  await p.waitForFunction(() => window.game.state === GameState.MENU && !document.getElementById('mainMenu').classList.contains('hidden'));
+  const stale = await p.evaluate(() => {
+    clearTimeout(window.game.loginPopupTimer); window.__starts = 0;
+    window.game.openProfileScreen();
+    const t = document.querySelector('#profileDeskControlsRow [data-desk-controls="mouse"]');
+    t.focus();
+    window.game.showScreen('mainMenu');
+    const focused = document.activeElement === t, onScreen = t.getClientRects().length;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', key: 'Enter', bubbles: true, cancelable: true }));
+    return { focused, onScreen };
+  });
+  await p.waitForTimeout(150);
+  const e10 = await st(p);
+  out.push(report('E3 Enter right after a screen switch (the hidden Profil toggle still focused) starts exactly one round', stale.focused && stale.onScreen === 0 && e10.starts === 1 && e10.running, JSON.stringify({ ...stale, starts: e10.starts })));
   out.push(report('E1-E3 no page errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
   await g.browser.close();
 
@@ -313,7 +330,7 @@ async function lockChecks() {
   {
     const g = await portalHost(pkg.gameDir, { width: 1216, height: 684 });
     const { page, frame: f } = g;
-    await f.evaluate(() => window.focus()); // keys reach a frame once it has focus (a click into it / the portal)
+    await focusFrame(f); // keys reach a frame once it has focus (a click into it / the portal)
     await page.mouse.move(600, 300);
     await page.keyboard.press('Enter');
     await waitRunning(f, 8000);
@@ -367,7 +384,7 @@ async function lockChecks() {
     await f.evaluate(() => { window.game.openProfileScreen(); });
     await f.locator('#profileDeskControlsRow [data-desk-controls="keyboard"]').click(); // a real click, scrolled into view
     await f.evaluate(() => window.game.showScreen('mainMenu'));
-    await f.evaluate(() => window.focus()); // keys reach a frame once it has focus (a click into it / the portal)
+    await focusFrame(f); // keys reach a frame once it has focus (a click into it / the portal)
     await page.mouse.move(600, 300);
     await page.keyboard.press('Enter');
     await waitRunning(f, 8000);
@@ -530,6 +547,17 @@ async function respawnChecks(url) {
 }
 
 
+/** Gives the game's frame the keyboard focus (what a click into it does on the portal) and
+ *  waits until it really has it -- focus reaches an iframe asynchronously. Counts Enter
+ *  keydowns that reach the frame, for waitRunning()'s diagnosis. */
+async function focusFrame(f) {
+  await f.evaluate(() => {
+    if (!window.__afEnter) { window.__afEnter = { n: 0 }; window.addEventListener('keydown', (e) => { if (e.code === 'Enter') { window.__afEnter.n++; const a = document.activeElement; window.__afEnter.at = a && (a.id || a.className || a.tagName); } }, true); }
+    window.focus();
+  });
+  await f.waitForFunction(() => document.hasFocus(), null, { timeout: 3000 });
+}
+
 /** Waits for a round to start; on a timeout says why (focus, open sheets, the start button). */
 async function waitRunning(t, timeout) {
   try { await t.waitForFunction(() => window.game.running, null, { timeout }); }
@@ -537,7 +565,7 @@ async function waitRunning(t, timeout) {
     const why = await t.evaluate(() => {
       const g = window.game, a = document.activeElement, menu = document.getElementById('mainMenu');
       const open = [...document.querySelectorAll('.overlay-screen, [aria-modal="true"], #adOverlay')].filter(x => !x.classList.contains('hidden') && x.getClientRects().length).map(x => x.id || x.className);
-      return { hasFocus: document.hasFocus(), active: a && (a.id || a.tagName), menu: !menu.classList.contains('hidden'), firstRun: menu.classList.contains('first-run'), open, start: !!g.arenaStartButton(), busy: !!(g.monetization && g.monetization.busy) };
+      return { hasFocus: document.hasFocus(), active: a && (a.id || a.tagName), menu: !menu.classList.contains('hidden'), firstRun: menu.classList.contains('first-run'), open, start: !!g.arenaStartButton(), enterKeydowns: window.__afEnter ? window.__afEnter.n : null, focusAtEnter: window.__afEnter ? window.__afEnter.at : null, busy: !!(g.monetization && g.monetization.busy) };
     }).catch((err) => String(err));
     throw new Error('the round did not start: ' + JSON.stringify(why));
   }

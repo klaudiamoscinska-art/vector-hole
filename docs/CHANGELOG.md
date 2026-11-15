@@ -11,7 +11,8 @@ są w historii gita (`git log -- docs/`).
   kursora po puszczeniu klawiszy** (przyczyna: `applyPlayerMovement()` po zwolnieniu klawiszy wracał do pościgu za ostatnią
   pozycją kursora `pointerScreen`). Zmiana trybu, pauza, wznowienie, start rundy i utrata fokusu zwalniają klawisze i punkt kursora.
 - **Enter = GRAJ** na Mieście i na karcie powitalnej (jeden start, bez powtórzeń, nie pod arkuszem / w polu tekstowym / na innym
-  przycisku); nakładka klawisza „Enter” przy GRAJ na komputerze. EN: „Controls” / „Arena controls”, „Mouse”, „Keyboard”.
+  widocznym przycisku — przycisk ukryty przy zmianie ekranu, który jeszcze trzyma fokus, nie blokuje startu); nakładka klawisza
+  „Enter” przy GRAJ na komputerze. EN: „Controls” / „Arena controls”, „Mouse”, „Keyboard”.
 - **Respawn rywala:** zjedzony rywal nie pojawia się w zasięgu gracza (≥ r·√2 + r_rywala + 160 j. świata od gracza), do 24
   losowań, bez miejsca — czeka poza planszą i próbuje co 0,5 s. Dotąd przy maks. wirze ok. 13 % respawnów (54/400) lądowało
   w zasięgu pochłonięcia.
