@@ -190,17 +190,24 @@ async function behaviourChecks(url) {
     gm.save.hub.coreLevel = 3; gm.save.hub.coreCharge = 82; gm.showScreen('mainMenu'); gm.updateCoinDisplays(); const l3 = rd();
     gm.save.hub.coreLevel = 1; gm.save.hub.coreCharge = 0; gm.updateCoinDisplays(); const l1 = rd();
     gm.save.hub.coreLevel = 6; gm.save.hub.coreCharge = 5; gm.updateCoinDisplays(); const l6 = rd();
+    // CITY-2: LVL 6 opens on Drugi brzeg (the charge builds LVL 7); the finished Centrum is one tap away.
+    gm.hubSector = 'center'; gm.updateCoinDisplays(); const l6c = rd(); gm.hubSector = null;
+    // CITY-2: LVL 6 completes the Centrum; the whole city (Drugi brzeg too) is built at LVL 12.
+    gm.save.hub.coreLevel = 12; gm.save.hub.coreCharge = 5; gm.updateCoinDisplays(); const l12 = rd();
     const c0 = gm.save.coins, p0 = gm.save.prisms || 0; gm.grantCoreCityLevelReward(7); gm.pendingRewardCelebrations = [];
-    return { l3, l1, l6, fallback: { coins: gm.save.coins - c0, prisms: (gm.save.prisms || 0) - p0 } };
+    return { l3, l1, l6, l6c, l12, fallback: { coins: gm.save.coins - c0, prisms: (gm.save.prisms || 0) - p0 } };
   });
   out.push(expectAll('Core City copy: the range a round adds (+10–17%, +16–27% at LVL1-2), the reward "at the latest" in N rounds, GRAJ says the same', {
     l3sub: is(hub.l3.sub, '+10–17% za rundę · nagroda najpóźniej za 2 rundy'), l3play: matches(/\+10–17% budowy miasta$/, hub.l3.play),
     l1sub: matches(/^\+16–27% za rundę/, hub.l1.sub), l3title: is(hub.l3.title, 'Każda runda Areny buduje Twoje miasto')
   }, JSON.stringify(hub)));
-  out.push(expectAll('Core City 023: LVL6 says the city is built and what each further 100% pays (= what LVL7 grants)', {
-    title: is(hub.l6.title, 'Miasto zbudowane w całości'), sub: matches(/co 100%: \+100 monet i \+10 pryzmatów/, hub.l6.sub),
-    chip: is(hub.l6.chip, '+100 monet + 10 pryzmatów'), coins: is(hub.fallback.coins, 100), prisms: is(hub.fallback.prisms, 10)
-  }, JSON.stringify(hub.l6)));
+  // CITY-2: the 023 promise moved -- LVL 6 completes the Centrum and names the next stage
+  // (Drugi brzeg LVL 7 + the same premium LVL 7 grants); LVL 12 says the city is built.
+  out.push(expectAll('Core City 023 / CITY-2: LVL6 says the Centrum is built and what the next 100% brings (= what LVL7 grants); LVL12 says the city is built and what each further 100% pays', {
+    title6: is(hub.l6.title, 'Każda runda Areny buduje Drugi brzeg'), title6c: is(hub.l6c.title, 'Centrum ukończone'), chip6: is(hub.l6.chip, 'LVL 7 „Przyczółek” + 100 monet + 10 pryzmatów'),
+    title12: is(hub.l12.title, 'Drugi brzeg ukończony'), sub12: matches(/co 100%: \+100 monet i \+10 pryzmatów/, hub.l12.sub),
+    chip12: is(hub.l12.chip, '+100 monet + 10 pryzmatów'), coins: is(hub.fallback.coins, 100), prisms: is(hub.fallback.prisms, 10)
+  }, JSON.stringify({ l6: hub.l6, l6c: hub.l6c, l12: hub.l12 })));
 
   // B. Ranking by points; a rival in the neutral band.
   await veteran(p);

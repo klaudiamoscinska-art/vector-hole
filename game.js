@@ -7767,8 +7767,44 @@ const CITY_STAGES = {
   3: { name: 'Neony', line: 'Neonowe szyldy na budynkach' },
   4: { name: 'Kładki', line: 'Kładki i kolejka nad ulicami' },
   5: { name: 'Reflektory', line: 'Reflektory i drony nad miastem' },
-  6: { name: 'Wieża Rdzenia', line: 'Wieża Rdzenia rozświetla miasto' }
+  6: { name: 'Wieża Rdzenia', line: 'Wieża Rdzenia rozświetla miasto' },
+  // CITY-2 "Drugi brzeg": LVL 7-12 build a second sector across the river
+  // (drawShoreScene()), from the same saved coreLevel/coreCharge.
+  7: { name: 'Przyczółek', line: 'Przyczółek mostu i pierwsza ulica' },
+  8: { name: 'Kwartał', line: 'Kwartał niskiej zabudowy' },
+  9: { name: 'Plac', line: 'Usługi i plac na nabrzeżu' },
+  10: { name: 'Fontanna', line: 'Fontanna na placu' },
+  11: { name: 'Dominanta', line: 'Wysokie budynki i dominanta' },
+  12: { name: 'Wieża Brzegu', line: 'Wieża Brzegu rozświetla nabrzeże' }
 };
+
+/** CITY-2: Core City has two sectors on the one saved level (hub.coreLevel):
+ *  the Centrum, LVL 1-6 (unchanged), and Drugi brzeg, LVL 7-12, open from
+ *  LVL 6 (the charge toward LVL 7 starts it). No new save field: which
+ *  sector Miasto shows is a view choice for the session. The level counter
+ *  itself is never capped (verifyMigration() treats a lower coreLevel as a
+ *  loss, and the repeating LVL 7+ premium kept counting it before CITY-2),
+ *  so a save past LVL 12 simply shows the finished city. */
+const CORE_CITY_CENTER_TOP = 6;
+const CORE_CITY_TOP = 12;
+
+/** Core City progress as one number, 0 (LVL 1 at 0%) .. 11 (LVL 12): the
+ *  levels reached plus the charge toward the next one. */
+function coreCityOverall(level, charge) {
+  const L = Math.max(1, Math.floor(Number(level)) || 1);
+  if (L >= CORE_CITY_TOP) return CORE_CITY_TOP - 1;
+  return clamp(L - 1 + (Number(charge) || 0) / 100, 0, CORE_CITY_TOP - 1);
+}
+/** The Centrum's 0..1 (LVL 6 = complete) -- the number it was always drawn from. */
+function cityCenterProgress(overall) { return clamp(overall / (CORE_CITY_CENTER_TOP - 1), 0, 1); }
+/** Drugi brzeg's 0..1: 0 up to LVL 6 at 0%, one sixth per level, 1 at LVL 12. */
+function cityShoreProgress(overall) { return clamp((overall - (CORE_CITY_CENTER_TOP - 1)) / (CORE_CITY_TOP - CORE_CITY_CENTER_TOP), 0, 1); }
+/** The level whose look a Drugi brzeg progress shows (6 = the empty site before LVL 7). */
+function shoreStageLevel(progress) {
+  return progress >= 1 ? CORE_CITY_TOP : CORE_CITY_CENTER_TOP + Math.floor(progress * (CORE_CITY_TOP - CORE_CITY_CENTER_TOP) + 1e-6);
+}
+/** The stage (1..12) reached at an overall progress. */
+function coreStageOf(overall) { return Math.min(CORE_CITY_TOP, Math.floor(overall + 1e-6) + 1); }
 
 /** True when the player asked the system for less motion. */
 function prefersReducedMotion() {
@@ -7952,24 +7988,13 @@ function drawCoreTower(ctx, cx, ground, topY, unit, t, lit) {
   ctx.beginPath(); ctx.arc(cx, ringY, 2 + pulse, 0, Math.PI * 2); ctx.fill();
 }
 
-/** Draws the Core City skyline. `progress` is 0..1 of the full city (one
- *  fifth of the way per Core City level, LVL6 = every building standing).
- *  opts: siteLabel (the crane's tag), skyTop (nothing rises above it),
- *  reveal ({ level, age } -- a stage just reached, see renderHubCity()),
- *  mini (a still roadmap thumbnail: no labels, no sweep). */
-function drawCityScene(canvas, progress, t, opts = {}) {
-  const c = prepCanvas(canvas);
-  if (!c) return;
-  const { ctx, w, h } = c;
-  const { slots, stars } = cityLayout();
-  const mini = !!opts.mini;
-  const streetH = mini ? 7 : 18;
-  const ground = h - streetH;
-  const stage = cityStageLevel(progress);
-  const reveal = opts.reveal && opts.reveal.level === stage ? opts.reveal : null;
-  // A stage's layer is fully there once reached; the one just reached fades in.
-  const layer = (L) => (stage < L ? 0 : (reveal && L === stage ? clamp(reveal.age / 0.9, 0, 1) : 1));
+/* CITY-2: the pieces both Core City sectors draw (the Centrum through
+ * drawCityScene(), Drugi brzeg through drawShoreScene()) -- moved out of
+ * drawCityScene() unchanged, so the Centrum draws exactly what it drew. */
 
+/** Night sky, stars and the city glow on the horizon (centred on glowX). */
+function drawCitySky(ctx, w, h, ground, progress, t, glowX) {
+  const { stars } = cityLayout();
   const sky = ctx.createLinearGradient(0, 0, 0, h);
   sky.addColorStop(0, '#030b16'); sky.addColorStop(0.75, '#0a1d33'); sky.addColorStop(1, '#0d2a40');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
@@ -7980,53 +8005,49 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   });
   ctx.globalAlpha = 1;
   // City glow on the horizon grows with the city itself.
-  const glow = ctx.createRadialGradient(w / 2, ground, 0, w / 2, ground, w * 0.7);
+  const glow = ctx.createRadialGradient(glowX, ground, 0, glowX, ground, w * 0.7);
   glow.addColorStop(0, `rgba(80, 240, 250, ${0.1 + 0.3 * progress})`); glow.addColorStop(1, 'rgba(80, 240, 250, 0)');
   ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+}
 
-  // FTUE-2 FIX: the buildings (and the next one's scaffold + crane) rise
-  // only up to opts.skyTop -- the bottom of the text over the canvas --
-  // so they never run behind the headline on a short card. VISUAL-1: the
-  // sky effects (aurora, searchlights, drones) are clipped to it too.
-  const skyTop = clamp(opts.skyTop || (mini ? 2 : 14), mini ? 2 : 14, ground - 10);
-  const pad = opts.skyTop ? 12 : 0;
-  const skyH = ground - skyTop;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0, skyTop, w, ground - skyTop); ctx.clip();
-  // Stage 6: an aurora over the finished city.
-  const aur = layer(6);
-  if (aur > 0) {
-    for (let k = 0; k < 2; k++) {
-      const base = skyTop + skyH * (0.12 + k * 0.14);
-      const g = ctx.createLinearGradient(0, base - 14, 0, base + 22);
-      const colA = k ? '152, 117, 255' : '70, 217, 154';
-      g.addColorStop(0, `rgba(${colA}, 0)`); g.addColorStop(0.5, `rgba(${colA}, ${0.16 * aur})`); g.addColorStop(1, `rgba(${colA}, 0)`);
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      for (let i = 0; i <= 16; i++) { const x = (i / 16) * w; ctx.lineTo(x, base - 10 + Math.sin(i * 0.8 + t * 0.5 + k * 2) * 7); }
-      for (let i = 16; i >= 0; i--) { const x = (i / 16) * w; ctx.lineTo(x, base + 18 + Math.sin(i * 0.7 + t * 0.4 + k) * 6); }
-      ctx.closePath(); ctx.fill();
-    }
+/** Stage 6's aurora over a finished city (`aur` = 0..1 of its fade-in). */
+function drawCityAurora(ctx, w, skyTop, skyH, t, aur) {
+  if (!(aur > 0)) return;
+  for (let k = 0; k < 2; k++) {
+    const base = skyTop + skyH * (0.12 + k * 0.14);
+    const g = ctx.createLinearGradient(0, base - 14, 0, base + 22);
+    const colA = k ? '152, 117, 255' : '70, 217, 154';
+    g.addColorStop(0, `rgba(${colA}, 0)`); g.addColorStop(0.5, `rgba(${colA}, ${0.16 * aur})`); g.addColorStop(1, `rgba(${colA}, 0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    for (let i = 0; i <= 16; i++) { const x = (i / 16) * w; ctx.lineTo(x, base - 10 + Math.sin(i * 0.8 + t * 0.5 + k * 2) * 7); }
+    for (let i = 16; i >= 0; i--) { const x = (i / 16) * w; ctx.lineTo(x, base + 18 + Math.sin(i * 0.7 + t * 0.4 + k) * 6); }
+    ctx.closePath(); ctx.fill();
   }
-  // Stage 5: searchlights sweeping the sky from the street.
-  const beams = layer(5);
-  if (beams > 0) {
-    [[0.2, 0], [0.8, 2.1], [0.5, 4.2]].forEach(([fx, ph], i) => {
-      if (mini && i === 2) return;
-      const bx = w * fx, a = -Math.PI / 2 + 0.42 * Math.sin(t * 0.45 + ph), len = skyH * 1.4, spread = 0.07;
-      const g = ctx.createLinearGradient(bx, ground, bx + Math.cos(a) * len, ground + Math.sin(a) * len);
-      g.addColorStop(0, `rgba(200, 245, 255, ${0.2 * beams})`); g.addColorStop(1, 'rgba(200, 245, 255, 0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(bx, ground);
-      ctx.lineTo(bx + Math.cos(a - spread) * len, ground + Math.sin(a - spread) * len);
-      ctx.lineTo(bx + Math.cos(a + spread) * len, ground + Math.sin(a + spread) * len);
-      ctx.closePath(); ctx.fill();
-    });
-  }
-  ctx.restore();
+}
 
-  // v12: a dark far skyline on the horizon -- the city waiting to be
-  // rebuilt, so a LVL 1 Core City reads as a city at night, not an empty sky.
+/** Where the Centrum's three searchlights stand ([share of the width, phase]). */
+const CITY_BEAMS = [[0.2, 0], [0.8, 2.1], [0.5, 4.2]];
+/** Searchlights sweeping the sky from the street (`beams` = 0..1); a
+ *  thumbnail draws all but the third. */
+function drawCityBeams(ctx, w, ground, skyH, t, beams, mini, spots) {
+  if (!(beams > 0)) return;
+  spots.forEach(([fx, ph], i) => {
+    if (mini && i === 2) return;
+    const bx = w * fx, a = -Math.PI / 2 + 0.42 * Math.sin(t * 0.45 + ph), len = skyH * 1.4, spread = 0.07;
+    const g = ctx.createLinearGradient(bx, ground, bx + Math.cos(a) * len, ground + Math.sin(a) * len);
+    g.addColorStop(0, `rgba(200, 245, 255, ${0.2 * beams})`); g.addColorStop(1, 'rgba(200, 245, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(bx, ground);
+    ctx.lineTo(bx + Math.cos(a - spread) * len, ground + Math.sin(a - spread) * len);
+    ctx.lineTo(bx + Math.cos(a + spread) * len, ground + Math.sin(a + spread) * len);
+    ctx.closePath(); ctx.fill();
+  });
+}
+
+/** v12: a dark far skyline on the horizon -- the city waiting to be
+ *  rebuilt (the same for both sectors), with its haze. */
+function drawCityFar(ctx, w, ground, mini) {
   const far = cityLayout.far || (cityLayout.far = (() => {
     const rng = new SeededRNG(0xFA2);
     const out = [];
@@ -8062,6 +8083,123 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   const haze = ctx.createLinearGradient(0, ground - (ground - 14) * 0.45, 0, ground);
   haze.addColorStop(0, 'rgba(10, 29, 51, 0)'); haze.addColorStop(1, 'rgba(10, 29, 51, 0.55)');
   ctx.fillStyle = haze; ctx.fillRect(0, ground - (ground - 14) * 0.45, w, (ground - 14) * 0.45);
+}
+
+/** The building going up: a scaffold outline of its final height and a
+ *  crane with a blinking light; returns the crane's top (the site tag). */
+function drawCityCrane(ctx, x, bw, top, ground, fullH, t) {
+  ctx.setLineDash([3, 2]);
+  ctx.strokeStyle = 'rgba(239, 203, 99, 0.7)'; ctx.lineWidth = 1;
+  ctx.strokeRect(x, ground - fullH, bw, fullH);
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#EFCB63'; ctx.lineWidth = 1.5;
+  const cx = x + bw / 2, cTop = ground - fullH - 10;
+  ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, cTop); ctx.lineTo(cx + bw * 1.1, cTop); ctx.moveTo(cx, cTop); ctx.lineTo(cx - bw * 0.4, cTop); ctx.stroke();
+  const hookY = cTop + 6 + 4 * Math.sin(t * 2);
+  ctx.beginPath(); ctx.moveTo(cx + bw, cTop); ctx.lineTo(cx + bw, hookY); ctx.stroke();
+  if (Math.sin(t * 6) > 0) { ctx.fillStyle = '#ff3860'; ctx.beginPath(); ctx.arc(cx, cTop - 2, 2, 0, Math.PI * 2); ctx.fill(); }
+  return { x: cx, y: cTop };
+}
+
+/** Stage 2's living street between x0 and x1: lamps, lane marks and the
+ *  light trails of traffic (`street` = 0..1 of its fade-in). */
+function drawCityStreet(ctx, x0, x1, ground, streetH, t, mini, street) {
+  if (!(street > 0)) return;
+  const W = x1 - x0;
+  ctx.globalAlpha = street;
+  ctx.fillStyle = 'rgba(4, 16, 29, 0.55)'; ctx.fillRect(x0, ground + 1, W, streetH - 1);
+  for (let lx = x0 + 14; lx < x1; lx += mini ? 18 : 34) {
+    ctx.strokeStyle = 'rgba(160, 200, 230, 0.55)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, ground); ctx.lineTo(lx, ground - (mini ? 4 : 9)); ctx.stroke();
+    ctx.fillStyle = 'rgba(239, 203, 99, 0.16)'; ctx.beginPath(); ctx.arc(lx, ground - (mini ? 4 : 9), mini ? 2 : 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#EFCB63'; ctx.fillRect(lx - 1, ground - (mini ? 5 : 10), 2, 2);
+  }
+  if (!mini) {
+    ctx.fillStyle = 'rgba(160, 200, 230, 0.25)';
+    for (let dx = x0 + ((t * 12) % 16) - 16; dx < x1; dx += 16) ctx.fillRect(dx, ground + streetH * 0.48, 8, 1);
+  }
+  const cars = mini ? 3 : 7;
+  for (let i = 0; i < cars; i++) {
+    const dir = i % 2 ? -1 : 1, sp = 24 + (i % 3) * 10, lane = ground + streetH * (dir > 0 ? 0.3 : 0.68);
+    let x = x0 + (mini ? ((i + 0.5) / cars) * W : ((t * sp + i * 97) % (W + 40)) - 20);
+    if (dir < 0) x = x0 + x1 - x;
+    const tail = ctx.createLinearGradient(x, 0, x - dir * 16, 0);
+    tail.addColorStop(0, dir > 0 ? 'rgba(255, 84, 173, 0.7)' : 'rgba(80, 240, 250, 0.7)'); tail.addColorStop(1, 'rgba(255, 84, 173, 0)');
+    ctx.fillStyle = tail; ctx.fillRect(Math.min(x, x - dir * 16), lane - 0.8, 16, 1.6);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, lane - 1, 2.5, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** v17.1: the building a round grows, called out -- the hook made visible. */
+function drawCitySiteTag(canvas, ctx, w, ground, site, t, opts) {
+  ctx.save();
+  ctx.font = `700 10px ${FONT_UI}`;
+  const label = opts.siteLabel, tw = ctx.measureText(label).width;
+  const bob = Math.sin(t * 2.4) * 2.5;
+  const pw = tw + 16, ph = 18, px = clamp(site.x - pw / 2, 6, w - pw - 6);
+  // FTUE-2 FIX: above the crane while that is clear of the headline;
+  // otherwise on the ground strip under the site, pointing up -- it ran
+  // over "Każda runda Areny…" on a phone on its side and a small window.
+  const above = !opts.skyTop || site.y - ph - 14 >= opts.skyTop;
+  const py = above ? site.y - ph - 12 + bob : ground - ph / 2 + 2;
+  roundRectPath(ctx, px, py, pw, ph, 9);
+  ctx.fillStyle = 'rgba(239, 203, 99, 0.95)'; ctx.fill();
+  ctx.beginPath();
+  if (above) { ctx.moveTo(site.x - 5, py + ph); ctx.lineTo(site.x + 5, py + ph); ctx.lineTo(site.x, py + ph + 6); }
+  else { ctx.moveTo(site.x - 5, py); ctx.lineTo(site.x + 5, py); ctx.lineTo(site.x, py - 6 + bob * 0.6); }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#04101D'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(label, px + pw / 2, py + ph / 2 + 0.5);
+  ctx.restore();
+  canvas.__siteLabel = { x: px, y: py - 3, w: pw, h: ph + 6, above }; // (QA: qa/devices.mjs)
+}
+
+/** A slow scan line sweeping the skyline -- "the city is alive". */
+function drawCityScan(ctx, w, ground, t) {
+  const sx = ((t * 40) % (w + 80)) - 40;
+  const scan = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0);
+  scan.addColorStop(0, 'rgba(80,240,250,0)'); scan.addColorStop(0.5, 'rgba(80,240,250,0.07)'); scan.addColorStop(1, 'rgba(80,240,250,0)');
+  ctx.fillStyle = scan; ctx.fillRect(sx - 30, 0, 60, ground);
+}
+
+/** Draws the Core City skyline. `progress` is 0..1 of the full city (one
+ *  fifth of the way per Core City level, LVL6 = every building standing).
+ *  opts: siteLabel (the crane's tag), skyTop (nothing rises above it),
+ *  reveal ({ level, age } -- a stage just reached, see renderHubCity()),
+ *  mini (a still roadmap thumbnail: no labels, no sweep). */
+function drawCityScene(canvas, progress, t, opts = {}) {
+  const c = prepCanvas(canvas);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const { slots } = cityLayout();
+  const mini = !!opts.mini;
+  const streetH = mini ? 7 : 18;
+  const ground = h - streetH;
+  const stage = cityStageLevel(progress);
+  const reveal = opts.reveal && opts.reveal.level === stage ? opts.reveal : null;
+  // A stage's layer is fully there once reached; the one just reached fades in.
+  const layer = (L) => (stage < L ? 0 : (reveal && L === stage ? clamp(reveal.age / 0.9, 0, 1) : 1));
+
+  drawCitySky(ctx, w, h, ground, progress, t, w / 2);
+
+  // FTUE-2 FIX: the buildings (and the next one's scaffold + crane) rise
+  // only up to opts.skyTop -- the bottom of the text over the canvas --
+  // so they never run behind the headline on a short card. VISUAL-1: the
+  // sky effects (aurora, searchlights, drones) are clipped to it too.
+  const skyTop = clamp(opts.skyTop || (mini ? 2 : 14), mini ? 2 : 14, ground - 10);
+  const pad = opts.skyTop ? 12 : 0;
+  const skyH = ground - skyTop;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, skyTop, w, ground - skyTop); ctx.clip();
+  // Stage 6: an aurora over the finished city.
+  drawCityAurora(ctx, w, skyTop, skyH, t, layer(6));
+  // Stage 5: searchlights sweeping the sky from the street.
+  const beams = layer(5);
+  drawCityBeams(ctx, w, ground, skyH, t, beams, mini, CITY_BEAMS);
+  ctx.restore();
+
+  drawCityFar(ctx, w, ground, mini);
 
   const slotW = w / CITY_SLOT_COUNT;
   // The Core tower stands behind the skyline: an outline until LVL6.
@@ -8099,18 +8237,7 @@ function drawCityScene(canvas, progress, t, opts = {}) {
     drawCityBuilding(ctx, s, x, bw, top, ground, col, t, state === 'built', stage, signs);
     if (state === 'built') standing.push({ x, bw, top, col });
     if (state === 'building') {
-      // Scaffold outline of the final height + a crane with a blinking light.
-      ctx.setLineDash([3, 2]);
-      ctx.strokeStyle = 'rgba(239, 203, 99, 0.7)'; ctx.lineWidth = 1;
-      ctx.strokeRect(x, ground - fullH, bw, fullH);
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#EFCB63'; ctx.lineWidth = 1.5;
-      const cx = x + bw / 2, cTop = ground - fullH - 10;
-      site = { x: cx, y: cTop };
-      ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, cTop); ctx.lineTo(cx + bw * 1.1, cTop); ctx.moveTo(cx, cTop); ctx.lineTo(cx - bw * 0.4, cTop); ctx.stroke();
-      const hookY = cTop + 6 + 4 * Math.sin(t * 2);
-      ctx.beginPath(); ctx.moveTo(cx + bw, cTop); ctx.lineTo(cx + bw, hookY); ctx.stroke();
-      if (Math.sin(t * 6) > 0) { ctx.fillStyle = '#ff3860'; ctx.beginPath(); ctx.arc(cx, cTop - 2, 2, 0, Math.PI * 2); ctx.fill(); }
+      site = drawCityCrane(ctx, x, bw, top, ground, fullH, t);
     }
   });
 
@@ -8174,67 +8301,281 @@ function drawCityScene(canvas, progress, t, opts = {}) {
   ctx.strokeStyle = 'rgba(80, 240, 250, 0.8)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, ground + 0.5); ctx.lineTo(w, ground + 0.5); ctx.stroke();
   // Stage 2: the streets come alive -- lamps and light trails of traffic.
-  const street = layer(2);
-  if (street > 0) {
-    ctx.globalAlpha = street;
-    ctx.fillStyle = 'rgba(4, 16, 29, 0.55)'; ctx.fillRect(0, ground + 1, w, streetH - 1);
-    for (let lx = 14; lx < w; lx += mini ? 18 : 34) {
-      ctx.strokeStyle = 'rgba(160, 200, 230, 0.55)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(lx, ground); ctx.lineTo(lx, ground - (mini ? 4 : 9)); ctx.stroke();
-      ctx.fillStyle = 'rgba(239, 203, 99, 0.16)'; ctx.beginPath(); ctx.arc(lx, ground - (mini ? 4 : 9), mini ? 2 : 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#EFCB63'; ctx.fillRect(lx - 1, ground - (mini ? 5 : 10), 2, 2);
-    }
-    if (!mini) {
-      ctx.fillStyle = 'rgba(160, 200, 230, 0.25)';
-      for (let dx = ((t * 12) % 16) - 16; dx < w; dx += 16) ctx.fillRect(dx, ground + streetH * 0.48, 8, 1);
-    }
-    const cars = mini ? 3 : 7;
-    for (let i = 0; i < cars; i++) {
-      const dir = i % 2 ? -1 : 1, sp = 24 + (i % 3) * 10, lane = ground + streetH * (dir > 0 ? 0.3 : 0.68);
-      let x = mini ? ((i + 0.5) / cars) * w : ((t * sp + i * 97) % (w + 40)) - 20;
-      if (dir < 0) x = w - x;
-      const tail = ctx.createLinearGradient(x, 0, x - dir * 16, 0);
-      tail.addColorStop(0, dir > 0 ? 'rgba(255, 84, 173, 0.7)' : 'rgba(80, 240, 250, 0.7)'); tail.addColorStop(1, 'rgba(255, 84, 173, 0)');
-      ctx.fillStyle = tail; ctx.fillRect(Math.min(x, x - dir * 16), lane - 0.8, 16, 1.6);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 1, lane - 1, 2.5, 2);
-    }
-    ctx.globalAlpha = 1;
-  }
+  drawCityStreet(ctx, 0, w, ground, streetH, t, mini, layer(2));
 
   canvas.__siteLabel = null;
   // v17.1: the building a round grows, called out -- the hook made visible
   // (not while a new stage's banner has the stage).
-  if (site && opts.siteLabel && !opts.noSiteTag && !reveal) {
-    ctx.save();
-    ctx.font = `700 10px ${FONT_UI}`;
-    const label = opts.siteLabel, tw = ctx.measureText(label).width;
-    const bob = Math.sin(t * 2.4) * 2.5;
-    const pw = tw + 16, ph = 18, px = clamp(site.x - pw / 2, 6, w - pw - 6);
-    // FTUE-2 FIX: above the crane while that is clear of the headline;
-    // otherwise on the ground strip under the site, pointing up -- it ran
-    // over "Każda runda Areny…" on a phone on its side and a small window.
-    const above = !opts.skyTop || site.y - ph - 14 >= opts.skyTop;
-    const py = above ? site.y - ph - 12 + bob : ground - ph / 2 + 2;
-    roundRectPath(ctx, px, py, pw, ph, 9);
-    ctx.fillStyle = 'rgba(239, 203, 99, 0.95)'; ctx.fill();
-    ctx.beginPath();
-    if (above) { ctx.moveTo(site.x - 5, py + ph); ctx.lineTo(site.x + 5, py + ph); ctx.lineTo(site.x, py + ph + 6); }
-    else { ctx.moveTo(site.x - 5, py); ctx.lineTo(site.x + 5, py); ctx.lineTo(site.x, py - 6 + bob * 0.6); }
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#04101D'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(label, px + pw / 2, py + ph / 2 + 0.5);
-    ctx.restore();
-    canvas.__siteLabel = { x: px, y: py - 3, w: pw, h: ph + 6, above }; // (QA: qa/devices.mjs)
-  }
+  if (site && opts.siteLabel && !opts.noSiteTag && !reveal) drawCitySiteTag(canvas, ctx, w, ground, site, t, opts);
   canvas.__skyline = { top: skyline, skyTop, stage }; // (QA: the tallest building / crane vs the headline)
   if (reveal) drawCityReveal(ctx, w, h, ground, skyTop, reveal);
   canvas.__reveal = reveal ? reveal.level : 0;
   if (mini) return;
-  // A slow scan line sweeping the skyline -- "the city is alive".
-  const sx = ((t * 40) % (w + 80)) - 40;
-  const scan = ctx.createLinearGradient(sx - 30, 0, sx + 30, 0);
-  scan.addColorStop(0, 'rgba(80,240,250,0)'); scan.addColorStop(0.5, 'rgba(80,240,250,0.07)'); scan.addColorStop(1, 'rgba(80,240,250,0)');
-  ctx.fillStyle = scan; ctx.fillRect(sx - 30, 0, 60, ground);
+  drawCityScan(ctx, w, ground, t);
+}
+
+/** CITY-2 "Drugi brzeg": the new bank's plots, in build order (x = centre as
+ *  a share of the picture's width, w = width in plot units, h = share of
+ *  the sky, roof = drawCityBuilding()'s 0-4, lvl = the Core City level that
+ *  builds it). The Shore Tower (LVL 12) stands on its own behind the square. */
+const SHORE_PLOTS = [
+  { x: 0.43, w: 1.0, h: 0.16, roof: 0, lvl: 7 },
+  { x: 0.485, w: 0.8, h: 0.23, roof: 4, lvl: 7 },
+  { x: 0.535, w: 0.9, h: 0.14, roof: 0, lvl: 7 },
+  { x: 0.59, w: 0.9, h: 0.21, roof: 1, lvl: 8 },
+  { x: 0.885, w: 0.9, h: 0.19, roof: 0, lvl: 8 },
+  { x: 0.935, w: 0.8, h: 0.26, roof: 4, lvl: 8 },
+  { x: 0.98, w: 0.8, h: 0.17, roof: 0, lvl: 8 },
+  { x: 0.66, w: 1.15, h: 0.34, roof: 0, lvl: 9 },
+  { x: 0.815, w: 1.15, h: 0.37, roof: 3, lvl: 9 },
+  { x: 0.62, w: 0.8, h: 0.44, roof: 1, lvl: 10 },
+  { x: 0.555, w: 0.85, h: 0.31, roof: 2, lvl: 10 },
+  { x: 0.5, w: 1.0, h: 0.55, roof: 1, lvl: 11 },
+  { x: 0.93, w: 1.1, h: 0.58, roof: 3, lvl: 11 },
+  { x: 0.865, w: 1.0, h: 0.76, roof: 2, lvl: 11, antenna: true }
+];
+/** The Centrum's last blocks on the near bank, left of the river. */
+const SHORE_CENTER_EDGE = [{ x: 0.025, w: 0.9, h: 0.42, roof: 1 }, { x: 0.078, w: 1.0, h: 0.3, roof: 0 }, { x: 0.118, w: 0.75, h: 0.2, roof: 4 }];
+/** River banks, the square and the tower (shares of the width). */
+const SHORE_GEO = { riverL: 0.135, riverR: 0.36, bank: 0.385, plazaL: 0.7, plazaR: 0.775, tower: 0.7375, pylons: [0.19, 0.3] };
+/** How many plots stand at each reached level (index = level - 6). */
+const SHORE_BUILT = [0, 3, 7, 9, 11, 14, 14];
+/** Window lighting per level: the CITY_WINDOW_ON row it uses (full at LVL 12). */
+const SHORE_WINDOW_STAGE = { 6: 1, 7: 2, 8: 3, 9: 3, 10: 4, 11: 5, 12: 6 };
+
+function shoreLayout() {
+  if (shoreLayout.cache) return shoreLayout.cache;
+  const plots = SHORE_PLOTS.map((p, i) => ({ ...p, seed: 211 + i * 37.7, buildRank: i, antenna: !!p.antenna }));
+  const edge = SHORE_CENTER_EDGE.map((p, i) => ({ ...p, seed: 53 + i * 41.3, buildRank: i * 2 + 1, antenna: i === 0 }));
+  const tower = { seed: 977, roof: 2, buildRank: 4, antenna: false };
+  shoreLayout.cache = { plots, edge, tower };
+  return shoreLayout.cache;
+}
+
+/** CITY-2: the Drugi brzeg panorama, seen from the side like the Centrum and
+ *  drawn with the same parts (sky, far skyline, drawCityBuilding(), crane,
+ *  street, reveal): the Centrum's last blocks and its Core tower on the
+ *  left, the river and its bridge, the new bank on the right. `progress` is
+ *  0..1 of the sector (cityShoreProgress(): 0 = the empty site at LVL 6,
+ *  one sixth per level, 1 = LVL 12). opts as drawCityScene()'s, plus
+ *  centerDone (the Centrum's Core tower lit) and locked (before LVL 6:
+ *  only the plan -- no crane, nothing rising). */
+function drawShoreScene(canvas, progress, t, opts = {}) {
+  const c = prepCanvas(canvas);
+  if (!c) return;
+  const { ctx, w, h } = c;
+  const { plots, edge, tower } = shoreLayout();
+  const mini = !!opts.mini, locked = !!opts.locked;
+  const G = SHORE_GEO;
+  // The new bank stands on a quay over the river: a street strip, then a
+  // band of water (at least as tall as opts.floor -- what the sector switch
+  // covers -- so it rides on the water, never on the buildings).
+  const streetH = mini ? 4 : 10;
+  const waterH = mini ? 5 : Math.max(22, Math.round(opts.floor || 0));
+  const ground = h - streetH - waterH, waterY = ground + streetH;
+  const stage = shoreStageLevel(progress);
+  // LVL 6's reveal plays here too (Drugi brzeg is in view from LVL 6): the
+  // Centrum's Core tower on the left is what it lights.
+  const reveal = opts.reveal && opts.reveal.level === stage && (stage > CORE_CITY_CENTER_TOP || opts.centerDone) ? opts.reveal : null;
+  const layer = (L) => (stage < L ? 0 : (reveal && L === stage ? clamp(reveal.age / 0.9, 0, 1) : 1));
+  const rL = G.riverL * w, rR = G.riverR * w, bankX = G.bank * w;
+
+  drawCitySky(ctx, w, h, ground, progress, t, w * 0.68);
+  const skyTop = clamp(opts.skyTop || (mini ? 2 : 14), mini ? 2 : 14, ground - 10);
+  const pad = opts.skyTop ? 12 : 0;
+  const skyH = ground - skyTop, room = ground - skyTop - pad;
+  // LVL 12: searchlights over the finished bank.
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, skyTop, w, skyH); ctx.clip();
+  drawCityBeams(ctx, w, ground, skyH, t, layer(12), mini, [[0.52, 0.7], [0.97, 2.6], [G.tower, 4.9]]);
+  ctx.restore();
+  drawCityFar(ctx, w, ground, mini);
+
+  const unit = w * 0.042;
+  const winOf = SHORE_WINDOW_STAGE[stage] || 1;
+  let skyline = ground;
+  // The Centrum across the river: its Core tower (lit once LVL 6 stands) and last blocks.
+  drawCoreTower(ctx, w * 0.07, ground, skyTop + pad + room * 0.2, unit * 0.8, t, !!opts.centerDone);
+  edge.slice().sort((a, b) => b.h - a.h).forEach(s => {
+    const bw = unit * s.w * 1.25, fullH = s.h * room;
+    drawCityBuilding(ctx, s, s.x * w - bw / 2, bw, ground - fullH, ground, CITY_PALETTE[s.buildRank % CITY_PALETTE.length], t, true, opts.centerDone ? 6 : 2, 0);
+  });
+
+  // What stands: plots fill level by level, the current level's charge
+  // raising the next one under a crane; the tower rises over LVL 11 -> 12.
+  const ob = progress * (CORE_CITY_TOP - CORE_CITY_CENTER_TOP);
+  const k = clamp(Math.floor(ob + 1e-9), 0, 6), frac = k >= 6 ? 0 : ob - k;
+  const built = locked ? 0 : (k >= 6 ? SHORE_BUILT[6] : SHORE_BUILT[k] + frac * (SHORE_BUILT[k + 1] - SHORE_BUILT[k]));
+  const towerFrac = locked ? 0 : (k >= 6 ? 1 : (k === 5 ? frac : 0));
+  let site = null;
+  // The Shore Tower: a dashed outline (the goal) until it goes up, then lit.
+  {
+    const bw = unit * 1.15 * 1.25, x = G.tower * w - bw / 2, fullH = 0.97 * room;
+    if (towerFrac >= 1 || (k === 5 && !locked)) {
+      const done = towerFrac >= 1, bh = Math.max(2, fullH * towerFrac), top = ground - bh;
+      drawCityBuilding(ctx, tower, x, bw, top, ground, '#EFCB63', t, done, done ? 6 : winOf, 0);
+      if (done) {
+        skyline = Math.min(skyline, top);
+        const cx = x + bw / 2, ringY = top + Math.min(bh * 0.16, 16) + 6, pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
+        const halo = ctx.createRadialGradient(cx, ringY, 0, cx, ringY, unit * 2);
+        halo.addColorStop(0, `rgba(239, 203, 99, ${0.3 + 0.2 * pulse})`); halo.addColorStop(1, 'rgba(239, 203, 99, 0)');
+        ctx.fillStyle = halo; ctx.fillRect(cx - unit * 2, ringY - unit * 2, unit * 4, unit * 4);
+        ctx.strokeStyle = '#50F0FA'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.ellipse(cx, ringY, unit * 1.05, unit * 0.3, Math.sin(t * 0.9) * 0.3, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(239, 203, 99, 0.9)';
+        ctx.fillRect(cx - 0.8, ground - (ground - ringY) * ((t * 0.5) % 1) - 8, 1.6, 8);
+      } else {
+        skyline = Math.min(skyline, ground - fullH - 12);
+        site = drawCityCrane(ctx, x, bw, top, ground, fullH, t);
+      }
+    } else {
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = 'rgba(239, 203, 99, 0.3)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, ground); ctx.lineTo(x, ground - fullH * 0.86); ctx.lineTo(x + bw / 2, ground - fullH); ctx.lineTo(x + bw, ground - fullH * 0.86); ctx.lineTo(x + bw, ground); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  const signs = layer(9);
+  plots.slice().sort((a, b) => b.h - a.h).forEach(s => {
+    const bw = unit * s.w * 1.25, x = s.x * w - bw / 2, fullH = s.h * room;
+    const n = Math.floor(built + 1e-9);
+    const state = s.buildRank < n ? 'built' : (s.buildRank === n && !locked && n < SHORE_BUILT[6] ? 'building' : 'plan');
+    if (state === 'plan') {
+      // The plan: every future building as a dark dashed outline.
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = 'rgba(160, 200, 230, 0.16)'; ctx.lineWidth = 1;
+      ctx.strokeRect(x, ground - fullH, bw, fullH);
+      ctx.setLineDash([]);
+      return;
+    }
+    const f = state === 'built' ? 1 : built - n;
+    const bh = Math.max(2, fullH * f), top = ground - bh;
+    skyline = Math.min(skyline, state === 'building' ? ground - fullH - 12 : top);
+    drawCityBuilding(ctx, s, x, bw, top, ground, CITY_PALETTE[s.buildRank % CITY_PALETTE.length], t, state === 'built', winOf, signs);
+    if (state === 'building') site = drawCityCrane(ctx, x, bw, top, ground, fullH, t);
+  });
+
+  // The square (LVL 9) between the service buildings, its fountain (LVL 10).
+  const pL = G.plazaL * w, pR = G.plazaR * w, pc = (pL + pR) / 2;
+  const plaza = layer(9);
+  if (plaza > 0) {
+    ctx.globalAlpha = plaza;
+    ctx.fillStyle = 'rgba(80, 240, 250, 0.3)'; ctx.fillRect(pL, ground - 2, pR - pL, 2);
+    for (const tx of [pL + (pR - pL) * 0.14, pR - (pR - pL) * 0.14]) {
+      ctx.strokeStyle = 'rgba(160, 200, 230, 0.6)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(tx, ground - 2); ctx.lineTo(tx, ground - (mini ? 4 : 8)); ctx.stroke();
+      ctx.fillStyle = 'rgba(70, 217, 154, 0.3)'; ctx.strokeStyle = '#46D99A';
+      ctx.beginPath(); ctx.arc(tx, ground - (mini ? 5 : 10), mini ? 2 : 3.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (!locked || mini) {
+    ctx.setLineDash([2, 3]);
+    ctx.strokeStyle = 'rgba(160, 200, 230, 0.28)'; ctx.lineWidth = 1;
+    ctx.strokeRect(pL, ground - 5, pR - pL, 5);
+    ctx.setLineDash([]);
+  }
+  const fountain = layer(10);
+  if (fountain > 0) {
+    ctx.globalAlpha = fountain;
+    const bwid = Math.min(20, (pR - pL) * 0.5);
+    roundRectPath(ctx, pc - bwid / 2, ground - 5, bwid, 4, 2);
+    ctx.fillStyle = '#0b2c44'; ctx.fill();
+    ctx.strokeStyle = '#50F0FA'; ctx.lineWidth = 1; ctx.stroke();
+    // Three jets: one straight up, two arcs falling back into the basin.
+    ctx.strokeStyle = 'rgba(200, 245, 255, 0.75)';
+    const jet = mini ? 5 : 11 * (0.85 + 0.15 * Math.sin(t * 3));
+    ctx.beginPath(); ctx.moveTo(pc, ground - 5); ctx.lineTo(pc, ground - 5 - jet);
+    for (const j of [-1, 1]) { ctx.moveTo(pc, ground - 5 - jet * 0.5); ctx.quadraticCurveTo(pc + j * bwid * 0.3, ground - 5 - jet * 1.1, pc + j * bwid * 0.42, ground - 5); }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // The river: between the two banks and along the waterfront.
+  const water = ctx.createLinearGradient(0, ground, 0, h);
+  water.addColorStop(0, '#08233a'); water.addColorStop(1, '#020a14');
+  ctx.fillStyle = water; ctx.fillRect(rL, ground, rR - rL, h - ground); ctx.fillRect(0, waterY, w, h - waterY);
+  // Sparing reflections: a few lit dashes under each standing building.
+  if (stage > CORE_CITY_CENTER_TOP || opts.centerDone) {
+    const n = Math.floor(built + 1e-9);
+    const mirror = edge.concat(plots.filter(s => s.buildRank < n));
+    mirror.forEach((s, i) => {
+      const bw = unit * s.w * 1.25, x = s.x * w - bw / 2, col = CITY_PALETTE[s.buildRank % CITY_PALETTE.length];
+      ctx.fillStyle = col;
+      for (let r = 0; r < (mini ? 1 : 3); r++) {
+        ctx.globalAlpha = (mini ? 0.25 : 0.2 - r * 0.05) * (mini ? 1 : 0.75 + 0.25 * Math.sin(t * 1.7 + i + r));
+        ctx.fillRect(x + bw * 0.2 + (r % 2) * 2, waterY + 3 + r * 5, bw * (0.6 - r * 0.12), 1);
+      }
+    });
+    if (towerFrac >= 1) {
+      ctx.fillStyle = '#EFCB63';
+      for (let r = 0; r < (mini ? 1 : 4); r++) { ctx.globalAlpha = 0.3 - r * 0.06; ctx.fillRect(G.tower * w - 4 + (r % 2) * 2, waterY + 3 + r * 5, 8 - r, 1.2); }
+    }
+    ctx.globalAlpha = 1;
+  }
+  const lit = layer(7);
+  const deckY = ground - 5, pyTop = ground - Math.min(room * 0.34, mini ? 14 : 44);
+  // Pylons and stays (a dark outline before LVL 7, neon from it).
+  ctx.strokeStyle = lit > 0 ? `rgba(80, 240, 250, ${0.35 + 0.5 * lit})` : 'rgba(160, 200, 230, 0.3)';
+  ctx.lineWidth = 1;
+  G.pylons.forEach(fx => {
+    const px = fx * w;
+    ctx.fillStyle = '#0a1a2c'; ctx.fillRect(px - 1.5, pyTop, 3, h - pyTop);
+    ctx.strokeRect(px - 1.5, pyTop, 3, h - pyTop);
+    ctx.beginPath();
+    for (let q = 1; q <= 3; q++) { const d = (rR - rL) * 0.13 * q; ctx.moveTo(px, pyTop + 2); ctx.lineTo(px - d, deckY); ctx.moveTo(px, pyTop + 2); ctx.lineTo(px + d, deckY); }
+    ctx.stroke();
+    if (lit > 0) { ctx.globalAlpha = lit * (0.6 + 0.4 * Math.sin(t * 3 + fx * 20)); ctx.fillStyle = '#ff3860'; ctx.fillRect(px - 1, pyTop - 2, 2, 2); ctx.globalAlpha = 1; }
+  });
+  ctx.fillStyle = '#0a1a2c'; ctx.fillRect(rL - 6, deckY, bankX - rL + 6, 4);
+  ctx.strokeRect(rL - 6, deckY + 0.5, bankX - rL + 6, 3.5);
+  if (lit > 0) {
+    ctx.globalAlpha = lit;
+    ctx.fillStyle = '#EFCB63';
+    for (let lx = rL + 4; lx < bankX; lx += mini ? 9 : 14) ctx.fillRect(lx, deckY - 1.5, 1.5, 1.5);
+    if (!mini) for (let q = 0; q < 2; q++) {
+      const p = ((t * 0.12 + q * 0.5) % 1), dx = q ? bankX - p * (bankX - rL) : rL + p * (bankX - rL);
+      ctx.fillStyle = q ? 'rgba(80, 240, 250, 0.9)' : 'rgba(255, 84, 173, 0.9)'; ctx.fillRect(dx - 1, deckY + 1, 2.5, 1.5);
+    }
+    // Reflections: the bridge's lights shimmering on the water.
+    for (let r = 0; r < (mini ? 3 : 7); r++) {
+      const ry = ground + 3 + r * ((h - ground - 4) / (mini ? 3 : 7)), rx = rL + (rR - rL) * ((r * 0.37 + 0.15) % 1);
+      ctx.globalAlpha = lit * (mini ? 0.3 : 0.18 + 0.14 * Math.sin(t * 2 + r));
+      ctx.fillStyle = r % 2 ? '#50F0FA' : '#EFCB63';
+      ctx.fillRect(rx, ry, mini ? 4 : 6 + (r % 3) * 3, 1);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // The bridgehead: two gate posts where the bridge meets the new bank.
+  for (const gx of [G.riverR * w + 2, bankX - 2]) {
+    const gy = deckY - (mini ? 6 : 12);
+    ctx.fillStyle = '#0a1a2c'; ctx.fillRect(gx - 1.5, gy, 3, ground - gy);
+    ctx.strokeStyle = lit > 0 ? `rgba(239, 203, 99, ${0.4 + 0.5 * lit})` : 'rgba(160, 200, 230, 0.3)';
+    ctx.strokeRect(gx - 1.5, gy, 3, ground - gy);
+    if (lit > 0) { ctx.globalAlpha = lit; ctx.fillStyle = '#EFCB63'; ctx.fillRect(gx - 1.5, gy - 2, 3, 2); ctx.globalAlpha = 1; }
+  }
+
+  // Both quays (ground line, glow, the quay wall's edge); the new bank's street from LVL 7.
+  const g2 = ctx.createLinearGradient(0, ground, 0, waterY);
+  g2.addColorStop(0, 'rgba(80, 240, 250, 0.3)'); g2.addColorStop(1, 'rgba(80, 240, 250, 0.05)');
+  ctx.fillStyle = g2; ctx.fillRect(0, ground, rL, streetH); ctx.fillRect(rR, ground, w - rR, streetH);
+  ctx.strokeStyle = 'rgba(80, 240, 250, 0.8)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, ground + 0.5); ctx.lineTo(rL, ground + 0.5); ctx.moveTo(rR, ground + 0.5); ctx.lineTo(w, ground + 0.5);
+  ctx.moveTo(rL + 0.5, ground); ctx.lineTo(rL + 0.5, waterY); ctx.moveTo(rR - 0.5, ground); ctx.lineTo(rR - 0.5, waterY); ctx.stroke();
+  ctx.strokeStyle = 'rgba(80, 240, 250, 0.35)';
+  ctx.beginPath(); ctx.moveTo(0, waterY + 0.5); ctx.lineTo(rL, waterY + 0.5); ctx.moveTo(rR, waterY + 0.5); ctx.lineTo(w, waterY + 0.5); ctx.stroke();
+  ctx.save();
+  ctx.beginPath(); ctx.rect(rR, ground - 12, w - rR, streetH + 12); ctx.clip();
+  drawCityStreet(ctx, rR, w, ground, streetH, t, mini, lit);
+  ctx.restore();
+  if (opts.centerDone) { ctx.fillStyle = 'rgba(4, 16, 29, 0.55)'; ctx.fillRect(0, ground + 1, rL, streetH - 1); }
+
+  canvas.__siteLabel = null;
+  if (site && opts.siteLabel && !opts.noSiteTag && !reveal) drawCitySiteTag(canvas, ctx, w, ground, site, t, opts);
+  canvas.__skyline = { top: skyline, skyTop, stage, sector: 'shore' }; // (QA)
+  if (reveal) drawCityReveal(ctx, w, h, ground, skyTop, reveal);
+  canvas.__reveal = reveal ? reveal.level : 0;
+  if (mini) return;
+  drawCityScan(ctx, w, ground, t);
 }
 
 /** VISUAL-1: a Core City level just reached -- a flash from the street, a
@@ -11765,6 +12106,16 @@ class Game {
     const heroStage = document.getElementById('hubHeroStage');
     heroStage.addEventListener('click', () => this.openCoreCityRoadmap());
     heroStage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openCoreCityRoadmap(); } });
+    // CITY-2: the sector switch sits on the city card -- its taps and keys are its own.
+    // One button: a tap on a segment picks that sector, Enter / Space toggles.
+    const sectorSwitch = document.getElementById('hubSectorSwitch');
+    sectorSwitch.addEventListener('keydown', (e) => e.stopPropagation());
+    sectorSwitch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const seg = e.target.closest && e.target.closest('.hub-sector-btn');
+      this.sound.ui();
+      this.setHubSector(seg ? (seg.id === 'btnSectorShore' ? 'shore' : 'center') : (this.hubSectorView() === 'shore' ? 'center' : 'shore'));
+    });
 
     // v14 campaign flow: the hub's campaign tile opens the next mission's
     // briefing; any mission card's GRAJ (briefing, Dzielnice's "next"
@@ -12533,38 +12884,78 @@ class Game {
    *  from save.hub (levels below the current one are reached, the current
    *  one carries its real charge toward the next; a built LVL6 city keeps
    *  the plain bar for the charge of its repeating premium). */
-  renderCoreRail(level, pct) {
+  renderCoreRail(level, pct, sector = 'center') {
     const rail = document.getElementById('hubCoreRail');
     if (!rail) return;
-    const top = 6, L = clamp(level, 1, top), c = clamp(pct, 0, 100);
-    const key = L + ':' + Math.round(c);
+    // CITY-2: the Centrum's road is LVL 1-6, Drugi brzeg's LVL 7-12 (a lead-in
+    // bar before 7 carries LVL 6's charge toward it). A finished Centrum
+    // (LVL 7+) shows all six reached.
+    const shore = sector === 'shore';
+    const first = shore ? CORE_CITY_CENTER_TOP + 1 : 1, top = shore ? CORE_CITY_TOP : CORE_CITY_CENTER_TOP;
+    const L = Math.max(1, Math.floor(level) || 1), c = clamp(pct, 0, 100);
+    const key = sector + ':' + Math.min(L, CORE_CITY_TOP + 1) + ':' + Math.round(c);
     if (rail.dataset.key === key) return;
     rail.dataset.key = key;
-    let h = '';
-    for (let n = 1; n <= top; n++) {
-      h += `<span class="u2-rail-node${n < L ? ' on' : n === L ? ' now' : ''}">${n}</span>`;
-      if (n < top) h += `<span class="u2-rail-bar"><i style="width:${n < L ? 100 : n === L ? Math.round(c) : 0}%"></i></span>`;
+    const allOn = !shore && L > CORE_CITY_CENTER_TOP;
+    const barW = (n) => (n < L ? 100 : n === L ? Math.round(c) : 0);
+    let h = shore ? `<span class="u2-rail-bar u2-rail-lead"><i style="width:${barW(CORE_CITY_CENTER_TOP)}%"></i></span>` : '';
+    for (let n = first; n <= top; n++) {
+      h += `<span class="u2-rail-node${n < L || allOn ? ' on' : n === L ? ' now' : ''}">${n}</span>`;
+      if (n < top) h += `<span class="u2-rail-bar"><i style="width:${barW(n)}%"></i></span>`;
     }
     rail.innerHTML = h;
+    rail.classList.toggle('u2-rail-shore', shore);
+    // A finished sector keeps the plain bar for the charge it no longer shows on its rail.
     document.getElementById('hubHeroStage').classList.toggle('is-built', level >= top);
   }
 
-  /** 0..1 share of the Core City skyline standing: one sixth per level
-   *  (LVL6 = complete), the current level's charge building the next part. */
-  hubCityTargetProgress() {
-    const level = this.save.hub.coreLevel || 1;
-    return clamp(((level - 1) + (this.save.hub.coreCharge || 0) / 100) / 5, 0, 1);
+  /** CITY-2: which Core City sector Miasto shows -- the player's choice this
+   *  session, else the one the charge builds (the Centrum below LVL 6,
+   *  Drugi brzeg from LVL 6: its charge already builds LVL 7). Never
+   *  stored; looking never changes progress. */
+  hubSectorView() {
+    if (this.hubSector) return this.hubSector;
+    return (this.save.hub.coreLevel || 1) >= CORE_CITY_CENTER_TOP ? 'shore' : 'center';
+  }
+
+  setHubSector(sector) {
+    if (sector !== 'center' && sector !== 'shore') return;
+    this.hubSector = sector;
+    if (sector === 'shore') this.hubShoreSeen = true;
+    this.hubCityReveal = null;
+    this.updateCoinDisplays();
+  }
+
+  /** CITY-2: the small Centrum / Drugi brzeg switch on Miasto's city -- the
+   *  sector in view pressed; Drugi brzeg locked (but viewable) before LVL 6,
+   *  marked new at LVL 6 until it is opened. */
+  renderHubSectorSwitch(level, sector) {
+    const sw = document.getElementById('hubSectorSwitch'), center = document.getElementById('btnSectorCenter'), shore = document.getElementById('btnSectorShore');
+    if (!sw || !center || !shore) return;
+    const locked = level < CORE_CITY_CENTER_TOP;
+    center.classList.toggle('on', sector === 'center');
+    shore.classList.toggle('on', sector === 'shore');
+    shore.classList.toggle('locked', locked);
+    shore.classList.toggle('is-new', level === CORE_CITY_CENTER_TOP && sector !== 'shore' && !this.hubShoreSeen);
+    sw.setAttribute('aria-label', sector === 'shore' ? 'Pokaż Centrum' : locked ? 'Pokaż Drugi brzeg — odblokuj na poziomie 6' : 'Pokaż Drugi brzeg');
+  }
+
+  /** CITY-2: Core City's progress in levels, 0 (LVL 1 at 0%) .. 11 (LVL 12):
+   *  the Centrum draws the first five, Drugi brzeg the last six. */
+  hubCityTargetOverall() {
+    return coreCityOverall(this.save.hub.coreLevel || 1, this.save.hub.coreCharge || 0);
   }
 
   /** The city animates up to its real progress -- coming back to Miasto
    *  after a round, the new buildings rise in front of you. */
   renderHubCity(t) {
-    const target = this.hubCityTargetProgress();
+    // CITY-2: hubCityShown is the progress in levels (hubCityTargetOverall()).
+    const target = this.hubCityTargetOverall();
     if (this.hubCityShown == null || target < this.hubCityShown) { this.hubCityShown = target; this.hubCityStageSeen = null; }
     const dt = this.hubCityLastT ? Math.min(0.05, t - this.hubCityLastT) : 0;
     this.hubCityLastT = t;
     // Ease toward the target (~1.5 s for any jump), never overshooting.
-    if (this.hubCityShown < target) this.hubCityShown = Math.min(target, this.hubCityShown + Math.max(dt * 0.03, (target - this.hubCityShown) * dt * 2.2));
+    if (this.hubCityShown < target) this.hubCityShown = Math.min(target, this.hubCityShown + Math.max(dt * 0.15, (target - this.hubCityShown) * dt * 2.2));
     // FTUE-2 FIX: the skyline stays under the card's headline (the pitch);
     // its height is re-read twice a second (layout px of the same layer --
     // no DOM rects inside a zoomed layer).
@@ -12572,11 +12963,15 @@ class Game {
     if (!this.hubCityReserveAt || t - this.hubCityReserveAt > 0.5 || t < this.hubCityReserveAt) {
       const pitch = document.querySelector('#hubHeroStage .hub-city-pitch');
       this.hubCityReserve = pitch && pitch.offsetHeight ? pitch.offsetTop + pitch.offsetHeight - cv.offsetTop + 6 : 0;
+      // CITY-2: how far up from the canvas's bottom the sector switch reaches
+      // (layout px of the same layer); Drugi brzeg keeps it over the river.
+      const foot = document.querySelector('#hubHeroStage .hub-city-foot'), sw = document.getElementById('hubSectorSwitch');
+      this.hubCityFloor = foot && sw && sw.offsetHeight ? clamp(cv.offsetTop + cv.offsetHeight - (foot.offsetTop + sw.offsetTop) + 4, 0, cv.offsetHeight * 0.4) : 0;
       this.hubCityReserveAt = t;
     }
     // VISUAL-1: a save opens on its city as it stands; a level reached in
     // this session (the skyline easing past it) plays the stage's reveal.
-    const stage = cityStageLevel(this.hubCityShown);
+    const stage = coreStageOf(this.hubCityShown);
     if (this.hubCityStageSeen == null) this.hubCityStageSeen = stage;
     else if (stage > this.hubCityStageSeen) {
       this.hubCityStageSeen = stage;
@@ -12592,7 +12987,14 @@ class Game {
     }
     // GG-UI-02: on a very short panorama (320x568) the crane's tag has no sky
     // left under the headline -- the crane stays, the tag is not drawn.
-    drawCityScene(cv, this.hubCityShown, t, { siteLabel: 'NOWY BUDYNEK', noSiteTag: cv.clientHeight - this.hubCityReserve < 56, skyTop: this.hubCityReserve, reveal });
+    const opts = { siteLabel: 'NOWY BUDYNEK', noSiteTag: cv.clientHeight - this.hubCityReserve < 56, skyTop: this.hubCityReserve, reveal, floor: this.hubCityFloor };
+    // CITY-2: the sector in view; a reveal shows only in its own sector.
+    if (this.hubSectorView() === 'shore') {
+      const level = this.save.hub.coreLevel || 1;
+      drawShoreScene(cv, cityShoreProgress(this.hubCityShown), t, { ...opts, centerDone: this.hubCityShown >= CORE_CITY_CENTER_TOP - 1, locked: level < CORE_CITY_CENTER_TOP });
+    } else {
+      drawCityScene(cv, cityCenterProgress(this.hubCityShown), t, opts);
+    }
   }
 
   renderDistrictTiles(t) {
@@ -13317,15 +13719,26 @@ class Game {
     // reward over the living city canvas (renderHubCity()), plus a bar.
     const level = this.save.hub.coreLevel || 1;
     const pct = this.save.hub.coreCharge || 0;
+    // CITY-2: two sectors on the one level -- the Centrum (LVL 1-6) and Drugi
+    // brzeg (LVL 7-12, built from LVL 6 on). The percent and the next line
+    // always name what the charge builds now, whichever sector is in view.
+    const sector = this.hubSectorView();
+    const buildsShore = level >= CORE_CITY_CENTER_TOP && level < CORE_CITY_TOP;
     document.getElementById('hubChargeValue').textContent = Math.round(pct) + '%';
-    document.getElementById('hubLevelLabel').textContent = `LVL ${level}`;
+    document.getElementById('hubLevelLabel').textContent = `LVL ${Math.min(level, CORE_CITY_TOP)}`;
     document.getElementById('hubCityBar').style.width = pct + '%';
-    this.renderCoreRail(level, pct);
+    this.renderCoreRail(level, pct, sector);
+    this.renderHubSectorSwitch(level, sector);
     const nextReward = CORE_CITY_LEVEL_REWARDS[level + 1];
     const nextRewardLabel = nextReward ? nextReward.label : 'Premia';
     const nextRewardCoins = nextReward ? nextReward.coins : CONFIG.hub.milestoneFallbackCoins;
     // DEVICE-QA-1 (playtest 023): past LVL6 the fallback pays prisms too.
-    document.getElementById('hubRewardChip1').textContent = nextReward ? `${nextRewardLabel} + ${nextRewardCoins} monet` : `+${nextRewardCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    // CITY-2: LVL 7-12 are stages of Drugi brzeg (the same premium as before).
+    const nextStage = buildsShore && CITY_STAGES[level + 1];
+    document.getElementById('hubRewardPrefix').textContent = nextStage ? 'Następny etap · Drugi brzeg:' : 'Następna nagroda:';
+    document.getElementById('hubRewardChip1').textContent = nextReward ? `${nextRewardLabel} + ${nextRewardCoins} monet`
+      : nextStage ? `LVL ${level + 1} „${nextStage.name}” + ${nextRewardCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`
+      : `+${nextRewardCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
     document.getElementById('hubRewardChip1Icon').innerHTML = REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(nextReward)];
     // v17.1 (owner: "budowa miasta była hakiem, a teraz nie czuję, czemu to
     // fajne"): say what one round adds and how close the next reward is.
@@ -13334,14 +13747,29 @@ class Game {
     // the latest in `rounds` (counted at the plain round's gain).
     const gain = this.coreGainPerRound();
     const rounds = Math.max(1, Math.ceil((100 - pct) / gain));
-    // ... and (023: "i co, koniec rozbudowy miasta?") a LVL6 city is built:
-    // the card says so and what each further 100% pays.
-    const built = level >= 6;
-    document.getElementById('hubCityPitchTitle').textContent = built ? 'Miasto zbudowane w całości' : 'Każda runda Areny buduje Twoje miasto';
-    document.getElementById('hubCityPitchSub').textContent = built
-      ? `${this.coreGainRangeText()} za rundę · co 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`
+    // ... and (023: "i co, koniec rozbudowy miasta?") a built city says so and
+    // what each further 100% pays. CITY-2: the Centrum is built at LVL 6 and
+    // the charge goes on to Drugi brzeg; the whole city is built at LVL 12.
+    const roundsText = `${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
+    const premiumText = `${this.coreGainRangeText()} za rundę · co 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    let title, sub;
+    if (sector === 'shore' && level < CORE_CITY_CENTER_TOP) {
+      title = 'Drugi brzeg: odblokuj na poziomie 6';
+      sub = 'Najpierw zbuduj Centrum: każda runda Areny je rozbudowuje';
+    } else if (level >= CORE_CITY_TOP) {
+      title = sector === 'shore' ? 'Drugi brzeg ukończony' : 'Centrum ukończone';
+      sub = premiumText;
+    } else if (level >= CORE_CITY_CENTER_TOP) {
+      title = sector === 'shore' ? 'Każda runda Areny buduje Drugi brzeg' : 'Centrum ukończone';
+      sub = sector === 'shore' ? `${this.coreGainRangeText()} za rundę · nowy etap najpóźniej za ${roundsText}`
+        : `Teraz budujesz Drugi brzeg · ${this.coreGainRangeText()} za rundę`;
+    } else {
+      title = 'Każda runda Areny buduje Twoje miasto';
       // R3-06: on LVL 1-2 the range already holds the starting bonus -- say so.
-      : `${this.coreGainRangeText()} za rundę${this.coreEarlyBonus() ? ' z premią startową' : ''} · nagroda najpóźniej za ${rounds} ${plural(rounds, ['rundę', 'rundy', 'rund'])}`;
+      sub = `${this.coreGainRangeText()} za rundę${this.coreEarlyBonus() ? ' z premią startową' : ''} · nagroda najpóźniej za ${roundsText}`;
+    }
+    document.getElementById('hubCityPitchTitle').textContent = title;
+    document.getElementById('hubCityPitchSub').textContent = sub;
 
     this.updateHubQuickTiles();
     // First-run welcome: until the first finished play, Miasto shows only
@@ -13448,7 +13876,10 @@ class Game {
       : (streak > 0 ? `Seria: ${streak} ${plural(streak, ['dzień', 'dni', 'dni'])} z rzędu` : `+${CONFIG.daily.completionBonusCoins} monet za ukończenie`);
     // v17.1: GRAJ says what it builds (the city above it). v22: and which
     // mode it is -- Core City is Arena's own progression.
-    document.getElementById('hubPlaySub').textContent = `Arena · runda 2:00 · ${this.coreGainRangeText()} budowy miasta`;
+    // CITY-2: a finished city (LVL 12+) is not built any more -- the round fills the premium.
+    document.getElementById('hubPlaySub').textContent = (this.save.hub.coreLevel || 1) >= CORE_CITY_TOP
+      ? `Arena · runda 2:00 · ${this.coreGainRangeText()} do premii Core City`
+      : `Arena · runda 2:00 · ${this.coreGainRangeText()} budowy miasta`;
   }
 
   /** Core City % a plain finished Arena round adds at the current level
@@ -13561,8 +13992,11 @@ class Game {
     const rounds = Math.max(1, Math.ceil((100 - (s.hub.coreCharge || 0)) / this.coreGainPerRound()));
     if (rounds > CONFIG.ftue.coreHookRounds) return null;
     const reward = CORE_CITY_LEVEL_REWARDS[level + 1];
-    const label = reward ? reward.label : `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
-    return { id: 'core', rounds, text: `Nagroda Core City: ${label}`, color: '#46D99A', icon: REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(reward)] };
+    const premium = `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    // CITY-2: LVL 7-12 name the Drugi brzeg stage they build; from LVL 12 only the premium is left.
+    const stage = !reward && level >= CORE_CITY_CENTER_TOP && level < CORE_CITY_TOP && CITY_STAGES[level + 1];
+    const text = reward ? `Nagroda Core City: ${reward.label}` : stage ? `Drugi brzeg LVL ${level + 1} „${stage.name}”: ${premium}` : `Premia Core City: ${premium}`;
+    return { id: 'core', rounds, text, color: '#46D99A', icon: REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(reward)] };
   }
 
   /** The campaign mission to do next: the first uncleared mission (whose
@@ -13814,6 +14248,7 @@ class Game {
         ? `<li>Premia startowa: +${bonus}% postępu miasta na LVL 1–${c.earlyLevelMax}, już wliczona w liczby powyżej (także w rundzie, która kończy LVL ${c.earlyLevelMax}). Od LVL ${c.earlyLevelMax + 1} premia nie obowiązuje: runda Areny +${a.base.min}–${a.base.max}%, Wyzwanie dnia +${c.dailyFirstClearGain}% i +${c.dailyNewBestGain}% za rekord.</li>`
         : `<li>Premia startowa (+${bonus}% na LVL 1–${c.earlyLevelMax}) już nie obowiązuje — liczby powyżej są bez niej.</li>`) +
       `<li>Po LVL 6 każde 100%: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów.</li>` +
+      '<li>LVL 7–12 budują Drugi brzeg — nową część miasta za rzeką. Centrum zostaje takie, jak je zbudujesz.</li>' +
       '<li>Runda opuszczona przed końcem nie ładuje miasta.</li>' +
       '</ul>';
   }
@@ -13823,6 +14258,18 @@ class Game {
   openCoreCityRoadmap() {
     const level = this.save.hub.coreLevel || 1;
     const pct = this.save.hub.coreCharge || 0;
+    // CITY-2: Drugi brzeg's six levels after the Centrum's -- each one a new
+    // stage of the second sector plus the LVL 7+ premium it always paid.
+    const shoreRows = [];
+    for (let n = CORE_CITY_CENTER_TOP + 1; n <= CORE_CITY_TOP; n++) {
+      const state = n <= level ? 'done' : (n === level + 1 ? 'next' : '');
+      const mark = n <= level ? '✓' : (n === level + 1 ? `${Math.round(pct)}%` : '');
+      shoreRows.push(`<li class="info-roadmap-row ${state}">` +
+        `<canvas class="info-roadmap-city" data-city-level="${n}" aria-hidden="true"></canvas>` +
+        `<span class="info-roadmap-main"><span class="info-roadmap-level">LVL ${n} · ${CITY_STAGES[n].line}</span>` +
+        `<span class="info-roadmap-reward"><span class="info-roadmap-icon">${REWARD_CATEGORY_ICONS.bonus}</span>+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów</span></span>` +
+        `<span class="info-roadmap-mark">${mark}</span></li>`);
+    }
     const rows = Object.keys(CORE_CITY_LEVEL_REWARDS).map(Number).sort((a, b) => a - b).map(n => {
       const def = CORE_CITY_LEVEL_REWARDS[n];
       const state = n <= level ? 'done' : (n === level + 1 ? 'next' : '');
@@ -13836,13 +14283,18 @@ class Game {
         `<span class="info-roadmap-reward"><span class="info-roadmap-icon">${REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(def)]}</span>${def.label} · +${def.coins} ◇</span></span>` +
         `<span class="info-roadmap-mark">${mark}</span></li>`;
     }).join('');
-    const now = CITY_STAGES[Math.min(level, 6)];
+    const now = CITY_STAGES[Math.min(level, CORE_CITY_TOP)];
     this.openInfoSheet({
       icon: REWARD_CATEGORY_ICONS.bundle,
       title: 'Nagrody Core City',
       body: [
-        `Core City to pasek postępu całego miasta. Każde 100% to nowy poziom, nagroda i nowy wygląd miasta. Teraz: <strong>LVL ${level} · ${pct}%</strong>. Etap miasta: <strong>${now.name}</strong>.`,
+        // CITY-2: below LVL 12 the city grows; from LVL 12 it is built -- a further 100% pays the premium only.
+        level < CORE_CITY_TOP
+          ? `Core City to pasek postępu całego miasta. Każde 100% to nowy poziom, nagroda i nowy wygląd miasta. Teraz: <strong>LVL ${level} · ${pct}%</strong>. Etap miasta: <strong>${now.name}</strong>.`
+          : `Core City jest ukończone: Centrum i Drugi brzeg stoją w całości. Każde dalsze 100% daje premię: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów. Teraz: <strong>LVL ${CORE_CITY_TOP} · ${pct}%</strong>. Etap miasta: <strong>${now.name}</strong>.`,
         `<ul class="info-roadmap">${rows}</ul>`,
+        'Drugi brzeg (od LVL 6):',
+        `<ul class="info-roadmap">${shoreRows.join('')}</ul>`,
         'Jak ładować:',
         this.coreCityHowToFillHtml(),
         'Misje kampanii (Dzielnice) nie ładują Core City — dają własne nagrody.'
@@ -13850,7 +14302,8 @@ class Game {
     });
     document.querySelectorAll('#infoSheet canvas.info-roadmap-city').forEach(cv => {
       const n = Number(cv.dataset.cityLevel);
-      drawCityScene(cv, clamp((n - 1) / 5, 0, 1), 7.3, { mini: true });
+      if (n > CORE_CITY_CENTER_TOP) drawShoreScene(cv, cityShoreProgress(n - 1), 7.3, { mini: true, centerDone: true });
+      else drawCityScene(cv, clamp((n - 1) / 5, 0, 1), 7.3, { mini: true });
     });
   }
 
@@ -17595,8 +18048,9 @@ class Game {
     const coreLevelNow = this.save.hub.coreLevel || 1;
     const newStage = leveledUp && CITY_STAGES[coreLevelNow];
     document.querySelector('#gameOverScreen .result-core-card').classList.toggle('leveled', leveledUp);
-    document.getElementById('resultCoreLvl').textContent = `LVL ${coreLevelNow}`;
-    document.getElementById('resultCoreLvl').classList.toggle('hidden', !leveledUp);
+    // CITY-2: LVL 12 is the last level shown; a 100% past it pays the premium only.
+    document.getElementById('resultCoreLvl').textContent = `LVL ${Math.min(coreLevelNow, CORE_CITY_TOP)}`;
+    document.getElementById('resultCoreLvl').classList.toggle('hidden', !leveledUp || coreLevelNow > CORE_CITY_TOP);
     document.getElementById('resultCoreStage').textContent = newStage ? `Nowy etap miasta: ${newStage.line}` : '';
     document.getElementById('resultCoreStage').classList.toggle('hidden', !newStage);
     if (leveledUp) {
@@ -21835,6 +22289,39 @@ const I18N_EN = {
   "Kładki i kolejka nad ulicami": "Sky bridges and a monorail",
   "Reflektory i drony nad miastem": "Searchlights and drones over the city",
   "Wieża Rdzenia rozświetla miasto": "The Core Tower lights up the city",
+  // CITY-2: Core City's second sector, Drugi brzeg (LVL 7-12).
+  "Centrum": "Downtown",
+  "Pokaż Centrum": "Show Downtown",
+  "Core City jest ukończone: Centrum i Drugi brzeg stoją w całości. Każde dalsze 100% daje premię: +{#0} monet i +{#1} pryzmatów. Teraz:": "Core City is complete: Downtown and the Far Shore are fully built. Every further 100% pays a bonus: +{0} coins and +{1} prisms. Now:",
+  "Arena · runda 2:00 · +{#0}–{#1}% do premii Core City": "Arena · round 2:00 · +{0}–{1}% toward the Core City bonus",
+  "Arena · runda 2:00 · +{#0}% do premii Core City": "Arena · round 2:00 · +{0}% toward the Core City bonus",
+  "Drugi brzeg LVL {#0} „{1}”: {2}": "Far Shore LVL {0} “{1}”: {2}",
+  "Premia Core City: {0}": "Core City bonus: {0}",
+  "Pokaż Drugi brzeg": "Show the Far Shore",
+  "Pokaż Drugi brzeg — odblokuj na poziomie 6": "Show the Far Shore — unlocks at level 6",
+  "Drugi brzeg: odblokuj na poziomie 6": "The Far Shore: unlocks at level 6",
+  "Najpierw zbuduj Centrum: każda runda Areny je rozbudowuje": "Build Downtown first: every Arena round adds to it",
+  "Drugi brzeg ukończony": "The Far Shore is complete",
+  "Centrum ukończone": "Downtown is complete",
+  "Każda runda Areny buduje Drugi brzeg": "Every Arena round builds the Far Shore",
+  "+{#0}–{#1}% za rundę · nowy etap najpóźniej za {#2} {3}": "+{0}–{1}% per round · next stage in {2} {3} at most",
+  "Teraz budujesz Drugi brzeg · +{#0}–{#1}% za rundę": "Now building the Far Shore · +{0}–{1}% per round",
+  "Następny etap · Drugi brzeg:": "Next stage · Far Shore:",
+  "LVL {#0} „{1}” + {#2} monet + {#3} pryzmatów": "LVL {0} “{1}” + {2} coins + {3} prisms",
+  "Drugi brzeg (od LVL 6):": "The Far Shore (from LVL 6):",
+  "LVL 7–12 budują Drugi brzeg — nową część miasta za rzeką. Centrum zostaje takie, jak je zbudujesz.": "LVL 7–12 build the Far Shore — a new part of the city across the river. Downtown stays as you built it.",
+  "Przyczółek": "Bridgehead",
+  "Kwartał": "Low-rise Block",
+  "Plac": "The Square",
+  "Fontanna": "Fountain",
+  "Dominanta": "Landmark",
+  "Wieża Brzegu": "Shore Tower",
+  "Przyczółek mostu i pierwsza ulica": "The bridgehead and the first street",
+  "Kwartał niskiej zabudowy": "A block of low-rise buildings",
+  "Usługi i plac na nabrzeżu": "Shops and a square on the waterfront",
+  "Fontanna na placu": "A fountain on the square",
+  "Wysokie budynki i dominanta": "Tall buildings and a landmark",
+  "Wieża Brzegu rozświetla nabrzeże": "The Shore Tower lights up the waterfront",
   "NOWY REKORD": "NEW RECORD",
   "NOWY REKORD DNIA": "NEW DAILY RECORD",
   "NOWY TRYB": "NEW MODE",

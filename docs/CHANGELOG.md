@@ -4,6 +4,19 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## CITY-2 „Drugi brzeg” — Core City LVL 7–12 (zapis nadal v13, klucz bez zmian, bez nowego pola; przyrost, nagrody LVL 2–6, premia LVL 7+, Arena, kampania i ekonomia bez zmian)
+- Drugi sektor Core City na tym samym `hub.coreLevel`: Centrum LVL 1–6 bez zmian (rysunek identyczny piksel w piksel z bazą
+  `0e67e2f`), Drugi brzeg LVL 7–12 otwarty od LVL 6. `drawShoreScene()` rysuje panoramę z boku istniejącymi elementami
+  (`drawCityBuilding()`, dźwig, ulica, niebo, dalsza panorama, reflektory, odsłona etapu) plus most, przyczółek, nabrzeże i pas
+  rzeki; części wspólne wydzielone z `drawCityScene()` bez zmiany działania. Etapy 7–12 w `CITY_STAGES` (PL/EN).
+- Miasto: przełącznik „Centrum / Drugi brzeg” nad kapsułą nagrody (widok tylko w sesji), szyna 1–6 / 7–12, teksty karty dla
+  zablokowanego, rozwijanego i ukończonego sektora, „Następny etap · Drugi brzeg: LVL n „…” + 100 monet + 10 pryzmatów”;
+  mapa nagród z LVL 7–12 i miniaturami; wynik rundy pokazuje najwyżej LVL 12.
+- Nagrody: LVL 2–6 bez zmian; LVL 7+ nadal ta sama premia (+100 monet + 10 pryzmatów) — bez nowych kosmetyków, walut,
+  płatnego odblokowania i przewagi w Arenie. Po LVL 12 premia jak dotąd, licznik w zapisie nie jest obcinany.
+- QA: `qa/city2.mjs` (w `run-all`), zrzuty `qa/city2-shots.mjs` → `design/city2/`; `qa/deviceqa1.mjs` (tekst LVL 6 → LVL 12)
+  i `qa/visual1.mjs` (mapa nagród 11 wierszy) zaktualizowane do nowego zakresu.
+
 ## MISSION-ENTER-1 — Enter na karcie misji = GRAJ (zapis nadal v13; ekonomia, nagrody, Arena, dotyk, Pointer Lock bez zmian)
 - Po ARENA-FIX-1 Enter startował Arenę, ale nie misję z otwartej karty w Dzielnicach. Teraz rozszerzony istniejący handler
   Enter (`bindInput()`, bez drugiego globalnego) naciska GRAJ aktywnej karty misji (`missionStartButton()`) — ta sama ścieżka co

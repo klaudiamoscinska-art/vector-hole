@@ -49,6 +49,8 @@ export async function runVisual1Checks(url) {
   const stages = {};
   for (const [lv, ch] of [[1, 20], [3, 50], [6, 30]]) {
     const g = await boot(url, { coins: 900, runsPlayed: 12, missions: 12 }, (s) => { s.hub.coreLevel = lv; s.hub.coreCharge = ch; });
+    // CITY-2: LVL 6+ opens on Drugi brzeg by default (qa/city2.mjs); this checks the Centrum's stages.
+    await g.page.evaluate(() => { window.game.hubSector = 'center'; });
     const stored0 = await g.page.evaluate(() => localStorage.getItem('vectorHoleSave_v1'));
     await g.page.waitForTimeout(1200);
     stages[lv] = await g.page.evaluate(CITY_STATE);
@@ -62,7 +64,8 @@ export async function runVisual1Checks(url) {
     }));
     await g.page.evaluate(() => window.game.closeInfoSheet());
     if (lv === 1) {
-      push('V1-3 roadmap: LVL 2-6 each show a drawn thumbnail of that level\'s city and name what it adds', road.length === 5 && road.every((r, i) => r.drawn && r.stage === i + 2 && r.lit > 0 && /LVL \d · \S/.test(r.level)), JSON.stringify(road));
+      // CITY-2: LVL 7-12 (Drugi brzeg) follow the Centrum's LVL 2-6.
+      push('V1-3 roadmap: LVL 2-12 each show a drawn thumbnail of that level\'s city and name what it adds', road.length === 11 && road.every((r, i) => r.drawn && r.stage === i + 2 && r.lit > 0 && /LVL \d+ · \S/.test(r.level)), JSON.stringify(road));
     }
     for (const fn of [() => window.game.openCampaignScreen(), () => window.game.openWarsztatScreen(), () => window.game.showScreen('mainMenu')]) { await g.page.evaluate(fn); await g.page.waitForTimeout(250); }
     const stored1 = await g.page.evaluate(() => localStorage.getItem('vectorHoleSave_v1'));
@@ -192,6 +195,7 @@ export async function runVisual1Checks(url) {
     await g.page.waitForTimeout(600);
     const ms = await g.page.evaluate(() => {
       const gm = window.game; cancelAnimationFrame(gm.screenAnimRaf); gm.screenAnimRaf = null;
+      gm.hubSector = 'center'; // CITY-2: the Centrum's LVL 6 (Drugi brzeg's cost: qa/city2.mjs / the CITY-2 report)
       const t0 = performance.now();
       for (let i = 0; i < 120; i++) gm.renderHubCity(10 + i / 60);
       return (performance.now() - t0) / 120;

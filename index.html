@@ -303,9 +303,15 @@
         <!-- v17.1: the hook in words, in the sky above the skyline. -->
         <div class="hub-city-pitch"><strong id="hubCityPitchTitle">Każda runda Areny buduje Twoje miasto</strong><span id="hubCityPitchSub">Nowa nagroda za kilka rund</span></div>
         <div class="hub-city-foot">
+          <!-- CITY-2: the sector in view (Game.setHubSector()) -- a view only, never saved. -->
+          <!-- One control (Miasto keeps to a handful of tappable things): a tap on a segment picks it, Enter / Space toggles. -->
+          <button type="button" id="hubSectorSwitch" class="hub-sector-switch" aria-label="Pokaż Drugi brzeg">
+            <span id="btnSectorCenter" class="hub-sector-btn on">Centrum</span>
+            <span id="btnSectorShore" class="hub-sector-btn"><svg class="hub-sector-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Drugi brzeg</span>
+          </button>
           <div class="hub-city-next">
             <span id="hubRewardChip1Icon" class="hub-city-next-icon" aria-hidden="true"></span>
-            <span class="hub-city-next-text"><span class="hub-city-next-prefix">Następna nagroda: </span><strong id="hubRewardChip1">—</strong></span>
+            <span class="hub-city-next-text"><span id="hubRewardPrefix" class="hub-city-next-prefix">Następna nagroda: </span><strong id="hubRewardChip1">—</strong></span>
             <span id="hubChargeValue" class="hub-city-pct">0%</span>
           </div>
           <div class="hub-city-progress"><div id="hubCityBar" class="hub-city-progress-fill"></div></div>
