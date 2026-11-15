@@ -271,12 +271,18 @@ async function controlsChecks(url) {
     const r = await g.page.evaluate(() => {
       const u = window.__ux3, g = window.game; const p0 = { x: g.player.x, y: g.player.y }; const p1 = u.step(10);
       const mouse = p1.x - p0.x;
+      // UX-FIX-A: Mysz takes no movement key; in Klawiatura S drives down.
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's', bubbles: true }));
+      const mouseKey = g.keyDir.y;
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', key: 's', bubbles: true }));
+      g.save.settings.deskControls = 'keyboard'; g.pointerScreen = null;
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', key: 's', bubbles: true }));
       const k0 = u.step(1), k1 = u.step(10);
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', key: 's', bubbles: true }));
-      return { touch: g.isTouchDevice, mouse: +mouse.toFixed(1), keysDown: +(k1.y - k0.y).toFixed(1), keysSide: +(k1.x - k0.x).toFixed(1), modeRowHidden: document.getElementById('inputModeRow').classList.contains('hidden') };
+      g.save.settings.deskControls = 'mouse';
+      return { touch: g.isTouchDevice, mouse: +mouse.toFixed(1), mouseKey, keysDown: +(k1.y - k0.y).toFixed(1), keysSide: +(k1.x - k0.x).toFixed(1), modeRowHidden: document.getElementById('inputModeRow').classList.contains('hidden') };
     });
-    out.push(report('C7 desktop (1366x768, no touch, Joystick saved): the mouse still steers (toward the cursor), S drives down, the touch-mode row stays hidden', !r.touch && r.mouse > 5 && r.keysDown > 5 && Math.abs(r.keysSide) < 0.5 && r.modeRowHidden, JSON.stringify(r)));
+    out.push(report('C7 desktop (1366x768, no touch, Joystick saved): the mouse still steers (toward the cursor), S takes no direction in Mysz (UX-FIX-A) and drives down in Klawiatura, the touch-mode row stays hidden', !r.touch && r.mouse > 5 && r.mouseKey === 0 && r.keysDown > 5 && Math.abs(r.keysSide) < 0.5 && r.modeRowHidden, JSON.stringify(r)));
     await g.browser.close();
   }
 
@@ -575,7 +581,9 @@ async function vortexChecks(baseUrl, candUrl) {
       HOLE_LOOKS: ['const HOLE_LOOKS = {', '\nfunction paintHoleLayer('],
       paintHoleLayer: ['function paintHoleLayer(', '\nfunction holeSprite('],
       stampHoleLayer: ['function stampHoleLayer(', '\n/** Cheap stable'],
-      drawBody: ['  drawBody(ctx, time, inner, over) {', '\n/* ----------------------- Hole signature looks'],
+      // UX-FIX-A: the vortex part of drawBody() (its look layers); the name tag after it
+      // gained the threat mark, the Smuga before it is not a look layer.
+      drawBody: ["    // GG-HOLE-01: the look's layers (HOLE_LOOKS)", '    if (!this.name) return;'],
       accretion: ['function drawAccretionDisk(', '\n}\n']
     };
     const diff = Object.entries(parts).filter(([, [a, b]]) => { const x = between(baseSrc, a, b), y = between(candSrc, a, b); return !x || x !== y; }).map(([k]) => k);
