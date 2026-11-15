@@ -54,7 +54,7 @@ Kod testowany: `7d269b3` (scalony B → C; późniejsze commity zmieniają tylko
 | `qa/v19.mjs` (EN), `qa/design.mjs` | DOM / statyczne | **PASS 16/16, 29/29** | paleta: `#ff00ea` usunięty |
 | `qa/save-safety.mjs` | FN | **PASS 107/107** | zapis v13 |
 | `qa/instructions.mjs` | statyczne | **PASS 4/4** | |
-| `qa/responsive.mjs` | DOM | **NOT RUN na C** | PASS 552/552 na A i B; C nie zmienia układu ekranów (zmiany w canvasie Warsztatu sprawdza `uxfix-c` W na 375×667 / 390×844 / 1280×720) |
+| `qa/responsive.mjs` | DOM | **PASS 552/552** | wszystkie ramki telefon / tablet / Poki / CrazyGames (lokalna ramka) / desktop |
 | `qa/perf1.mjs` | DOM | **NOT RUN** | zamiast niego mikro-benchmark §3 |
 | `qa/run-all.mjs` | — | **NOT RUN** | zakres pokryty powyżej |
 
@@ -75,14 +75,14 @@ Naprawione w trakcie: kształty efektów pierwotnie losowały dodatkowe liczby (
 | 2 | Sterowanie: gdzie ustawić, czy klawiatura działa przy Myszy | Mysz / Klawiatura rozłączne; „Sterowanie na Arenie” od razu w pauzie i pierwsze w Ustawieniach; podpowiedź trybu; informacja w misjach | #107 | `qa/uxfix-a.mjs` K1–K8, `qa/arena-fix1.mjs` C/L, `a-sterowanie.jpg` | Zrobione (Etap A); Pointer Lock w prawdziwej przeglądarce NOT VERIFIED |
 | 3 | „Załóż” otwiera złą zakładkę | ZAŁÓŻ zakłada pojedynczy przedmiot (zakładka, oznaczenie, przewinięcie, potwierdzenie); zestaw — POKAŻ W WARSZTACIE | #107 | `qa/uxfix-a.mjs` R1–R4 (Core City LVL 2–6, Aurora z wygranej misji), `a-nagroda-zaloz.jpg` | Zrobione (Etap A) |
 | 4 | Karty Ewolucji: działają tylko 3 z 7 | A: opisy Magnesu (granica 160 wyjaśniona), Turbo combo, Tarczy; B: Skaner (jadalny cel + strzałka), Impuls ssący (zamiast Fali), Łowca (jadalny rywal, +40 raz, „+40 ŁOWCA”), paski kart w HUD z rzeczywistym stanem | #107 + #108 | `qa/uxfix-b.mjs` M1–M6 (FN), H1 (DOM), SIM 10 ziaren baza vs kandydat, `b-karty-hud.jpg` | Zrobione (A + B); balans Turbo combo i zasięg Magnesu — osobne decyzje |
-| 5 | Kosmetyki poza wirem niejasne | Prawdziwe smugi, efekty kształtem, dekoracje finiszu, podgląd Warsztatu według kategorii, opisy PL/EN | PR_C | `qa/uxfix-c.mjs` T/E/F/W, paski klatek baza/kandydat, koszt klatki | Zrobione (Etap C) |
+| 5 | Kosmetyki poza wirem niejasne | Prawdziwe smugi, efekty kształtem, dekoracje finiszu, podgląd Warsztatu według kategorii, opisy PL/EN | #109 | `qa/uxfix-c.mjs` T/E/F/W, paski klatek baza/kandydat, koszt klatki | Zrobione (Etap C) |
 | 6 | 1. miejsce, a przeciwnicy więksi | Ranking nadal po punktach; ostrzeżenie od zasięgu zjedzenia (r 420 przy 299 — ostrzeżony przed zasięgiem), znak przy konkretnym rywalu (plansza + PUNKTY), podpowiedź „Miejsce zależy od punktów, nie rozmiaru” | #107 | `qa/uxfix-a.mjs` W1–W7 (FN 375×667 i 1280×720, DOM), `a-ranking-zagrozenie.jpg` | Zrobione (Etap A) |
 
 ## 7. HANDOFF
 
 ```
 STAN PRAC: GG_UX_FIX_C (Etap C) — gotowe do odbioru; zależne od PR A i PR B. Wszystkie 6 zgłoszeń mają poprawki (A, B, C).
-REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h-c @ kod 7d269b3 (HEAD = commit raportu), baza PR = claude/determined-turing-9d9j3h-b, PR: PR_C
+REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h-c @ kod 7d269b3 (HEAD = commit raportu), baza PR = claude/determined-turing-9d9j3h-b, PR: https://github.com/klaudiamoscinska-art/vector-hole/pull/109 (baza #108 → #107)
 TESTY: §4 — log: qa/out/final/
 ZMIANY: game.js (smugi, kształty efektów, dekoracje finiszu, podgląd Warsztatu), style.css; qa/uxfix-c.mjs (T, E, F, W w run-all; --strips, --cost); qa/ux3.mjs V1; docs; design/ux-fix/c-*.jpg
 NIEDOKOŃCZONE: brak w zakresie C
