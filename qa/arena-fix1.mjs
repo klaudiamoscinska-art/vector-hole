@@ -12,6 +12,12 @@
 //    activation), another focused control, a text field, another screen,
 //    a sheet over Miasto, or during a round; the "Enter" key cap shows on a
 //    computer only.
+//  - M: MISSION-ENTER-1 -- Enter on an open mission card (Dzielnice / the Miasto
+//    shortcut) = its GRAJ exactly like a click: the right mission once, the
+//    picked boosters charged once (same result as the click), not on a repeat,
+//    a focused GRAJ's own activation, another control inside the card, a text
+//    field, a dialog over the card, a locked mission or in a round; Arena's Enter
+//    unchanged; the key cap on a computer only.
 //  - L: the CrazyGames package (real Pointer Lock in Chromium, a local stand-in
 //    for the portal, NOT the CrazyGames Preview): Mouse locks on a board click
 //    after an Enter start, buttons answer under the lock, a switch to Keyboard
@@ -22,7 +28,7 @@
 //    spot it waits off the board (no collisions, no reward, no double
 //    respawn, still in the standings) and comes back once, safe against the
 //    player's position at that moment, with the usual protection.
-// Usage: node qa/arena-fix1.mjs [--only=C,E,L,R]
+// Usage: node qa/arena-fix1.mjs [--only=C,E,M,L,R]
 import path from 'node:path';
 import { serve, openGame, veteranSave, report, isMain, OUT } from './lib.mjs';
 import { exportPackage } from '../tools/export-crazygames-basic.mjs';
@@ -547,6 +553,196 @@ async function respawnChecks(url) {
 }
 
 
+/* ---------------- M: Enter on a mission card (MISSION-ENTER-1) ---------------- */
+/** A veteran desktop page (6 missions done: boosters unlocked) with the mission launch counted. */
+async function missionGame(url, { coins = 0, stock = null, opts = DESK } = {}) {
+  const g = await deskGame(url, {}, opts);
+  await g.page.evaluate(({ coins, stock }) => {
+    const gm = window.game;
+    gm.save.coins = coins;
+    gm.save.campaign.completed[CONFIG.boosters.unlockMission] = true;   // boosters on the card
+    if (stock) Object.assign(gm.save.boosters, stock);
+    window.__ml = 0; window.__sc = 0; window.__scIds = [];
+    const lm = gm.launchMission, sc = gm.startCampaignMission;
+    gm.launchMission = function (...a) { window.__ml++; return lm.apply(this, a); };
+    gm.startCampaignMission = function (id, ...a) { window.__sc++; window.__scIds.push(id); return sc.call(this, id, ...a); };
+  }, { coins, stock });
+  return g;
+}
+const ms = (page) => page.evaluate(() => {
+  const g = window.game, vis = (id) => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden') && e.getClientRects().length > 0; };
+  return { launches: window.__ml, camp: window.__sc, ids: window.__scIds.join(), arena: window.__starts, briefing: vis('missionBriefing'), startCard: vis('missionStartOverlay'), intro: !!g.introPending,
+    coins: g.save.coins, stock: JSON.stringify(g.save.boosters), boosters: g.mission && g.mission.boosters ? g.mission.boosters.join() : null, mission: g.mission && g.mission.def ? g.mission.def.id : null };
+});
+const press = (page, mods = {}) => page.evaluate((m) => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', key: 'Enter', bubbles: true, cancelable: true, ...m })), mods);
+
+async function missionChecks(url) {
+  const out = [];
+  // M1 -- the real path: Dzielnice, a mouse click on the mission's GRAJ opens the card (focus stays on that
+  // button, now under the modal), Enter starts that mission once; held Enter and a second press add nothing.
+  {
+    const g = await missionGame(url);
+    const p = g.page;
+    const next = await p.evaluate(() => { window.game.openCampaignScreen(); return window.game.nextCampaignMissionId(); });
+    await p.locator('.mc-play[data-mc-play]').filter({ visible: true }).first().click({ force: true });
+    const m0 = await p.evaluate(() => { const a = document.activeElement; return { open: !document.getElementById('missionBriefing').classList.contains('hidden'), focusUnder: !!a && !document.getElementById('missionBriefing').contains(a) && a.hasAttribute('data-mc-play'), sel: window.game.selectedMissionId, cap: (() => { const k = document.querySelector('#briefingCard .mc-play .play-key'); return !!k && k.getClientRects().length > 0 && k.textContent === 'Enter' && k.getAttribute('aria-hidden') === 'true'; })() }; });
+    out.push(report('M0 the open mission card\'s GRAJ shows the quiet "Enter" key cap on a computer (aria-hidden)', m0.open && m0.cap, JSON.stringify(m0)));
+    await p.keyboard.down('Enter');
+    for (let i = 0; i < 5; i++) await repeatKey(p);
+    await p.keyboard.up('Enter');
+    await p.waitForTimeout(150);
+    const a = await ms(p);
+    await p.keyboard.press('Enter');
+    await p.keyboard.press('Enter');
+    await p.waitForTimeout(100);
+    const b = await ms(p);
+    out.push(report('M1 Enter on the open card (focus still on the Dzielnice GRAJ under it) starts the selected mission exactly once; the card closes, the start card opens', m0.focusUnder && m0.sel === next && a.launches === 1 && a.camp === 1 && a.ids === next && a.mission === next && !a.briefing && a.startCard && a.arena === 0, JSON.stringify({ next, m0, a })));
+    out.push(report('M2 held Enter (repeats) and further presses after the start add no launch, no Arena round, and do not begin the mission (the start card still waits)', a.launches === 1 && b.launches === 1 && b.camp === 1 && b.arena === 0 && b.intro && b.startCard, JSON.stringify({ a, b })));
+    out.push(report('M1-M2 no page errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+    await g.browser.close();
+  }
+  // M3 -- GRAJ itself focused: the key's native click and the shortcut never both fire.
+  {
+    const g = await missionGame(url);
+    const p = g.page;
+    await p.evaluate(() => { const id = window.game.nextCampaignMissionId(); window.game.openMissionBriefing(id); document.querySelector('#briefingCard .mc-play[data-mc-launch]').focus(); });
+    await p.keyboard.press('Enter');
+    await p.waitForTimeout(150);
+    const a = await ms(p);
+    out.push(report('M3 Enter with the card\'s GRAJ focused starts exactly once (no double from the native activation)', a.launches === 1 && a.camp === 1 && a.startCard, JSON.stringify(a)));
+    await g.browser.close();
+  }
+  // M4 -- boosters: the picked one is charged once, and Enter and a click leave the same save.
+  const paid = {};
+  for (const via of ['enter', 'click']) {
+    const g = await missionGame(url, { coins: 500, stock: { time: 0, start: 2 } });
+    const p = g.page;
+    await p.evaluate(() => { const id = window.game.nextCampaignMissionId(); window.game.openMissionBriefing(id); });
+    await p.locator('#briefingCard [data-booster="time"]').click();   // coins: stock 0
+    await p.locator('#briefingCard [data-booster="start"]').click();  // stock 2
+    const pre = await p.evaluate(() => ({ coins: window.game.save.coins, cost: window.game.briefingBoosterCost(), sel: [...window.game.briefingBoosters].join() }));
+    if (via === 'enter') {
+      // Focus is on the last booster tile: Enter there is the tile's own (toggles it), not a start.
+      await p.keyboard.press('Enter');
+      const tile = await p.evaluate(() => ({ off: !window.game.briefingBoosters.has('start'), launches: window.__ml }));
+      await p.keyboard.press('Enter');   // toggles it back on
+      const back = await p.evaluate(() => window.game.briefingBoosters.has('start'));
+      out.push(report('M4 Enter on a focused booster tile toggles that booster (its own action), no start', tile.off && back && tile.launches === 0, JSON.stringify(tile)));
+      await p.evaluate(() => document.activeElement && document.activeElement.blur());
+      await p.keyboard.press('Enter');
+    } else {
+      await p.locator('#briefingCard .mc-play[data-mc-launch]').click({ force: true });
+    }
+    await p.waitForTimeout(150);
+    paid[via] = { ...(await ms(p)), pre };
+    await g.browser.close();
+  }
+  const pe = paid.enter, pc = paid.click;
+  const same = (k) => pe[k] === pc[k];
+  out.push(report('M5 Enter with boosters picked (one from stock, one for coins): charged exactly once, the same save and mission boosters as a click', pe.launches === 1 && pe.camp === 1 && pe.boosters === pc.boosters && same('coins') && same('stock') && same('mission') && pe.boosters === 'time,start' && pe.pre.cost > 0 && pe.coins === pe.pre.coins - pe.pre.cost && JSON.parse(pe.stock).start === 1 && JSON.parse(pe.stock).time === 0, JSON.stringify({ enter: pe, click: pc })));
+  out.push(report('M6 the click path still starts the mission exactly once', pc.launches === 1 && pc.camp === 1 && pc.startCard && pc.arena === 0, JSON.stringify(pc)));
+
+  // M7 -- what Enter must leave alone.
+  {
+    const g = await missionGame(url, { coins: 0 });
+    const p = g.page;
+    const open = () => p.evaluate(() => { document.activeElement && document.activeElement.blur(); window.game.openMissionBriefing(window.game.nextCampaignMissionId()); });
+    const none = async (label) => { const s = await ms(p); return { label, launches: s.launches, camp: s.camp, arena: s.arena, briefing: s.briefing, coins: s.coins }; };
+    const res = [];
+    await open();
+    // a dialog over the card
+    await p.evaluate(() => document.getElementById('loginRewardScreen').classList.remove('hidden'));
+    await p.keyboard.press('Enter'); res.push(await none('dialog over the card'));
+    await p.evaluate(() => { document.getElementById('loginRewardScreen').classList.add('hidden'); clearTimeout(window.game.loginPopupTimer); });
+    // a text field inside the card
+    await p.evaluate(() => { const i = document.createElement('input'); i.id = 'qaTextField'; document.getElementById('briefingCard').appendChild(i); i.focus(); });
+    await p.keyboard.press('Enter'); res.push(await none('text field'));
+    await p.evaluate(() => document.getElementById('qaTextField').remove());
+    // a modifier, a repeat
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    await press(p, { shiftKey: true }); res.push(await none('shift+Enter'));
+    await repeatKey(p); res.push(await none('repeat'));
+    // another control in the card (the close button): its own action, no start
+    await p.evaluate(() => document.getElementById('btnBriefingClose').focus());
+    await p.keyboard.press('Enter');
+    const closed = await none('close button');
+    res.push(closed);
+    // no card: Enter on Dzielnice does nothing
+    await p.evaluate(() => { window.game.openCampaignScreen(); document.activeElement && document.activeElement.blur(); });
+    await p.keyboard.press('Enter'); res.push(await none('Dzielnice, no card'));
+    // a locked mission: GRAJ is not playable
+    const lockedId = await p.evaluate(() => { const id = DISTRICTS[DISTRICTS.length - 1].missions.slice(-1)[0]; window.game.openMissionBriefing(id); return id; });
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    await p.keyboard.press('Enter'); res.push(await none('locked mission ' + lockedId));
+    // short of coins for the picked booster: the same refusal as a click, no start
+    await p.evaluate(() => { window.game.save.boosters.time = 0; window.game.openMissionBriefing(window.game.nextCampaignMissionId()); });
+    await p.locator('#briefingCard [data-booster="time"]').click();
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    await p.keyboard.press('Enter'); res.push(await none('short of coins'));
+    // No start anywhere (no mission, no Arena round). Short of coins Enter reaches launchMission() exactly like a click
+    // and gets the same refusal: the card stays open, nothing charged, no mission started.
+    const short = res[res.length - 1];
+    const bad = res.filter(r => r.camp !== 0 || r.arena !== 0 || (r.label !== 'short of coins' && r.launches !== 0));
+    const shortOk = short.launches === 1 && short.briefing && short.coins === 0;
+    out.push(report('M7 Enter does not start a mission under a dialog over the card, in a text field, with a modifier or a repeat, from the close button (its own action: closes the card), with no card, on a locked mission, or short of coins for the picked booster', bad.length === 0 && shortOk && !closed.briefing, JSON.stringify(res)));
+    out.push(report('M7 no page errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+    await g.browser.close();
+  }
+
+  // M8 -- in a round (the started mission) Enter adds nothing; Arena's Enter and the Miasto shortcut.
+  {
+    const g = await missionGame(url);
+    const p = g.page;
+    await p.evaluate(() => { window.game.openMissionBriefing(window.game.nextCampaignMissionId()); document.activeElement && document.activeElement.blur(); });
+    await p.keyboard.press('Enter');
+    await p.evaluate(() => window.game.beginMissionPlay());
+    await p.waitForTimeout(100);
+    await p.keyboard.press('Enter');
+    await p.keyboard.press('Enter');
+    const r = await p.evaluate(() => ({ running: window.game.running, ...(() => ({ ml: window.__ml, sc: window.__sc, arena: window.__starts }))() }));
+    out.push(report('M8 in the started mission Enter adds no launch and no Arena round', r.running && r.ml === 1 && r.sc === 1 && r.arena === 0, JSON.stringify(r)));
+    await g.browser.close();
+  }
+  {
+    const g = await missionGame(url);
+    const p = g.page;
+    // The card opened from Miasto (the campaign shortcut): Enter is the card's GRAJ, never Arena's.
+    await p.evaluate(() => { clearTimeout(window.game.loginPopupTimer); window.game.showScreen('mainMenu'); window.game.openMissionBriefing(window.game.nextCampaignMissionId()); document.activeElement && document.activeElement.blur(); });
+    await p.keyboard.press('Enter');
+    await p.waitForTimeout(150);
+    const a = await ms(p);
+    out.push(report('M9 the card opened over Miasto: Enter starts the mission, not an Arena round', a.launches === 1 && a.camp === 1 && a.arena === 0, JSON.stringify(a)));
+    await g.browser.close();
+  }
+  {
+    const g = await missionGame(url);
+    const p = g.page;
+    // Close the card: Miasto's Enter is Arena's again (one round).
+    await p.evaluate(() => { clearTimeout(window.game.loginPopupTimer); window.game.openMissionBriefing(window.game.nextCampaignMissionId()); window.game.closeMissionBriefing(); document.activeElement && document.activeElement.blur(); });
+    await p.keyboard.press('Enter');
+    await p.waitForTimeout(150);
+    const a = await ms(p);
+    out.push(report('M10 with the card closed Enter on Miasto still starts exactly one Arena round (no mission)', a.arena === 1 && a.launches === 0 && a.camp === 0, JSON.stringify(a)));
+    await g.browser.close();
+  }
+  // M11 -- a phone: no key cap; English: the cap reads Enter.
+  {
+    const g = await missionGame(url, { opts: { viewport: { width: 390, height: 844 } } });
+    const cap = await g.page.evaluate(() => { window.game.openMissionBriefing(window.game.nextCampaignMissionId()); const k = document.querySelector('#briefingCard .play-key'); return { there: !!k, shown: !!k && k.getClientRects().length > 0 }; });
+    out.push(report('M11 a phone: the card has no visible Enter key cap', cap.there && !cap.shown, JSON.stringify(cap)));
+    await g.browser.close();
+  }
+  {
+    const g = await openGame(url, { ...DESK, locale: 'en-US' });
+    const cap = await g.page.evaluate(() => { window.game.openMissionBriefing(window.game.nextCampaignMissionId()); const k = document.querySelector('#briefingCard .play-key'); return k && k.textContent; });
+    out.push(report('M11 English: the card\'s key cap reads Enter', cap === 'Enter', String(cap)));
+    await g.browser.close();
+  }
+  return out;
+}
+const repeatKey = (p) => p.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', key: 'Enter', repeat: true, bubbles: true, cancelable: true })));
+
+
 /** Gives the game's frame the keyboard focus (what a click into it does on the portal) and
  *  waits until it really has it -- focus reaches an iframe asynchronously. Counts Enter
  *  keydowns that reach the frame, for waitRunning()'s diagnosis. */
@@ -575,6 +771,7 @@ export async function runArenaFix1Checks(url, only = null) {
   const out = [];
   if (want('C')) out.push(...await controlChecks(url));
   if (want('E')) out.push(...await enterChecks(url));
+  if (want('M')) out.push(...await missionChecks(url));
   if (want('L')) out.push(...await lockChecks());
   if (want('R')) out.push(...await respawnChecks(url));
   return out;
