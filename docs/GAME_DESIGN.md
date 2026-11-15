@@ -65,7 +65,7 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 
 | | Arena | Dzielnice |
 |---|---|---|
-| Progresja | Core City LVL 1–6 (+%) i nagrody kosmetyczne, rosnąca trudność rywali (od liczby rund), pacer | 12 dzielnic, gwiazdki, Skrzynie gwiazd, nowe dzielnice i ich utwory |
+| Progresja | Core City LVL 1–12 (+%): Centrum LVL 1–6 z nagrodami kosmetycznymi, Drugi brzeg LVL 7–12 (CITY-2), rosnąca trudność rywali (od liczby rund), pacer | 12 dzielnic, gwiazdki, Skrzynie gwiazd, nowe dzielnice i ich utwory |
 | Rozmiary T1–T6 | tylko z wielkości wiru w rundzie; cały bestiariusz od 1. rundy | tylko z jednostek wzrostu w misji |
 | Odblokowania | **Wyzwania** po 3 rundach Areny | **wzmocnienia** po M04 (+ po jednym w prezencie) |
 | Ulepszenia | **brak** (PX02 D+: nic, co zmienia rundę, nie jest na sprzedaż; wiry to sam wygląd) | wzmocnienia misji, pożyczka NELI |
@@ -512,6 +512,23 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   co daje każde dalsze 100%. Nagrody LVL2–6: Smuga „Impuls”, Wir „Kryształ”, Efekt
   „Pikselowy Wybuch”, Finisz „Fala”, zestaw „Pryzmat”; potem 100 monet + 10
   pryzmatów.
+- **CITY-2 „Drugi brzeg” (Core City LVL 7–12):** drugi sektor miasta na tym samym polu zapisu
+  (`hub.coreLevel` / `hub.coreCharge`, bez nowego pola, zapis v13). Centrum = LVL 1–6 (wygląd,
+  progi i nagrody bez zmian), Drugi brzeg = LVL 7–12, otwarty od LVL 6 (ładowanie LVL 6 → 7 już
+  go buduje); przyrost i reguły (przerwana runda, kampania nie ładuje) bez zmian. Nagroda za LVL
+  7–12 to rozbudowa miasta plus **ta sama** premia co przed CITY-2 (+100 monet + 10 pryzmatów za
+  każde 100% po LVL 6) — bez nowych kosmetyków, walut ani przewagi. Po LVL 12 miasto jest
+  ukończone (karta: „Drugi brzeg ukończony”, LVL 12, bez LVL 13); każde dalsze 100% nadal płaci
+  premię, licznik w zapisie rośnie dalej jak dotąd (nigdy nie jest obniżany — `verifyMigration()`
+  traktuje spadek jako utratę), a ekran pokazuje najwyżej LVL 12. Zapisy z LVL 7+ (z dawnej pętli
+  premii) pokazują Drugi brzeg na swoim poziomie — bez przeliczania historii. Etapy: LVL 6 plac
+  budowy (most, puste działki, przerywane zarysy), 7 przyczółek i pierwsza ulica, 8 kwartał niskiej
+  zabudowy, 9 usługi i plac, 10 fontanna na placu, 11 wysokie budynki i dominanta, 12 Wieża Brzegu i
+  pełne oświetlenie. Miasto ma przełącznik „Centrum / Drugi brzeg” (widok tylko w sesji, nigdy w
+  zapisie): domyślnie sektor rozwijany (Centrum do LVL 6, Drugi brzeg od LVL 7), wybór gracza nie
+  zmienia się sam; przed LVL 6 Drugi brzeg jest widoczny jako zablokowany („odblokuj na poziomie
+  6”). Szyna: Centrum 1–6, Drugi brzeg 7–12; procent i linia „Następny etap · Drugi brzeg” zawsze
+  mówią, co buduje bieżące ładowanie.
 - **Poziom gracza (XP):** każda runda/misja; nagroda w monetach,
   co 3. poziom pryzmaty — pokazywana na karcie XP wyniku (bez osobnej
   planszy pełnoekranowej; te zostają dla nowych funkcji i kosmetyków).
@@ -680,8 +697,11 @@ Zasada: na każdym ekranie jedna oczywista akcja, widoczna bez przewijania
   każdym poziomem pali się więcej okien, a ładowanie poziomu dalej
   stawia kolejne budynki. Poziom zdobyty w tej sesji odsłania etap raz
   (błysk, światło, „NOWY ETAP · …” pod nagłówkiem); mapa nagród ma
-  miniaturę miasta przy każdym poziomie. Po LVL 6 wygląd się nie
-  zmienia (§7: bez prestiżu). Żywa scena Areny z v17 zeszła z Miasta
+  miniaturę miasta przy każdym poziomie. Po LVL 6 Centrum się nie
+  zmienia; dalsze poziomy budują Drugi brzeg (CITY-2, `drawShoreScene()`:
+  ta sama panorama z boku, te same budynki, dźwig i ulica, plus most,
+  nabrzeże i pas rzeki z oszczędnymi odbiciami); po LVL 12 bez zmian
+  (§7: bez prestiżu). Żywa scena Areny z v17 zeszła z Miasta
   (dwa duże, ruchome panele to był nieporządek i zabierały miastu rolę
   haczyka); mini-runda została na ekranie powitalnym.
 - **Dzielnice:** poziomy pasek dzielnic (VISUAL-1: każda dzielnica ma
@@ -829,7 +849,9 @@ główna akcja, złoto — nagroda i cena, zieleń — ukończone / do odebrania
   do krawędzi; `drawCityScene()` bez zmian), herb **LVL**, kapsuła
   „Następna nagroda” z procentem i **szyną LVL 1–6** (poziomy osiągnięte
   pełne, bieżący z rzeczywistym ładunkiem; zbudowane miasto LVL 6 zachowuje
-  pasek swojej powtarzalnej premii). **GRAJ** to największy przycisk, z
+  pasek swojej powtarzalnej premii). CITY-2: nad kapsułą mały przełącznik
+  „Centrum / Drugi brzeg”; w widoku Drugiego brzegu szyna 7–12 (krótki
+  pasek przed 7 = ładowanie LVL 6), a pas rzeki leży pod przełącznikiem. **GRAJ** to największy przycisk, z
   wirem gracza w aktualnie założonym wyglądzie. Kafle Kampanii i Wyzwania
   dnia mają pas nagłówka w kolorze trybu; gotowa skrzynia — złotą krawędź.
   Na bardzo niskiej panoramie (320×568) dźwig stoi, ale plakietka „NOWY

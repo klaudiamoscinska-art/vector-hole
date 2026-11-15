@@ -5107,6 +5107,22 @@ body.wide #bottomNav.bottom-nav { border-top: 0; border-right: 1px solid var(--u
 .u2-rail-node.now { color: #fff; background: #0b2c44; border-color: var(--nc-cyan); box-shadow: 0 0 10px rgba(80, 240, 250, 0.75); transform: scale(1.16); }
 .u2-rail-bar { flex: 1; height: 5px; margin: 0 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .u2-rail-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--nc-cyan), var(--nc-violet)); }
+/* CITY-2: Drugi brzeg's road (LVL 7-12) starts with a short lead-in bar -- LVL 6's charge toward LVL 7. */
+.u2-rail-shore .u2-rail-lead { flex: 0.45; margin-left: 0; }
+/* CITY-2: Centrum / Drugi brzeg -- a small switch riding on the reward capsule's top right edge,
+   over the street of the panorama (never over the headline or GRAJ). */
+.hub-sector-switch { position: absolute; right: 8px; bottom: calc(100% + 6px); z-index: 2; display: flex; gap: 2px; padding: 2px; margin: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(4, 16, 29, 0.86); border: 1px solid rgba(80, 240, 250, 0.35); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); }
+.hub-sector-switch:focus-visible { outline: 2px solid var(--nc-cyan); outline-offset: 2px; }
+.hub-sector-btn { position: relative; display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 10px; border-radius: 999px;
+  font: 800 10px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--nc-text-dim); white-space: nowrap; }
+.hub-sector-btn:hover { color: var(--nc-text); }
+.hub-sector-btn.on { color: #04101D; background: var(--nc-cyan); box-shadow: 0 0 10px rgba(80, 240, 250, 0.45); }
+.hub-sector-lock { display: none; width: 11px; height: 11px; flex: none; }
+.hub-sector-btn.locked .hub-sector-lock { display: block; }
+.hub-sector-btn.locked:not(.on) { color: rgba(242, 248, 255, 0.45); }
+.hub-sector-btn.is-new::after { content: ''; position: absolute; top: 2px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: var(--nc-gold); box-shadow: 0 0 6px var(--nc-gold); }
+@media (max-height: 700px) { .hub-sector-btn { min-height: 22px; padding: 0 8px; font-size: 9px; } }
 /* GRAJ: the biggest thing on the screen, with the player's own vortex on it. */
 #mainMenu .hub-play { flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; padding: 10px 18px 10px 12px !important; border-radius: 22px; text-align: left;
   border: 1.5px solid rgba(255, 255, 255, 0.6); box-shadow: 0 0 0 4px rgba(80, 240, 250, 0.12), 0 14px 34px rgba(80, 240, 250, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.5); }
