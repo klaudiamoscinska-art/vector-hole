@@ -265,7 +265,7 @@ Hipotezy balansowe (każda wymaga osobnej decyzji): siła Turbo combo (mediana w
 ## 11. SHA, testy i ograniczenia
 
 - Analizowany kod: `be583642233be678aff93953646c1e3625dd622f` (`origin/main`, merge PR #106). Drzewo przed audytem czyste.
-- SHA raportu: commit na `claude/hopeful-brown-4ggvy9`, który dodał ten plik (podany w HANDOFF poniżej i w odpowiedzi dla właścicielki).
+- SHA raportu: `87ea331f915a3cd785167b0f4c79f4bbc8b1ce6d` (commit, który dodał raport, skrypt i materiały) na `claude/hopeful-brown-4ggvy9`; następny commit wpisuje tylko to SHA.
 - Uruchomione (wszystkie na tej samej maszynie, Chromium z Playwright):
 
 | Polecenie | Wynik | Uwagi |
@@ -291,7 +291,7 @@ Hipotezy balansowe (każda wymaga osobnej decyzji): siła Turbo combo (mediana w
 
 ```
 STAN PRAC: GG_UX_AUDIT_1 — audyt 6 zgłoszeń ukończony; bez zmian kodu gry/balansu/zapisu/grafiki.
-REPO: klaudiamoscinska-art/vector-hole, gałąź claude/hopeful-brown-4ggvy9; baza origin/main = be583642233be678aff93953646c1e3625dd622f (PR #106 scalony); SHA raportu — patrz odpowiedź końcowa; PR: brak (nie zlecono).
+REPO: klaudiamoscinska-art/vector-hole, gałąź claude/hopeful-brown-4ggvy9; baza origin/main = be583642233be678aff93953646c1e3625dd622f (PR #106 scalony); SHA raportu = 87ea331f915a3cd785167b0f4c79f4bbc8b1ce6d; PR: brak (nie zlecono).
 TESTY: qa/ux-audit1.mjs (6 części) — wykonane, pomiary w qa/out/ux-audit1/*.json; qa/instructions.mjs PASS 4/4; run-all NOT RUN (celowo).
 ZMIANY: docs/GG_UX_AUDIT_1.md (raport), qa/ux-audit1.mjs (skrypt diagnostyczny), design/ux-audit-1/ (18 obrazów JPG, ok. 2,3 MB).
 NIEDOKOŃCZONE: brak w zakresie audytu. Poza zakresem: test na prawdziwym telefonie, Pointer Lock w paczce CG, ścieżka M24.
