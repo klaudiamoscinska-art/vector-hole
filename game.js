@@ -8374,7 +8374,9 @@ function drawShoreScene(canvas, progress, t, opts = {}) {
   const waterH = mini ? 5 : Math.max(22, Math.round(opts.floor || 0));
   const ground = h - streetH - waterH, waterY = ground + streetH;
   const stage = shoreStageLevel(progress);
-  const reveal = opts.reveal && opts.reveal.level === stage && stage > CORE_CITY_CENTER_TOP ? opts.reveal : null;
+  // LVL 6's reveal plays here too (Drugi brzeg is in view from LVL 6): the
+  // Centrum's Core tower on the left is what it lights.
+  const reveal = opts.reveal && opts.reveal.level === stage && (stage > CORE_CITY_CENTER_TOP || opts.centerDone) ? opts.reveal : null;
   const layer = (L) => (stage < L ? 0 : (reveal && L === stage ? clamp(reveal.age / 0.9, 0, 1) : 1));
   const rL = G.riverL * w, rR = G.riverR * w, bankX = G.bank * w;
 
@@ -12908,11 +12910,12 @@ class Game {
   }
 
   /** CITY-2: which Core City sector Miasto shows -- the player's choice this
-   *  session, else the one being built (the Centrum up to LVL 6, Drugi brzeg
-   *  from LVL 7). Never stored; looking never changes progress. */
+   *  session, else the one the charge builds (the Centrum below LVL 6,
+   *  Drugi brzeg from LVL 6: its charge already builds LVL 7). Never
+   *  stored; looking never changes progress. */
   hubSectorView() {
     if (this.hubSector) return this.hubSector;
-    return (this.save.hub.coreLevel || 1) > CORE_CITY_CENTER_TOP ? 'shore' : 'center';
+    return (this.save.hub.coreLevel || 1) >= CORE_CITY_CENTER_TOP ? 'shore' : 'center';
   }
 
   setHubSector(sector) {
@@ -12933,7 +12936,7 @@ class Game {
     center.classList.toggle('on', sector === 'center');
     shore.classList.toggle('on', sector === 'shore');
     shore.classList.toggle('locked', locked);
-    shore.classList.toggle('is-new', level === CORE_CITY_CENTER_TOP && !this.hubShoreSeen);
+    shore.classList.toggle('is-new', level === CORE_CITY_CENTER_TOP && sector !== 'shore' && !this.hubShoreSeen);
     sw.setAttribute('aria-label', sector === 'shore' ? 'Pokaż Centrum' : locked ? 'Pokaż Drugi brzeg — odblokuj na poziomie 6' : 'Pokaż Drugi brzeg');
   }
 
@@ -13873,7 +13876,10 @@ class Game {
       : (streak > 0 ? `Seria: ${streak} ${plural(streak, ['dzień', 'dni', 'dni'])} z rzędu` : `+${CONFIG.daily.completionBonusCoins} monet za ukończenie`);
     // v17.1: GRAJ says what it builds (the city above it). v22: and which
     // mode it is -- Core City is Arena's own progression.
-    document.getElementById('hubPlaySub').textContent = `Arena · runda 2:00 · ${this.coreGainRangeText()} budowy miasta`;
+    // CITY-2: a finished city (LVL 12+) is not built any more -- the round fills the premium.
+    document.getElementById('hubPlaySub').textContent = (this.save.hub.coreLevel || 1) >= CORE_CITY_TOP
+      ? `Arena · runda 2:00 · ${this.coreGainRangeText()} do premii Core City`
+      : `Arena · runda 2:00 · ${this.coreGainRangeText()} budowy miasta`;
   }
 
   /** Core City % a plain finished Arena round adds at the current level
@@ -13986,8 +13992,11 @@ class Game {
     const rounds = Math.max(1, Math.ceil((100 - (s.hub.coreCharge || 0)) / this.coreGainPerRound()));
     if (rounds > CONFIG.ftue.coreHookRounds) return null;
     const reward = CORE_CITY_LEVEL_REWARDS[level + 1];
-    const label = reward ? reward.label : `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
-    return { id: 'core', rounds, text: `Nagroda Core City: ${label}`, color: '#46D99A', icon: REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(reward)] };
+    const premium = `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
+    // CITY-2: LVL 7-12 name the Drugi brzeg stage they build; from LVL 12 only the premium is left.
+    const stage = !reward && level >= CORE_CITY_CENTER_TOP && level < CORE_CITY_TOP && CITY_STAGES[level + 1];
+    const text = reward ? `Nagroda Core City: ${reward.label}` : stage ? `Drugi brzeg LVL ${level + 1} „${stage.name}”: ${premium}` : `Premia Core City: ${premium}`;
+    return { id: 'core', rounds, text, color: '#46D99A', icon: REWARD_CATEGORY_ICONS[this.coreCityRewardCategory(reward)] };
   }
 
   /** The campaign mission to do next: the first uncleared mission (whose
@@ -14279,7 +14288,10 @@ class Game {
       icon: REWARD_CATEGORY_ICONS.bundle,
       title: 'Nagrody Core City',
       body: [
-        `Core City to pasek postępu całego miasta. Każde 100% to nowy poziom, nagroda i nowy wygląd miasta. Teraz: <strong>LVL ${Math.min(level, CORE_CITY_TOP)} · ${pct}%</strong>. Etap miasta: <strong>${now.name}</strong>.`,
+        // CITY-2: below LVL 12 the city grows; from LVL 12 it is built -- a further 100% pays the premium only.
+        level < CORE_CITY_TOP
+          ? `Core City to pasek postępu całego miasta. Każde 100% to nowy poziom, nagroda i nowy wygląd miasta. Teraz: <strong>LVL ${level} · ${pct}%</strong>. Etap miasta: <strong>${now.name}</strong>.`
+          : `Core City jest ukończone: Centrum i Drugi brzeg stoją w całości. Każde dalsze 100% daje premię: +${CONFIG.hub.milestoneFallbackCoins} monet i +${CONFIG.hub.milestoneFallbackPrisms} pryzmatów. Teraz: <strong>LVL ${CORE_CITY_TOP} · ${pct}%</strong>. Etap miasta: <strong>${now.name}</strong>.`,
         `<ul class="info-roadmap">${rows}</ul>`,
         'Drugi brzeg (od LVL 6):',
         `<ul class="info-roadmap">${shoreRows.join('')}</ul>`,
@@ -22280,6 +22292,11 @@ const I18N_EN = {
   // CITY-2: Core City's second sector, Drugi brzeg (LVL 7-12).
   "Centrum": "Downtown",
   "Pokaż Centrum": "Show Downtown",
+  "Core City jest ukończone: Centrum i Drugi brzeg stoją w całości. Każde dalsze 100% daje premię: +{#0} monet i +{#1} pryzmatów. Teraz:": "Core City is complete: Downtown and the Far Shore are fully built. Every further 100% pays a bonus: +{0} coins and +{1} prisms. Now:",
+  "Arena · runda 2:00 · +{#0}–{#1}% do premii Core City": "Arena · round 2:00 · +{0}–{1}% toward the Core City bonus",
+  "Arena · runda 2:00 · +{#0}% do premii Core City": "Arena · round 2:00 · +{0}% toward the Core City bonus",
+  "Drugi brzeg LVL {#0} „{1}”: {2}": "Far Shore LVL {0} “{1}”: {2}",
+  "Premia Core City: {0}": "Core City bonus: {0}",
   "Pokaż Drugi brzeg": "Show the Far Shore",
   "Pokaż Drugi brzeg — odblokuj na poziomie 6": "Show the Far Shore — unlocks at level 6",
   "Drugi brzeg: odblokuj na poziomie 6": "The Far Shore: unlocks at level 6",

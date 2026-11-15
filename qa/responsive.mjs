@@ -54,7 +54,7 @@ export const MATRIX = [
 ];
 // The whole screen catalogue runs in these (the main screens run everywhere).
 const FULL_CATALOGUE = ['320x568', '390x844', '844x390', '640x360', '800x450', '1280x720', '768x1024', '775x328', '390x664', '874x402', '402x812'];
-const MAIN_SCENES = ['welcome', 'hub', 'hubConsent', 'campaign', 'briefing', 'shop', 'challenges', 'arena', 'arenaLate', 'pause', 'evolution', 'results', 'mission', 'missionResult', 'login'];
+const MAIN_SCENES = ['welcome', 'hub', 'hubShore', 'hubConsent', 'campaign', 'briefing', 'shop', 'challenges', 'arena', 'arenaLate', 'pause', 'evolution', 'results', 'mission', 'missionResult', 'login'];
 const EXTRA_SCENES = ['profile', 'leaveConfirm', 'resetConfirm', 'infoSheet', 'unlock', 'missionStart', 'revive', 'ad', 'resultsFailed', 'challengeHub'];
 
 const args = process.argv.slice(2);
@@ -237,6 +237,9 @@ export const SCENES = {
     audit: { root: '#mainMenu', primary: '#btnWelcomePlay', mustSee: ['.welcome-logo', '.welcome-stage'] } },
   hub: { stage: async (p) => { await veteran(p); },
     audit: { root: '#mainMenu', primary: '#btnStart', mustSee: ['#hubCampaignTile', '#btnDaily', '#hubHeroStage', '#bottomNav'] } },
+  // CITY-2: Miasto on Drugi brzeg (LVL 9 opens on it) -- the sector switch over the river, the 7-12 rail.
+  hubShore: { stage: async (p) => { const s = await veteranSave(p, { missions: 30, coins: 900, runsPlayed: 6 }); s.hub = { coreLevel: 9, coreCharge: 30 }; await loadSave(p, s); await p.waitForTimeout(500); },
+    audit: { root: '#mainMenu', primary: '#btnStart', mustSee: ['#hubCampaignTile', '#btnDaily', '#hubHeroStage', '#hubSectorSwitch', '#bottomNav'] } },
   hubConsent: { stage: async (p) => { await veteran(p, { undecided: true }); },
     audit: { root: '#mainMenu', primary: '#btnStart', mustSee: ['#hubCampaignTile', '#btnDaily', '#consentBar', '#btnConsentYes', '#btnConsentNo'] } },
   challengeHub: { stage: async (p) => { await veteran(p); await p.evaluate(() => { const gm = window.game; gm.save.challenge = { seed: 12345, score: 4321, from: 'Ania', receivedAt: Date.now() }; gm.showScreen('mainMenu'); }); await p.waitForTimeout(300); },

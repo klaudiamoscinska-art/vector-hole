@@ -18,24 +18,28 @@ const FRAMES = {
   desktop: { w: 1280, h: 720, mobile: false, dsf: 1 },
   narrow: { w: 375, h: 667, mobile: true, dsf: 2 }
 };
-// [frame, file, level, charge, sector, lang, roadmap]
+// [frame, file, level, charge, sector (null = the default view), lang, act ('roadmap' | 'result')]
 const SCENES = [
   ['phone', 'centrum-lvl3', 3, 46, 'center', 'pl'],
   ['phone', 'centrum-lvl6', 6, 40, 'center', 'pl'],
   ['phone', 'centrum-lvl7-ukonczone', 7, 30, 'center', 'pl'],
   ['phone', 'brzeg-zablokowany-lvl3', 3, 46, 'shore', 'pl'],
-  ['phone', 'brzeg-plac-budowy-lvl6', 6, 40, 'shore', 'pl'],
+  ['phone', 'brzeg-plac-budowy-lvl6', 6, 40, null, 'pl'],
   ['phone', 'brzeg-lvl7', 7, 30, 'shore', 'pl'],
   ['phone', 'brzeg-lvl8', 8, 30, 'shore', 'pl'],
   ['phone', 'brzeg-lvl9', 9, 30, 'shore', 'pl'],
   ['phone', 'brzeg-lvl10', 10, 30, 'shore', 'pl'],
   ['phone', 'brzeg-lvl11', 11, 30, 'shore', 'pl'],
   ['phone', 'brzeg-lvl12', 12, 0, 'shore', 'pl'],
-  ['phone', 'mapa-nagrod-lvl9', 9, 30, 'shore', 'pl', true],
+  ['phone', 'mapa-nagrod-lvl9', 9, 30, 'shore', 'pl', 'roadmap'],
+  ['phone', 'mapa-nagrod-lvl12', 12, 40, null, 'pl', 'roadmap-top'],
+  ['phone', 'en-mapa-nagrod-lvl12', 12, 40, null, 'en', 'roadmap-top'],
+  ['phone', 'wynik-lvl12-premia', 12, 95, null, 'pl', 'result'],
+  ['phone', 'wynik-lvl11-do-12', 11, 95, null, 'pl', 'result'],
   ['phone', 'en-brzeg-lvl7', 7, 30, 'shore', 'en'],
   ['phone', 'en-brzeg-zablokowany-lvl3', 3, 46, 'shore', 'en'],
   ['desktop', 'centrum-lvl6', 6, 40, 'center', 'pl'],
-  ['desktop', 'brzeg-plac-budowy-lvl6', 6, 40, 'shore', 'pl'],
+  ['desktop', 'brzeg-plac-budowy-lvl6', 6, 40, null, 'pl'],
   ['desktop', 'brzeg-lvl7', 7, 30, 'shore', 'pl'],
   ['desktop', 'brzeg-lvl9', 9, 30, 'shore', 'pl'],
   ['desktop', 'brzeg-lvl12', 12, 0, 'shore', 'pl'],
@@ -47,7 +51,7 @@ const SCENES = [
 ];
 const BASE_SCENES = [['phone', 'base-centrum-lvl6', 6, 40], ['desktop', 'base-centrum-lvl6', 6, 40], ['phone', 'base-centrum-lvl3', 3, 46]];
 
-async function shoot(url, frame, file, L, c, sector, lang, roadmap) {
+async function shoot(url, frame, file, L, c, sector, lang, act) {
   const f = FRAMES[frame];
   const g = await openGame(url, { viewport: { width: f.w, height: f.h }, mobile: f.mobile, deviceScaleFactor: f.dsf, locale: lang === 'en' ? 'en-US' : 'pl-PL', initScript: frozenDateScript('2026-11-13T10:00:00Z') + QA_RANDOM });
   const s = await veteranSave(g.page, { missions: 29, coins: 1240, runsPlayed: 23 });
@@ -57,7 +61,18 @@ async function shoot(url, frame, file, L, c, sector, lang, roadmap) {
   await g.page.waitForFunction(READY);
   if (sector) await g.page.evaluate((v) => window.game.setHubSector(v), sector);
   await g.page.waitForTimeout(1600);
-  if (roadmap) { await g.page.evaluate(() => window.game.openCoreCityRoadmap()); await g.page.waitForTimeout(400); await g.page.evaluate(() => { const b = document.getElementById('infoSheetBody'); const rows = b.querySelectorAll('.info-roadmap'); if (rows[1]) rows[1].scrollIntoView({ block: 'center' }); }); await g.page.waitForTimeout(200); }
+  if (act && act.startsWith('roadmap')) {
+    await g.page.evaluate(() => window.game.openCoreCityRoadmap()); await g.page.waitForTimeout(400);
+    if (act === 'roadmap') await g.page.evaluate(() => { const b = document.getElementById('infoSheetBody'); const rows = b.querySelectorAll('.info-roadmap'); if (rows[1]) rows[1].scrollIntoView({ block: 'center' }); });
+    await g.page.waitForTimeout(200);
+  }
+  if (act === 'result') {
+    // one finished Arena round (podium, record) -- the result's Core City card and its next-round line
+    await g.page.evaluate(() => { const gm = window.game; gm.save.stats.bestArenaScore = 100; gm.startRound({ seed: 4242 }); cancelAnimationFrame(gm.rafId); gm.player.score = 9999; gm.bots.forEach((b, i) => { b.score = 1000 - i * 50; }); gm.timeRemaining = 0; gm.endRound(); });
+    await g.page.waitForTimeout(3200);
+    await g.page.evaluate(() => { const gm = window.game; gm.unlockQueue = []; clearTimeout(gm.unlockShowTimer); document.getElementById('unlockOverlay').classList.add('hidden'); document.querySelectorAll('.reward-celebration, #rewardCelebration').forEach(e => e.classList.add('hidden')); const c = document.querySelector('#gameOverScreen .result-core-card'); if (c) c.scrollIntoView({ block: 'center' }); });
+    await g.page.waitForTimeout(300);
+  }
   const dir = path.join(DEST, 'shots', `${frame}-${f.w}x${f.h}`);
   fs.mkdirSync(dir, { recursive: true });
   const p = path.join(dir, file + '.png');
@@ -69,7 +84,7 @@ async function shoot(url, frame, file, L, c, sector, lang, roadmap) {
 
 const made = {};
 const cand = await serve();
-for (const [frame, file, L, c, sector, lang, roadmap] of SCENES) made[`${frame}/${file}`] = await shoot(cand.url, frame, file, L, c, sector, lang, roadmap);
+for (const [frame, file, L, c, sector, lang, act] of SCENES) made[`${frame}/${file}`] = await shoot(cand.url, frame, file, L, c, sector, lang, act);
 cand.server.close();
 const baseDir = path.join(OUT, 'city2-base');
 fs.mkdirSync(baseDir, { recursive: true });
@@ -93,7 +108,9 @@ figcaption{margin-top:6px;font-size:14px;font-weight:700} .note{font-size:13px;c
 <div class="row">${img('phone/base-centrum-lvl3', 'PRZED · Centrum LVL 3')}${img('phone/centrum-lvl3', 'PO · Centrum LVL 3')}${img('phone/base-centrum-lvl6', 'PRZED · Centrum LVL 6')}${img('phone/centrum-lvl6', 'PO · Centrum LVL 6 (ukończone)')}${img('phone/centrum-lvl7-ukonczone', 'PO · Centrum oglądane na LVL 7')}${img('desktop/base-centrum-lvl6', 'PRZED · komputer LVL 6', true)}${img('desktop/centrum-lvl6', 'PO · komputer LVL 6', true)}</div>
 <p class="note">Rysunek Centrum jest identyczny piksel w piksel z bazą (qa/city2.mjs: 15 klatek × 3 rozdzielczości). Zmieniają się tylko teksty karty przy LVL 6+ i nowy przełącznik.</p>
 <h2>Drugi brzeg — telefon 390×844: od zablokowanego do ukończonego</h2>
-<div class="row">${img('phone/brzeg-zablokowany-lvl3', 'LVL 3 · zablokowany')}${img('phone/brzeg-plac-budowy-lvl6', 'LVL 6 · plac budowy')}${img('phone/brzeg-lvl7', 'LVL 7 · przyczółek')}${img('phone/brzeg-lvl8', 'LVL 8 · kwartał')}${img('phone/brzeg-lvl9', 'LVL 9 · plac')}${img('phone/brzeg-lvl10', 'LVL 10 · fontanna')}${img('phone/brzeg-lvl11', 'LVL 11 · dominanta')}${img('phone/brzeg-lvl12', 'LVL 12 · ukończony')}${img('phone/mapa-nagrod-lvl9', 'Mapa nagród · LVL 7–12')}</div>
+<div class="row">${img('phone/brzeg-zablokowany-lvl3', 'LVL 3 · zablokowany')}${img('phone/brzeg-plac-budowy-lvl6', 'LVL 6 · plac budowy (domyślny widok)')}${img('phone/brzeg-lvl7', 'LVL 7 · przyczółek')}${img('phone/brzeg-lvl8', 'LVL 8 · kwartał')}${img('phone/brzeg-lvl9', 'LVL 9 · plac')}${img('phone/brzeg-lvl10', 'LVL 10 · fontanna')}${img('phone/brzeg-lvl11', 'LVL 11 · dominanta')}${img('phone/brzeg-lvl12', 'LVL 12 · ukończony')}${img('phone/mapa-nagrod-lvl9', 'Mapa nagród · LVL 7–12')}</div>
+<h2>Ukończone miasto (LVL 12+): mapa nagród i wynik rundy nie zapowiadają dalszej budowy</h2>
+<div class="row">${img('phone/mapa-nagrod-lvl12', 'Mapa nagród · LVL 12')}${img('phone/en-mapa-nagrod-lvl12', 'EN · mapa nagród LVL 12')}${img('phone/wynik-lvl11-do-12', 'Wynik rundy · 11 → 12')}${img('phone/wynik-lvl12-premia', 'Wynik rundy · po LVL 12 (premia)')}</div>
 <h2>Drugi brzeg — komputer 1280×720</h2>
 <div class="row">${img('desktop/brzeg-plac-budowy-lvl6', 'LVL 6 · plac budowy', true)}${img('desktop/brzeg-lvl7', 'LVL 7', true)}${img('desktop/brzeg-lvl9', 'LVL 9', true)}${img('desktop/brzeg-lvl12', 'LVL 12', true)}${img('desktop/en-brzeg-lvl9', 'EN · LVL 9', true)}</div>
 <h2>Wąski telefon 375×667 i wersja EN</h2>

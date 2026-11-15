@@ -276,13 +276,14 @@ async function screenChecks(url) {
   // Core City on every device, and a desktop window resized live
   for (const key of Object.keys(DEVICES)) {
     const g = await open(url, key);
-    for (const [label, o] of [['LVL 1', {}], ['LVL 3, mid-build', { core: [3, 60] }]]) {
+    // CITY-2: also Drugi brzeg mid-build (LVL 9) and the finished city (LVL 12) -- both open on Drugi brzeg.
+    for (const [label, o] of [['LVL 1', {}], ['LVL 3, mid-build', { core: [3, 60] }], ['LVL 9, Drugi brzeg', { core: [9, 30] }], ['LVL 12, Drugi brzeg complete', { core: [12, 0] }]]) {
       await veteran(g.page);
       if (o.core) await g.page.evaluate(([lv, ch]) => { const gm = window.game; gm.save.hub.coreLevel = lv; gm.save.hub.coreCharge = ch; gm.hubCityShown = null; gm.showScreen('mainMenu'); }, o.core);
       await g.page.waitForTimeout(700);
       const c = await g.page.evaluate(CITY);
       out.push(report(`${DEVICES[key][2]} Miasto (${label}): the skyline, the crane and "NOWY BUDYNEK" stay under the headline; the badge never overlaps it`, c.ok, JSON.stringify(c)));
-      await shot(g.page, `city-${key}-${o.core ? 'lvl3' : 'lvl1'}`);
+      await shot(g.page, `city-${key}-lvl${o.core ? o.core[0] : 1}`);
     }
     // results: the way back in view and tappable; ZAGRAJ JESZCZE RAZ ≤ 2 lines
     await g.page.evaluate(() => { const gm = window.game; gm.startRound({ seed: 777 }); cancelAnimationFrame(gm.rafId); gm.player.score = 4200; gm.endRound(); });

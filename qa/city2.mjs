@@ -69,16 +69,20 @@ const GEAR = () => { const s = window.game.save; return JSON.stringify([s.owned,
 /* ============================== 1. SAVES ============================== */
 async function savesChecks(url) {
   const out = [];
-  for (const [L, c, view] of [[1, 0, 'center'], [5, 73, 'center'], [6, 40, 'center'], [9, 12, 'shore'], [15, 55, 'shore']]) {
+  for (const [L, c, view] of [[1, 0, 'center'], [5, 73, 'center'], [6, 40, 'shore'], [9, 12, 'shore'], [12, 0, 'shore'], [15, 55, 'shore']]) {
     const g = await open(url, { hub: { coreLevel: L, coreCharge: c }, edit: (s) => { s.prisms = 37; s.owned.push('krysztal'); s.auras.owned.push('impuls'); } });
     await wait(900);
     const r = await g.page.evaluate(async (CARDsrc) => {
       const card = (0, eval)('(' + CARDsrc + ')');
       const gm = window.game, stored = localStorage.getItem('vectorHoleSave_v1'), s0 = JSON.parse(stored);
       const a = card();
+      const play = document.getElementById('hubPlaySub').textContent;
+      gm.openCoreCityRoadmap(); await new Promise(r => setTimeout(r, 80));
+      const road = document.getElementById('infoSheetBody').textContent; gm.closeInfoSheet();
+      const c0 = gm.save.hub.coreCharge; gm.save.hub.coreCharge = 95; const hook = (gm.nextRoundHook() || {}).text || null; gm.save.hub.coreCharge = c0;
       gm.setHubSector('shore'); await new Promise(r => setTimeout(r, 300)); const shore = card();
       gm.setHubSector('center'); await new Promise(r => setTimeout(r, 300)); const center = card();
-      return { a, shore, center, hub: gm.save.hub, coins: gm.save.coins === s0.coins, prisms: gm.save.prisms === 37, gear: JSON.stringify(gm.save.owned) === JSON.stringify(s0.owned) && JSON.stringify(gm.save.auras.owned) === JSON.stringify(s0.auras.owned),
+      return { a, play, road, hook, shore, center, hub: gm.save.hub, coins: gm.save.coins === s0.coins, prisms: gm.save.prisms === 37, gear: JSON.stringify(gm.save.owned) === JSON.stringify(s0.owned) && JSON.stringify(gm.save.auras.owned) === JSON.stringify(s0.auras.owned),
         guard: SAVE_GUARD.state, untouched: localStorage.getItem('vectorHoleSave_v1') === stored, schema: JSON.parse(localStorage.getItem('vectorHoleSave_v1')).schemaVersion, hubKeys: Object.keys(gm.save.hub).sort().join(',') };
     }, CARD.toString());
     const shown = Math.min(L, 12);
@@ -89,8 +93,12 @@ async function savesChecks(url) {
     out.push(report(`Save LVL ${L}: opens on ${view === 'shore' ? 'Drugi brzeg' : 'the Centrum'} (the sector being built), LVL ${shown} on the badge, the ${c}% charge, the rails 1-6 / 7-12`,
       r.a.sector === view && r.a.drawn === view && r.a.lvl === 'LVL ' + shown && r.a.pct === c + '%' && r.center.rail === centerRail && r.shore.rail === shoreRail
       && r.shore.lead === (L > 6 ? '100%' : L === 6 ? c + '%' : '0%') && r.center.drawn === 'center' && r.shore.drawn === 'shore', JSON.stringify({ a: r.a, center: r.center.rail, shore: r.shore.rail, lead: r.shore.lead })));
-    if (L === 6) out.push(report('Save LVL 6: the Centrum shows as complete, the next line names Drugi brzeg LVL 7 (its stage + the same premium as before), Drugi brzeg is open (not locked) and marked new',
-      r.center.title === 'Centrum ukończone' && /Drugi brzeg/.test(r.center.sub) && r.center.prefix === 'Następny etap · Drugi brzeg:' && r.center.chip === 'LVL 7 „Przyczółek” + 100 monet + 10 pryzmatów' && !r.a.shoreLocked
+    out.push(report(`Save LVL ${L}: ${L >= 12 ? 'a finished city -- GRAJ, the roadmap and the next-round line promise only the premium, no further building' : 'a growing city -- GRAJ and the roadmap promise building'}`,
+      L >= 12 ? (/do premii Core City$/.test(r.play) && !/budowy miasta/.test(r.play) && /Core City jest ukończone: Centrum i Drugi brzeg stoją w całości\. Każde dalsze 100% daje premię: \+100 monet i \+10 pryzmatów/.test(r.road) && !/nowy wygląd miasta/.test(r.road) && /LVL 12 · /.test(r.road) && !/LVL 1[3-9]/.test(r.road) && r.hook === 'Premia Core City: +100 monet + 10 pryzmatów')
+        : (/budowy miasta$/.test(r.play) && /nowy wygląd miasta/.test(r.road) && !/jest ukończone/.test(r.road) && (L < 6 || r.hook === `Drugi brzeg LVL ${L + 1} „${['', '', '', '', '', '', '', 'Przyczółek', 'Kwartał', 'Plac', 'Fontanna', 'Dominanta', 'Wieża Brzegu'][L + 1]}”: +100 monet + 10 pryzmatów`)),
+      JSON.stringify({ play: r.play, hook: r.hook, road: r.road.slice(0, 260) })));
+    if (L === 6) out.push(report('Save LVL 6 (no choice yet): opens on Drugi brzeg, where the charge builds LVL 7; the switch shows the finished Centrum; the next line names Drugi brzeg LVL 7 (its stage + the same premium as before); Drugi brzeg not locked',
+      r.a.sector === 'shore' && r.a.drawn === 'shore' && r.center.title === 'Centrum ukończone' && /Drugi brzeg/.test(r.center.sub) && r.center.prefix === 'Następny etap · Drugi brzeg:' && r.center.chip === 'LVL 7 „Przyczółek” + 100 monet + 10 pryzmatów' && !r.a.shoreLocked
       && r.shore.title === 'Każda runda Areny buduje Drugi brzeg' && r.shore.stage === 6, JSON.stringify({ center: r.center, shore: r.shore })));
     if (L < 6) out.push(report(`Save LVL ${L}: Drugi brzeg is visible but locked ("odblokuj na poziomie 6"), its view says so; the Centrum's reward line is unchanged`,
       r.a.shoreLocked && r.a.switchLabel === 'Pokaż Drugi brzeg — odblokuj na poziomie 6' && r.shore.title === 'Drugi brzeg: odblokuj na poziomie 6' && r.center.prefix === 'Następna nagroda:' && r.center.title === 'Każda runda Areny buduje Twoje miasto', JSON.stringify({ a: r.a, shore: r.shore })));
@@ -167,16 +175,27 @@ async function independenceChecks(url) {
   // a chosen sector stays across a level-up; with no choice, the sector being built opens
   const stay = await g.page.evaluate(async (ROUNDsrc) => {
     const gm = window.game, round = (0, eval)('(' + ROUNDsrc + ')');
-    gm.hubSector = null; gm.save.hub.coreLevel = 6; gm.save.hub.coreCharge = 95; gm.showScreen('mainMenu'); gm.updateCoinDisplays();
+    const cv = document.getElementById('hubCityCanvas');
+    gm.hubSector = null; gm.save.hub.coreLevel = 5; gm.save.hub.coreCharge = 95; gm.showScreen('mainMenu'); gm.updateCoinDisplays();
+    await new Promise(r => setTimeout(r, 600));
     const auto0 = gm.hubSectorView();
     await round(501); gm.showScreen('mainMenu'); gm.updateCoinDisplays();
-    const auto1 = gm.hubSectorView();
+    const auto1 = gm.hubSectorView(), level1 = gm.save.hub.coreLevel;
+    // LVL 6's reveal plays over Drugi brzeg (the Centrum's tower lights on its left)
+    let reveal6 = false;
+    for (let i = 0; i < 80 && !reveal6; i++) { await new Promise(r => setTimeout(r, 100)); reveal6 = cv.__reveal === 6 && cv.__skyline.sector === 'shore'; }
     document.getElementById('btnSectorCenter').click();
+    const chosen0 = gm.hubSectorView();
     gm.save.hub.coreCharge = 95; await round(502); gm.showScreen('mainMenu'); gm.updateCoinDisplays();
-    return { auto0, auto1, chosen: gm.hubSectorView(), level: gm.save.hub.coreLevel };
+    const chosen1 = gm.hubSectorView(), level2 = gm.save.hub.coreLevel;
+    document.getElementById('btnSectorShore').click();
+    gm.save.hub.coreCharge = 95; await round(503); gm.showScreen('mainMenu'); gm.updateCoinDisplays();
+    return { auto0, auto1, level1, reveal6, chosen0, chosen1, level2, chosen2: gm.hubSectorView(), level3: gm.save.hub.coreLevel, hub: JSON.stringify(gm.save.hub) };
   }, ROUND.toString());
-  out.push(report('No choice made: LVL 6 opens on the Centrum, LVL 7 on Drugi brzeg; a sector the player chose stays in view after the next level-up (no automatic switch)',
-    stay.auto0 === 'center' && stay.auto1 === 'shore' && stay.chosen === 'center' && stay.level === 8, JSON.stringify(stay)));
+  out.push(report('5 -> 6 with no choice made: LVL 5 shows the Centrum, the round reaching LVL 6 opens Drugi brzeg (where the charge builds LVL 7) and plays the LVL 6 reveal there',
+    stay.auto0 === 'center' && stay.level1 === 6 && stay.auto1 === 'shore' && stay.reveal6, JSON.stringify(stay)));
+  out.push(report('A sector chosen by hand stays in view across level-ups (the finished Centrum at 6 -> 7, Drugi brzeg at 7 -> 8): no automatic switch, the level unchanged by the choice',
+    stay.chosen0 === 'center' && stay.chosen1 === 'center' && stay.level2 === 7 && stay.chosen2 === 'shore' && stay.level3 === 8, JSON.stringify(stay)));
   // keyboard: Enter on a focused switch button is that button's (not GRAJ, not the roadmap)
   const keys = await g.page.evaluate(async () => {
     const gm = window.game; gm.showScreen('mainMenu'); gm.hubSector = 'center'; gm.updateCoinDisplays();
@@ -329,7 +348,7 @@ async function langChecks(url) {
       const gm = window.game; gm.setHubSector(view); await new Promise(r => setTimeout(r, 400));
       gm.openCoreCityRoadmap(); await new Promise(r => setTimeout(r, 150));
       const sheet = document.getElementById('infoSheetBody').textContent; gm.closeInfoSheet();
-      const card = document.getElementById('hubHeroStage').textContent.replace(/\s+/g, ' ');
+      const card = (document.getElementById('hubHeroStage').textContent + ' ' + document.getElementById('hubPlaySub').textContent).replace(/\s+/g, ' ');
       return { lang: I18N.lang, card, sheet, polish: [card, sheet].map(t => (t.match(/[ąćęłńóśźż]|\b(rund\w*|monet\w*|pryzmat\w*|Drugi brzeg|Centrum|odblokuj|ukończon\w*|etap)\b/gi) || [])).flat(), misses: [...I18N.misses].filter(m => /brzeg|Centrum|etap|Przycz|Kwarta|Plac|Fontann|Dominant|Wieża Brzegu|odblokuj/i.test(m)) };
     }, view);
     out.push(report(`English, LVL ${hub.coreLevel} (${view}): the city card and the roadmap are fully English, no untranslated CITY-2 string`, r.lang === 'en' && !r.polish.length && !r.misses.length && /Far Shore|Downtown/.test(r.card),
