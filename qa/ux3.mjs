@@ -497,7 +497,9 @@ async function overdriveChecks(baseUrl, candUrl) {
       const g = window.game; const marks = [20, 12.5, 11.5, 5, 1]; const cps = [];
       const lum = () => { const d = g.ctx.getImageData(0, 0, g.canvas.width, g.canvas.height).data; let s = 0, n = 0; for (let i = 0; i < d.length; i += 64) { s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; n++; } return s / n; };
       window.__qaSeedRandom(seed);
-      const res = window.__qaPlayArena({ round: { seed }, style: 'casual', clock0: 1e6, onFrame(f, g) {
+      // UX-FIX-B changed three evolution cards on purpose (Skaner, Impuls ssący, Łowca): the
+      // round is compared with the cards skipped, so only the finish is what differs.
+      const res = window.__qaPlayArena({ round: { seed }, style: 'casual', clock0: 1e6, pickCards: false, onFrame(f, g) {
         if (marks.length && g.timeRemaining <= marks[0]) {
           const at = marks.shift();
           g.render(f / 30); const L = lum();
