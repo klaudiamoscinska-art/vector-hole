@@ -11341,6 +11341,20 @@ class Game {
     return this.startCovered(null) ? null : btn;
   }
 
+  /** MISSION-ENTER-1: the START button of the tap-to-start card ("Zegar ruszy po
+   *  dotknięciu") when Enter may press it: the card waits for its tap (introPending,
+   *  the mission not ended), no ad plays, and nothing but the card is open. Its click
+   *  is the existing START action (beginMissionPlay() through the card's click
+   *  handler): nothing is launched or charged again. Otherwise null. */
+  missionGoButton() {
+    const card = document.getElementById('missionStartOverlay');
+    const m = this.mission;
+    if (!this.introPending || !m || m.ended || !card || card.classList.contains('hidden') || !card.getClientRects().length || this.monetization.busy) return null;
+    const btn = card.querySelector('#btnMissionGo');
+    if (!btn || btn.disabled || !btn.getClientRects().length) return null;
+    return this.startCovered(card) ? null : btn;
+  }
+
   /** True when a sheet, dialog, card or ad covers the screen: any visible
    *  overlay / modal except `allowed` (the screen whose own button Enter
    *  may press). Shown = laid out. */
@@ -11477,7 +11491,8 @@ class Game {
     });
 
     // MISSION-ENTER-1: the same key on an open mission card = that card's GRAJ (missionStartButton(),
-    // the same click, so launchMission() charges the picked boosters once). Extends this handler
+    // the same click, so launchMission() charges the picked boosters once), and on the START card
+    // that follows = its START (a new press; the click only starts the clock). Extends this handler
     // -- there is no second Enter listener.
     // ARENA-FIX-1: Enter on Arena's start screen = its GRAJ button (the same
     // click, so the same start). One press = one round: a held key's
@@ -11485,12 +11500,18 @@ class Game {
     // also firing its own Enter click. Never while typing, while another
     // control has focus (Enter is that control's), under a sheet / dialog /
     // card, or once a round runs (arenaStartButton() is null then).
+    let enterLaunched = false;   // an Enter press launched a mission and is still down
     window.addEventListener('keydown', (e) => {
       if (e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
       if (e.repeat || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || isTextField(e.target)) return;
       const arena = this.arenaStartButton();
-      const start = arena || this.missionStartButton();
+      const brief = arena ? null : this.missionStartButton();
+      const go = arena || brief ? null : this.missionGoButton();
+      const start = arena || brief || go;
       if (!start) return;
+      // The press that launched the mission must not also start its clock: the START card
+      // needs the key released and pressed again (a repeat is already ignored above).
+      if (go && enterLaunched) return;
       // Enter on another visible control is that control's own action. A control that was just
       // hidden (a screen switch) can keep the focus until the next frame: it is not on screen
       // any more, so it does not count (preventDefault() below stops its native activation).
@@ -11498,13 +11519,17 @@ class Game {
       // opened it) is under the modal and not reachable: only a control inside the card (a
       // booster, the close button, an ad button) keeps its own Enter.
       const f = document.activeElement;
-      const underCard = !arena && !document.getElementById('missionBriefing').contains(f);
+      const card = brief ? document.getElementById('missionBriefing') : go ? document.getElementById('missionStartOverlay') : null;
+      const underCard = !!card && !card.contains(f);
       if (f && f !== start && f !== document.body && f !== document.documentElement && f.closest && !underCard
         && f.closest('button, a[href], [role="button"], [tabindex], select, input, textarea, [contenteditable]')
         && f.getClientRects().length) return;
       e.preventDefault();
+      if (brief) enterLaunched = true;
       start.click();
     });
+    window.addEventListener('keyup', (e) => { if (e.code === 'Enter' || e.code === 'NumpadEnter') enterLaunched = false; });
+    window.addEventListener('blur', () => { enterLaunched = false; });
 
     // ---- FTUE-2: the host page never scrolls or zooms under the game ----
     // In a Poki / CrazyGames iframe, arrow keys, Space, PageUp/Down and the
@@ -14849,7 +14874,7 @@ class Game {
       (twists || boosts ? `<div class="mc-twists">${twists}${boosts}</div>` : '') +
       ((def.twists || []).length ? `<ul class="mc-twist-hints">${def.twists.map(t => `<li>${TWIST_INFO[t].hint}</li>`).join('')}</ul>` : '') +
       `<div class="start-meta"><span><svg class="inline-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${formatClock(def.timeLimit + (this.mission.bonusTime || 0))}</span><span class="start-stars">${(def.stars || []).slice(1).map((st, i) => `${'★'.repeat(i + 2)} ${this.starShortLabel(st)}`).join(' · ')}</span></div>` +
-      `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg></button>` +
+      `<button id="btnMissionGo" class="btn btn-primary btn-mega">START<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>${PLAY_KEY_HTML}</button>` +
       `<p class="start-tap">Zegar ruszy po dotknięciu</p>` +
       // Boosters exist only after their unlock mission: before that the
       // link just backs out to the map (the briefing would offer nothing).
