@@ -77,7 +77,7 @@ Ta sama maszyna (kontener sesji), kandydat = ta gałąź; logi w `qa/out/city2-r
 | `qa/v19.mjs` (EN) | PASS 16/16 |
 | `qa/design.mjs` | PASS 29/29 |
 | `qa/flow.mjs` | PASS 35/35 |
-| `qa/leave-run.mjs` | PASS |
+| `qa/leave-run.mjs` | PASS 22/22 |
 | `qa/instructions.mjs` | PASS 4/4 |
 | Pełny `qa/run-all.mjs`, `responsive`, `devices`, `perf1`, `balance1`, `release*` | NOT RUN (celowo — zmiana nie dotyka rozgrywki, ekonomii, workflow ani release) |
 
