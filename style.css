@@ -5511,3 +5511,8 @@ html[lang="en"] .nav-tab.is-new.is-mode .nav-tab-icon::after { content: 'MODE 2'
 .hub-quick-campaign.is-intro::after { content: 'TRYB 2'; background: var(--nc-green); box-shadow: 0 0 8px var(--nc-green); }
 html[lang="en"] .hub-quick-campaign.is-intro::after { content: 'MODE 2'; }
 .hub-quick-campaign.is-mode-hint .hub-quick-sub { color: var(--nc-green); }
+/* UX-FIX-A: a landscape phone / small portal frame (640x360) -- the switch on one line, the hint tight under it. */
+body.compact #pauseSheet .desk-controls-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 8px; }
+body.compact #pauseSheet .desk-controls-row .control-toggle { flex: 0 1 300px; }
+body.compact #pauseSheet .desk-controls-row .toggle-btn { padding-top: 5px; padding-bottom: 5px; }
+body.compact #pauseSheet .desk-controls-hint { margin: -4px 0 0; font-size: 10px; }

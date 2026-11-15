@@ -2590,9 +2590,9 @@ const REWARD_CATEGORY_ICONS = {
 // works, and a one-sentence `desc` with the real numbers from CONFIG --
 // plus a looping demo (drawPowerDemo()) instead of a bare icon.
 const MUTATIONS = [
-  { id: 'magnet_pulse', name: 'Magnes', tag: 'SŁABNIE, GDY ROŚNIESZ', desc: 'Jadalne obiekty z pola wokół wiru same lecą do Ciebie. Pole ma stałą wielkość: im większy wir, tym mniej wystaje poza brzeg, a bardzo duży wir je zakrywa.', icon: 'magnet', weight: 3, color: '#50F0FA' },
-  { id: 'slipstream', name: 'Turbo combo', tag: 'OD COMBO ×3', desc: 'Od 3. kęsa w combo każdy kolejny kęs daje +60% prędkości na 1,5 s i odnawia ten czas — dopóki trzymasz combo, jedziesz szybciej.', icon: 'bolt', weight: 3, color: '#46D99A' },
-  { id: 'phase_edge', name: 'Tarcza', tag: 'PO ODRODZENIU', desc: 'Nie chroni przed zjedzeniem. Gdy rywal Cię pochłonie, po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
+  { id: 'magnet_pulse', name: 'Magnes', tag: 'SŁABNIE, GDY ROŚNIESZ', desc: 'Jadalne obiekty z pola wokół wiru same lecą do Ciebie. Duży wir zakrywa pole.', icon: 'magnet', weight: 3, color: '#50F0FA' },
+  { id: 'slipstream', name: 'Turbo combo', tag: 'OD COMBO ×3', desc: 'Od combo ×3 każdy kęs daje +60% prędkości na 1,5 s i odnawia ten czas.', icon: 'bolt', weight: 3, color: '#46D99A' },
+  { id: 'phase_edge', name: 'Tarcza', tag: 'PO ODRODZENIU', desc: 'Nie chroni przed zjedzeniem: po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
   { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
   { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
   { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM ROZMIARZE', desc: 'Gdy urośniesz o rozmiar, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
@@ -23923,12 +23923,12 @@ const I18N_EN = {
   "{#0} dzielnic · otwarte od początku": "{0} districts · open from the start",
   "Dzielnice: {#0} misji z celami · wejdź z Miasta": "Districts: {0} missions with goals · enter from the City",
   "SŁABNIE, GDY ROŚNIESZ": "FADES AS YOU GROW",
-  "Jadalne obiekty z pola wokół wiru same lecą do Ciebie. Pole ma stałą wielkość: im większy wir, tym mniej wystaje poza brzeg, a bardzo duży wir je zakrywa.": "Edible objects in a field around the vortex fly to you on their own. The field has a fixed size: the bigger the vortex, the less of it sticks out past the rim, and a very big vortex covers it.",
   "OD COMBO ×3": "FROM A ×3 COMBO",
-  "Od 3. kęsa w combo każdy kolejny kęs daje +60% prędkości na 1,5 s i odnawia ten czas — dopóki trzymasz combo, jedziesz szybciej.": "From the 3rd bite of a combo, every further bite gives +60% speed for 1.5 s and renews it — keep the combo going and you stay fast.",
   "PO ODRODZENIU": "AFTER RESPAWN",
-  "Nie chroni przed zjedzeniem. Gdy rywal Cię pochłonie, po odrodzeniu masz 4 s ochrony zamiast 2 s.": "It doesn't stop you being eaten. When a rival swallows you, you respawn with 4 s of protection instead of 2 s.",
   "MAGNES: wir zakrył pole": "MAGNET: the vortex covers its field",
+  "Jadalne obiekty z pola wokół wiru same lecą do Ciebie. Duży wir zakrywa pole.": "Edible objects in a field around the vortex fly to you on their own. A big vortex covers the field.",
+  "Od combo ×3 każdy kęs daje +60% prędkości na 1,5 s i odnawia ten czas.": "From a ×3 combo, every bite gives +60% speed for 1.5 s and renews it.",
+  "Nie chroni przed zjedzeniem: po odrodzeniu masz 4 s ochrony zamiast 2 s.": "It doesn't stop you being eaten: after respawning you get 4 s of protection instead of 2 s.",
 };
 
 window.addEventListener('DOMContentLoaded', () => {
