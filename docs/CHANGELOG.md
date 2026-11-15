@@ -5,7 +5,7 @@ Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
 ## UX-FIX-C — Warsztat: podglądy kategorii, prawdziwe smugi, efekty kształtem, dekoracje finiszu (zapis nadal v13; zależne od UX-FIX-B; ceny, nagrody, ID i posiadanie bez zmian)
-- **Smuga:** prawdziwy ślad za wirem w ruchu (≤ 12 punktów, wygasa po zatrzymaniu, reset przy odrodzeniu / skoku); 6 wariantów
+- **Smuga:** prawdziwy ślad za wirem w ruchu (≤ 14 punktów, wygasa po zatrzymaniu, reset przy odrodzeniu / skoku); 6 wariantów
   kształtem; dawny pierścień usunięty.
 - **Efekt pochłaniania:** kształty (piksele, płatki, szczelina, trójkąty pryzmatu); mały kęs lekki (6 cząstek, od brzegu wiru),
   większy z krótkim wybuchem; hitboxy, czas jedzenia, punkty, hit-stop bez zmian.

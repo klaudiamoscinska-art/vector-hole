@@ -588,10 +588,10 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   przycisku. Ponowne naciśnięcie nic nie robi; Warsztat otwarty z nawigacji nie
   ma oznaczeń.
 - **Kosmetyki poza wirem (UX-FIX-C, tylko wygląd; ceny, nagrody, ID i posiadanie bez zmian):**
-  **Smuga** to prawdziwy ślad za wirem w ruchu (`drawAuraTrail()`, `Hole.sampleTrail()`): punkt co 0,22 r drogi, najwyżej 12
-  (ok. 2,6 r śladu), każdy znika po `0,6 + r/200` s — zatrzymany wir gubi ślad w niecałą sekundę; skok (odrodzenie, teleport)
+  **Smuga** to prawdziwy ślad za wirem w ruchu (`drawAuraTrail()`, `Hole.sampleTrail()`): punkt co 0,3 r drogi, najwyżej 14
+  (ok. 4 r śladu), każdy znika po `0,9 + r/300` s — zatrzymany wir gubi ślad w ok. sekundę; skok (odrodzenie, teleport)
   zaczyna ślad od nowa, bez linii przez mapę; tylko pamięć, nic w zapisie. Rysowany nad studnią grawitacyjną, pod wirem,
-  szerokość ≤ 0,62 r, krycie ≤ 0,5 (obiekty i rywale widoczni). Warianty kształtem: Iskra — iskry, Żar — wstęga, Zawirowanie —
+  szerokość ≤ 0,7 r, krycie ≤ 0,5 (obiekty i rywale widoczni). Warianty kształtem: Iskra — iskry, Żar — wstęga, Zawirowanie —
   dwie skręcone nitki, Impuls — strzałki-impulsy, Pryzmat — trzy linie w kolorach palety, Zorza Startu — miękka zorza. Dawny
   pulsujący pierścień wokół wiru usunięty. **Efekt pochłaniania** ma kształt (`shape`): Pikselowy Wybuch — kwadratowe piksele,
   Neonowa Róża — płatki, Fioletowa Szczelina — szczelina, Pryzmat — trójkąty w czterech kolorach (odróżnia się od Klasycznego);

@@ -76,7 +76,7 @@ async function trailChecks(url) {
       // stop: within life(r) s nothing is left but the vortex itself
       g.keyDir = { x: 0, y: 0 };
       const len = () => { const o = P.trailOut || []; let s = 0; for (let i = 1; i < o.length; i++) s += Math.hypot(o[i].x - o[i - 1].x, o[i].y - o[i - 1].y); return +(s / P.radius).toFixed(2); };
-      A.step(36); A.frame(); // 1.2 s > life(40) = 0.8 s (plus the vortex coasting to a stop)
+      A.step(48); A.frame(); // 1.6 s > life(40) = 1.03 s (plus the vortex coasting to a stop)
       const stopped = A.trail(), stoppedLen = len();
       // respawn after being eaten: no line from the old spot
       g.keyDir = { x: 1, y: 0 }; for (let f = 0; f < 20; f++) { A.step(1); A.frame(); }
@@ -90,8 +90,8 @@ async function trailChecks(url) {
       A.clockOff(); g.applyGfx(2);
       return { maxN, maxSegOverR: +(maxSeg / 40).toFixed(2), moving: moving.n, stopped: stopped.pts.length, stoppedLen, respawnLen, jumpLen, afterRespawn: afterRespawn.pts.length, afterJump: afterJump.pts.length, fresh: fresh.pts.length, aura: P.auraId };
     }, gfx);
-    out.push(report(`T1 FN quality ${gfx}: a Smuga keeps at most 12 points over 100 s of driving (no growing history), each segment short (< 0.6 r)`, r.aura === 'ember' && r.maxN <= 12 && r.moving >= 6 && r.maxSegOverR < 0.6, JSON.stringify(r)));
-    out.push(report(`T2 FN quality ${gfx}: stopped, the trail fades to nothing in under a second; a respawn and a jump restart it (no line across the map); a new round starts clean`, r.stoppedLen < 0.3 && r.respawnLen < 0.3 && r.jumpLen < 0.3 && r.fresh <= 2, JSON.stringify(r)));
+    out.push(report(`T1 FN quality ${gfx}: a Smuga keeps at most 14 points over 100 s of driving (no growing history), each segment short (< 1 r with a render every 3rd frame)`, r.aura === 'ember' && r.maxN <= 14 && r.moving >= 6 && r.maxSegOverR < 1, JSON.stringify(r)));
+    out.push(report(`T2 FN quality ${gfx}: stopped, the trail fades to nothing within ~1.5 s; a respawn and a jump restart it (no line across the map); a new round starts clean`, r.stoppedLen < 0.3 && r.respawnLen < 0.3 && r.jumpLen < 0.3 && r.fresh <= 2, JSON.stringify(r)));
   }
   // Memory: 5000 frames of driving + rendering -> no growth in the trail or particle lists.
   const mem = await g.page.evaluate(() => {
@@ -101,7 +101,7 @@ async function trailChecks(url) {
     A.clockOff();
     return { sizes, cap: CONFIG.juice.maxParticles };
   });
-  out.push(report('T3 FN: 5000 frames of driving and rendering -- the trail list stays <= 12, particles stay under the cap (no growth)', mem.sizes.every(([t, p]) => t <= 12 && p <= mem.cap), JSON.stringify(mem)));
+  out.push(report('T3 FN: 5000 frames of driving and rendering -- the trail list stays <= 14, particles stay under the cap (no growth)', mem.sizes.every(([t, p]) => t <= 14 && p <= mem.cap), JSON.stringify(mem)));
   out.push(report('T no page errors', g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
   await g.browser.close();
   return out;
@@ -233,17 +233,22 @@ async function warsztatChecks(url) {
 
 /* ============================ P: frame cost ============================ */
 export async function frameCost(url, label = 'candidate') {
-  const g = await page(url, DESK, (s) => { s.auras.selected = 'ember'; s.effects.selected = 'pixel_burst'; });
+  // The same frozen scene rendered 300 times per condition (no update between renders, so
+  // nothing random changes): the cost of drawing a Smuga / an Efekt burst against none.
+  const g = await page(url, DESK);
   const r = await g.page.evaluate(() => {
     const out = {};
-    for (const [name, aura, eff] of [['none', 'none', 'classic'], ['cosmetics', 'ember', 'pixel_burst']]) {
-      for (const gfx of [2, 0]) {
-        const g = window.game; g.save.auras.selected = aura; g.save.effects.selected = eff; g.applyGfx(gfx);
-        window.__qaSeedRandom(4242);
-        const res = window.__qaPlayArena({ style: 'casual', clock0: 1000000, round: { seed: 4242 } });
-        window.__qaRestoreRandom();
-        out[`${name}-gfx${gfx}`] = { render: res.avgRenderMs, update: res.avgUpdateMs, score: res.score };
-      }
+    for (const gfx of [2, 0]) for (const [name, aura, eff] of [['none', 'none', 'classic'], ['ember', 'ember', 'classic'], ['pryzmat', 'pryzmat', 'classic'], ['pixel-bite', 'none', 'pixel_burst']]) {
+      const A = window.__uc, g = A.start(77); g.applyGfx(gfx); g.save.auras.selected = aura; g.save.effects.selected = eff; g.player.auraId = aura;
+      const P = g.player; P.x = 1500; P.y = 1500; P.setRadius(46); g.pointerScreen = null;
+      for (let f = 0; f < 50; f++) { const b = f / 40; g.keyDir = { x: Math.cos(b), y: Math.sin(b) }; A.step(1); A.frame(); }
+      if (eff !== 'classic') { g.triggerEatFeedback(P.x + 40, P.y, '#fff', 30, true, P, 1); }
+      g.banner = null;
+      const times = [];
+      for (let k = 0; k < 6; k++) { const t0 = window.__realNow(); for (let i = 0; i < 50; i++) g.render(A.t); times.push((window.__realNow() - t0) / 50); }
+      times.sort((x, y) => x - y);
+      out[`${name}-gfx${gfx}`] = +times[2].toFixed(3);
+      A.clockOff();
     }
     window.game.applyGfx(2);
     return out;
@@ -270,12 +275,16 @@ export async function strips(url, label) {
       const A = window.__uc, g = window.game; g.save.auras.selected = sc.aura; g.save.effects.selected = sc.eff; if (sc.od) g.save.overdriveSkins.selected = sc.od;
       A.start(77); g.applyGfx(sc.gfx); g.player.auraId = sc.aura;
       const P = g.player; P.x = 1500; P.y = 1500; P.setRadius(46); g.pointerScreen = null;
-      if (sc.eff !== 'classic') { const objs = g.objects.filter(o => o.tier === 'fragment' || o.tier === 'capsule').slice(0, 6); objs.forEach((o, i) => { o.x = 1560 + i * 26; o.y = 1500; }); const big = g.objects.find(o => o.radius > 24 && g.holeCanEat(P, o)); if (big) { big.x = 1700; big.y = 1500; } }
-      if (sc.od) { delete g.checkOverdriveTrigger; g.timeRemaining = CONFIG.overdrive.triggerSecondsRemaining + 0.02; }
       window.__frames = 0;
+      // warm-up: the size banner of setRadius() fades first
+      for (let f = 0; f < 45; f++) { g.keyDir = { x: 1, y: 0 }; A.step(1); A.frame(); window.__frames++; } // rendered every frame, as in a round
+      g.banner = null; g.bannerQueue = [];
+      // the bites come after the warm-up, in front of the vortex
+      if (sc.eff !== 'classic') { const objs = g.objects.filter(o => (o.tier === 'fragment' || o.tier === 'capsule') && Math.hypot(o.x - P.x, o.y - P.y) > 600).slice(0, 5); objs.forEach((o, i) => { o.x = P.x + 70 + i * 34; o.y = P.y + (i % 2 ? 12 : -12); }); const big = g.objects.find(o => o.radius > 24 && g.holeCanEat(P, o) && Math.hypot(o.x - P.x, o.y - P.y) > 600); if (big) { big.x = P.x + 150; big.y = P.y; } }
+      if (sc.od) { delete g.checkOverdriveTrigger; g.timeRemaining = CONFIG.overdrive.triggerSecondsRemaining + 0.02; }
     }, sc);
     for (let k = 0; k < 4; k++) {
-      await g.page.evaluate((sc) => { const A = window.__uc, g = window.game; for (let f = 0; f < 6; f++) { const a = (window.__frames++) / 14; g.keyDir = sc.eff !== 'classic' ? { x: 1, y: 0 } : { x: Math.cos(a), y: Math.sin(a) }; A.step(1); } A.frame(); }, sc);
+      await g.page.evaluate((sc) => { const A = window.__uc, g = window.game; for (let f = 0; f < (sc.eff !== 'classic' ? 11 : 6); f++) { window.__frames++; const b = (window.__frames - 45) / 70; g.keyDir = sc.eff !== 'classic' ? { x: 1, y: 0 } : { x: Math.cos(b), y: Math.sin(b) }; A.step(1); A.frame(); } }, sc);
       await g.page.screenshot({ path: path.join(dir, `${sc.name}-${k}.png`) });
     }
     await g.page.evaluate(() => window.__uc.clockOff());

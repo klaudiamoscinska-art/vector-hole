@@ -4694,9 +4694,9 @@ function decodeSaveCode(code) {
    the same functions, so the shop shows exactly what the round does. */
 const PRISM_COLORS = ['#50F0FA', '#FF54AD', '#EFCB63', '#9875FF'];
 // A point every `gap` x r of travel (or every `step` s while moving), at most
-// maxPts (about 2.6 r of trail), each gone after life(r) s -- so a stopped
-// vortex's trail fades in well under a second (a big one a little slower).
-const AURA_TRAIL = { gap: 0.22, step: 0.12, maxPts: 12, jump: 3, life: (r) => 0.6 + Math.min(r, 300) / 200 };
+// maxPts (about 4 r of trail), each gone after life(r) s -- so a stopped
+// vortex's trail fades in about a second (a big one a little slower).
+const AURA_TRAIL = { gap: 0.3, step: 0.12, maxPts: 14, jump: 3, life: (r) => 0.9 + Math.min(r, 300) / 300 };
 
 /** A Smuga behind a vortex of radius r: `pts` oldest -> newest ({ x, y, a }:
  *  a = age 0 new .. 1 gone), drawn under the vortex, never wider than 0.8 r,
@@ -4706,7 +4706,7 @@ function drawAuraTrail(ctx, pts, r, aura, time, lite) {
   if (!aura || !aura.trail || !pts || pts.length < 2) return;
   const n = pts.length, col = aura.color || '#50F0FA', still = prefersReducedMotion();
   // the trail's half width at each point: wide at the vortex, nothing at the tail
-  const half = (i) => r * 0.62 * (1 - pts[i].a) * (0.35 + 0.65 * i / (n - 1));
+  const half = (i) => r * 0.7 * (1 - pts[i].a * 0.7) * (0.3 + 0.7 * i / (n - 1));
   const dir = (i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)]; const dx = b.x - a.x, dy = b.y - a.y, m = Math.hypot(dx, dy) || 1; return [dx / m, dy / m]; };
   ctx.save();
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -4720,7 +4720,7 @@ function drawAuraTrail(ctx, pts, r, aura, time, lite) {
   };
   switch (aura.trail) {
     case 'ribbon':
-      ribbon(0.38, 1);
+      ribbon(0.45, 1);
       if (!lite) { ctx.globalCompositeOperation = 'lighter'; ribbon(0.22, 0.45); }
       break;
     case 'glow':
@@ -4736,7 +4736,7 @@ function drawAuraTrail(ctx, pts, r, aura, time, lite) {
       }
       break;
     case 'helix':
-      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, r * 0.07);
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, r * 0.1);
       for (const sign of [1, -1]) {
         ctx.globalAlpha = 0.5;
         ctx.beginPath();
@@ -18890,7 +18890,7 @@ class Game {
       p.shape = shape;
       p.vx = Math.cos(a) * rand(40, 140);
       p.vy = Math.sin(a) * rand(40, 140);
-      p.radius = rand(2, 3.5);
+      p.radius = shape ? rand(3, 4.5) : rand(2, 3.5); // UX-FIX-C: a shape needs a little more room to read
       p.maxLife = p.life = 1.4;
       p.target = hole;
       this.particles.push(p);
