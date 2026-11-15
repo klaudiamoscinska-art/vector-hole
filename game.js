@@ -310,9 +310,27 @@ const CONFIG = {
     slipstreamMs: 1500,
     phaseEdgeInvulnBonusMs: 2000,
     scannerIntervalSeconds: 4,
+    // UX-FIX-B (owner-authorised mechanic change): Skaner points at the most
+    // worthwhile object the player can swallow now, within base + perRadius x
+    // r world units of the vortex's centre (r 46 -> 876, r 118 -> 1308; about
+    // two phone screens), worth value / (1 + d / falloff). Re-picked every
+    // interval, at once when the target is eaten, gone, out of reach x
+    // keepMult -- or there is none (no marker then).
+    scannerRange: { base: 600, perRadius: 6, falloff: 400, keepMult: 1.25 },
+    // UX-FIX-B: "Impuls ssący" (was Fala, which pushed food away): at the same
+    // trigger (a new size), objects the player can swallow within
+    // shockwaveRadius of the vortex's RIM are pulled in by up to shockwavePush
+    // world units (less the farther they lie), over suctionSeconds, toward the
+    // centre but never past half the radius. No rival, no points, no growth;
+    // eating stays the usual rule.
     shockwaveRadius: 140,
     shockwavePush: 70,
-    bountyBonusScore: 40
+    suctionSeconds: 0.5,
+    bountyBonusScore: 40,
+    // UX-FIX-B: Łowca marks the nearest rival the player can eat now (the
+    // EAT_HOLE_RATIO rule, not shielded, on the board); with none it looks
+    // again every bountyRetrySeconds.
+    bountyRetrySeconds: 1
   },
   // Golden Shot v9: the Złoty Rdzeń chase -- a rare golden core appears
   // somewhere on the Arena map (gold arrow points at it); whoever eats it
@@ -2594,9 +2612,9 @@ const MUTATIONS = [
   { id: 'slipstream', name: 'Turbo combo', tag: 'OD COMBO ×3', desc: 'Od combo ×3 każdy kęs daje +60% prędkości na 1,5 s i odnawia ten czas.', icon: 'bolt', weight: 3, color: '#46D99A' },
   { id: 'phase_edge', name: 'Tarcza', tag: 'PO ODRODZENIU', desc: 'Nie chroni przed zjedzeniem: po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
   { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
-  { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
-  { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM ROZMIARZE', desc: 'Gdy urośniesz o rozmiar, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
-  { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Najbliższy rywal dostaje różowy celownik. Zjedz go, a zgarniesz +40 punktów ekstra.', icon: 'target', weight: 2, color: '#EFCB63' }
+  { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Wskazuje cenny obiekt w pobliżu, który już możesz zjeść. Poza ekranem — strzałka przy krawędzi.', icon: 'radar', weight: 2, color: '#50F0FA' },
+  { id: 'shockwave', name: 'Impuls ssący', tag: 'NA NOWYM ROZMIARZE', desc: 'Gdy urośniesz o rozmiar, krótki impuls przyciąga do wiru jadalne obiekty z bliska.', icon: 'burst', weight: 2, color: '#FF54AD' },
+  { id: 'bounty_core', name: 'Łowca', tag: 'RYWALE', desc: 'Celownik na najbliższym rywalu, którego możesz zjeść: +40 punktów, potem nowy cel.', icon: 'target', weight: 2, color: '#EFCB63' }
 ];
 
 /* ----------------------- Campaign mode (GDD 3.1 / "Vector Hole v3") -----------------------
@@ -15960,6 +15978,7 @@ class Game {
   }
 
   startCampaignMission(missionId) {
+    this.hudSet('hud-cards', '.hidden', true); // UX-FIX-B: Arena's card chips are Arena's
     const def = campaignMissionById(missionId || this.selectedMissionId);
     if (!def) return;
     this.hideReviveOffer();
@@ -17827,6 +17846,12 @@ class Game {
     this.scannerTimer = 0;
     this.scannerTarget = null;
     this.bountyTarget = null;
+    this.bountyRetryAt = 0;
+    this.bountyClaims = 0;
+    this.scannerPicks = 0;
+    this.suction = null;
+    this.suctionPulses = 0;
+    this.phaseShieldUntil = 0;
     this.overdriveActive = false;
     this.overdriveVariant = null;
     this.overdriveTag = null;
@@ -18791,7 +18816,8 @@ class Game {
     const k = this.uiScale || 1, sf = this.safe || { t: 0, l: 0 };
     const x = sf.l + 12 * k;
     let y = sf.t + 64 * k;
-    for (const h of this.hudBoxes || []) if (h.el.id === 'nelaToast') y = Math.max(y, h.b + 8 * k);
+    // UX-FIX-B: the canvas stack (combo, target, SZAŁ) starts below the card chips too.
+    for (const h of this.hudBoxes || []) if (h.el.id === 'nelaToast' || h.el.id === 'hud-cards') y = Math.max(y, h.b + 8 * k);
     const stack = this.hudStack || (this.hudStack = []);
     stack.length = 0;
     const now = performance.now();
@@ -19105,7 +19131,13 @@ class Game {
           const isBounty = a.isPlayer && b === this.bountyTarget;
           const rivalPts = Math.round(b.radius * 2 * multiplier * (a.isPlayer && this.frenzyActive ? CONFIG.golden.scoreMult : 1)) + (isBounty ? CONFIG.evolution.bountyBonusScore : 0);
           a.score += rivalPts;
-          if (isBounty) this.bountyTarget = null;
+          if (isBounty) {
+            // UX-FIX-B: the bonus once, said apart from the rival's points; the next target at once.
+            this.bountyTarget = null;
+            this.bountyRetryAt = 0;
+            this.bountyClaims = (this.bountyClaims || 0) + 1;
+            this.addFloatText(b.x, b.y - b.radius - 38, `+${CONFIG.evolution.bountyBonusScore} ŁOWCA`, '#FF54AD', 20, 1.4);
+          }
           this.triggerEatFeedback(b.x, b.y, b.isPlayer ? '#50F0FA' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a, SWALLOW_RIVAL);
           if (a.isPlayer) {
             this.addFloatText(b.x, b.y - b.radius - 10, `ZJEDZONY! +${rivalPts}`, '#EFCB63', 22, 1.2, 40);
@@ -19130,7 +19162,11 @@ class Game {
           }
           const phaseEdgeBonus = (b.isPlayer && this.activeMutations.has('phase_edge')) ? CONFIG.evolution.phaseEdgeInvulnBonusMs : 0;
           this.addSwallowGhost(a, b, b.isPlayer ? '#50F0FA' : b.edgeColor);
-          if (b.isPlayer) b.shrinkAndRespawn(phaseEdgeBonus);
+          if (b.isPlayer) {
+            b.shrinkAndRespawn(phaseEdgeBonus);
+            // UX-FIX-B: the HUD chip counts Tarcza's real protection down.
+            if (phaseEdgeBonus) this.phaseShieldUntil = b.invulnerableUntil;
+          }
           else this.respawnArenaBot(b);
         }
       }
@@ -19167,6 +19203,8 @@ class Game {
    *  drawing or rewards; it keeps its score and place in the standings)
    *  and updateWaitingBots() tries again. Never a fallback onto the player. */
   respawnArenaBot(bot) {
+    // UX-FIX-B: a Łowca target eaten by another rival is no target any more.
+    if (bot === this.bountyTarget) this.bountyTarget = null;
     bot.shrinkAndRespawn(0);
     bot.x = clamp(bot.x, bot.radius, WORLD_W - bot.radius);
     bot.y = clamp(bot.y, bot.radius, WORLD_H - bot.radius);
@@ -19246,17 +19284,7 @@ class Game {
       this.flashScreen(current.color, 0.18);
       this.vibrate(60);
 
-      if (this.activeMutations.has('shockwave')) {
-        for (const obj of this.objects) {
-          const d = dist(this.player.x, this.player.y, obj.x, obj.y);
-          if (d > 0 && d < CONFIG.evolution.shockwaveRadius && !obj.eating) {
-            const push = CONFIG.evolution.shockwavePush * (1 - d / CONFIG.evolution.shockwaveRadius);
-            obj.x += ((obj.x - this.player.x) / d) * push;
-            obj.y += ((obj.y - this.player.y) / d) * push;
-          }
-        }
-        this.ripples.push(new Ripple(this.player.x, this.player.y, '#FF54AD', this.player.radius, CONFIG.evolution.shockwaveRadius, 0.4));
-      }
+      if (this.activeMutations.has('shockwave')) this.startSuctionPulse();
     }
   }
 
@@ -19335,12 +19363,16 @@ class Game {
   /** Marks the nearest eligible rival as a Bounty target (crown marker,
    *  one-time score bonus when the player eats it — GDD 4.1). */
   assignBountyTarget() {
+    // UX-FIX-B: only a rival the player can eat now (bountyEligible()); none ->
+    // look again in CONFIG.evolution.bountyRetrySeconds.
     let target = null, targetDist = Infinity;
     for (const bot of this.bots) {
+      if (!this.bountyEligible(bot)) continue;
       const d = dist(this.player.x, this.player.y, bot.x, bot.y);
       if (d < targetDist) { target = bot; targetDist = d; }
     }
     this.bountyTarget = target;
+    this.bountyRetryAt = target ? 0 : performance.now() + CONFIG.evolution.bountyRetrySeconds * 1000;
   }
 
   checkEvolutionTriggers() {
@@ -19472,20 +19504,97 @@ class Game {
 
     if (this.activeMutations.has('scanner')) {
       this.scannerTimer -= dt;
-      if (this.scannerTimer <= 0) {
-        this.scannerTimer = CONFIG.evolution.scannerIntervalSeconds;
-        let best = null, bestValue = -Infinity;
-        for (const obj of this.objects) {
-          if (obj.eating) continue;
-          if (obj.value > bestValue) { best = obj; bestValue = obj.value; }
-        }
-        if (best) {
-          this.scannerTarget = best;
-          this.scannerTargetUntil = now + 2000;
-          this.ripples.push(new Ripple(best.x, best.y, '#50F0FA', best.radius, best.radius * 3, 0.6));
-        }
+      const lost = !!this.scannerTarget && !this.scannerKeeps(this.scannerTarget);
+      if (lost) this.scannerTarget = null;
+      if (this.scannerTimer <= 0 || lost) {
+        if (this.scannerTimer <= 0) this.scannerTimer = CONFIG.evolution.scannerIntervalSeconds;
+        const best = this.pickScannerTarget();
+        if (best && best !== this.scannerTarget) this.ripples.push(new Ripple(best.x, best.y, '#50F0FA', best.radius, best.radius * 3, 0.6));
+        this.scannerTarget = best;
+        this.scannerPicks = (this.scannerPicks || 0) + 1;
       }
     }
+
+    if (this.activeMutations.has('bounty_core')) {
+      if (this.bountyTarget && !this.bountyEligible(this.bountyTarget)) this.bountyTarget = null;
+      if (!this.bountyTarget && now >= (this.bountyRetryAt || 0)) this.assignBountyTarget();
+    }
+
+    this.updateSuctionPulse(dt);
+  }
+
+  /** UX-FIX-B Skaner: the most worthwhile object the player can swallow now
+   *  within CONFIG.evolution.scannerRange of the vortex (not one already in
+   *  its mouth, not the Złoty Rdzeń -- it has its own arrow), or null. */
+  pickScannerTarget() {
+    const p = this.player, S = CONFIG.evolution.scannerRange;
+    const range = S.base + S.perRadius * p.radius;
+    let best = null, bestScore = 0;
+    for (const obj of this.objects) {
+      if (obj.eating || obj.removed || obj === this.goldenObj || !this.holeCanEat(p, obj)) continue;
+      const dx = obj.x - p.x, dy = obj.y - p.y;
+      if (Math.abs(dx) > range || Math.abs(dy) > range) continue;
+      const d = Math.hypot(dx, dy);
+      if (d > range || d < p.radius * 0.85) continue;
+      const score = (obj.value || 0) / (1 + d / S.falloff);
+      if (score > bestScore) { best = obj; bestScore = score; }
+    }
+    return best;
+  }
+
+  /** The Skaner target is still worth pointing at: on the board, not being
+   *  eaten, swallowable by the player now and within reach x keepMult. */
+  scannerKeeps(t) {
+    const p = this.player, S = CONFIG.evolution.scannerRange;
+    return !!t && !t.eating && !t.removed && t !== this.goldenObj && this.holeCanEat(p, t)
+      && dist(p.x, p.y, t.x, t.y) <= (S.base + S.perRadius * p.radius) * S.keepMult;
+  }
+
+  /** UX-FIX-B Łowca: a rival the player can eat right now -- the same rule
+   *  as handleHoleCollisions() (bigger than it x EAT_HOLE_RATIO, not shielded),
+   *  on the board (not waiting to respawn). */
+  bountyEligible(b) {
+    return !!b && !b.waiting && this.bots.includes(b) && !b.invulnerable && this.player.radius > b.radius * EAT_HOLE_RATIO;
+  }
+
+  /** UX-FIX-B Impuls ssący (the card id stays 'shockwave'): starts a short
+   *  pull of the objects the player can swallow lying within
+   *  CONFIG.evolution.shockwaveRadius of the rim. Only objects, only now. */
+  startSuctionPulse() {
+    const p = this.player, E = CONFIG.evolution, reach = p.radius + E.shockwaveRadius;
+    const items = [];
+    for (const obj of this.objects) {
+      if (obj.eating || obj.removed || obj === this.goldenObj || !this.holeCanEat(p, obj)) continue;
+      const d = dist(p.x, p.y, obj.x, obj.y);
+      if (d <= p.radius * 0.85 || d > reach) continue;
+      items.push({ obj, total: E.shockwavePush * (1 - (d - p.radius) / E.shockwaveRadius), done: 0 });
+    }
+    this.suction = { t: 0, items, reach };
+    this.suctionPulses = (this.suctionPulses || 0) + 1;
+    // A ring closing in on the vortex: the pull's own direction.
+    this.ripples.push(new Ripple(p.x, p.y, '#FF54AD', reach, p.radius, E.suctionSeconds));
+  }
+
+  updateSuctionPulse(dt) {
+    const sc = this.suction;
+    if (!sc) return;
+    const E = CONFIG.evolution, p = this.player;
+    const u0 = clamp(sc.t / E.suctionSeconds, 0, 1);
+    sc.t += dt;
+    const u1 = clamp(sc.t / E.suctionSeconds, 0, 1);
+    const ease = (u) => 1 - (1 - u) * (1 - u);
+    const k = ease(u1) - ease(u0);
+    for (const it of sc.items) {
+      const o = it.obj;
+      if (o.eating || o.removed) continue;
+      const d = dist(p.x, p.y, o.x, o.y);
+      const step = Math.min(it.total * k, Math.max(0, d - p.radius * 0.5));
+      if (d <= 0 || step <= 0) continue;
+      o.x -= (o.x - p.x) / d * step;
+      o.y -= (o.y - p.y) / d * step;
+      it.done += step;
+    }
+    if (u1 >= 1) this.suction = null;
   }
 
   /** Picks the active input source and moves the player accordingly.
@@ -19859,6 +19968,38 @@ class Game {
     let html = ranked.slice(0, 3).map(row).join('');
     if (place > 3) html += (place > 4 ? '<li class="lb-gap" aria-hidden="true">···</li>' : '') + row(this.player, place - 1);
     this.hudSet('leaderboardList', 'html', html);
+    this.updateCardsHud();
+  }
+
+  /** UX-FIX-B: the (at most two) evolution cards picked this round, each a
+   *  small chip under the clock: its icon, name and state -- lit only while
+   *  its effect really works now (cardHudState()), dim otherwise. */
+  updateCardsHud() {
+    const ids = [...this.activeMutations].filter(id => MUTATIONS.some(m => m.id === id)).slice(0, 2);
+    let html = '';
+    for (const id of ids) {
+      const m = MUTATIONS.find(x => x.id === id), st = this.cardHudState(id);
+      html += `<li class="hud-card${st.on ? ' on' : ''}" style="--c:${m.color}"><svg viewBox="0 0 24 24" aria-hidden="true">${CARD_ICONS[m.icon] || ''}</svg><span class="hud-card-name">${m.name}</span><span class="hud-card-state"${st.noTranslate ? ' translate="no"' : ''}>${escapeHtml(st.text)}</span></li>`;
+    }
+    this.hudSet('hud-cards', 'html', html);
+    this.hudSet('hud-cards', '.hidden', !html);
+  }
+
+  /** What a picked card does right now: { on, text }. `on` only when its
+   *  condition holds this moment (never "active" while it can't act). */
+  cardHudState(id) {
+    const now = performance.now(), p = this.player, E = CONFIG.evolution;
+    const secs = (ms) => `${Math.max(1, Math.ceil(ms / 1000))} s`;
+    switch (id) {
+      case 'magnet_pulse': return now < this.magnetUntil && p.radius < E.magnetRadius ? { on: true, text: 'PRZYCIĄGA' } : { on: false, text: 'POLE ZAKRYTE' };
+      case 'slipstream': return now < this.speedBoostUntil ? { on: true, text: '+60% PRĘDKOŚCI' } : { on: false, text: 'CZEKA NA COMBO ×3' };
+      case 'phase_edge': return now < (this.phaseShieldUntil || 0) && p.invulnerable ? { on: true, text: `OCHRONA ${secs(this.phaseShieldUntil - now)}`, noTranslate: false } : { on: false, text: 'PO ODRODZENIU' };
+      case 'combo_reactor': return this.comboCount > 0 && this.comboTimer > 0 ? { on: true, text: 'DŁUŻSZE OKNO' } : { on: false, text: 'CZEKA NA KĘS' };
+      case 'scanner': return this.scannerTarget ? { on: true, text: 'CEL WSKAZANY' } : { on: false, text: 'SZUKA CELU' };
+      case 'shockwave': return this.suction ? { on: true, text: 'PRZYCIĄGA' } : { on: false, text: 'CZEKA NA AWANS' };
+      case 'bounty_core': return this.bountyTarget ? { on: true, text: this.bountyTarget.name, noTranslate: true } : { on: false, text: 'BRAK CELU' };
+    }
+    return { on: false, text: '' };
   }
 
   /* ---------- rendering ---------- */
@@ -19978,7 +20119,7 @@ class Game {
     this.hudFadeTick = (this.hudFadeTick || 0) + 1;
     if (!this.hudBoxes || this.hudFadeTick % 20 === 0) {
       const s = this.uiScale || 1;
-      this.hudBoxes = ['btnPause', 'hud-topright', 'hud-goal', 'hud-tier-strip', 'nelaToast'].map(id => {
+      this.hudBoxes = ['btnPause', 'hud-topright', 'hud-goal', 'hud-tier-strip', 'hud-cards', 'nelaToast'].map(id => {
         const el = document.getElementById(id);
         if (!el || el.classList.contains('hidden') || !el.offsetWidth) return null;
         if (id === 'nelaToast' && !el.classList.contains('visible')) return null;
@@ -20216,6 +20357,7 @@ class Game {
     this.drawPreyRings(ctx);
     this.drawScannerTarget(ctx);
     this.drawMagnetField(ctx, time);
+    this.drawSuctionPulse(ctx);
     this.drawBountyMarker(ctx);
     for (const p of this.particles) p.draw(ctx);
     for (const r of this.ripples) r.draw(ctx);
@@ -20253,6 +20395,7 @@ class Game {
     this.fadeHudUnderHole();
     this.drawDangerIndicators(ctx);
     this.drawGoldenIndicator(ctx);
+    this.drawScannerIndicator(ctx);
     this.drawJuiceScreen(ctx, this.timeRemaining);
     // GG-UX-03 (owner's decision): no dark layer over the board in the
     // last seconds -- the 'blackout' finish used to dim it with
@@ -20645,16 +20788,78 @@ class Game {
   /** Scanner mutation ping: a fading cyan ring around the last-found
    *  high-value cluster (GDD 4.1). */
   drawScannerTarget(ctx) {
-    if (!this.scannerTarget || performance.now() > this.scannerTargetUntil) return;
-    const t = this.scannerTarget;
+    // UX-FIX-B: the Arena Skaner's target stays marked while it is worth it
+    // (scannerKeeps()); the campaign's Skaner power keeps its 2.5 s ping.
+    const arena = this.mode !== 'campaign';
+    if (!this.scannerTarget || (arena ? !this.activeMutations.has('scanner') : performance.now() > this.scannerTargetUntil)) return;
+    const t = this.scannerTarget, time = performance.now() / 1000;
     ctx.save();
-    ctx.globalAlpha = 0.7;
+    ctx.globalAlpha = 0.75;
     ctx.strokeStyle = '#50F0FA';
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = '#50F0FA';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.2 / (this.zoom || 1);
+    if (this.gfxLevel > 0) { ctx.shadowBlur = 12; ctx.shadowColor = '#50F0FA'; }
+    const r = t.radius * 1.6 + 6 + Math.sin(time * 5) * 3;
     ctx.beginPath();
-    ctx.arc(t.x, t.y, t.radius * 1.8, 0, Math.PI * 2);
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    if (arena) {
+      // four ticks pointing in: "this one"
+      ctx.beginPath();
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2 + time * 0.8;
+        ctx.moveTo(t.x + Math.cos(a) * (r + 10), t.y + Math.sin(a) * (r + 10));
+        ctx.lineTo(t.x + Math.cos(a) * (r + 2), t.y + Math.sin(a) * (r + 2));
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** UX-FIX-B: an off-screen Skaner target gets a cyan arrow at the screen
+   *  edge (the Złoty Rdzeń's marker, edgeMarkerPos(): clear of the HUD). */
+  drawScannerIndicator(ctx) {
+    const t = this.scannerTarget;
+    if (!t || this.mode === 'campaign' || !this.activeMutations.has('scanner')) return;
+    const sx = (t.x - this.camera.x) * this.zoom + this.width / 2;
+    const sy = (t.y - this.camera.y) * this.zoom + this.height / 2;
+    if (sx >= 0 && sx <= this.width && sy >= 0 && sy <= this.height) return;
+    const angle = Math.atan2(sy - this.height / 2, sx - this.width / 2);
+    const { x: ex, y: ey } = this.edgeMarkerPos(angle, 30);
+    ctx.save();
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.translate(ex, ey);
+    ctx.fillStyle = '#50F0FA';
+    if (this.gfxLevel > 0) { ctx.shadowBlur = 12; ctx.shadowColor = '#50F0FA'; }
+    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.rotate(angle);
+    ctx.beginPath(); ctx.moveTo(21, 0); ctx.lineTo(9, -7); ctx.lineTo(9, 7); ctx.closePath(); ctx.fill();
+    ctx.rotate(-angle);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#07131E'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(0, 2, 2.2, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 2, 6, -Math.PI * 0.8, -Math.PI * 0.2); ctx.stroke();
+    ctx.restore();
+  }
+
+  /** UX-FIX-B: Impuls ssący's pull, drawn the way it works -- a streak from
+   *  each pulled object toward the vortex while the pulse lasts. */
+  drawSuctionPulse(ctx) {
+    const sc = this.suction;
+    if (!sc) return;
+    const p = this.player, u = clamp(sc.t / CONFIG.evolution.suctionSeconds, 0, 1);
+    ctx.save();
+    ctx.strokeStyle = '#FF54AD';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 2 / (this.zoom || 1);
+    ctx.globalAlpha = 0.7 * (1 - u);
+    ctx.beginPath();
+    for (const it of sc.items) {
+      const o = it.obj;
+      if (o.eating || o.removed) continue;
+      const d = dist(p.x, p.y, o.x, o.y) || 1, ux = (p.x - o.x) / d, uy = (p.y - o.y) / d;
+      ctx.moveTo(o.x - ux * (o.radius + 22), o.y - uy * (o.radius + 22));
+      ctx.lineTo(o.x - ux * o.radius, o.y - uy * o.radius);
+    }
     ctx.stroke();
     ctx.restore();
   }
@@ -22108,7 +22313,6 @@ const I18N_EN = {
   "Ciężki towar": "Heavy Cargo",
   "Ciężkie pojazdy": "Heavy vehicles",
   "Co 4 godziny czeka na Ciebie darmowa skrzynia z monetami — czasem z pryzmatami, a czasem z": "Every 4 hours a free chest of coins is waiting for you — sometimes with prisms, sometimes with",
-  "Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.": "Every 4 s it highlights the most valuable object on the map — so you instantly see where to go.",
   "Co 8 s podświetla najbliższy obiekt — od razu widać, dokąd jechać.": "Every 8 s it highlights the nearest object — so you instantly see where to go.",
   "Co wysyłamy:": "What we send:",
   "Co zapisujemy:": "What we save:",
@@ -22235,7 +22439,6 @@ const I18N_EN = {
   "Galeria Glitch to labirynt witryn i portali. Tu nic nie jest tym, czym się wydaje. Trzymaj się celu. Czeka 10 nowych misji.": "Glitch Gallery is a maze of shop windows and portals. Nothing here is what it seems. Stick to your goal. 10 new missions await.",
   "Galeria lśni jak nowa. Dachy Prądu czekają!": "The gallery shines like new. Power Rooftops await!",
   "Garść pryzmatów": "Handful of Prisms",
-  "Gdy urośniesz o rozmiar, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.": "When you grow a size, a wave scatters nearby objects within 140 px of you.",
   "Glitch naprawiony rytmem.": "Glitch fixed by rhythm.",
   "Glitch traci kolejny serwer.": "Glitch loses another server.",
   "Glitch uciekł pod ziemię. W tunelach metra gasną światła, a puste składy wożą skażony kod. Zejdź na dół i przywróć ruch.": "Glitch has fled underground. The metro tunnels are going dark, and empty trains are hauling corrupted code. Head down and get things moving again.",
@@ -22416,7 +22619,7 @@ const I18N_EN = {
   "Morze bajtów": "Sea of Bytes",
   "Muzyka": "Music",
   "MÓJ WYNIK W NEONOWYM MIEŚCIE": "MY SCORE IN THE NEON CITY",
-  "NA NOWYM ROZMIARZE": "AT THE NEW SIZE",
+  "CZEKA NA AWANS": "WAITING FOR A NEW SIZE",
   "NA ŻYWO": "LIVE",
   "NAGRODA CORE CITY · LVL {0}": "CORE CITY REWARD · LVL {0}",
   "NAGRODA ZA KAMPANIĘ": "CAMPAIGN REWARD",
@@ -22504,7 +22707,6 @@ const I18N_EN = {
   "Nadciąga burza: piętnaście kęsów bez przerwy, a potem pochłoń autobus, zanim uderzy piorun.": "A storm is coming: fifteen bites without a break, then swallow a bus before the lightning strikes.",
   "Nadzorcy": "Overseers",
   "Nagrody Core City": "Core City Rewards",
-  "Najbliższy rywal dostaje różowy celownik. Zjedz go, a zgarniesz +40 punktów ekstra.": "The nearest rival gets a pink target. Eat it for +40 bonus points.",
   "Najlepszy interes tej nocy.": "The best deal of the night.",
   "Najpierw ukończ {0} „{1}”.": "First complete {0} “{1}”.",
   "Najwyższy punkt miasta. Iglica to T6 — urośnij do granic i ją pochłoń.": "The highest point in the city. The Spire is T6 — grow to the max and swallow it.",
@@ -23929,6 +24131,23 @@ const I18N_EN = {
   "Jadalne obiekty z pola wokół wiru same lecą do Ciebie. Duży wir zakrywa pole.": "Edible objects in a field around the vortex fly to you on their own. A big vortex covers the field.",
   "Od combo ×3 każdy kęs daje +60% prędkości na 1,5 s i odnawia ten czas.": "From a ×3 combo, every bite gives +60% speed for 1.5 s and renews it.",
   "Nie chroni przed zjedzeniem: po odrodzeniu masz 4 s ochrony zamiast 2 s.": "It doesn't stop you being eaten: after respawning you get 4 s of protection instead of 2 s.",
+  "Wskazuje cenny obiekt w pobliżu, który już możesz zjeść. Poza ekranem — strzałka przy krawędzi.": "Points at a valuable object nearby that you can already eat. Off screen: an arrow at the edge.",
+  "Impuls ssący": "Suction Pulse",
+  "Gdy urośniesz o rozmiar, krótki impuls przyciąga do wiru jadalne obiekty z bliska.": "When you grow a size, a short pulse pulls nearby edible objects into the vortex.",
+  "Celownik na najbliższym rywalu, którego możesz zjeść: +40 punktów, potem nowy cel.": "A reticle on the nearest rival you can eat: +40 points, then a new target.",
+  "+{#0} ŁOWCA": "+{0} HUNTER",
+  "Karty ewolucji": "Evolution cards",
+  "PRZYCIĄGA": "PULLING",
+  "POLE ZAKRYTE": "FIELD COVERED",
+  "+60% PRĘDKOŚCI": "+60% SPEED",
+  "CZEKA NA COMBO ×3": "WAITING FOR ×3 COMBO",
+  "OCHRONA {#0} s": "SHIELD {0} s",
+  "DŁUŻSZE OKNO": "LONGER WINDOW",
+  "CZEKA NA KĘS": "WAITING FOR A BITE",
+  "CEL WSKAZANY": "TARGET MARKED",
+  "SZUKA CELU": "SEARCHING",
+  "BRAK CELU": "NO TARGET",
+  "NA NOWYM ROZMIARZE": "AT THE NEW SIZE",
 };
 
 window.addEventListener('DOMContentLoaded', () => {
