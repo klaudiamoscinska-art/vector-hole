@@ -56,7 +56,11 @@ export async function runVfx1Checks() {
     const keep = ['  spawnSuck(x, y, color, count, hole, spread) {', '  spawnParticles(x, y, color, count, speedMult = 1) {', '  hitStop(ms) {', '  handleObjectEating(hole) {', '  handleHoleCollisions() {'];
     // ARENA-FIX-1 changed only who respawns where: a waiting rival is off the board, an eaten
     // rival goes through respawnArenaBot() (qa/arena-fix1.mjs R). Undo exactly those two edits.
-    const fix1 = (f) => f && f.replace('        if (a.waiting || b.waiting) continue; // ARENA-FIX-1: off the board until it respawns\n', '')
+    // UX-FIX-B changed only Łowca's bonus line (a new target, its own "+40 ŁOWCA") and noted
+    // Tarcza's protection end for the HUD chip (qa/uxfix-b.mjs M3, M6). Undo exactly those two edits.
+    const fixB = (f) => f && f.replace("          if (isBounty) {\n            // UX-FIX-B: the bonus once, said apart from the rival's points; the next target at once.\n            this.bountyTarget = null;\n            this.bountyRetryAt = 0;\n            this.bountyClaims = (this.bountyClaims || 0) + 1;\n            this.addFloatText(b.x, b.y - b.radius - 38, `+${CONFIG.evolution.bountyBonusScore} ŁOWCA`, '#FF54AD', 20, 1.4);\n          }\n", '          if (isBounty) this.bountyTarget = null;\n')
+      .replace("          if (b.isPlayer) {\n            b.shrinkAndRespawn(phaseEdgeBonus);\n            // UX-FIX-B: the HUD chip counts Tarcza's real protection down.\n            if (phaseEdgeBonus) this.phaseShieldUntil = b.invulnerableUntil;\n          }\n          else this.respawnArenaBot(b);\n", '          if (b.isPlayer) b.shrinkAndRespawn(phaseEdgeBonus);\n          else this.respawnArenaBot(b);\n');
+    const fix1 = (f) => f && fixB(f).replace('        if (a.waiting || b.waiting) continue; // ARENA-FIX-1: off the board until it respawns\n', '')
       .replace('          if (b.isPlayer) b.shrinkAndRespawn(phaseEdgeBonus);\n          else this.respawnArenaBot(b);\n', '          b.shrinkAndRespawn(phaseEdgeBonus);\n');
     const diff = keep.filter(h => fix1(fnSource(src, h)) !== fnSource(base, h).replace('this.triggerEatFeedback(b.x, b.y, b.isPlayer ? \'#50F0FA\' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a);', 'this.triggerEatFeedback(b.x, b.y, b.isPlayer ? \'#50F0FA\' : b.edgeColor, b.radius, a.isPlayer || b.isPlayer, a, SWALLOW_RIVAL);'));
     results.push(report('V1 the eat rules, the rival fight, the particles\' random draws and hitStop() are the base revision\'s source', diff.length === 0, diff.join(' | ')));
