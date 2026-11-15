@@ -4,6 +4,22 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## UX-FIX-A — poprawki po GG_UX_AUDIT_1, etap A (zapis nadal v13, klucz bez zmian, bez nowego pola; ekonomia, nagrody, balans kart, Arena i kampania bez zmian)
+- **Dzielnice (zgł. 1):** kafelek „KAMPANIA · <dzielnica>” od 1. rundy i linia „Drugi tryb: misje z celami · otwarty”, dopóki
+  gracz nie poznał kampanii; wstęp po 3. rundzie „DRUGI TRYB · OTWARTY”, zielona plakietka TRYB 2 (nie NOWE) na kafelku i
+  zakładce; wynik Areny przy pustej linii „NASTĘPNA RUNDA” wskazuje Dzielnice do pierwszej wizyty. Próg 3 rund bez zmian.
+- **Sterowanie (zgł. 2):** Mysz / Klawiatura rozłączne (Mysz: WASD / strzałki nie sterują; skróty UI działają); wybór
+  „Sterowanie na Arenie” od razu w pauzie Areny i pierwszy w Ustawieniach Profilu, z podpowiedzią trybu; pauza misji mówi, że
+  wybór dotyczy Areny. Telefon bez zmian.
+- **Nagroda (zgł. 3):** ZAŁÓŻ zakłada pojedynczy przedmiot (właściwa zakładka, oznaczenie, przewinięcie, potwierdzenie);
+  zestaw LVL 6 — POKAŻ W WARSZTACIE bez zakładania; karta bez wyglądu bez przycisku.
+- **Ranking i zagrożenie (zgł. 6):** ostrzeżenie liczone od zasięgu zjedzenia rywala (`140 + 0,4·r` przed 0,75·r), jedno bicie
+  serca na kilku rywali, bez dźwięku w ochronie; groźny rywal ma czerwoną nazwę ze znakiem i trójkąt w panelu PUNKTY; raz na sesję
+  „Miejsce zależy od punktów, nie rozmiaru…”.
+- **Karty (zgł. 4, tylko tekst):** Magnes „SŁABNIE, GDY ROŚNIESZ” + jednorazowe „MAGNES: wir zakrył pole”; Turbo combo i Tarcza
+  opisane zgodnie z działaniem. Wartości bez zmian.
+- QA: `qa/uxfix-a.mjs` (D, K, R, W; w `run-all`); `qa/arena-fix1.mjs` C4 i `qa/ftue1.mjs` (EN) zaktualizowane do decyzji.
+
 ## CITY-2 „Drugi brzeg” — Core City LVL 7–12 (zapis nadal v13, klucz bez zmian, bez nowego pola; przyrost, nagrody LVL 2–6, premia LVL 7+, Arena, kampania i ekonomia bez zmian)
 - Drugi sektor Core City na tym samym `hub.coreLevel`: Centrum LVL 1–6 bez zmian (rysunek identyczny piksel w piksel z bazą
   `0e67e2f`), Drugi brzeg LVL 7–12 otwarty od LVL 6. `drawShoreScene()` rysuje panoramę z boku istniejącymi elementami

@@ -108,6 +108,17 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         WRÓĆ DO GRY
       </button>
+      <!-- ARENA-FIX-1: how a computer steers in Arena (save.settings.deskControls);
+           only with a mouse / trackpad and only in an Arena round.
+           UX-FIX-A: shown at once (not behind STEROWANIE), with a hint for the mode. -->
+      <div id="deskControlsRow" class="control-row desk-controls-row hidden">
+        <span class="control-label">Sterowanie na Arenie</span>
+        <div class="control-toggle">
+          <button class="toggle-btn" data-desk-controls="mouse">Mysz</button>
+          <button class="toggle-btn" data-desk-controls="keyboard">Klawiatura</button>
+        </div>
+      </div>
+      <p id="deskControlsHint" class="hint-text desk-controls-hint hidden">—</p>
       <button id="btnRestart" class="btn btn-secondary pause-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 1 2.6 6.36"/><path d="M3 21v-6h6"/></svg>
         <span id="btnRestartLabel">ZACZNIJ OD NOWA</span>
@@ -130,15 +141,9 @@
             <button id="btnInputThumbpad" class="toggle-btn">Joystick</button>
           </div>
         </div>
-        <!-- ARENA-FIX-1: how a computer steers in Arena (save.settings.deskControls);
-             only with a mouse / trackpad and only in an Arena round. -->
-        <div id="deskControlsRow" class="control-row hidden">
-          <span class="control-label">Sterowanie</span>
-          <div class="control-toggle">
-            <button class="toggle-btn" data-desk-controls="mouse">Mysz</button>
-            <button class="toggle-btn" data-desk-controls="keyboard">Klawiatura</button>
-          </div>
-        </div>
+        <!-- UX-FIX-A: missions keep their own steering (mouse and keys together);
+             a computer is told the Mysz / Klawiatura choice is Arena's. -->
+        <p id="missionControlsNote" class="hint-text desk-controls-hint hidden">W misjach sterujesz myszą albo klawiszami. Wybór Mysz / Klawiatura dotyczy Areny.</p>
         <div class="control-row">
           <span class="control-label">Czułość</span>
           <div class="control-toggle">
@@ -411,6 +416,16 @@
 
       <div class="settings-block">
         <div class="settings-title">USTAWIENIA</div>
+        <!-- ARENA-FIX-1: the same Arena steering choice between rounds (mouse / trackpad only).
+             UX-FIX-A: first in Ustawienia, with a hint for the mode. -->
+        <div id="profileDeskControlsRow" class="control-row hidden">
+          <span class="control-label">Sterowanie na Arenie</span>
+          <div class="control-toggle">
+            <button class="toggle-btn" data-desk-controls="mouse">Mysz</button>
+            <button class="toggle-btn" data-desk-controls="keyboard">Klawiatura</button>
+          </div>
+        </div>
+        <p id="profileDeskControlsHint" class="hint-text desk-controls-hint hidden">—</p>
         <div class="control-row">
           <span class="control-label">Język</span>
           <div class="control-toggle">
@@ -450,14 +465,6 @@
           <div class="control-toggle">
             <button class="toggle-btn" data-setting="haptics" data-value="1">Wł.</button>
             <button class="toggle-btn" data-setting="haptics" data-value="0">Wył.</button>
-          </div>
-        </div>
-        <!-- ARENA-FIX-1: the same Arena steering choice between rounds (mouse / trackpad only). -->
-        <div id="profileDeskControlsRow" class="control-row hidden">
-          <span class="control-label">Sterowanie na Arenie</span>
-          <div class="control-toggle">
-            <button class="toggle-btn" data-desk-controls="mouse">Mysz</button>
-            <button class="toggle-btn" data-desk-controls="keyboard">Klawiatura</button>
           </div>
         </div>
         <!-- GG-UX-03: which bottom corner the minimap sits in (save.settings.minimapSide). -->

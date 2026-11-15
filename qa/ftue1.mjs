@@ -404,7 +404,8 @@ export async function runFtue1Checks(url) {
       lang: document.documentElement.lang, e: document.getElementById('hubCampaignEyebrow').textContent, t: document.getElementById('hubCampaignTitle').textContent,
       s: document.getElementById('hubCampaignSub').textContent, tag: getComputedStyle(document.getElementById('hubCampaignTile'), '::after').content
     }));
-    results.push(report('FTUE-1 EN: campaign tile reads SECOND MODE / Campaign: 240 missions / 12 districts · play whenever you like / NEW', r.lang === 'en' && r.e === 'SECOND MODE' && r.t === 'Campaign: 240 missions' && r.s === '12 districts · play whenever you like' && r.tag === '"NEW"', JSON.stringify(r)));
+    // UX-FIX-A: the mode was open all along -- "SECOND MODE · OPEN" and MODE 2, never NEW.
+    results.push(report('FTUE-1 EN: campaign tile reads SECOND MODE · OPEN / Campaign: 240 missions / 12 districts · open from the start / MODE 2', r.lang === 'en' && r.e === 'SECOND MODE · OPEN' && r.t === 'Campaign: 240 missions' && r.s === '12 districts · open from the start' && r.tag === '"MODE 2"', JSON.stringify(r)));
     await g.browser.close();
   }
   return results;
