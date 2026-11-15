@@ -1,0 +1,31 @@
+{
+  "distribution": "crazygames-basic",
+  "sourceHead": "71d8e64ae6a80ae3d13360532048ad5b4b1af816",
+  "sourceDirty": false,
+  "files": {
+    "index.html": {
+      "bytes": 62939,
+      "sha256": "d0008e34b558a4978385fd2b539a5dd0a1f256891c94174872ac803f198410c4"
+    },
+    "game.js": {
+      "bytes": 1291623,
+      "sha256": "a83ab8695c8981ef3939e99f0327e3bd75dca646c1144d4568beb248f8ddf8ec"
+    },
+    "style.css": {
+      "bytes": 305308,
+      "sha256": "a245a71a2230c9eb443e354661a406a43d204b6e0c71fadc965e96e0934e59a6"
+    }
+  },
+  "fileCount": 3,
+  "totalBytes": 1659870,
+  "zip": {
+    "bytes": 510069,
+    "sha256": "b98410253efbc321ad99c2ccfda348bcf45ddf4c0db9d169d9e6d388c127e6a2"
+  },
+  "limits": {
+    "files": 1500,
+    "bytes": 52428800,
+    "mobileHomepageBytes": 20971520
+  },
+  "withinMobileHomepageLimit": true
+}
