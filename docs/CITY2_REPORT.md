@@ -63,6 +63,27 @@ przełączanie nie zapisuje niczego (porównanie bajtów zapisu).
 
 ## 5. Testy i materiały
 
-Wyniki: patrz HANDOFF w opisie PR. Zrzuty z działającej gry: `design/city2/shots/` (telefon 390×844 @2x, komputer 1280×720,
-wąski telefon 375×667 @2x, PL/EN, Centrum przed/po), plansza porównawcza `design/city2/CITY2_BOARD.png` (złożona wyłącznie ze
-zrzutów; `node qa/city2-shots.mjs`).
+Ta sama maszyna (kontener sesji), kandydat = ta gałąź; logi w `qa/out/city2-runs/` (git-ignored).
+
+| Suite | Wynik |
+|---|---|
+| `qa/city2.mjs` (nowy) | PASS 65/65 |
+| `qa/save-safety.mjs` | PASS 107/107 |
+| `qa/px02-isolation.mjs` | PASS 95/95 (baza 0e67e2f: 95/95) |
+| `qa/v22.mjs` | PASS 49/49 |
+| `qa/ui2.mjs --only=miasto,nav` | PASS 29/29 |
+| `qa/visual1.mjs` | PASS 31/31 (zaktualizowane: mapa nagród 11 wierszy) |
+| `qa/deviceqa1.mjs --only=checks` | PASS 18/18 (zaktualizowane: tekst „zbudowane” przeniesiony z LVL 6 na LVL 12) |
+| `qa/v19.mjs` (EN) | PASS 16/16 |
+| `qa/design.mjs` | PASS 29/29 |
+| `qa/flow.mjs` | PASS 35/35 |
+| `qa/leave-run.mjs` | PASS |
+| `qa/instructions.mjs` | PASS 4/4 |
+| Pełny `qa/run-all.mjs`, `responsive`, `devices`, `perf1`, `balance1`, `release*` | NOT RUN (celowo — zmiana nie dotyka rozgrywki, ekonomii, workflow ani release) |
+
+Koszt klatki Miasta (telefon 390×844, 240 klatek): Centrum LVL 6 0,53 ms (baza 0,43 ms), Drugi brzeg LVL 12 0,54 ms,
+LVL 9 0,25 ms. Jeden przejściowy FAIL `px02` ISO-B w przerwanym, przeciążonym przebiegu nie powtórzył się w pełnym przebiegu
+kandydata ani bazy.
+
+Zrzuty z działającej gry: `design/city2/shots/` (telefon 390×844 @2x, komputer 1280×720, wąski telefon 375×667 @2x, PL/EN,
+Centrum przed/po), plansza porównawcza `design/city2/CITY2_BOARD.png` (złożona wyłącznie ze zrzutów; `node qa/city2-shots.mjs`).
