@@ -179,6 +179,13 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
 - **Punkty:** wartość obiektu × combo (okno 1,8 s, +0,15 za kęs, maks. ×3)
   × SZAŁ ×2. Zjedzenie rywala: 2× jego promień × combo. Bycie zjedzonym:
   powrót do rozmiaru startowego, wynik zostaje, 2 s ochrony.
+- **Bezpieczny respawn rywala (ARENA-FIX-1, `CONFIG.arena.respawn`):** zjedzony rywal wraca od razu
+  (rozmiar startowy, losowe miejsce, 2 s ochrony — bez zmian), ale nigdy w zasięgu gracza: środek
+  co najmniej `r_gracza·√2 + r_rywala + 160` jednostek świata od środka gracza (√2·r to najdalszy
+  zasięg pochłaniania gracza przy krawędzi, `edgeReach()`; 160 ≈ sekunda jazdy startowego wiru).
+  Do 24 losowań; gdy żadne miejsce nie jest bezpieczne, rywal czeka poza planszą (bez kolizji,
+  nagród i rysowania, z miejscem w rankingu) i co 0,5 s próbuje ponownie wobec aktualnej pozycji
+  i rozmiaru gracza. Nigdy awaryjnie na graczu. Rozstawienie na starcie rundy bez zmian.
 - **Rywal-pacer (v13, `CONFIG.rival`):** pierwszy bot jedzie po krzywej
   „par” = mediana 5 ostatnich ukończonych rund gracza (2600, dopóki nie ma
   3 rund; w Wyzwaniu dnia i wyzwaniach znajomych zawsze 2600) ×
@@ -250,7 +257,23 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   wir, nawet gdy drugi zostaje. Panel HUD i minimapa nie uruchamiają
   joysticka. Pauza, wznowienie, utrata fokusu, `touchcancel`, obrót
   telefonu, start rundy / misji i wybór karty zerują kotwicę.
-- WASD/strzałki i mysz bez zmian (desktop, paczka CrazyGames).
+- **Komputer w Arenie — Sterowanie: Mysz / Klawiatura (ARENA-FIX-1, `settings.deskControls`):**
+  wybór w Profil → Ustawienia („Sterowanie na Arenie”) i w pauzie Areny → STEROWANIE („Sterowanie”),
+  tylko tam, gdzie jest mysz / gładzik (`(any-pointer: fine) and (any-hover: hover)`; telefon i tablet
+  go nie widzą). **Mysz** (domyślna dla nowego profilu; brak / nieznana wartość → Mysz): jak dotąd —
+  wir jedzie za kursorem, WASD / strzałki pomagają, gdy są wciśnięte, w paczce CrazyGames Pointer Lock
+  bez zmian. **Klawiatura**: steruje wyłącznie WASD / strzałkami; puszczenie klawisza zatrzymuje wir,
+  a kursor (stojący czy poruszany) nigdy go nie prowadzi — mysz służy tylko do klikania przycisków;
+  bez blokady kursora i bez napisu o niej. Zmiana trybu, pauza, wznowienie, start rundy i utrata fokusu
+  zwalniają trzymane klawisze i punkt kursora; przejście na Klawiaturę zwalnia blokadę kursora od razu
+  (bez pauzy), powrót na Mysz blokuje go tak jak wcześniej. Dotyk działa zawsze, niezależnie od
+  zapisanego trybu. Misje (Dzielnice) sterują po staremu (WASD + kursor) — wybór dotyczy Areny.
+- **Enter = GRAJ (ARENA-FIX-1):** na Mieście (i na karcie powitalnej przy pierwszym uruchomieniu)
+  Enter naciska GRAJ — ten sam przycisk, ten sam start; jedno naciśnięcie = jedna runda (powtórzenia
+  trzymanego klawisza pomijane). Nie działa w polu tekstowym, gdy fokus ma inny przycisk (Enter
+  należy do niego), pod arkuszem / oknem / kartą, na innych ekranach ani w trakcie rundy. Na komputerze
+  przy GRAJ dyskretna nakładka klawisza „Enter”.
+- WASD/strzałki i mysz poza powyższym bez zmian (desktop, paczka CrazyGames).
 - **Mysz w paczce CrazyGames (CRAZYGAMES-BASIC-1):** portal wymaga blokady myszy w grach
   z widokiem z góry. Tylko w paczce: kliknięcie planszy w trwającej rundzie blokuje kursor
   (Pointer Lock), a wir jedzie za wirtualnym wskaźnikiem tak samo jak za zwykłym kursorem.
@@ -863,7 +886,8 @@ główna akcja, złoto — nagroda i cena, zieleń — ukończone / do odebrania
   („29 PAŹDZIERNIKA” / „OCTOBER 29”, GAME-READY-1).
 - **Ustawienia sterowania (pauza → STEROWANIE; CG-QA-06, R2-02/03):** „Czułość” zawsze. „Tryb
   sterowania” (PRZECIĄGANIE | JOYSTICK, GG-UX-03) tylko na urządzeniach z dotykiem (zdarzenia dotyku lub
-  `maxTouchPoints`, także laptop dotykowy) — zmienia wyłącznie sterowanie dotykiem. „Haptyka” tylko
+  `maxTouchPoints`, także laptop dotykowy) — zmienia wyłącznie sterowanie dotykiem. „Sterowanie”
+  (MYSZ | KLAWIATURA, ARENA-FIX-1) tylko w Arenie i tylko z myszą / gładzikiem (patrz §3). „Haptyka” tylko
   tam, gdzie wibracja może zadziałać: przeglądarka ma `navigator.vibrate`, główny wskaźnik to palec
   (`(pointer: coarse) and (hover: none)`) i strona nie jest w ramce innej domeny (Chrome blokuje tam
   `vibrate()`) — w praktyce GitHub Pages na Androidzie; nigdy w paczce CrazyGames (zawsze ramka

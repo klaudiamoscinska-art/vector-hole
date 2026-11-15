@@ -4,6 +4,20 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## ARENA-FIX-1 — Arena: Mysz / Klawiatura, Enter = GRAJ, bezpieczny respawn rywali (zapis nadal v13, klucz bez zmian; nowe pole `settings.deskControls` w `defaultSave()`; ekonomia, nagrody, progresja, Dzielnice, dotyk, grafika i audio bez zmian)
+- **Sterowanie na komputerze:** „Sterowanie: Mysz / Klawiatura” (Profil → Ustawienia „Sterowanie na Arenie” i pauza Areny →
+  STEROWANIE), tylko z myszą / gładzikiem. Mysz domyślna (brak / nieznana wartość → Mysz), działa jak dotąd (z Pointer Lock
+  w paczce CrazyGames). Klawiatura: tylko WASD / strzałki, puszczenie klawisza zatrzymuje wir — **naprawiony dryf w stronę
+  kursora po puszczeniu klawiszy** (przyczyna: `applyPlayerMovement()` po zwolnieniu klawiszy wracał do pościgu za ostatnią
+  pozycją kursora `pointerScreen`). Zmiana trybu, pauza, wznowienie, start rundy i utrata fokusu zwalniają klawisze i punkt kursora.
+- **Enter = GRAJ** na Mieście i na karcie powitalnej (jeden start, bez powtórzeń, nie pod arkuszem / w polu tekstowym / na innym
+  widocznym przycisku — przycisk ukryty przy zmianie ekranu, który jeszcze trzyma fokus, nie blokuje startu); nakładka klawisza
+  „Enter” przy GRAJ na komputerze. EN: „Controls” / „Arena controls”, „Mouse”, „Keyboard”.
+- **Respawn rywala:** zjedzony rywal nie pojawia się w zasięgu gracza (≥ r·√2 + r_rywala + 160 j. świata od gracza), do 24
+  losowań, bez miejsca — czeka poza planszą i próbuje co 0,5 s. Dotąd przy maks. wirze ok. 13 % respawnów (54/400) lądowało
+  w zasięgu pochłonięcia.
+- **QA:** `qa/arena-fix1.mjs` (w `run-all`); `qa/bridge.mjs` liczy nowe nasłuchy (1 keydown, 4 click).
+
 ## GG-UX-03 „Final gameplay UX & vortex visual corrections” — dwa tryby sterowania, minimapa po lewej, finisz bez zaciemnienia, lustrzane wiry (zapis nadal v13, klucz bez zmian; reguły, ekonomia, RNG, seedy, balans Overdrive, HUD poza minimapą, obiekty i VFX bez zmian)
 - **Sterowanie:** dokładnie dwa tryby dotyku — **PRZECIĄGANIE** (domyślne, bez zmian) i **JOYSTICK** (opcja). Joystick jest
   dynamiczny: pojawia się tam, gdzie palec dotknie planszy (góra, środek, dół — koniec strefy dolnych 35 %,

@@ -34,15 +34,18 @@ const ADDED_SINCE_BASE = {
   // on the canvas, no iOS pinch zoom, pause on P/Space, the last pointer
   // target for scroll keys, the host page never scrolls, focus lost.
   'el:mouseleave': 1, 'el:contextmenu': 1, 'document:gesturestart': 1,
-  'window:keydown': 1 + 1, 'window:pointerdown': 1, 'window:wheel': 1, 'window:blur': 1,
+  'window:keydown': 1 + 1 + 1, 'window:pointerdown': 1, 'window:wheel': 1, 'window:blur': 1,
   // WORKSHOP-BUY (the second keydown above: Escape ends a look): the action
   // slot's buy, cancel and "how to get them" buttons. R2-01: minus the pause
   // sheet's ZMIEŃ WYGLĄD button (removed). GG-UX-03: Profil's minimap
   // side buttons (LEWA, PRAWA).
-  'el:click': 3 - 1 + 2,
+  'el:click': 3 - 1 + 2 + 4,
   // FTUE-2 FIX (real devices): re-measure after a turn once the app box
   // settles (an iPhone home-screen app's resize came too early).
   'window:orientationchange': 1,
+  // ARENA-FIX-1 (counted above): Enter starts Arena from Miasto (the third
+  // window keydown) and the Sterowanie: Mysz / Klawiatura buttons (pause
+  // sheet + Profil, 2 x 2 = the last + 4 clicks).
 };
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
 

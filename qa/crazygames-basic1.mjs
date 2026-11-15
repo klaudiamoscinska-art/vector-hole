@@ -79,7 +79,7 @@ function structureChecks(pkg) {
 
 /** A local stand-in for the portal: the page and the game's file host are fake https
  *  origins answered here, every other request is logged and refused (nothing leaves). */
-async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch = false, frameW = width, frameH = height, cgSdk = PKG_SDK } = {}) {
+export async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch = false, frameW = width, frameH = height, cgSdk = PKG_SDK } = {}) {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, locale, hasTouch });
   await installQaBridge(context);
@@ -110,7 +110,7 @@ async function portalHost(gameDir, { width, height, locale = 'en-US', hasTouch =
 }
 
 /** A real mouse click on an element inside the frame (no synthetic .click()). */
-async function clickIn(page, frame, selector) {
+export async function clickIn(page, frame, selector) {
   const box = await frame.locator(selector).first().boundingBox();
   if (!box) throw new Error('not visible: ' + selector);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
