@@ -70,7 +70,7 @@ Kod gry testowany: `5f96a95` (ostatnia zmiana `game.js`); kontrole `ux3`/`vfx1` 
 
 ```
 STAN PRAC: GG_UX_FIX_B (Etap B) — gotowe do odbioru; zależne od PR A.
-REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h-b @ kod 5f96a95, testy d3f0e1f (HEAD = commit raportu), baza PR = claude/determined-turing-9d9j3h, PR: PR_B
+REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h-b @ kod 5f96a95, testy d3f0e1f (HEAD = commit raportu), baza PR = claude/determined-turing-9d9j3h, PR: https://github.com/klaudiamoscinska-art/vector-hole/pull/108 (baza #107)
 TESTY: §3 — log: qa/out/final/
 ZMIANY: game.js (Skaner, Impuls ssący, Łowca, karty w HUD), index.html (#hud-cards), style.css; qa/uxfix-b.mjs (M, H w run-all; --sim); docs GDD/CHANGELOG/qa README
 NIEDOKOŃCZONE: brak w zakresie B
