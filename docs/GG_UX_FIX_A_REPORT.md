@@ -20,7 +20,34 @@ Implementacja po audycie `GG_UX_AUDIT_1` (gałąź audytu `claude/hopeful-brown-
 
 ## 2. Wyniki testów (końcowy kod gałęzi)
 
-FINAL_RESULTS_A
+Kod testowany: `c56851b` (ostatni commit z kodem/testami; późniejsze commity tej gałęzi zmieniają tylko raport i materiały). Ta sama maszyna, Chromium z Playwright.
+
+| Zestaw | Rodzaj | Wynik | Uwagi |
+|---|---|---|---|
+| `qa/uxfix-a.mjs` (nowy: D, K, R, W) | DOM + FN | **PASS 81/81** | Dzielnice, sterowanie, nagrody, ostrzeżenia |
+| `qa/arena-fix1.mjs` | DOM | **PASS 62/62** | C4 zaktualizowane do decyzji (Mysz bez WASD) |
+| `qa/responsive.mjs` | DOM | **PASS 552/552** | wszystkie ramki Poki / CrazyGames / telefon / tablet / desktop |
+| `qa/ftue1.mjs` | DOM + FN | **PASS 78/78** | EN zaktualizowane (SECOND MODE · OPEN, MODE 2) |
+| `qa/ftue3.mjs` | DOM + FN | **FAIL 25/26** | ten sam FAIL na bazie `be58364` (tekst LVL 7 po CITY-2) — niezwiązany |
+| `qa/flow.mjs` | DOM | **PASS 35/35** | jedna akcja na ekranie 375×667 |
+| `qa/v22.mjs` | DOM + FN | **PASS 49/49** | dwa tryby, bez energii |
+| `qa/ui2.mjs` | DOM | **PASS 109/109** | Miasto, Dzielnice, Warsztat, wyniki, nawigacja |
+| `qa/ui1.mjs` | DOM | **PASS 20/20** | HUD |
+| `qa/workshop-buy.mjs` | DOM | **PASS 73/73** | Warsztat: kupno, podgląd |
+| `qa/ux3.mjs` | DOM + FN | **PASS 42/42** | C7 i V1 zaktualizowane (Mysz / Klawiatura; warstwy wiru) |
+| `qa/deviceqa1.mjs` | DOM | **PASS 50/50** | |
+| `qa/city2.mjs`, `qa/v17.mjs`, `qa/features.mjs` | DOM + FN | **PASS** (city2, v17 12/12, features bez FAIL) | |
+| `qa/crazygames-basic1.mjs` | DOM (lokalna ramka, nie Preview) | **FAIL** — 3 kontrole Pointer Lock + crash kroku | identycznie na bazie `be58364` (headless) |
+| `qa/v19.mjs` (EN) | DOM | **PASS 16/16** | |
+| `qa/design.mjs` (paleta, język neutralny płciowo) | statyczne + DOM | **PASS 29/29** | |
+| `qa/save-safety.mjs` | FN | **PASS 107/107** | zapis v13, PX01 |
+| `qa/px02-isolation.mjs` | FN | **PASS 95/95** | niezależność trybów, brak przewagi w Arenie |
+| `qa/leave-run.mjs` | DOM + FN | **PASS 22/22** | |
+| `qa/instructions.mjs` | statyczne | **PASS 4/4** | |
+| `qa/balance1.mjs --quick` | SIM | **PASS 19/19** | ekonomia bez zmian |
+| `qa/run-all.mjs` | — | **NOT RUN** | zakres pokryty wybranymi zestawami powyżej |
+
+Uwaga o świeżości: `uxfix-a`, `responsive`, `arena-fix1`, `ftue1`, `ftue3`, `v19`, `design`, `instructions` — na `c56851b`; pozostałe na `dbdf379`/`50aaecc` (późniejsze zmiany: kontrole testowe, wiersz sterowania w układzie compact, krótsze opisy kart — pokryte przez `responsive` i `uxfix-a` na `c56851b`).
 
 ## 3. Różnice względem bazy i znane FAIL-e
 
@@ -50,7 +77,7 @@ FINAL_RESULTS_A
 
 ```
 STAN PRAC: GG_UX_FIX_A (Etap A) — gotowe do odbioru; zgłoszenia 1, 2, 3, 6 + opisy Magnes/Turbo/Tarcza. Zgłoszenia 4 i 5 domykają Etapy B i C.
-REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h @ FINAL_SHA_A, baza origin/main = be583642233be678aff93953646c1e3625dd622f, PR: PR_A
+REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h @ kod c56851b (HEAD = commit raportu), baza origin/main = be583642233be678aff93953646c1e3625dd622f, PR: PR_A
 TESTY: patrz §2 — log: qa/out/final-a/
 ZMIANY: game.js, index.html, style.css; qa/uxfix-a.mjs (nowy, w run-all); qa/arena-fix1, ftue1, responsive, ux3, crazygames-basic1 (decyzja Mysz/Klawiatura); docs GDD/CHANGELOG/qa README; design/ux-fix/a-*.jpg
 NIEDOKOŃCZONE: brak w zakresie A
