@@ -2382,27 +2382,33 @@ const LOOKS_ONLY_REFUND = { cyan: 100, pink: 220, green: 450, purple: 800, gold:
 // 4.0 §5.3 renames this Warsztat category "Trail" -- kept as `AURAS`
 // internally since it's the same following-glow render path (Hole's aura).
 const AURAS = [
-  { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins' },
-  { id: 'spark', name: 'Iskra', priceCoins: 1000, priceType: 'coins', color: '#50F0FA' },
-  { id: 'ember', name: 'Żar', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD' },
-  { id: 'vortex', name: 'Zawirowanie', pricePrisms: 30, priceType: 'prisms', color: '#9875FF' },
-  { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#46D99A', unlockSource: { type: 'coreCity', level: 2 } },
-  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } },
+  // UX-FIX-C: a Smuga is a real trail behind the moving vortex (drawAuraTrail():
+  // `trail` = its shape); it fades when the vortex stops. Ids, prices and
+  // ownership unchanged.
+  { id: 'none', name: 'Brak', priceCoins: 0, priceType: 'coins', desc: 'Bez śladu za wirem.' },
+  { id: 'spark', name: 'Iskra', priceCoins: 1000, priceType: 'coins', color: '#50F0FA', trail: 'sparks', desc: 'Iskry zostają za wirem, gdy jedziesz.' },
+  { id: 'ember', name: 'Żar', pricePrisms: 15, priceType: 'prisms', color: '#FF54AD', trail: 'ribbon', desc: 'Gorąca wstęga za wirem w ruchu.' },
+  { id: 'vortex', name: 'Zawirowanie', pricePrisms: 30, priceType: 'prisms', color: '#9875FF', trail: 'helix', desc: 'Dwie skręcone nitki za wirem w ruchu.' },
+  { id: 'impuls', name: 'Impuls', priceCoins: null, color: '#46D99A', trail: 'pulse', desc: 'Zielone impulsy za wirem w ruchu.', unlockSource: { type: 'coreCity', level: 2 } },
+  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', trail: 'prism', desc: 'Trzy kolorowe linie za wirem w ruchu.', unlockSource: { type: 'coreCity', level: 6 } },
   // v11: Pakiet Startowy exclusive (IAP_PRODUCTS.starter_pack) -- hidden
   // from the grid unless owned or purchasable (renderCosmeticGrid()).
-  { id: 'starter_glow', name: 'Zorza Startu', priceCoins: null, color: '#7cffcb', unlockSource: { type: 'iap', sku: 'starter_pack' } }
+  { id: 'starter_glow', name: 'Zorza Startu', priceCoins: null, color: '#7cffcb', trail: 'glow', desc: 'Miękka zorza za wirem w ruchu.', unlockSource: { type: 'iap', sku: 'starter_pack' } }
 ];
 
 // GDD 4.0 §5.3 Warsztat category 3: "Efekt pochłaniania" -- the eat/absorb
 // particle burst (see triggerEatFeedback()). 'classic' keeps today's
 // per-object-type colors (color: null means "don't override").
 const EAT_EFFECTS = [
-  { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
-  { id: 'pixel_burst', name: 'Pikselowy Wybuch', priceCoins: null, color: '#EFCB63', unlockSource: { type: 'coreCity', level: 4 } },
+  // UX-FIX-C: each effect has its own particle shape (`shape`, Particle.draw()):
+  // a small bite keeps the same particle count, a bigger one adds a short
+  // burst of that shape. Hitboxes, eat time, points and hit-stop unchanged.
+  { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null, desc: 'Smugi w kolorze zjedzonego obiektu.' },
+  { id: 'pixel_burst', name: 'Pikselowy Wybuch', priceCoins: null, color: '#EFCB63', shape: 'pixel', desc: 'Złote piksele przy każdym kęsie.', unlockSource: { type: 'coreCity', level: 4 } },
   // v22: prism looks (pure cosmetics -- prisms buy style, never play time).
-  { id: 'neon_rose', name: 'Neonowa Róża', pricePrisms: 20, priceType: 'prisms', color: '#FF54AD' },
-  { id: 'violet_rift', name: 'Fioletowa Szczelina', pricePrisms: 35, priceType: 'prisms', color: '#9875FF' },
-  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', unlockSource: { type: 'coreCity', level: 6 } }
+  { id: 'neon_rose', name: 'Neonowa Róża', pricePrisms: 20, priceType: 'prisms', color: '#FF54AD', shape: 'petal', desc: 'Różowe płatki wirują do wiru.' },
+  { id: 'violet_rift', name: 'Fioletowa Szczelina', pricePrisms: 35, priceType: 'prisms', color: '#9875FF', shape: 'rift', desc: 'Fioletowa szczelina w miejscu kęsa.' },
+  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ffffff', shape: 'prism', desc: 'Trójkąty w 4 kolorach przy kęsie.', unlockSource: { type: 'coreCity', level: 6 } }
 ];
 
 // GDD 4.0 §5.3 Warsztat category 4: "Overdrive" -- a cosmetic tint on
@@ -2410,11 +2416,13 @@ const EAT_EFFECTS = [
 // Doesn't change which variant (blackout/portal_rain) is picked -- only
 // the banner/glow color. (GG-UX-03: 'blackout' no longer darkens anything.)
 const OVERDRIVE_SKINS = [
-  { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null },
-  { id: 'fala', name: 'Fala', priceCoins: null, color: '#50F0FA', unlockSource: { type: 'coreCity', level: 5 } },
-  { id: 'zloty_szczyt', name: 'Złoty Szczyt', pricePrisms: 25, priceType: 'prisms', color: '#EFCB63' },
-  { id: 'zielona_burza', name: 'Zielona Burza', pricePrisms: 40, priceType: 'prisms', color: '#46D99A' },
-  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#ff00ea', unlockSource: { type: 'coreCity', level: 6 } }
+  // UX-FIX-C: each Finisz also decorates the banner (`deco`, drawFinishDeco()),
+  // same moment and length. Pryzmat's #ff00ea (off the palette) -> pink.
+  { id: 'classic', name: 'Klasyczny', priceCoins: 0, color: null, desc: 'Fioletowy baner w ostatnich 12 s.' },
+  { id: 'fala', name: 'Fala', priceCoins: null, color: '#50F0FA', deco: 'wave', desc: 'Baner finiszu z falą pod napisem.', unlockSource: { type: 'coreCity', level: 5 } },
+  { id: 'zloty_szczyt', name: 'Złoty Szczyt', pricePrisms: 25, priceType: 'prisms', color: '#EFCB63', deco: 'peak', desc: 'Złoty baner finiszu ze szczytami.' },
+  { id: 'zielona_burza', name: 'Zielona Burza', pricePrisms: 40, priceType: 'prisms', color: '#46D99A', deco: 'storm', desc: 'Zielony baner z błyskawicami.' },
+  { id: 'pryzmat', name: 'Pryzmat', priceCoins: null, color: '#FF54AD', deco: 'prism', desc: 'Baner finiszu w barwach pryzmatu.', unlockSource: { type: 'coreCity', level: 6 } }
 ];
 
 // GDD 4.0 §8.2 "Progi i nagrody" -- what completing each Core City level
@@ -2422,6 +2430,21 @@ const OVERDRIVE_SKINS = [
 // state and grants nothing). Level 7+ has no authored reward (§8.2's own
 // "beyond LVL6 is a seasonal/prestige loop, out of scope" disclaimer) so
 // grantCoreCityLevelReward() falls back to hub.milestoneFallbackCoins/Prisms.
+/** UX-FIX-C: the grid's small pictures of an effect's shape / a finish's decoration. */
+const EFFECT_GLYPHS = {
+  classic: '<path d="M4 18 12 12M6 7l6 5M19 9l-7 3M17 19l-5-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/>',
+  pixel: '<rect x="3" y="4" width="5" height="5" fill="currentColor"/><rect x="15" y="3" width="4" height="4" fill="currentColor"/><rect x="10" y="10" width="5" height="5" fill="currentColor"/><rect x="4" y="15" width="4" height="4" fill="currentColor"/><rect x="16" y="15" width="5" height="5" fill="currentColor"/>',
+  petal: '<ellipse cx="12" cy="6.5" rx="2.6" ry="4.5" fill="currentColor"/><ellipse cx="17.5" cy="15" rx="2.6" ry="4.5" transform="rotate(120 17.5 15)" fill="currentColor"/><ellipse cx="6.5" cy="15" rx="2.6" ry="4.5" transform="rotate(240 6.5 15)" fill="currentColor"/>',
+  rift: '<path d="M12 2c3 4 3 16 0 20-3-4-3-16 0-20z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h3M17 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  prism: '<path d="M6 3l4 7H2z" fill="#50F0FA"/><path d="M18 3l4 7h-8z" fill="#FF54AD"/><path d="M6 14l4 7H2z" fill="#EFCB63"/><path d="M18 14l4 7h-8z" fill="#9875FF"/>'
+};
+const FINISH_GLYPHS = {
+  classic: '<rect x="2" y="8" width="20" height="8" rx="2" fill="currentColor"/>',
+  wave: '<rect x="2" y="5" width="20" height="7" rx="2" fill="currentColor"/><path d="M2 18q2.5-3 5 0t5 0 5 0 5 0" fill="none" stroke="currentColor" stroke-width="2"/>',
+  peak: '<rect x="6" y="8" width="12" height="8" rx="2" fill="currentColor"/><path d="M0 17l2-6 1.5 3 1.5-5 0 8zM24 17l-2-6-1.5 3-1.5-5 0 8z" fill="currentColor"/>',
+  storm: '<rect x="6" y="8" width="12" height="8" rx="2" fill="currentColor"/><path d="M3 5 1 12h2l-1 6 3-8H3l1-5zM21 5l-2 7h2l-1 6 3-8h-2l1-5z" fill="currentColor"/>',
+  prism: '<rect x="3" y="6" width="18" height="8" rx="2" fill="currentColor"/><path d="M3 18h4" stroke="#50F0FA" stroke-width="2.4"/><path d="M8 18h4" stroke="#FF54AD" stroke-width="2.4"/><path d="M13 18h4" stroke="#EFCB63" stroke-width="2.4"/><path d="M18 18h3" stroke="#9875FF" stroke-width="2.4"/>'
+};
 /** UX-FIX-A: Warsztat's four tabs by cosmetic category (pendingLoadout keys). */
 const WARSZTAT_TABS = {
   skin: { tab: 'tabSkins', grid: 'skinGrid' },
@@ -4667,6 +4690,143 @@ function decodeSaveCode(code) {
 
 /* ----------------------- Particle ----------------------- */
 
+/* UX-FIX-C: shared cosmetic drawing -- the round and the Warsztat preview call
+   the same functions, so the shop shows exactly what the round does. */
+const PRISM_COLORS = ['#50F0FA', '#FF54AD', '#EFCB63', '#9875FF'];
+// A point every `gap` x r of travel (or every `step` s while moving), at most
+// maxPts (about 2.6 r of trail), each gone after life(r) s -- so a stopped
+// vortex's trail fades in well under a second (a big one a little slower).
+const AURA_TRAIL = { gap: 0.22, step: 0.12, maxPts: 12, jump: 3, life: (r) => 0.6 + Math.min(r, 300) / 200 };
+
+/** A Smuga behind a vortex of radius r: `pts` oldest -> newest ({ x, y, a }:
+ *  a = age 0 new .. 1 gone), drawn under the vortex, never wider than 0.8 r,
+ *  at most half opaque (objects and rivals stay visible). `lite` (quality 0):
+ *  fewer marks, no extra pass. Display only. */
+function drawAuraTrail(ctx, pts, r, aura, time, lite) {
+  if (!aura || !aura.trail || !pts || pts.length < 2) return;
+  const n = pts.length, col = aura.color || '#50F0FA', still = prefersReducedMotion();
+  // the trail's half width at each point: wide at the vortex, nothing at the tail
+  const half = (i) => r * 0.62 * (1 - pts[i].a) * (0.35 + 0.65 * i / (n - 1));
+  const dir = (i) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)]; const dx = b.x - a.x, dy = b.y - a.y, m = Math.hypot(dx, dy) || 1; return [dx / m, dy / m]; };
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const ribbon = (alpha, widthK) => {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) { const [dx, dy] = dir(i), w = half(i) * widthK; const x = pts[i].x - dy * w, y = pts[i].y + dx * w; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+    for (let i = n - 1; i >= 0; i--) { const [dx, dy] = dir(i), w = half(i) * widthK; ctx.lineTo(pts[i].x + dy * w, pts[i].y - dx * w); }
+    ctx.closePath(); ctx.fill();
+  };
+  switch (aura.trail) {
+    case 'ribbon':
+      ribbon(0.38, 1);
+      if (!lite) { ctx.globalCompositeOperation = 'lighter'; ribbon(0.22, 0.45); }
+      break;
+    case 'glow':
+      ribbon(0.22, 1.15);
+      ribbon(0.3, 0.55);
+      break;
+    case 'sparks':
+      ctx.fillStyle = col;
+      for (let i = 0; i < n - 1; i += lite ? 2 : 1) {
+        const [dx, dy] = dir(i), w = half(i), s = (i * 7.3) % 1 - 0.5;
+        ctx.globalAlpha = 0.55 * (1 - pts[i].a);
+        ctx.beginPath(); ctx.arc(pts[i].x - dy * w * s, pts[i].y + dx * w * s, Math.max(1.2, r * 0.09 * (1 - pts[i].a)), 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    case 'helix':
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, r * 0.07);
+      for (const sign of [1, -1]) {
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) { const [dx, dy] = dir(i), w = half(i) * Math.sin((still ? 0 : time * 6) + i * 0.9) * sign; const x = pts[i].x - dy * w, y = pts[i].y + dx * w; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+      break;
+    case 'pulse':
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, r * 0.08);
+      for (let i = 1; i < n - 1; i += 2) {
+        const [dx, dy] = dir(i), w = half(i);
+        ctx.globalAlpha = 0.55 * (1 - pts[i].a);
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x - dy * w - dx * w * 0.6, pts[i].y + dx * w - dy * w * 0.6);
+        ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.lineTo(pts[i].x + dy * w - dx * w * 0.6, pts[i].y - dx * w - dy * w * 0.6);
+        ctx.stroke();
+      }
+      break;
+    case 'prism':
+      ctx.lineWidth = Math.max(1.2, r * 0.05);
+      [-0.55, 0, 0.55].forEach((k, j) => {
+        ctx.strokeStyle = PRISM_COLORS[j]; ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) { const [dx, dy] = dir(i), w = half(i) * k; const x = pts[i].x - dy * w, y = pts[i].y + dx * w; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.stroke();
+      });
+      break;
+  }
+  ctx.restore();
+}
+
+/** One eat-effect particle drawn in its effect's shape (Particle.draw()). */
+function drawEffectShape(ctx, shape, x, y, size, rot, color, vx, vy) {
+  ctx.fillStyle = color; ctx.strokeStyle = color;
+  ctx.translate(x, y);
+  switch (shape) {
+    case 'pixel': ctx.rotate(rot); ctx.fillRect(-size, -size, size * 2, size * 2); break;
+    case 'petal': ctx.rotate(Math.atan2(vy, vx)); ctx.beginPath(); ctx.ellipse(0, 0, size * 2.2, size * 0.95, 0, 0, Math.PI * 2); ctx.fill(); break;
+    case 'prism': ctx.rotate(rot); ctx.beginPath(); ctx.moveTo(0, -size * 1.6); ctx.lineTo(size * 1.4, size); ctx.lineTo(-size * 1.4, size); ctx.closePath(); ctx.fill(); break;
+    case 'rift': ctx.rotate(Math.atan2(vy, vx) + Math.PI / 2); ctx.lineWidth = Math.max(1, size * 0.45); ctx.beginPath(); ctx.ellipse(0, 0, size * 0.7, size * 2.6, 0, 0, Math.PI * 2); ctx.stroke(); ctx.fillRect(-size * 0.15, -size * 1.8, size * 0.3, size * 3.6); break;
+  }
+}
+
+/** Finisz decorations around the "WIELKI FINISZ!" banner, in the banner's own
+ *  coordinates (text centred on 0,0, `half` = half its width, `size` = font
+ *  size, `room` = how far a side mark may reach). Display only. */
+function drawFinishDeco(ctx, deco, color, half, size, room, t) {
+  if (!deco) return;
+  const still = prefersReducedMotion(), tt = still ? 0.3 : t;
+  const side = Math.min(half + size * 0.55, room - size * 0.3);
+  const hasSides = side > half + size * 0.25;
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.fillStyle = color; ctx.strokeStyle = color;
+  if (deco === 'wave') {
+    ctx.lineWidth = Math.max(2, size * 0.08);
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) { const x = -half + (2 * half) * i / 24; const y = size * 0.62 + Math.sin(i * 0.8 - tt * 8) * size * 0.1; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+    ctx.stroke();
+  } else if (deco === 'peak' && hasSides) {
+    for (const sgn of [-1, 1]) {
+      ctx.beginPath();
+      const x0 = sgn * side;
+      ctx.moveTo(x0 - size * 0.32, size * 0.32); ctx.lineTo(x0 - size * 0.12, -size * 0.18); ctx.lineTo(x0, size * 0.05);
+      ctx.lineTo(x0 + size * 0.14, -size * 0.36); ctx.lineTo(x0 + size * 0.32, size * 0.32); ctx.closePath(); ctx.fill();
+    }
+  } else if (deco === 'storm' && hasSides) {
+    const flick = still ? 1 : (Math.sin(tt * 23) > -0.3 ? 1 : 0.35);
+    ctx.globalAlpha = flick;
+    for (const sgn of [-1, 1]) {
+      ctx.beginPath();
+      const x0 = sgn * side;
+      ctx.moveTo(x0 + size * 0.1, -size * 0.45); ctx.lineTo(x0 - size * 0.16, size * 0.04); ctx.lineTo(x0 + size * 0.02, size * 0.04);
+      ctx.lineTo(x0 - size * 0.1, size * 0.45); ctx.lineTo(x0 + size * 0.18, -size * 0.06); ctx.lineTo(x0, -size * 0.06); ctx.closePath(); ctx.fill();
+    }
+  } else if (deco === 'prism') {
+    const segs = 4, w = (2 * half) / segs;
+    ctx.lineWidth = Math.max(2, size * 0.09);
+    for (let i = 0; i < segs; i++) { ctx.strokeStyle = PRISM_COLORS[(i + Math.floor(tt * 3)) % 4]; ctx.beginPath(); ctx.moveTo(-half + i * w + 2, size * 0.6); ctx.lineTo(-half + (i + 1) * w - 2, size * 0.6); ctx.stroke(); }
+    if (hasSides) for (const sgn of [-1, 1]) {
+      ctx.fillStyle = PRISM_COLORS[sgn > 0 ? 2 : 0];
+      ctx.beginPath(); ctx.moveTo(sgn * side, -size * 0.34); ctx.lineTo(sgn * side + size * 0.3, size * 0.26); ctx.lineTo(sgn * side - size * 0.3, size * 0.26); ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 class Particle {
   /** kind: 'dot' (soft glow, the original), 'spark' (a speed streak) or
    *  'pixel' (a spinning square) -- Golden Shot v8 mixes all three into
@@ -4716,7 +4876,11 @@ class Particle {
     const t = clamp(this.life / this.maxLife, 0, 1);
     ctx.save();
     ctx.globalAlpha = t;
-    if (this.kind === 'suck') {
+    if (this.shape && (this.kind === 'suck' || this.kind === 'shape')) {
+      // UX-FIX-C: the effect's own shape (pixel / petal / rift / prism).
+      ctx.globalAlpha = this.kind === 'suck' ? Math.min(1, t * 2) : t;
+      drawEffectShape(ctx, this.shape, this.x, this.y, this.radius * (this.kind === 'suck' ? 0.9 : 0.6 + 0.4 * t), this.rot, this.color, this.vx, this.vy);
+    } else if (this.kind === 'suck') {
       ctx.globalAlpha = Math.min(1, t * 2);
       ctx.strokeStyle = this.color;
       ctx.lineWidth = this.radius;
@@ -10843,6 +11007,28 @@ class Hole {
 
   get invulnerable() { return performance.now() < this.invulnerableUntil; }
 
+  /** UX-FIX-C: the Smuga's last positions -- at most AURA_TRAIL.maxPts, one
+   *  every AURA_TRAIL.step s, each gone after AURA_TRAIL.life s (memory only,
+   *  a fixed small list). A jump (respawn, a teleport) starts it afresh, so
+   *  no line ever crosses the map. Returns { x, y, a } oldest -> newest, the
+   *  vortex itself last. */
+  sampleTrail(time) {
+    const T = AURA_TRAIL, buf = this.trail || (this.trail = []), life = T.life(this.radius);
+    const last = buf[buf.length - 1];
+    const moved = last ? Math.hypot(this.x - last.x, this.y - last.y) : 0;
+    if (last && (time < last.t || moved > Math.max(120, this.radius * T.jump))) buf.length = 0;
+    if (!buf.length || moved >= this.radius * T.gap || (moved > 2 && time - buf[buf.length - 1].t >= T.step)) {
+      buf.push({ x: this.x, y: this.y, t: time });
+      if (buf.length > T.maxPts) buf.shift();
+    }
+    while (buf.length && time - buf[0].t > life) buf.shift();
+    const out = this.trailOut || (this.trailOut = []);
+    out.length = 0;
+    for (const q of buf) out.push({ x: q.x, y: q.y, a: clamp((time - q.t) / life, 0, 1) });
+    out.push({ x: this.x, y: this.y, a: 0 });
+    return out;
+  }
+
   getSpeed() {
     const s = BASE_SPEED * Math.pow(BASE_RADIUS / this.radius, 0.22);
     // tempSpeedMult: set per-frame by Game.updateMutationEffects() for the
@@ -10900,6 +11086,7 @@ class Hole {
   }
 
   shrinkAndRespawn(bonusInvulnMs) {
+    if (this.trail) this.trail.length = 0; // UX-FIX-C: no trail across the map
     this.radius = BASE_RADIUS;
     this.x = rand(this.radius + 20, WORLD_W - this.radius - 20);
     this.y = rand(this.radius + 20, WORLD_H - this.radius - 20);
@@ -10960,21 +11147,13 @@ class Hole {
   }
 
   drawBody(ctx, time, inner, over) {
+    // UX-FIX-C: the Smuga is a trail behind the moving vortex (it was a ring
+    // around it): sampled here, drawn over the gravity well but under the
+    // vortex itself (below), fades when it stops.
+    let trailAura = null, trailPts = null;
     if (this.auraId && this.auraId !== 'none') {
       const aura = AURAS.find(a => a.id === this.auraId);
-      if (aura && aura.color) {
-        const pulse = 0.5 + 0.5 * Math.sin(time * 2.4);
-        ctx.save();
-        ctx.globalAlpha = 0.25 + 0.15 * pulse;
-        ctx.strokeStyle = aura.color;
-        ctx.shadowBlur = 22;
-        ctx.shadowColor = aura.color;
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius + 8 + 3 * pulse, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
+      if (aura && aura.trail) { trailAura = aura; trailPts = this.trailPoints || this.sampleTrail(time); }
     }
 
     // GG-HOLE-01: the look's layers (HOLE_LOOKS), each turning at its own
@@ -10999,6 +11178,7 @@ class Hole {
     ctx.save();
     ctx.translate(this.x, this.y);
     stampHoleLayer(ctx, style, 'under', col, devR, r, T * sp[0]);
+    if (trailAura) { ctx.translate(-this.x, -this.y); drawAuraTrail(ctx, trailPts, r, trailAura, time, lite); ctx.translate(this.x, this.y); }
     stampHoleLayer(ctx, style, 'inner', col, devR, r, T * sp[1]);
     // Matter falling in: the flow layer shrinks toward the core as it turns.
     // A rival's fades out as it fills the screen (fill cost grows with its area).
@@ -12245,14 +12425,17 @@ class Game {
     // GDD 4.0 §5.3: Warsztat has 4 equip categories (Rdzeń/Trail/Efekt
     // pochłaniania/Overdrive) instead of the old 2 (Ring/Aura tabs).
     const shopTabs = Object.values(WARSZTAT_TABS);
-    shopTabs.forEach(({ tab, grid }) => {
+    Object.entries(WARSZTAT_TABS).forEach(([cat, { tab, grid }]) => {
       document.getElementById(tab).addEventListener('click', () => {
         shopTabs.forEach(({ tab: t, grid: g }) => {
           document.getElementById(t).classList.toggle('active', t === tab);
           document.getElementById(g).classList.toggle('hidden', g !== grid);
         });
+        // UX-FIX-C: the showroom card shows this tab's category.
+        this.warsztatCat = cat;
         this.clearWarsztatFocus();
         this.updateCosmeticUnlockedCount();
+        this.updateWarsztatPreview();
       });
     });
     document.getElementById('btnWarsztatBuy').addEventListener('click', () => this.onWarsztatAction());
@@ -12471,6 +12654,9 @@ class Game {
       } else {
         swatch.style.borderColor = 'rgba(255,255,255,0.3)';
       }
+      // UX-FIX-C: an effect / a finish shows its shape, not just a color dot.
+      const glyph = gridId === 'effectGrid' ? EFFECT_GLYPHS[item.shape || 'classic'] : gridId === 'overdriveSkinGrid' ? FINISH_GLYPHS[item.deco || 'classic'] : null;
+      if (glyph) { swatch.classList.add('has-glyph'); swatch.style.color = item.color || '#9875FF'; swatch.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${glyph}</svg>`; }
       card.appendChild(swatch);
       // GG-UI-02: where the item comes from -- its real source only (the
       // starting set, coins, prisms, a reward); the game has no rarity.
@@ -12836,6 +13022,9 @@ class Game {
   openWarsztatScreen({ reward = null } = {}) {
     this.analytics.track('shop_view', {});
     this.warsztatFocus = null;
+    const openTab = Object.entries(WARSZTAT_TABS).find(([, t]) => document.getElementById(t.tab).classList.contains('active'));
+    this.warsztatCat = openTab ? openTab[0] : 'skin';
+    this.warsztatFxParts = [];
     // UX-FIX-A: the cards a reward card points at (marked until Warsztat is opened again).
     this.warsztatReward = reward && reward.length ? reward : null;
     const hint = document.getElementById('warsztatHint');
@@ -12951,11 +13140,14 @@ class Game {
     // The preview canvas itself is redrawn every frame from pendingLoadout
     // by renderWarsztatCanvases(); this just refreshes the text labels.
     // DEVICE-QA-1: a Smuga / Efekt / Finisz being previewed names itself.
-    const f = this.warsztatFocus && this.warsztatFocus.cat !== 'skin' ? this.warsztatFocus : null;
-    const what = f ? { aura: 'Ślad za wirem w ruchu', effect: 'Błysk przy połykaniu', overdriveSkin: 'Kolor banera na finiszu rundy' }[f.cat] : null;
-    document.getElementById('warsztatPreviewName').textContent = f ? f.item.name : skin.name;
-    document.querySelector('#warsztatLook .warsztat-look-label').textContent = f ? `PODGLĄD · ${f.noun.toUpperCase()} · BEZ BONUSU W RUNDZIE` : 'WYGLĄD WIRU · BEZ BONUSU W RUNDZIE';
-    document.getElementById('warsztatLookValue').textContent = f ? what : (skin.look || '—');
+    // UX-FIX-C: the card shows the open tab's category -- the item being
+    // looked at, else the one worn -- with one line on what it does and when.
+    const cat = this.warsztatFocus ? this.warsztatFocus.cat : (this.warsztatCat || 'skin');
+    const shown = this.warsztatFocus ? this.warsztatFocus.item : ({ skin, aura, effect, overdriveSkin: overdrive }[cat] || ({ aura: AURAS[0], effect: EAT_EFFECTS[0], overdriveSkin: OVERDRIVE_SKINS[0] })[cat] || skin);
+    const noun = this.cosmeticCategory(cat).noun;
+    document.getElementById('warsztatPreviewName').textContent = shown.name;
+    document.querySelector('#warsztatLook .warsztat-look-label').textContent = cat === 'skin' ? 'WYGLĄD WIRU · BEZ BONUSU W RUNDZIE' : `${noun.toUpperCase()} · BEZ BONUSU W RUNDZIE`;
+    document.getElementById('warsztatLookValue').textContent = cat === 'skin' ? (shown.look || '—') : (shown.desc || '—');
     document.getElementById('warsztatPreviewLoadout').textContent =
       `Smuga: ${(aura && aura.name) || 'Brak'} · Efekt: ${(effect && effect.name) || 'Klasyczny'} · Finisz: ${(overdrive && overdrive.name) || 'Klasyczny'}`;
     this.renderWarsztatAction();
@@ -13146,27 +13338,62 @@ class Game {
   renderWarsztatCanvases(time) {
     const p = this.pendingLoadout || { skin: this.save.selected, aura: this.save.auras.selected, effect: this.save.effects.selected };
     const effect = EAT_EFFECTS.find(e => e.id === p.effect);
-    const effectColor = (effect && effect.color) || TIERS.fragment.color;
     const skin = SKINS.find(sk => sk.id === p.skin);
     const glowColor = (skin && skin.color) || '#9875FF';
     const fx = this.warsztatFx && !prefersReducedMotion() ? this.warsztatFx : null;
     const fxAge = fx ? performance.now() / 1000 - fx.t0 : 9;
     if (fx && fxAge > 1.2) this.warsztatFx = null;
-    this.drawHoleThumb(document.getElementById('warsztatPreviewCanvas'), p.skin, p.aura, time,
-      (ctx, R) => { this.drawPreviewEat(ctx, R, time, effectColor); if (fxAge < 1.2) this.drawEquipBurst(ctx, R, fxAge, fx); },
-      (ctx, w, h) => this.drawWarsztatStage(ctx, w, h, glowColor, time), 0.62);
-    const focus = this.warsztatFocus;
-    if (focus && focus.cat === 'overdriveSkin') this.drawFinishPreview(document.getElementById('warsztatPreviewCanvas'), focus.item.color || '#9875FF', time);
+    // UX-FIX-C: the showroom shows the open tab's category with the round's
+    // own drawing code: Wir -- the vortex; Smuga -- the vortex driving a loop
+    // with its trail (drawAuraTrail()); Efekt -- an object swallowed every
+    // 1.6 s, every third a big bite (the round's Particle shapes); Finisz --
+    // the "WIELKI FINISZ!" banner with its decoration (drawFinishDeco()).
+    const cat = this.warsztatFocus ? this.warsztatFocus.cat : (this.warsztatCat || 'skin');
+    const still = prefersReducedMotion();
+    const pv = document.getElementById('warsztatPreviewCanvas');
+    // a figure-eight at about a vortex's real speed (~3 radii a second)
+    const loopPos = (tt, R) => ({ x: Math.sin(tt * 3.6) * R * 1.6, y: Math.sin(tt * 7.2) * R * 0.5 });
+    if (cat === 'aura') {
+      const tt = still ? 0.6 : time;
+      this.drawHoleThumb(pv, p.skin, p.aura, time, (ctx, R) => { if (fxAge < 1.2) this.drawEquipBurst(ctx, R, fxAge, fx); },
+        (ctx, w, h) => this.drawWarsztatStage(ctx, w, h, glowColor, time), 0.5,
+        (hole, R) => {
+          const at = loopPos(tt, R); hole.x = at.x; hole.y = at.y;
+          // the trail the round would have drawn on this loop (same life / step)
+          const pts = [];
+          for (let k = AURA_TRAIL.maxPts; k >= 1; k--) { const q = loopPos(tt - k * 0.042, R); pts.push({ x: q.x, y: q.y, a: clamp(k * 0.042 / AURA_TRAIL.life(R), 0, 1) }); }
+          pts.push({ x: at.x, y: at.y, a: 0 });
+          hole.trailPoints = pts;
+        });
+    } else if (cat === 'effect') {
+      this.drawHoleThumb(pv, p.skin, 'none', time, (ctx, R, hole) => { this.drawPreviewEatFx(ctx, R, time, effect, hole, still); if (fxAge < 1.2) this.drawEquipBurst(ctx, R, fxAge, fx); },
+        (ctx, w, h) => this.drawWarsztatStage(ctx, w, h, glowColor, time), 0.62);
+    } else {
+      this.drawHoleThumb(pv, p.skin, 'none', time, (ctx, R) => { if (fxAge < 1.2) this.drawEquipBurst(ctx, R, fxAge, fx); },
+        (ctx, w, h) => this.drawWarsztatStage(ctx, w, h, glowColor, time), 0.62);
+      if (cat === 'overdriveSkin') {
+        const od = OVERDRIVE_SKINS.find(o => o.id === p.overdriveSkin) || OVERDRIVE_SKINS[0];
+        this.drawFinishPreview(pv, od.color || '#9875FF', time, od.deco);
+      }
+    }
     document.querySelectorAll('#shopScreen canvas.hole-swatch').forEach(cv => {
       if (!cv.offsetParent) return; // inactive tab
-      this.drawHoleThumb(cv, cv.dataset.skin || p.skin, cv.dataset.aura || 'none', time);
+      const aura = cv.dataset.aura && cv.dataset.aura !== 'none' ? cv.dataset.aura : null;
+      // a Smuga thumbnail drives a small loop so its trail shows
+      this.drawHoleThumb(cv, cv.dataset.skin || p.skin, cv.dataset.aura || 'none', time, null, null, aura ? 0.62 : 1, aura ? (hole, R) => {
+        const tt = still ? 0.6 : time, at = loopPos(tt, R * 0.8); hole.x = at.x; hole.y = at.y;
+        const pts = [];
+        for (let k = AURA_TRAIL.maxPts; k >= 1; k--) { const q = loopPos(tt - k * 0.042, R * 0.8); pts.push({ x: q.x, y: q.y, a: clamp(k * 0.042 / AURA_TRAIL.life(R), 0, 1) }); }
+        pts.push({ x: at.x, y: at.y, a: 0 });
+        hole.trailPoints = pts;
+      } : null);
     });
   }
 
   /** Draws a nameless Hole into a small canvas with the exact in-round
    *  Hole.draw() at a standard radius, scaled to fit -- so ring thickness,
    *  vortex and trail proportions match the board 1:1. */
-  drawHoleThumb(canvas, skinId, auraId, time, extras, background, zoom = 1) {
+  drawHoleThumb(canvas, skinId, auraId, time, extras, background, zoom = 1, place = null) {
     const c = prepCanvas(canvas);
     if (!c) return;
     const { ctx, w, h } = c;
@@ -13180,6 +13407,8 @@ class Game {
     hole.skin = skinId;
     hole.auraId = auraId;
     hole.radius = R;
+    hole.x = 0; hole.y = 0; hole.trailPoints = null;
+    if (place) place(hole, R); // UX-FIX-C: a Smuga preview moves the vortex and hands it its trail
     hole.draw(ctx, time);
     if (extras) extras(ctx, R, hole);
     ctx.restore();
@@ -13188,16 +13417,24 @@ class Game {
   /** DEVICE-QA-1 (playtest 005): a Finisz is the color of the round's
    *  "WIELKI FINISZ!" banner (checkOverdriveTrigger()) -- the preview shows
    *  that banner over the showroom vortex in the previewed color. */
-  drawFinishPreview(canvas, color, t) {
+  drawFinishPreview(canvas, color, t, deco = null) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (!w || !h) return;
     const ctx = canvas.getContext('2d');
+    // UX-FIX-C: the round's banner moment on a loop -- it pops in, stays its
+    // 1.6 s with the Finisz decoration (drawFinishDeco(), the round's code),
+    // then a short pause. Reduced motion: shown still.
+    const still = prefersReducedMotion(), cyc = still ? 0.8 : t % 2.4;
+    if (cyc > 1.6) return;
+    const age = cyc / 1.6;
+    const pop = still ? 1 : (age < 0.12 ? 0.4 + (age / 0.12) * 0.8 : (age < 0.22 ? 1.2 - ((age - 0.12) / 0.1) * 0.2 : 1));
     ctx.save();
-    ctx.translate(w / 2, h * 0.2);
-    ctx.rotate(-0.06);
-    const k = prefersReducedMotion() ? 1 : 1 + 0.03 * Math.sin(t * 4);
-    ctx.scale(k, k);
-    ctx.font = `${Math.round(Math.min(h * 0.14, w * 0.09))}px ${FONT_DISPLAY}`;
+    ctx.globalAlpha = still ? 1 : clamp((1 - age) / 0.3, 0, 1);
+    ctx.translate(w / 2, h * 0.22);
+    ctx.scale(pop, pop);
+    ctx.rotate(-0.04);
+    const size = Math.round(Math.min(h * 0.13, w * 0.085));
+    ctx.font = `${size}px ${FONT_DISPLAY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 4;
@@ -13207,7 +13444,44 @@ class Game {
     ctx.shadowColor = color;
     ctx.fillStyle = color;
     ctx.fillText('WIELKI FINISZ!', 0, 0);
+    const half = ctx.measureText('WIELKI FINISZ!').width / 2;
+    drawFinishDeco(ctx, deco, color, half, size, w / 2 / pop - 4, cyc);
     ctx.restore();
+  }
+
+  /** UX-FIX-C: Efekt pochłaniania in the showroom -- an object glides into
+   *  the vortex every 1.6 s and its bite spawns the round's own particles
+   *  (Particle, the effect's shape; every third bite a big one, like an eat
+   *  of r > 24 in the round). A small private list, capped. */
+  drawPreviewEatFx(ctx, R, time, effect, hole, still) {
+    const list = this.warsztatFxParts || (this.warsztatFxParts = []);
+    const shape = effect && effect.shape, color = (effect && effect.color) || TIERS.capsule.color;
+    const cyc = still ? 1.25 : time % 1.6, n = Math.floor(time / 1.6), big = n % 3 === 2;
+    if (cyc < 0.55 && !still) {
+      const f = cyc / 0.55, ease = f * f;
+      ctx.save();
+      ctx.translate(lerp(R * 1.5, 0, ease), lerp(-R * 0.9, 0, ease));
+      ctx.scale(1 - ease * 0.7, 1 - ease * 0.7);
+      drawObjectArt(ctx, big ? 'prop' : 'capsule', big ? TIERS.prop.color : TIERS.capsule.color, big ? 12 : 7, time, 0, { live: false });
+      ctx.restore();
+    }
+    if ((this.warsztatFxBite !== n && cyc >= 0.55) || (still && !list.length)) {
+      this.warsztatFxBite = n;
+      list.length = 0;
+      const mk = (count, kind, speed) => {
+        for (let i = 0; i < count && list.length < 40; i++) {
+          const a = (i / count) * Math.PI * 2 + 0.4;
+          const q = new Particle(Math.cos(a) * R * 0.55, Math.sin(a) * R * 0.55, shape === 'prism' ? PRISM_COLORS[i % 4] : color, kind, speed);
+          q.shape = shape; if (kind === 'suck') { q.vx = Math.cos(a) * 90; q.vy = Math.sin(a) * 90; q.target = { x: 0, y: 0, radius: R }; q.radius = 3; q.maxLife = q.life = 1.2; } else { q.radius = shape ? 4.5 : q.radius; }
+          list.push(q);
+        }
+      };
+      mk(big ? 18 : 6, 'suck', 1);
+      if (big || shape) mk(big ? 10 : (shape ? 4 : 0), shape ? 'shape' : 'spark', 0.5);
+    }
+    if (!still) for (const q of list) q.update(1 / 60);
+    for (const q of list) if (!q.dead) q.draw(ctx);
+    if (!still) for (let i = list.length - 1; i >= 0; i--) if (list[i].dead) list.splice(i, 1);
   }
 
   /** Warsztat hero backdrop: a glowing showroom floor in the skin's color
@@ -13255,33 +13529,7 @@ class Game {
     ctx.restore();
   }
 
-  /** Preview loop: a fragment drifts into the hole every 1.8 s and bursts
-   *  in the selected Efekt pochłaniania color. */
-  drawPreviewEat(ctx, R, time, color) {
-    const t = (time % 1.8) / 1.8;
-    if (t < 0.5) {
-      const f = t / 0.5, ease = f * f;
-      ctx.save();
-      ctx.translate(lerp(R + 12, 0, ease), lerp(-R - 4, 0, ease));
-      ctx.scale(1 - ease * 0.8, 1 - ease * 0.8);
-      drawObjectArt(ctx, 'fragment', TIERS.fragment.color, 7, time, 0, { live: false });
-      ctx.restore();
-    } else if (t < 0.85) {
-      const f = (t - 0.5) / 0.35;
-      ctx.save();
-      ctx.fillStyle = color;
-      ctx.shadowBlur = 8; ctx.shadowColor = color;
-      ctx.globalAlpha = 1 - f;
-      for (let i = 0; i < 10; i++) {
-        const a = (i / 10) * Math.PI * 2 + 0.3;
-        const d = R * 0.2 + f * R * 0.85;
-        ctx.fillRect(Math.cos(a) * d - 2, Math.sin(a) * d - 2, 4, 4);
-      }
-      ctx.restore();
-    }
-  }
-
-  openProfileScreen() {
+    openProfileScreen() {
     document.getElementById('displayNameInput').value = this.save.displayName || '';
     // R3-08: the player's name, or "Gość" (translated) -- never the technical guest ID.
     const who = document.getElementById('profileIdentity');
@@ -14358,8 +14606,8 @@ class Game {
     return {
       skin: '<strong>Wir</strong> to wygląd Twojej dziury — jej pierścień i spirala.',
       aura: '<strong>Smuga</strong> to świetlny ślad, który ciągnie się za Twoją dziurą podczas ruchu.',
-      effect: '<strong>Efekt pochłaniania</strong> to błysk cząsteczek, gdy coś połykasz.',
-      overdrive: '<strong>Finisz</strong> zmienia kolor banera w ostatnich sekundach rundy.',
+      effect: '<strong>Efekt pochłaniania</strong> to kształt i kolor cząstek, gdy coś połykasz.',
+      overdrive: '<strong>Finisz</strong> zmienia kolor i dekorację banera WIELKI FINISZ w ostatnich 12 s rundy.',
       bundle: 'Komplet: nowy Wir, Smuga, Efekt pochłaniania i Finisz naraz, plus odznaka.',
       bonus: 'Premia w monetach i pryzmatach za kolejny poziom.'
     }[category];
@@ -18576,12 +18824,14 @@ class Game {
 
   /* ---------- gameplay ---------- */
 
-  spawnParticles(x, y, color, count, speedMult = 1) {
+  spawnParticles(x, y, color, count, speedMult = 1, shape = null) {
     const cap = CONFIG.juice.maxParticles;
     for (let i = 0; i < count; i++) {
       if (this.particles.length >= cap) this.particles.shift();
-      const kind = i % 4 === 0 ? 'spark' : (i % 3 === 0 ? 'pixel' : 'dot');
-      this.particles.push(new Particle(x, y, color, kind, speedMult));
+      const kind = shape ? 'shape' : i % 4 === 0 ? 'spark' : (i % 3 === 0 ? 'pixel' : 'dot');
+      const p = new Particle(x, y, shape === 'prism' ? PRISM_COLORS[i % 4] : color, kind, speedMult);
+      if (shape) { p.shape = shape; p.radius = rand(3, 5.5); }
+      this.particles.push(p);
     }
   }
 
@@ -18602,9 +18852,10 @@ class Game {
    *  one; an equal/lower one waits in a short queue (max 2, newest kept). */
   showBanner(text, sub, color, duration = 1.1, priority = 1) {
     const b = { text, sub, color, life: duration, maxLife: duration, priority, scale: priority >= 5 ? 2.2 : 1 };
-    if (!this.banner || priority > this.banner.priority) { this.banner = b; return; }
+    if (!this.banner || priority > this.banner.priority) { this.banner = b; return b; }
     this.bannerQueue = (this.bannerQueue || []).filter(q => q.priority >= priority).slice(-1);
     this.bannerQueue.push(b);
+    return b;
   }
 
   /** The player's score gains merge into one "+N" that rides above the
@@ -18630,12 +18881,13 @@ class Game {
   }
 
   /** Matter from an eaten object streaming into `hole`. */
-  spawnSuck(x, y, color, count, hole, spread) {
+  spawnSuck(x, y, color, count, hole, spread, shape = null) {
     const cap = CONFIG.juice.maxParticles;
     for (let i = 0; i < count; i++) {
       if (this.particles.length >= cap) this.particles.shift();
       const a = rand(0, Math.PI * 2);
-      const p = new Particle(x + Math.cos(a) * spread * rand(0.2, 1), y + Math.sin(a) * spread * rand(0.2, 1), color, 'suck');
+      const p = new Particle(x + Math.cos(a) * spread * rand(0.2, 1), y + Math.sin(a) * spread * rand(0.2, 1), shape === 'prism' ? PRISM_COLORS[i % 4] : color, 'suck');
+      p.shape = shape;
       p.vx = Math.cos(a) * rand(40, 140);
       p.vy = Math.sin(a) * rand(40, 140);
       p.radius = rand(2, 3.5);
@@ -18777,6 +19029,7 @@ class Game {
       ctx.shadowBlur = 26;
       ctx.shadowColor = b.color;
       ctx.fillText(b.text, 0, 0);
+      if (b.deco) drawFinishDeco(ctx, b.deco, b.color, lay.mainHalf / 1.2, size, ((right - left) / 2) / Math.max(1, pop), (b.maxLife - b.life));
       if (lay.lines) {
         ctx.shadowBlur = 0;
         const subSize = lay.ss;
@@ -18999,11 +19252,23 @@ class Game {
     const effectId = this.save && this.save.effects && this.save.effects.selected;
     const effect = EAT_EFFECTS.find(e => e.id === effectId);
     const burstColor = (isPlayerInvolved && effect && effect.color) || color;
+    // UX-FIX-C: the effect's shape (null = Klasyczny's streaks), the player's eats only.
+    const shape = (isPlayerInvolved && effect && effect.shape) || null;
     // Golden Shot v9: the eaten matter is sucked into the hole that ate it
     // (it's a black hole -- nothing flies outward except on big eats).
     const suck = [6, 11, 18][size];
-    if (eater) this.spawnSuck(x, y, burstColor, isPlayerInvolved ? suck : Math.ceil(suck / 3), eater, Math.max(6, eatenRadius));
+    // UX-FIX-C: a shaped effect starts its particles at the rim, toward the
+    // bite (the bite itself ends near the core, where they would vanish at
+    // once) -- the same count, so a small bite stays light but is seen.
+    let sx = x, sy = y;
+    if (shape && eater) {
+      const d = Math.hypot(x - eater.x, y - eater.y), rim = eater.radius * 0.9;
+      if (d < 1) sx = eater.x + rim; else if (d < rim) { sx = eater.x + (x - eater.x) * rim / d; sy = eater.y + (y - eater.y) * rim / d; }
+    }
+    if (eater) this.spawnSuck(sx, sy, burstColor, isPlayerInvolved ? suck : Math.ceil(suck / 3), eater, Math.max(6, eatenRadius), shape);
     else this.spawnParticles(x, y, burstColor, suck);
+    // A bigger bite shows the shape once more as a short burst (a small one stays light).
+    if (shape && size >= 1) this.spawnParticles(sx, sy, burstColor, size === 1 ? 4 : 6, 0.8, shape);
     // GG-VFX-01: the vortex answers the gulp (a rival's comes when its
     // collapse ends, see updateJuice()). Display only, no random draws.
     const fxW = weight != null ? weight : swallowWeightOfRadius(eatenRadius);
@@ -19011,7 +19276,7 @@ class Game {
     if (!isPlayerInvolved) return;
     if (eater && eater.isPlayer && this.sound) this.sound.eat(eatenRadius, this.comboCount);
     if (size === 2) {
-      this.spawnParticles(x, y, burstColor, 12, 1.3);
+      this.spawnParticles(x, y, burstColor, 12, 1.3, shape);
       this.ripples.push(new Ripple(x, y, burstColor, eatenRadius * 0.6, eatenRadius * 2.6, 0.45));
       this.triggerShake(8);
       this.hitStop(CONFIG.juice.hitStopMs * 0.5);
@@ -19423,7 +19688,9 @@ class Game {
     const skin = OVERDRIVE_SKINS.find(s => s.id === skinId);
     // Golden Shot v9: shown through the shared canvas banner slot (was a
     // separate DOM banner that overlapped the canvas banners).
-    this.showBanner('WIELKI FINISZ!', this.overdriveTag, (skin && skin.color) || '#9875FF', 1.6, 3);
+    const finish = this.showBanner('WIELKI FINISZ!', this.overdriveTag, (skin && skin.color) || '#9875FF', 1.6, 3);
+    // UX-FIX-C: the Finisz's decoration rides on this banner (same length, same moment).
+    if (finish) finish.deco = (skin && skin.deco) || null;
     this.sound.overdrive();
 
     if (this.overdriveVariant === 'portal_rain') this.spawnPortalRain();
@@ -24087,7 +24354,6 @@ const I18N_EN = {
   "Ślad za wirem w ruchu": "A trail behind the moving vortex",
   "Błysk przy połykaniu": "A flash as you swallow",
   "Kolor banera na finiszu rundy": "The banner color at a round's finale",
-  "PODGLĄD · {0} · BEZ BONUSU W RUNDZIE": "PREVIEW · {0} · NO IN-ROUND BONUS",
   // CG-QA-01/03/08 (CrazyGames Preview QA R1)
   "Menu główne": "Main menu",
   "Polski": "Polish",
@@ -24148,6 +24414,26 @@ const I18N_EN = {
   "SZUKA CELU": "SEARCHING",
   "BRAK CELU": "NO TARGET",
   "NA NOWYM ROZMIARZE": "AT THE NEW SIZE",
+  "Bez śladu za wirem.": "No trail behind the vortex.",
+  "Iskry zostają za wirem, gdy jedziesz.": "Sparks stay behind the vortex as you move.",
+  "Gorąca wstęga za wirem w ruchu.": "A hot ribbon behind the moving vortex.",
+  "Dwie skręcone nitki za wirem w ruchu.": "Two twisting threads behind the moving vortex.",
+  "Zielone impulsy za wirem w ruchu.": "Green pulses behind the moving vortex.",
+  "Trzy kolorowe linie za wirem w ruchu.": "Three colored lines behind the moving vortex.",
+  "Miękka zorza za wirem w ruchu.": "A soft aurora behind the moving vortex.",
+  "Smugi w kolorze zjedzonego obiektu.": "Streaks in the swallowed object's color.",
+  "Złote piksele przy każdym kęsie.": "Gold pixels on every bite.",
+  "Różowe płatki wirują do wiru.": "Pink petals swirl into the vortex.",
+  "Fioletowa szczelina w miejscu kęsa.": "A violet rift where you bite.",
+  "Trójkąty w 4 kolorach przy kęsie.": "Four-color triangles on a bite.",
+  "Fioletowy baner w ostatnich 12 s.": "A violet banner in the last 12 s.",
+  "Baner finiszu z falą pod napisem.": "The finale banner with a wave.",
+  "Złoty baner finiszu ze szczytami.": "A gold finale banner with peaks.",
+  "Zielony baner z błyskawicami.": "A green banner with lightning.",
+  "Baner finiszu w barwach pryzmatu.": "The finale banner in prism colors.",
+  "{0} · BEZ BONUSU W RUNDZIE": "{0} · NO IN-ROUND BONUS",
+  "<strong>Efekt pochłaniania</strong> to kształt i kolor cząstek, gdy coś połykasz.": "<strong>Swallow Effect</strong> is the shape and color of the particles when you swallow something.",
+  "<strong>Finisz</strong> zmienia kolor i dekorację banera WIELKI FINISZ w ostatnich 12 s rundy.": "<strong>Finale</strong> changes the color and decoration of the GRAND FINALE banner in the round's last 12 s.",
 };
 
 window.addEventListener('DOMContentLoaded', () => {

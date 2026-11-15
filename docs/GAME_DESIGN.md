@@ -51,7 +51,7 @@ większości warstw „ciągną się” teraz za obrotem, jak w lejku czy galakt
   urósł”). Żadnych form „urosłaś/urosłeś”, „gotowa/gotowy”
   (`qa/design.mjs` pilnuje listy zakazanych form).
 - Polski interfejs bez angielskiego żargonu. Kategorie Warsztatu: **Wir**
-  (wygląd dziury), **Smuga** (ślad), **Efekt pochłaniania**, **Finisz**
+  (wygląd dziury), **Smuga** (ślad za wirem w ruchu), **Efekt pochłaniania** (kształt cząstek), **Finisz** (dekoracja banera)
   (kolor wielkiego finału). Marki zostają: GLITCH GULP, Core City, COMBO,
   GRAJ 2:00, LVL (tylko dla Core City — poziom gracza to „POZIOM”).
 - Miejsca w zdaniach: „2. miejsce”, nie „#2” (wyjątek: zwarte tabele HUD).
@@ -587,6 +587,24 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   kropką, nic nie jest zakładane. Nagroda bez wyglądu (np. nowy utwór) nie ma
   przycisku. Ponowne naciśnięcie nic nie robi; Warsztat otwarty z nawigacji nie
   ma oznaczeń.
+- **Kosmetyki poza wirem (UX-FIX-C, tylko wygląd; ceny, nagrody, ID i posiadanie bez zmian):**
+  **Smuga** to prawdziwy ślad za wirem w ruchu (`drawAuraTrail()`, `Hole.sampleTrail()`): punkt co 0,22 r drogi, najwyżej 12
+  (ok. 2,6 r śladu), każdy znika po `0,6 + r/200` s — zatrzymany wir gubi ślad w niecałą sekundę; skok (odrodzenie, teleport)
+  zaczyna ślad od nowa, bez linii przez mapę; tylko pamięć, nic w zapisie. Rysowany nad studnią grawitacyjną, pod wirem,
+  szerokość ≤ 0,62 r, krycie ≤ 0,5 (obiekty i rywale widoczni). Warianty kształtem: Iskra — iskry, Żar — wstęga, Zawirowanie —
+  dwie skręcone nitki, Impuls — strzałki-impulsy, Pryzmat — trzy linie w kolorach palety, Zorza Startu — miękka zorza. Dawny
+  pulsujący pierścień wokół wiru usunięty. **Efekt pochłaniania** ma kształt (`shape`): Pikselowy Wybuch — kwadratowe piksele,
+  Neonowa Róża — płatki, Fioletowa Szczelina — szczelina, Pryzmat — trójkąty w czterech kolorach (odróżnia się od Klasycznego);
+  mały kęs ma tyle cząstek co Klasyczny (6), startujących z brzegu wiru (przy środku znikały od razu), większy kęs dodaje krótki
+  wybuch 4–6 kształtów. Hitbox, czas jedzenia, punkty i hit-stop bez zmian. **Finisz** dekoruje baner „WIELKI FINISZ!” (ten sam
+  moment — 12 s do końca — ta sama długość 1,6 s, priorytet 3): Fala — fala pod napisem, Złoty Szczyt — szczyty po bokach,
+  Zielona Burza — migające błyskawice, Pryzmat — pasy i trójkąty w kolorach palety (kolor `#ff00ea` spoza palety → `#FF54AD`).
+  Bez zaciemnienia planszy. Ograniczenie ruchu: animacje dekoracji i podglądów stoją.
+  **Warsztat:** karta podglądu pokazuje kategorię otwartej zakładki (nazwa, „SMUGA / EFEKT POCHŁANIANIA / FINISZ · BEZ BONUSU W
+  RUNDZIE”, jedno zdanie, co robi i kiedy widać): Wir — jak dotąd; Smuga — wir jedzie ósemką z prawdziwym śladem (te same
+  funkcje co w rundzie); Efekt — obiekt wpada do wiru co 1,6 s, co trzeci kęs duży, cząstki z kodu rundy (`Particle`); Finisz —
+  baner w pętli z dekoracją (`drawFinishDeco()`). Miniatury: Smugi jeżdżą z śladem, Efekty i Finisze mają ikony kształtu.
+  Oglądanie niczego nie zapisuje; zasady podglądu (`warsztatFocus`, NIE TERAZ) bez zmian.
 - **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go
   zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a stałe miejsce
   w karcie podglądu pyta „KUP I ZAŁÓŻ · cena” (WORKSHOP-BUY: bez okna nad
