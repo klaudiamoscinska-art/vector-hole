@@ -16,7 +16,9 @@
 //    Finisz banner), browsing tabs and looking at locked items writes nothing,
 //    owned / worn items unchanged; PL / EN; 375x667, 390x844, 1280x720.
 //  - P: frame cost of a round with a Smuga + Efekt vs none (same scene).
-// Usage: node qa/uxfix-c.mjs [--only=T,E,F,W,P] [--strips --root=DIR --label=NAME]
+//  - S: switching the previewed Efekt (GPT review of #109) -- the new Efekt's particles at once,
+//    normal and reduced motion, NIE TERAZ on an Efekt not owned, back to the Efekt tab.
+// Usage: node qa/uxfix-c.mjs [--only=T,E,F,W,S] [--strips --root=DIR --label=NAME]
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve, openGame, veteranSave, report, isMain, OUT, ARENA_BOT, QA_RANDOM } from './lib.mjs';
@@ -234,6 +236,72 @@ async function warsztatChecks(url) {
   return out;
 }
 
+/* ============================ S: switching the previewed Efekt (DOM) ============================
+   GPT review of PR #109: drawPreviewEatFx() kept the particles of the previous Efekt until its
+   next 1.6 s bite -- the label named the new item while the preview still showed the old one.
+   Real clicks in Warsztat: the particles must belong to the new Efekt at once (before the next
+   bite), with normal and reduced motion; cancelling a preview of an Efekt not owned and coming
+   back to the Efekt tab show the worn one; looking costs nothing and puts nothing on. */
+const fxShapes = (p) => p.evaluate(() => {
+  const gm = window.game, list = gm.warsztatFxParts || [];
+  return { n: list.length, shapes: [...new Set(list.map(q => q.shape || null))], name: document.getElementById('warsztatPreviewName').textContent, bite: gm.warsztatFxBite };
+});
+async function switchChecks(url) {
+  const out = [];
+  for (const reduced of [false, true]) {
+    const tag = reduced ? 'reduced motion' : 'normal motion';
+    const initScript = reduced ? () => { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (/prefers-reduced-motion/.test(q) ? { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} } : mm(q)); } : null;
+    const g = await openGame(url, { ...PHONE2, initScript });
+    const s0 = await veteranSave(g.page, { runsPlayed: 6, coins: 5000 });
+    s0.prisms = 500;
+    s0.effects.owned = ['classic', 'pixel_burst', 'violet_rift', 'pryzmat']; s0.effects.selected = 'pixel_burst'; // Neonowa Róża: not owned
+    await g.page.evaluate((x) => localStorage.setItem('vectorHoleSave_v1', JSON.stringify(x)), s0);
+    await g.page.reload();
+    await g.page.waitForFunction(() => window.game && window.__qaBridge && window.__qaBridge.ready && window.game.state === GameState.MENU);
+    const p = g.page;
+    await p.click('#btnNavWarsztat');
+    await p.click('#tabEffects');
+    await p.waitForTimeout(400);
+    // Right after a bite (normal motion) the next one is ~1.6 s away: every check below runs well inside it.
+    const sync = async () => { if (reduced) return; const b0 = await p.evaluate(() => window.game.warsztatFxBite); await p.waitForFunction((b) => window.game.warsztatFxBite !== b, b0, { timeout: 4000 }); await p.waitForTimeout(60); };
+    const before = await fxShapes(p);
+    const wallet0 = await p.evaluate(() => [window.game.save.coins, window.game.save.prisms]);
+    await sync();
+    await p.click('#effectGrid .skin-card[data-item="pryzmat"]');
+    await p.waitForTimeout(120);
+    const a = await fxShapes(p);
+    await sync();
+    await p.click('#effectGrid .skin-card[data-item="violet_rift"]');
+    await p.waitForTimeout(120);
+    const b = await fxShapes(p);
+    out.push(report(`S1 DOM ${tag}: Pikselowy Wybuch -> Pryzmat -> Fioletowa Szczelina by real clicks -- each preview shows the new Efekt at once (before its next bite), no particle of the previous one`,
+      before.shapes.join() === 'pixel' && a.n > 0 && a.shapes.join() === 'prism' && b.n > 0 && b.shapes.join() === 'rift', JSON.stringify({ before, a, b })));
+    // Look at an Efekt not owned, then NIE TERAZ: back to the worn one at once; nothing spent or put on.
+    await sync();
+    await p.click('#effectGrid .skin-card[data-item="neon_rose"]');
+    await p.waitForTimeout(120);
+    const look = await fxShapes(p);
+    await p.click('#btnWarsztatCancel');
+    await p.waitForTimeout(120);
+    const back = await fxShapes(p);
+    const st = await p.evaluate(() => ({ sel: window.game.save.effects.selected, owned: window.game.save.effects.owned.join(), wallet: [window.game.save.coins, window.game.save.prisms],
+      stored: JSON.parse(localStorage.getItem('vectorHoleSave_v1')).effects }));
+    out.push(report(`S2 DOM ${tag}: previewing Neonowa Róża (not owned) shows petals at once; NIE TERAZ brings the worn Fioletowa Szczelina back at once; nothing spent, nothing put on`,
+      look.n > 0 && look.shapes.join() === 'petal' && back.n > 0 && back.shapes.join() === 'rift' && st.sel === 'violet_rift' && !st.owned.includes('neon_rose') && st.wallet.join() === wallet0.join() && st.stored.selected === 'violet_rift' && !st.stored.owned.includes('neon_rose'),
+      JSON.stringify({ look, back, st, wallet0 })));
+    // Away to another tab and back to Efekt: still the worn Efekt.
+    await p.click('#tabAuras');
+    await p.waitForTimeout(150);
+    await p.click('#tabEffects');
+    await p.waitForTimeout(150);
+    const ret = await fxShapes(p);
+    out.push(report(`S3 DOM ${tag}: back on the Efekt tab the preview shows the worn Efekt (Fioletowa Szczelina)`, ret.n > 0 && ret.shapes.join() === 'rift', JSON.stringify(ret)));
+    out.push(report(`S ${tag}: no page errors`, g.errors.length === 0, g.errors.slice(0, 2).join(' | ')));
+    await g.browser.close();
+  }
+  return out;
+}
+
 /* ============================ P: frame cost ============================ */
 export async function frameCost(url, label = 'candidate') {
   // The same frozen scene rendered 300 times per condition (no update between renders, so
@@ -298,7 +366,7 @@ export async function strips(url, label) {
 
 export async function runUxFixCChecks(url, only = null) {
   fs.mkdirSync(SHOTS, { recursive: true });
-  const parts = { T: trailChecks, E: effectChecks, F: finishChecks, W: warsztatChecks };
+  const parts = { T: trailChecks, E: effectChecks, F: finishChecks, W: warsztatChecks, S: switchChecks };
   const out = [];
   for (const [k, fn] of Object.entries(parts)) if (!only || only.includes(k)) out.push(...await fn(url));
   return out;

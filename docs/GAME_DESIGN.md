@@ -602,7 +602,7 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   Bez zaciemnienia planszy. Ograniczenie ruchu: animacje dekoracji i podglądów stoją.
   **Warsztat:** karta podglądu pokazuje kategorię otwartej zakładki (nazwa, „SMUGA / EFEKT POCHŁANIANIA / FINISZ · BEZ BONUSU W
   RUNDZIE”, jedno zdanie, co robi i kiedy widać): Wir — jak dotąd; Smuga — wir jedzie ósemką z prawdziwym śladem (te same
-  funkcje co w rundzie); Efekt — obiekt wpada do wiru co 1,6 s, co trzeci kęs duży, cząstki z kodu rundy (`Particle`); Finisz —
+  funkcje co w rundzie); Efekt — obiekt wpada do wiru co 1,6 s, co trzeci kęs duży, cząstki z kodu rundy (`Particle`); zmiana efektu (wybór, podgląd nieposiadanego, NIE TERAZ) od razu usuwa cząstki poprzedniego i pokazuje kęs nowego; Finisz —
   baner w pętli z dekoracją (`drawFinishDeco()`). Miniatury: Smugi jeżdżą z śladem, Efekty i Finisze mają ikony kształtu.
   Oglądanie niczego nie zapisuje; zasady podglądu (`warsztatFocus`, NIE TERAZ) bez zmian.
 - **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go

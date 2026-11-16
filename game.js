@@ -13025,6 +13025,7 @@ class Game {
     const openTab = Object.entries(WARSZTAT_TABS).find(([, t]) => document.getElementById(t.tab).classList.contains('active'));
     this.warsztatCat = openTab ? openTab[0] : 'skin';
     this.warsztatFxParts = [];
+    this.warsztatFxEffect = null; // the Efekt preview bites at once on the next frame
     // UX-FIX-A: the cards a reward card points at (marked until Warsztat is opened again).
     this.warsztatReward = reward && reward.length ? reward : null;
     const hint = document.getElementById('warsztatHint');
@@ -13452,11 +13453,16 @@ class Game {
   /** UX-FIX-C: Efekt pochłaniania in the showroom -- an object glides into
    *  the vortex every 1.6 s and its bite spawns the round's own particles
    *  (Particle, the effect's shape; every third bite a big one, like an eat
-   *  of r > 24 in the round). A small private list, capped. */
+   *  of r > 24 in the round). A small private list, capped. The list belongs
+   *  to one Efekt (warsztatFxEffect): another one picked, looked at or
+   *  brought back (NIE TERAZ) drops the old particles and bites at once --
+   *  the preview never shows the previous Efekt under the new name. */
   drawPreviewEatFx(ctx, R, time, effect, hole, still) {
     const list = this.warsztatFxParts || (this.warsztatFxParts = []);
     const shape = effect && effect.shape, color = (effect && effect.color) || TIERS.capsule.color;
     const cyc = still ? 1.25 : time % 1.6, n = Math.floor(time / 1.6), big = n % 3 === 2;
+    const fxId = effect ? effect.id : 'classic', changed = this.warsztatFxEffect !== fxId;
+    if (changed) { this.warsztatFxEffect = fxId; list.length = 0; }
     if (cyc < 0.55 && !still) {
       const f = cyc / 0.55, ease = f * f;
       ctx.save();
@@ -13465,7 +13471,7 @@ class Game {
       drawObjectArt(ctx, big ? 'prop' : 'capsule', big ? TIERS.prop.color : TIERS.capsule.color, big ? 12 : 7, time, 0, { live: false });
       ctx.restore();
     }
-    if ((this.warsztatFxBite !== n && cyc >= 0.55) || (still && !list.length)) {
+    if (changed || (this.warsztatFxBite !== n && cyc >= 0.55) || (still && !list.length)) {
       this.warsztatFxBite = n;
       list.length = 0;
       const mk = (count, kind, speed) => {

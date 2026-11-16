@@ -11,7 +11,8 @@ są w historii gita (`git log -- docs/`).
   większy z krótkim wybuchem; hitboxy, czas jedzenia, punkty, hit-stop bez zmian.
 - **Finisz:** dekoracja banera (fala, szczyty, burza, pryzmat), ten sam moment i 1,6 s; Pryzmat `#ff00ea` → `#FF54AD` (paleta).
 - **Warsztat:** karta podglądu według zakładki (Smuga w ruchu, Efekt w pętli kęsów, Finisz z banerem), opisy PL/EN, ikony
-  kształtów w siatce; ograniczenie ruchu i jakość 0 obsłużone.
+  kształtów w siatce; ograniczenie ruchu i jakość 0 obsłużone. Po odbiorze GPT: zmiana efektu od razu odświeża jego podgląd
+  (wcześniej cząstki poprzedniego efektu zostawały do następnego kęsa).
 - QA: `qa/uxfix-c.mjs` (T, E, F, W w `run-all`; `--strips` / `--cost` z `--root` = porównanie z bazą); `qa/ux3.mjs` V1 porównuje
   warstwy wiru bez wstawionej linii smugi.
 
