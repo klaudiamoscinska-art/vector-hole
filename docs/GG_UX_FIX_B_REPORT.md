@@ -36,7 +36,23 @@ Ocena: Impuls ssący z karty szkodliwej stał się użyteczną (+24% mediany w t
 
 ## 3. Wyniki testów (końcowy kod gałęzi)
 
-FINAL_RESULTS_B
+Kod gry testowany: `5f96a95` (ostatnia zmiana `game.js`); kontrole `ux3`/`vfx1` na `d3f0e1f` (zmiany tylko w testach). Ta sama maszyna.
+
+| Zestaw | Rodzaj | Wynik | Uwagi |
+|---|---|---|---|
+| `qa/uxfix-b.mjs` (nowy: M, H) | FN + DOM | **PASS 18/18** | mikro-sceny z kartą / bez, paski w HUD PL/EN, 3 rozdzielczości |
+| `qa/uxfix-b.mjs --sim=10` (baza A / kandydat ×2) | SIM | wykonane | tabela §2; dwa przebiegi kandydata identyczne |
+| `qa/responsive.mjs` | DOM | **PASS 552/552** | paski kart w każdej ramce |
+| `qa/ftue3.mjs` | DOM + FN | **FAIL 25/26** | ten sam FAIL co na bazie (tekst LVL 7 po CITY-2) |
+| `qa/balance1.mjs --quick` | SIM | **PASS 19/19** | baza A także 19/19 |
+| `qa/ui1.mjs` | DOM | **PASS 20/20** | stos COMBO pod paskami kart |
+| `qa/ux3.mjs` | DOM + FN | **PASS 42/42** | O1 porównuje rundę z pominiętymi kartami (karty zmienione celowo) |
+| `qa/vfx1.mjs` | statyczne + DOM | **PASS 39/39** | V1 cofa dokładnie dwie edycje Łowcy/Tarczy w `handleHoleCollisions()` |
+| `qa/features.mjs` | DOM + FN | **PASS** | |
+| `qa/v19.mjs` (EN), `qa/design.mjs` | DOM / statyczne | **PASS 16/16, 29/29** | |
+| `qa/save-safety.mjs`, `qa/px02-isolation.mjs` | FN | **PASS 107/107, 95/95** | zapis v13, izolacja trybów |
+| `qa/instructions.mjs` | statyczne | **PASS 4/4** | |
+| `qa/run-all.mjs` | — | **NOT RUN** | zakres pokryty powyżej |
 
 ## 4. Materiały
 
@@ -54,7 +70,7 @@ FINAL_RESULTS_B
 
 ```
 STAN PRAC: GG_UX_FIX_B (Etap B) — gotowe do odbioru; zależne od PR A.
-REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h-b @ FINAL_SHA_B, baza PR = claude/determined-turing-9d9j3h, PR: PR_B
+REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h-b @ kod 5f96a95, testy d3f0e1f (HEAD = commit raportu), baza PR = claude/determined-turing-9d9j3h, PR: https://github.com/klaudiamoscinska-art/vector-hole/pull/108 (baza #107)
 TESTY: §3 — log: qa/out/final/
 ZMIANY: game.js (Skaner, Impuls ssący, Łowca, karty w HUD), index.html (#hud-cards), style.css; qa/uxfix-b.mjs (M, H w run-all; --sim); docs GDD/CHANGELOG/qa README
 NIEDOKOŃCZONE: brak w zakresie B
