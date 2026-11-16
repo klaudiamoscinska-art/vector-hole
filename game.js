@@ -285,7 +285,17 @@ const CONFIG = {
       viewArea: 500000, viewScaleMax: 2.2 },
     hitStopMs: 70,
     maxParticles: 450,
-    dangerHaloRange: 260
+    // UX-FIX-A: the warning about a rival that can swallow the player (red
+    // halo, its name in red with a mark, one heartbeat) starts `lead` world
+    // units BEFORE its swallow reach (0.75 * its radius, handleHoleCollisions())
+    // -- lead = base + perRadius * r_rival, so a big rival (a bigger reach,
+    // a faster closing) warns from farther. It used to be a fixed 260 from
+    // centre to centre: a rival of r >= 347 swallowed from outside it,
+    // unannounced (GG_UX_AUDIT_1 BUG-2). World units: the same on every
+    // screen. The warning re-arms only once the rival is `rearm` x lead away
+    // (no flicker on the edge); the heartbeat is one for all rivals, at most
+    // every `soundGapMs`.
+    danger: { base: 140, perRadius: 0.4, rearm: 1.25, soundGapMs: 4000 }
   },
   // Phase 4: Evolution moments (run-only mutation picks) + Overdrive/City Shift.
   evolution: {
@@ -2394,6 +2404,24 @@ const OVERDRIVE_SKINS = [
 // state and grants nothing). Level 7+ has no authored reward (§8.2's own
 // "beyond LVL6 is a seasonal/prestige loop, out of scope" disclaimer) so
 // grantCoreCityLevelReward() falls back to hub.milestoneFallbackCoins/Prisms.
+/** UX-FIX-A: Warsztat's four tabs by cosmetic category (pendingLoadout keys). */
+const WARSZTAT_TABS = {
+  skin: { tab: 'tabSkins', grid: 'skinGrid' },
+  aura: { tab: 'tabAuras', grid: 'auraGrid' },
+  effect: { tab: 'tabEffects', grid: 'effectGrid' },
+  overdriveSkin: { tab: 'tabOverdrive', grid: 'overdriveSkinGrid' }
+};
+/** UX-FIX-A: the item of a category by id (null if unknown). */
+function cosmeticItem(cat, id) {
+  const list = { skin: SKINS, aura: AURAS, effect: EAT_EFFECTS, overdriveSkin: OVERDRIVE_SKINS }[cat];
+  return (list && list.find(x => x.id === id)) || null;
+}
+/** UX-FIX-A: the looks a CORE_CITY_LEVEL_REWARDS row grants, as [{ cat, id }]. */
+function rewardCosmetics(def) {
+  if (!def) return [];
+  return [['skin', def.skinId], ['aura', def.auraId], ['effect', def.effectId], ['overdriveSkin', def.overdriveSkinId]]
+    .filter(([, id]) => id).map(([cat, id]) => ({ cat, id }));
+}
 const CORE_CITY_LEVEL_REWARDS = {
   2: { auraId: 'impuls', coins: 150, label: 'Smuga „Impuls”' },
   3: { skinId: 'krysztal', coins: 200, label: 'Wir „Kryształ”' },
@@ -2562,9 +2590,9 @@ const REWARD_CATEGORY_ICONS = {
 // works, and a one-sentence `desc` with the real numbers from CONFIG --
 // plus a looping demo (drawPowerDemo()) instead of a bare icon.
 const MUTATIONS = [
-  { id: 'magnet_pulse', name: 'Magnes', tag: 'CAŁĄ RUNDĘ', desc: 'Obiekty, które możesz zjeść, same lecą do Ciebie z bliskiej okolicy.', icon: 'magnet', weight: 3, color: '#50F0FA' },
-  { id: 'slipstream', name: 'Turbo combo', tag: 'PO COMBO ×3', desc: 'Zjedz 3 rzeczy szybko po sobie, a dostaniesz +60% prędkości na 1,5 s.', icon: 'bolt', weight: 3, color: '#46D99A' },
-  { id: 'phase_edge', name: 'Tarcza', tag: 'GDY CIĘ ZJEDZĄ', desc: 'Gdy rywal Cię pochłonie, po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
+  { id: 'magnet_pulse', name: 'Magnes', tag: 'SŁABNIE, GDY ROŚNIESZ', desc: 'Jadalne obiekty z pola wokół wiru same lecą do Ciebie. Duży wir zakrywa pole.', icon: 'magnet', weight: 3, color: '#50F0FA' },
+  { id: 'slipstream', name: 'Turbo combo', tag: 'OD COMBO ×3', desc: 'Od combo ×3 każdy kęs daje +60% prędkości na 1,5 s i odnawia ten czas.', icon: 'bolt', weight: 3, color: '#46D99A' },
+  { id: 'phase_edge', name: 'Tarcza', tag: 'PO ODRODZENIU', desc: 'Nie chroni przed zjedzeniem: po odrodzeniu masz 4 s ochrony zamiast 2 s.', icon: 'shield', weight: 2, color: '#9875FF' },
   { id: 'combo_reactor', name: 'Długie combo', tag: 'WIĘCEJ PUNKTÓW', desc: 'Między kolejnymi kęsami masz ok. 2,9 s zamiast 1,8 s, więc łatwiej trzymasz mnożnik punktów.', icon: 'clock', weight: 3, color: '#EFCB63' },
   { id: 'scanner', name: 'Skaner', tag: 'CO 4 S', desc: 'Co 4 s podświetla najcenniejszy obiekt na mapie — od razu widać, dokąd jechać.', icon: 'radar', weight: 2, color: '#50F0FA' },
   { id: 'shockwave', name: 'Fala', tag: 'NA NOWYM ROZMIARZE', desc: 'Gdy urośniesz o rozmiar, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.', icon: 'burst', weight: 2, color: '#FF54AD' },
@@ -11025,8 +11053,16 @@ class Hole {
     ctx.lineWidth = 3 * ls;
     ctx.strokeStyle = 'rgba(4, 16, 29, 0.85)';
     ctx.strokeText(this.name, this.x, this.y - r - 12 * ls);
-    ctx.fillStyle = this.isPlayer ? '#50F0FA' : '#f2f8ff';
+    // UX-FIX-A: a rival that can swallow the player has its name in red
+    // with a warning mark (Game.updateDangerWarnings() sets `threat`).
+    ctx.fillStyle = this.isPlayer ? '#50F0FA' : (this.threat ? '#FF54AD' : '#f2f8ff');
     ctx.fillText(this.name, this.x, this.y - r - 12 * ls);
+    if (this.threat && !this.isPlayer) {
+      const w = ctx.measureText(this.name).width, tx = this.x - w / 2 - 12 * ls, ty = this.y - r - 16 * ls;
+      ctx.beginPath(); ctx.moveTo(tx, ty - 7 * ls); ctx.lineTo(tx + 7 * ls, ty + 5 * ls); ctx.lineTo(tx - 7 * ls, ty + 5 * ls); ctx.closePath();
+      ctx.fillStyle = '#FF54AD'; ctx.fill();
+      ctx.fillStyle = '#04101D'; ctx.fillRect(tx - 1 * ls, ty - 3 * ls, 2 * ls, 4.5 * ls); ctx.fillRect(tx - 1 * ls, ty + 2.3 * ls, 2 * ls, 1.6 * ls);
+    }
     if (this.isLeader) {
       // v12: a gold crown over the current #1 (set by Game.updateHUD()) --
       // everyone on screen can see who to hunt.
@@ -11732,6 +11768,15 @@ class Game {
     return this.mode !== 'campaign' && this.save.settings.deskControls === 'keyboard';
   }
 
+  /** UX-FIX-A (owner decision): the two Arena choices are exclusive -- in
+   *  Mysz only the mouse steers, so WASD / arrows move the vortex only in
+   *  Klawiatura, in a mission (missions keep mouse + keys together) and on
+   *  a device without a mouse or trackpad (no choice is offered there).
+   *  The keys' UI roles (Enter, P / Space / Esc, focus moves) are untouched. */
+  get keysSteer() {
+    return this.mode === 'campaign' || !this.hasDeskPointer || this.save.settings.deskControls === 'keyboard';
+  }
+
   /** ARENA-FIX-1: Sterowanie: Mysz / Klawiatura. Saved like every setting;
    *  a switch drops every old input (held keys, the cursor's steering
    *  point) so nothing drives on from the other mode, and Keyboard lets go
@@ -11809,6 +11854,8 @@ class Game {
     window.addEventListener('keydown', (e) => {
       const dir = keyMap[e.code];
       if (!dir || isTextField(e.target)) return;
+      // UX-FIX-A: in Arena's Mysz mode a movement key steers nothing.
+      if (!this.keysSteer) return;
       heldKeys.add(dir);
       recomputeKeyDir();
     });
@@ -12179,12 +12226,7 @@ class Game {
     document.getElementById('btnResetProfileYes').addEventListener('click', () => this.resetProfile());
     // GDD 4.0 §5.3: Warsztat has 4 equip categories (Rdzeń/Trail/Efekt
     // pochłaniania/Overdrive) instead of the old 2 (Ring/Aura tabs).
-    const shopTabs = [
-      { tab: 'tabSkins', grid: 'skinGrid' },
-      { tab: 'tabAuras', grid: 'auraGrid' },
-      { tab: 'tabEffects', grid: 'effectGrid' },
-      { tab: 'tabOverdrive', grid: 'overdriveSkinGrid' }
-    ];
+    const shopTabs = Object.values(WARSZTAT_TABS);
     shopTabs.forEach(({ tab, grid }) => {
       document.getElementById(tab).addEventListener('click', () => {
         shopTabs.forEach(({ tab: t, grid: g }) => {
@@ -12390,6 +12432,8 @@ class Game {
       const state = owned ? (selected ? 'worn' : 'owned') : (!sale ? 'reward' : ((prisms ? (this.save.prisms || 0) : this.save.coins) >= price ? 'buyable' : 'short'));
       card.classList.add('is-' + state);
       card.dataset.item = item.id;
+      // UX-FIX-A: the look a reward card pointed at.
+      if (this.warsztatReward && this.warsztatReward.some(l => l.id === item.id && WARSZTAT_TABS[l.cat].grid === gridId)) card.classList.add('is-reward-new');
 
       // Rdzeń/Trail cards show the real in-round hole (Hole.draw() via
       // renderWarsztatCanvases()) instead of a CSS color dot, so what you
@@ -12733,9 +12777,51 @@ class Game {
    *  player who somehow already has a cosmetic shouldn't be locked out). */
   isWarsztatUnlocked() { return FEATURE_GATES.warsztat(this.save); }
 
-  openWarsztatScreen() {
+  /** UX-FIX-A: a reward card's CTA. `looks` = [{ cat, id }] the reward
+   *  granted. Warsztat opens on the first look's tab, the reward's cards are
+   *  marked NAGRODA and the first is scrolled into view. One look is put on
+   *  through the same path as a tap on its card (onCosmeticPick() ->
+   *  onEquipClick(): only that category changes, nothing is granted or paid
+   *  again); a set only shows its pieces -- nothing is put on. */
+  rewardToWarsztat(looks) {
+    const known = looks.filter(l => this.cosmeticCategory(l.cat) && cosmeticItem(l.cat, l.id));
+    this.openWarsztatScreen({ reward: known });
+    if (!known.length) return;
+    const first = known[0], item = cosmeticItem(first.cat, first.id);
+    const noun = this.cosmeticCategory(first.cat).noun;
+    let note;
+    if (known.length === 1 && this.cosmeticCategory(first.cat).owned.includes(first.id)) {
+      this.onCosmeticPick(first.cat, item);
+      note = `Założono: ${noun} „${item.name}”`;
+    } else {
+      note = 'Części zestawu mają znak NAGRODA, ich zakładki zieloną kropkę. Dotknij, żeby założyć.';
+    }
+    const hint = document.getElementById('warsztatHint');
+    hint.textContent = note;
+    hint.classList.add('is-reward-note');
+    this.analytics.track('reward_to_warsztat', { looks: known.length, equipped: known.length === 1 });
+    // Scroll only Warsztat's own list (scrollIntoView() would also move the
+    // page under the game -- FTUE-2: the portal page never scrolls).
+    requestAnimationFrame(() => {
+      const card = document.querySelector(`#${WARSZTAT_TABS[first.cat].grid} .skin-card[data-item="${first.id}"]`);
+      // The list that scrolls: the screen on a phone, its grid column on a wide layout.
+      let list = card && card.parentElement;
+      while (list && list.id !== 'shopScreen' && !(/auto|scroll/.test(getComputedStyle(list).overflowY) && list.scrollHeight > list.clientHeight + 1)) list = list.parentElement;
+      if (!card || !list || list.id === 'shopScreen') return;
+      const c = card.getBoundingClientRect(), l = list.getBoundingClientRect();
+      const pinned = list.querySelector('.warsztat-preview.stuck');
+      const top = l.top + (pinned ? pinned.getBoundingClientRect().height : 0);
+      if (c.top < top || c.bottom > l.bottom) list.scrollTop += c.top - top - Math.max(0, (l.bottom - top - c.height) / 2);
+    });
+  }
+
+  openWarsztatScreen({ reward = null } = {}) {
     this.analytics.track('shop_view', {});
     this.warsztatFocus = null;
+    // UX-FIX-A: the cards a reward card points at (marked until Warsztat is opened again).
+    this.warsztatReward = reward && reward.length ? reward : null;
+    const hint = document.getElementById('warsztatHint');
+    if (hint.classList.contains('is-reward-note')) { hint.classList.remove('is-reward-note'); hint.textContent = 'Dotknij, żeby założyć. Zablokowane obejrzysz na podglądzie.'; }
     // Reset the pending preview to whatever is actually equipped -- any
     // unconfirmed taps from a previous visit are discarded, matching the
     // ZAŁÓŻ button's "this is a preview until you confirm it" contract.
@@ -12749,6 +12835,10 @@ class Game {
     this.populateAuras();
     this.populateEffects();
     this.populateOverdriveSkins();
+    // UX-FIX-A: a reward opens on its own tab (the same click as the tab's),
+    // and every tab holding a piece of it is marked.
+    Object.entries(WARSZTAT_TABS).forEach(([cat, t]) => document.getElementById(t.tab).classList.toggle('has-reward', !!this.warsztatReward && this.warsztatReward.some(l => l.cat === cat)));
+    if (this.warsztatReward) document.getElementById(WARSZTAT_TABS[this.warsztatReward[0].cat].tab).click();
     this.updateWarsztatPreview();
     this.renderStore();
     this.showScreen('shopScreen');
@@ -13847,10 +13937,16 @@ class Game {
     const next = nextId && campaignMissionById(nextId);
     const district = next && DISTRICTS.find(d => d.id === next.district);
     // v15: the district's name heads the tile (owner: a district without a name).
-    document.getElementById('hubCampaignEyebrow').textContent = next ? district.name.toUpperCase() : 'KAMPANIA';
+    // UX-FIX-A: and the mode's -- "KAMPANIA · PLAC NEONÓW": the tile is the
+    // second mode, not an Arena task. Until the player has tried it, its last
+    // line says so ("Drugi tryb: misje z celami"), then the mission's goal.
+    const tried = knowsCampaign(this.save);
+    document.getElementById('hubCampaignEyebrow').textContent = next ? `KAMPANIA · ${district.name.toUpperCase()}` : 'KAMPANIA';
     document.getElementById('hubCampaignTile').style.setProperty('--q', next ? (DISTRICT_COLORS[district.id] || '#46D99A') : '#46D99A');
     document.getElementById('hubCampaignTitle').textContent = next ? `${missionCode(next)} · ${next.name}` : 'Ukończona!';
-    document.getElementById('hubCampaignSub').textContent = next ? this.missionStepRows(next)[0].label : `Zbieraj gwiazdki: ★ ${this.totalStars()}`;
+    document.getElementById('hubCampaignSub').textContent = !next ? `Zbieraj gwiazdki: ★ ${this.totalStars()}`
+      : (tried ? this.missionStepRows(next)[0].label : 'Drugi tryb: misje z celami · otwarty');
+    document.getElementById('hubCampaignTile').classList.toggle('is-mode-hint', !tried);
     // FTUE-1: after the third Arena round the same tile presents the second
     // mode (a NOWE tag, no popup); a tap goes to Dzielnice. GRAJ stays the
     // main action right above it.
@@ -13858,9 +13954,10 @@ class Game {
     document.getElementById('hubCampaignTile').classList.toggle('is-intro', intro);
     if (intro) {
       document.getElementById('hubCampaignTile').style.setProperty('--q', '#46D99A');
-      document.getElementById('hubCampaignEyebrow').textContent = 'DRUGI TRYB';
+      // UX-FIX-A: open from the first launch -- never worded as an unlock.
+      document.getElementById('hubCampaignEyebrow').textContent = 'DRUGI TRYB · OTWARTY';
       document.getElementById('hubCampaignTitle').textContent = `Kampania: ${CAMPAIGN_MISSIONS.length} misji`;
-      document.getElementById('hubCampaignSub').textContent = `${DISTRICTS.length} dzielnic · zagraj, kiedy chcesz`;
+      document.getElementById('hubCampaignSub').textContent = `${DISTRICTS.length} dzielnic · otwarte od początku`;
       if (!this.campaignIntroTracked) { this.campaignIntroTracked = true; this.analytics.track('campaign_intro', { action: 'shown', runs: arenaRunsOf(this.save) }); }
     }
     const daily = document.getElementById('btnDaily');
@@ -13990,7 +14087,16 @@ class Game {
     }
     const level = s.hub.coreLevel || 1;
     const rounds = Math.max(1, Math.ceil((100 - (s.hub.coreCharge || 0)) / this.coreGainPerRound()));
-    if (rounds > CONFIG.ftue.coreHookRounds) return null;
+    // UX-FIX-A: a player who has not tried the campaign (knowsCampaign():
+    // a Dzielnice visit, a mission started or cleared) and has the rounds
+    // Miasto presents it after is told it is open -- when the line would
+    // otherwise be empty (an unlock or a near Core City reward keep their
+    // FTUE-3 place). Gone for good after the first visit.
+    if (rounds > CONFIG.ftue.coreHookRounds) {
+      return !knowsCampaign(s) && runs >= CONFIG.ftue.campaignIntroRuns
+        ? { id: 'kampania', rounds: 0, kicker: 'DRUGI TRYB · OTWARTY', text: `Dzielnice: ${CAMPAIGN_MISSIONS.length} misji z celami · wejdź z Miasta`, color: '#46D99A', icon: UNLOCK_ICONS.kampania }
+        : null;
+    }
     const reward = CORE_CITY_LEVEL_REWARDS[level + 1];
     const premium = `+${CONFIG.hub.milestoneFallbackCoins} monet + ${CONFIG.hub.milestoneFallbackPrisms} pryzmatów`;
     // CITY-2: LVL 7-12 name the Drugi brzeg stage they build; from LVL 12 only the premium is left.
@@ -14119,7 +14225,12 @@ class Game {
     // its reward is already credited, so it never says "PÓŹNIEJ" (006/012:
     // a star chest read as something to open later).
     const goBtn = document.getElementById('btnUnlockGo');
-    const cta = item.noCta || item.id === 'boosters' ? null : (item.kind === 'reward' ? (this.isWarsztatUnlocked() ? 'ZAŁÓŻ W WARSZTACIE' : null) : item.cta);
+    // UX-FIX-A: a reward card's CTA does what it says -- one look = ZAŁÓŻ
+    // (puts it on, rewardToWarsztat()), a set = POKAŻ W WARSZTACIE (shows its
+    // pieces, puts nothing on); a reward with no look (a track) has none.
+    const looks = item.kind === 'reward' ? (item.cosmetics || []) : [];
+    const cta = item.noCta || item.id === 'boosters' ? null
+      : (item.kind === 'reward' ? (looks.length && this.isWarsztatUnlocked() ? (looks.length === 1 ? 'ZAŁÓŻ' : 'POKAŻ W WARSZTACIE') : null) : item.cta);
     goBtn.classList.toggle('hidden', !cta);
     if (cta) goBtn.textContent = cta;
     const laterBtn = document.getElementById('btnUnlockLater');
@@ -14148,11 +14259,13 @@ class Game {
 
   onUnlockGo() {
     const item = this.currentUnlock;
+    this.currentUnlock = null; // a second press does nothing more
     document.getElementById('unlockOverlay').classList.add('hidden');
     if (item) {
       this.updateCoinDisplays();
       this.state = GameState.MENU;
-      if (item.kind === 'reward' || item.id === 'warsztat') this.openWarsztatScreen();
+      if (item.kind === 'reward') this.rewardToWarsztat(item.cosmetics || []);
+      else if (item.id === 'warsztat') this.openWarsztatScreen();
       else if (item.id === 'wyzwania') this.openChallengesScreen();
       else if (item.id === 'kampania') this.openCampaignScreen();
       else if (item.districtId) { this.openCampaignScreen(); this.selectCampaignDistrict(item.districtId); }
@@ -14766,6 +14879,10 @@ class Game {
     tabs.forEach(t => {
       const btn = document.getElementById(t.btn);
       btn.classList.toggle('active', t.screen === activeScreenId);
+      // UX-FIX-A: Dzielnice presented as the second mode says "TRYB 2", not
+      // NOWE -- it was open all along (a new district keeps NOWE).
+      const freshNow = !!(t.fresh && [].concat(t.fresh).some(f => this.isUnlockFresh(f)));
+      btn.classList.toggle('is-mode', !!(t.unlocked && t.due && !freshNow));
       // GDD 4.0 mockup: a locked tab stays visible (dimmed) with a small
       // lock badge -- never simply hidden. Tapping it opens
       // openLockedTabInfo() instead of doing nothing.
@@ -17078,7 +17195,7 @@ class Game {
         const skin = SKINS.find(sk => sk.id === m.def.reward.unlockSkin);
         this.queueRewardCelebration({
           eyebrow: 'NAGRODA ZA KAMPANIĘ', title: `Wir „${skin ? skin.name : m.def.reward.unlockSkin}”`, color: '#EFCB63',
-          icon: REWARD_CATEGORY_ICONS.skin,
+          icon: REWARD_CATEGORY_ICONS.skin, cosmetics: [{ cat: 'skin', id: m.def.reward.unlockSkin }],
           desc: 'Wyjątkowy wygląd dziury za ukończenie całej kampanii. Załóż go w Warsztacie.'
         });
       }
@@ -17704,6 +17821,7 @@ class Game {
     this.evolutionPaceRadius = 0;
     clearTimeout(this.evolutionAutoPickTimer);
     this.magnetUntil = 0;
+    this.magnetCoveredShown = false;
     this.magnetPulled = [];
     this.speedBoostUntil = 0;
     this.scannerTimer = 0;
@@ -17987,7 +18105,7 @@ class Game {
     const category = this.coreCityRewardCategory(def);
     this.queueRewardCelebration({
       eyebrow: `NAGRODA CORE CITY · LVL ${level}`, title: def.label, color: '#46D99A',
-      icon: REWARD_CATEGORY_ICONS[category],
+      icon: REWARD_CATEGORY_ICONS[category], cosmetics: rewardCosmetics(def),
       desc: `${this.rewardCategoryExplanation(category).replace(/<[^>]+>/g, '')} Czeka w Warsztacie. +${def.coins} monet.`
     });
     return { level, label: def.label, coins: def.coins };
@@ -18103,7 +18221,7 @@ class Game {
       nextLine.style.setProperty('--q', next.color);
       nextLine.dataset.hook = next.id;
       document.getElementById('resultNextIcon').innerHTML = next.icon;
-      document.getElementById('resultNextKicker').textContent = next.rounds === 1 ? 'NASTĘPNA RUNDA' : `ZA ${next.rounds} ${plural(next.rounds, ['RUNDĘ', 'RUNDY', 'RUND'])}`;
+      document.getElementById('resultNextKicker').textContent = next.kicker || (next.rounds === 1 ? 'NASTĘPNA RUNDA' : `ZA ${next.rounds} ${plural(next.rounds, ['RUNDĘ', 'RUNDY', 'RUND'])}`);
       document.getElementById('resultNextText').textContent = next.text;
       this.analytics.track('result_next', { hook: next.id, rounds: next.rounds, runs: arenaRunsOf(this.save) });
     }
@@ -18301,8 +18419,19 @@ class Game {
     // ARENA-FIX-1: the pause sheet offers it in Arena only (missions keep their steering).
     const desk = this.save.settings.deskControls === 'keyboard' ? 'keyboard' : 'mouse';
     document.querySelectorAll('[data-desk-controls]').forEach(btn => btn.classList.toggle('active', btn.dataset.deskControls === desk));
-    document.getElementById('deskControlsRow').classList.toggle('hidden', !this.hasDeskPointer || this.mode === 'campaign');
+    const arenaDesk = this.hasDeskPointer && this.mode !== 'campaign';
+    document.getElementById('deskControlsRow').classList.toggle('hidden', !arenaDesk);
     document.getElementById('profileDeskControlsRow').classList.toggle('hidden', !this.hasDeskPointer);
+    // UX-FIX-A: one line under each switch says what the picked mode does.
+    const deskHint = desk === 'keyboard'
+      ? 'Klawiatura: steruj WASD albo strzałkami. Mysz nie porusza wirem.'
+      : 'Mysz: wir jedzie za kursorem. Klawisze ruchu nie sterują.';
+    for (const [id, on] of [['deskControlsHint', arenaDesk], ['profileDeskControlsHint', this.hasDeskPointer]]) {
+      const el = document.getElementById(id);
+      el.textContent = deskHint;
+      el.classList.toggle('hidden', !on);
+    }
+    document.getElementById('missionControlsNote').classList.toggle('hidden', !(this.hasDeskPointer && this.mode === 'campaign'));
     const side = this.save.settings.minimapSide === 'right' ? 'right' : 'left';
     document.querySelectorAll('[data-minimap-side]').forEach(btn => btn.classList.toggle('active', btn.dataset.minimapSide === side));
     document.querySelectorAll('[data-sensitivity]').forEach(btn => {
@@ -19317,6 +19446,13 @@ class Game {
     const now = performance.now();
 
     const fullMagnet = now < this.magnetUntil;
+    // UX-FIX-A: the field (CONFIG.evolution.magnetRadius from the vortex's
+    // centre) has a fixed size -- once the vortex covers it the card does
+    // nothing more, and the player is told so once (its ring is gone too).
+    if (fullMagnet && !this.magnetCoveredShown && this.player.radius >= CONFIG.evolution.magnetRadius) {
+      this.magnetCoveredShown = true;
+      this.addFloatText(this.player.x, this.player.y - this.player.radius - 20, 'MAGNES: wir zakrył pole', '#50F0FA', 18, 1.6);
+    }
     const magnetRadius = Math.max(fullMagnet ? CONFIG.evolution.magnetRadius : 0, this.frenzyActive ? CONFIG.golden.magnetRadius : 0);
     this.magnetPulled.length = 0;
     if (magnetRadius > 0) {
@@ -19359,6 +19495,8 @@ class Game {
    *  drifting toward a stale pointer position. */
   applyPlayerMovement(dt) {
     const sensitivity = this.save.settings.sensitivity || 1;
+    // (UX-FIX-A: keyDir only ever holds keys that may steer -- the keydown
+    // handler drops movement keys in Arena's Mysz, a switch releases them.)
     if (this.keyDir.x !== 0 || this.keyDir.y !== 0) {
       this.player.moveDirection(this.keyDir.x, this.keyDir.y, 1, sensitivity, dt);
       return;
@@ -19418,13 +19556,24 @@ class Game {
       const how = this.useThumbpad && this.isTouchDevice ? 'Dotknij planszy i przesuń kciuk — wir jedzie w tę stronę'
         : this.isTouchDevice ? 'Przeciągnij palcem po ekranie — wir jedzie za nim'
           : this.keyboardSteering ? 'Steruj strzałkami albo WASD — wir jedzie w tę stronę'
-            : 'Prowadź kursorem myszy — wir jedzie za nim (albo strzałki / WASD)';
+            : 'Prowadź kursorem myszy — wir jedzie za nim';
       this.showCoachHint('moved', how, 'drag');
       return;
     }
     if (!c.ate && st.steerT != null && st.bites === 0 && st.t - st.steerT > C.eatAfter) {
       this.showCoachHint('eat', 'Najeżdżaj na świecące fragmenty — każdy powiększa wir', 'fragment');
       return;
+    }
+    // UX-FIX-A: leading on points next to a bigger rival -- the rule, said once
+    // per session (memory only, nothing saved): place is by points, and the
+    // red-marked vortex can still swallow you.
+    if (!this.sizeRuleHintShown && p.isLeader && st.t > C.rivalAfter) {
+      const vw = this.width / this.zoom / 2, vh = this.height / this.zoom / 2;
+      if (this.bots.some(b => b.threat && Math.abs(b.x - p.x) < vw && Math.abs(b.y - p.y) < vh)) {
+        this.sizeRuleHintShown = true;
+        this.showCoachHint('sizeRule', 'Miejsce zależy od punktów, nie rozmiaru. Wir z czerwonym znakiem jest większy — może Cię zjeść.', 'shield', C.showSeconds);
+        return;
+      }
     }
     if (!c.rival && !st.rivalShown && st.t > C.rivalAfter) {
       const vw = this.width / this.zoom / 2, vh = this.height / this.zoom / 2;
@@ -19607,19 +19756,44 @@ class Game {
    *  while a threat lingers nearby (GDD 5.4: "haptic warning przy wejściu
    *  w strefę"). */
   updateDangerWarnings() {
+    const D = CONFIG.juice.danger;
+    let fresh = false;
     for (const bot of this.bots) {
-      const isThreat = bot.radius > this.player.radius * EAT_HOLE_RATIO;
-      const inRange = isThreat && dist(this.player.x, this.player.y, bot.x, bot.y) <= CONFIG.juice.dangerHaloRange;
-      if (inRange && !this.dangerWarned.has(bot)) {
+      const t = this.rivalThreat(bot);
+      bot.threat = !!t; // its name tag turns red (Hole.draw())
+      bot.dangerNear = !!t && t.near;
+      if (t && t.near && !this.dangerWarned.has(bot)) {
         this.dangerWarned.add(bot);
-        this.vibrate(25);
-        // v16: a heartbeat when a bigger rival closes in (at most every 4 s).
-        const nowMs = performance.now();
-        if (nowMs - (this.dangerSoundAt || 0) > 4000) { this.dangerSoundAt = nowMs; this.sound.danger(); }
-      } else if (!inRange && this.dangerWarned.has(bot)) {
+        // UX-FIX-A: no heartbeat while the respawn shield holds -- it can't eat now.
+        if (!this.player.invulnerable) fresh = true;
+        else this.dangerWarned.delete(bot);
+      } else if (this.dangerWarned.has(bot) && (!t || t.margin > t.lead * D.rearm)) {
         this.dangerWarned.delete(bot);
       }
     }
+    // One warning for any number of rivals entering together.
+    if (fresh) {
+      this.vibrate(25);
+      // v16: a heartbeat when a bigger rival closes in (at most every soundGapMs).
+      const nowMs = performance.now();
+      if (nowMs - (this.dangerSoundAt || 0) > D.soundGapMs) { this.dangerSoundAt = nowMs; this.sound.danger(); }
+    }
+  }
+
+  /** UX-FIX-A: can this rival swallow the player now, and how close is it to
+   *  doing so? null when it can't (not bigger than the player x
+   *  EAT_HOLE_RATIO -- the same rule handleHoleCollisions() uses -- or
+   *  waiting off the board). `margin` = distance left before its swallow
+   *  reach (0.75 x its radius; <= 0 = inside), `lead` = how far ahead the
+   *  warning starts (CONFIG.juice.danger), `near` = margin <= lead, and
+   *  `strength` 0..1 for the halo. World units only. */
+  rivalThreat(bot) {
+    const p = this.player;
+    if (!p || !bot || bot.waiting || bot.radius <= p.radius * EAT_HOLE_RATIO) return null;
+    const D = CONFIG.juice.danger;
+    const reach = bot.radius * 0.75, lead = D.base + D.perRadius * bot.radius;
+    const margin = dist(p.x, p.y, bot.x, bot.y) - reach;
+    return { reach, lead, margin, near: margin <= lead, strength: clamp(1 - margin / lead, 0, 1) };
   }
 
   /** Arena's in-round HUD reuses the same tier-strip markup as Campaign's
@@ -19681,7 +19855,7 @@ class Game {
     // GG-UI-01: each row carries its score as a share of the leader's (--p:
     // the bar behind the row -- the gap to #1 reads without the numbers).
     const top = Math.max(1, ranked[0].score);
-    const row = (h, i) => `<li class="${h.isPlayer ? 'is-player' : ''}${i === 0 ? ' lb-first' : ''}" style="--p:${Math.round(clamp(h.score / top, 0, 1) * 100)}%"><span class="lb-rank">${i === 0 ? '<svg class="lb-crown" viewBox="0 0 24 24" aria-label="#1"><path d="M3 19h18l-1.6-11-5.2 4.2L12 4.5l-2.2 7.7L4.6 8z" fill="currentColor"/></svg>' : i + 1}</span><span class="lb-name"${h.isPlayer && !this.save.displayName ? '' : ' translate="no"'}>${escapeHtml(h.name)}</span><span class="lb-size">${h.score}</span></li>`;
+    const row = (h, i) => `<li class="${h.isPlayer ? 'is-player' : ''}${i === 0 ? ' lb-first' : ''}" style="--p:${Math.round(clamp(h.score / top, 0, 1) * 100)}%"><span class="lb-rank">${i === 0 ? '<svg class="lb-crown" viewBox="0 0 24 24" aria-label="#1"><path d="M3 19h18l-1.6-11-5.2 4.2L12 4.5l-2.2 7.7L4.6 8z" fill="currentColor"/></svg>' : i + 1}</span><span class="lb-name"${h.isPlayer && !this.save.displayName ? '' : ' translate="no"'}>${escapeHtml(h.name)}</span>${h.threat && !h.isPlayer && !h.waiting ? '<span class="lb-threat" title="Większy — może Cię zjeść" aria-label="Większy — może Cię zjeść"><svg viewBox="0 0 24 24"><path d="M12 3 22 20H2z" fill="currentColor"/><path d="M12 9v5M12 16.5v1.5" stroke="#04101D" stroke-width="2.4" stroke-linecap="round"/></svg></span>' : ''}<span class="lb-size">${h.score}</span></li>`;
     let html = ranked.slice(0, 3).map(row).join('');
     if (place > 3) html += (place > 4 ? '<li class="lb-gap" aria-hidden="true">···</li>' : '') + row(this.player, place - 1);
     this.hudSet('leaderboardList', 'html', html);
@@ -20563,10 +20737,10 @@ class Game {
    *  close enough to matter — danger readability (GDD 5.4). */
   drawDangerHalos(ctx) {
     for (const bot of this.bots) {
-      if (bot.radius <= this.player.radius * EAT_HOLE_RATIO) continue;
-      const d = dist(this.player.x, this.player.y, bot.x, bot.y);
-      if (d > CONFIG.juice.dangerHaloRange) continue;
-      const strength = 1 - d / CONFIG.juice.dangerHaloRange;
+      // UX-FIX-A: from the rival's swallow reach + lead, not a fixed 260 px.
+      const t = this.rivalThreat(bot);
+      if (!t || !t.near) continue;
+      const strength = Math.max(0.15, t.strength);
       const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 300);
       ctx.save();
       ctx.globalAlpha = strength * 0.35 * pulse;
@@ -21517,7 +21691,7 @@ class DevPanel {
       }
       case 'reward-aurora': {
         if (!s.owned.includes('aurora')) s.owned.push('aurora');
-        g.queueRewardCelebration({ eyebrow: 'NAGRODA ZA KAMPANIĘ', title: 'Wir „Aurora Finału”', color: '#EFCB63', icon: REWARD_CATEGORY_ICONS.skin, desc: 'Wyjątkowy wygląd dziury za ukończenie całej kampanii. Załóż go w Warsztacie.' });
+        g.queueRewardCelebration({ eyebrow: 'NAGRODA ZA KAMPANIĘ', title: 'Wir „Aurora Finału”', color: '#EFCB63', icon: REWARD_CATEGORY_ICONS.skin, desc: 'Wyjątkowy wygląd dziury za ukończenie całej kampanii. Załóż go w Warsztacie.', cosmetics: [{ cat: 'skin', id: 'aurora' }] });
         if (g.running) this.stopPlay();
         this.close(false);
         this.commit();
@@ -21905,7 +22079,6 @@ const I18N_EN = {
   "Burza pakietów": "Packet Storm",
   "Burza przeszła bokiem.": "The storm passed us by.",
   "CAŁĄ MISJĘ": "WHOLE MISSION",
-  "CAŁĄ RUNDĘ": "WHOLE ROUND",
   "CEL MISJI": "MISSION GOAL",
   "CHMURA DANYCH": "DATA CLOUD",
   "CIEMNOŚĆ": "DARKNESS",
@@ -22049,7 +22222,6 @@ const I18N_EN = {
   "Furtki ogrodu": "Garden Gates",
   "GALERIA": "GALLERY",
   "GALERIA GLITCH": "GLITCH GALLERY",
-  "GDY CIĘ ZJEDZĄ": "WHEN YOU GET EATEN",
   "GODZINA SZCZYTU · rywale szybsi": "RUSH HOUR · faster rivals",
   "GODZINA SZCZYTU — rywale są szybsi!": "RUSH HOUR — rivals are faster!",
   "GODZINA SZCZYTU: rywale są szybsi w tej rundzie!": "RUSH HOUR: rivals are faster this round!",
@@ -22063,7 +22235,6 @@ const I18N_EN = {
   "Galeria Glitch to labirynt witryn i portali. Tu nic nie jest tym, czym się wydaje. Trzymaj się celu. Czeka 10 nowych misji.": "Glitch Gallery is a maze of shop windows and portals. Nothing here is what it seems. Stick to your goal. 10 new missions await.",
   "Galeria lśni jak nowa. Dachy Prądu czekają!": "The gallery shines like new. Power Rooftops await!",
   "Garść pryzmatów": "Handful of Prisms",
-  "Gdy rywal Cię pochłonie, po odrodzeniu masz 4 s ochrony zamiast 2 s.": "When a rival swallows you, you respawn with 4 s of protection instead of 2 s.",
   "Gdy urośniesz o rozmiar, fala rozrzuca pobliskie obiekty na 140 px wokół Ciebie.": "When you grow a size, a wave scatters nearby objects within 140 px of you.",
   "Glitch naprawiony rytmem.": "Glitch fixed by rhythm.",
   "Glitch traci kolejny serwer.": "Glitch loses another server.",
@@ -22390,7 +22561,6 @@ const I18N_EN = {
   "OTWÓRZ WARSZTAT": "OPEN WORKSHOP",
   "OTWÓRZ WYZWANIA": "OPEN CHALLENGES",
   "Obce dziury": "Alien Holes",
-  "Obiekty, które możesz zjeść, same lecą do Ciebie z bliskiej okolicy.": "Objects you can eat fly to you on their own from nearby.",
   "Obiekty, które możesz zjeść, same płyną do Ciebie, gdy są blisko.": "Objects you can eat drift to you on their own when they're close.",
   "Obwód zamknięty.": "Circuit closed.",
   "Ochroniarze": "Bodyguards",
@@ -22434,7 +22604,6 @@ const I18N_EN = {
   "PKT": "PTS",
   "PKT x{0}": "PTS x{0}",
   "PLAC NEONÓW": "NEON SQUARE",
-  "PO COMBO ×3": "AFTER A ×3 COMBO",
   "POBIJ MÓJ WYNIK!": "BEAT MY SCORE!",
   "POCHŁOŃ NEONOWE MIASTO": "SWALLOW THE NEON CITY",
   "POMIŃ": "SKIP",
@@ -23197,7 +23366,6 @@ const I18N_EN = {
   "Zieleń znów jest zielona.": "Green is green again.",
   "Zielona fala": "Green Wave",
   "Zielony Impuls": "Green Pulse",
-  "Zjedz 3 rzeczy szybko po sobie, a dostaniesz +60% prędkości na 1,5 s.": "Eat 3 things in quick succession for +60% speed for 1.5 s.",
   "Zjedz 5 rywali w jednej rundzie": "Eat 5 rivals in one round",
   "Zjedz 3 rywali w jednej rundzie": "Eat 3 rivals in one round",
   "Zjedz 5 rywali w jednej rundzie · nagroda +80 monet": "Eat 5 rivals in one round · reward +80 coins",
@@ -23627,7 +23795,6 @@ const I18N_EN = {
   "DRUGI TRYB": "SECOND MODE",
   // FTUE-1: Miasto's campaign tile after the third Arena round.
   "Kampania: {#0} misji": "Campaign: {0} missions",
-  "{#0} dzielnic · zagraj, kiedy chcesz": "{0} districts · play whenever you like",
   "KAMPANIA": "CAMPAIGN",
   "DO DZIELNIC": "TO DISTRICTS",
   "240 misji w 12 dzielnicach: cele, gwiazdki i wzmocnienia. Osobna droga rozwoju — rundy Areny i misje nie blokują się nawzajem.": "240 missions in 12 districts: goals, stars and boosters. A path of its own — Arena rounds and missions never block each other.",
@@ -23648,7 +23815,6 @@ const I18N_EN = {
   "Codzienne rundy Areny:": "Daily Arena rounds:",
   "Dotknij planszy i przesuń kciuk — wir jedzie w tę stronę": "Touch the board and slide your thumb — the vortex goes that way",
   "Przeciągnij palcem po ekranie — wir jedzie za nim": "Drag your finger across the screen — the vortex follows it",
-  "Prowadź kursorem myszy — wir jedzie za nim (albo strzałki / WASD)": "Move the mouse cursor — the vortex follows it (or arrow keys / WASD)",
   "Najeżdżaj na świecące fragmenty — każdy powiększa wir": "Roll over the glowing fragments — each one grows your vortex",
   "Ten rywal jest mniejszy od Ciebie — najedź na niego i go pochłoń!": "This rival is smaller than you — roll over it and swallow it!",
   "Większy wir Cię pochłonął — wynik zostaje. Omijaj większych rywali, aż ich przerośniesz.": "A bigger vortex swallowed you — your score stays. Avoid bigger rivals until you outgrow them.",
@@ -23742,6 +23908,27 @@ const I18N_EN = {
   "Sesje": "Sessions",
   "Rundy": "Rounds",
   "Misje": "Missions",
+  "Prowadź kursorem myszy — wir jedzie za nim": "Move the mouse cursor — the vortex follows it",
+  "Klawiatura: steruj WASD albo strzałkami. Mysz nie porusza wirem.": "Keyboard: steer with WASD or the arrow keys. The mouse doesn't move the vortex.",
+  "Mysz: wir jedzie za kursorem. Klawisze ruchu nie sterują.": "Mouse: the vortex follows the cursor. Movement keys don't steer.",
+  "W misjach sterujesz myszą albo klawiszami. Wybór Mysz / Klawiatura dotyczy Areny.": "In missions you steer with the mouse or the keys. The Mouse / Keyboard choice is for the Arena.",
+  "Miejsce zależy od punktów, nie rozmiaru. Wir z czerwonym znakiem jest większy — może Cię zjeść.": "Your place depends on points, not size. A vortex with the red mark is bigger — it can swallow you.",
+  "Większy — może Cię zjeść": "Bigger — it can swallow you",
+  "POKAŻ W WARSZTACIE": "SHOW IN WORKSHOP",
+  "Założono: {0} „{1}”": "Equipped: {0} “{1}”",
+  "Części zestawu mają znak NAGRODA, ich zakładki zieloną kropkę. Dotknij, żeby założyć.": "The set's pieces carry the REWARD mark, their tabs a green dot. Tap to equip.",
+  "KAMPANIA · {0}": "CAMPAIGN · {0}",
+  "Drugi tryb: misje z celami · otwarty": "Second mode: missions with goals · open",
+  "DRUGI TRYB · OTWARTY": "SECOND MODE · OPEN",
+  "{#0} dzielnic · otwarte od początku": "{0} districts · open from the start",
+  "Dzielnice: {#0} misji z celami · wejdź z Miasta": "Districts: {0} missions with goals · enter from the City",
+  "SŁABNIE, GDY ROŚNIESZ": "FADES AS YOU GROW",
+  "OD COMBO ×3": "FROM A ×3 COMBO",
+  "PO ODRODZENIU": "AFTER RESPAWN",
+  "MAGNES: wir zakrył pole": "MAGNET: the vortex covers its field",
+  "Jadalne obiekty z pola wokół wiru same lecą do Ciebie. Duży wir zakrywa pole.": "Edible objects in a field around the vortex fly to you on their own. A big vortex covers the field.",
+  "Od combo ×3 każdy kęs daje +60% prędkości na 1,5 s i odnawia ten czas.": "From a ×3 combo, every bite gives +60% speed for 1.5 s and renews it.",
+  "Nie chroni przed zjedzeniem: po odrodzeniu masz 4 s ochrony zamiast 2 s.": "It doesn't stop you being eaten: after respawning you get 4 s of protection instead of 2 s.",
 };
 
 window.addEventListener('DOMContentLoaded', () => {

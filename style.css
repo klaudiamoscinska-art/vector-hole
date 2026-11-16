@@ -5477,3 +5477,42 @@ body.minimap-left #mobile-hint {
   body.minimap-left #mobile-hint { left: calc(136px + env(safe-area-inset-left, 0px)); right: calc(16px + env(safe-area-inset-right, 0px)); }
 }
 body.minimap-left #hud .now-playing { left: auto; right: var(--gh-right); }
+
+/* ---- UX-FIX-A: Arena steering choice shown at once in the pause sheet
+   and first in Profil's Ustawienia, with a one-line hint for the mode. ---- */
+.pause-panel .desk-controls-row { width: 100%; padding: 8px 10px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--nc-border); }
+.desk-controls-hint { margin: 2px 0 4px; font-size: 11px; line-height: 1.35; color: rgba(230, 250, 255, 0.7); text-align: left; }
+.pause-panel .desk-controls-hint { width: 100%; text-align: center; }
+.settings-block .desk-controls-hint { margin: -4px 0 6px; }
+
+/* ---- UX-FIX-A: a reward card's ZAŁÓŻ / POKAŻ W WARSZTACIE -- the cards it
+   points at carry a NAGRODA ribbon and a green ring, their tabs a dot. ---- */
+#shopScreen .skin-card.is-reward-new { box-shadow: 0 0 0 2px var(--nc-green), 0 0 16px rgba(70, 217, 154, 0.45); }
+#shopScreen .skin-card.is-reward-new::after { content: 'NAGRODA'; position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 0;
+  background: var(--nc-green); color: #04101D; font-size: 8.5px; font-weight: 800; letter-spacing: 0.08em; line-height: 1.4; pointer-events: none; }
+html[lang="en"] #shopScreen .skin-card.is-reward-new::after { content: 'REWARD'; }
+#shopScreen .skin-card.is-reward-new .skin-card-body { padding-bottom: 10px; }
+#shopScreen .shop-tabs .toggle-btn.has-reward { position: relative; }
+#shopScreen .shop-tabs .toggle-btn.has-reward::after { content: ''; position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--nc-green); box-shadow: 0 0 6px var(--nc-green); }
+#warsztatHint.is-reward-note { color: var(--nc-green); font-weight: 700; }
+
+/* ---- UX-FIX-A: a rival in the standings that can swallow the player ---- */
+#hud #leaderboardList .lb-threat { position: relative; flex: none; width: 13px; height: 13px; margin-right: 4px; color: var(--nc-pink);
+  filter: drop-shadow(0 0 4px rgba(255, 84, 173, 0.7)); }
+#hud #leaderboardList .lb-threat svg { width: 100%; height: 100%; display: block; }
+
+/* ---- UX-FIX-A: Dzielnice is the second mode, open from the start -- its
+   presentation after the third round says "TRYB 2" in green, never the pink
+   NOWE of a real unlock (a new district keeps NOWE). ---- */
+.nav-tab.is-new.is-mode .nav-tab-icon::after { content: 'TRYB 2'; white-space: nowrap; background: var(--nc-green); box-shadow: 0 0 8px var(--nc-green); animation: none; }
+html[lang="en"] .nav-tab.is-new.is-mode .nav-tab-icon::after { content: 'MODE 2'; }
+.hub-quick-campaign.is-intro::after { content: 'TRYB 2'; background: var(--nc-green); box-shadow: 0 0 8px var(--nc-green); }
+html[lang="en"] .hub-quick-campaign.is-intro::after { content: 'MODE 2'; }
+.hub-quick-campaign.is-mode-hint .hub-quick-sub { color: var(--nc-green); }
+/* UX-FIX-A: a landscape phone / small portal frame (640x360) -- the switch on one line, the hint tight under it. */
+body.compact #pauseSheet .desk-controls-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 8px; }
+body.compact #pauseSheet .desk-controls-row .control-toggle { flex: 0 1 300px; }
+body.compact #pauseSheet .desk-controls-row .toggle-btn { padding-top: 5px; padding-bottom: 5px; }
+body.compact #pauseSheet .desk-controls-hint { margin: -4px 0 0; font-size: 10px; }

@@ -504,11 +504,19 @@ export async function runPlatformInputChecks(url) {
     await page.waitForTimeout(500);
     await page.mouse.click(40, 500); // into the play field (bottom-left, away from HUD buttons)
     await f.evaluate(() => { window.game.pointerScreen = null; });
+    // UX-FIX-A: Mysz (the default) takes no movement key -- ArrowDown neither steers nor scrolls the host.
+    await page.keyboard.down('ArrowDown');
+    await page.waitForTimeout(300);
+    const mouseKey = await f.evaluate(() => ({ ky: window.game.keyDir.y, running: window.game.running, paused: window.game.paused }));
+    await page.keyboard.up('ArrowDown');
+    results.push(report('round in the iframe, Mysz: ArrowDown steers nothing (UX-FIX-A) and does not scroll the host page', mouseKey.ky === 0 && mouseKey.running && !mouseKey.paused && await hostY() === 0, JSON.stringify(mouseKey) + ' host ' + await hostY()));
+    await f.evaluate(() => { window.game.save.settings.deskControls = 'keyboard'; window.game.pointerScreen = null; });
     await page.keyboard.down('ArrowDown');
     await page.waitForTimeout(400);
     const steer = await f.evaluate(() => ({ ky: window.game.keyDir.y, running: window.game.running, paused: window.game.paused }));
     await page.keyboard.up('ArrowDown');
-    results.push(report('round in the iframe: ArrowDown steers the vortex and does not scroll the host page', steer.ky > 0 && steer.running && !steer.paused && await hostY() === 0, JSON.stringify(steer) + ' host ' + await hostY()));
+    await f.evaluate(() => { window.game.save.settings.deskControls = 'mouse'; });
+    results.push(report('round in the iframe, Klawiatura: ArrowDown steers the vortex and does not scroll the host page', steer.ky > 0 && steer.running && !steer.paused && await hostY() === 0, JSON.stringify(steer) + ' host ' + await hostY()));
     const pauses = {};
     for (const k of ['KeyP', 'Space', 'Escape']) {
       await page.keyboard.press(k); await page.waitForTimeout(80);
@@ -530,14 +538,15 @@ export async function runPlatformInputChecks(url) {
     results.push(report('mouse: the cursor leaving the iframe stops the vortex (no steering toward the last point)', inside && out1.ptr === null && drift < 3, `inside ${inside}, after ${JSON.stringify(out1.ptr)}, drift ${drift.toFixed(1)} px`));
     // focus lost with a key held: released, the round pauses
     await page.mouse.click(40, 500);
-    await f.evaluate(() => { if (window.game.paused) window.game.resumeGame(); });
+    await f.evaluate(() => { if (window.game.paused) window.game.resumeGame(); window.game.save.settings.deskControls = 'keyboard'; });
     await page.keyboard.down('ArrowRight'); await page.waitForTimeout(150);
     const held = await f.evaluate(() => window.game.keyDir.x);
     await page.mouse.click(1000, 100); // the portal page takes focus
     await page.waitForTimeout(250);
     const blurred = await f.evaluate(() => ({ kx: window.game.keyDir.x, paused: window.game.paused, ptr: window.game.pointerScreen }));
     await page.keyboard.up('ArrowRight');
-    results.push(report('focus lost (a click on the portal page) with an arrow held: the key is released, steering stops and the round pauses', held > 0 && blurred.kx === 0 && blurred.paused === true && blurred.ptr === null, `held ${held} → ${JSON.stringify(blurred)}`));
+    await f.evaluate(() => { window.game.save.settings.deskControls = 'mouse'; });
+    results.push(report('focus lost (a click on the portal page) with an arrow held (Klawiatura): the key is released, steering stops and the round pauses', held > 0 && blurred.kx === 0 && blurred.paused === true && blurred.ptr === null, `held ${held} → ${JSON.stringify(blurred)}`));
     // no steering while a modal is open: the pause sheet / evolution cards
     const before = await f.evaluate(() => ({ x: window.game.player.x, y: window.game.player.y }));
     await page.mouse.move(600, 260); await page.mouse.move(80, 500); await page.waitForTimeout(400);

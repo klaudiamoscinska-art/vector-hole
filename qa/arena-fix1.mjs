@@ -5,7 +5,7 @@
 //    stops the vortex, the cursor (still or moving) never steers, the mouse
 //    still clicks buttons; a switch, a pause, a lost focus and a resume
 //    never leave the vortex drifting or a key held, and never change the
-//    mode. Mouse keeps the cursor steering and the WASD help. Phones and
+//    mode. Mouse keeps the cursor steering; since UX-FIX-A its movement keys steer nothing. Phones and
 //    tablets get no such switch and touch keeps steering whatever is saved.
 //  - E: Enter on Arena's start screen (Miasto's GRAJ, the welcome card's GRAJ)
 //    starts exactly one round -- not on a repeat, a focused GRAJ (native
@@ -160,7 +160,9 @@ async function controlChecks(url) {
     await p.waitForTimeout(250);
     const m2 = await st(p);
     await p.keyboard.up('KeyS');
-    out.push(report('C4 Mysz: the cursor steers again and WASD still helps while held (mouse mode unchanged)', m1.x - m0.x > 15 && m2.y - m1.y > 5, JSON.stringify({ m0, m1, m2 })));
+    // UX-FIX-A (owner decision): Mysz and Klawiatura are exclusive -- in Mysz a held
+    // movement key steers nothing (no key direction is taken); the cursor keeps steering.
+    out.push(report('C4 Mysz: the cursor steers again; a held S is ignored (UX-FIX-A: no WASD in Mysz)', m1.x - m0.x > 15 && m2.kx === 0 && m2.ky === 0, JSON.stringify({ m0, m1, m2 })));
     // Back to Keyboard with the cursor's point live on the board.
     await p.keyboard.press('KeyP');
     await p.waitForTimeout(100);

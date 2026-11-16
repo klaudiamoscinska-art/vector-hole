@@ -120,12 +120,19 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   animacja wyniku (2,4 s), i nie pojawia się, jeśli gracz zdążył już
   przejść dalej (zostaje plakietka NOWE na zakładce). Kampania nie ma już
   karty nad wynikiem: od 3. rundy Areny Miasto przedstawia ją na swoim
-  kafelku kampanii („DRUGI TRYB · Kampania: 240 misji”, plakietka NOWE,
-  także na zakładce Dzielnice) — bez okna, GRAJ zostaje nad nim. Dotknięcie
-  kafelka otwiera Dzielnice. Kto już poznał kampanię (wizyta w Dzielnicach,
-  rozpoczęta lub ukończona misja, wstęp z poprzedniej wersji w
-  `save.unlocks.announced`), nie widzi wstępu. Dzielnice są dostępne od
-  pierwszej rundy jak dotąd; progi odblokowań bez zmian.
+  kafelku kampanii („DRUGI TRYB · OTWARTY · Kampania: 240 misji · 12 dzielnic ·
+  otwarte od początku”, zielona plakietka TRYB 2 — także na zakładce Dzielnice;
+  UX-FIX-A: nie różowe NOWE, bo tryb był dostępny od początku) — bez okna, GRAJ
+  zostaje nad nim. Dotknięcie kafelka otwiera Dzielnice. Kto już poznał kampanię
+  (wizyta w Dzielnicach, rozpoczęta lub ukończona misja, wstęp z poprzedniej
+  wersji w `save.unlocks.announced`), nie widzi wstępu. Dzielnice są dostępne od
+  pierwszej rundy jak dotąd; progi odblokowań bez zmian. **UX-FIX-A:** kafelek
+  od 1. rundy ma nadtytuł „KAMPANIA · <dzielnica>”, a dopóki gracz nie poznał
+  kampanii, jego ostatnia linia brzmi „Drugi tryb: misje z celami · otwarty”
+  (potem cel misji). Wynik Areny, gdy linia „NASTĘPNA RUNDA” byłaby pusta (brak
+  bliskiego odblokowania i nagrody Core City), od 3. rundy mówi „DRUGI TRYB ·
+  OTWARTY · Dzielnice: 240 misji z celami · wejdź z Miasta” — do pierwszej
+  wizyty w Dzielnicach (ten sam znacznik `kampania`, bez nowego pola).
 - **Pierwsza runda uczy, nie samouczek (`CONFIG.coach`,
   `updateArenaCoach()`):** podpowiedź pojawia się tylko wtedy, gdy gracz
   się waha, i znika na zawsze, gdy pokaże umiejętność (`save.coach`):
@@ -217,13 +224,25 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   czerwona poświata = zagrożenie. Ranking na żywo nazywa się **PUNKTY**
   (miejsce = punkty, nie rozmiar — 1. miejsce może mieć mniejszy wir),
   wyniki mówią to samo pod tabelą.
+- **Zagrożenie (UX-FIX-A, `rivalThreat()`, `CONFIG.juice.danger`):** rywal,
+  który może zjeść gracza (promień > gracz × 1,15, nie czeka poza planszą), ma
+  nazwę na czerwono ze znakiem ostrzeżenia, a w panelu PUNKTY trójkąt przy
+  swoim wierszu. Ostrzeżenie (poświata, wibracja, jedno bicie serca) zaczyna
+  się w odległości `140 + 0,4 × r_rywala` jednostek świata **przed** jego
+  zasięgiem zjedzenia (0,75 × r_rywala) — dawniej stałe 260 od środka, więc
+  rywal r ≥ 347 zjadał bez ostrzeżenia. Jedno bicie serca na kilku rywali
+  naraz (najwyżej co 4 s), ponowne dopiero po oddaleniu na 1,25 × wyprzedzenia;
+  w czasie ochrony po odrodzeniu bez dźwięku. Raz na sesję, gdy gracz prowadzi
+  obok takiego rywala, linia podpowiedzi: „Miejsce zależy od punktów, nie
+  rozmiaru. Wir z czerwonym znakiem jest większy — może Cię zjeść.”
 - **Kolejność rysowania planszy (DEVICE-QA-1):** obiekty w kadrze rysują
   się od największych, równe od tyłu do przodu — mały obiekt nigdy nie
   chowa się pod budynkiem. Pozycje, jedzenie i RNG bez zmian.
 - **Ewolucja (R4-02: w 1. rundzie przy 25–30 s i 60–65 s gry, od 2. rundy przy rozmiarze):** przy promieniu 46 i 66 gra się zatrzymuje i oferuje 3 karty
   (`MUTATIONS`: Magnes, Turbo combo, Tarcza, Długie combo, Skaner, Fala,
   Łowca) albo POMIŃ. Działają do końca rundy.
-  **Magnes (Arena, R5-03):** pole 160 od środka dziury, siła 90 × (1 − d/160); widać falę przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Od promienia 160 pole jest w środku dziury i nic nie przyciąga (zmiana zasięgu to decyzja właścicielki).
+  **Magnes (Arena, R5-03):** pole 160 od środka dziury, siła 90 × (1 − d/160); widać falę przy wyborze, pierścień zasięgu i kreski przy przyciąganych obiektach. Od promienia 160 pole jest w środku dziury i nic nie przyciąga (zmiana zasięgu to decyzja właścicielki). UX-FIX-A: tag „SŁABNIE, GDY ROŚNIESZ”, opis mówi o stałym polu, a gdy wir je zakryje, raz pojawia się napis „MAGNES: wir zakrył pole”.
+  **Turbo combo (UX-FIX-A, tylko tekst):** od 3. kęsa w combo każdy kęs daje +60% prędkości na 1,5 s i odnawia ten czas (tag „OD COMBO ×3”). **Tarcza (UX-FIX-A, tylko tekst):** „Nie chroni przed zjedzeniem” — po odrodzeniu 4 s ochrony zamiast 2 s (tag „PO ODRODZENIU”).
 - **Złoty Rdzeń:** po 10 s, potem co 20 s; kto zje — SZAŁ na 7 s
   (punkty ×2, zasięg ×1,35, prędkość ×1,2, obiekty o rozmiar większe).
 - **Wielki finisz:** ostatnie 12 s — losowo (z ziarna) jeden z dwóch
@@ -258,6 +277,11 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   joysticka. Pauza, wznowienie, utrata fokusu, `touchcancel`, obrót
   telefonu, start rundy / misji i wybór karty zerują kotwicę.
 - **Komputer w Arenie — Sterowanie: Mysz / Klawiatura (ARENA-FIX-1, `settings.deskControls`):**
+  UX-FIX-A (decyzja właścicielki): tryby są **rozłączne** — w Mysz klawisze ruchu nie sterują
+  (Enter, P / Spacja / Esc i Tab działają), w Klawiaturze kursor nie steruje. Wybór „Sterowanie na
+  Arenie” jest od razu w pauzie Areny (nie za STEROWANIEM) i jako pierwszy wiersz Ustawień w Profilu
+  (koło zębate), z jedną linią podpowiedzi dla trybu; pauza misji w STEROWANIU mówi, że w misjach
+  sterujesz myszą albo klawiszami, a wybór dotyczy Areny. Wcześniej:
   wybór w Profil → Ustawienia („Sterowanie na Arenie”) i w pauzie Areny → STEROWANIE („Sterowanie”),
   tylko tam, gdzie jest mysz / gładzik (`(any-pointer: fine) and (any-hover: hover)`; telefon i tablet
   go nie widzą). **Mysz** (domyślna dla nowego profilu; brak / nieznana wartość → Mysz): jak dotąd —
@@ -549,6 +573,16 @@ przedstawia; numeracja misji (M01…M240) i zapisy bez zmian.
   Szczelina” 35, Finisze „Złoty Szczyt” 25 i „Zielona Burza” 40 pryzmatów
   (wcześniej w tych kategoriach nie było nic do kupienia). Dodatków na
   rundę Areny (Tarcza 45, Magnes 25, Turbo start 70) nie ma od PX02 D+.
+- **Karta nagrody → Warsztat (UX-FIX-A, `rewardToWarsztat()`):** nagroda z
+  jednym wyglądem (Core City LVL 2–5, Wir „Aurora Finału”) ma przycisk
+  **ZAŁÓŻ** — zakłada dokładnie ten przedmiot tą samą ścieżką co dotknięcie
+  karty (`onCosmeticPick()` → `onEquipClick()`; inne kategorie bez zmian, nic
+  nie jest przyznawane ani płatne drugi raz), otwiera jego zakładkę, oznacza
+  kartę (NAGRODA), przewija ją do widoku i mówi „Założono: …”. Zestaw LVL 6 ma
+  **POKAŻ W WARSZTACIE**: cztery części oznaczone, ich zakładki z zieloną
+  kropką, nic nie jest zakładane. Nagroda bez wyglądu (np. nowy utwór) nie ma
+  przycisku. Ponowne naciśnięcie nic nie robi; Warsztat otwarty z nawigacji nie
+  ma oznaczeń.
 - **Warsztat (v14):** dotknięcie posiadanego przedmiotu od razu go
   zakłada; przedmiot na sprzedaż pojawia się na podglądzie, a stałe miejsce
   w karcie podglądu pyta „KUP I ZAŁÓŻ · cena” (WORKSHOP-BUY: bez okna nad

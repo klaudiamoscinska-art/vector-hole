@@ -433,12 +433,13 @@ async function inputChecks(gameDir) {
   await g.frame.waitForFunction(() => window.game.running, null, { timeout: 8000 });
   await g.page.mouse.move(608, 342);
   await g.page.waitForTimeout(600);
-  const x0 = await g.frame.evaluate(() => { window.game.pointerActive = false; return window.game.player.x; });
+  // UX-FIX-A: WASD steers in Klawiatura (Mysz takes no movement key).
+  const x0 = await g.frame.evaluate(() => { window.game.pointerActive = false; window.game.save.settings.deskControls = 'keyboard'; window.game.pointerScreen = null; return window.game.player.x; });
   await g.page.keyboard.down('KeyD');
   await g.page.waitForTimeout(500);
   await g.page.keyboard.up('KeyD');
-  const key = await g.frame.evaluate(() => ({ x: window.game.player.x, dir: window.game.keyDir }));
-  r.push(report('input: WASD reaches the game in the iframe (physical keys, so AZERTY ZQSD works too)', key.x !== x0, `${x0} -> ${key.x}`));
+  const key = await g.frame.evaluate(() => { const k = { x: window.game.player.x, dir: window.game.keyDir }; window.game.save.settings.deskControls = 'mouse'; return k; });
+  r.push(report('input: WASD reaches the game in the iframe in Klawiatura (physical keys, so AZERTY ZQSD works too)', key.x !== x0, `${x0} -> ${key.x}`));
   await g.page.setViewportSize({ width: 800, height: 450 });
   await g.page.evaluate(() => { const f = document.getElementById('frame'); f.style.width = '450px'; f.style.height = '800px'; });
   await g.page.setViewportSize({ width: 450, height: 800 });
@@ -757,6 +758,7 @@ async function portalFlowChecks(gameDir, url) {
   const out2 = await pos(a.frame);
   r.push(report('before the opt-in: the cursor leaving the frame stops the hole, it does not drive on', !!inside.ptr && !inside.locked && out1.ptr === null && Math.hypot(out2.x - out1.x, out2.y - out1.y) < 3, JSON.stringify({ inside: inside.ptr, after: out1.ptr, drift: Math.hypot(out2.x - out1.x, out2.y - out1.y) })));
   await a.page.mouse.move(600, 380);
+  await a.frame.evaluate(() => { window.game.save.settings.deskControls = 'keyboard'; }); // UX-FIX-A: keys steer in Klawiatura
   await a.page.keyboard.down('ArrowRight');
   await a.page.waitForTimeout(150);
   const held = await pos(a.frame);
@@ -764,7 +766,8 @@ async function portalFlowChecks(gameDir, url) {
   await a.page.waitForTimeout(250);
   const blurred = await pos(a.frame);
   await a.page.keyboard.up('ArrowRight');
-  r.push(report('before the opt-in: a click on the portal page releases the held key, stops steering and pauses, no lock', held.kx > 0 && blurred.kx === 0 && blurred.paused && blurred.ptr === null && !blurred.locked, JSON.stringify({ held: held.kx, blurred })));
+  await a.frame.evaluate(() => { window.game.save.settings.deskControls = 'mouse'; });
+  r.push(report('before the opt-in (Klawiatura): a click on the portal page releases the held key, stops steering and pauses, no lock', held.kx > 0 && blurred.kx === 0 && blurred.paused && blurred.ptr === null && !blurred.locked, JSON.stringify({ held: held.kx, blurred })));
   await a.browser.close();
 
   const b = await portalHost(gameDir, { width: 1216, height: 684 });
