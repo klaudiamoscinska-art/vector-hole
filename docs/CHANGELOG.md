@@ -4,6 +4,16 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## UX-FIX-B — karty Ewolucji: Skaner, Impuls ssący, Łowca, karty w HUD (zapis nadal v13; zależne od UX-FIX-A; Turbo combo, Magnes, Tarcza, Długie combo i premia +40 bez zmian wartości)
+- **Skaner:** cel = najcenniejszy obiekt, który gracz może teraz zjeść, w ograniczonym zasięgu (`600 + 6·r`); znacznik na ekranie,
+  strzałka przy krawędzi poza nim; nowy wybór po zjedzeniu / utracie przydatności; brak celu = brak znacznika.
+- **Impuls ssący** (dawniej Fala, ID bez zmian): przy awansie rozmiaru krótko przyciąga jadalne obiekty spod brzegu (≤ 70, 0,5 s);
+  rywale, punkty, wzrost i reguły pochłaniania bez zmian.
+- **Łowca:** cel tylko spośród rywali do zjedzenia teraz, bez czekających na odrodzenie; nowy cel po premii, ponowna próba co 1 s;
+  +40 raz, napis „+40 ŁOWCA”.
+- **HUD:** najwyżej dwie wybrane karty pod zegarem, podświetlone tylko przy działającym efekcie (Tarcza z licznikiem ochrony).
+- QA: `qa/uxfix-b.mjs` (M, H w `run-all`; `--sim` = rundy SIM z rozrzutem, `--root` = inna gałąź).
+
 ## UX-FIX-A — poprawki po GG_UX_AUDIT_1, etap A (zapis nadal v13, klucz bez zmian, bez nowego pola; ekonomia, nagrody, balans kart, Arena i kampania bez zmian)
 - **Dzielnice (zgł. 1):** kafelek „KAMPANIA · <dzielnica>” od 1. rundy i linia „Drugi tryb: misje z celami · otwarty”, dopóki
   gracz nie poznał kampanii; wstęp po 3. rundzie „DRUGI TRYB · OTWARTY”, zielona plakietka TRYB 2 (nie NOWE) na kafelku i

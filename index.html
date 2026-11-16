@@ -67,6 +67,10 @@
       <span class="gh-score"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.6 6.9L22 9l-5.6 4.6L18.2 21 12 16.8 5.8 21l1.8-7.4L2 9l7.4-.1z" fill="currentColor"/></svg><span id="missionScoreValue">0</span></span>
     </div>
 
+    <!-- UX-FIX-B: the Arena evolution cards picked this round (at most two), each
+         with its live state (Game.updateCardsHud()). -->
+    <ol id="hud-cards" class="hud-cards hidden" aria-label="Karty ewolucji"></ol>
+
     <div id="hud-goal" class="hud-panel hud-goal-box hidden">
       <div class="hud-goal-head"><span class="hud-goal-section-title">CEL MISJI</span><span id="missionCode" class="gh-chip" translate="no"></span></div>
       <div id="missionGoalItems" class="mission-goal-items"></div>

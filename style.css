@@ -5516,3 +5516,18 @@ body.compact #pauseSheet .desk-controls-row { flex-direction: row; align-items: 
 body.compact #pauseSheet .desk-controls-row .control-toggle { flex: 0 1 300px; }
 body.compact #pauseSheet .desk-controls-row .toggle-btn { padding-top: 5px; padding-bottom: 5px; }
 body.compact #pauseSheet .desk-controls-hint { margin: -4px 0 0; font-size: 10px; }
+
+/* ---- UX-FIX-B: the picked evolution cards under the clock -- small chips,
+   lit (their color) only while the effect works now, dim otherwise. ---- */
+#hud .hud-cards { position: absolute; top: calc(var(--gh-top) + 50px); left: var(--gh-left); margin: 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; z-index: 5; transition: opacity 0.2s; }
+#hud .hud-cards.under-hole { opacity: 0.3; }
+.hud-card { --c: var(--nc-cyan); display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 6px; box-sizing: border-box; max-width: 200px;
+  border-radius: 11px; background: var(--gh-quiet, rgba(7, 23, 37, 0.82)); border: 1px solid var(--gh-hair, rgba(255, 255, 255, 0.12));
+  color: rgba(242, 248, 255, 0.55); font-size: 10px; line-height: 1; white-space: nowrap; }
+.hud-card svg { flex: none; width: 13px; height: 13px; color: rgba(242, 248, 255, 0.45); }
+.hud-card-name { font-weight: 800; letter-spacing: 0.02em; }
+.hud-card-state { overflow: hidden; text-overflow: ellipsis; opacity: 0.85; }
+.hud-card.on { color: var(--nc-text); border-color: color-mix(in srgb, var(--c) 70%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 35%, transparent); }
+.hud-card.on svg, .hud-card.on .hud-card-state { color: var(--c); opacity: 1; }
+body.wide #hud .hud-cards { top: calc(var(--gh-top) + 50px); }
