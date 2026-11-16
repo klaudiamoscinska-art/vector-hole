@@ -78,16 +78,58 @@ Naprawione w trakcie: kształty efektów pierwotnie losowały dodatkowe liczby (
 | 5 | Kosmetyki poza wirem niejasne | Prawdziwe smugi, efekty kształtem, dekoracje finiszu, podgląd Warsztatu według kategorii, opisy PL/EN | #109 | `qa/uxfix-c.mjs` T/E/F/W, paski klatek baza/kandydat, koszt klatki | Zrobione (Etap C) |
 | 6 | 1. miejsce, a przeciwnicy więksi | Ranking nadal po punktach; ostrzeżenie od zasięgu zjedzenia (r 420 przy 299 — ostrzeżony przed zasięgiem), znak przy konkretnym rywalu (plansza + PUNKTY), podpowiedź „Miejsce zależy od punktów, nie rozmiaru” | #107 | `qa/uxfix-a.mjs` W1–W7 (FN 375×667 i 1280×720, DOM), `a-ranking-zagrozenie.jpg` | Zrobione (Etap A) |
 
-## 7. HANDOFF
+## 7. Poprawka po odbiorze GPT (2026-11-16)
+
+**Stan odbioru:** #107 (A, `c3c222173303572c9373f3d1ba3eb8c3f4195e2b`) i #108 (B, `8f69380e0a4d39364af27105652bcbc8b8f77ed4`) zaakceptowane; #109 (C, `017dc01609c973cfe20952c5e52daeae0226aa9f`) — do poprawki.
+
+**Problem (GPT):** `drawPreviewEatFx()` trzymała listę `warsztatFxParts` po zmianie efektu. Przy przełączeniu np. Pikselowy Wybuch → Pryzmat etykieta pokazywała nowy przedmiot, a cząstki do następnego kęsa (do 1,6 s; przy ograniczeniu ruchu — do następnej zmiany cyklu) nadal przedstawiały poprzedni efekt. Opóźnienie odświeżenia, nie trwała blokada.
+
+**Przyczyna:** lista cząstek była przebudowywana tylko przy nowym kęsie w cyklu (`warsztatFxBite !== n`) albo gdy była pusta przy ograniczeniu ruchu — zmiana efektu nie była warunkiem.
+
+**Naprawa (`d49f4f3`, minimalna):** lista należy do jednego efektu (`warsztatFxEffect`). Gdy efekt podglądu jest inny (wybór, podgląd nieposiadanego, NIE TERAZ, powrót na zakładkę po zmianie), stare cząstki są usuwane i od razu powstaje kęs nowego efektu — w tej samej klatce, bez czekania na cykl, przy zwykłych i ograniczonych animacjach. Otwarcie Warsztatu też zaczyna od razu (`warsztatFxEffect = null`). Bez zmian: efekty w rundzie, balans, zapis, inne kosmetyki, zakup i wyposażenie (podgląd nadal nic nie wydaje i niczego nie zakłada).
+
+**Test regresyjny `qa/uxfix-c.mjs` S** (prawdziwe kliknięcia DOM, 390×844, zwykłe i ograniczone animacje; sprawdzenie zaraz po kęsie, więc przed kolejnym cyklem):
+- S1: Pikselowy Wybuch → Pryzmat → Fioletowa Szczelina — od razu tylko kształt nowego efektu;
+- S2: podgląd nieposiadanej Neonowej Róży (płatki od razu), NIE TERAZ → od razu wyposażona Szczelina; waluta, `owned` i `selected` (w pamięci i w zapisie) bez zmian;
+- S3: inna zakładka i powrót na Efekt — wyposażony efekt.
+
+| | Kod | Wynik S |
+|---|---|---|
+| przed poprawką | `57d315c` (C po synchronizacji, bez poprawki) | **FAIL 4/8** — S1 i S2 w obu trybach (np. etykieta „Pryzmat”, cząstki `pixel`; „Neonowa Róża”, cząstki `rift`); S3 PASS |
+| po poprawce | `d49f4f3` | **PASS 8/8** |
+
+Logi: `qa/out/fix/przed-poprawka.log`, `qa/out/fix/po-poprawce.log` (lokalnie).
+
+**Synchronizacja A → B → C:** zwykłe merge — A → B (`f2ba7ff`), B → C (`57d315c`); bez force-push, rebase i cherry-pick. `git merge-base --is-ancestor`: A jest przodkiem B — TAK; B jest przodkiem C — TAK. Bazy PR bez zmian: #107 → `main`, #108 → A, #109 → B.
+
+**Zakres zmian względem odebranych wersji:**
+- A (`c3c2221`): bez zmian.
+- B: `8f69380` → `f2ba7ff` — tylko merge A (raport A i 4 obrazy `design/ux-fix/a-*.jpg`); kod gry i testy bez zmian.
+- C: `017dc01` → HEAD — synchronizacja (raporty A/B, obrazy A) + poprawka: `game.js` (10 linii w `drawPreviewEatFx()` i `openWarsztatScreen()`), `qa/uxfix-c.mjs` (część S), `qa/README.md`, `docs/GAME_DESIGN.md`, `docs/CHANGELOG.md`, ten raport.
+
+**Weryfikacja na końcowym kodzie C (`d49f4f3`):**
+
+| Zestaw | Rodzaj | Wynik |
+|---|---|---|
+| `qa/uxfix-c.mjs` (T, E, F, W, S) | FN + DOM | **PASS 35/35** |
+| `qa/workshop-buy.mjs` | DOM | **PASS 73/73** |
+| `qa/deviceqa1.mjs` (cały, w tym Warsztat) | DOM | **PASS 50/50** |
+| `qa/instructions.mjs` | statyczne | **PASS 4/4** |
+| `run-all`, symulacje balansu, pozostałe zestawy | — | **NOT RUN** — poprawka dotyczy tylko podglądu w Warsztacie; wyniki z §4 dotyczą kodu `7d269b3`, który różni się wyłącznie tą funkcją |
+| urządzenia, CrazyGames Preview | — | **NOT VERIFIED** |
+
+**Końcowe SHA:** A = `c3c222173303572c9373f3d1ba3eb8c3f4195e2b`; B = `f2ba7ff96c2432637f208cba4599a26a923cb4cb`; C = HEAD gałęzi `claude/determined-turing-9d9j3h-c` (kod `d49f4f3`, następny commit dodaje tylko ten raport).
+
+## 8. HANDOFF
 
 ```
-STAN PRAC: GG_UX_FIX_C (Etap C) — gotowe do odbioru; zależne od PR A i PR B. Wszystkie 6 zgłoszeń mają poprawki (A, B, C).
-REPO: klaudiamoscinska-art/vector-hole, gałąź claude/determined-turing-9d9j3h-c @ kod 7d269b3 (HEAD = commit raportu), baza PR = claude/determined-turing-9d9j3h-b, PR: https://github.com/klaudiamoscinska-art/vector-hole/pull/109 (baza #108 → #107)
-TESTY: §4 — log: qa/out/final/
-ZMIANY: game.js (smugi, kształty efektów, dekoracje finiszu, podgląd Warsztatu), style.css; qa/uxfix-c.mjs (T, E, F, W w run-all; --strips, --cost); qa/ux3.mjs V1; docs; design/ux-fix/c-*.jpg
-NIEDOKOŃCZONE: brak w zakresie C
-RYZYKA: §5
-NASTĘPNY KROK: odbiór GPT; kolejność scalania A → B → C (każdy po osobnej zgodzie właścicielki)
-PUNKT WZNOWIENIA: ten raport; node qa/uxfix-c.mjs
+STAN PRAC: GG_UX_FIX — poprawka po odbiorze GPT w C gotowa; A i B zaakceptowane, zsynchronizowane A→B→C. Gotowe do ponownego odbioru GPT.
+REPO: klaudiamoscinska-art/vector-hole; A = claude/determined-turing-9d9j3h @ c3c2221 (PR #107 → main); B = -b @ f2ba7ff (PR #108 → A); C = -c @ HEAD (kod d49f4f3, PR #109 → B); origin/main = be583642
+TESTY: uxfix-c 35/35 (S: przed 4/8 FAIL, po 8/8 PASS), workshop-buy 73/73, deviceqa1 50/50, instructions 4/4; run-all NOT RUN; urządzenia NOT VERIFIED
+ZMIANY: game.js (drawPreviewEatFx: lista cząstek przypisana do efektu; reset przy otwarciu Warsztatu), qa/uxfix-c.mjs S, docs
+NIEDOKOŃCZONE: brak
+RYZYKA: jak w §5; poprawka bez wpływu na rundę i zapis
+NASTĘPNY KROK: ponowny odbiór GPT PR #109; scalanie A → B → C tylko za zgodą właścicielki
+PUNKT WZNOWIENIA: ten raport §7; node qa/uxfix-c.mjs --only=S
 BEZPIECZNA KONTYNUACJA: preflight; bez merge, publikacji i paczki CrazyGames; nie ruszać main, SAVE v13, workflow, eksportera CG
 ```
