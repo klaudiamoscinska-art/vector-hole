@@ -588,7 +588,9 @@ async function vortexChecks(baseUrl, candUrl) {
       drawBody: ["    // GG-HOLE-01: the look's layers (HOLE_LOOKS)", '    if (!this.name) return;'],
       accretion: ['function drawAccretionDisk(', '\n}\n']
     };
-    const diff = Object.entries(parts).filter(([, [a, b]]) => { const x = between(baseSrc, a, b), y = between(candSrc, a, b); return !x || x !== y; }).map(([k]) => k);
+    // UX-FIX-C: the Smuga is drawn between the 'under' and 'inner' stamps (one line, `trailAura`) -- not a look layer.
+    const noTrail = (t) => t && t.split('\n').filter(l => !/trailAura/.test(l)).join('\n');
+    const diff = Object.entries(parts).filter(([, [a, b]]) => { const x = between(baseSrc, a, b), y = noTrail(between(candSrc, a, b)); return !x || x !== y; }).map(([k]) => k);
     const spins = (s) => (between(s, 'const HOLE_LOOKS = {', '\nfunction paintHoleLayer(') || '').match(/spin: \[[^\]]*\]/g) || [];
     const sb = spins(baseSrc), sc = spins(candSrc);
     // the only change in holeSprite(): the mirror before painting

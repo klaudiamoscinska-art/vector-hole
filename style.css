@@ -5531,3 +5531,7 @@ body.compact #pauseSheet .desk-controls-hint { margin: -4px 0 0; font-size: 10px
 .hud-card.on { color: var(--nc-text); border-color: color-mix(in srgb, var(--c) 70%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 35%, transparent); }
 .hud-card.on svg, .hud-card.on .hud-card-state { color: var(--c); opacity: 1; }
 body.wide #hud .hud-cards { top: calc(var(--gh-top) + 50px); }
+
+/* ---- UX-FIX-C: an effect / a finish in the grid shows its shape ---- */
+#shopScreen .skin-card .skin-swatch.has-glyph { display: grid; place-items: center; border-width: 2px; background: rgba(4, 16, 29, 0.6); }
+#shopScreen .skin-card .skin-swatch.has-glyph svg { width: 66%; height: 66%; display: block; filter: drop-shadow(0 0 4px currentColor); }

@@ -4,6 +4,18 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## UX-FIX-C — Warsztat: podglądy kategorii, prawdziwe smugi, efekty kształtem, dekoracje finiszu (zapis nadal v13; zależne od UX-FIX-B; ceny, nagrody, ID i posiadanie bez zmian)
+- **Smuga:** prawdziwy ślad za wirem w ruchu (≤ 14 punktów, wygasa po zatrzymaniu, reset przy odrodzeniu / skoku); 6 wariantów
+  kształtem; dawny pierścień usunięty.
+- **Efekt pochłaniania:** kształty (piksele, płatki, szczelina, trójkąty pryzmatu); mały kęs lekki (6 cząstek, od brzegu wiru),
+  większy z krótkim wybuchem; hitboxy, czas jedzenia, punkty, hit-stop bez zmian.
+- **Finisz:** dekoracja banera (fala, szczyty, burza, pryzmat), ten sam moment i 1,6 s; Pryzmat `#ff00ea` → `#FF54AD` (paleta).
+- **Warsztat:** karta podglądu według zakładki (Smuga w ruchu, Efekt w pętli kęsów, Finisz z banerem), opisy PL/EN, ikony
+  kształtów w siatce; ograniczenie ruchu i jakość 0 obsłużone. Po odbiorze GPT: zmiana efektu od razu odświeża jego podgląd
+  (wcześniej cząstki poprzedniego efektu zostawały do następnego kęsa).
+- QA: `qa/uxfix-c.mjs` (T, E, F, W w `run-all`; `--strips` / `--cost` z `--root` = porównanie z bazą); `qa/ux3.mjs` V1 porównuje
+  warstwy wiru bez wstawionej linii smugi.
+
 ## UX-FIX-B — karty Ewolucji: Skaner, Impuls ssący, Łowca, karty w HUD (zapis nadal v13; zależne od UX-FIX-A; Turbo combo, Magnes, Tarcza, Długie combo i premia +40 bez zmian wartości)
 - **Skaner:** cel = najcenniejszy obiekt, który gracz może teraz zjeść, w ograniczonym zasięgu (`600 + 6·r`); znacznik na ekranie,
   strzałka przy krawędzi poza nim; nowy wybór po zjedzeniu / utracie przydatności; brak celu = brak znacznika.
