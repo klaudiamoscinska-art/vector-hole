@@ -4,6 +4,14 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-PM-RASTER-01 — Plac Neonów w Arenie: tekstury PM-A/B/C (pilotaż graficzny; zapis nadal v13; mechanika, hitboxy, balans, kampania bez zmian)
+- **Tylko Arena i strefa `plac` (12 z 64 kwartałów):** wnętrze lotu (`lx, ly, ls`) maluje rastrowa tekstura PM-A/B/C zamiast
+  wektorowej kompozycji; wariant z tego samego rzutu `cityHash(i, j, 2)` co dotąd. Drogi, krawężniki, chodniki, lampy, napis
+  dzielnicy i pozostałe 52 kwartały bez zmian; Kampania (`theme` ≠ null) maluje jak dotąd.
+- **Ładowanie:** `PM_LOT_TEX` — 768 px WebP (gfx 1–2) / 512 px (gfx 0), dekodowane raz; do czasu załadowania lub przy błędzie
+  działa wektorowy fallback; po załadowaniu odrzucane są tylko zbuforowane chunki `plac` Areny.
+- **Paczka:** tekstury jako moduły `pm-tex-768.js` / `pm-tex-512.js` z `data:` URL (release przyjmuje tylko graf JS/CSS); QA: `qa/pmraster1.mjs`.
+
 ## UX-FIX-C — Warsztat: podglądy kategorii, prawdziwe smugi, efekty kształtem, dekoracje finiszu (zapis nadal v13; zależne od UX-FIX-B; ceny, nagrody, ID i posiadanie bez zmian)
 - **Smuga:** prawdziwy ślad za wirem w ruchu (≤ 14 punktów, wygasa po zatrzymaniu, reset przy odrodzeniu / skoku); 6 wariantów
   kształtem; dawny pierścień usunięty.
