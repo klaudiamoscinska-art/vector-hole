@@ -1,5 +1,8 @@
 'use strict';
 
+import { PM_TEX_768 } from './pm-tex-768.js';
+import { PM_TEX_512 } from './pm-tex-512.js';
+
 /* =========================================================
    GLITCH GULP (until 2026-11: Vector Hole)
    Vanilla Canvas game — classes: Game, Hole, Bot, WorldObject, Particle
@@ -9396,6 +9399,41 @@ function cityLampSprite(col) {
    round's RNG. Every feature that can cross a chunk edge (roads, crosswalks,
    junction plates, lamp pools, the core rings) is a deterministic world-space
    feature drawn by every chunk it touches, so neighbours line up exactly. */
+/** GG-PM-RASTER-01: the Arena Plac lot textures, decoded once. `get(variant, rich)` returns the
+ *  decoded image (768 px when rich, 512 px on gfx 0) or null while it is loading / failed
+ *  (the vector lot is the fallback); the first request starts the load, and when an image
+ *  arrives the Arena's cached plac chunks are dropped so they repaint with it. */
+const PM_LOT_TEX = (() => {
+  const SRC = { 768: PM_TEX_768, 512: PM_TEX_512 };
+  const imgs = {};          // size -> [Image x3]
+  const floors = new Set(); // CityFloor instances that painted an Arena chunk
+  function drop(floor) {
+    for (const [key, e] of floor.cache) {
+      const m = /^\*\|(\d+)\|(\d+)$/.exec(key);
+      if (m && cityDistrict(+m[1], +m[2]) === 'plac') { floor.cache.delete(key); floor.pixels -= e.px; }
+    }
+  }
+  function start(size) {
+    const list = imgs[size] = [];
+    if (typeof Image !== 'function') return;
+    SRC[size].forEach((src, v) => {
+      const im = new Image();
+      list[v] = im;
+      im.onload = () => { for (const f of floors) drop(f); };
+      im.src = src;
+    });
+  }
+  return {
+    get(variant, rich) {
+      const size = rich ? 768 : 512;
+      if (!imgs[size]) start(size);
+      const im = imgs[size][variant];
+      return im && im.complete && im.naturalWidth > 0 ? im : null;
+    },
+    watch(floor) { floors.add(floor); }
+  };
+})();
+
 const CITY_ART = (() => {
   const P = CITY_PITCH, R = CITY_ROAD, B = CITY_BLEED;
   const TAU = Math.PI * 2;
@@ -10025,7 +10063,11 @@ const CITY_ART = (() => {
       c.fillStyle = tone(K.g); c.fillRect(lx, ly, ls, ls);
       const lotRng = new SeededRNG(cityHash(i, j, 2));
       const variant = Math.floor(lotRng.next() * 3);
-      (LOTS[d] || LOTS.plac)[variant](c, lx, ly, ls, K, lotRng);
+      // GG-PM-RASTER-01: Arena's Plac Neonów lots (theme null) are painted raster textures
+      // PM-A/B/C (same variant roll); not decoded yet -> the vector composition (fallback).
+      const pm = !theme && d === 'plac' ? PM_LOT_TEX.get(variant, rich) : null;
+      if (pm) c.drawImage(pm, lx, ly, ls, ls);
+      else (LOTS[d] || LOTS.plac)[variant](c, lx, ly, ls, K, lotRng);
     } finally { tone = (v) => v; }
     const sign = !theme && citySignCells()[`${i},${j}`];
     if (sign && sign !== 'rdzen') {
@@ -10112,6 +10154,7 @@ class CityFloor {
     c.setTransform(px / (P + 2 * B), 0, 0, px / (P + 2 * B), 0, 0);
     c.translate(B - i * P, B - j * P);
     const rich = this.rich;
+    if (!theme) PM_LOT_TEX.watch(this);
     paintCityChunk(c, i, j, theme, rich);
     this.renders++;
     const key = `${theme || '*'}|${i}|${j}`;
