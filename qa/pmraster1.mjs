@@ -1,4 +1,4 @@
-// GG-PM-RASTER-01: Arena's Plac Neonów lots are the raster textures PM-A/B/C.
+// GG-PM-RASTER-02 (extends -01): Arena's Plac Neonów lots are the raster textures PM-A/B/C.
 // Compares THIS checkout (AFTER) with a base checkout (BEFORE, --base=DIR, a worktree of the base commit):
 //  - chunk hashes: the 12 plac blocks change, the other 52 Arena blocks and every Campaign block do not
 //  - the broken-texture fallback paints exactly the old vector lots (hash == BEFORE)
@@ -123,6 +123,27 @@ async function sizes(url, gfx) {
   return r;
 }
 
+/** GG-PM-RASTER-02: which texture (A-F) each of the 12 plac blocks really draws, read from the live floor painter. */
+async function layout(url) {
+  const src = fs.readFileSync('pm-tex-768.js', 'utf8');
+  const tex = [...src.matchAll(/'(data:image\/webp;base64,[^']+)'/g)].map(m => m[1]);
+  const g = await session(url, 'pc', { initScript: `(() => { const o = CanvasRenderingContext2D.prototype.drawImage; window.__cur = null; window.__seen = {}; CanvasRenderingContext2D.prototype.drawImage = function (im) { if (im instanceof HTMLImageElement && window.__cur) window.__seen[window.__cur] = im.src; return o.apply(this, arguments); }; })();` });
+  const seen = await g.page.evaluate(async () => {
+    const gm = window.game, sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    gm.applyGfx(2);
+    const fl = new gm.cityFloor.constructor();
+    for (let k = 0; k < 2; k++) {
+      for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { window.__cur = i + ',' + j; fl.render(i, j, 1, null, fl.cache.get('*|' + i + '|' + j) || null); }
+      if (k === 0) await sleep(900);
+    }
+    return window.__seen;
+  });
+  await g.browser.close();
+  const L = 'ABCDEF', grid = {};
+  for (const [k, s] of Object.entries(seen)) grid[k] = L[tex.indexOf(s)] || '?';
+  return grid;
+}
+
 export async function runPmRaster(url, baseUrl) {
   const results = [];
   const after = await hashes(url);
@@ -150,6 +171,12 @@ export async function runPmRaster(url, baseUrl) {
     const bf = baseUrl ? await perf(baseUrl, gfx) : null;
     results.push(report(`PM-5 gfx ${gfx}: chunk repaints and render time vs BEFORE`, bf ? a.stillRepaints <= bf.stillRepaints && a.panPaints <= bf.panPaints && a.cachePx <= bf.cachePx && a.median <= bf.median * 1.25 + 1 : a.stillRepaints === 0, `AFTER ${JSON.stringify(a)} | BEFORE ${JSON.stringify(bf)}`));
   }
+  const grid = await layout(url);
+  const WANT = ['FAD', 'ECBA', 'BDEC', '..F'];
+  const rows = WANT.map((r, j) => [...r].map((ch, i) => ch === '.' ? '.' : (grid[i + ',' + j] || '?')).join(''));
+  const counts = {}; for (const v of Object.values(grid)) counts[v] = (counts[v] || 0) + 1;
+  const side = Object.keys(grid).some(k => { const [i, j] = k.split(',').map(Number); return grid[(i + 1) + ',' + j] === grid[k] || grid[i + ',' + (j + 1)] === grid[k]; });
+  results.push(report('PM-7 the 12 plac blocks draw the six textures A-F exactly as mapped, each twice, no equal side neighbours, C at (1,1)', Object.keys(grid).length === 12 && rows.join('|') === WANT.join('|') && 'ABCDEF'.split('').every(v => counts[v] === 2) && !side && grid['1,1'] === 'C', rows.join(' ') + ' ' + JSON.stringify(counts)));
   const shotsA = await shots(url, 'po');
   const shotsB = baseUrl ? await shots(baseUrl, 'przed') : {};
   results.push(report('PM-6 screenshots BEFORE/AFTER written', Object.keys(shotsA).length === 8 && (!baseUrl || Object.keys(shotsB).length === 8), DEST));

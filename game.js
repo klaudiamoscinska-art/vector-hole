@@ -9403,9 +9403,12 @@ function cityLampSprite(col) {
  *  decoded image (768 px when rich, 512 px on gfx 0) or null while it is loading / failed
  *  (the vector lot is the fallback); the first request starts the load, and when an image
  *  arrives the Arena's cached plac chunks are dropped so they repaint with it. */
+/** GG-PM-RASTER-02: which of the six textures (0-5 = A-F) each Arena plac block [j][i] shows: each twice,
+ *  no equal side neighbours, C under the "PLAC NEONÓW" sign at (1,1). A graphic map, not a roll. */
+const PM_PLAC_MAP = [[5, 0, 3], [4, 2, 1, 0], [1, 3, 4, 2], [, , 5]];
 const PM_LOT_TEX = (() => {
   const SRC = { 768: PM_TEX_768, 512: PM_TEX_512 };
-  const imgs = {};          // size -> [Image x3]
+  const imgs = {};          // size -> [Image x6]
   const floors = new Set(); // CityFloor instances that painted an Arena chunk
   function drop(floor) {
     for (const [key, e] of floor.cache) {
@@ -10063,9 +10066,11 @@ const CITY_ART = (() => {
       c.fillStyle = tone(K.g); c.fillRect(lx, ly, ls, ls);
       const lotRng = new SeededRNG(cityHash(i, j, 2));
       const variant = Math.floor(lotRng.next() * 3);
-      // GG-PM-RASTER-01: Arena's Plac Neonów lots (theme null) are painted raster textures
-      // PM-A/B/C (same variant roll); not decoded yet -> the vector composition (fallback).
-      const pm = !theme && d === 'plac' ? PM_LOT_TEX.get(variant, rich) : null;
+      // GG-PM-RASTER-02: Arena's Plac Neonów lots (theme null) are painted raster textures PM-A..F by the
+      // explicit PM_PLAC_MAP (looks only; the vector `variant` above and its RNG call are unchanged);
+      // not decoded yet -> the old vector composition (fallback).
+      const pmv = !theme && d === 'plac' ? PM_PLAC_MAP[j] && PM_PLAC_MAP[j][i] : undefined;
+      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : null;
       if (pm) c.drawImage(pm, lx, ly, ls, ls);
       else (LOTS[d] || LOTS.plac)[variant](c, lx, ly, ls, K, lotRng);
     } finally { tone = (v) => v; }

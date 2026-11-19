@@ -4,6 +4,9 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-PM-RASTER-02 — Plac Neonów w Arenie: 6 tekstur PM-A..F (tylko wygląd; zapis nadal v13; RNG, mechanika, kampania bez zmian)
+- 12 kwartałów `plac` w Arenie pokazuje sześć tekstur zamiast trzech wg jawnej mapy graficznej `PM_PLAC_MAP` (każda dokładnie 2×, brak równych sąsiadów bokiem, PM-C pod napisem w (1,1)); to nie jest losowanie. `lotRng.next()` i wektorowy fallback bez zmian. PM-A/B/C bitowo jak w -01, D/E/F dopisane do `pm-tex-512.js` / `pm-tex-768.js`. QA: `qa/pmraster1.mjs` (PM-7), kadry `qa/pmraster2-shots.mjs`.
+
 ## GG-PM-RASTER-01 — Plac Neonów w Arenie: tekstury PM-A/B/C (pilotaż graficzny; zapis nadal v13; mechanika, hitboxy, balans, kampania bez zmian)
 - **Tylko Arena i strefa `plac` (12 z 64 kwartałów):** wnętrze lotu (`lx, ly, ls`) maluje rastrowa tekstura PM-A/B/C zamiast
   wektorowej kompozycji; wariant z tego samego rzutu `cityHash(i, j, 2)` co dotąd. Drogi, krawężniki, chodniki, lampy, napis
