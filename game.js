@@ -12,6 +12,8 @@ import { GG_TEX_768 } from './gg-tex-768.js';
 import { GG_TEX_512 } from './gg-tex-512.js';
 import { RM_TEX_768 } from './rm-tex-768.js';
 import { RM_TEX_512 } from './rm-tex-512.js';
+import { OBJECT_RASTER_2PX } from './objects-raster-2.js';
+import { OBJECT_RASTER_3PX } from './objects-raster-3.js';
 
 /* =========================================================
    GLITCH GULP (until 2026-11: Vector Hole)
@@ -6808,6 +6810,138 @@ const OBJECT_SPRITE_CACHE = new Map();
  *  a T2 sprite at 4x is 256 px square); T3-T6 keep their 2x sprites. */
 let OBJECT_SPRITE_DPR = 1;
 
+/** GG-OBJECTS-RASTER-02: the 21 approved Arena object sprites (T1-T6) as WebP bitmaps, a look only.
+ *  Used for a WorldObject (Arena) when the quality level has them: gfx 2 = 3 px per world unit, gfx 1 = 2 px,
+ *  gfx 0 (and any kind with no bitmap, an image still decoding or one that failed) = the vector look, exactly as before.
+ *  Campaign, menus and the welcome scene never pass `raster`, so they keep the vector art. A bitmap is the whole
+ *  sprite canvas of the vector look (2*ceil(1.5 r + 6) world units square, centre = the object's centre) and is drawn
+ *  straight from its Image (no extra canvas). Radius, hitbox, mass, spawn and RNG are not touched. */
+const OBJECT_RASTER_SRC = { 2: OBJECT_RASTER_2PX, 3: OBJECT_RASTER_3PX };
+/** kind -> { r, half }: the real radius from TIERS (the bitmap was cut for it; another radius = the vector look). */
+const OBJECT_RASTER_META = (() => {
+  const m = {};
+  for (const t of Object.values(TIERS)) {
+    if (t.minR !== t.maxR) continue;
+    for (const k of t.subtypes) if (OBJECT_RASTER_2PX[k]) m[k] = { r: t.minR, half: Math.ceil(t.minR * 1.5 + 6) };
+  }
+  return m;
+})();
+const OBJECT_RASTER = {
+  max: 0,         // the best size this quality level allows: 0 = off (gfx 0), 2 (gfx 1), 3 (gfx 2)
+  q: 0,           // the size in use now (px per world unit): 0 / 2 / 3
+  imgs: { 2: {}, 3: {} },   // kind -> Image (a failed one stays in the list with .failed so it is not retried)
+  warming: false,
+  /** The bitmap for this kind and radius, or null (draw the vector look). The first request decodes the kind;
+   *  the first one of a size also queues the other kinds a few ms apart so they are ready before they scroll in.
+   *  While the size just switched to is not decoded yet, the other size's image of the kind is used. */
+  get(kind, r) {
+    const q = this.q, meta = OBJECT_RASTER_META[kind];
+    if (!q || !meta || Math.round(r) !== meta.r || typeof Image !== 'function') return null;
+    let im = this.imgs[q][kind];
+    if (!im) {
+      im = this.load(q, kind);
+      if (!this.warming) {
+        this.warming = true;
+        Object.keys(OBJECT_RASTER_META).forEach((k, i) => setTimeout(() => { if (this.q === q && !this.imgs[q][k]) this.load(q, k); }, 40 + i * 25));
+      }
+    }
+    if (OBJECT_RASTER.ready(im)) return { img: im, half: meta.half };
+    const o = this.imgs[q === 3 ? 2 : 3][kind];
+    return o && OBJECT_RASTER.ready(o) ? { img: o, half: meta.half } : null;
+  },
+  ready(im) { return im.complete && im.naturalWidth > 0 && !im.failed; },
+  load(q, kind) {
+    const im = new Image();
+    this.imgs[q][kind] = im;
+    im.onerror = () => { im.failed = true; };
+    // the set just switched to is whole: the set it replaced is dropped (only one is held when nothing is changing)
+    im.onload = () => this.settle();
+    im.src = OBJECT_RASTER_SRC[q][kind];
+    return im;
+  },
+  /** applyGfx(): the largest size this level may use (0 / 2 / 3). 0 drops every image at once. */
+  setMax(m) {
+    if (m === this.max) return;
+    this.max = m;
+    if (!m) { this.q = 0; this.warming = false; this.imgs = { 2: {}, 3: {} }; return; }
+    this.switchTo(m === 3 && this.q === 3 ? 3 : 2);
+  },
+  /** Once a frame (Game.render): the pixel density of the screen (zoom x DPR, device px per world unit). 3 px per unit only pays
+   *  when the screen shows more than ~2 px per unit; below that the 3 px bitmaps are minified so far that they cost
+   *  more than they show (measured: +10 ms a frame with a big vortex on a laptop), so 2 px is used. A band keeps
+   *  the size from flickering at the limit. */
+  fit(density) {
+    if (this.max !== 3) return;
+    const want = this.q === 3 ? (density < 1.8 ? 2 : 3) : (density >= 2.1 ? 3 : 2);
+    if (want !== this.q) this.switchTo(want);
+  },
+  switchTo(q) {
+    if (q === this.q) return;
+    this.q = q;
+    this.warming = false;
+    this.settle();
+  },
+  /** The size in use is whole (every kind decoded): the other size's images are dropped, only one set is held. */
+  settle() {
+    const q = this.q;
+    if (q && Object.keys(OBJECT_RASTER_META).every((k) => this.imgs[q][k] && this.ready(this.imgs[q][k]))) this.imgs[q === 3 ? 2 : 3] = {};
+  }
+};
+
+/** GG-OBJECTS-RASTER-02 VISUAL-FIX-01: what ties a bitmap object to the ground and names its class -- the equivalent of the vector
+ *  look's `K.base()` (soft contact shadow lower right and, for T2+, a thin tier ring in the class color), drawn UNDER the bitmap. The vector look's extra pool of class light is left out: it costs fill rate on the big kinds and the ring names the class.
+ *  Per kind [cx, bottom, halfWidth, ring] in units of r, measured from the bitmap itself (its opaque silhouette: centre x, lowest
+ *  point, half width; ring 0 = none, as the vector T1 had none). One cached 64 px shadow stamp and one ellipse stroke per
+ *  object: no shadowBlur, no per-frame gradient, no new large canvas. The class color is the TIERS one passed to drawObjectArt(). */
+const OBJECT_RASTER_BASE = {
+  fragment: [-0.04, 0.86, 0.89, 0],
+  kapsula: [0, 0.95, 0.9, 0],
+  lawka: [0, 0.5, 0.93],
+  kiosk: [-0.03, 0.63, 0.97],
+  skrzynia: [-0.06, 0.57, 0.89],
+  latarnia: [-0.03, 0.97, 0.6],
+  drzewo: [-0.04, 0.68, 0.94],
+  znacznik: [-0.15, 0.9, 0.78],
+  samochod: [0.04, 0.35, 0.98],
+  wezel: [0.11, 0.41, 0.88],
+  pylon: [0.2, 0.61, 0.65],
+  pawilon: [-0.02, 0.43, 0.96],
+  billboard: [-0.04, 0.69, 0.96],
+  magazyn: [-0.01, 0.39, 0.99],
+  landmark: [-0.02, 0.8, 0.92],
+  autobus: [-0.03, 0.3, 0.98],
+  tramwaj: [-0.01, 0.26, 1],
+  ciezarowka: [0.04, 0.29, 0.93],
+  wiezowiec: [0, 0.8, 0.96],
+  maszt: [0, 1.03, 0.68],
+  kopula: [0, 0.38, 0.97]
+};
+const OBJECT_BASE_STAMPS = { shadow: null, ring: new Map() };
+function objectBaseStamps(color) {
+  let sh = OBJECT_BASE_STAMPS.shadow;
+  if (!sh) {
+    sh = document.createElement('canvas'); sh.width = sh.height = 64;
+    const c = sh.getContext('2d'), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(2, 6, 18, 0.62)'); g.addColorStop(0.55, 'rgba(2, 6, 18, 0.34)'); g.addColorStop(1, 'rgba(2, 6, 18, 0)');
+    c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+    OBJECT_BASE_STAMPS.shadow = sh;
+  }
+  let ring = OBJECT_BASE_STAMPS.ring.get(color);
+  if (!ring) OBJECT_BASE_STAMPS.ring.set(color, ring = rgbaColor(color, 0.42));
+  return { shadow: sh, ring };
+}
+function drawObjectRasterBase(ctx, kind, color, r) {
+  const b = OBJECT_RASTER_BASE[kind];
+  if (!b) return;
+  const st = objectBaseStamps(color);
+  const hw = b[2] * r, cx = b[0] * r, yc = (b[1] - 0.1 * b[2]) * r;   // the ground ellipse sits just behind the lowest point
+  ctx.drawImage(st.shadow, cx + r * 0.05 - hw * 0.9, yc + r * 0.01 - hw * 0.3, hw * 1.8, hw * 0.6);
+  if (b[3] !== 0) {
+    ctx.strokeStyle = st.ring; ctx.lineWidth = Math.max(0.7, r * 0.035);
+    ctx.beginPath(); ctx.ellipse(cx, yc, hw * 1.02, hw * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
 /** Cached offscreen sprite for one object kind/color/radius (+ variant). */
 function getObjectSprite(kind, color, r, variant) {
   const rr = Math.round(r);
@@ -6856,6 +6990,21 @@ function getObjectSprite(kind, color, r, variant) {
 let OBJECT_ART_LITE = false;
 
 function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
+  // GG-OBJECTS-RASTER-02: an Arena object with a ready bitmap (opts.raster, gfx 1/2) -- the same idle bob / breathe and live
+  // overlay as the vector look, only the picture differs.
+  const bmp = opts.raster ? OBJECT_RASTER.get(kind, r) : null;
+  if (bmp) {
+    const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
+    const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * 0.03;
+    ctx.save();
+    ctx.translate(0, bob);
+    ctx.scale(breathe, breathe);
+    drawObjectRasterBase(ctx, kind, color, r);
+    ctx.drawImage(bmp.img, -bmp.half, -bmp.half, bmp.half * 2, bmp.half * 2);
+    if (opts.live !== false) drawObjectLive(ctx, kind, color, r, t, seed, true);
+    ctx.restore();
+    return;
+  }
   if (OBJECT_ART_LITE && opts.live !== false) {
     const s = getObjectSprite(kind, color, r, opts.variant);
     ctx.drawImage(s.canvas, -s.half, -s.half, s.half * 2, s.half * 2);
@@ -6874,7 +7023,7 @@ function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
   ctx.restore();
 }
 
-function drawObjectLive(ctx, kind, color, r, t, seed) {
+function drawObjectLive(ctx, kind, color, r, t, seed, raster = false) {
   switch (kind) {
     case 'fragment': {
       // Occasional 4-point twinkle on the gem's corner.
@@ -6894,7 +7043,8 @@ function drawObjectLive(ctx, kind, color, r, t, seed) {
     case 'wezel': {
       // GG-OBJECTS-03: two arcs of charge circling the core (0, -0.2 r)
       ctx.save();
-      ctx.translate(0, -r * 0.2);
+      // GG-OBJECTS-RASTER-02: on the bitmap the energy orb sits at (0.1 r, -0.3 r) (position only)
+      if (raster) ctx.translate(r * 0.1, -r * 0.3); else ctx.translate(0, -r * 0.2);
       ctx.rotate(t * 1.6 + seed);
       ctx.strokeStyle = shadeColor(color, 0.55); ctx.lineWidth = 2; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, Math.PI * 0.55); ctx.stroke();
@@ -6905,7 +7055,8 @@ function drawObjectLive(ctx, kind, color, r, t, seed) {
     case 'pylon': {
       const p = 0.5 + 0.5 * Math.sin(t * 4 + seed);
       ctx.strokeStyle = rgbaColor(color, 0.25 + 0.45 * p); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(0, -r * 0.8, r * (0.27 + 0.13 * p), 0, Math.PI * 2); ctx.stroke();
+      // (RASTER-02: the bitmap's lit cap is at (0.19 r, -0.66 r) -- position only)
+      ctx.beginPath(); ctx.arc(raster ? r * 0.19 : 0, raster ? -r * 0.66 : -r * 0.8, r * (0.27 + 0.13 * p), 0, Math.PI * 2); ctx.stroke();
       break;
     }
     case 'landmark': {
@@ -6929,15 +7080,18 @@ function drawObjectLive(ctx, kind, color, r, t, seed) {
       const on = Math.sin(t * 4 + seed) > 0.2;
       if (!on) break;
       ctx.save(); ctx.shadowBlur = 14; ctx.shadowColor = '#ff3860'; ctx.fillStyle = '#ff3860';
-      ctx.beginPath(); ctx.arc(0, -r * 0.98, r * 0.07, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      // (RASTER-02: the bitmap's mast ends in a spike, the beacon sits under its tip at -1.2 r -- position only)
+      ctx.beginPath(); ctx.arc(0, -r * (raster ? 1.2 : 0.98), r * 0.07, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       break;
     }
     case 'billboard': {
       // Scanline sweeping across the ad panel.
       // (GG-OBJECTS-03: the screen is x -0.88..0.64 r, y -0.74..0 r)
-      const x = ((t * 0.6 + seed) % 1) * r * 1.44 - r * 0.88;
+      // (RASTER-02: the bitmap's screen is x -0.98..0.72 r, y -0.72..0.02 r -- position only)
+      const u = (t * 0.6 + seed) % 1;
+      const x = raster ? u * r * 1.7 - r * 0.98 : u * r * 1.44 - r * 0.88;
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillRect(x, -r * 0.74, r * 0.08, r * 0.74);
+      ctx.fillRect(x, raster ? -r * 0.72 : -r * 0.74, r * 0.08, r * 0.74);
       break;
     }
     case 'lm_kino': case 'lm_fontanna': case 'lm_dzwig': case 'lm_galeria': case 'lm_iglica': case 'lm_rdzen':
@@ -10832,7 +10986,7 @@ class WorldObject {
       ctx.globalAlpha = a;
       if (look) applySwallowLook(ctx, look);
       else { ctx.translate(this.x, this.y); ctx.scale(scale, scale); }
-      drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, this.swSeed || 0, { live: false });
+      drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, this.swSeed || 0, { live: false, raster: true });
       ctx.restore();
       return;
     }
@@ -10858,7 +11012,7 @@ class WorldObject {
       ctx.scale(1 - this.spawnFlash * 0.6, 1 - this.spawnFlash * 0.6);
     }
     if (this.tier === 'golden') drawGoldenRays(ctx, this.radius, performance.now() / 1000);
-    drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, artSeed(this.x, this.y));
+    drawObjectArt(ctx, this.subtype, this.color, this.radius, performance.now() / 1000, artSeed(this.x, this.y), { raster: true });
     ctx.restore();
   }
 }
@@ -11872,6 +12026,7 @@ class Game {
     const L = GFX_LEVELS[level];
     CONFIG.juice.maxParticles = L.particles;
     OBJECT_ART_LITE = level === 0;
+    OBJECT_RASTER.setMax(level === 2 ? 3 : level === 1 ? 2 : 0);   // GG-OBJECTS-RASTER-02
     // Shadow blur off for the whole game canvas in one place (an own
     // property shadows the prototype accessor; delete restores it).
     if (!L.blur) Object.defineProperty(this.ctx, 'shadowBlur', { configurable: true, get: () => 0, set: () => {} });
@@ -20726,6 +20881,7 @@ class Game {
   render(time) {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    OBJECT_RASTER.fit(this.zoom * this.dpr);   // GG-OBJECTS-RASTER-02: 2 px or 3 px bitmaps by the screen's pixel density
     if (!this.floorCoversView()) {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, this.width, this.height);
@@ -20962,7 +21118,7 @@ class Game {
       ctx.beginPath(); ctx.arc(0, 0, r * 1.02, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
     } else if (o instanceof WorldObject) {
-      drawObjectArt(ctx, o.subtype, o.color, o.radius, t, o.swSeed || 0, { live: false });
+      drawObjectArt(ctx, o.subtype, o.color, o.radius, t, o.swSeed || 0, { live: false, raster: true });
     } else {
       const art = o.artKind();
       if (art) drawObjectArt(ctx, art, SIZE_TIER_COLORS[o.stats.minTier], o.radius, t, artSeed(o.x, o.y), { live: false, variant: o.glyph === 'konwoj' ? 'konwoj' : undefined });
