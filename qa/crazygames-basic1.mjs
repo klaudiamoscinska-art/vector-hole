@@ -53,7 +53,7 @@ function parseZip(buf) {
 function structureChecks(pkg) {
   const r = [];
   const list = fs.readdirSync(pkg.gameDir, { recursive: true, withFileTypes: true }).filter(d => d.isFile()).map(d => path.relative(pkg.gameDir, path.join(d.parentPath, d.name)).replace(/\\/g, '/')).sort();
-  r.push(report('package: holds exactly the runtime (index.html, game.js, style.css + the GG-PM-RASTER-01 texture modules pi-tex-512.js, pi-tex-768.js, pm-tex-512.js, pm-tex-768.js, tg-tex-512.js, tg-tex-768.js, ps-tex-512.js, ps-tex-768.js): no git, qa, docs, logs or v/ history', list.join() === 'game.js,index.html,pi-tex-512.js,pi-tex-768.js,pm-tex-512.js,pm-tex-768.js,ps-tex-512.js,ps-tex-768.js,style.css,tg-tex-512.js,tg-tex-768.js', list.join()));
+  r.push(report('package: holds exactly the runtime (index.html, game.js, style.css + the GG-PM-RASTER-01 texture modules gg-tex-512.js, gg-tex-768.js, pi-tex-512.js, pi-tex-768.js, pm-tex-512.js, pm-tex-768.js, tg-tex-512.js, tg-tex-768.js, ps-tex-512.js, ps-tex-768.js): no git, qa, docs, logs or v/ history', list.join() === 'game.js,gg-tex-512.js,gg-tex-768.js,index.html,pi-tex-512.js,pi-tex-768.js,pm-tex-512.js,pm-tex-768.js,ps-tex-512.js,ps-tex-768.js,style.css,tg-tex-512.js,tg-tex-768.js', list.join()));
   r.push(report(`package: file count within the limit (${LIMITS.files})`, pkg.fileCount <= LIMITS.files, String(pkg.fileCount)));
   r.push(report('package: total size within 50 MB without the SDK and 20 MB for the mobile homepage', pkg.totalBytes <= LIMITS.bytes && pkg.withinMobileHomepageLimit, `${(pkg.totalBytes / 1048576).toFixed(2)} MB`));
   const page = fs.readFileSync(path.join(pkg.gameDir, 'index.html'), 'utf8');
