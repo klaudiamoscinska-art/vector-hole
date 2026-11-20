@@ -2,6 +2,8 @@
 
 import { PM_TEX_768 } from './pm-tex-768.js';
 import { PM_TEX_512 } from './pm-tex-512.js';
+import { TG_TEX_768 } from './tg-tex-768.js';
+import { TG_TEX_512 } from './tg-tex-512.js';
 
 /* =========================================================
    GLITCH GULP (until 2026-11: Vector Hole)
@@ -9406,24 +9408,25 @@ function cityLampSprite(col) {
 /** GG-PM-RASTER-02: which of the six textures (0-5 = A-F) each Arena plac block [j][i] shows: each twice,
  *  no equal side neighbours, C under the "PLAC NEONÓW" sign at (1,1). A graphic map, not a roll. */
 const PM_PLAC_MAP = [[5, 0, 3], [4, 2, 1, 0], [1, 3, 4, 2], [, , 5]];
-const PM_LOT_TEX = (() => {
-  const SRC = { 768: PM_TEX_768, 512: PM_TEX_512 };
+/** One decoded lot-texture set for one Arena district (`district` = the cityDistrict() id): `src` = { 768, 512 } data-URL
+ *  lists; the same lazy decode, vector fallback and per-district cache drop for PM (plac) and TG (dachy). */
+function makeLotTex(src, district) {
   const imgs = {};          // size -> [Image x6]
   const floors = new Set(); // CityFloor instances that painted an Arena chunk
   function drop(floor) {
     for (const [key, e] of floor.cache) {
       const m = /^\*\|(\d+)\|(\d+)$/.exec(key);
-      if (m && cityDistrict(+m[1], +m[2]) === 'plac') { floor.cache.delete(key); floor.pixels -= e.px; }
+      if (m && cityDistrict(+m[1], +m[2]) === district) { floor.cache.delete(key); floor.pixels -= e.px; }
     }
   }
   function start(size) {
     const list = imgs[size] = [];
     if (typeof Image !== 'function') return;
-    SRC[size].forEach((src, v) => {
+    src[size].forEach((u, v) => {
       const im = new Image();
       list[v] = im;
       im.onload = () => { for (const f of floors) drop(f); };
-      im.src = src;
+      im.src = u;
     });
   }
   return {
@@ -9435,7 +9438,16 @@ const PM_LOT_TEX = (() => {
     },
     watch(floor) { floors.add(floor); }
   };
-})();
+}
+const PM_LOT_TEX = makeLotTex({ 768: PM_TEX_768, 512: PM_TEX_512 }, 'plac');
+/** GG-TG-EXACT-6: Arena Dachy Prądu (map key `d`, 9 blocks) lots are the Tech Grid textures TG-A..F (0-5), by an explicit
+ *  graphic map [j][i] (PROPOSED assignment, owner review before merge). Looks only. */
+const TG_DACHY_MAP = [[], [], [, , , , , , , 2], [, , , , , , 0, 4], [, , , , , 5, 1, 3], [, , , , , , 4, 0], [, , , , , , , 1]];
+/** GG-TG-INTEGRATION-FIX-01: the TG sheets carry their own metal frame, glow and shadow (~8-10 % per side); drawn whole
+ *  inside the lot they read as a pasted card. The lot shows only the surface inside that frame: source inset
+ *  [left, top, right, bottom] as fractions of the texture (resolution independent, same for 512 and 768). */
+const TG_LOT_INSET = [0.09, 0.11, 0.09, 0.11];
+const TG_LOT_TEX = makeLotTex({ 768: TG_TEX_768, 512: TG_TEX_512 }, 'dachy');
 
 const CITY_ART = (() => {
   const P = CITY_PITCH, R = CITY_ROAD, B = CITY_BLEED;
@@ -10070,8 +10082,12 @@ const CITY_ART = (() => {
       // explicit PM_PLAC_MAP (looks only; the vector `variant` above and its RNG call are unchanged);
       // not decoded yet -> the old vector composition (fallback).
       const pmv = !theme && d === 'plac' ? PM_PLAC_MAP[j] && PM_PLAC_MAP[j][i] : undefined;
-      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : null;
-      if (pm) c.drawImage(pm, lx, ly, ls, ls);
+      const tgv = !theme && d === 'dachy' ? TG_DACHY_MAP[j] && TG_DACHY_MAP[j][i] : undefined; // GG-TG-EXACT-6
+      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : null;
+      if (pm && pmv === undefined) {
+        const w = pm.naturalWidth, h = pm.naturalHeight, [il, it, ir, ib] = TG_LOT_INSET;
+        c.drawImage(pm, il * w, it * h, (1 - il - ir) * w, (1 - it - ib) * h, lx, ly, ls, ls);
+      } else if (pm) c.drawImage(pm, lx, ly, ls, ls);
       else (LOTS[d] || LOTS.plac)[variant](c, lx, ly, ls, K, lotRng);
     } finally { tone = (v) => v; }
     const sign = !theme && citySignCells()[`${i},${j}`];
@@ -10159,7 +10175,7 @@ class CityFloor {
     c.setTransform(px / (P + 2 * B), 0, 0, px / (P + 2 * B), 0, 0);
     c.translate(B - i * P, B - j * P);
     const rich = this.rich;
-    if (!theme) PM_LOT_TEX.watch(this);
+    if (!theme) { PM_LOT_TEX.watch(this); TG_LOT_TEX.watch(this); }
     paintCityChunk(c, i, j, theme, rich);
     this.renders++;
     const key = `${theme || '*'}|${i}|${j}`;
