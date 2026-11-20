@@ -4,6 +4,8 @@ import { PM_TEX_768 } from './pm-tex-768.js';
 import { PM_TEX_512 } from './pm-tex-512.js';
 import { TG_TEX_768 } from './tg-tex-768.js';
 import { TG_TEX_512 } from './tg-tex-512.js';
+import { PS_TEX_768 } from './ps-tex-768.js';
+import { PS_TEX_512 } from './ps-tex-512.js';
 
 /* =========================================================
    GLITCH GULP (until 2026-11: Vector Hole)
@@ -9448,6 +9450,11 @@ const TG_DACHY_MAP = [[], [], [, , , , , , , 2], [, , , , , , 0, 4], [, , , , , 
  *  [left, top, right, bottom] as fractions of the texture (resolution independent, same for 512 and 768). */
 const TG_LOT_INSET = [0.09, 0.11, 0.09, 0.11];
 const TG_LOT_TEX = makeLotTex({ 768: TG_TEX_768, 512: TG_TEX_512 }, 'dachy');
+/** GG-PS-EXACT-6: Arena Port Syntez (map key `o`, canonical district id `port`, 12 blocks) lots are the textures PS-A..F (0-5),
+ *  by an explicit graphic map [j][i]: each twice, no random roll; PS-C (no caption of its own) sits under the "PORT SYNTEZ" sign at (1,5). Same lazy decode / vector fallback / per-district cache drop,
+ *  and the same source inset as TG (the PS sheets also carry their own frame). Looks only. */
+const PS_PORT_MAP = [[], [], [], [0, 5], [1, 3, 5], [4, 2, 0], [3, 4], [2, 1]];
+const PS_LOT_TEX = makeLotTex({ 768: PS_TEX_768, 512: PS_TEX_512 }, 'port');
 
 const CITY_ART = (() => {
   const P = CITY_PITCH, R = CITY_ROAD, B = CITY_BLEED;
@@ -10083,8 +10090,9 @@ const CITY_ART = (() => {
       // not decoded yet -> the old vector composition (fallback).
       const pmv = !theme && d === 'plac' ? PM_PLAC_MAP[j] && PM_PLAC_MAP[j][i] : undefined;
       const tgv = !theme && d === 'dachy' ? TG_DACHY_MAP[j] && TG_DACHY_MAP[j][i] : undefined; // GG-TG-EXACT-6
-      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : null;
-      if (pm && pmv === undefined) {
+      const psv = !theme && d === 'port' ? PS_PORT_MAP[j] && PS_PORT_MAP[j][i] : undefined; // GG-PS-EXACT-6
+      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : psv !== undefined ? PS_LOT_TEX.get(psv, rich) : null;
+      if (pm && pmv === undefined) { // TG and PS sheets carry their own frame: draw the surface inside TG_LOT_INSET; PM is drawn whole
         const w = pm.naturalWidth, h = pm.naturalHeight, [il, it, ir, ib] = TG_LOT_INSET;
         c.drawImage(pm, il * w, it * h, (1 - il - ir) * w, (1 - it - ib) * h, lx, ly, ls, ls);
       } else if (pm) c.drawImage(pm, lx, ly, ls, ls);
@@ -10175,7 +10183,7 @@ class CityFloor {
     c.setTransform(px / (P + 2 * B), 0, 0, px / (P + 2 * B), 0, 0);
     c.translate(B - i * P, B - j * P);
     const rich = this.rich;
-    if (!theme) { PM_LOT_TEX.watch(this); TG_LOT_TEX.watch(this); }
+    if (!theme) { PM_LOT_TEX.watch(this); TG_LOT_TEX.watch(this); PS_LOT_TEX.watch(this); }
     paintCityChunk(c, i, j, theme, rich);
     this.renders++;
     const key = `${theme || '*'}|${i}|${j}`;
