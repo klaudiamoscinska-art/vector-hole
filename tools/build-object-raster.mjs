@@ -1,6 +1,9 @@
 // GG-OBJECTS-RASTER-02: builds objects-raster-2.js / objects-raster-3.js (the 21 Arena object sprites, WebP RGBA as data: URLs)
 // from the GG_OBJECTS_21_FINAL_SPRITES_V1 package. Dev-only (needs the Playwright install the qa/ suites use); not shipped.
-//   node tools/build-object-raster.mjs --pack=<unpacked package dir> [--out=<dir for the work files>] [--check]
+//   node tools/build-object-raster.mjs --pack=<unpacked package dir> [--out=<dir for the work files>] [--check] [--only=fragment,kapsula]
+// --only=KINDS rebuilds just those kinds and replaces only their entries in objects-raster-2.js / -3.js (every other entry stays byte for byte).
+// GG-OBJECTS-FIX-03: the two T1 kinds (LOSSLESS) are encoded lossless (WebP VP8L = Chromium's quality 1.0): at 27x32 px a lossy WebP's
+// 4:2:0 chroma blurred their cyan edges. Every other kind keeps the package's lossy WebP (quality 0.92 when re-cut).
 // A kind whose package WebP already has the canvas the game needs (2*ceil(1.5*r+6)*quality, r = the real TIERS radius)
 // is embedded byte for byte. A kind whose package canvas was cut for an inferred radius (T1, T2, wezel, pylon) is re-cut from
 // its native PNG only: scaled to the same envelope rule the package used (content fits 2.1 r wide x 2.48 r tall, centred at
@@ -16,6 +19,8 @@ const arg = (n, d) => { const a = process.argv.find((x) => x.startsWith('--' + n
 const PACK = path.resolve(arg('pack', ''));
 const OUT = path.resolve(arg('out', path.join(ROOT, 'qa', 'out', 'objects-raster')));
 const CHECK = process.argv.includes('--check');
+const ONLY = arg('only', '') ? new Set(arg('only', '').split(',')) : null;
+const LOSSLESS = new Set(['fragment', 'kapsula']);
 if (!arg('pack', '')) { console.error('usage: node tools/build-object-raster.mjs --pack=DIR [--out=DIR] [--check]'); process.exit(2); }
 
 // The real radii (game.js TIERS: minR == maxR for each, read back and compared by qa/objraster2.mjs).
@@ -37,8 +42,8 @@ if (recs.length !== 21) throw new Error('expected 21 records');
 const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.setContent('<canvas id="c"></canvas>');
-async function recut(pngB64, D, w, h, x, y) {
-  return page.evaluate(async ({ pngB64, D, w, h, x, y }) => {
+async function recut(pngB64, D, w, h, x, y, quality = 0.92) {
+  return page.evaluate(async ({ pngB64, D, w, h, x, y, quality }) => {
     const img = new Image(); img.src = 'data:image/png;base64,' + pngB64; await img.decode();
     // halve until within 2x of the target (one big step aliases), then the final high-quality step
     let src = img, sw = img.naturalWidth, sh = img.naturalHeight;
@@ -49,14 +54,14 @@ async function recut(pngB64, D, w, h, x, y) {
     }
     const out = document.createElement('canvas'); out.width = out.height = D;
     const g = out.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, sw, sh, x, y, w, h);
-    const blob = await new Promise((res) => out.toBlob(res, 'image/webp', 0.92));
+    const blob = await new Promise((res) => out.toBlob(res, 'image/webp', quality));
     const buf = new Uint8Array(await blob.arrayBuffer());
     // tight alpha box of the result (what the log reports)
     const d = g.getImageData(0, 0, D, D).data; let x0 = D, y0 = D, x1 = -1, y1 = -1;
     for (let j = 0; j < D; j++) for (let i = 0; i < D; i++) if (d[(j * D + i) * 4 + 3] > 8) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
     let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
     return { b64: btoa(s), box: [x0, y0, x1 - x0 + 1, y1 - y0 + 1] };
-  }, { pngB64, D, w, h, x, y });
+  }, { pngB64, D, w, h, x, y, quality });
 }
 
 fs.mkdirSync(path.join(OUT, 'webp_2px'), { recursive: true });
@@ -64,6 +69,7 @@ fs.mkdirSync(path.join(OUT, 'webp_3px'), { recursive: true });
 const log = [];
 const mod = { 2: {}, 3: {} };
 for (const rec of recs) {
+  if (ONLY && !ONLY.has(rec.kind)) continue;
   const r = REAL_R[rec.kind];
   if (r == null) throw new Error('no real radius for ' + rec.kind);
   for (const q of [2, 3]) {
@@ -71,7 +77,7 @@ for (const rec of recs) {
     const D = canvasPx(r, q);
     const pkgFile = path.join(PACK, o.file);
     let bytes, how, box;
-    if (o.dimensions === D) {
+    if (o.dimensions === D && !LOSSLESS.has(rec.kind)) {
       bytes = fs.readFileSync(pkgFile); how = 'package'; box = o.content_box_px;
     } else {
       const [nw, nh] = rec.native_pixel_dimensions;
@@ -79,8 +85,9 @@ for (const rec of recs) {
       const w = Math.round(nw * s), h = Math.round(nh * s);
       const x = Math.floor((D - w) / 2), y = Math.round(CY * D - h / 2);
       const png = fs.readFileSync(path.join(PACK, rec.native_png)).toString('base64');
-      const res = await recut(png, D, w, h, x, y);
-      bytes = Buffer.from(res.b64, 'base64'); how = 'recut'; box = res.box;
+      const lossless = LOSSLESS.has(rec.kind);
+      const res = await recut(png, D, w, h, x, y, lossless ? 1 : 0.92);
+      bytes = Buffer.from(res.b64, 'base64'); how = lossless ? 'recut-lossless' : 'recut'; box = res.box;
     }
     fs.writeFileSync(path.join(OUT, `webp_${q}px`, `${rec.kind}_${q}px.webp`), bytes);
     mod[q][rec.kind] = 'data:image/webp;base64,' + bytes.toString('base64');
@@ -99,8 +106,16 @@ await browser.close();
 const head = (q) => `// GG-OBJECTS-RASTER-02: the 21 Arena object sprites (T1-T6) at ${q} px per world unit, WebP RGBA, as data: URLs (release graph = JS/CSS only).\n` +
   `// Canvas of each = 2*ceil(1.5*r+6)*${q} px, r = the real TIERS radius, centre = the object's centre; built by tools/build-object-raster.mjs from GG_OBJECTS_21_FINAL_SPRITES_V1.\n`;
 for (const q of [2, 3]) {
+  const file = path.join(ROOT, `objects-raster-${q}.js`);
+  if (ONLY) {
+    let text = fs.readFileSync(file, 'utf8'), n = 0;
+    for (const [k, u] of Object.entries(mod[q])) text = text.replace(new RegExp(`^  ${k}: 'data:image/webp;base64,[^']+'`, 'm'), () => { n++; return `  ${k}: '${u}'`; });
+    if (n !== Object.keys(mod[q]).length) throw new Error(`--only: replaced ${n} of ${Object.keys(mod[q]).length} entries in ${file}`);
+    fs.writeFileSync(file, text);
+    continue;
+  }
   const body = Object.entries(mod[q]).map(([k, u]) => `  ${k}: '${u}'`).join(',\n');
-  fs.writeFileSync(path.join(ROOT, `objects-raster-${q}.js`), head(q) + `export const OBJECT_RASTER_${q}PX = {\n${body}\n};\n`);
+  fs.writeFileSync(file, head(q) + `export const OBJECT_RASTER_${q}PX = {\n${body}\n};\n`);
 }
-fs.writeFileSync(path.join(OUT, 'export-log.json'), JSON.stringify(log, null, 2));
+fs.writeFileSync(path.join(OUT, ONLY ? 'export-log-only.json' : 'export-log.json'), JSON.stringify(log, null, 2));
 for (const e of log) console.log(`${e.tier} ${e.kind.padEnd(11)} r=${String(e.r).padStart(3)} q${e.quality} canvas ${String(e.canvas).padStart(3)} (package ${String(e.packageCanvas).padStart(3)}) ${e.how.padEnd(7)} box ${e.contentBox.join(',')} ${e.bytes} B`);

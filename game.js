@@ -6871,6 +6871,7 @@ const OBJECT_RASTER = {
    *  more than they show (measured: +10 ms a frame with a big vortex on a laptop), so 2 px is used. A band keeps
    *  the size from flickering at the limit. */
   fit(density) {
+    OBJECT_T1.density = density;   // GG-OBJECTS-FIX-03: the T1 ground canvas follows it (t1Entry())
     if (this.max !== 3) return;
     const want = this.q === 3 ? (density < 1.8 ? 2 : 3) : (density >= 2.1 ? 3 : 2);
     if (want !== this.q) this.switchTo(want);
@@ -6891,7 +6892,7 @@ const OBJECT_RASTER = {
 /** GG-OBJECTS-RASTER-02 VISUAL-FIX-01: what ties a bitmap object to the ground and names its class -- the equivalent of the vector
  *  look's `K.base()` (soft contact shadow lower right and, for T2+, a thin tier ring in the class color), drawn UNDER the bitmap. The vector look's extra pool of class light is left out: it costs fill rate on the big kinds and the ring names the class.
  *  Per kind [cx, bottom, halfWidth, ring] in units of r, measured from the bitmap itself (its opaque silhouette: centre x, lowest
- *  point, half width; ring 0 = none, as the vector T1 had none). One cached 64 px shadow stamp and one ellipse stroke per
+ *  point, half width; ring 0 = none here: since GG-OBJECTS-FIX-03 the T1 ring is part of the T1 ground canvas, see OBJECT_T1). One cached 64 px shadow stamp and one ellipse stroke per
  *  object: no shadowBlur, no per-frame gradient, no new large canvas. The class color is the TIERS one passed to drawObjectArt(). */
 const OBJECT_RASTER_BASE = {
   fragment: [-0.04, 0.86, 0.89, 0],
@@ -6940,6 +6941,57 @@ function drawObjectRasterBase(ctx, kind, color, r) {
     ctx.strokeStyle = st.ring; ctx.lineWidth = Math.max(0.7, r * 0.035);
     ctx.beginPath(); ctx.ellipse(cx, yc, hw * 1.02, hw * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
   }
+}
+
+/** GG-OBJECTS-FIX-03: the two T1 bitmaps (fragment r 7, kapsula r 10) -- sharper, with a ground ring and a clearer pulse.
+ *  Sharpness: a T1 is tiny on the screen (a fragment ~12-18 device px tall) and its WebP was lossy -- the 4:2:0 chroma blurred the
+ *  cyan edges and the DCT smeared the facets. Both T1 bitmaps are lossless now (tools/build-object-raster.mjs, from the approved
+ *  native PNGs, same canvas and envelope) and are drawn exactly as before (the same 2 / 3 px sets, the same single draw): measured
+ *  against the native PNG area-filtered to the screen, the error drops ~19 % on average (qa/objfix3.mjs FX-T1). A density-matched
+ *  resampled copy was tried and measured worse (a second resampling), so the bitmap itself is drawn.
+ *  Ground: one small canvas per kind at the screen's density (zoom x DPR; rebuilt only when it drifts > 3 %): contact shadow, a soft
+ *  cyan pool, a dark rim and a thin cyan ring around the base -- the rim keeps it readable on light floor tiles, the cyan on dark ones.
+ *  Pulse: the same phase and 3 rad/s as every object's breathe, +-7 % for T1 instead of +-3 %, and the ground's light swells with it
+ *  (alpha 0.5-1, size 0.97-1.06: never smaller than the base). No shadowBlur, no per-frame gradient or path: two drawImage calls per T1, as before (shadow stamp
+ *  + bitmap). The vector look (gfx 0, a bitmap not decoded or failed) is unchanged. */
+const OBJECT_T1 = { density: 1, kinds: { fragment: null, kapsula: null } };
+const T1_BREATHE = 0.07;
+/** The T1 ground at density d (device px per world unit), centred on the base ellipse; `e` gets its box in world units. */
+function t1Ground(e, kind, color, r, d) {
+  const b = OBJECT_RASTER_BASE[kind], hw = b[2] * r, rx = hw * 1.12, ry = hw * 0.34;   // a bit wider than the base: never hidden by it
+  e.gx = b[0] * r; e.gy = (b[1] - 0.1 * b[2]) * r;
+  e.bx = rx * 1.3 + 1; e.by = ry * 1.6 + 1;
+  const cv = e.ground, W = Math.ceil(e.bx * 2 * d), H = Math.ceil(e.by * 2 * d);
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  c.setTransform(W / (e.bx * 2), 0, 0, H / (e.by * 2), W / 2, H / 2);
+  c.save(); c.scale(1, ry / rx);                  // soft pool of class light inside the ring
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, rx * 1.25);
+  g.addColorStop(0, rgbaColor(color, 0.3)); g.addColorStop(0.7, rgbaColor(color, 0.12)); g.addColorStop(1, rgbaColor(color, 0));
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, rx * 1.25, 0, Math.PI * 2); c.fill();
+  c.restore();
+  c.drawImage(objectBaseStamps(color).shadow, r * 0.05 - hw * 0.9, r * 0.01 - hw * 0.3, hw * 1.8, hw * 0.6);
+  const lw = clamp(r * 0.09 * d, 1, 2) / d;          // the cyan line in device px (1-2), the dark rim 1.4 px wider
+  c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  c.strokeStyle = 'rgba(2, 6, 18, 0.62)'; c.lineWidth = lw + 1.4 / d; c.stroke();
+  c.strokeStyle = rgbaColor(color, 0.95); c.lineWidth = lw; c.stroke();
+}
+/** The T1 ground canvas for the current density (rebuilt when the density drifts > 3 %). */
+function t1Entry(kind, color, r) {
+  let e = OBJECT_T1.kinds[kind];
+  if (!e) e = OBJECT_T1.kinds[kind] = { d: 0, ground: document.createElement('canvas'), builds: 0 };
+  const dens = Math.max(0.25, OBJECT_T1.density), q = dens / (e.d || 1);
+  if (!e.d || q > 1.03 || q < 0.971) { e.d = dens; t1Ground(e, kind, color, r, dens); e.builds++; }
+  return e;
+}
+function drawT1Raster(ctx, kind, color, r, bmp, t, seed) {
+  if (OBJECT_RASTER_BASE[kind]) {   // (no base entry = no ground, as drawObjectRasterBase())
+    const e = t1Entry(kind, color, r), p = 0.5 + 0.5 * Math.sin(t * 3 + seed * 1.7), a = ctx.globalAlpha, gs = 0.97 + 0.09 * p;
+    ctx.globalAlpha = a * (0.5 + 0.5 * p);
+    ctx.drawImage(e.ground, e.gx - e.bx * gs, e.gy - e.by * gs, e.bx * 2 * gs, e.by * 2 * gs);
+    ctx.globalAlpha = a;
+  }
+  ctx.drawImage(bmp.img, -bmp.half, -bmp.half, bmp.half * 2, bmp.half * 2);
 }
 
 /** Cached offscreen sprite for one object kind/color/radius (+ variant). */
@@ -6994,13 +7046,17 @@ function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
   // overlay as the vector look, only the picture differs.
   const bmp = opts.raster ? OBJECT_RASTER.get(kind, r) : null;
   if (bmp) {
+    const t1 = kind === 'fragment' || kind === 'kapsula';   // GG-OBJECTS-FIX-03: see OBJECT_T1
     const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
-    const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * 0.03;
+    const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * (t1 ? T1_BREATHE : 0.03);
     ctx.save();
     ctx.translate(0, bob);
     ctx.scale(breathe, breathe);
-    drawObjectRasterBase(ctx, kind, color, r);
-    ctx.drawImage(bmp.img, -bmp.half, -bmp.half, bmp.half * 2, bmp.half * 2);
+    if (t1) drawT1Raster(ctx, kind, color, r, bmp, t, seed);
+    else {
+      drawObjectRasterBase(ctx, kind, color, r);
+      ctx.drawImage(bmp.img, -bmp.half, -bmp.half, bmp.half * 2, bmp.half * 2);
+    }
     if (opts.live !== false) drawObjectLive(ctx, kind, color, r, t, seed, true);
     ctx.restore();
     return;
@@ -10908,6 +10964,104 @@ function roadLanePoint(next) {
   return vertical ? { x: line + lane, y: along } : { x: along, y: line + lane };
 }
 
+/** GG-OBJECTS-FIX-03: no two Arena objects are spawned on top of each other (T1-T6, golden core, portal wave).
+ *  Two clearances, both at spawn time:
+ *   - the footprint: the hitbox circle (radius r -- the circle the eat checks use); two footprints keep SPAWN_GAP apart;
+ *   - the picture (REVIEW-01): what the player sees -- the bitmap's opaque silhouette box (SPAWN_VIEW, measured from the
+ *     approved 3 px bitmaps at alpha > 64, in units of r) united with the ground ring, grown by the idle breathe and bob.
+ *     Two of these boxes keep SPAWN_VIEW_GAP apart, so no picture is spawned over another: neither a small object standing
+ *     on a big one (the small one draws on top: biggest first, DEVICE-QA-1) nor a partly covered one. Natural 2.5D cover can
+ *     still happen later when things move (a magnet pull, a vortex), never at spawn.
+ *  A taken spot moves to the nearest clear one: a fixed golden-angle spiral around it, then square rings growing out from it
+ *  over the object's whole allowed area. No random number is drawn, so the seeded stream and every other draw stay exactly
+ *  as before (same seed = same layout, Daily included). Both searches are bounded. With no clear spot anywhere (never at the
+ *  game's density; only when the board is overfilled) settleSpawn() reports it and the CALLER keeps the object off the board
+ *  -- in Game.waitingObjects, retried every 0.5 s -- it is never placed over another one and never removed.
+ *  Radius, hitbox, tiers, eat gates, counts and the spawn areas are not touched. */
+const SPAWN_GAP = 6;
+const SPAWN_VIEW_GAP = 3;
+const SPAWN_VIEW = {
+  fragment: [-0.95, 0.95, -1.24, 0.86], kapsula: [-0.93, 0.97, -1.37, 0.97],
+  lawka: [-0.97, 0.98, -0.83, 0.53], kiosk: [-1, 0.97, -0.97, 0.65], skrzynia: [-0.97, 0.9, -0.9, 0.58], latarnia: [-0.65, 0.57, -1.35, 1],
+  drzewo: [-1, 0.93, -1, 0.7], znacznik: [-0.93, 0.82, -1.25, 0.92],
+  samochod: [-0.94, 1.03, -0.72, 0.4], wezel: [-0.79, 1.01, -0.77, 0.45], pylon: [-0.48, 0.9, -0.97, 0.64],
+  pawilon: [-0.99, 0.97, -0.73, 0.44], billboard: [-1, 0.94, -1, 0.7], magazyn: [-1, 1, -0.69, 0.4], landmark: [-0.96, 0.94, -1.12, 0.83],
+  autobus: [-1.01, 0.96, -0.59, 0.31], tramwaj: [-1.01, 1.01, -0.54, 0.27], ciezarowka: [-0.89, 0.98, -0.58, 0.31],
+  wiezowiec: [-0.99, 0.99, -1.09, 0.81], maszt: [-0.74, 0.75, -1.31, 1.05], kopula: [-0.99, 0.99, -0.65, 0.39]
+};
+const SPAWN_VIEW_OTHER = [-1.15, 1.15, -1.15, 1.15];   // golden core, portal (vector looks, no bitmap)
+const SPAWN_SPIRAL = (() => {
+  const n = 900, a = new Float64Array(n * 2);
+  for (let j = 1; j <= n; j++) {
+    const d = Math.sqrt(j), t = j * 2.399963229728653;
+    a[(j - 1) * 2] = Math.round(d * Math.cos(t) * 1e6) / 1e6;
+    a[(j - 1) * 2 + 1] = Math.round(d * Math.sin(t) * 1e6) / 1e6;
+  }
+  return a;
+})();
+/** The picture box of a `kind` of radius r centred at (x, y), in world units, written into `out` ({ l, r, t, b }). */
+function spawnViewBox(kind, r, x, y, out) {
+  const s = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER, t1 = kind === 'fragment' || kind === 'kapsula';
+  const amp = 1 + (t1 ? T1_BREATHE : 0.03), bob = Math.min(2, r * 0.08), base = OBJECT_RASTER_BASE[kind];
+  let l = s[0], rr = s[1], t = s[2], b = s[3];
+  if (base) {   // the ground ring under the bitmap (T1: OBJECT_T1's wider ring at its largest)
+    const hw = base[2], ring = t1 ? hw * 1.12 * 1.06 : hw * 1.02, yc = base[1] - 0.1 * hw;
+    l = Math.min(l, base[0] - ring); rr = Math.max(rr, base[0] + ring); b = Math.max(b, yc + hw * 0.36);
+  }
+  out.l = x + l * r * amp; out.r = x + rr * r * amp; out.t = y + t * r * amp - bob; out.b = y + b * r * amp + bob;
+  return out;
+}
+const SPAWN_BOX_A = { l: 0, r: 0, t: 0, b: 0 }, SPAWN_BOX_B = { l: 0, r: 0, t: 0, b: 0 };
+/** True when obj placed at (x, y) keeps both clearances (footprint, picture) from every live object in `others` (but obj). */
+function spawnSpotFree(obj, x, y, others) {
+  const r = obj.radius, a = spawnViewBox(obj.subtype, r, x, y, SPAWN_BOX_A);
+  for (let i = 0; i < others.length; i++) {
+    const o = others[i];
+    if (o === obj || o.eating || o.removed) continue;
+    const reach = 1.6 * (r + o.radius) + SPAWN_GAP + SPAWN_VIEW_GAP + 4, dx = o.x - x;
+    if (dx >= reach || dx <= -reach) continue;
+    const dy = o.y - y;
+    if (dy >= reach || dy <= -reach) continue;
+    const m = r + o.radius + SPAWN_GAP;
+    if (dx * dx + dy * dy < m * m) return false;
+    const c = spawnViewBox(o.subtype, o.radius, o.x, o.y, SPAWN_BOX_B);
+    if (a.l < c.r + SPAWN_VIEW_GAP && c.l < a.r + SPAWN_VIEW_GAP && a.t < c.b + SPAWN_VIEW_GAP && c.t < a.b + SPAWN_VIEW_GAP) return false;
+  }
+  return true;
+}
+/** Moves obj to the nearest clear spot inside [pad, WORLD - pad]; `first` = optional extra candidates (world points) tried
+ *  before the generic search (a street-trail fragment: its other lane, then along its lane). Returns 0 = was clear, 1 = moved,
+ *  -1 = no clear spot anywhere: obj is left where it was drawn and must not go on the board (the caller keeps it waiting). */
+function settleSpawn(obj, pad, others, first) {
+  const lo = pad, hx = WORLD_W - pad, hy = WORLD_H - pad;
+  const x0 = clamp(obj.x, lo, hx), y0 = clamp(obj.y, lo, hy);
+  const tryAt = (x, y) => x >= lo && x <= hx && y >= lo && y <= hy && spawnSpotFree(obj, x, y, others);
+  if (tryAt(x0, y0)) {
+    if (x0 === obj.x && y0 === obj.y) return 0;
+    obj.x = x0; obj.y = y0; return 1;
+  }
+  if (first) for (const p of first) if (tryAt(p.x, p.y)) { obj.x = p.x; obj.y = p.y; return 1; }
+  const step = Math.max(2, (obj.radius + SPAWN_GAP) * 0.3);
+  for (let j = 0; j < SPAWN_SPIRAL.length; j += 2) {
+    const x = x0 + SPAWN_SPIRAL[j] * step, y = y0 + SPAWN_SPIRAL[j + 1] * step;
+    if (tryAt(x, y)) { obj.x = x; obj.y = y; return 1; }
+  }
+  // square rings around the drawn spot, nearest first, until they cover the whole allowed area (<= ~20 000 candidates)
+  const stride = Math.max(8, obj.radius * 0.5, Math.sqrt((hx - lo) * (hy - lo) / 20000)), rings = Math.ceil(Math.max(WORLD_W, WORLD_H) / stride);
+  for (let k = 1; k <= rings; k++) {
+    const d = k * stride;
+    for (let i = -k; i <= k; i++) {
+      if (tryAt(x0 + i * stride, y0 - d)) { obj.x = x0 + i * stride; obj.y = y0 - d; return 1; }
+      if (tryAt(x0 + i * stride, y0 + d)) { obj.x = x0 + i * stride; obj.y = y0 + d; return 1; }
+    }
+    for (let i = -k + 1; i < k; i++) {
+      if (tryAt(x0 - d, y0 + i * stride)) { obj.x = x0 - d; obj.y = y0 + i * stride; return 1; }
+      if (tryAt(x0 + d, y0 + i * stride)) { obj.x = x0 + d; obj.y = y0 + i * stride; return 1; }
+    }
+  }
+  return -1;
+}
+
 class WorldObject {
   constructor(tierName, rng) {
     this.respawn(tierName, true, rng);
@@ -13578,12 +13732,12 @@ class Game {
    *  Wyzwania tab's map preview. */
   computeDailyLayout() {
     const { seed, dateKey } = dailySeedForDate(new Date());
-    const saved = { rng: this.rng, objects: this.objects, modifier: this.modifier };
+    const saved = { rng: this.rng, objects: this.objects, modifier: this.modifier, waitingObjects: this.waitingObjects, trailLanes: this.trailLanes, spawnStats: this.spawnStats };
     this.rng = new SeededRNG(seed);
     const modifier = this.pickModifier();
     this.createObjects(this.rng);
     const spawns = this.rollSpawns(this.rng);
-    this.layStarterFeasts(this.rng, [spawns.player, ...spawns.bots]);
+    this.separateObjects(this.layStarterFeasts(this.rng, [spawns.player, ...spawns.bots]));   // GG-OBJECTS-FIX-03
     const spawn = spawns.player;
     const layout = { dateKey, modifier, spawn, objects: this.objects.map(o => ({ tier: o.tier, x: o.x, y: o.y })) };
     Object.assign(this, saved);
@@ -15443,6 +15597,8 @@ class Game {
    *  discovered in missions). */
   createObjects(rng) {
     this.objects = [];
+    this.waitingObjects = [];   // GG-OBJECTS-FIX-03: objects with no clear spot yet (never on another one, never removed)
+    this.trailLanes = new Map();   // GG-OBJECTS-FIX-03: street-trail fragment -> its lane (separateObjects())
     Object.keys(TIERS).forEach(tierName => {
       for (let i = 0; i < TIERS[tierName].count; i++) this.objects.push(new WorldObject(tierName, rng));
     });
@@ -15471,6 +15627,7 @@ class Game {
         o.x = vertical ? line + lane : along;
         o.y = vertical ? along : line + lane;
         o.trail = true;
+        this.trailLanes.set(o, { vertical, line, lane, along });
       }
     }
   }
@@ -15481,7 +15638,8 @@ class Game {
   layStarterFeasts(rng, spawns) {
     const A = CONFIG.arena;
     const pool = { fragment: this.objects.filter(o => o.tier === 'fragment' && !o.trail), capsule: this.objects.filter(o => o.tier === 'capsule') };
-    const take = (tier) => pool[tier].pop();
+    const feast = new Set();   // GG-OBJECTS-FIX-03: returned for separateObjects()
+    const take = (tier) => { const o = pool[tier].pop(); if (o) feast.add(o); return o; };
     for (const sp of spawns) {
       const a0 = rng.next() * Math.PI * 2;
       for (let i = 0; i < A.feastFragments; i++) {
@@ -15499,6 +15657,66 @@ class Game {
         o.y = clamp(sp.y + Math.sin(a) * 150, 30, WORLD_H - 30);
       }
     }
+    return feast;
+  }
+
+  /** GG-OBJECTS-FIX-03: the round's whole starting layout (createObjects() + street trails + starter feasts) with no object
+   *  spawned on another one -- neither footprint nor picture (see settleSpawn()). Run by createEntities() (startRound) and
+   *  computeDailyLayout() right after layStarterFeasts(), so the Daily preview is the real layout. Draws nothing from the rng.
+   *  Fixed order: the designed patterns keep their spots first (street trails, then starter feasts), then every other object,
+   *  biggest first (the hardest to fit); an object that would cover one already placed moves to the nearest clear spot. A trail
+   *  fragment that lands on another trail (two trails drawn on the same lane) first tries the road's other lane at the same
+   *  point, then slides along its lane, so it stays a street trail. An object with no clear spot at all (only on an overfilled
+   *  board) waits off the board (this.waitingObjects, retried in updateWaitingObjects()). The object count never changes. */
+  separateObjects(feast) {
+    const objs = this.objects, rank = (o) => (o.trail ? 0 : feast && feast.has(o) ? 1 : 2);
+    const order = objs.map((o, i) => i).sort((a, b) => rank(objs[a]) - rank(objs[b]) || (rank(objs[a]) === 2 ? objs[b].radius - objs[a].radius : 0) || a - b);
+    const placed = [], waiting = [], stats = { moved: 0, crowded: 0, maxShift: 0, trailOtherLane: 0, trailSlid: 0, trailOff: 0 };
+    for (const i of order) {
+      const o = objs[i], x = o.x, y = o.y, lane = o.trail && this.trailLanes ? this.trailLanes.get(o) : null;
+      let first = null;
+      if (lane) {   // the other lane at the same point, then along this lane / the other one, 6 units at a time (up to 30)
+        const at = (ln, al) => (lane.vertical ? { x: lane.line + ln, y: al } : { x: al, y: lane.line + ln });
+        first = [at(-lane.lane, lane.along)];
+        for (let k = 1; k <= 5; k++) for (const sg of [1, -1]) first.push(at(lane.lane, lane.along + sg * 6 * k), at(-lane.lane, lane.along + sg * 6 * k));
+      }
+      const res = settleSpawn(o, o.radius + 20, placed, first);
+      if (res === 1) {
+        stats.moved++; stats.maxShift = Math.max(stats.maxShift, Math.hypot(o.x - x, o.y - y));
+        if (lane) {
+          const across = lane.vertical ? o.x - lane.line : o.y - lane.line, al = lane.vertical ? o.y : o.x;
+          if (Math.abs(across + lane.lane) < 1e-6 && Math.abs(al - lane.along) < 1e-6) stats.trailOtherLane++;
+          else if (Math.abs(Math.abs(across) - Math.abs(lane.lane)) < 1e-6) stats.trailSlid++;
+          else stats.trailOff++;
+        }
+      }
+      if (res < 0) { stats.crowded++; waiting.push(o); } else placed.push(o);
+    }
+    if (waiting.length) { this.objects = objs.filter(o => !waiting.includes(o)); this.waitingObjects = (this.waitingObjects || []).concat(waiting); }
+    this.spawnStats = stats;
+    return stats;
+  }
+
+  /** GG-OBJECTS-FIX-03: one object (re)spawned during a round keeps clear of every live object already on the board.
+   *  -1 = no clear spot: the caller must keep it off the board (waitingObjects), never place it. */
+  settleRespawn(obj, pad = obj.radius + 20) {
+    const res = settleSpawn(obj, pad, this.objects);
+    if (res < 0 && this.spawnStats) this.spawnStats.crowded++;
+    return res;
+  }
+
+  /** GG-OBJECTS-FIX-03: every 0.5 s ONE waiting object (oldest first) looks for a clear spot from where it was drawn; found =
+   *  it appears there (spawn pop-in). Empty at the game's density, so this costs nothing in a normal round. */
+  updateWaitingObjects(dt) {
+    if (!this.waitingObjects || !this.waitingObjects.length) return;
+    this.waitRetryT = (this.waitRetryT || 0) - dt;
+    if (this.waitRetryT > 0) return;
+    this.waitRetryT = 0.5;
+    const o = this.waitingObjects[0];
+    if (settleSpawn(o, o.tier === 'golden' ? 120 : o.radius + 20, this.objects) < 0) { this.waitingObjects.push(this.waitingObjects.shift()); return; }
+    this.waitingObjects.shift();
+    o.spawnFlash = 1;
+    this.objects.push(o);
   }
 
   /** Spawn points for the player and every bot plus the bot names -- the
@@ -15559,7 +15777,7 @@ class Game {
       bot.styleOverride = BOT_STYLES[i % BOT_STYLES.length];
       this.bots.push(bot);
     }
-    this.layStarterFeasts(rng, [spawns.player, ...spawns.bots]);
+    this.separateObjects(this.layStarterFeasts(rng, [spawns.player, ...spawns.bots]));   // GG-OBJECTS-FIX-03
   }
 
   /** GRAJ 2:00 starts the round at once. PX02 D+: there is no run-tool
@@ -19414,6 +19632,8 @@ class Game {
     obj.x = pos.x;
     obj.y = pos.y;
     obj.expiresAt = this.timeRemaining - G.lifetime;
+    // GG-OBJECTS-FIX-03: same 120 px margin as its draw; no clear spot = no core now, the next try in a second (no banner)
+    if (this.settleRespawn(obj, 120) < 0) { this.goldenTimer = 1; return; }
     this.objects.push(obj);
     this.goldenObj = obj;
     this.showBanner('ZŁOTY RDZEŃ!', 'Złap go przed rywalami — złota strzałka wskazuje drogę', '#EFCB63', 1.3, 2);
@@ -19990,7 +20210,8 @@ class Game {
       obj.x = pos.x;
       obj.y = pos.y;
       obj.value = CONFIG.overdrive.bonusObjectValue;
-      this.objects.push(obj);
+      // GG-OBJECTS-FIX-03: no clear spot = it waits off the board until one frees up
+      if (this.settleRespawn(obj) < 0) this.waitingObjects.push(obj); else this.objects.push(obj);
     }
   }
 
@@ -20322,9 +20543,16 @@ class Game {
           this.analytics.track('first_eat', { objectTier: obj.tier });
         }
         obj.respawn(obj.tier, false);
+        // GG-OBJECTS-FIX-03: clear of every object on the board; no clear spot = it waits off the board (never on another one)
+        if (this.settleRespawn(obj) < 0) obj.waitSpot = true;
       }
     }
     if (this.objects.some(o => o.removed)) this.objects = this.objects.filter(o => !o.removed);
+    if (this.objects.some(o => o.waitSpot)) {
+      for (const o of this.objects) if (o.waitSpot) { delete o.waitSpot; this.waitingObjects.push(o); }
+      this.objects = this.objects.filter(o => !this.waitingObjects.includes(o));
+    }
+    this.updateWaitingObjects(dt);
     this.updateGoldenCore(dt);
 
     this.handleHoleCollisions();
