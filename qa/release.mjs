@@ -77,7 +77,7 @@ const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const fakeSha = (name) => crypto.createHash('sha1').update('vh-e3:' + name).digest('hex');
 
 const repoFile = (f) => fs.readFileSync(path.join(ROOT, f));
-const GOOD = { 'index.html': repoFile('index.html'), 'game.js': repoFile('game.js'), 'style.css': repoFile('style.css'), 'pm-tex-512.js': repoFile('pm-tex-512.js'), 'pm-tex-768.js': repoFile('pm-tex-768.js') }; // GG-PM-RASTER-01: game.js imports the two texture modules
+const GOOD = { 'index.html': repoFile('index.html'), 'game.js': repoFile('game.js'), 'style.css': repoFile('style.css'), 'pm-tex-512.js': repoFile('pm-tex-512.js'), 'pm-tex-768.js': repoFile('pm-tex-768.js'), 'tg-tex-512.js': repoFile('tg-tex-512.js'), 'tg-tex-768.js': repoFile('tg-tex-768.js') }; // GG-PM-RASTER-01: game.js imports the two texture modules
 const OLD = { 'index.html': revisionFile(BASE, 'index.html'), 'game.js': revisionFile(BASE, 'game.js'), 'style.css': revisionFile(BASE, 'style.css') };
 const MARKER = fs.readFileSync(SCRIPT);
 
@@ -303,7 +303,7 @@ export async function runReleaseChecks() {
   {
     push('static: the script assembles the worktree release (exit 0), twice to the same artifact (deterministic manifest)', a1.code === 0 && a2.code === 0 && a1.manifest.artifactSha256 === a2.manifest.artifactSha256, JSON.stringify({ codes: [a1.code, a2.code], sha: a1.manifest && a1.manifest.artifactSha256, err: firstLine(a1.err) }));
     const files = walk(rel);
-    const want = ['game.js', 'index.html', 'style.css', `v/${MAIN_ID}/game.js`, `v/${MAIN_ID}/pm-tex-512.js`, `v/${MAIN_ID}/pm-tex-768.js`, `v/${MAIN_ID}/style.css`];
+    const want = ['game.js', 'index.html', 'style.css', `v/${MAIN_ID}/game.js`, `v/${MAIN_ID}/pm-tex-512.js`, `v/${MAIN_ID}/pm-tex-768.js`, `v/${MAIN_ID}/style.css`, `v/${MAIN_ID}/tg-tex-512.js`, `v/${MAIN_ID}/tg-tex-768.js`];
     push('static: the artifact is exactly index.html, the frozen root pair and v/<id>/{game.js,style.css}', files.join(',') === want.join(','), files.join(', '));
     const html = fs.readFileSync(path.join(rel, 'index.html'), 'utf8');
     const tags = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*>/g)].map(m => m[0]);
@@ -316,7 +316,7 @@ export async function runReleaseChecks() {
     push('static: v/<id>/game.js and style.css are byte-identical to the repo files (the module that QA tests)', fs.readFileSync(path.join(rel, `v/${MAIN_ID}/game.js`)).equals(GOOD['game.js']) && fs.readFileSync(path.join(rel, `v/${MAIN_ID}/style.css`)).equals(GOOD['style.css']), MAIN_ID);
     const rs = readRuntimeSources(rel);
     const graph = [rs.html.path, ...rs.files.map(f => f.path)].sort().join(',');
-    push('static: the script\'s graph = readRuntimeSources() on the artifact (two independent implementations), nothing skipped or missing', graph === ['index.html', `v/${MAIN_ID}/game.js`, `v/${MAIN_ID}/pm-tex-512.js`, `v/${MAIN_ID}/pm-tex-768.js`, `v/${MAIN_ID}/style.css`].sort().join(',') && !rs.missing.length && !rs.skipped.length, JSON.stringify({ graph, missing: rs.missing, skipped: rs.skipped }));
+    push('static: the script\'s graph = readRuntimeSources() on the artifact (two independent implementations), nothing skipped or missing', graph === ['index.html', `v/${MAIN_ID}/game.js`, `v/${MAIN_ID}/pm-tex-512.js`, `v/${MAIN_ID}/pm-tex-768.js`, `v/${MAIN_ID}/style.css`, `v/${MAIN_ID}/tg-tex-512.js`, `v/${MAIN_ID}/tg-tex-768.js`].sort().join(',') && !rs.missing.length && !rs.skipped.length, JSON.stringify({ graph, missing: rs.missing, skipped: rs.skipped }));
     const v = run(['verify', '--release', rel, '--id', MAIN_ID, '--manifest', path.join(a1.base, 'manifest.json')]);
     const wf = runWorkflowCheck(rel, MAIN_SHA);
     push('static: the script\'s own re-check (verify) and the workflow\'s independent bash check both pass the artifact', v.code === 0 && wf.code === 0, JSON.stringify({ verify: firstLine(v.out || v.err), workflow: firstLine(wf.out) }));
@@ -387,7 +387,7 @@ export async function runReleaseChecks() {
     const hm = makeHistory(path.join(W, 'h-multi'), [{ name: 'multi', files: multi }]);
     const rm = assembleFx(hm, 'x');
     const got = rm.code === 0 ? walk(rm.out).filter(f => f.startsWith('v/')).map(f => f.split('/').slice(2).join('/')).sort() : [];
-    const wantM = ['game.js', 'pm-tex-512.js', 'pm-tex-768.js', 'src/a.js', 'src/inner/b.js', 'src/re.js', 'src/shared.js', 'src/side.js', 'style.css'];
+    const wantM = ['game.js', 'pm-tex-512.js', 'pm-tex-768.js', 'src/a.js', 'src/inner/b.js', 'src/re.js', 'src/shared.js', 'src/side.js', 'style.css', 'tg-tex-512.js', 'tg-tex-768.js'];
     push('graph: a synthetic multi-module graph (multi-line, side-effect, re-export, ../) is collected whole into v/<id>/ and passes both checks (static parse only, not run in a browser)', rm.code === 0 && got.join(',') === wantM.join(',') && runWorkflowCheck(rm.out, fakeSha('multi')).code === 0, JSON.stringify({ code: rm.code, got, err: firstLine(rm.err) }));
     const dropped = copyDir(rm.out || rel, path.join(W, 'tamper-multi', 'release'));
     if (rm.code === 0) fs.rmSync(path.join(dropped, `v/${idOf('multi')}/src/inner/b.js`));
@@ -603,7 +603,7 @@ export async function runReleaseChecks() {
       const classic = [dep('pre-e3', 60, 'success', { sha: fakeSha('pre-e3'), inactive: 40 }), dep('old-branch', 50, 'success', { sha: fakeSha('deleted claude/** branch'), inactive: 40 }), dep('pre-e3', 40, 'success', { sha: fakeSha('pre-e3'), inactive: 2 }), dep('pre-e3', 20, 'failure', { sha: fakeSha('pre-e3') }), dep('pre-e3', 2, 'success', { sha: fakeSha('pre-e3') })];
       const r = await run1(h, 'x', classic, { live: CLASSIC_LIVE, epoch: null });
       const files = r.as && r.as.manifest ? walk(r.as.out) : [];
-      push('L1 first E3 deploy: only classic records -> no status read, only v/<current>/ is built (no invented earlier v/ folders), the root is still the frozen classic pair, the ledger says "classic era"', ok(r) && r.lg.ledger.statusesFetched === 0 && r.lg.ledger.relevant === 0 && kept(r.as.manifest).join() === idOf('e3') && files.join(',') === ['game.js', 'index.html', 'style.css', `v/${idOf('e3')}/game.js`, `v/${idOf('e3')}/pm-tex-512.js`, `v/${idOf('e3')}/pm-tex-768.js`, `v/${idOf('e3')}/style.css`].join(',') && sha256(fs.readFileSync(path.join(r.as.out, 'game.js'))) === REL.FROZEN.files['game.js'] && r.as.manifest.ledger.latestPublication === null && runWorkflowCheck(r.as.out, fakeSha('e3')).code === 0, JSON.stringify({ code: r.code, err: firstLine(r.err), files, statuses: r.lg.ledger && r.lg.ledger.statusesFetched }));
+      push('L1 first E3 deploy: only classic records -> no status read, only v/<current>/ is built (no invented earlier v/ folders), the root is still the frozen classic pair, the ledger says "classic era"', ok(r) && r.lg.ledger.statusesFetched === 0 && r.lg.ledger.relevant === 0 && kept(r.as.manifest).join() === idOf('e3') && files.join(',') === ['game.js', 'index.html', 'style.css', `v/${idOf('e3')}/game.js`, `v/${idOf('e3')}/pm-tex-512.js`, `v/${idOf('e3')}/pm-tex-768.js`, `v/${idOf('e3')}/style.css`, `v/${idOf('e3')}/tg-tex-512.js`, `v/${idOf('e3')}/tg-tex-768.js`].join(',') && sha256(fs.readFileSync(path.join(r.as.out, 'game.js'))) === REL.FROZEN.files['game.js'] && r.as.manifest.ledger.latestPublication === null && runWorkflowCheck(r.as.out, fakeSha('e3')).code === 0, JSON.stringify({ code: r.code, err: firstLine(r.err), files, statuses: r.lg.ledger && r.lg.ledger.statusesFetched }));
       const r2 = await run1(h, 'versioned-live', classic, { live: versioned('e3'), epoch: null });
       push('L1 first E3 deploy: a versioned live site while GitHub shows no versioned publication is a STOP (never guessed)', r2.code === 1 && /no successful versioned publication/.test(r2.err), firstLine(r2.err));
     }
@@ -989,7 +989,7 @@ export async function runReleaseChecks() {
       await g.page.waitForTimeout(400);
       const st = await g.page.evaluate(() => ({ bridge: { ...window.__qaBridge }, state: window.game.state, guard: SAVE_GUARD.state }));
       const own = paths(g.requests, origin(s.url));
-      const want = [`${prefix}/index.html`, `${prefix}/v/${MAIN_ID}/game.js`, `${prefix}/v/${MAIN_ID}/pm-tex-512.js`, `${prefix}/v/${MAIN_ID}/pm-tex-768.js`, `${prefix}/v/${MAIN_ID}/style.css`].sort();
+      const want = [`${prefix}/index.html`, `${prefix}/v/${MAIN_ID}/game.js`, `${prefix}/v/${MAIN_ID}/pm-tex-512.js`, `${prefix}/v/${MAIN_ID}/pm-tex-768.js`, `${prefix}/v/${MAIN_ID}/style.css`, `${prefix}/v/${MAIN_ID}/tg-tex-512.js`, `${prefix}/v/${MAIN_ID}/tg-tex-768.js`].sort();
       const ok200 = g.requests.filter(r => r.url.startsWith(origin(s.url))).every(r => r.status === 200);
       push(`browser: new HTML at ${prefix || '/'} starts the game from v/<id>/ only (requests = index.html + v/<id>/game.js + v/<id>/style.css, all 200; bridge on the v/<id>/ module; no errors)`, own.join(',') === want.join(',') && ok200 && st.bridge.mode === 'module' && st.bridge.src.includes(`/v/${MAIN_ID}/game.js`) && st.state === 'MENU' && st.guard === 'ok' && g.errors.length === 0 && g.external.length === 0, JSON.stringify({ own, src: st.bridge.src, errors: g.errors.slice(0, 2) }));
       await g.browser.close();

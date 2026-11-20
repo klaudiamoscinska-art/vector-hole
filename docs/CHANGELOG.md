@@ -4,6 +4,9 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-TG-EXACT-6 — Dachy Prądu w Arenie: 6 tekstur Tech Grid TG-A..F (pilotaż lokalny; tylko wygląd; zapis nadal v13; RNG, mechanika, kampania bez zmian)
+- 9 kwartałów `d` (Dachy Prądu) w Arenie pokazuje tekstury TG-A..F wg jawnej mapy `TG_DACHY_MAP` ((7,2)=C (6,3)=A (7,3)=E (5,4)=F (6,4)=B (7,4)=D (6,5)=E (7,5)=A (7,6)=B). Przypisanie sektora `d` jest PROPOSED (ocena właścicielki przed PR/merge). Pliki WebP bitowo z paczki GG-TG-EXACT-6-V2 (RGBA, SHA-256 z `manifest.json`), moduły `tg-tex-512.js` / `tg-tex-768.js`. Wspólna fabryka `makeLotTex()` (PM bez zmian): ten sam lazy decode, wektorowy fallback i unieważnianie cache tylko chunków własnego sektora. Plac Neonów (12 pól, PM-A..F), kampania, drogi, obiekty bez zmian. QA: `qa/tgexact6.mjs --base=DIR` (+ oczekiwane listy modułów w `qa/release.mjs`, `qa/crazygames-basic1.mjs`).
+
 ## GG-PM-RASTER-02 — Plac Neonów w Arenie: 6 tekstur PM-A..F (tylko wygląd; zapis nadal v13; RNG, mechanika, kampania bez zmian)
 - 12 kwartałów `plac` w Arenie pokazuje sześć tekstur zamiast trzech wg jawnej mapy graficznej `PM_PLAC_MAP` (każda dokładnie 2×, brak równych sąsiadów bokiem, PM-C pod napisem w (1,1)); to nie jest losowanie. `lotRng.next()` i wektorowy fallback bez zmian. PM-A/B/C bitowo jak w -01, D/E/F dopisane do `pm-tex-512.js` / `pm-tex-768.js`. QA: `qa/pmraster1.mjs` (PM-7), kadry `qa/pmraster2-shots.mjs`.
 
