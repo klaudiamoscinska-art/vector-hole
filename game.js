@@ -6888,6 +6888,60 @@ const OBJECT_RASTER = {
   }
 };
 
+/** GG-OBJECTS-RASTER-02 VISUAL-FIX-01: what ties a bitmap object to the ground and names its class -- the equivalent of the vector
+ *  look's `K.base()` (soft contact shadow lower right and, for T2+, a thin tier ring in the class color), drawn UNDER the bitmap. The vector look's extra pool of class light is left out: it costs fill rate on the big kinds and the ring names the class.
+ *  Per kind [cx, bottom, halfWidth, ring] in units of r, measured from the bitmap itself (its opaque silhouette: centre x, lowest
+ *  point, half width; ring 0 = none, as the vector T1 had none). One cached 64 px shadow stamp and one ellipse stroke per
+ *  object: no shadowBlur, no per-frame gradient, no new large canvas. The class color is the TIERS one passed to drawObjectArt(). */
+const OBJECT_RASTER_BASE = {
+  fragment: [-0.04, 0.86, 0.89, 0],
+  kapsula: [0, 0.95, 0.9, 0],
+  lawka: [0, 0.5, 0.93],
+  kiosk: [-0.03, 0.63, 0.97],
+  skrzynia: [-0.06, 0.57, 0.89],
+  latarnia: [-0.03, 0.97, 0.6],
+  drzewo: [-0.04, 0.68, 0.94],
+  znacznik: [-0.15, 0.9, 0.78],
+  samochod: [0.04, 0.35, 0.98],
+  wezel: [0.11, 0.41, 0.88],
+  pylon: [0.2, 0.61, 0.65],
+  pawilon: [-0.02, 0.43, 0.96],
+  billboard: [-0.04, 0.69, 0.96],
+  magazyn: [-0.01, 0.39, 0.99],
+  landmark: [-0.02, 0.8, 0.92],
+  autobus: [-0.03, 0.3, 0.98],
+  tramwaj: [-0.01, 0.26, 1],
+  ciezarowka: [0.04, 0.29, 0.93],
+  wiezowiec: [0, 0.8, 0.96],
+  maszt: [0, 1.03, 0.68],
+  kopula: [0, 0.38, 0.97]
+};
+const OBJECT_BASE_STAMPS = { shadow: null, ring: new Map() };
+function objectBaseStamps(color) {
+  let sh = OBJECT_BASE_STAMPS.shadow;
+  if (!sh) {
+    sh = document.createElement('canvas'); sh.width = sh.height = 64;
+    const c = sh.getContext('2d'), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(2, 6, 18, 0.62)'); g.addColorStop(0.55, 'rgba(2, 6, 18, 0.34)'); g.addColorStop(1, 'rgba(2, 6, 18, 0)');
+    c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+    OBJECT_BASE_STAMPS.shadow = sh;
+  }
+  let ring = OBJECT_BASE_STAMPS.ring.get(color);
+  if (!ring) OBJECT_BASE_STAMPS.ring.set(color, ring = rgbaColor(color, 0.42));
+  return { shadow: sh, ring };
+}
+function drawObjectRasterBase(ctx, kind, color, r) {
+  const b = OBJECT_RASTER_BASE[kind];
+  if (!b) return;
+  const st = objectBaseStamps(color);
+  const hw = b[2] * r, cx = b[0] * r, yc = (b[1] - 0.1 * b[2]) * r;   // the ground ellipse sits just behind the lowest point
+  ctx.drawImage(st.shadow, cx + r * 0.05 - hw * 0.9, yc + r * 0.01 - hw * 0.3, hw * 1.8, hw * 0.6);
+  if (b[3] !== 0) {
+    ctx.strokeStyle = st.ring; ctx.lineWidth = Math.max(0.7, r * 0.035);
+    ctx.beginPath(); ctx.ellipse(cx, yc, hw * 1.02, hw * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
 /** Cached offscreen sprite for one object kind/color/radius (+ variant). */
 function getObjectSprite(kind, color, r, variant) {
   const rr = Math.round(r);
@@ -6945,6 +6999,7 @@ function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
     ctx.save();
     ctx.translate(0, bob);
     ctx.scale(breathe, breathe);
+    drawObjectRasterBase(ctx, kind, color, r);
     ctx.drawImage(bmp.img, -bmp.half, -bmp.half, bmp.half * 2, bmp.half * 2);
     if (opts.live !== false) drawObjectLive(ctx, kind, color, r, t, seed, true);
     ctx.restore();

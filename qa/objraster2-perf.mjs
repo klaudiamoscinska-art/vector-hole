@@ -24,7 +24,7 @@ function jsBytes(root) {
   return { raw, gzip: gz, files: files.length };
 }
 
-async function once(root, exp, frame, { gfx, zoom, staged }) {
+async function once(root, exp, frame, { gfx, zoom, staged, max }) {
   const srv = await serve({ root: exp });
   const f = FRAMES[frame];
   const t0 = Date.now();
@@ -37,6 +37,8 @@ async function once(root, exp, frame, { gfx, zoom, staged }) {
   const cdp = await g.context.newCDPSession(g.page);
   await cdp.send('Performance.enable');
   await stageScene(g.page, { sector: 'p', staged, zoom, gfx });
+  // max: a huge vortex (r 480), the camera pulled out, ~80 objects in view
+  if (max) await g.page.evaluate(() => { const gm = window.game; gm.player.setRadius(480); for (let k = 0; k < 30; k++) gm.update(1 / 60); gm.camera.x = gm.player.x; gm.camera.y = gm.player.y; });
   // warm: first paints start the lazy decodes; wait until they are ready (candidate) / sprites cached (base)
   const warmStart = Date.now();
   await g.page.evaluate(() => { for (let k = 0; k < 6; k++) window.game.render(k / 60); });
@@ -68,6 +70,7 @@ export async function run({ base, reps = 5 }) {
   const exps = { base: exportedRoot(roots.base, 'pbase'), after: exportedRoot(roots.after, 'pafter') };
   const cases = [];
   for (const frame of ['pc', 'phone']) for (const [gfx, zoom, staged] of [[2, 0.58, true], [2, 0.9, true], [1, 0.58, true], [0, 0.58, true], [2, 0.58, false]]) cases.push({ frame, gfx, zoom, staged });
+  for (const frame of ['pc', 'phone']) cases.push({ frame, gfx: 2, zoom: 0.9, staged: false, max: true });
   const out = { js: { base: jsBytes(roots.base), after: jsBytes(roots.after) }, cases: [] };
   for (const c of cases) {
     const res = { base: [], after: [] };
@@ -75,7 +78,7 @@ export async function run({ base, reps = 5 }) {
     const sum = (v) => ({ frameMedianMs: +med(res[v].map(r => r.median)).toFixed(2), frameP95Ms: +med(res[v].map(r => r.p95)).toFixed(2), frameMaxMs: +med(res[v].map(r => r.max)).toFixed(2), loadMs: med(res[v].map(r => r.loadMs)), heapMB: +med(res[v].map(r => r.heapMB)).toFixed(1), vectorSpriteMB: +(med(res[v].map(r => r.vecBytes)) / 1048576).toFixed(2), vectorSprites: res[v][0].vecSprites, bitmapMB: +(med(res[v].map(r => r.bitmapBytes)) / 1048576).toFixed(2), bitmaps: res[v][0].bitmaps, errors: res[v].reduce((a, r) => a + r.errors, 0) });
     const row = { ...c, base: sum('base'), after: sum('after') };
     out.cases.push(row);
-    console.log(`${c.frame} gfx${c.gfx} zoom ${c.zoom} ${c.staged ? 'staged' : 'natural'}: frame median ${row.base.frameMedianMs} -> ${row.after.frameMedianMs} ms, p95 ${row.base.frameP95Ms} -> ${row.after.frameP95Ms}, heap ${row.base.heapMB} -> ${row.after.heapMB} MB, art px: vector ${row.base.vectorSpriteMB} MB -> vector ${row.after.vectorSpriteMB} + bitmaps ${row.after.bitmapMB} MB (${row.after.bitmaps}), load ${row.base.loadMs} -> ${row.after.loadMs} ms, errors ${row.base.errors}/${row.after.errors}`);
+    console.log(`${c.frame} gfx${c.gfx} zoom ${c.zoom} ${c.max ? 'MAX' : c.staged ? 'staged' : 'natural'}: frame median ${row.base.frameMedianMs} -> ${row.after.frameMedianMs} ms, p95 ${row.base.frameP95Ms} -> ${row.after.frameP95Ms}, heap ${row.base.heapMB} -> ${row.after.heapMB} MB, art px: vector ${row.base.vectorSpriteMB} MB -> vector ${row.after.vectorSpriteMB} + bitmaps ${row.after.bitmapMB} MB (${row.after.bitmaps}), load ${row.base.loadMs} -> ${row.after.loadMs} ms, errors ${row.base.errors}/${row.after.errors}`);
   }
   fs.mkdirSync(path.join(OUT, 'objraster2'), { recursive: true });
   fs.writeFileSync(path.join(OUT, 'objraster2', 'perf.json'), JSON.stringify(out, null, 1));

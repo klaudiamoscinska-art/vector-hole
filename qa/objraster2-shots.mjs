@@ -1,5 +1,5 @@
 // GG-OBJECTS-RASTER-02 evidence, not a test: real Arena frames (the game's own renderer, after the lazy decode) with the 21 object bitmaps.
-//   node qa/objraster2-shots.mjs [--root=DIR for the BEFORE checkout (a worktree of origin/main)] [--only=pc,mobile] [--sectors=p,k,o,g,d,R]
+//   node qa/objraster2-shots.mjs [--root=DIR for the BEFORE checkout (a worktree of origin/main)] [--only=pc,mobile] [--sectors=p,k,o,g,d,R] [--tag=-fix1 (output folder suffix)] [--scenes=natural,staged,zoom058,stagednormal,dense]
 // Scenes (all described here because two of them are staged by QA, they are not a natural round):
 //   natural-<sector>  an unmodified Arena round (seed 2024): the camera on the sector's centroid block, no object moved
 //   staged-<sector>   the same round with one object of every one of the 21 kinds MOVED by QA next to each other (rows T1..T6) in that
@@ -103,8 +103,9 @@ export function exportedRoot(root, name) {
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(root)) if (/\.(js|html|css)$/.test(f) && f !== 'game.js') fs.copyFileSync(path.join(root, f), path.join(dir, f));
   const hasRaster = fs.existsSync(path.join(root, 'objects-raster-3.js'));
-  fs.writeFileSync(path.join(dir, 'game.js'), fs.readFileSync(path.join(root, 'game.js'), 'utf8') +
-    `\nexport { drawObjectArt as __qaDraw, OBJECT_SPRITE_CACHE as __qaSpriteCache, getObjectSprite as __qaSprite${hasRaster ? ', OBJECT_RASTER as __qaRaster, OBJECT_RASTER_META as __qaMeta' : ''} };\n`);
+  const gameSrc = fs.readFileSync(path.join(root, 'game.js'), 'utf8'), hasBase = gameSrc.includes('const OBJECT_RASTER_BASE');
+  fs.writeFileSync(path.join(dir, 'game.js'), gameSrc +
+    `\nexport { drawObjectArt as __qaDraw, OBJECT_SPRITE_CACHE as __qaSpriteCache, getObjectSprite as __qaSprite${hasRaster ? ', OBJECT_RASTER as __qaRaster, OBJECT_RASTER_META as __qaMeta' : ''}${hasBase ? ', OBJECT_RASTER_BASE as __qaBase, OBJECT_BASE_STAMPS as __qaStamps' : ''} };\n`);
   return dir;
 }
 
@@ -143,11 +144,11 @@ export async function liveSheet(page, file, q, kinds = ORDER, maxS = 3.2, cell =
   await page.evaluate(() => document.getElementById('qaLive').remove());
 }
 
-export async function run({ base = null, only = ['pc', 'mobile'], sectors = Object.keys(SECTORS) } = {}) {
+export async function run({ base = null, only = ['pc', 'mobile'], sectors = Object.keys(SECTORS), tag = '', scenes = null } = {}) {
   const variants = [['before', base ? path.resolve(base) : null], ['after', ROOT]].filter(v => v[1]);
   const facts = {};
   for (const [name, root] of variants) {
-    const dir = path.join(OUT, 'objraster2', name);
+    const dir = path.join(OUT, 'objraster2' + tag, name);
     fs.mkdirSync(dir, { recursive: true });
     const srv = await serve({ root });
     facts[name] = { errors: [], shots: {} };
@@ -156,7 +157,7 @@ export async function run({ base = null, only = ['pc', 'mobile'], sectors = Obje
         const g = await session(srv.url, frame);
         try {
           for (const sector of sectors) {
-            for (const [scene, staged, zoom] of [['natural', false, frame === 'pc' ? 0.9 : 0.8], ['staged', true, 0.62], ['zoom058', true, 0.58], ...(frame === 'mobile' ? [['dense', true, 1.3]] : [])]) {   // dense = 2.6 device px per unit: the 3 px bitmaps
+            for (const [scene, staged, zoom] of [['natural', false, frame === 'pc' ? 0.9 : 0.8], ['staged', true, 0.62], ['zoom058', true, 0.58], ['stagednormal', true, frame === 'pc' ? 0.9 : 0.8], ...(frame === 'mobile' ? [['dense', true, 1.3]] : [])].filter(x => !scenes || scenes.includes(x[0]))) {   // dense = 2.6 device px per unit: the 3 px bitmaps
               const f = await stageScene(g.page, { sector, staged, zoom });
               await paintAfterDecode(g.page, scene === 'natural' && sector !== sectors[0] ? 200 : 1800);
               const file = path.join(dir, `${frame}-${scene}-${sector}.png`);
@@ -169,13 +170,13 @@ export async function run({ base = null, only = ['pc', 'mobile'], sectors = Obje
       }
     } finally { srv.server.close(); }
     fs.writeFileSync(path.join(dir, 'facts.json'), JSON.stringify(facts[name], null, 1));
-    console.log(`  ${name}: ${Object.keys(facts[name].shots).length} shots, ${facts[name].errors.length} errors -> qa/out/objraster2/${name}/`);
+    console.log(`  ${name}: ${Object.keys(facts[name].shots).length} shots, ${facts[name].errors.length} errors -> qa/out/objraster2${tag}/${name}/`);
   }
   return facts;
 }
 
 if (isMain(import.meta.url)) {
   const sec = opt('sectors', null), only = opt('only', null);
-  run({ base: opt('root', null), only: only ? only.split(',') : undefined, sectors: sec ? sec.split(',') : undefined })
+  run({ base: opt('root', null), only: only ? only.split(',') : undefined, sectors: sec ? sec.split(',') : undefined, tag: opt('tag', ''), scenes: opt('scenes', null) ? opt('scenes', '').split(',') : null })
     .then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });
 }

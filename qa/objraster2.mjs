@@ -229,6 +229,53 @@ export async function run(url, baseUrl, pack) {
   const cA = await camp(exp.url), cB = await camp(expBase.url);
   const sameC = [0, 11, 23, 55].every(k => cA[k] === cB[k] && cA[k]);
   results.push(report('OR-5 Campaign (missions 1, 12, 24, 56: frames) draws no bitmap, requests none, and is pixel-identical to the base', sameC && cA.requested === 0, `${JSON.stringify(cA)} vs ${JSON.stringify(cB)}`));
+
+  // OR-7 (VISUAL-FIX-01): the ground base under a bitmap: contact shadow + class light + thin tier ring, from stamps
+  const g7 = await session(exp.url, 'pc');
+  const b7 = await g7.page.evaluate(async () => {
+    const m = await import(document.querySelector('script[type="module"][src]').src);
+    const gm = window.game, sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    gm.applyGfx(2);
+    window.__qaSeedRandom(2024); gm.startRound({ seed: 2024 }); cancelAnimationFrame(gm.rafId); gm.running = false;
+    const kinds = ['fragment', 'kapsula', 'lawka', 'kiosk', 'skrzynia', 'latarnia', 'drzewo', 'znacznik', 'samochod', 'wezel', 'pylon', 'pawilon', 'billboard', 'magazyn', 'landmark', 'autobus', 'tramwaj', 'ciezarowka', 'wiezowiec', 'maszt', 'kopula'];
+    const pick = {}; for (const o of gm.objects) if (!pick[o.subtype]) pick[o.subtype] = o;
+    let k0 = 0; const cx = 700, cy = 700;
+    for (const k of kinds) { const o = pick[k]; o.x = cx + (k0 % 7) * 180; o.y = cy + Math.floor(k0 / 7) * 260; k0++; }
+    gm.player.x = 100; gm.player.y = 100; gm.update(1 / 60);
+    gm.zoom = 0.9; gm.camera.x = cx + 540; gm.camera.y = cy + 260;
+    for (let k = 0; k < 6; k++) gm.render(k / 60);
+    await sleep(2200);
+    const strokes = [], origEll = CanvasRenderingContext2D.prototype.ellipse, origCreate = document.createElement.bind(document);
+    let blur = 0, canvases = 0;
+    // the effects of the objects themselves (the mast beacon) set shadowBlur too: count a frame without the base, then with it
+    const saved = { ...m.__qaBase }; for (const k of Object.keys(saved)) delete m.__qaBase[k];
+    const d0 = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
+    Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', { configurable: true, get() { return d0.get.call(this); }, set(v) { if (v) blur++; d0.set.call(this, v); } });
+    document.createElement = function (t) { if (String(t).toLowerCase() === 'canvas') canvases++; return origCreate(t); };
+    for (let k = 0; k < 10; k++) gm.render(k / 60);
+    Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', d0);
+    const blurWithout = blur; blur = 0; Object.assign(m.__qaBase, saved);
+    for (let k = 0; k < 3; k++) gm.render(k / 60);
+    const stampsBefore = [m.__qaStamps.shadow, ...m.__qaStamps.ring.values()];
+    CanvasRenderingContext2D.prototype.ellipse = function (x, y, rx, ry) { strokes.push({ style: this.strokeStyle, lw: this.lineWidth }); return origEll.apply(this, arguments); };
+    const d = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
+    Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', { configurable: true, get() { return d.get.call(this); }, set(v) { if (v) blur++; d.set.call(this, v); } });
+    document.createElement = function (t) { if (String(t).toLowerCase() === 'canvas') canvases++; return origCreate(t); };
+    for (let k = 0; k < 10; k++) gm.render(k / 60);
+    CanvasRenderingContext2D.prototype.ellipse = origEll; document.createElement = origCreate;
+    Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', d);
+    const ringColors = [...new Set(strokes.filter(s => /^rgba\(\d+,\s*\d+,\s*\d+,\s*0\.42\)$/.test(String(s.style))).map(s => String(s.style).replace(/\s/g, '')))];
+    const tierColors = Object.values(TIERS).filter(t => t.count > 0).map(t => t.color);
+    const stampsAfter = [m.__qaStamps.shadow, ...m.__qaStamps.ring.values()];
+    return { blurWithout, stampsStable: stampsBefore.length === stampsAfter.length && stampsBefore.every((x, i) => x === stampsAfter[i]), baseKeys: Object.keys(m.__qaBase).length, stamps: m.__qaStamps.ring.size + (m.__qaStamps.shadow ? 1 : 0), blur, canvases, ringColors, tierColors, strokes: strokes.length,
+      maxExtent: +Math.max(...Object.entries(m.__qaBase).map(([k, b]) => Math.max(Math.abs(b[0]) + b[2] * 1.1, b[1] + 0.2 * b[2]))).toFixed(2),
+      noRingT1: m.__qaBase.fragment[3] === 0 && m.__qaBase.kapsula[3] === 0 && Object.entries(m.__qaBase).every(([k, b]) => k === 'fragment' || k === 'kapsula' || b[3] !== 0) };
+  });
+  await g7.browser.close();
+  const hex = (c) => { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const expect = [...new Set(b7.tierColors)].map(c => { const [r, g, b] = hex(c); return 'rgba(' + r + ',' + g + ',' + b + ',0.42)'; });
+  const ringOk = b7.ringColors.length >= 4 && b7.ringColors.every(c => expect.includes(c));
+  results.push(report('OR-7 every kind has its ground base; rings use only TIERS class colors (T1 none, as in the vector look); the stamps are built once (the same canvases every frame) and a frame sets no more shadowBlur than a frame without the base; at most 7 cached 64 px stamps; the base stays inside 1.3 r', b7.baseKeys === 21 && b7.noRingT1 && ringOk && b7.stampsStable && b7.blur === b7.blurWithout && b7.stamps <= 7 && b7.maxExtent <= 1.3, JSON.stringify(b7)));
   exp.server.close(); expBase.server.close();
 
   // OR-6 static: the flag only where the Arena draws a WorldObject
