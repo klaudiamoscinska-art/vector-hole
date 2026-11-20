@@ -8,6 +8,8 @@ import { PS_TEX_768 } from './ps-tex-768.js';
 import { PS_TEX_512 } from './ps-tex-512.js';
 import { PI_TEX_768 } from './pi-tex-768.js';
 import { PI_TEX_512 } from './pi-tex-512.js';
+import { GG_TEX_768 } from './gg-tex-768.js';
+import { GG_TEX_512 } from './gg-tex-512.js';
 
 /* =========================================================
    GLITCH GULP (until 2026-11: Vector Hole)
@@ -9463,6 +9465,12 @@ const PS_LOT_TEX = makeLotTex({ 768: PS_TEX_768, 512: PS_TEX_512 }, 'port');
  *  also carry their own frame). Looks only. */
 const PI_PARK_MAP = [[, , , 0, 1, 2, 3, 4], [, , , , 5, 0, 1, 2], [, , , , 3, 4, 5], [, , , , , 1]];
 const PI_LOT_TEX = makeLotTex({ 768: PI_TEX_768, 512: PI_TEX_512 }, 'park');
+/** GG-GALERIA-GLITCH-EXACT-6: Arena Galeria Glitch (map key `g`, canonical district id `galeria`, 14 blocks) lots are the textures GG-A..F (0-5),
+ *  by an explicit graphic map [j][i] (PROPOSED assignment, owner review before merge): A2 B2 C2 D2 E3 F3, no equal side neighbours,
+ *  no random roll. Same lazy decode / vector fallback / per-district cache drop and the same source inset as TG / PS / PI (the GG sheets
+ *  also carry their own frame). Looks only. */
+const GG_GALERIA_MAP = [[], [], [], [], [], [, , , 2, 4, 5], [, , 3, 0, 5, 1, 4], [, , 1, 2, 4, 3, 0, 5]];
+const GG_LOT_TEX = makeLotTex({ 768: GG_TEX_768, 512: GG_TEX_512 }, 'galeria');
 
 const CITY_ART = (() => {
   const P = CITY_PITCH, R = CITY_ROAD, B = CITY_BLEED;
@@ -10100,8 +10108,9 @@ const CITY_ART = (() => {
       const tgv = !theme && d === 'dachy' ? TG_DACHY_MAP[j] && TG_DACHY_MAP[j][i] : undefined; // GG-TG-EXACT-6
       const psv = !theme && d === 'port' ? PS_PORT_MAP[j] && PS_PORT_MAP[j][i] : undefined; // GG-PS-EXACT-6
       const piv = !theme && d === 'park' ? PI_PARK_MAP[j] && PI_PARK_MAP[j][i] : undefined; // GG-PI-EXACT-6
-      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : psv !== undefined ? PS_LOT_TEX.get(psv, rich) : piv !== undefined ? PI_LOT_TEX.get(piv, rich) : null;
-      if (pm && pmv === undefined) { // TG, PS and PI sheets carry their own frame: draw the surface inside TG_LOT_INSET; PM is drawn whole
+      const ggv = !theme && d === 'galeria' ? GG_GALERIA_MAP[j] && GG_GALERIA_MAP[j][i] : undefined; // GG-GALERIA-GLITCH-EXACT-6
+      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : psv !== undefined ? PS_LOT_TEX.get(psv, rich) : piv !== undefined ? PI_LOT_TEX.get(piv, rich) : ggv !== undefined ? GG_LOT_TEX.get(ggv, rich) : null;
+      if (pm && pmv === undefined) { // TG, PS, PI and GG sheets carry their own frame: draw the surface inside TG_LOT_INSET; PM is drawn whole
         const w = pm.naturalWidth, h = pm.naturalHeight, [il, it, ir, ib] = TG_LOT_INSET;
         c.drawImage(pm, il * w, it * h, (1 - il - ir) * w, (1 - it - ib) * h, lx, ly, ls, ls);
       } else if (pm) c.drawImage(pm, lx, ly, ls, ls);
@@ -10192,7 +10201,7 @@ class CityFloor {
     c.setTransform(px / (P + 2 * B), 0, 0, px / (P + 2 * B), 0, 0);
     c.translate(B - i * P, B - j * P);
     const rich = this.rich;
-    if (!theme) { PM_LOT_TEX.watch(this); TG_LOT_TEX.watch(this); PS_LOT_TEX.watch(this); PI_LOT_TEX.watch(this); }
+    if (!theme) { PM_LOT_TEX.watch(this); TG_LOT_TEX.watch(this); PS_LOT_TEX.watch(this); PI_LOT_TEX.watch(this); GG_LOT_TEX.watch(this); }
     paintCityChunk(c, i, j, theme, rich);
     this.renders++;
     const key = `${theme || '*'}|${i}|${j}`;
