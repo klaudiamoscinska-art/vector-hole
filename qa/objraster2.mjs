@@ -48,16 +48,21 @@ const WORLD = `(async (arg) => {
   const g = window.game, res = {};
   const fnv = (s) => { let a = 0x811c9dc5; for (let i = 0; i < s.length; i++) a = Math.imul(a ^ s.charCodeAt(i), 16777619); return (a >>> 0).toString(16); };
   const dump = (o) => JSON.stringify(Object.keys(o).sort().filter(k => !/At$/.test(k) && ['number', 'string', 'boolean'].includes(typeof o[k])).map(k => [k, typeof o[k] === 'number' ? Math.round(o[k] * 1000) / 1000 : o[k]]));
+  // GG-OBJECTS-FIX-03: an Arena object's position is the spawn rule's (no object spawned on another), so it is compared by that rule
+  // (footprint overlaps, below) and every OTHER field against the base; bots keep every field
+  const dumpObj = (o) => JSON.stringify(Object.keys(o).sort().filter(k => k !== 'x' && k !== 'y' && !/At$/.test(k) && ['number', 'string', 'boolean'].includes(typeof o[k])).map(k => [k, typeof o[k] === 'number' ? Math.round(o[k] * 1000) / 1000 : o[k]]));
+  const allObj = () => g.objects.concat(g.waitingObjects || []);
+  const overlaps = () => { let n = 0; const L = g.objects; for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) if ((L[i].x - L[j].x) ** 2 + (L[i].y - L[j].y) ** 2 < (L[i].radius + L[j].radius) ** 2) n++; return n; };
   const stop = () => { if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false; };
   for (const seed of arg.seeds) {
     window.__qaSeedRandom(seed);
     g.startRound({ seed }); stop();
     for (let k = 0; k < 30; k++) g.update(1 / 60);
-    res['arena-' + seed] = { n: g.objects.length, hash: fnv(g.objects.map(dump).join('|') + '#' + g.bots.map(dump).join('|')), random: window.__qaRandomCalls };
+    res['arena-' + seed] = { n: allObj().length, hash: fnv(allObj().map(dumpObj).join('|') + '#' + g.bots.map(dump).join('|')), random: window.__qaRandomCalls, overlaps: overlaps() };
   }
   window.__qaSeedRandom(5); g.startDailyChallenge(); stop();
   for (let k = 0; k < 30; k++) g.update(1 / 60);
-  res.daily = { n: g.objects.length, hash: fnv(g.objects.map(dump).join('|')), random: window.__qaRandomCalls };
+  res.daily = { n: allObj().length, hash: fnv(allObj().map(dumpObj).join('|')), random: window.__qaRandomCalls, overlaps: overlaps() };
   let n = 0, all = '';
   for (const def of CAMPAIGN_MISSIONS) {
     window.__qaSeedRandom(11);
@@ -79,6 +84,8 @@ async function world(url) {
 /** Hash of the whole game canvas after painting the scene. */
 const HASH = `(() => { const c = window.game.canvas, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let a = 0x811c9dc5; for (let i = 0; i < d.length; i += 1) a = Math.imul(a ^ d[i], 16777619); return (a >>> 0).toString(16); })()`;
 const PAINT = `(() => { for (let k = 0; k < 6; k++) window.game.render(window.performance.now() / 1000); })()`;
+/** GG-OBJECTS-FIX-03 (QA only): the candidate without its layout step, so a frame shows the base's positions (OR-3c/d/e). */
+const LAYOUT_OFF = `(() => { let g; Object.defineProperty(window, 'game', { configurable: true, get() { return g; }, set(v) { g = v; if (v) { v.separateObjects = () => null; v.settleRespawn = () => 0; } } }); })();`;
 let BREAK = '';   // set in run(): breaks exactly the 42 object bitmaps (matched by the tail of their data URL), never a floor texture
 
 async function frames(url, { init = null, gfx = 2, wait = 1800, immediate = false } = {}) {
@@ -103,7 +110,9 @@ async function frames(url, { init = null, gfx = 2, wait = 1800, immediate = fals
 export async function run(url, baseUrl, pack) {
   const results = [];
   const r2 = urlsOf('objects-raster-2.js'), r3 = urlsOf('objects-raster-3.js');
-  const tails = [...Object.values(r2), ...Object.values(r3)].map(u => u.slice(-60));
+  // GG-OBJECTS-FIX-03: the base's T1 bitmaps differ (lossy) -- its object bitmaps are broken by the same hook too
+  const baseDir = path.resolve(process.argv.find(a => a.startsWith('--base=')).slice(7)), baseUrls = (q) => [...fs.readFileSync(path.join(baseDir, `objects-raster-${q}.js`), 'utf8').matchAll(/^\s+(\w+): '(data:image\/webp;base64,[^']+)'/gm)].map(m => m[2]);
+  const tails = [...Object.values(r2), ...Object.values(r3), ...baseUrls(2), ...baseUrls(3)].map(u => u.slice(-60));
   BREAK = `(() => { const T = new Set(${JSON.stringify(tails)}); const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src'); Object.defineProperty(HTMLImageElement.prototype, 'src', { set(v) { v = String(v); d.set.call(this, T.has(v.slice(-60)) ? 'data:image/webp;base64,AAAA' : v); }, get() { return d.get.call(this); } }); })();`;
   const g0 = await session(url, 'pc');
   const dec = await decodeAll(g0.page, { 2: r2, 3: r3 });
@@ -133,21 +142,25 @@ export async function run(url, baseUrl, pack) {
   } else results.push(report('OR-1b package SHA-256', true, 'NOT RUN: no --pack=DIR'));
 
   const wAfter = await world(url), wBase = await world(baseUrl);
-  const diff = Object.keys(wBase).filter(k => JSON.stringify(wBase[k]) !== JSON.stringify(wAfter[k]));
-  results.push(report('OR-2 logical world identical to the base: Arena seeds 2024 / 7 / 99001 + Daily (every object and bot field, RNG draws) and all 240 campaign missions', diff.length === 0 && wAfter.campaign.missions === 240, `${JSON.stringify(wAfter)} diff: ${diff.join(',') || 'none'}`));
+  const strip = (w) => JSON.stringify(Object.fromEntries(Object.entries(w).map(([k, v]) => [k, v && typeof v === 'object' ? { ...v, overlaps: undefined } : v])));
+  const diff = Object.keys(wBase).filter(k => JSON.stringify(JSON.parse(strip({ [k]: wBase[k] }))) !== JSON.stringify(JSON.parse(strip({ [k]: wAfter[k] }))));
+  const arenaKeys = Object.keys(wAfter).filter(k => k !== 'campaign'), overlapsLeft = arenaKeys.reduce((a, k) => a + wAfter[k].overlaps, 0), overlapsBase = arenaKeys.reduce((a, k) => a + wBase[k].overlaps, 0);
+  results.push(report('OR-2 logical world vs the base (GG-OBJECTS-FIX-03 spec): Arena seeds 2024 / 7 / 99001 + Daily -- object count, every object field but the position, every bot field, RNG draws identical; positions follow the spawn rule (0 footprint overlaps; the picture rule: qa/objfix3.mjs); all 240 campaign missions identical', diff.length === 0 && wAfter.campaign.missions === 240 && overlapsLeft === 0, `${JSON.stringify(wAfter)} diff: ${diff.join(',') || 'none'}; footprint overlaps ${overlapsBase} (base) -> ${overlapsLeft}`));
 
   const baseFrames = await frames(baseUrl), baseFrames2 = await frames(baseUrl);
   const detA = JSON.stringify(baseFrames) === JSON.stringify(baseFrames2);
   const withR = await frames(url);
-  const brokenAfter = await frames(url, { init: BREAK }), brokenBase = await frames(baseUrl, { init: BREAK });
-  const g0Base = await frames(baseUrl, { gfx: 0, wait: 300 }), g0After = await frames(url, { gfx: 0, wait: 300 });
-  const imBase = await frames(baseUrl, { immediate: true }), imAfter = await frames(url, { immediate: true });
-  const g1Base = await frames(baseUrl, { gfx: 1, init: BREAK }), g1Broken = await frames(url, { gfx: 1, init: BREAK });
+  // GG-OBJECTS-FIX-03: OR-3c/d/e compare the DRAWING with the base: the candidate's layout step (separateObjects / settleRespawn,
+  // instance overrides, QA only) is off there so both draw the same positions; the layout itself is OR-2 + qa/objfix3.mjs
+  const brokenAfter = await frames(url, { init: LAYOUT_OFF + BREAK }), brokenBase = await frames(baseUrl, { init: BREAK });
+  const g0Base = await frames(baseUrl, { gfx: 0, wait: 300 }), g0After = await frames(url, { gfx: 0, wait: 300, init: LAYOUT_OFF });
+  const imBase = await frames(baseUrl, { immediate: true }), imAfter = await frames(url, { immediate: true, init: LAYOUT_OFF });
+  const g1Base = await frames(baseUrl, { gfx: 1, init: BREAK }), g1Broken = await frames(url, { gfx: 1, init: LAYOUT_OFF + BREAK });
   results.push(report('OR-3a the base renders deterministic frames (two runs equal) -> the comparison is sound', detA && baseFrames.errors === 0, JSON.stringify(baseFrames)));
   results.push(report('OR-3b with the bitmaps decoded the staged Arena frames DIFFER from the base (the new look is drawn)', withR.p !== baseFrames.p && withR.R !== baseFrames.R && withR.errors === 0, `${withR.p}/${withR.R} vs ${baseFrames.p}/${baseFrames.R}`));
-  results.push(report('OR-3c every bitmap undecodable -> frames pixel-identical to the base loaded with the same hook (gfx 2 and gfx 1)', brokenAfter.p === brokenBase.p && brokenAfter.R === brokenBase.R && g1Broken.p === g1Base.p && g1Broken.R === g1Base.R && brokenAfter.errors === 0, `${brokenAfter.p}/${brokenAfter.R} == ${brokenBase.p}/${brokenBase.R}; gfx1 ${g1Broken.p}/${g1Broken.R} == ${g1Base.p}/${g1Base.R}`));
-  results.push(report('OR-3d gfx 0 draws exactly the base frames (vectors)', g0After.p === g0Base.p && g0After.R === g0Base.R, `${g0After.p}/${g0After.R} == ${g0Base.p}/${g0Base.R}`));
-  results.push(report('OR-3e the first paint before any decode is the base frame (vector until the image is ready)', imAfter.p === imBase.p && imAfter.R === imBase.R, `${imAfter.p}/${imAfter.R} == ${imBase.p}/${imBase.R}`));
+  results.push(report('OR-3c every bitmap undecodable -> frames pixel-identical to the base loaded with the same hook (gfx 2 and gfx 1; same positions: layout step off)', brokenAfter.p === brokenBase.p && brokenAfter.R === brokenBase.R && g1Broken.p === g1Base.p && g1Broken.R === g1Base.R && brokenAfter.errors === 0, `${brokenAfter.p}/${brokenAfter.R} == ${brokenBase.p}/${brokenBase.R}; gfx1 ${g1Broken.p}/${g1Broken.R} == ${g1Base.p}/${g1Base.R}`));
+  results.push(report('OR-3d gfx 0 draws exactly the base frames (vectors; same positions: layout step off)', g0After.p === g0Base.p && g0After.R === g0Base.R, `${g0After.p}/${g0After.R} == ${g0Base.p}/${g0Base.R}`));
+  results.push(report('OR-3e the first paint before any decode is the base frame (vector until the image is ready; same positions: layout step off)', imAfter.p === imBase.p && imAfter.R === imBase.R, `${imAfter.p}/${imAfter.R} == ${imBase.p}/${imBase.R}`));
 
   // OR-4 / OR-5 on the exported copy
   const exp = await serve({ root: exportedRoot(ROOT, 'after') }), expBase = await serve({ root: exportedRoot(path.resolve(process.argv.find(a => a.startsWith('--base=')).slice(7)), 'base') });

@@ -10965,13 +10965,31 @@ function roadLanePoint(next) {
 }
 
 /** GG-OBJECTS-FIX-03: no two Arena objects are spawned on top of each other (T1-T6, golden core, portal wave).
- *  An object's footprint is its hitbox circle (radius r -- the circle the eat checks use; the ground ellipse under a bitmap is
- *  at most 1.0 r wide); at spawn two footprints keep SPAWN_GAP world units of floor between them. A spot that is taken moves to
- *  the nearest free one on a fixed golden-angle spiral around it, then (never needed at the game's density) a fixed raster scan
- *  of the object's whole allowed area. Neither draws a random number, so the seeded stream and every other draw stay exactly
- *  as before (same seed = same layout, Daily included). Both are bounded; with no room left the object keeps its drawn spot --
- *  it is never removed -- and the caller counts it. Radius, hitbox, tiers, eat gates and the spawn areas are not touched. */
+ *  Two clearances, both at spawn time:
+ *   - the footprint: the hitbox circle (radius r -- the circle the eat checks use); two footprints keep SPAWN_GAP apart;
+ *   - the picture (REVIEW-01): what the player sees -- the bitmap's opaque silhouette box (SPAWN_VIEW, measured from the
+ *     approved 3 px bitmaps at alpha > 64, in units of r) united with the ground ring, grown by the idle breathe and bob.
+ *     Two of these boxes keep SPAWN_VIEW_GAP apart, so no picture is spawned over another: neither a small object standing
+ *     on a big one (the small one draws on top: biggest first, DEVICE-QA-1) nor a partly covered one. Natural 2.5D cover can
+ *     still happen later when things move (a magnet pull, a vortex), never at spawn.
+ *  A taken spot moves to the nearest clear one: a fixed golden-angle spiral around it, then square rings growing out from it
+ *  over the object's whole allowed area. No random number is drawn, so the seeded stream and every other draw stay exactly
+ *  as before (same seed = same layout, Daily included). Both searches are bounded. With no clear spot anywhere (never at the
+ *  game's density; only when the board is overfilled) settleSpawn() reports it and the CALLER keeps the object off the board
+ *  -- in Game.waitingObjects, retried every 0.5 s -- it is never placed over another one and never removed.
+ *  Radius, hitbox, tiers, eat gates, counts and the spawn areas are not touched. */
 const SPAWN_GAP = 6;
+const SPAWN_VIEW_GAP = 3;
+const SPAWN_VIEW = {
+  fragment: [-0.95, 0.95, -1.24, 0.86], kapsula: [-0.93, 0.97, -1.37, 0.97],
+  lawka: [-0.97, 0.98, -0.83, 0.53], kiosk: [-1, 0.97, -0.97, 0.65], skrzynia: [-0.97, 0.9, -0.9, 0.58], latarnia: [-0.65, 0.57, -1.35, 1],
+  drzewo: [-1, 0.93, -1, 0.7], znacznik: [-0.93, 0.82, -1.25, 0.92],
+  samochod: [-0.94, 1.03, -0.72, 0.4], wezel: [-0.79, 1.01, -0.77, 0.45], pylon: [-0.48, 0.9, -0.97, 0.64],
+  pawilon: [-0.99, 0.97, -0.73, 0.44], billboard: [-1, 0.94, -1, 0.7], magazyn: [-1, 1, -0.69, 0.4], landmark: [-0.96, 0.94, -1.12, 0.83],
+  autobus: [-1.01, 0.96, -0.59, 0.31], tramwaj: [-1.01, 1.01, -0.54, 0.27], ciezarowka: [-0.89, 0.98, -0.58, 0.31],
+  wiezowiec: [-0.99, 0.99, -1.09, 0.81], maszt: [-0.74, 0.75, -1.31, 1.05], kopula: [-0.99, 0.99, -0.65, 0.39]
+};
+const SPAWN_VIEW_OTHER = [-1.15, 1.15, -1.15, 1.15];   // golden core, portal (vector looks, no bitmap)
 const SPAWN_SPIRAL = (() => {
   const n = 900, a = new Float64Array(n * 2);
   for (let j = 1; j <= n; j++) {
@@ -10981,38 +10999,64 @@ const SPAWN_SPIRAL = (() => {
   }
   return a;
 })();
-/** True when a footprint of radius r at (x, y) keeps SPAWN_GAP clear of every live object in `others` (but `skip`). */
-function spawnSpotFree(x, y, r, others, skip) {
+/** The picture box of a `kind` of radius r centred at (x, y), in world units, written into `out` ({ l, r, t, b }). */
+function spawnViewBox(kind, r, x, y, out) {
+  const s = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER, t1 = kind === 'fragment' || kind === 'kapsula';
+  const amp = 1 + (t1 ? T1_BREATHE : 0.03), bob = Math.min(2, r * 0.08), base = OBJECT_RASTER_BASE[kind];
+  let l = s[0], rr = s[1], t = s[2], b = s[3];
+  if (base) {   // the ground ring under the bitmap (T1: OBJECT_T1's wider ring at its largest)
+    const hw = base[2], ring = t1 ? hw * 1.12 * 1.06 : hw * 1.02, yc = base[1] - 0.1 * hw;
+    l = Math.min(l, base[0] - ring); rr = Math.max(rr, base[0] + ring); b = Math.max(b, yc + hw * 0.36);
+  }
+  out.l = x + l * r * amp; out.r = x + rr * r * amp; out.t = y + t * r * amp - bob; out.b = y + b * r * amp + bob;
+  return out;
+}
+const SPAWN_BOX_A = { l: 0, r: 0, t: 0, b: 0 }, SPAWN_BOX_B = { l: 0, r: 0, t: 0, b: 0 };
+/** True when obj placed at (x, y) keeps both clearances (footprint, picture) from every live object in `others` (but obj). */
+function spawnSpotFree(obj, x, y, others) {
+  const r = obj.radius, a = spawnViewBox(obj.subtype, r, x, y, SPAWN_BOX_A);
   for (let i = 0; i < others.length; i++) {
     const o = others[i];
-    if (o === skip || o.eating || o.removed) continue;
-    const m = r + o.radius + SPAWN_GAP, dx = o.x - x;
-    if (dx >= m || dx <= -m) continue;
+    if (o === obj || o.eating || o.removed) continue;
+    const reach = 1.6 * (r + o.radius) + SPAWN_GAP + SPAWN_VIEW_GAP + 4, dx = o.x - x;
+    if (dx >= reach || dx <= -reach) continue;
     const dy = o.y - y;
-    if (dy >= m || dy <= -m) continue;
+    if (dy >= reach || dy <= -reach) continue;
+    const m = r + o.radius + SPAWN_GAP;
     if (dx * dx + dy * dy < m * m) return false;
+    const c = spawnViewBox(o.subtype, o.radius, o.x, o.y, SPAWN_BOX_B);
+    if (a.l < c.r + SPAWN_VIEW_GAP && c.l < a.r + SPAWN_VIEW_GAP && a.t < c.b + SPAWN_VIEW_GAP && c.t < a.b + SPAWN_VIEW_GAP) return false;
   }
   return true;
 }
-/** Moves obj to the nearest clear spot inside [pad, WORLD - pad] (see SPAWN_GAP). Returns 0 = was clear, 1 = moved, -1 = no
- *  room anywhere (obj left where it was drawn). */
-function settleSpawn(obj, pad, others) {
-  const r = obj.radius, lo = pad, hx = WORLD_W - pad, hy = WORLD_H - pad;
+/** Moves obj to the nearest clear spot inside [pad, WORLD - pad]; `first` = optional extra candidates (world points) tried
+ *  before the generic search (a street-trail fragment: its other lane, then along its lane). Returns 0 = was clear, 1 = moved,
+ *  -1 = no clear spot anywhere: obj is left where it was drawn and must not go on the board (the caller keeps it waiting). */
+function settleSpawn(obj, pad, others, first) {
+  const lo = pad, hx = WORLD_W - pad, hy = WORLD_H - pad;
   const x0 = clamp(obj.x, lo, hx), y0 = clamp(obj.y, lo, hy);
-  if (spawnSpotFree(x0, y0, r, others, obj)) {
+  const tryAt = (x, y) => x >= lo && x <= hx && y >= lo && y <= hy && spawnSpotFree(obj, x, y, others);
+  if (tryAt(x0, y0)) {
     if (x0 === obj.x && y0 === obj.y) return 0;
     obj.x = x0; obj.y = y0; return 1;
   }
-  const step = Math.max(2, (r + SPAWN_GAP) * 0.3);
+  if (first) for (const p of first) if (tryAt(p.x, p.y)) { obj.x = p.x; obj.y = p.y; return 1; }
+  const step = Math.max(2, (obj.radius + SPAWN_GAP) * 0.3);
   for (let j = 0; j < SPAWN_SPIRAL.length; j += 2) {
     const x = x0 + SPAWN_SPIRAL[j] * step, y = y0 + SPAWN_SPIRAL[j + 1] * step;
-    if (x < lo || x > hx || y < lo || y > hy) continue;
-    if (spawnSpotFree(x, y, r, others, obj)) { obj.x = x; obj.y = y; return 1; }
+    if (tryAt(x, y)) { obj.x = x; obj.y = y; return 1; }
   }
-  const stride = Math.max(12, r + SPAWN_GAP);
-  for (let y = lo; y <= hy; y += stride) {
-    for (let x = lo; x <= hx; x += stride) {
-      if (spawnSpotFree(x, y, r, others, obj)) { obj.x = x; obj.y = y; return 1; }
+  // square rings around the drawn spot, nearest first, until they cover the whole allowed area (<= ~20 000 candidates)
+  const stride = Math.max(8, obj.radius * 0.5, Math.sqrt((hx - lo) * (hy - lo) / 20000)), rings = Math.ceil(Math.max(WORLD_W, WORLD_H) / stride);
+  for (let k = 1; k <= rings; k++) {
+    const d = k * stride;
+    for (let i = -k; i <= k; i++) {
+      if (tryAt(x0 + i * stride, y0 - d)) { obj.x = x0 + i * stride; obj.y = y0 - d; return 1; }
+      if (tryAt(x0 + i * stride, y0 + d)) { obj.x = x0 + i * stride; obj.y = y0 + d; return 1; }
+    }
+    for (let i = -k + 1; i < k; i++) {
+      if (tryAt(x0 - d, y0 + i * stride)) { obj.x = x0 - d; obj.y = y0 + i * stride; return 1; }
+      if (tryAt(x0 + d, y0 + i * stride)) { obj.x = x0 + d; obj.y = y0 + i * stride; return 1; }
     }
   }
   return -1;
@@ -13688,7 +13732,7 @@ class Game {
    *  Wyzwania tab's map preview. */
   computeDailyLayout() {
     const { seed, dateKey } = dailySeedForDate(new Date());
-    const saved = { rng: this.rng, objects: this.objects, modifier: this.modifier };
+    const saved = { rng: this.rng, objects: this.objects, modifier: this.modifier, waitingObjects: this.waitingObjects, trailLanes: this.trailLanes, spawnStats: this.spawnStats };
     this.rng = new SeededRNG(seed);
     const modifier = this.pickModifier();
     this.createObjects(this.rng);
@@ -15553,6 +15597,8 @@ class Game {
    *  discovered in missions). */
   createObjects(rng) {
     this.objects = [];
+    this.waitingObjects = [];   // GG-OBJECTS-FIX-03: objects with no clear spot yet (never on another one, never removed)
+    this.trailLanes = new Map();   // GG-OBJECTS-FIX-03: street-trail fragment -> its lane (separateObjects())
     Object.keys(TIERS).forEach(tierName => {
       for (let i = 0; i < TIERS[tierName].count; i++) this.objects.push(new WorldObject(tierName, rng));
     });
@@ -15581,6 +15627,7 @@ class Game {
         o.x = vertical ? line + lane : along;
         o.y = vertical ? along : line + lane;
         o.trail = true;
+        this.trailLanes.set(o, { vertical, line, lane, along });
       }
     }
   }
@@ -15613,31 +15660,63 @@ class Game {
     return feast;
   }
 
-  /** GG-OBJECTS-FIX-03: the round's whole starting layout (createObjects() + street trails + starter feasts) with no two
-   *  footprints overlapping (see settleSpawn()). Run by createEntities() (startRound) and computeDailyLayout() right after layStarterFeasts(),
-   *  so the Daily preview is the real layout. Draws nothing from the rng. Fixed order: the designed patterns keep their spots
-   *  first (street trails, then starter feasts), then every other object, biggest first (the hardest to fit); an object that
-   *  overlaps one already placed moves to the nearest clear spot. The object count never changes. */
+  /** GG-OBJECTS-FIX-03: the round's whole starting layout (createObjects() + street trails + starter feasts) with no object
+   *  spawned on another one -- neither footprint nor picture (see settleSpawn()). Run by createEntities() (startRound) and
+   *  computeDailyLayout() right after layStarterFeasts(), so the Daily preview is the real layout. Draws nothing from the rng.
+   *  Fixed order: the designed patterns keep their spots first (street trails, then starter feasts), then every other object,
+   *  biggest first (the hardest to fit); an object that would cover one already placed moves to the nearest clear spot. A trail
+   *  fragment that lands on another trail (two trails drawn on the same lane) first tries the road's other lane at the same
+   *  point, then slides along its lane, so it stays a street trail. An object with no clear spot at all (only on an overfilled
+   *  board) waits off the board (this.waitingObjects, retried in updateWaitingObjects()). The object count never changes. */
   separateObjects(feast) {
     const objs = this.objects, rank = (o) => (o.trail ? 0 : feast && feast.has(o) ? 1 : 2);
     const order = objs.map((o, i) => i).sort((a, b) => rank(objs[a]) - rank(objs[b]) || (rank(objs[a]) === 2 ? objs[b].radius - objs[a].radius : 0) || a - b);
-    const placed = [], stats = { moved: 0, crowded: 0, maxShift: 0 };
+    const placed = [], waiting = [], stats = { moved: 0, crowded: 0, maxShift: 0, trailOtherLane: 0, trailSlid: 0, trailOff: 0 };
     for (const i of order) {
-      const o = objs[i], x = o.x, y = o.y;
-      const res = settleSpawn(o, o.radius + 20, placed);
-      if (res === 1) { stats.moved++; stats.maxShift = Math.max(stats.maxShift, Math.hypot(o.x - x, o.y - y)); }
-      else if (res < 0) stats.crowded++;
-      placed.push(o);
+      const o = objs[i], x = o.x, y = o.y, lane = o.trail && this.trailLanes ? this.trailLanes.get(o) : null;
+      let first = null;
+      if (lane) {   // the other lane at the same point, then along this lane / the other one, 6 units at a time (up to 30)
+        const at = (ln, al) => (lane.vertical ? { x: lane.line + ln, y: al } : { x: al, y: lane.line + ln });
+        first = [at(-lane.lane, lane.along)];
+        for (let k = 1; k <= 5; k++) for (const sg of [1, -1]) first.push(at(lane.lane, lane.along + sg * 6 * k), at(-lane.lane, lane.along + sg * 6 * k));
+      }
+      const res = settleSpawn(o, o.radius + 20, placed, first);
+      if (res === 1) {
+        stats.moved++; stats.maxShift = Math.max(stats.maxShift, Math.hypot(o.x - x, o.y - y));
+        if (lane) {
+          const across = lane.vertical ? o.x - lane.line : o.y - lane.line, al = lane.vertical ? o.y : o.x;
+          if (Math.abs(across + lane.lane) < 1e-6 && Math.abs(al - lane.along) < 1e-6) stats.trailOtherLane++;
+          else if (Math.abs(Math.abs(across) - Math.abs(lane.lane)) < 1e-6) stats.trailSlid++;
+          else stats.trailOff++;
+        }
+      }
+      if (res < 0) { stats.crowded++; waiting.push(o); } else placed.push(o);
     }
+    if (waiting.length) { this.objects = objs.filter(o => !waiting.includes(o)); this.waitingObjects = (this.waitingObjects || []).concat(waiting); }
     this.spawnStats = stats;
     return stats;
   }
 
-  /** GG-OBJECTS-FIX-03: one object (re)spawned during a round keeps clear of every live object already on the board. */
+  /** GG-OBJECTS-FIX-03: one object (re)spawned during a round keeps clear of every live object already on the board.
+   *  -1 = no clear spot: the caller must keep it off the board (waitingObjects), never place it. */
   settleRespawn(obj, pad = obj.radius + 20) {
     const res = settleSpawn(obj, pad, this.objects);
     if (res < 0 && this.spawnStats) this.spawnStats.crowded++;
     return res;
+  }
+
+  /** GG-OBJECTS-FIX-03: every 0.5 s ONE waiting object (oldest first) looks for a clear spot from where it was drawn; found =
+   *  it appears there (spawn pop-in). Empty at the game's density, so this costs nothing in a normal round. */
+  updateWaitingObjects(dt) {
+    if (!this.waitingObjects || !this.waitingObjects.length) return;
+    this.waitRetryT = (this.waitRetryT || 0) - dt;
+    if (this.waitRetryT > 0) return;
+    this.waitRetryT = 0.5;
+    const o = this.waitingObjects[0];
+    if (settleSpawn(o, o.tier === 'golden' ? 120 : o.radius + 20, this.objects) < 0) { this.waitingObjects.push(this.waitingObjects.shift()); return; }
+    this.waitingObjects.shift();
+    o.spawnFlash = 1;
+    this.objects.push(o);
   }
 
   /** Spawn points for the player and every bot plus the bot names -- the
@@ -19553,7 +19632,8 @@ class Game {
     obj.x = pos.x;
     obj.y = pos.y;
     obj.expiresAt = this.timeRemaining - G.lifetime;
-    this.settleRespawn(obj, 120);   // GG-OBJECTS-FIX-03: same 120 px margin as its draw
+    // GG-OBJECTS-FIX-03: same 120 px margin as its draw; no clear spot = no core now, the next try in a second (no banner)
+    if (this.settleRespawn(obj, 120) < 0) { this.goldenTimer = 1; return; }
     this.objects.push(obj);
     this.goldenObj = obj;
     this.showBanner('ZŁOTY RDZEŃ!', 'Złap go przed rywalami — złota strzałka wskazuje drogę', '#EFCB63', 1.3, 2);
@@ -20130,8 +20210,8 @@ class Game {
       obj.x = pos.x;
       obj.y = pos.y;
       obj.value = CONFIG.overdrive.bonusObjectValue;
-      this.settleRespawn(obj);   // GG-OBJECTS-FIX-03
-      this.objects.push(obj);
+      // GG-OBJECTS-FIX-03: no clear spot = it waits off the board until one frees up
+      if (this.settleRespawn(obj) < 0) this.waitingObjects.push(obj); else this.objects.push(obj);
     }
   }
 
@@ -20463,10 +20543,16 @@ class Game {
           this.analytics.track('first_eat', { objectTier: obj.tier });
         }
         obj.respawn(obj.tier, false);
-        this.settleRespawn(obj);   // GG-OBJECTS-FIX-03: clear of every object on the board
+        // GG-OBJECTS-FIX-03: clear of every object on the board; no clear spot = it waits off the board (never on another one)
+        if (this.settleRespawn(obj) < 0) obj.waitSpot = true;
       }
     }
     if (this.objects.some(o => o.removed)) this.objects = this.objects.filter(o => !o.removed);
+    if (this.objects.some(o => o.waitSpot)) {
+      for (const o of this.objects) if (o.waitSpot) { delete o.waitSpot; this.waitingObjects.push(o); }
+      this.objects = this.objects.filter(o => !this.waitingObjects.includes(o));
+    }
+    this.updateWaitingObjects(dt);
     this.updateGoldenCore(dt);
 
     this.handleHoleCollisions();

@@ -1,6 +1,6 @@
 // GG-OBJECTS-FIX-03: T1 visual (sharpness, ground ring, pulse) + no overlapping Arena spawns. A stage test: base = a worktree of origin/main.
 //   node qa/objfix3.mjs --base=DIR [--pack=DIR (the unpacked GG_OBJECTS_21_FINAL_SPRITES_V1: the T1 sharpness reference)] [--seeds=60] [--only=spawn,t1]
-// Spawn: footprint = the hitbox circle (radius r); two footprints overlap when d < r1 + r2, the spawn gap is broken when d < r1 + r2 + 6.
+// Spawn: judged on the real silhouettes, see the spawn section (PHYS = footprints overlap, BAD = unacceptable picture overlap, natural 2.5D cover).
 // T1 sharpness: each T1 bitmap as the game draws it at a real screen density vs an ideal reference (the native PNG area-filtered
 // straight to that density, same placement): RMSE (premultiplied RGBA, 0-255) and edge energy (sum of |grad| of premultiplied luma, 1.0 = the reference).
 // Output: qa/out/objfix3/results.json (+ the console). Exit 1 on any FAIL.
@@ -25,15 +25,68 @@ function exportedRoot(root, name) {
 }
 
 /* ------------------------------------------------------------------ spawn ------------------------------------------------------------------ */
+// REVIEW-01: every pair of live objects is judged on the real pictures -- the opaque silhouette (alpha > 64) of each approved 3 px
+// bitmap at 1 world unit per cell (a vector look without a bitmap: a disc of 1.1 r) -- in the game's own draw order (biggest first,
+// equal sizes back to front: DEVICE-QA-1). For two overlapping silhouettes the one drawn later is "top":
+//   PHYS  = the footprints (hitbox circles) overlap;
+//   BAD   = an unacceptable picture overlap -- top's ground contact (its base ellipse) lies on bottom's picture (it looks spawned
+//           on / inside it), OR top is BEHIND bottom yet drawn over it (wrong depth), OR the overlap covers >= 30 % of the smaller
+//           silhouette (one object hides the other);
+//   NAT   = natural 2.5D cover -- top stands in front on the floor and only covers part of bottom.
+// The game's spawn rule (settleSpawn) is stricter: no picture overlap at all at spawn (so BAD = NAT = 0 at spawn).
+const BASE_TABLE = { fragment: [-0.04, 0.86, 0.89], kapsula: [0, 0.95, 0.9], lawka: [0, 0.5, 0.93], kiosk: [-0.03, 0.63, 0.97], skrzynia: [-0.06, 0.57, 0.89], latarnia: [-0.03, 0.97, 0.6], drzewo: [-0.04, 0.68, 0.94], znacznik: [-0.15, 0.9, 0.78], samochod: [0.04, 0.35, 0.98], wezel: [0.11, 0.41, 0.88], pylon: [0.2, 0.61, 0.65], pawilon: [-0.02, 0.43, 0.96], billboard: [-0.04, 0.69, 0.96], magazyn: [-0.01, 0.39, 0.99], landmark: [-0.02, 0.8, 0.92], autobus: [-0.03, 0.3, 0.98], tramwaj: [-0.01, 0.26, 1], ciezarowka: [0.04, 0.29, 0.93], wiezowiec: [0, 0.8, 0.96], maszt: [0, 1.03, 0.68], kopula: [0, 0.38, 0.97] };
 const LIB = `
   const g = window.game, stop = () => { if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false; };
   const live = (o) => !o.eating && !o.removed;
-  const pairs = (objs, gap) => { let n = 0; const L = objs.filter(live); for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j], m = a.radius + b.radius + gap; if ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 < m * m) n++; } return n; };
-  // the 2.5D picture: a bitmap's opaque box (2.1 r wide, from 1.35 r above the centre to 1.05 r below) -- measured, not required
-  const vis = (objs) => { let n = 0; const L = objs.filter(live); for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j]; if (Math.abs(a.x - b.x) < 1.05 * (a.radius + b.radius) && a.y - 1.35 * a.radius < b.y + 1.05 * b.radius && b.y - 1.35 * b.radius < a.y + 1.05 * a.radius) n++; } return n; };
-  const clash = (o, gap) => { for (const p of g.objects) if (p !== o && live(p)) { const m = o.radius + p.radius + gap; if ((o.x - p.x) ** 2 + (o.y - p.y) ** 2 < m * m) return true; } return false; };
   const fnv = (s) => { let a = 0x811c9dc5; for (let i = 0; i < s.length; i++) a = Math.imul(a ^ s.charCodeAt(i), 16777619); return (a >>> 0).toString(16); };
   const rest = (o) => [o.tier, o.subtype, Math.round(o.radius * 1000), Math.round(o.rotation * 1000), o.value, !!o.trail].join(',');
+  const BASE = ${JSON.stringify(BASE_TABLE)};
+  const { OBJECT_RASTER_3PX } = await import('/objects-raster-3.js');
+  const MASK = {};
+  for (const [k, u] of Object.entries(OBJECT_RASTER_3PX)) {
+    const im = new Image(); im.src = u; await im.decode();
+    const W = im.naturalWidth, c = document.createElement('canvas'); c.width = c.height = W; const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+    const d = x.getImageData(0, 0, W, W).data, U = Math.floor(W / 3), m = new Uint8Array(U * U); let area = 0;
+    for (let j = 0; j < U; j++) for (let i = 0; i < U; i++) { let n = 0; for (let b = 0; b < 3; b++) for (let a = 0; a < 3; a++) if (d[((j * 3 + b) * W + i * 3 + a) * 4 + 3] > 64) n++; if (n >= 3) { m[j * U + i] = 1; area++; } }
+    MASK[k] = { U, m, area };
+  }
+  const disc = {};
+  const maskOf = (o) => { if (MASK[o.subtype]) return MASK[o.subtype]; const R = Math.round(o.radius * 1.1), key = R; if (!disc[key]) { const U = 2 * R + 2, m = new Uint8Array(U * U); let area = 0; for (let j = 0; j < U; j++) for (let i = 0; i < U; i++) if ((i - U / 2 + 0.5) ** 2 + (j - U / 2 + 0.5) ** 2 <= R * R) { m[j * U + i] = 1; area++; } disc[key] = { U, m, area }; } return disc[key]; };
+  const at = (o, M) => [Math.round(o.x) - (M.U >> 1), Math.round(o.y) - (M.U >> 1)];
+  const cell = (o, M, wx, wy) => { const [x0, y0] = at(o, M), i = wx - x0, j = wy - y0; return i >= 0 && j >= 0 && i < M.U && j < M.U && M.m[j * M.U + i] === 1; };
+  const baseOf = (o) => { const b = BASE[o.subtype], r = o.radius; return b ? { cx: o.x + b[0] * r, cy: o.y + (b[1] - 0.1 * b[2]) * r, rx: b[2] * r, ry: 0.3 * b[2] * r, low: o.y + b[1] * r } : { cx: o.x, cy: o.y + 0.9 * r, rx: 0.6 * r, ry: 0.2 * r, low: o.y + r }; };
+  const drawnBefore = (a, b) => a.radius > b.radius || (a.radius === b.radius && a.y < b.y);
+  /** { phys, kind: 'BAD' | 'NAT' | null, n } for one pair */
+  const judge = (a, b) => {
+    const phys = (a.x - b.x) ** 2 + (a.y - b.y) ** 2 < (a.radius + b.radius) ** 2;
+    const Ma = maskOf(a), Mb = maskOf(b), [ax, ay] = at(a, Ma), [bx, by] = at(b, Mb);
+    const x0 = Math.max(ax, bx), x1 = Math.min(ax + Ma.U, bx + Mb.U), y0 = Math.max(ay, by), y1 = Math.min(ay + Ma.U, by + Mb.U);
+    let n = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (Ma.m[(y - ay) * Ma.U + (x - ax)] && Mb.m[(y - by) * Mb.U + (x - bx)]) n++;
+    if (n < 3) return { phys, kind: null, n };
+    const [bot, top] = drawnBefore(a, b) ? [a, b] : [b, a], Mbot = maskOf(bot), e = baseOf(top);
+    let inE = 0, onBot = 0;
+    for (let y = Math.floor(e.cy - e.ry); y <= Math.ceil(e.cy + e.ry); y++) for (let x = Math.floor(e.cx - e.rx); x <= Math.ceil(e.cx + e.rx); x++) {
+      if (((x + 0.5 - e.cx) / e.rx) ** 2 + ((y + 0.5 - e.cy) / e.ry) ** 2 > 1) continue;
+      inE++; if (cell(bot, Mbot, x, y)) onBot++;
+    }
+    const behind = baseOf(top).low < baseOf(bot).low - 1, onIt = inE && onBot / inE >= 0.2, hides = n >= 0.3 * Math.min(maskOf(top).area, Mbot.area);
+    return { phys, kind: behind || onIt || hides ? 'BAD' : 'NAT', n, why: [behind && 'behind', onIt && 'base-on-it', hides && 'hides'].filter(Boolean).join('+') };
+  };
+  const judgeAll = (objs, keep) => {
+    const L = objs.filter(live), out = { phys: 0, bad: 0, nat: 0, ex: [] };
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+      const a = L[i], b = L[j], reach = 1.6 * (a.radius + b.radius) + 4;
+      if (Math.abs(a.x - b.x) > reach || Math.abs(a.y - b.y) > reach) continue;
+      const r = judge(a, b);
+      if (r.phys) out.phys++;
+      if (r.kind === 'BAD') { out.bad++; if (keep && out.ex.length < keep) out.ex.push({ a: [a.subtype, Math.round(a.x), Math.round(a.y)], b: [b.subtype, Math.round(b.x), Math.round(b.y)], why: r.why, n: r.n }); }
+      else if (r.kind === 'NAT') out.nat++;
+    }
+    return out;
+  };
+  const judgeOne = (o) => { const out = { phys: 0, bad: 0, nat: 0 }; for (const p of g.objects) if (p !== o && live(p)) { const reach = 1.6 * (o.radius + p.radius) + 4; if (Math.abs(o.x - p.x) > reach || Math.abs(o.y - p.y) > reach) continue; const r = judge(o, p); if (r.phys) out.phys++; if (r.kind === 'BAD') out.bad++; else if (r.kind === 'NAT') out.nat++; } return out; };
+  const waiting = () => (g.waitingObjects ? g.waitingObjects.length : 0);
 `;
 
 const LAYOUTS = `(async (arg) => { ${LIB}
@@ -42,13 +95,15 @@ const LAYOUTS = `(async (arg) => { ${LIB}
     window.__qaSeedRandom(seed);
     const t0 = performance.now();
     g.startRound({ seed }); stop();
-    const ms = performance.now() - t0, objs = g.objects, tiers = {};
-    objs.forEach(o => { tiers[o.tier] = (tiers[o.tier] || 0) + 1; });
-    out[seed] = { n: objs.length, tiers: JSON.stringify(tiers), overlap: pairs(objs, 0), gapViol: pairs(objs, ${GAP}), vis: vis(objs),
-      rest: fnv(objs.map(rest).join('|')), bots: fnv(g.bots.map(b => [b.name, b.x.toFixed(3), b.y.toFixed(3), b.radius.toFixed(3)].join()).join('|')),
-      player: [g.player.x, g.player.y].map(v => v.toFixed(3)).join(), modifier: g.modifier, random: window.__qaRandomCalls, rngNext: g.rng.next(),
-      inBounds: objs.every(o => o.x >= o.radius + 20 - 1e-9 && o.x <= ${'WORLD_W'} - o.radius - 20 + 1e-9 && o.y >= o.radius + 20 - 1e-9 && o.y <= ${'WORLD_H'} - o.radius - 20 + 1e-9),
-      pos: objs.map(o => [Math.round(o.x * 1000) / 1000, Math.round(o.y * 1000) / 1000, o.trail ? 1 : 0, o.tier]), stats: g.spawnStats || null, ms };
+    const ms = performance.now() - t0, all = g.objects.concat(g.waitingObjects || []), tiers = {};
+    all.forEach(o => { tiers[o.tier] = (tiers[o.tier] || 0) + 1; });
+    // keep the object order of the base (waiting ones are taken out of g.objects only on an overfilled board)
+    const j = judgeAll(g.objects, arg.keep || 0);
+    out[seed] = { n: all.length, waiting: waiting(), tiers: JSON.stringify(tiers), phys: j.phys, bad: j.bad, nat: j.nat, ex: j.ex,
+      rest: fnv(all.map(rest).join('|')), bots: fnv(g.bots.map(b => [b.name, b.x.toFixed(3), b.y.toFixed(3), b.radius.toFixed(3)].join()).join('|')),
+      player: [g.player.x, g.player.y].map(v => +v.toFixed(3)), botSpawns: g.bots.map(b => [Math.round(b.x), Math.round(b.y)]), modifier: g.modifier, random: window.__qaRandomCalls, rngNext: g.rng.next(),
+      inBounds: g.objects.every(o => o.x >= o.radius + 20 - 1e-9 && o.x <= WORLD_W - o.radius - 20 + 1e-9 && o.y >= o.radius + 20 - 1e-9 && o.y <= WORLD_H - o.radius - 20 + 1e-9),
+      pos: all.map(o => [Math.round(o.x * 1000) / 1000, Math.round(o.y * 1000) / 1000, o.trail ? 1 : 0, o.tier]), stats: g.spawnStats || null, ms };
   }
   return out;
 })`;
@@ -56,48 +111,54 @@ const LAYOUTS = `(async (arg) => { ${LIB}
 const DAILY = `(async () => { ${LIB}
   const lay = g.computeDailyLayout(), lay2 = g.computeDailyLayout();
   window.__qaSeedRandom(5); g.startDailyChallenge(); stop();
-  const act = g.objects.map(o => ({ tier: o.tier, x: o.x, y: o.y }));
-  return { previewIsReal: JSON.stringify(lay.objects) === JSON.stringify(act), repeat: JSON.stringify(lay.objects) === JSON.stringify(lay2.objects), n: g.objects.length,
-    overlap: pairs(g.objects, 0), gapViol: pairs(g.objects, ${GAP}), hash: fnv(JSON.stringify(lay.objects)) };
+  const act = g.objects.map(o => ({ tier: o.tier, x: o.x, y: o.y })), j = judgeAll(g.objects);
+  return { previewIsReal: JSON.stringify(lay.objects) === JSON.stringify(act), repeat: JSON.stringify(lay.objects) === JSON.stringify(lay2.objects), n: g.objects.length + waiting(),
+    phys: j.phys, bad: j.bad, nat: j.nat, hash: fnv(JSON.stringify(lay.objects)) };
 })`;
 
 /** A long round with the real eat -> respawn loop: a T6 player teleported every 8 frames + the bots; every object respawned in a frame
- *  (spawnFlash == 1 after update()) is checked against every live object; then Złoty Rdzeń x40 and the portal wave x10. */
+ *  (spawnFlash == 1 after update()) is judged against every live object; then Złoty Rdzeń x40 and the portal wave x10. */
 const RESPAWN = `(async (arg) => { ${LIB}
   window.__qaSeedRandom(arg.seed); g.startRound({ seed: arg.seed }); stop();
-  const n0 = g.objects.length;
+  const n0 = g.objects.length + waiting();
   g.player.setRadius(arg.radius); g.player.invulnerableUntil = Infinity;
-  let spawned = 0, overlap = 0, gapViol = 0, frames = 0;
+  const r = { frames: 0, spawned: 0, phys: 0, bad: 0, nat: 0 };
   for (let f = 0; f < arg.frames; f++) {
     if (f % 8 === 0) { g.player.x = 300 + Math.random() * 2400; g.player.y = 300 + Math.random() * 2400; }
-    g.update(1 / 60); frames++;
-    if (!g.running && g.state !== 'playing' && g.timeRemaining <= 0) break;
-    for (const o of g.objects) if (o.spawnFlash === 1 && live(o)) { spawned++; if (clash(o, 0)) overlap++; if (clash(o, ${GAP})) gapViol++; }
+    g.update(1 / 60); r.frames++;
+    for (const o of g.objects) if (o.spawnFlash === 1 && live(o)) { r.spawned++; const j = judgeOne(o); r.phys += j.phys; r.bad += j.bad; r.nat += j.nat; }
   }
-  const nEnd = g.objects.filter(o => o.tier !== 'golden' && o.tier !== 'portal').length;
+  r.nEnd = g.objects.filter(o => o.tier !== 'golden' && o.tier !== 'portal').length + (g.waitingObjects || []).filter(o => o.tier !== 'golden' && o.tier !== 'portal').length;
+  r.n0 = n0; r.waitingEnd = waiting();
   let gold = 0, goldBad = 0, portal = 0, portalBad = 0;
-  for (let i = 0; i < 40; i++) { g.spawnGoldenCore(); gold++; if (clash(g.goldenObj, ${GAP})) goldBad++; }
-  for (let i = 0; i < 10; i++) { const k = g.objects.length; g.spawnPortalRain(); for (const o of g.objects.slice(k)) { portal++; if (clash(o, ${GAP})) portalBad++; } }
-  return { frames, spawned, overlap, gapViol, n0, nEnd, gold, goldBad, portal, portalBad, crowded: g.spawnStats ? g.spawnStats.crowded : null };
+  for (let i = 0; i < 40; i++) { const before = g.goldenObj; g.spawnGoldenCore(); if (g.goldenObj && g.goldenObj !== before) { gold++; const j = judgeOne(g.goldenObj); if (j.phys || j.bad || j.nat) goldBad++; } }
+  for (let i = 0; i < 10; i++) { const k = g.objects.length; g.spawnPortalRain(); for (const o of g.objects.slice(k)) { portal++; const j = judgeOne(o); if (j.phys || j.bad || j.nat) portalBad++; } }
+  Object.assign(r, { gold, goldBad, portal, portalBad, waitingAfterBonus: waiting() });
+  return r;
 })`;
 
-/** TIERS counts scaled (density scenarios) -- restored afterwards. `noRoomTest`: settleRespawn of a tower where no tower fits. */
+/** TIERS counts scaled (density / overload scenarios) -- restored afterwards. */
 const DENSE = `(async (arg) => { ${LIB}
   const saved = {};
   for (const [k, t] of Object.entries(TIERS)) { saved[k] = t.count; t.count = Math.round(t.count * (arg.mult[k] != null ? arg.mult[k] : arg.all)); }
   try {
     const expected = Object.values(TIERS).reduce((a, t) => a + t.count, 0);
-    let foot = 0; for (const t of Object.values(TIERS)) foot += t.count * Math.PI * (t.minR + ${GAP} / 2) ** 2;
+    let foot = 0; for (const t of Object.values(TIERS)) foot += t.count * Math.PI * t.minR ** 2;
     window.__qaSeedRandom(arg.seed);
     const t0 = performance.now(); g.startRound({ seed: arg.seed }); stop(); const ms = performance.now() - t0;
-    const res = { mult: arg.all, expected, n: g.objects.length, overlap: pairs(g.objects, 0), gapViol: pairs(g.objects, ${GAP}), stats: g.spawnStats || null,
-      footprintShare: +(foot / ((${'WORLD_W'} - 40) * (${'WORLD_H'} - 40))).toFixed(3), ms: Math.round(ms) };
-    if (arg.noRoomTest && g.settleRespawn) {
-      const towers = g.objects.filter(o => o.tier === 'tower').slice(0, 5), n = g.objects.length, before = towers.map(o => [o.x, o.y]);
-      const t1 = performance.now();
-      const r = towers.map(o => { o.x = 1500; o.y = 1500; return g.settleRespawn(o); });
-      res.noRoom = { results: r, kept: g.objects.length === n, msEach: +((performance.now() - t1) / towers.length).toFixed(1) };
-      towers.forEach((o, i) => { o.x = before[i][0]; o.y = before[i][1]; });
+    const j = judgeAll(g.objects);
+    const res = { mult: arg.all, expected, n: g.objects.length + waiting(), onBoard: g.objects.length, waiting: waiting(), phys: j.phys, bad: j.bad, nat: j.nat, stats: g.spawnStats || null,
+      footprintShare: +(foot / ((WORLD_W - 40) * (WORLD_H - 40))).toFixed(3), ms: Math.round(ms) };
+    if (arg.retryTest && waiting()) {
+      // space frees up (QA: 25 on-board towers taken away as if eaten), then the waiting ones come in one per 0.5 s, still clear
+      const gone = g.objects.filter(o => o.tier === 'tower').slice(0, 25);
+      g.objects = g.objects.filter(o => !gone.includes(o));
+      const w0 = waiting(), t1 = performance.now();
+      for (let k = 0; k < 120; k++) g.updateWaitingObjects(0.5);
+      const j2 = judgeAll(g.objects);
+      res.retry = { freed: gone.length, waitingBefore: w0, waitingAfter: waiting(), placed: w0 - waiting(), phys: j2.phys, bad: j2.bad, nat: j2.nat, total: g.objects.length + waiting() + gone.length, msPerTry: +((performance.now() - t1) / 120).toFixed(2) };
+      const tw = g.objects.find(o => o.tier === 'tower'), x = tw.x, y = tw.y; tw.x = 1500; tw.y = 1500;
+      const t2 = performance.now(); res.retry.respawnNoRoom = g.settleRespawn(tw); res.retry.respawnMs = +(performance.now() - t2).toFixed(1); tw.x = x; tw.y = y;
     }
     return res;
   } finally { for (const [k, t] of Object.entries(TIERS)) t.count = saved[k]; }
@@ -139,42 +200,71 @@ async function evalIn(url, script, arg) {
 export async function spawnChecks(url, baseUrl, nSeeds) {
   const results = [];
   const seeds = [...Array.from({ length: nSeeds }, (_, i) => i + 1), 2024, 7, 99001, 424242];
-  const cand = await evalIn(url, LAYOUTS, { seeds }), base = await evalIn(baseUrl, LAYOUTS, { seeds });
+  const cand = await evalIn(url, LAYOUTS, { seeds, keep: 3 }), base = await evalIn(baseUrl, LAYOUTS, { seeds, keep: 3 });
   const cand2 = await evalIn(url, LAYOUTS, { seeds: seeds.slice(0, 12) });
-  let baseOverlap = 0, baseGap = 0, baseSeedsWith = 0, candOverlap = 0, candGap = 0, sameCount = 0, sameRest = 0, sameBots = 0, sameRng = 0, inB = 0, movedObjs = 0, maxShift = 0, trailMoved = 0, visBase = 0, visCand = 0, msMax = 0;
+  const N = seeds.length, objs = base[seeds[0]].n, sum = (o, f) => seeds.reduce((a, s) => a + o[s][f], 0);
+  const B = { phys: sum(base, 'phys'), bad: sum(base, 'bad'), nat: sum(base, 'nat') }, C = { phys: sum(cand, 'phys'), bad: sum(cand, 'bad'), nat: sum(cand, 'nat'), waiting: sum(cand, 'waiting') };
+  const seedsWith = (o, f) => seeds.filter(s => o[s][f] > 0).length;
+  let sameCount = 0, sameRest = 0, sameBots = 0, sameRng = 0, inB = 0, msMax = 0;
+  const shift = { trail: [0, 0], feast: [0, 0], playerFeast: [0, 0], other: [0, 0] }, tierMax = {};
+  let t1NearBase = 0, t1NearCand = 0, worstNear = 0;
+  const trail = { otherLane: 0, slid: 0, off: 0, stackedBase: 0 };
   for (const s of seeds) {
     const c = cand[s], b = base[s];
-    baseOverlap += b.overlap; baseGap += b.gapViol; if (b.overlap) baseSeedsWith++;
-    candOverlap += c.overlap; candGap += c.gapViol; visBase += b.vis; visCand += c.vis;
     if (c.n === b.n && c.tiers === b.tiers) sameCount++;
     if (c.rest === b.rest) sameRest++;
-    if (c.bots === b.bots && c.player === b.player && c.modifier === b.modifier) sameBots++;
+    if (c.bots === b.bots && JSON.stringify(c.player) === JSON.stringify(b.player) && c.modifier === b.modifier) sameBots++;
     if (c.rngNext === b.rngNext && c.random === b.random) sameRng++;
     if (c.inBounds) inB++;
     msMax = Math.max(msMax, c.ms);
-    c.pos.forEach((p, i) => { const q = b.pos[i], d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d > 1e-3) { movedObjs++; maxShift = Math.max(maxShift, d); if (q[2]) trailMoved++; } });
+    if (c.stats) { trail.otherLane += c.stats.trailOtherLane; trail.slid += c.stats.trailSlid; trail.off += c.stats.trailOff; }
+    const seen = new Set();
+    b.pos.forEach((q) => { if (q[2]) { const k = q[0] + ',' + q[1]; if (seen.has(k)) trail.stackedBase++; seen.add(k); } });
+    // starter feasts (fragments / capsules within 160 of a spawn in the base) and food near the player's spawn (first seconds)
+    const spawns = [b.player, ...b.botSpawns], near = (q, p, d) => Math.hypot(q[0] - p[0], q[1] - p[1]) <= d;
+    let nb = 0, nc = 0;
+    c.pos.forEach((p, i) => {
+      const q = b.pos[i], d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+      const cat = q[2] ? 'trail' : (q[3] === 'fragment' || q[3] === 'capsule') && spawns.some(sp => near(q, sp, 160)) ? 'feast' : 'other';
+      if (d > 1e-3) { shift[cat][0]++; shift[cat][1] = Math.max(shift[cat][1], d); tierMax[q[3]] = Math.max(tierMax[q[3]] || 0, d); }
+      if (cat === 'feast' && near(q, b.player, 160) && d > 1e-3) { shift.playerFeast[0]++; shift.playerFeast[1] = Math.max(shift.playerFeast[1], d); }
+      if ((q[3] === 'fragment' || q[3] === 'capsule') && near(q, b.player, 300)) nb++;
+      if ((p[3] === 'fragment' || p[3] === 'capsule') && near(p, b.player, 300)) nc++;
+    });
+    t1NearBase += nb; t1NearCand += nc; worstNear = Math.min(worstNear, nc - nb);
   }
-  const N = seeds.length, objs = cand[seeds[0]].n;
-  fs.writeFileSync(path.join(DIR, 'spawn-seeds.json'), JSON.stringify(seeds.map(s => ({ seed: s, base: { overlap: base[s].overlap, gapViol: base[s].gapViol, vis: base[s].vis }, cand: { overlap: cand[s].overlap, gapViol: cand[s].gapViol, vis: cand[s].vis, stats: cand[s].stats, ms: +cand[s].ms.toFixed(1) } })), null, 1));
-  results.push(report(`FX-S0 the base really overlaps (the bug exists): footprint overlaps at round start over ${N} seeds`, baseOverlap > 0, `base: ${baseOverlap} overlapping pairs (${baseSeedsWith}/${N} seeds), ${baseGap} pairs closer than the ${GAP} px gap`));
-  results.push(report(`FX-S1 no two footprints overlap and every pair keeps the ${GAP} px gap at round start (${N} seeds, ${objs} objects each)`, candOverlap === 0 && candGap === 0 && cand.errors === 0, `candidate: ${candOverlap} overlaps, ${candGap} gap violations; layout <= ${msMax.toFixed(1)} ms (start of round, incl. the rest of startRound)`));
-  results.push(report('FX-S2 the object count per tier is the base one, nothing removed; every other field (tier, kind, radius, rotation, value, trail), bots, player spawn, modifier, the seeded stream and Math.random draws are identical to the base', sameCount === N && sameRest === N && sameBots === N && sameRng === N, `count ${sameCount}/${N}, fields ${sameRest}/${N}, bots+player+modifier ${sameBots}/${N}, rng+random ${sameRng}/${N}`));
+  fs.writeFileSync(path.join(DIR, 'spawn-seeds.json'), JSON.stringify(seeds.map(s => ({ seed: s, base: { phys: base[s].phys, bad: base[s].bad, nat: base[s].nat, ex: base[s].ex }, cand: { phys: cand[s].phys, bad: cand[s].bad, nat: cand[s].nat, waiting: cand[s].waiting, stats: cand[s].stats, ms: +cand[s].ms.toFixed(1) } })), null, 1));
+  const per = (x) => (x / N).toFixed(1);
+  results.push(report(`FX-S0 the base really spawns objects on each other (${N} seeds x ${objs} objects, round start, real silhouettes)`, B.phys + B.bad > 0,
+    `base: PHYS ${B.phys} (${per(B.phys)}/round, ${seedsWith(base, 'phys')}/${N} seeds) | BAD picture ${B.bad} (${per(B.bad)}/round, ${seedsWith(base, 'bad')}/${N}) | natural 2.5D ${B.nat} (${per(B.nat)}/round)`));
+  results.push(report(`FX-S1 round start, ${N} seeds: 0 footprint collisions, 0 unacceptable picture overlaps, 0 pictures touching at all (spawn rule: not even natural 2.5D cover), nobody waiting`, C.phys === 0 && C.bad === 0 && C.nat === 0 && C.waiting === 0 && cand.errors === 0,
+    `candidate: PHYS ${C.phys}, BAD ${C.bad}, natural 2.5D ${C.nat}, waiting ${C.waiting}; startRound <= ${msMax.toFixed(1)} ms`));
+  results.push(report('FX-S2 object count per tier = base (board + waiting), nothing removed; every other field (tier, kind, radius, rotation, value, trail), bots, player spawn, modifier, the seeded stream and Math.random draws identical to the base', sameCount === N && sameRest === N && sameBots === N && sameRng === N,
+    `count ${sameCount}/${N}, fields ${sameRest}/${N}, bots+player+modifier ${sameBots}/${N}, rng+random ${sameRng}/${N}`));
   results.push(report('FX-S3 every object stays inside its original spawn area (centre within r + 20 of the world edge)', inB === N, `${inB}/${N} seeds`));
   const det = seeds.slice(0, 12).every(s => JSON.stringify(cand2[s].pos) === JSON.stringify(cand[s].pos));
-  results.push(report('FX-S4 the same seed gives the same layout (two separate page sessions, 12 seeds)', det, det ? 'identical' : 'DIFFERENT'));
-  results.push(report('FX-S5 displacement: only overlapping objects move, and only a little (measurement)', movedObjs <= baseGap * 1.5 + 5 && maxShift < 400, `moved ${movedObjs} objects over ${N} seeds (${(movedObjs / N).toFixed(1)} per round of ${objs}; base had ${baseGap} gap-violating pairs), max shift ${maxShift.toFixed(1)} world px, street-trail fragments moved ${trailMoved}`));
+  results.push(report('FX-S4 determinism: the same seed gives the same layout (two separate page sessions, 12 seeds)', det, det ? 'identical' : 'DIFFERENT'));
+  results.push(report('FX-S5 street trails stay street trails: a trail fragment that met another trail (two trails drawn on one lane) goes to the road\'s other lane or slides along its lane -- none leaves the road', trail.off === 0,
+    `base: ${trail.stackedBase} trail fragments stacked exactly on another; candidate: other lane ${trail.otherLane}, slid along the lane ${trail.slid}, off the road ${trail.off}; moved trail fragments ${shift.trail[0]} (max ${shift.trail[1].toFixed(1)} units)`));
+  results.push(report('FX-S5b the player\'s first seconds: the player\'s starter feast stays where it was laid (every item within 30 units of its spot) and the food (T1) within 300 units of the player\'s spawn is kept (total >= 98 % of the base, no seed down by more than 2); the bots\' feasts are reported', shift.playerFeast[1] <= 30 && t1NearCand >= 0.98 * t1NearBase && worstNear >= -2,
+    `player's feast: items moved ${shift.playerFeast[0]} (max ${shift.playerFeast[1].toFixed(1)}); all feasts incl. bots: moved ${shift.feast[0]} (max ${shift.feast[1].toFixed(1)}); T1 near the player's spawn ${t1NearBase} -> ${t1NearCand} over ${N} seeds (worst seed ${worstNear}); other objects moved ${shift.other[0]} (${per(shift.other[0])}/round), max ${shift.other[1].toFixed(1)}; max shift per tier ${JSON.stringify(Object.fromEntries(Object.entries(tierMax).map(([k, v]) => [k, Math.round(v)])))}`));
   const dC = await evalIn(url, DAILY), dB = await evalIn(baseUrl, DAILY);
-  results.push(report('FX-S6 Daily: the preview (computeDailyLayout) is the real round layout, repeats, no overlap, same count as the base', dC.previewIsReal && dC.repeat && dC.overlap === 0 && dC.gapViol === 0 && dC.n === dB.n, `cand ${JSON.stringify(dC)} | base overlap ${dB.overlap}, previewIsReal ${dB.previewIsReal}`));
+  results.push(report('FX-S6 Daily: the preview (computeDailyLayout) is the real round layout, repeats, no collision / picture overlap, same count as the base', dC.previewIsReal && dC.repeat && dC.phys === 0 && dC.bad === 0 && dC.nat === 0 && dC.n === dB.n,
+    `cand ${JSON.stringify(dC)} | base PHYS ${dB.phys}, BAD ${dB.bad}, natural ${dB.nat}, previewIsReal ${dB.previewIsReal}`));
   const rC = await evalIn(url, RESPAWN, { seed: 31, radius: 320, frames: 3000 }), rB = await evalIn(baseUrl, RESPAWN, { seed: 31, radius: 320, frames: 3000 });
-  results.push(report('FX-S7 respawn during play (T6 player eating across the map + bots, 3000 frames): no respawned object overlaps a live one; Złoty Rdzeń x40 and the portal wave x10 spawn clear; count kept', rC.spawned > 300 && rC.overlap === 0 && rC.gapViol === 0 && rC.goldBad === 0 && rC.portalBad === 0 && rC.nEnd === rC.n0 && rC.errors === 0, `cand ${JSON.stringify(rC)} | base: ${rB.spawned} respawns, ${rB.overlap} overlapping, ${rB.gapViol} in the gap; golden ${rB.goldBad}/${rB.gold}, portal ${rB.portalBad}/${rB.portal}`));
+  results.push(report('FX-S7 respawn during play (T6 player eating across the map + bots, 3000 frames): no respawned object collides with or covers a live one; golden core x40 and portal wave x10 spawn clear; count kept, nobody waiting', rC.spawned > 300 && rC.phys === 0 && rC.bad === 0 && rC.nat === 0 && rC.goldBad === 0 && rC.portalBad === 0 && rC.nEnd === rC.n0 && rC.waitingEnd === 0 && rC.errors === 0,
+    `cand ${JSON.stringify(rC)} | base: ${rB.spawned} respawns -> PHYS ${rB.phys}, BAD ${rB.bad}, natural ${rB.nat}; golden ${rB.goldBad}/${rB.gold}, portal ${rB.portalBad}/${rB.portal}`));
   const dense = [];
-  for (const all of [2, 3, 5]) dense.push(await evalIn(url, DENSE, { seed: 77, all, mult: {} }));
-  results.push(report('FX-S8 high density (every TIERS count x2 / x3 / x5): every object placed, none overlapping, none removed', dense.every(d => d.n === d.expected && d.overlap === 0 && d.gapViol === 0 && d.stats.crowded === 0), dense.map(d => `x${d.mult}: ${d.n}/${d.expected} objects, footprints ${Math.round(d.footprintShare * 100)} % of the area, moved ${d.stats.moved}, max shift ${Math.round(d.stats.maxShift)}, overlaps ${d.overlap}, ${d.ms} ms`).join(' | ')));
-  const nr = await evalIn(url, DENSE, { seed: 77, all: 1, mult: { tower: 100 }, noRoomTest: true });
-  results.push(report('FX-S9 no room (400 towers r 100 cannot fit): bounded time, nothing removed, the ones without room counted and left where drawn; settleRespawn() of a tower returns -1 and keeps it', nr.n === nr.expected && nr.stats.crowded > 0 && nr.ms < 30000 && nr.noRoom && nr.noRoom.kept && nr.noRoom.results.every(v => v === -1), `${nr.n}/${nr.expected} objects, crowded ${nr.stats.crowded}, overlaps left ${nr.overlap}, layout ${nr.ms} ms, footprints ${Math.round(nr.footprintShare * 100)} % of the area; respawn ${JSON.stringify(nr.noRoom)}`));
+  for (const all of [2, 3, 4, 5, 6]) dense.push(await evalIn(url, DENSE, { seed: 77, all, mult: {} }));
+  const firstWait = dense.find(d => d.waiting > 0);
+  results.push(report('FX-S8 higher density (every TIERS count x2 ... x6): never a collision or a covered picture, count always kept (board + waiting); x2 and x3 fit entirely (headroom over the game\'s density)', dense.every(d => d.n === d.expected && d.phys === 0 && d.bad === 0 && d.nat === 0) && dense[0].waiting === 0 && dense[1].waiting === 0,
+    dense.map(d => `x${d.mult}: ${d.onBoard}+${d.waiting} waiting = ${d.n}/${d.expected}, footprints ${Math.round(d.footprintShare * 100)} %, moved ${d.stats.moved}, max shift ${Math.round(d.stats.maxShift)}, PHYS/BAD/nat ${d.phys}/${d.bad}/${d.nat}, ${d.ms} ms`).join(' | ') + ` | first density with waiting objects: ${firstWait ? 'x' + firstWait.mult : 'none up to x6'}`));
+  const nr = await evalIn(url, DENSE, { seed: 77, all: 1, mult: { tower: 100 }, retryTest: true });
+  results.push(report('FX-S9 no room (400 towers r 100 cannot all fit): the ones without a clear spot WAIT off the board (never placed on another, never removed), the board stays clear; when room frees up they come in, still clear', nr.n === nr.expected && nr.waiting > 0 && nr.phys === 0 && nr.bad === 0 && nr.nat === 0 && nr.ms < 30000 && nr.retry && nr.retry.placed > 0 && nr.retry.phys === 0 && nr.retry.bad === 0 && nr.retry.nat === 0 && nr.retry.total === nr.expected,
+    `${nr.onBoard} on board + ${nr.waiting} waiting = ${nr.n}/${nr.expected}, PHYS/BAD/nat ${nr.phys}/${nr.bad}/${nr.nat}, layout ${nr.ms} ms; retry ${JSON.stringify(nr.retry)}`));
   const cC = await evalIn(url, CAMPAIGN), cB = await evalIn(baseUrl, CAMPAIGN);
   results.push(report('FX-S10 Campaign: all 240 missions lay out exactly as the base (every entity field) and 6 mission frames are pixel-identical', cC.missions === 240 && cC.hash === cB.hash && JSON.stringify(cC.frames) === JSON.stringify(cB.frames) && cC.errors === 0, `${cC.missions} missions ${cC.hash} == ${cB.hash}; frames ${JSON.stringify(cC.frames)}`));
-  results.push(report('FX-S11 (measurement, not a gate) 2.5D: pairs whose drawn bitmaps (2.1 r x 2.4 r box) touch, though their footprints are clear', true, `base ${visBase}, candidate ${visCand} over ${N} seeds (${(visCand / N).toFixed(1)} per round)`));
+  fs.writeFileSync(path.join(DIR, 'overlap-examples.json'), JSON.stringify({ seed2024: base[2024].ex, seed7: base[7].ex, seed1: base[1].ex }, null, 1));
   return results;
 }
 

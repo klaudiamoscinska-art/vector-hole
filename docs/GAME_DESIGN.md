@@ -193,18 +193,24 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   Do 24 losowań; gdy żadne miejsce nie jest bezpieczne, rywal czeka poza planszą (bez kolizji,
   nagród i rysowania, z miejscem w rankingu) i co 0,5 s próbuje ponownie wobec aktualnej pozycji
   i rozmiaru gracza. Nigdy awaryjnie na graczu. Rozstawienie na starcie rundy bez zmian.
-- **Obiekty nie powstają na sobie (GG-OBJECTS-FIX-03, `settleSpawn()`):** ślad obiektu = jego
-  koło trafienia (promień r); przy pojawieniu się dwa ślady zachowują co najmniej `SPAWN_GAP` = 6
-  jednostek odstępu. Dotyczy T1–T6 na starcie rundy (po ścieżkach fragmentów i ucztach startowych,
-  `separateObjects()`: najpierw ścieżki, potem uczty, potem reszta od największych), Daily (podgląd =
-  prawdziwy układ), respawnu w trakcie gry (wobec wszystkich żywych obiektów), Złotego Rdzenia
-  i Burzy portali. Zajęte miejsce przesuwa się do najbliższego wolnego po stałej spirali, potem
-  stałym przeglądem obszaru — bez losowania (strumień seeda i wszystkie inne losowania bez zmian;
-  ten sam seed = ten sam układ), w obrębie dotychczasowego obszaru spawnu. Liczba obiektów nigdy się
-  nie zmienia; gdy miejsca brak (nieosiągalne przy obecnej gęstości, ok. 6% pola), obiekt zostaje
-  tam, gdzie go wylosowano. Promienie, hitboxy, progi i ekonomia bez zmian. Wysokie bitmapy (2.5D)
-  mogą nadal wizualnie zachodzić na sąsiada przy czystych śladach — świadomie nie rozsuwamy ich
-  szerzej, bo zmieniłoby to gęstość Areny.
+- **Obiekty nie powstają na sobie (GG-OBJECTS-FIX-03 + REVIEW-01, `settleSpawn()`):** przy
+  pojawieniu się obiekt musi zachować dwa odstępy od każdego żywego obiektu: (1) ślad = koło trafienia
+  (promień r), odstęp `SPAWN_GAP` = 6; (2) obraz = prostokąt nieprzezroczystej sylwetki bitmapy
+  (`SPAWN_VIEW`, zmierzony z zatwierdzonych bitmap 3 px, alfa > 64, w jednostkach r) razem z obręczą
+  podstawy, powiększony o oddech i podskok, odstęp `SPAWN_VIEW_GAP` = 3. Mniejszy obiekt rysuje się
+  zawsze na większym (DEVICE-QA-1), więc bez (2) wyglądałby jak postawiony na nim. Przy spawnie nie ma
+  więc ani kolizji, ani zachodzenia obrazów (także naturalnego 2.5D — to może pojawić się dopiero, gdy
+  coś się przesunie, np. Magnes). Dotyczy T1–T6 na starcie rundy (`separateObjects()`: najpierw ścieżki
+  fragmentów, potem uczty startowe, potem reszta od największych), Daily (podgląd = prawdziwy układ),
+  respawnu w trakcie gry, Złotego Rdzenia i Burzy portali. Zajęte miejsce przesuwa się do najbliższego
+  wolnego (stała spirala, potem kwadratowe pierścienie od miejsca losowania) — bez losowania (strumień
+  seeda bez zmian; ten sam seed = ten sam układ), w obrębie dotychczasowego obszaru spawnu. Fragment
+  ścieżki, który trafił na inną ścieżkę (dwie wylosowane na tym samym pasie), idzie najpierw na drugi
+  pas tej samej jezdni, potem przesuwa się wzdłuż pasa — zostaje na jezdni. Gdy wolnego miejsca nie ma
+  wcale (tylko przy przepełnionej planszy; przy gęstości gry nawet ×6 wszystko się mieści), obiekt
+  **czeka poza planszą** (`waitingObjects`, co 0,5 s jeden próbuje ponownie) — nigdy nie trafia na
+  inny i nigdy nie jest usuwany; Złoty Rdzeń bez miejsca przesuwa się o 1 s. Liczba obiektów,
+  promienie, hitboxy, progi i ekonomia bez zmian.
 - **Wygląd T1 (GG-OBJECTS-FIX-03):** bitmapy fragmentu i kapsuły są bezstratne (WebP VP8L);
   pod nimi cyjanowa obręcz z ciemnym obrysem, miękkim cieniem i lekką poświatą (czytelna na jasnej
   i ciemnej podłodze), a puls T1 to ±7% skali (inne obiekty ±3%) w tej samej fazie i tempie
