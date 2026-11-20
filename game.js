@@ -9443,6 +9443,10 @@ const PM_LOT_TEX = makeLotTex({ 768: PM_TEX_768, 512: PM_TEX_512 }, 'plac');
 /** GG-TG-EXACT-6: Arena Dachy Prądu (map key `d`, 9 blocks) lots are the Tech Grid textures TG-A..F (0-5), by an explicit
  *  graphic map [j][i] (PROPOSED assignment, owner review before merge). Looks only. */
 const TG_DACHY_MAP = [[], [], [, , , , , , , 2], [, , , , , , 0, 4], [, , , , , 5, 1, 3], [, , , , , , 4, 0], [, , , , , , , 1]];
+/** GG-TG-INTEGRATION-FIX-01: the TG sheets carry their own metal frame, glow and shadow (~8-10 % per side); drawn whole
+ *  inside the lot they read as a pasted card. The lot shows only the surface inside that frame: source inset
+ *  [left, top, right, bottom] as fractions of the texture (resolution independent, same for 512 and 768). */
+const TG_LOT_INSET = [0.09, 0.11, 0.09, 0.11];
 const TG_LOT_TEX = makeLotTex({ 768: TG_TEX_768, 512: TG_TEX_512 }, 'dachy');
 
 const CITY_ART = (() => {
@@ -10080,7 +10084,10 @@ const CITY_ART = (() => {
       const pmv = !theme && d === 'plac' ? PM_PLAC_MAP[j] && PM_PLAC_MAP[j][i] : undefined;
       const tgv = !theme && d === 'dachy' ? TG_DACHY_MAP[j] && TG_DACHY_MAP[j][i] : undefined; // GG-TG-EXACT-6
       const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : null;
-      if (pm) c.drawImage(pm, lx, ly, ls, ls);
+      if (pm && pmv === undefined) {
+        const w = pm.naturalWidth, h = pm.naturalHeight, [il, it, ir, ib] = TG_LOT_INSET;
+        c.drawImage(pm, il * w, it * h, (1 - il - ir) * w, (1 - it - ib) * h, lx, ly, ls, ls);
+      } else if (pm) c.drawImage(pm, lx, ly, ls, ls);
       else (LOTS[d] || LOTS.plac)[variant](c, lx, ly, ls, K, lotRng);
     } finally { tone = (v) => v; }
     const sign = !theme && citySignCells()[`${i},${j}`];
