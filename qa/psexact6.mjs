@@ -19,7 +19,7 @@ const READY = () => window.game && window.__qaBridge && window.__qaBridge.ready 
 const DEST = path.join(OUT, 'ps-exact6');
 const FRAMES = { pc: { w: 1280, h: 720, mobile: false, dsf: 1 }, mobile: { w: 390, h: 844, mobile: true, dsf: 2 } };
 // expected texture per Arena block, row = y, column = x ('.' = not an `o` block)
-const MAP = ['........', '........', '........', 'AF......', 'BDC.....', 'EFA.....', 'DE......', 'CB......'];
+const MAP = ['........', '........', '........', 'AF......', 'BDF.....', 'ECA.....', 'DE......', 'CB......'];
 const ROWS = ['pppkkkkk', 'ppppkkkk', 'ppppkkkd', 'oopRRkdd', 'oooRRddd', 'ooogggdd', 'oogggggd', 'oogggggg'];
 const KEY_RE = new RegExp('^\\*\\|(\\d+)\\|(\\d+)$');
 const isO = (k) => { const m = KEY_RE.exec(k); return !!m && ROWS[+m[2]][+m[1]] === 'o'; };
@@ -174,7 +174,7 @@ export async function runPs(url, baseUrl, pack) {
   const wrong = []; let right = 0;
   for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) if (ROWS[j][i] === 'o') { const w = MAP[j][i]; if (grid[i + ',' + j] === w) right++; else wrong.push(`${i},${j}=${grid[i + ',' + j]}!=${w}`); }
   const counts = {}; Object.values(grid).forEach(v => { counts[v] = (counts[v] || 0) + 1; });
-  results.push(report('PS-3 the 12 `o` blocks draw PS textures exactly as mapped ((0,3)=A (1,3)=F (0,4)=B (1,4)=D (2,4)=C (0,5)=E (1,5)=F (2,5)=A (0,6)=D (1,6)=E (0,7)=C (1,7)=B), A-F twice each; 12 PM and 9 TG blocks unchanged', right === 12 && !wrong.length && Object.keys(grid).length === 12 && L.split('').every(v => counts[v] === 2) && pmBlocks === 12 && tgBlocks === 9 && tex768.length === 6 && tex512.length === 6, `${right}/12 ${wrong.join(' ')} counts ${JSON.stringify(counts)} pm ${pmBlocks} tg ${tgBlocks}`));
+  results.push(report('PS-3 the 12 `o` blocks draw PS textures exactly as mapped ((0,3)=A (1,3)=F (0,4)=B (1,4)=D (2,4)=F (0,5)=E (1,5)=C (2,5)=A (0,6)=D (1,6)=E (0,7)=C (1,7)=B), A-F twice each; 12 PM and 9 TG blocks unchanged', right === 12 && !wrong.length && Object.keys(grid).length === 12 && L.split('').every(v => counts[v] === 2) && pmBlocks === 12 && tgBlocks === 9 && tex768.length === 6 && tex512.length === 6, `${right}/12 ${wrong.join(' ')} counts ${JSON.stringify(counts)} pm ${pmBlocks} tg ${tgBlocks}`));
   for (const [gfx, want] of [[0, 512], [1, 768], [2, 768]]) {
     const s = await layoutAndSizes(url, gfx);
     const ps = Object.entries(s.seen).filter(([k]) => { const [i, j] = k.split(',').map(Number); return ROWS[j][i] === 'o'; });

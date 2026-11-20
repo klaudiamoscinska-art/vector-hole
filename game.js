@@ -9451,9 +9451,9 @@ const TG_DACHY_MAP = [[], [], [, , , , , , , 2], [, , , , , , 0, 4], [, , , , , 
 const TG_LOT_INSET = [0.09, 0.11, 0.09, 0.11];
 const TG_LOT_TEX = makeLotTex({ 768: TG_TEX_768, 512: TG_TEX_512 }, 'dachy');
 /** GG-PS-EXACT-6: Arena Port Syntez (map key `o`, canonical district id `port`, 12 blocks) lots are the textures PS-A..F (0-5),
- *  by an explicit graphic map [j][i]: each twice, no random roll. Same lazy decode / vector fallback / per-district cache drop,
+ *  by an explicit graphic map [j][i]: each twice, no random roll; PS-C (no caption of its own) sits under the "PORT SYNTEZ" sign at (1,5). Same lazy decode / vector fallback / per-district cache drop,
  *  and the same source inset as TG (the PS sheets also carry their own frame). Looks only. */
-const PS_PORT_MAP = [[], [], [], [0, 5], [1, 3, 2], [4, 5, 0], [3, 4], [2, 1]];
+const PS_PORT_MAP = [[], [], [], [0, 5], [1, 3, 5], [4, 2, 0], [3, 4], [2, 1]];
 const PS_LOT_TEX = makeLotTex({ 768: PS_TEX_768, 512: PS_TEX_512 }, 'port');
 
 const CITY_ART = (() => {
