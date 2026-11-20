@@ -10,6 +10,8 @@ import { PI_TEX_768 } from './pi-tex-768.js';
 import { PI_TEX_512 } from './pi-tex-512.js';
 import { GG_TEX_768 } from './gg-tex-768.js';
 import { GG_TEX_512 } from './gg-tex-512.js';
+import { RM_TEX_768 } from './rm-tex-768.js';
+import { RM_TEX_512 } from './rm-tex-512.js';
 
 /* =========================================================
    GLITCH GULP (until 2026-11: Vector Hole)
@@ -9471,6 +9473,12 @@ const PI_LOT_TEX = makeLotTex({ 768: PI_TEX_768, 512: PI_TEX_512 }, 'park');
  *  also carry their own frame). Looks only. */
 const GG_GALERIA_MAP = [[], [], [], [], [], [, , , 2, 4, 5], [, , 3, 0, 5, 1, 4], [, , 1, 2, 4, 3, 0, 5]];
 const GG_LOT_TEX = makeLotTex({ 768: GG_TEX_768, 512: GG_TEX_512 }, 'galeria');
+/** GG-RM-EXACT-4: Arena Rdzeń Miasta (map key `R`, canonical district id `rdzen`, the 4 blocks (3,3) (4,3) (3,4) (4,4)) lots are the textures
+ *  RM-A, RM-B, RM-D, RM-F (indices 0-3; the package's reserve RM-C / RM-E are not embedded), by an explicit graphic map [j][i]
+ *  (PROPOSED assignment, owner review before merge): one of each, no random roll. Same lazy decode / vector fallback / per-district cache
+ *  drop and the same source inset as TG / PS / PI / GG (the RM sheets also carry their own frame). Looks only. */
+const RM_RDZEN_MAP = [[], [], [], [, , , 0, 1], [, , , 2, 3]];
+const RM_LOT_TEX = makeLotTex({ 768: RM_TEX_768, 512: RM_TEX_512 }, 'rdzen');
 
 const CITY_ART = (() => {
   const P = CITY_PITCH, R = CITY_ROAD, B = CITY_BLEED;
@@ -10109,8 +10117,9 @@ const CITY_ART = (() => {
       const psv = !theme && d === 'port' ? PS_PORT_MAP[j] && PS_PORT_MAP[j][i] : undefined; // GG-PS-EXACT-6
       const piv = !theme && d === 'park' ? PI_PARK_MAP[j] && PI_PARK_MAP[j][i] : undefined; // GG-PI-EXACT-6
       const ggv = !theme && d === 'galeria' ? GG_GALERIA_MAP[j] && GG_GALERIA_MAP[j][i] : undefined; // GG-GALERIA-GLITCH-EXACT-6
-      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : psv !== undefined ? PS_LOT_TEX.get(psv, rich) : piv !== undefined ? PI_LOT_TEX.get(piv, rich) : ggv !== undefined ? GG_LOT_TEX.get(ggv, rich) : null;
-      if (pm && pmv === undefined) { // TG, PS, PI and GG sheets carry their own frame: draw the surface inside TG_LOT_INSET; PM is drawn whole
+      const rmv = !theme && d === 'rdzen' ? RM_RDZEN_MAP[j] && RM_RDZEN_MAP[j][i] : undefined; // GG-RM-EXACT-4
+      const pm = pmv !== undefined ? PM_LOT_TEX.get(pmv, rich) : tgv !== undefined ? TG_LOT_TEX.get(tgv, rich) : psv !== undefined ? PS_LOT_TEX.get(psv, rich) : piv !== undefined ? PI_LOT_TEX.get(piv, rich) : ggv !== undefined ? GG_LOT_TEX.get(ggv, rich) : rmv !== undefined ? RM_LOT_TEX.get(rmv, rich) : null;
+      if (pm && pmv === undefined) { // TG, PS, PI, GG and RM sheets carry their own frame: draw the surface inside TG_LOT_INSET; PM is drawn whole
         const w = pm.naturalWidth, h = pm.naturalHeight, [il, it, ir, ib] = TG_LOT_INSET;
         c.drawImage(pm, il * w, it * h, (1 - il - ir) * w, (1 - it - ib) * h, lx, ly, ls, ls);
       } else if (pm) c.drawImage(pm, lx, ly, ls, ls);
@@ -10201,7 +10210,7 @@ class CityFloor {
     c.setTransform(px / (P + 2 * B), 0, 0, px / (P + 2 * B), 0, 0);
     c.translate(B - i * P, B - j * P);
     const rich = this.rich;
-    if (!theme) { PM_LOT_TEX.watch(this); TG_LOT_TEX.watch(this); PS_LOT_TEX.watch(this); PI_LOT_TEX.watch(this); GG_LOT_TEX.watch(this); }
+    if (!theme) { PM_LOT_TEX.watch(this); TG_LOT_TEX.watch(this); PS_LOT_TEX.watch(this); PI_LOT_TEX.watch(this); GG_LOT_TEX.watch(this); RM_LOT_TEX.watch(this); }
     paintCityChunk(c, i, j, theme, rich);
     this.renders++;
     const key = `${theme || '*'}|${i}|${j}`;
