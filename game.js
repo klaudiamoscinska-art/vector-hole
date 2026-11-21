@@ -7033,6 +7033,45 @@ function getObjectSprite(kind, color, r, variant) {
   return s;
 }
 
+/** GG-OBJECTS-SCALE-FIX-01: how much bigger an Arena object of kind T2-T6 is drawn than its radius r, [bitmap (gfx 1/2), vector look (gfx 0 and
+ *  a bitmap not decoded yet), can-eat ring radius in units of r (the picture's perceived radius: the ring hugs the picture, see WorldObject.draw())]. A look only: radius, hitbox, eat gates, tiers, mass and the RNG are not touched.
+ *  Why: eating an object is a tier gate (canEatWorldObjectTier(): T2 from vortex radius 30, T3 46, T4 66, T5 90, T6 118), and every object's
+ *  radius sits just above the tier below's start (prop 20 > 18, car 34 > 30 ...), while the vortex grows 31-67 % through that tier. Drawn at r, the
+ *  pictures were also lighter than r (a bus or a dome is long and flat): a T2-T6 object looked smaller than the vortex for most of the tier in
+ *  which it is still locked ("it looks smaller and I can't eat it").
+ *  Rule (measured by qa/objscale1.mjs; P = the picture's perceived radius on screen, the geometric mean of its half extent and its
+ *  area-equivalent radius): an object's P is 0.88 of the P of a vortex at its unlock radius (band 0.85-1.0). So while it is locked it never
+ *  looks clearly smaller than the vortex (that one is below the unlock radius), and the moment it unlocks it fits in the vortex (the
+ *  can-eat ring says it). The numbers are `node qa/objscale1.mjs --derive`. T1 (fragment, kapsula: eatable from the first frame), the golden
+ *  core, the portal, Campaign, menus and the welcome scene are not in it (scale 1). The picture grows about the object's centre = the centre of
+ *  its hitbox; the ground base (shadow + tier ring) grows with it. spawnViewBox() uses the bitmap factor, so no picture spawns over another. */
+const OBJECT_VIEW_SCALE = {
+  lawka: [1.8, 1.53, 1.47],
+  kiosk: [1.59, 1.5, 1.47],
+  skrzynia: [1.72, 1.64, 1.47],
+  latarnia: [1.8, 1.82, 1.47],
+  drzewo: [1.67, 1.7, 1.47],
+  znacznik: [1.61, 1.65, 1.47],
+  samochod: [1.57, 1.45, 1.31],
+  wezel: [1.82, 1.51, 1.39],
+  pylon: [2, 1.71, 1.39],
+  pawilon: [1.38, 1.19, 1.17],
+  billboard: [1.3, 1.09, 1.17],
+  magazyn: [1.41, 1.17, 1.17],
+  landmark: [1.36, 1.25, 1.22],
+  autobus: [1.4, 1.15, 1.13],
+  tramwaj: [1.48, 1.18, 1.13],
+  ciezarowka: [1.48, 1.12, 1.13],
+  wiezowiec: [1.32, 1.16, 1.13],
+  maszt: [1.21, 1.31, 1.13],
+  kopula: [1.4, 1.18, 1.13]
+};
+/** The bitmap factor of OBJECT_VIEW_SCALE for a kind (1 when it has none): the size the spawn rule keeps clear (spawnViewBox()). */
+function objectViewScale(kind) {
+  const v = OBJECT_VIEW_SCALE[kind];
+  return v ? v[0] : 1;
+}
+
 /** Draws one object at the current origin: idle bob/breathe + cached
  *  sprite + its live overlay. `seed` de-syncs the idle motion between
  *  objects; `live` false skips the animated extras (used-up nodes etc.). */
@@ -7045,10 +7084,11 @@ function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
   // GG-OBJECTS-RASTER-02: an Arena object with a ready bitmap (opts.raster, gfx 1/2) -- the same idle bob / breathe and live
   // overlay as the vector look, only the picture differs.
   const bmp = opts.raster ? OBJECT_RASTER.get(kind, r) : null;
+  const vs = opts.raster ? OBJECT_VIEW_SCALE[kind] : null;   // GG-OBJECTS-SCALE-FIX-01: an Arena T2-T6 object is drawn bigger than r
   if (bmp) {
     const t1 = kind === 'fragment' || kind === 'kapsula';   // GG-OBJECTS-FIX-03: see OBJECT_T1
     const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
-    const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * (t1 ? T1_BREATHE : 0.03);
+    const breathe = (1 + Math.sin(t * 3 + seed * 1.7) * (t1 ? T1_BREATHE : 0.03)) * (vs ? vs[0] : 1);
     ctx.save();
     ctx.translate(0, bob);
     ctx.scale(breathe, breathe);
@@ -7062,12 +7102,12 @@ function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
     return;
   }
   if (OBJECT_ART_LITE && opts.live !== false) {
-    const s = getObjectSprite(kind, color, r, opts.variant);
-    ctx.drawImage(s.canvas, -s.half, -s.half, s.half * 2, s.half * 2);
+    const s = getObjectSprite(kind, color, r, opts.variant), h = s.half * (vs ? vs[1] : 1);
+    ctx.drawImage(s.canvas, -h, -h, h * 2, h * 2);
     return;
   }
   const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
-  const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * 0.03;
+  const breathe = (1 + Math.sin(t * 3 + seed * 1.7) * 0.03) * (vs ? vs[1] : 1);
   ctx.save();
   ctx.translate(0, bob);
   // GG-OBJECTS-02: no idle rocking -- every look keeps the one orientation
@@ -11002,7 +11042,8 @@ const SPAWN_SPIRAL = (() => {
 /** The picture box of a `kind` of radius r centred at (x, y), in world units, written into `out` ({ l, r, t, b }). */
 function spawnViewBox(kind, r, x, y, out) {
   const s = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER, t1 = kind === 'fragment' || kind === 'kapsula';
-  const amp = 1 + (t1 ? T1_BREATHE : 0.03), bob = Math.min(2, r * 0.08), base = OBJECT_RASTER_BASE[kind];
+  // GG-OBJECTS-SCALE-FIX-01: the picture as drawn -- the bitmap factor of OBJECT_VIEW_SCALE (one layout for every quality level)
+  const amp = (1 + (t1 ? T1_BREATHE : 0.03)) * objectViewScale(kind), bob = Math.min(2, r * 0.08), base = OBJECT_RASTER_BASE[kind];
   let l = s[0], rr = s[1], t = s[2], b = s[3];
   if (base) {   // the ground ring under the bitmap (T1: OBJECT_T1's wider ring at its largest)
     const hw = base[2], ring = t1 ? hw * 1.12 * 1.06 : hw * 1.02, yc = base[1] - 0.1 * hw;
@@ -11014,11 +11055,12 @@ function spawnViewBox(kind, r, x, y, out) {
 const SPAWN_BOX_A = { l: 0, r: 0, t: 0, b: 0 }, SPAWN_BOX_B = { l: 0, r: 0, t: 0, b: 0 };
 /** True when obj placed at (x, y) keeps both clearances (footprint, picture) from every live object in `others` (but obj). */
 function spawnSpotFree(obj, x, y, others) {
-  const r = obj.radius, a = spawnViewBox(obj.subtype, r, x, y, SPAWN_BOX_A);
+  const r = obj.radius, a = spawnViewBox(obj.subtype, r, x, y, SPAWN_BOX_A), ra = r * objectViewScale(obj.subtype);
   for (let i = 0; i < others.length; i++) {
     const o = others[i];
     if (o === obj || o.eating || o.removed) continue;
-    const reach = 1.6 * (r + o.radius) + SPAWN_GAP + SPAWN_VIEW_GAP + 4, dx = o.x - x;
+    // GG-OBJECTS-SCALE-FIX-01: the quick distance cut-off covers the pictures as drawn (1.6 x their scaled radii; scale 1 = exactly as before)
+    const reach = 1.6 * (ra + o.radius * objectViewScale(o.subtype)) + SPAWN_GAP + SPAWN_VIEW_GAP + 4, dx = o.x - x;
     if (dx >= reach || dx <= -reach) continue;
     const dy = o.y - y;
     if (dy >= reach || dy <= -reach) continue;
@@ -11151,7 +11193,9 @@ class WorldObject {
       ctx.globalAlpha = highlight * (0.35 + 0.35 * breathe);
       // A few px outside the object, not 1.4x its radius -- the old ring
       // read bigger than the hole that could already eat it (player feedback).
-      drawGlowRing(ctx, this.x, this.y, this.radius + 3 + 2 * breathe, this.color, 2, 18);
+      // GG-OBJECTS-SCALE-FIX-01: around the picture as drawn (OBJECT_VIEW_SCALE ring, 1 px out), so a bigger picture does not hide it; still inside the vortex at unlock
+      const vs = OBJECT_VIEW_SCALE[this.subtype];
+      drawGlowRing(ctx, this.x, this.y, (vs ? this.radius * vs[2] + 1 : this.radius + 3) + 2 * breathe, this.color, 2, 18);
       ctx.restore();
     }
 

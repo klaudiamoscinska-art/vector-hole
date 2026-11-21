@@ -4,6 +4,11 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-OBJECTS-SCALE-FIX-01 — obiekty Areny T2–T6 nie wyglądają na mniejsze od wiru, który jeszcze nie może ich zjeść (lokalnie; tylko wygląd + odstęp obrazów przy spawnie; zapis nadal v13; progi, hitboxy, ekonomia, boty, kampania bez zmian)
+- Audyt (`qa/objscale1.mjs`): przed zmianą każdy z 19 rodzajów T2–T6 wyglądał na wyraźnie mniejszy (< 0,85) od wiru tieru poniżej przez 59–100% tego tieru (bitmapy; wektory 14–100%), przy progu odblokowania 0,44–0,73 wielkości wiru. Przyczyny: promień obiektu tuż nad startem tieru poniżej + bitmapy lżejsze optycznie niż r (płaskie pojazdy, kopuła, węzeł, pylon).
+- `OBJECT_VIEW_SCALE` w `game.js` (bitmapa, wektor, pierścień; wyliczone `node qa/objscale1.mjs --derive`): obraz = 0,88 wiru przy progu odblokowania; po zmianie 0% „wyraźnie mniejszy” dla wszystkich rodzajów i obu wyglądów; tiery czytelne po kolei. `drawObjectArt()` (tylko `raster: true` = Arena), `spawnViewBox()` i szybkie odcięcie w `spawnSpotFree()` liczą obraz w nowej skali; pierścień „mogę zjeść” w `WorldObject.draw()` obejmuje obraz.
+- Testy: `node qa/objscale1.mjs --base=DIR` (SF-RULE/LOCKED/ORDER/RING, SF-DRAW-*, SF-LAYOUT-*, SF-SOURCE*); zrzuty `node qa/objscale1-shots.mjs --base=DIR`.
+
 ## GG-OBJECTS-FIX-03 — ostrzejsze T1 z obręczą i wyraźniejszym pulsem; obiekty Areny nie powstają na sobie (lokalnie; zapis nadal v13; hitboxy, ekonomia, boty, kampania bez zmian)
 - Spawn bez nakładania (T1–T6, start rundy, Daily, respawn, Złoty Rdzeń, Burza portali): `settleSpawn()` / `Game.separateObjects()` / `Game.settleRespawn()` w `game.js`; ślad = koło trafienia r, odstęp 6; przesunięcie po stałej spirali bez losowania (seed i liczba obiektów bez zmian). Baza: średnio ~26 nakładających się par na rundę i ~12% respawnów na innym obiekcie; po zmianie 0.
 - T1: `fragment` i `kapsula` przeeksportowane z zatwierdzonych natywnych PNG jako bezstratny WebP (`tools/build-object-raster.mjs --only=fragment,kapsula`; pozostałe 38 bitmap bajt w bajt); błąd względem idealnej referencji −19% średnio. Obręcz T1 (`OBJECT_T1`, `drawT1Raster()`), puls ±7% + jaśnienie obręczy.

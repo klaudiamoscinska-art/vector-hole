@@ -215,6 +215,17 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   pod nimi cyjanowa obręcz z ciemnym obrysem, miękkim cieniem i lekką poświatą (czytelna na jasnej
   i ciemnej podłodze), a puls T1 to ±7% skali (inne obiekty ±3%) w tej samej fazie i tempie
   (3 rad/s) plus jaśnienie obręczy 0,5→1. Bez `shadowBlur`; wektor (gfx 0) bez zmian.
+- **Skala obrazu obiektów Areny (GG-OBJECTS-SCALE-FIX-01, `OBJECT_VIEW_SCALE`):** obiekt T2–T6 jest
+  zablokowany przez cały tier poniżej (jadalność = tier wiru), a jego promień r leży tuż nad startem tego
+  tieru (np. element uliczny 20 przy starcie 18), podczas gdy wir rośnie w tierze o 31–67%. Dlatego obraz
+  jest rysowany większy niż r: jego postrzegany promień (średnia geometryczna połowy dłuższego boku
+  sylwetki i promienia równoważnego powierzchni) = 0,88 wielkości wiru przy progu odblokowania (pasmo
+  0,85–1,0; mierzone `qa/objscale1.mjs`). Zablokowany obiekt nigdy nie wygląda na wyraźnie mniejszy od
+  wiru, a po odblokowaniu mieści się w nim. Skale: bitmapa 1,21–2,0, wektor (gfx 0) 1,09–1,82; obraz rośnie
+  wokół środka hitboxa razem z podstawą; pierścień „mogę zjeść” obejmuje obraz (`r·ring + 1`, przy progu
+  wciąż w wirze). T1, Złoty Rdzeń, portal, Kampania, menu bez zmian. Reguła spawnu „obraz nie na obrazie”
+  liczy obraz w nowej skali (ok. 12% pozycji startowych przesuniętych lokalnie, mediana 28 jedn.; RNG,
+  liczba i rodzaje obiektów, promienie, hitboxy, progi i ekonomia bez zmian).
 - **Rywal-pacer (v13, `CONFIG.rival`):** pierwszy bot jedzie po krzywej
   „par” = mediana 5 ostatnich ukończonych rund gracza (2600, dopóki nie ma
   3 rund; w Wyzwaniu dnia i wyzwaniach znajomych zawsze 2600) ×
