@@ -6843,7 +6843,9 @@ const OBJECT_RASTER = {
    *  While the size just switched to is not decoded yet, the other size's image of the kind is used. */
   get(kind, r) {
     const q = this.q, meta = OBJECT_RASTER_META[kind];
-    if (!q || !meta || Math.round(r) !== meta.r || typeof Image !== 'function') return null;
+    // GG-SIZE-CONSISTENCY-01 pilot B: a kind given another radius draws its own (unchanged) bitmap scaled to that radius
+    const pr = meta && SIZE_PROTO.radius[kind] && Math.round(r) === SIZE_PROTO.radius[kind] ? r / meta.r : 1;
+    if (!q || !meta || (Math.round(r) !== meta.r && pr === 1) || typeof Image !== 'function') return null;
     let im = this.imgs[q][kind];
     if (!im) {
       im = this.load(q, kind);
@@ -6852,9 +6854,9 @@ const OBJECT_RASTER = {
         Object.keys(OBJECT_RASTER_META).forEach((k, i) => setTimeout(() => { if (this.q === q && !this.imgs[q][k]) this.load(q, k); }, 40 + i * 25));
       }
     }
-    if (OBJECT_RASTER.ready(im)) return { img: im, half: meta.half };
+    if (OBJECT_RASTER.ready(im)) return { img: im, half: meta.half * pr };
     const o = this.imgs[q === 3 ? 2 : 3][kind];
-    return o && OBJECT_RASTER.ready(o) ? { img: o, half: meta.half } : null;
+    return o && OBJECT_RASTER.ready(o) ? { img: o, half: meta.half * pr } : null;
   },
   ready(im) { return im.complete && im.naturalWidth > 0 && !im.failed; },
   load(q, kind) {
@@ -7073,6 +7075,60 @@ const OBJECT_VIEW_SCALE = {
   maszt: [1.07, 1.16],
   kopula: [1.24, 1.05]
 };
+/** GG-SIZE-CONSISTENCY-01 EXPERIMENT (local pilot, NOT approved -- never ship in this form): two prototypes of one fix, switched only
+ *  by QA in the page through applySizeProto() before a round starts. `variant` null = production behaviour, byte for byte the same
+ *  numbers (no object, radius, curve or picture changes).
+ *  Problem (qa/sizecons1-measure.mjs): the vortex is drawn as an opaque disc out to 1.07 R; eating a T2-T6 object is a tier gate only;
+ *  inside a tier the vortex grows x1.31-1.67 while the next tier's objects stay put -- so for much of each tier the vortex looks
+ *  bigger than objects it may not eat (T1 vortex R 29 = disc 31 vs a T2 crate's long half-extent 22).
+ *   A -- representation only: the four pilot kinds are drawn so their long half-extent = the vortex's disc (1.07 R) at the radius that
+ *        unlocks them (`view`: multiplies OBJECT_VIEW_SCALE, bitmap and vector). Hitbox, eat gate, tiers, growth: production.
+ *   B -- Arena mechanics: the same growth units per tier (CONFIG.growth.unitAnchors, so the same pickups unlock each tier), but the
+ *        vortex reaches only R_m / `surge` just before a tier's threshold and jumps to R_m (production's anchor) when it crosses it
+ *        (arenaRadiusForUnits()); the jump is drawn as a short swell (`surgeMs`). Pilot object sizes in `radius`: r' = ceil(r x disc
+ *        just before the jump / L), so a locked object's long side is never shorter than the vortex (crate 20 -> 26, node 32 -> 33,
+ *        billboard 54 -> 56; the dome stays 100). Campaign keeps radiusForUnits() and never reads this. */
+const SIZE_PROTO = { variant: null, surge: 1, surgeMs: 0, view: {}, radius: {} };
+const SIZE_PROTO_SETS = {
+  A: { surge: 1, surgeMs: 0, view: { skrzynia: 1.446, wezel: 1.166, billboard: 1.181, kopula: 1.034 }, radius: {} },
+  B: { surge: 1.15, surgeMs: 340, view: {}, radius: { skrzynia: 26, wezel: 33, billboard: 56 } }
+};
+const SIZE_PROTO_VIEW0 = JSON.parse(JSON.stringify(OBJECT_VIEW_SCALE));
+/** QA only: switch the pilot (null | 'A' | 'B'); call before Game.startRound(). Returns SIZE_PROTO. */
+function applySizeProto(variant) {
+  const set = SIZE_PROTO_SETS[variant] || { surge: 1, surgeMs: 0, view: {}, radius: {} };
+  Object.assign(SIZE_PROTO, { variant: SIZE_PROTO_SETS[variant] ? variant : null, surge: set.surge, surgeMs: set.surgeMs, view: { ...set.view }, radius: { ...set.radius } });
+  for (const k of Object.keys(SIZE_PROTO_VIEW0)) {
+    const f = SIZE_PROTO.view[k] || 1;
+    OBJECT_VIEW_SCALE[k] = [+(SIZE_PROTO_VIEW0[k][0] * f).toFixed(3), +(SIZE_PROTO_VIEW0[k][1] * f).toFixed(3)];
+    if (f === 1) OBJECT_VIEW_SCALE[k] = SIZE_PROTO_VIEW0[k].slice();
+  }
+  return SIZE_PROTO;
+}
+/** Arena's radius for `units` growth units: radiusForUnits() when SIZE_PROTO.surge is 1 (production); variant B: each tier's segment
+ *  runs from its anchor R[i-1] to R[i] / surge, and R[i] is reached on the unit that crosses into the next tier. Past the last anchor
+ *  the production slope. */
+function arenaRadiusForUnits(units) {
+  const J = SIZE_PROTO.surge;
+  if (J === 1) return radiusForUnits(units);
+  const U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors, u = Math.max(0, units);
+  for (let i = 1; i < U.length; i++) {
+    if (u < U[i]) return R[i - 1] + (R[i] / J - R[i - 1]) * (u - U[i - 1]) / (U[i] - U[i - 1]);
+  }
+  return radiusForUnits(u);
+}
+/** Inverse of arenaRadiusForUnits(); a radius inside a jump (R[i] / surge .. R[i], reached only by eating a rival) counts as U[i]. */
+function arenaUnitsForRadius(radius) {
+  const J = SIZE_PROTO.surge;
+  if (J === 1) return unitsForRadius(radius);
+  const U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors;
+  if (radius <= R[0]) return 0;
+  for (let i = 1; i < R.length; i++) {
+    if (radius < R[i] / J) return U[i - 1] + (U[i] - U[i - 1]) * (radius - R[i - 1]) / (R[i] / J - R[i - 1]);
+    if (radius < R[i]) return U[i];
+  }
+  return unitsForRadius(radius);
+}
 /** The bitmap factor of OBJECT_VIEW_SCALE for a kind (1 when it has none): the size the spawn rule keeps clear (spawnViewBox()). */
 function objectViewScale(kind) {
   const v = OBJECT_VIEW_SCALE[kind];
@@ -11174,12 +11230,14 @@ class WorldObject {
     if (first && rng) {
       this.subtype = tier.subtypes[seededInt(rng, 0, tier.subtypes.length - 1)];
       this.radius = seededRand(rng, tier.minR, tier.maxR);
+      if (SIZE_PROTO.radius[this.subtype]) this.radius = SIZE_PROTO.radius[this.subtype];   // GG-SIZE-CONSISTENCY-01 pilot (after the draw: same RNG stream)
       this.rotation = seededRand(rng, 0, Math.PI * 2);
       this.x = seededRand(rng, this.radius + 20, WORLD_W - this.radius - 20);
       this.y = seededRand(rng, this.radius + 20, WORLD_H - this.radius - 20);
     } else {
       this.subtype = tier.subtypes[randInt(0, tier.subtypes.length - 1)];
       this.radius = rand(tier.minR, tier.maxR);
+      if (SIZE_PROTO.radius[this.subtype]) this.radius = SIZE_PROTO.radius[this.subtype];   // GG-SIZE-CONSISTENCY-01 pilot
       this.rotation = rand(0, Math.PI * 2);
       this.x = rand(this.radius + 20, WORLD_W - this.radius - 20);
       this.y = rand(this.radius + 20, WORLD_H - this.radius - 20);
@@ -11569,6 +11627,13 @@ class Hole {
   }
 
   growFromArea(gainArea) {
+    if (SIZE_PROTO.surge !== 1) {
+      // GG-SIZE-CONSISTENCY-01 pilot B: a rival's area is added on production's curve, so it is worth the same growth units as in
+      // production (on B's flatter in-tier curve the same radius gain would be worth up to x1.75 the units)
+      const r0 = radiusForUnits(arenaUnitsForRadius(this.radius));
+      this.setRadius(Math.max(MIN_RADIUS, arenaRadiusForUnits(unitsForRadius(Math.sqrt(r0 * r0 + gainArea / Math.PI)))));
+      return;
+    }
     const area = Math.PI * this.radius * this.radius;
     const newArea = area + gainArea;
     this.setRadius(Math.max(MIN_RADIUS, Math.sqrt(newArea / Math.PI)));
@@ -11577,7 +11642,7 @@ class Hole {
   /** Grow along CONFIG.growth's curve by `units` growth units (an eaten
    *  object's GDD 07 `growth` value) -- see radiusForUnits(). */
   growUnits(units) {
-    this.setRadius(radiusForUnits(unitsForRadius(this.radius) + units));
+    this.setRadius(arenaRadiusForUnits(arenaUnitsForRadius(this.radius) + units));   // = radiusForUnits() unless the B pilot is on
   }
 
   /** Every radius increase triggers a short "gulp" pop in draw() so even a
@@ -11586,6 +11651,8 @@ class Hole {
   setRadius(r) {
     r = Math.min(r, CONFIG.hole.maxRadius);
     if (r > this.radius + 0.01) this.growPopAt = performance.now();
+    // GG-SIZE-CONSISTENCY-01 pilot B: a tier crossing is a visible jump -- drawn as a swell from the old size (draw() only)
+    if (SIZE_PROTO.surgeMs && r > this.radius * 1.05 && getSizeTierIndex(r) > getSizeTierIndex(this.radius)) { this.surgeFrom = this.radius; this.surgeAt = performance.now(); }
     this.radius = r;
   }
 
@@ -11604,9 +11671,16 @@ class Hole {
     const popT = this.growPopAt ? (performance.now() - this.growPopAt) / 260 : 1;
     const pop = popT < 1 ? Math.sin(popT * Math.PI) : 0;
     const realRadius = this.radius;
+    // GG-SIZE-CONSISTENCY-01 pilot B: the tier jump swells in (ease-out with a small overshoot) instead of snapping
+    let swell = realRadius;
+    if (this.surgeAt != null) {
+      const k = (performance.now() - this.surgeAt) / (SIZE_PROTO.surgeMs || 1);
+      if (k >= 1 || k < 0) this.surgeAt = null;
+      else { const e = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); swell = this.surgeFrom + (realRadius - this.surgeFrom) * e; }
+    }
     // fxSquash (GG-VFX-01, set by Game.swallowPass()): the drawn vortex
     // inhales while something heavy falls in and rings after the gulp.
-    this.radius = realRadius * (1 + 0.14 * pop + (this.fxSquash || 0));
+    this.radius = swell * (1 + 0.14 * pop + (this.fxSquash || 0));
     this.growPop = pop;
     try {
       this.drawBody(ctx, time, inner, over);
@@ -20607,7 +20681,7 @@ class Game {
     this.updateWaitingBots(dt);
     for (const bot of this.bots) {
       bot.tempSpeedMult = (bot.baseSpeedMult || 1) * (late ? 1 + D.lateRoundBotSpeedBonus : 1);
-      if (this.botTuning.passive > 0) bot.radius = Math.min(CONFIG.hole.maxRadius, radiusForUnits(unitsForRadius(bot.radius) + this.botTuning.passive * dt));
+      if (this.botTuning.passive > 0) bot.radius = Math.min(CONFIG.hole.maxRadius, arenaRadiusForUnits(arenaUnitsForRadius(bot.radius) + this.botTuning.passive * dt));
       bot.update(dt, this);
     }
 
