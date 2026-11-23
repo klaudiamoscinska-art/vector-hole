@@ -4,6 +4,9 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## EKSPERYMENT (lokalna gałąź experiment/gg-t1-fragment-reach, NIEZATWIERDZONY) — fragment T1 pochłaniany od 1,0·R tylko przez wir gracza
+- `CONFIG.arena.fragmentReach` = [1,0, 0, tylko gracz] (produkcja: 0,85·R dla wszystkich obiektów). Powód: wir jest rysowany do ~1,16 R, a fragment 0,85–1,16 R od toru chował się pod brzegiem i wyjeżdżał niezjedzony. Inne obiekty, rywale, kapsuła, Złoty Rdzeń, Kampania bez zmian. Pomiary: `qa/out/objscale1-final/` (warianty V0–V3g). GDD do uzupełnienia dopiero po decyzji.
+
 ## GG-OBJECTS-SCALE-FIX-01 — obiekty Areny T2–T6 tak duże jak ich hitbox + znacznik wymaganego tieru przy wirze (lokalnie, wariant C; tylko wygląd + odstęp obrazów przy spawnie; zapis nadal v13; zasięg jedzenia, progi, hitboxy, ekonomia, boty, T1, kampania bez zmian)
 - Audyt (`qa/objscale1.mjs`): jadalność = tier wiru, a promień obiektu leży tuż nad startem tieru poniżej, podczas gdy wir rośnie w tierze o 31–67%; bitmapy były też optycznie lżejsze niż r (0,70–0,94 r). Przed zmianą zablokowany obiekt wyglądał na wyraźnie mniejszy od wiru przez 80–100% tieru. REVIEW-01: żadna statyczna skala nie odróżni „zablokowany” od „jadalny” przy progu.
 - `OBJECT_VIEW_SCALE` (bitmapa ×1,07–1,44, wektor ×1,00–1,24; `node qa/objscale1.mjs --derive`): postrzegany promień obrazu = r. Pierścień „mogę zjeść” bez zmian (r + 3). `spawnViewBox()` / `spawnSpotFree()` liczą obraz w nowej skali.

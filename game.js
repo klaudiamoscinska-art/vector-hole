@@ -47,6 +47,12 @@ const CONFIG = {
     // closest point it may reach), the player's vortex pulls those in too
     // (Game.edgeReach()). Bots are unchanged.
     edgeReachSlack: 0.25,
+    // GG-OBJECTS-SCALE-FIX-01 FINAL-03 -- LOCAL EXPERIMENT, not approved for production. A T1 fragment (and only it) is swallowed once
+    // its centre is within  fragmentReach[0] * R + fragmentReach[1] * r  of a vortex's centre (R = the vortex, r = the fragment); any other
+    // object keeps 0.85 R. Production is [0.85, 0]: the vortex is drawn out to ~1.16 R, so a fragment 0.85-1.16 R off its path slid under
+    // the rim and came out uneaten (REVIEW-02). fragmentReach[2] true = the player's vortex only (like edgeReachSlack); false = every
+    // hole (the player and the rivals share handleObjectEating()). Never below the usual reach (SZAŁ's longer reach still wins).
+    fragmentReach: [1.0, 0, true],   // prototype = V2g (FINAL-03 measurements); production = [0.85, 0, *]
     // ARENA-FIX-1: an eaten rival never comes back on the player. Its new
     // centre must lie at least  r_player * sqrt(2) + r_rival + margin  world
     // units from the player's centre at the moment it appears. r * sqrt(2)
@@ -19905,6 +19911,7 @@ class Game {
 
   handleObjectEating(hole) {
     const reach = hole.radius * 0.85 * (hole.isPlayer && this.frenzyActive ? CONFIG.golden.reachMult : 1);
+    const fr = CONFIG.arena.fragmentReach, fragReach = fr[2] && !hole.isPlayer ? reach : Math.max(reach, hole.radius * fr[0] + TIERS.fragment.maxR * fr[1]);
     for (const obj of this.objects) {
       if (obj.eating) continue;
       if (!this.holeCanEat(hole, obj)) {
@@ -19918,14 +19925,15 @@ class Game {
       // already as long as the reach rules the bite out (the distance is
       // never shorter than either gap), without a Math.hypot for each of
       // the ~300 objects x every hole x every frame. The same test, exactly.
+      const lim = obj.tier === 'fragment' ? fragReach : reach;
       const gx = Math.abs(obj.x - hole.x), gy = Math.abs(obj.y - hole.y);
-      if (gx >= reach || gy >= reach) {
+      if (gx >= lim || gy >= lim) {
         if (!hole.isPlayer) continue;
         const edge = hole.radius * Math.SQRT2 + obj.radius; // edgeReach()'s outer bound
         if (gx >= edge || gy >= edge) continue;
       }
       const d = dist(hole.x, hole.y, obj.x, obj.y);
-      if (d < reach || (hole.isPlayer && this.edgeReach(hole, obj.x, obj.y, obj.radius))) obj.startEating(hole);
+      if (d < lim || (hole.isPlayer && this.edgeReach(hole, obj.x, obj.y, obj.radius))) obj.startEating(hole);
     }
   }
 
