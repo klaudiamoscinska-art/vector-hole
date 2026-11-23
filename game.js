@@ -7073,43 +7073,49 @@ function objectViewScale(kind) {
 }
 
 /** GG-OBJECTS-SCALE-FIX-01 (variant C): the "locked" signal. A locked Arena object (Game.holeCanEat() false -- the real eat gate, SZAŁ's
- *  +1 tier included) near the player's vortex shows a small badge above its picture: a padlock and the tier it needs ("T3") in that tier's
+ *  +1 tier included) near the player's vortex shows a small badge by its picture: a padlock and the tier it needs ("T3") in that tier's
  *  colour, the same tier label as lockedBump()'s tag. It shows before the vortex's drawn edge (about 1.16 R) reaches the picture: once the gap
- *  between them is below max(0.6 R, 26 screen px), fading in over the outer 40 % of that, for the `max` nearest such objects only -- never
+ *  between them is below max(0.7 R, 32 screen px), fading in over the outer 35 % of that, for the `max` nearest such objects only -- never
  *  across the map. An eatable object never shows it (it keeps the can-eat ring). Display only: eat reach, gates, tiers and hitboxes are
- *  untouched. One cached canvas per tier and pixel ratio, one drawImage per badge (no shadowBlur, no per-frame text or path). */
-const LOCK_BADGE = { max: 4, holeDrawn: 1.16, nearFrac: 0.6, nearPx: 26, fade: 0.4, h: 17, sprites: new Map() };
-/** The picture's farthest edge from its centre / its top edge (y, negative = up), world units, as drawn (SPAWN_VIEW box x the bitmap factor). */
+ *  untouched. One cached canvas per tier and pixel ratio, one drawImage per badge (no shadowBlur, no per-frame text or path).
+ *  FINAL-03 (phone: 17 px was too small): `h` 21 CSS px at any zoom; an opaque ink pill with a dark halo (`halo` px) so it reads on bright
+ *  neon floors, the tier colour's rim, the padlock and label in a lighter tint of that colour. Placed above the picture, else below it, else
+ *  beside it away from the vortex -- never over the vortex's drawn disc, a HUD panel, the minimap or another badge (Game.lockBadgePlacements()). */
+const LOCK_BADGE = { max: 4, holeDrawn: 1.16, nearFrac: 0.7, nearPx: 32, fade: 0.35, h: 21, halo: 2, gapPx: 3, sprites: new Map() };
+/** The picture's box around its centre as drawn (SPAWN_VIEW box x r x the bitmap factor): [left, right, top, bottom], world units, up < 0. */
+function objectPictureBox(kind, r) {
+  const v = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER, k = r * objectViewScale(kind);
+  return [v[0] * k, v[1] * k, v[2] * k, v[3] * k];
+}
+/** The picture's farthest edge from its centre, world units. */
 function objectPictureReach(kind, r) {
-  const v = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER;
-  return Math.max(-v[0], v[1], -v[2], v[3]) * r * objectViewScale(kind);
+  const b = objectPictureBox(kind, r);
+  return Math.max(-b[0], b[1], -b[2], b[3]);
 }
-function objectPictureTop(kind, r) {
-  return (SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER)[2] * r * objectViewScale(kind);
-}
-/** The badge of size tier m (CONFIG.sizeTiers index) at device pixel ratio dpr: { cv, w, h } (w, h in CSS px). */
+/** The badge of size tier m (CONFIG.sizeTiers index) at device pixel ratio dpr: { cv, w, h } (w, h in CSS px, the halo included). */
 function lockBadgeSprite(m, dpr) {
   const fonts = typeof document !== 'undefined' && document.fonts ? document.fonts.status : 'loaded', key = m + '|' + dpr + '|' + fonts;
   let s = LOCK_BADGE.sprites.get(key);
   if (s) return s;
-  const tier = CONFIG.sizeTiers[m], H = LOCK_BADGE.h, font = `${Math.round(H * 0.64)}px ${FONT_DISPLAY}`;
+  const tier = CONFIG.sizeTiers[m], H = LOCK_BADGE.h, E = LOCK_BADGE.halo, ink = shadeColor(tier.color, 0.35), font = `${Math.round(H * 0.62)}px ${FONT_DISPLAY}`;
   const cv = document.createElement('canvas'), c = cv.getContext('2d');
   c.font = font;
-  const lockW = H * 0.46, padL = H * 0.36, gap = H * 0.2, padR = H * 0.38, W = Math.ceil(padL + lockW + gap + c.measureText(tier.shortId).width + padR);
-  cv.width = Math.ceil(W * dpr); cv.height = Math.ceil(H * dpr);
-  c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const rr = H / 2 - 0.75;   // pill: dark ink, the tier colour's rim
+  const lockW = H * 0.44, padL = H * 0.34, gap = H * 0.2, padR = H * 0.38, W = Math.ceil(padL + lockW + gap + c.measureText(tier.shortId).width + padR);
+  cv.width = Math.ceil((W + 2 * E) * dpr); cv.height = Math.ceil((H + 2 * E) * dpr);
+  c.setTransform(dpr, 0, 0, dpr, E * dpr, E * dpr);
+  const rr = H / 2;   // pill: dark halo outside, opaque ink inside, the tier colour's rim
   c.beginPath();
-  c.arc(0.75 + rr, H / 2, rr, Math.PI / 2, Math.PI * 1.5); c.arc(W - 0.75 - rr, H / 2, rr, -Math.PI / 2, Math.PI / 2); c.closePath();
-  c.fillStyle = 'rgba(4, 16, 29, 0.9)'; c.fill();
-  c.lineWidth = 1.5; c.strokeStyle = tier.color; c.stroke();
-  const lx = padL, bw = lockW, bh = H * 0.36, by = H * 0.5 - H * 0.02;   // padlock: shackle + body
-  c.lineWidth = Math.max(1.2, H * 0.09); c.beginPath(); c.arc(lx + bw / 2, by, bw * 0.3, Math.PI, 0); c.stroke();
-  c.fillStyle = tier.color; c.fillRect(lx, by, bw, bh);
-  c.fillStyle = 'rgba(4, 16, 29, 0.9)'; c.fillRect(lx + bw / 2 - 0.6, by + bh * 0.3, 1.2, bh * 0.4);
-  c.font = font; c.textBaseline = 'middle'; c.fillStyle = tier.color;
+  c.arc(rr, rr, rr, Math.PI / 2, Math.PI * 1.5); c.arc(W - rr, rr, rr, -Math.PI / 2, Math.PI / 2); c.closePath();
+  c.lineWidth = 2 * E; c.strokeStyle = 'rgba(1, 4, 10, 0.78)'; c.stroke();
+  c.fillStyle = 'rgb(4, 16, 29)'; c.fill();
+  c.lineWidth = 1.75; c.strokeStyle = tier.color; c.stroke();
+  const lx = padL, bw = lockW, bh = H * 0.36, by = H * 0.48;   // padlock: shackle + body
+  c.strokeStyle = ink; c.lineWidth = Math.max(1.4, H * 0.09); c.beginPath(); c.arc(lx + bw / 2, by, bw * 0.3, Math.PI, 0); c.stroke();
+  c.fillStyle = ink; c.fillRect(lx, by, bw, bh);
+  c.fillStyle = 'rgb(4, 16, 29)'; c.fillRect(lx + bw / 2 - 0.7, by + bh * 0.28, 1.4, bh * 0.44);
+  c.font = font; c.textBaseline = 'middle'; c.fillStyle = ink;
   c.fillText(tier.shortId, lx + lockW + gap, H / 2 + 0.5);
-  s = { cv, w: W, h: H };
+  s = { cv, w: W + 2 * E, h: H + 2 * E };
   LOCK_BADGE.sprites.set(key, s);
   return s;
 }
@@ -21786,16 +21792,49 @@ class Game {
     return out;
   }
 
-  /** Draws lockBadgeTargets()'s badges above their pictures, on top of the vortices, at a fixed size on screen. */
-  drawLockBadges(ctx) {
+  /** FINAL-03: where lockBadgeTargets()'s badges go on screen (CSS px, no shake), nearest object first: above its picture, else below it,
+   *  else beside it away from the vortex -- the first spot that stays inside the safe area and off the vortex's drawn disc (1.16 R), the
+   *  HUD panels, the minimap, the other badged objects' pictures and the badges already placed. No spot -> no badge this frame (the "ZA DUŻE" tag still comes on contact).
+   *  [{ t, s, x, y }] (t = the target, s = its sprite). */
+  lockBadgePlacements() {
+    const out = this.lockBadgePlaced || (this.lockBadgePlaced = []);
+    out.length = 0;
     const list = this.lockBadgeTargets();
+    if (!list.length) return out;
+    const z = this.zoom, p = this.player, ox0 = this.width / 2 - this.camera.x * z, oy0 = this.height / 2 - this.camera.y * z;
+    const sf = this.safe || { t: 0, r: 0, b: 0, l: 0 }, hud = this.hudBoxes || [], mini = this.showMinimap ? this.minimapRect() : null;
+    const hx = p.x * z + ox0, hy = p.y * z + oy0, hr = p.radius * LOCK_BADGE.holeDrawn * z, G = LOCK_BADGE.gapPx;
+    const hit = (x, y, w, h, q) => x < q.r && x + w > q.l && y < q.b && y + h > q.t;
+    const pics = list.map((t) => { const o = t.obj, b = objectPictureBox(o.subtype, o.radius), cx = o.x * z + ox0, cy = o.y * z + oy0; return { o, l: cx + b[0] * z, r: cx + b[1] * z, t: cy + b[2] * z, b: cy + b[3] * z }; });
+    const free = (x, y, w, h, own) => {
+      if (x < sf.l || y < sf.t || x + w > this.width - sf.r || y + h > this.height - sf.b) return false;
+      const nx = clamp(hx, x, x + w) - hx, ny = clamp(hy, y, y + h) - hy;
+      if (nx * nx + ny * ny < hr * hr) return false;
+      for (const q of hud) if (hit(x, y, w, h, q)) return false;
+      if (mini && hit(x, y, w, h, mini)) return false;
+      for (const q of pics) if (q.o !== own && hit(x, y, w, h, q)) return false;
+      for (const q of out) if (x < q.x + q.s.w + 2 && x + w + 2 > q.x && y < q.y + q.s.h + 2 && y + h + 2 > q.y) return false;
+      return true;
+    };
+    for (let i = 0; i < list.length; i++) {
+      const t = list[i], q = pics[i], s = lockBadgeSprite(t.tier, this.dpr), w = s.w, h = s.h, cx = q.o.x * z + ox0, cy = q.o.y * z + oy0;
+      const sx = cx >= hx ? q.r + G : q.l - G - w;
+      if (free(cx - w / 2, q.t - G - h, w, h, q.o)) out.push({ t, s, x: cx - w / 2, y: q.t - G - h });
+      else if (free(cx - w / 2, q.b + G, w, h, q.o)) out.push({ t, s, x: cx - w / 2, y: q.b + G });
+      else if (free(sx, cy - h / 2, w, h, q.o)) out.push({ t, s, x: sx, y: cy - h / 2 });
+    }
+    return out;
+  }
+
+  /** Draws lockBadgePlacements()'s badges on top of the vortices, at a fixed size on screen (in the world transform, so they shake with it). */
+  drawLockBadges(ctx) {
+    const list = this.lockBadgePlacements();
     if (!list.length) return;
-    const z = this.zoom;
+    const z = this.zoom, ox0 = this.width / 2 - this.camera.x * z, oy0 = this.height / 2 - this.camera.y * z, d = this.dpr;
     ctx.save();
-    for (const t of list) {
-      const o = t.obj, s = lockBadgeSprite(t.tier, this.dpr), w = s.w / z, h = s.h / z;
-      ctx.globalAlpha = t.alpha;
-      ctx.drawImage(s.cv, o.x - w / 2, o.y + objectPictureTop(o.subtype, o.radius) - 2 - 3 / z - h, w, h);
+    for (const q of list) {
+      ctx.globalAlpha = q.t.alpha;
+      ctx.drawImage(q.s.cv, (Math.round(q.x * d) / d - ox0) / z, (Math.round(q.y * d) / d - oy0) / z, q.s.w / z, q.s.h / z);
     }
     ctx.restore();
   }

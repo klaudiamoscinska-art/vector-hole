@@ -222,11 +222,16 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   najwyżej ×1,45; `qa/objscale1.mjs`). Bitmapy były optycznie lżejsze niż r (0,70–0,94 r); teraz ×1,07–1,44, wektor (gfx 0)
   ×1,00–1,24. Obraz rośnie wokół środka hitboxa razem z podstawą; pierścień „mogę zjeść” jak dotąd (r + 3). (2) **znacznik
   blokady** (`LOCK_BADGE`, `Game.lockBadgeTargets()/drawLockBadges()`): zablokowany obiekt (`holeCanEat()` = fałsz, ta sama
-  bramka co jedzenie, z +1 tierem SZAŁU) przy wirze pokazuje nad obrazem małą plakietkę — kłódka i wymagany tier („T3”) w kolorze
-  tieru. Pojawia się, zanim narysowana krawędź wiru (~1,16 R) dotknie obrazu: gdy odstęp krawędzi < max(0,6 R, 26 px ekranu),
-  z wygaszeniem na zewnętrznych 40%; najwyżej 4 najbliższe obiekty, nigdy na całej mapie; nie, gdy wisi napis „ZA DUŻE”
-  (`lockedBump()`). Jadalny obiekt nie ma plakietki, ma pierścień. Obejmuje też mały portal T4 (Burza portali). Plakietka to
-  jedna płócienna kopia na tier w cache, jedno `drawImage`. Tylko Arena/Wyzwanie dnia (`render()`; Kampania ma własny renderer).
+  bramka co jedzenie, z +1 tierem SZAŁU) przy wirze pokazuje przy obrazie plakietkę — kłódka i wymagany tier („T3”). Wysokość
+  21 px ekranu przy każdym zoomie (17 px było za małe na telefonie); nieprzezroczyste ciemne tło z ciemną obwódką (czytelne na
+  jasnych i neonowych podłogach), brzeg w kolorze tieru, kłódka i napis w jaśniejszym odcieniu tego koloru. Pojawia się, zanim
+  narysowana krawędź wiru (~1,16 R) dotknie obrazu: gdy odstęp krawędzi < max(0,7 R, 32 px ekranu), z wygaszeniem na zewnętrznych
+  35%; najwyżej 4 najbliższe obiekty, nigdy na całej mapie; nie, gdy wisi napis „ZA DUŻE” (`lockedBump()`). Miejsce
+  (`Game.lockBadgePlacements()`): nad obrazem, a gdy tam nie wolno — pod nim, potem obok (od strony z dala od wiru); nigdy na
+  narysowanym wirze, panelu HUD, minimapie, obrazie innego oznaczonego obiektu ani innej plakietce, zawsze w bezpiecznym obszarze
+  ekranu; brak miejsca = brak plakietki w tej klatce (napis „ZA DUŻE” i tak pojawi się przy kontakcie). Jadalny obiekt nie ma
+  plakietki, ma pierścień. Obejmuje też mały portal T4 (Burza portali). Plakietka to jedna płócienna kopia na tier w cache,
+  jedno `drawImage`. Tylko Arena/Wyzwanie dnia (`render()`; Kampania ma własny renderer).
   Zasięg jedzenia, progi, hitboxy, T1, Złoty Rdzeń, Kampania, menu bez zmian. Reguła spawnu „obraz nie na obrazie” liczy obraz
   w nowej skali (RNG, liczba i rodzaje obiektów, promienie bez zmian). Wariant A (obraz = 0,88 wiru przy progu, ×1,21–2,0)
   odrzucony: obrazy daleko poza hitboxem i +38% czasu klatki w gęstej scenie telefonu.

@@ -37,7 +37,7 @@ export function exportedRoot(root, name) {
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(root)) if (/\.(js|html|css)$/.test(f) && f !== 'game.js') fs.copyFileSync(path.join(root, f), path.join(dir, f));
   const src = fs.readFileSync(path.join(root, 'game.js'), 'utf8'), vs = src.includes('const OBJECT_VIEW_SCALE'), lb = src.includes('const LOCK_BADGE');
-  fs.writeFileSync(path.join(dir, 'game.js'), src + `\nexport { drawObjectArt as __qaDraw, getObjectSprite as __qaSprite, OBJECT_RASTER as __qaRaster, spawnViewBox as __qaViewBox${vs ? ', OBJECT_VIEW_SCALE as __qaViewScale' : ''}${lb ? ', LOCK_BADGE as __qaBadge, objectPictureReach as __qaReach' : ''} };\n`);
+  fs.writeFileSync(path.join(dir, 'game.js'), src + `\nexport { drawObjectArt as __qaDraw, getObjectSprite as __qaSprite, OBJECT_RASTER as __qaRaster, spawnViewBox as __qaViewBox${vs ? ', OBJECT_VIEW_SCALE as __qaViewScale' : ''}${lb ? ', LOCK_BADGE as __qaBadge, objectPictureReach as __qaReach' : ''}${src.includes('function objectPictureBox') ? ', objectPictureBox as __qaBox' : ''} };\n`);
   return dir;
 }
 
@@ -161,7 +161,7 @@ async function signal(page, contact) {
       let objs;
       if (kind === 'portal') { g.spawnPortalRain(); objs = g.objects.filter(o => o.subtype === 'portal').slice(0, n); } else objs = g.objects.filter(o => o.subtype === kind && !o.eating).slice(0, n);
       g.objects = objs.slice();
-      const p = g.player; p.x = 1500; p.y = 1500; p.radius = R; g.zoom = 1; g.lockHintAt = null;
+      const p = g.player; p.x = 1500; p.y = 1500; p.radius = R; g.zoom = 1; g.lockHintAt = null; g.camera.x = p.x; g.camera.y = p.y;
       for (const o of objs) o.lockHintAt = null;
       return { p, objs };
     };
@@ -173,7 +173,43 @@ async function signal(page, contact) {
       const list = g.lockBadgeTargets();
       return { kind, R, canEat: g.holeCanEat(p, o), ring: g.canEatHighlight(o), badges: list.map(t => ({ kind: t.obj.subtype, tier: m.CONFIG.sizeTiers[t.tier].shortId, alpha: +t.alpha.toFixed(2) })), want: 'T' + (T[kt[kind]].minSizeTier + 1) };
     };
-    const cases = { lockedNear: [], eatableNear: [], lockedFar: [], contact: [], frenzy: null, cap: null, hint: null, campaign: null };
+    const cases = { lockedNear: [], eatableNear: [], lockedFar: [], contact: [], frenzy: null, cap: null, hint: null, campaign: null, size: null, place: [], dense: [], hud: null };
+    // FINAL-03: where the badge goes on screen (Game.lockBadgePlacements(), CSS px) -- off the vortex's drawn disc, the picture, the HUD, each other
+    const scr = (o) => ({ x: (o.x - g.camera.x) * g.zoom + g.width / 2, y: (o.y - g.camera.y) * g.zoom + g.height / 2 });
+    const rectHits = (a, b) => a.x < b.r && a.x + a.w > b.l && a.y < b.b && a.y + a.h > b.t;
+    const onDisc = (q, p) => { const c = scr(p), r = p.radius * m.__qaBadge.holeDrawn * g.zoom, nx = Math.min(Math.max(c.x, q.x), q.x + q.w) - c.x, ny = Math.min(Math.max(c.y, q.y), q.y + q.h) - c.y; return nx * nx + ny * ny < r * r - 0.01; };
+    const placed = () => g.lockBadgePlacements().map(q => ({ obj: q.t.obj, x: q.x, y: q.y, w: q.s.w, h: q.s.h }));
+    const picRect = (o) => { const b = m.__qaBox(o.subtype, o.radius), c = scr(o); return { l: c.x + b[0] * g.zoom, r: c.x + b[1] * g.zoom, t: c.y + b[2] * g.zoom, b: c.y + b[3] * g.zoom }; };
+    const overlaps = (L) => { let n = 0; for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) if (rectHits(L[i], { l: L[j].x, r: L[j].x + L[j].w, t: L[j].y, b: L[j].y + L[j].h })) n++; return n; };
+    cases.size = { h: m.__qaBadge.h, halo: m.__qaBadge.halo, max: m.__qaBadge.max };
+    const zoomFor = (R) => { const zc = m.CONFIG.juice.zoom, gt = Math.min(1, Math.max(0, (R - zc.startRadius) / (zc.endRadius - zc.startRadius))); let z = (zc.max + (zc.min - zc.max) * Math.sqrt(gt)) * g.viewScale; z = Math.min(z, zc.holeScreenFrac * Math.min(g.width, g.height) / R); return Math.max(z, zc.floor, g.width / 3000, g.height / 3000); };   // = Game.update()'s target zoom
+    for (const zf of [1, 0.8]) for (const [k, t] of Object.entries({ latarnia: 2, wezel: 3, pylon: 3, landmark: 4, autobus: 5, tramwaj: 5, wiezowiec: 6, maszt: 6, kopula: 6, portal: 4 }))
+      for (const [dir, a] of Object.entries({ up: -Math.PI / 2, right: 0, down: Math.PI / 2, left: Math.PI, upleft: -Math.PI * 0.75 })) {
+        const R = A[t - 1] - 2, { p, objs } = fresh(k, R), o = objs[0], zoom = +(zoomFor(R) * zf).toFixed(3); g.zoom = zoom;
+        place(o, p, R * m.__qaBadge.holeDrawn + m.__qaReach(k, o.radius) + 0.3 * R, a);
+        const L = placed(), q = L[0];
+        cases.place.push({ kind: k, dir, zoom, R, shown: L.length, where: q ? (q.y + q.h <= picRect(o).t + 0.01 ? 'above' : q.y >= picRect(o).b - 0.01 ? 'below' : 'side') : null,
+          onVortex: q ? onDisc(q, p) : null, onPicture: q ? rectHits(q, picRect(o)) : null, hPx: q ? q.h : null,
+          aboveOff: q ? picRect(o).t - m.__qaBadge.gapPx - q.h < ((g.safe && g.safe.t) || 0) : null });
+      }
+    for (const [zf, R, kind, n] of [[1, 25, 'lawka', 8], [0.8, 25, 'lawka', 8], [1, 40, 'samochod', 8], [1, 60, 'pawilon', 8], [1, 85, 'autobus', 6], [1, 112, 'wiezowiec', 4]]) {
+      const { p, objs } = fresh(kind, R, n), zoom = +(zoomFor(R) * zf).toFixed(3); g.zoom = zoom;
+      objs.forEach((o, i) => place(o, p, R * 1.16 + m.__qaReach(kind, o.radius) + 1 + i * 2, (i / objs.length) * Math.PI * 2 + 0.3));
+      const L = placed(), TG = g.lockBadgeTargets().map(t => t.obj);
+      cases.dense.push({ kind, R, zoom, targets: TG.length, shown: L.length, overlaps: overlaps(L), onVortex: L.filter(q => onDisc(q, p)).length, onOther: L.filter(q => TG.some(o => o !== q.obj && rectHits(q, picRect(o)))).length });
+    }
+    { // the vortex pressed to the city's top edge, a locked object above it: the badge stays off every HUD panel (and the safe area)
+      const { p, objs } = fresh('samochod', 40), o = objs[0]; g.zoom = 1;
+      g.hudBoxes = null; g.fadeHudUnderHole();
+      const hb = (g.hudBoxes || []).map(b => ({ l: b.l, r: b.r, t: b.t, b: b.b }));
+      // put a HUD-sized box right where the badge would go, to force the fallback
+      place(o, p, 40 * 1.16 + m.__qaReach('samochod', o.radius) + 10, -Math.PI / 2);
+      const first = placed()[0], fake = first ? { el: { id: 'qa' }, l: first.x - 4, r: first.x + first.w + 4, t: first.y - 4, b: first.y + first.h + 4 } : null;
+      g.hudBoxes = (g.hudBoxes || []).concat(fake ? [fake] : []);
+      const L = placed(), q = L[0];
+      cases.hud = { realBoxes: hb.length, before: first ? 'shown' : 'none', after: q ? 'shown' : 'none', onHud: q ? g.hudBoxes.some(b => rectHits(q, b)) : null, onVortex: q ? onDisc(q, p) : null };
+      g.hudBoxes = null;
+    }
     const KS = { lawka: 2, samochod: 3, pawilon: 4, autobus: 5, wiezowiec: 6, portal: 4 };
     for (const [k, t] of Object.entries(KS)) {
       cases.lockedNear.push(at(k, A[t - 1] - 6, 0.2 * (A[t - 1] - 6)));
@@ -343,6 +379,14 @@ export async function run({ base, only = ['rule', 'draw', 'signal', 'layout', 's
     check('SF-SIGNAL-hint: no badge while the object\'s own "ZA DUŻE" tag is up', S.hint.during === 0 && S.hint.after === 1, S.hint);
     check('SF-SIGNAL-campaign: drawn by the Arena renderer only (renderCampaign() never draws a badge)', S.campaign.arena === 1 && S.campaign.campaign === 0 && !S.campaign.err, S.campaign);
     check('SF-SIGNAL-cache: badge pictures cached (a handful of canvases, not one per frame)', S.campaign.sprites > 0 && S.campaign.sprites <= 12, { sprites: S.campaign.sprites });
+    if (S.size) {
+      check('SF-SIGNAL-size: the badge pill is 20-22 CSS px tall at any zoom (FINAL-03: 17 px was too small on a phone)', S.size.h >= 20 && S.size.h <= 22 && S.place.every(c => !c.shown || c.hPx === S.place[0].hPx), { size: S.size, hPx: S.place[0] && S.place[0].hPx });
+      const bad = S.place.filter(c => c.shown !== 1 || c.onVortex || c.onPicture || (c.dir !== 'down' && c.where !== 'above' && !c.aboveOff));
+      check('SF-SIGNAL-place: tall / wide / T4 portal, 5 directions, the game zoom and 0.8 of it: one badge, never on the drawn vortex disc nor the picture; above it unless the vortex or the screen edge is in the way', bad.length === 0, { bad: bad.slice(0, 8), n: S.place.length, where: S.place.reduce((a, c) => (a[c.where] = (a[c.where] || 0) + 1, a), {}) });
+      const dn = S.dense.filter(c => c.shown < 1 || c.shown > 4 || c.overlaps || c.onVortex || c.onOther);
+      check('SF-SIGNAL-dense: 6-8 locked objects around the vortex: 1-4 badges, none overlapping another badge, another badged picture or the vortex', dn.length === 0, { dense: S.dense });
+      check('SF-SIGNAL-hud: a badge that would sit under a HUD panel moves (or hides) -- never on the HUD or the vortex', S.hud.before === 'shown' && (S.hud.after === 'none' || (!S.hud.onHud && !S.hud.onVortex)), S.hud);
+    }
     results.signal = S;
   }
 
