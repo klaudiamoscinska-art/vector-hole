@@ -1,31 +1,31 @@
-// GG-SIZE-CONSISTENCY-01 evidence, not a test: the four owner cases in the game's own renderer, BEFORE / A / B (one build, the pilot
-// switched in the page by applySizeProto() before the round starts).
-//   node qa/sizecons1-shots.mjs [--only=stills,video] [--frames=pc,mobile] [--cases=A,B,C,D]
+// GG-SIZE-CONSISTENCY-01 (B FULL ARENA PILOT) evidence, not a test: every tier crossing in the game's own renderer, BEFORE / B (one
+// build, the pilot switched in the page by applySizeProto() before the round starts).
+//   node qa/sizecons1-shots.mjs [--only=stills,video] [--frames=pc,mobile] [--cases=A,B,C,E,D]
 // Every scene is staged by QA: an Arena round (seed 2024, veteran save, gfx 2), Plac Neonów block, time frozen, rivals moved away.
-// The player's vortex is set to the SAME growth progress in every variant (units = the tier threshold - 0.3 = "one fragment before
-// unlock"; its radius is what that variant's curve gives -- smaller in B, which has not jumped yet) and to the threshold itself
-// ("unlocked"). The pilot object of the next tier is MOVED next to it (its picture 14 screen px right of the vortex's disc), the other
-// kinds of that tier in a row above. Camera zoom = the game's own formula for that radius. Positions only.
-//   case A: T1 vortex + T2 crate (skrzynia)   case B: T2 vortex + T3 node (wezel)
-//   case C: T3 vortex + T4 billboard           case D: T5 vortex + T6 dome (kopula)
+// The player's vortex is set to the SAME growth progress in both (units = the tier threshold - 0.3 = "one fragment before unlock";
+// its radius is what that variant's curve gives -- smaller in B, which has not jumped yet) and to the threshold itself ("unlocked").
+// One object of the next tier is MOVED next to it (its picture 14 screen px right of the vortex's disc), the other kinds of that tier
+// in a row above. Camera zoom = the game's own formula for that radius. Positions only.
+//   A: T1 + T2 (crate beside)  B: T2 + T3 (node)  C: T3 + T4 (billboard)  E: T4 + T5 (bus)  D: T5 + T6 (dome)
 // diag-*.png: the same frame with diagnostic outlines (never in the game): vortex disc 1.07 R (cyan), black throat 0.65 R (dotted),
 // eat reach 0.85 R (green dashed), T1 fragment reach 1.0 R (green dotted); each object's hitbox r (white dashed) and its picture's long
 // half-extent L (pink), centre dot.
 // video: the moment of unlock -- the vortex 0.6 unit before the threshold rolls over a fragment (crosses the tier) and on into the
 // pilot object, in real time (the game's own loop); Playwright records it (.webm).
-// Output: qa/out/sizecons1/shots/{BEFORE,A,B}/<frame>-<case>-<moment>[-diag].png, side by side qa/out/sizecons1/shots/<frame>-<case>-<moment>[-diag].png,
-//         qa/out/sizecons1/video/<variant>-<case>.webm, facts.json
+// Output (B FULL): qa/out/sizecons1/shots-full/{BEFORE,B}/<frame>-<case>-<moment>[-diag].png, side by side qa/out/sizecons1/shots-full/<frame>-<case>-<moment>[-diag].png,
+//         qa/out/sizecons1/video-full/<variant>-<case>.webm, facts.json
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve, chromium, openGame, veteranSave, QA_RANDOM, ROOT, isMain } from './lib.mjs';
 import { FRAMES, session, paintAfterDecode } from './objraster2-shots.mjs';
 import { exportedRoot, DIR } from './sizecons1-measure.mjs';
 
+// B FULL (this stage): BEFORE / B only, five tier crossings (case E = T4 -> T5 added), all kinds of the next tier in the row.
 const opt = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
-const SH = path.join(DIR, 'shots'), VID = path.join(DIR, 'video');
-export const CASES = { A: { m: 1, pilot: 'skrzynia', label: 'T1 wir + skrzynia T2' }, B: { m: 2, pilot: 'wezel', label: 'T2 wir + węzeł T3' }, C: { m: 3, pilot: 'billboard', label: 'T3 wir + billboard T4' }, D: { m: 5, pilot: 'kopula', label: 'T5 wir + kopuła T6' } };
+const SH = path.join(DIR, 'shots-full'), VID = path.join(DIR, 'video-full');
+export const CASES = { A: { m: 1, pilot: 'skrzynia', label: 'T1 wir + obiekty T2 (skrzynia obok)' }, B: { m: 2, pilot: 'wezel', label: 'T2 wir + obiekty T3 (węzeł obok)' }, C: { m: 3, pilot: 'billboard', label: 'T3 wir + obiekty T4 (billboard obok)' }, E: { m: 4, pilot: 'autobus', label: 'T4 wir + obiekty T5 (autobus obok)' }, D: { m: 5, pilot: 'kopula', label: 'T5 wir + obiekty T6 (kopuła obok)' } };
 const TIER_KINDS = { 2: ['lawka', 'kiosk', 'skrzynia', 'latarnia', 'drzewo', 'znacznik'], 3: ['samochod', 'wezel', 'pylon'], 4: ['pawilon', 'billboard', 'magazyn', 'landmark'], 5: ['autobus', 'tramwaj', 'ciezarowka'], 6: ['wiezowiec', 'maszt', 'kopula'] };
-const VARIANTS = ['BEFORE', 'A', 'B'];
+const VARIANTS = ['BEFORE', 'B'];
 const FROZEN_T = 600000;
 
 function shotRoot() {
@@ -58,6 +58,7 @@ async function stage(page, { variant, caseId, moment }) {
     const disc = 1.07 * R, gap = 14 / zoom, box = (o) => mod.__qaViewBox(o.subtype, o.radius, 0, 0, { l: 0, r: 0, t: 0, b: 0 });
     const pick = (k) => g.objects.find(o => o.subtype === k && !o.eating && !o.__st);
     const P = pick(pilot); P.__st = true;
+    p.surgeAt = null;
     const pb = box(P);
     const vx = live ? cx - 3.2 * R : cx;   // video: start left, roll right
     p.x = vx; p.y = cy;
@@ -150,7 +151,7 @@ async function stills({ frames, cases, L }) {
       const [frame, caseId, moment] = key.split('-');
       const imgs = VARIANTS.map(v => fs.readFileSync(path.join(SH, v, key + suf + '.png')).toString('base64'));
       const cap = (v) => { const f = facts[key][v]; return `<b>${v === 'BEFORE' ? 'BEFORE (produkcja)' : 'Wariant ' + v}</b><br>R ${f.R} (${f.tier}, ${f.units} j.) · korpus ${f.disc} · ${CASES[caseId].pilot}: L ${f.pilotL}, r ${f.pilotR} · <span style="color:${f.canEat ? '#46D99A' : '#FF54AD'}">${f.canEat ? 'JADALNY' : 'ZABLOKOWANY'}</span>`; };
-      const title = `Przypadek ${caseId}: ${CASES[caseId].label} — ${moment === 'locked' ? 'tuż PRZED odblokowaniem (0,3 j. przed progiem: ten sam postęp w każdym wariancie)' : 'w momencie ODBLOKOWANIA (próg)'}${suf.includes('diag') ? ' — NAKŁADKA DIAGNOSTYCZNA' : ''}${suf.includes('zoom') ? ' — zbliżenie' : ''}`;
+      const title = `${caseId}: ${CASES[caseId].label} — ${moment === 'locked' ? 'tuż PRZED odblokowaniem (0,3 j. przed progiem: ten sam postęp w każdym wariancie)' : 'w momencie ODBLOKOWANIA (próg)'}${suf.includes('diag') ? ' — NAKŁADKA DIAGNOSTYCZNA' : ''}${suf.includes('zoom') ? ' — zbliżenie' : ''}`;
       const w = suf.includes('zoom') ? (frame === 'pc' ? 600 : 390) : frame === 'pc' ? 640 : 300;
       await page.setContent(`<body style="margin:0;background:#05070f;color:#e8f2ff;font:500 13px system-ui"><div id=w style="display:inline-block;padding:8px"><div style="padding:4px 2px 8px;font-weight:700;font-size:15px">${title}</div><div style="display:flex;gap:10px">${VARIANTS.map((v, i) => `<figure style="margin:0;width:${w}px"><figcaption style="padding:0 0 5px;line-height:1.35">${cap(v)}</figcaption><img style="width:${w}px" src="data:image/png;base64,${imgs[i]}"></figure>`).join('')}</div>${suf.includes('diag') ? '<div style="padding:8px 2px 0;font-size:12px;opacity:.85">cyjan ciągły = korpus wiru 1,07 R · cyjan kropkowany = czarna gardziel 0,65 R · zielony przerywany = zasięg pochłaniania 0,85 R · zielony kropkowany = zasięg fragmentu T1 1,0 R · biały przerywany = hitbox obiektu r · różowy = dłuższa półoś obrazu L</div>' : ''}</div></body>`);
       await page.waitForFunction(() => [...document.images].every(i => i.complete));
@@ -227,9 +228,9 @@ async function videos({ cases }) {
 }
 
 if (isMain(import.meta.url)) {
-  const only = opt('only', 'stills,video').split(','), frames = opt('frames', 'pc,mobile').split(','), cases = opt('cases', 'A,B,C,D').split(',');
+  const only = opt('only', 'stills,video').split(','), frames = opt('frames', 'pc,mobile').split(','), cases = opt('cases', 'A,B,C,E,D').split(',');
   // L in units of r per kind, from the measurement (qa/sizecons1-measure.mjs): long half-extent of the picture as drawn / r, per variant
-  const M = JSON.parse(fs.readFileSync(path.join(DIR, 'measure-pilot.json'), 'utf8'));
+  const M = JSON.parse(fs.readFileSync(path.join(DIR, 'results-full-fast.json'), 'utf8')).data.measure;
   (async () => {
     if (only.includes('stills')) {
       // the overlay's L (long half-extent / r) per variant and kind, as measured (qa/sizecons1-measure.mjs --tag=pilot)
@@ -237,6 +238,6 @@ if (isMain(import.meta.url)) {
       const facts = await stills({ frames, cases, L: Ls });
       console.log('stills', Object.keys(facts).length);
     }
-    if (only.includes('video')) await videos({ cases: cases.filter(c => c === 'A' || c === 'D') });
+    if (only.includes('video')) await videos({ cases: cases.filter(c => c === 'A' || c === 'C' || c === 'D') });
   })().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });
 }
