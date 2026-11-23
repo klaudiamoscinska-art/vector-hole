@@ -47,12 +47,13 @@ const CONFIG = {
     // closest point it may reach), the player's vortex pulls those in too
     // (Game.edgeReach()). Bots are unchanged.
     edgeReachSlack: 0.25,
-    // GG-OBJECTS-SCALE-FIX-01 FINAL-03 -- LOCAL EXPERIMENT, not approved for production. A T1 fragment (and only it) is swallowed once
-    // its centre is within  fragmentReach[0] * R + fragmentReach[1] * r  of a vortex's centre (R = the vortex, r = the fragment); any other
-    // object keeps 0.85 R. Production is [0.85, 0]: the vortex is drawn out to ~1.16 R, so a fragment 0.85-1.16 R off its path slid under
-    // the rim and came out uneaten (REVIEW-02). fragmentReach[2] true = the player's vortex only (like edgeReachSlack); false = every
-    // hole (the player and the rivals share handleObjectEating()). Never below the usual reach (SZAŁ's longer reach still wins).
-    fragmentReach: [1.0, 0, true],   // prototype = V2g (FINAL-03 measurements); production = [0.85, 0, *]
+    // GG-OBJECTS-SCALE-FIX-01 (V2g, owner + GPT decision): a T1 fragment (and only it) is swallowed once its centre is within
+    // fragmentReach[0] * R + fragmentReach[1] * r  of the vortex's centre (R = the vortex, r = the fragment); any other object keeps
+    // 0.85 R. Before, every object used 0.85 R: the vortex is drawn out to ~1.16 R, so a fragment 0.85-1.16 R off its path slid under the
+    // rim and came out uneaten (REVIEW-02). fragmentReach[2] true = the player's vortex only (like edgeReachSlack): rivals keep 0.85 R --
+    // the same reach for them made them grow faster (top rival +16-20 % score, FINAL-03 simulations). Never below the usual reach (SZAŁ's
+    // longer reach still wins). Checked by qa/objscale1.mjs SF-SOURCE-v2g / SF-EAT-*.
+    fragmentReach: [1.0, 0, true],
     // ARENA-FIX-1: an eaten rival never comes back on the player. Its new
     // centre must lie at least  r_player * sqrt(2) + r_rival + margin  world
     // units from the player's centre at the moment it appears. r * sqrt(2)

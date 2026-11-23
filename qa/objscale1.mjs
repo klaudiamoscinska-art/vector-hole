@@ -17,7 +17,8 @@
 // T1 (fragment, kapsula: eatable from the first frame): no rule, untouched.
 // Sections: rule (band, cap, order, ring), draw (the drawn pixels follow the table; Campaign/T1/gfx paths untouched), signal (badge on/off,
 // timing, portal, frenzy, Campaign), layout (seeded spawn: same RNG stream, same objects, no object waiting, no picture over another),
-// source (eat gates, tiers, growth, radii byte-identical to base).
+// source (eat gates, tiers, growth, radii byte-identical to base; the Arena eat code = base + the approved V2g edits only: a T1 fragment is
+// swallowed by the player's vortex within 1.0 R, rivals and every other object 0.85 R, Campaign never runs it -- probed in the page).
 // Output: qa/out/objscale1/results.json (+ the console). Exit 1 on any FAIL.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -300,8 +301,71 @@ const GUARDED = [
   ['canEatWorldObjectTier', /^function canEatWorldObjectTier\(/], ['getSizeTierIndex', /^function getSizeTierIndex\(/], ['holeCanEat', /^  holeCanEat\(hole, obj\) \{/],
   ['handleObjectEating', /^  handleObjectEating\(hole\) \{/], ['lockedBump', /^  lockedBump\(/], ['canEatHighlight', /^  canEatHighlight\(obj\) \{/],
   ['WorldObject.respawn', /^  respawn\(tierName, first, rng\) \{/], ['settleSpawn', /^function settleSpawn\(/],
-  ['SPAWN_VIEW', /^const SPAWN_VIEW = \{/], ['campaign entityRadius', /^    entityRadius: \{/], ['CampaignEntity.draw', /^class CampaignEntity \{/]
+  ['SPAWN_VIEW', /^const SPAWN_VIEW = \{/], ['campaign entityRadius', /^    entityRadius: \{/], ['CampaignEntity.draw', /^class CampaignEntity \{/],
+  ['handleCampaignEating', /^  handleCampaignEating\(\) \{/], ['CONFIG.golden', /^  golden: \{/]
 ];
+/** FINAL INTEGRATION (owner + GPT decision): the one approved change to the eat code -- V2g: a T1 fragment is swallowed by the PLAYER's
+ *  vortex within 1.0 R (CONFIG.arena.fragmentReach = [1.0, 0, true]); rivals and every other object keep 0.85 R. handleObjectEating() must
+ *  equal the base's text with exactly these edits applied -- any other change to it fails SF-SOURCE-v2g. */
+export const V2G_FRAGMENT_REACH = '    fragmentReach: [1.0, 0, true],';
+export const V2G_EDITS = [
+  ['    const reach = hole.radius * 0.85 * (hole.isPlayer && this.frenzyActive ? CONFIG.golden.reachMult : 1);',
+    '    const reach = hole.radius * 0.85 * (hole.isPlayer && this.frenzyActive ? CONFIG.golden.reachMult : 1);\n    const fr = CONFIG.arena.fragmentReach, fragReach = fr[2] && !hole.isPlayer ? reach : Math.max(reach, hole.radius * fr[0] + TIERS.fragment.maxR * fr[1]);'],
+  ['      const gx = Math.abs(obj.x - hole.x), gy = Math.abs(obj.y - hole.y);\n      if (gx >= reach || gy >= reach) {',
+    "      const lim = obj.tier === 'fragment' ? fragReach : reach;\n      const gx = Math.abs(obj.x - hole.x), gy = Math.abs(obj.y - hole.y);\n      if (gx >= lim || gy >= lim) {"],
+  ['      if (d < reach || (hole.isPlayer', '      if (d < lim || (hole.isPlayer']
+];
+
+/* ------------------------------------------------------------- eat probe ------------------------------------------------------------- */
+/** In the page: where swallowing starts (Game.handleObjectEating(), centre distance, bisection in 4 directions, the city's middle so the
+ *  edge rule stays out) for the player's and a rival's vortex: the T1 fragment at R 18/24/29 (+ SZAŁ), the kapsula, the golden core, the
+ *  T4 portal and one kind of every tier T2-T6 just past its unlock -- as multiples of R. And, in a Campaign mission, how often the Arena
+ *  eat code runs (must be never: Campaign eats in handleCampaignEating()). */
+async function eatProbe(page) {
+  return page.evaluate(async () => {
+    const m = await import(document.querySelector('script[type="module"][src]').src);
+    const g = window.game, A = m.CONFIG.growth.radiusAnchors;
+    const stop = () => { if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false; };
+    const probe = (kind, R, who, frenzy = false) => {
+      window.__qaSeedRandom(2024); g.startRound({ seed: 2024 }); stop(); g.frenzyEndsAt = frenzy ? g.timeRemaining - 10 : null;
+      if (kind === 'portal') g.spawnPortalRain();
+      if (kind === 'zloty') g.spawnGoldenCore();
+      const obj = g.objects.find(o => o.subtype === kind && !o.eating);
+      if (!obj) return { kind, R, who, frenzy, missing: true };
+      g.objects = [obj];
+      const h = who === 'gracz' ? g.player : g.bots[0];
+      for (const b of g.bots) { b.x = 300; b.y = 300; }
+      if (who === 'rywal') { g.player.x = 2700; g.player.y = 2700; }
+      h.x = 1500; h.y = 1500; h.radius = R;
+      const active = !!g.frenzyActive;
+      const at = (d, a) => { obj.x = 1500 + Math.cos(a) * d; obj.y = 1500 + Math.sin(a) * d; obj.eating = false; obj.eater = null; obj.eatT = 0; g.handleObjectEating(h); const e = !!obj.eating; obj.eating = false; obj.eater = null; obj.eatT = 0; return e; };
+      const start = [];
+      for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+        if (!at(0.01, a)) { start.push(null); continue; }
+        let lo = 0.01, hi = R * 3; for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (at(mid, a)) lo = mid; else hi = mid; }
+        start.push(+(lo / R).toFixed(3));
+      }
+      g.frenzyEndsAt = null;
+      return { kind, R, who, frenzy, active, startR: start };
+    };
+    const out = [];
+    for (const R of [18, 24, 29]) for (const who of ['gracz', 'rywal']) out.push(probe('fragment', R, who));
+    out.push(probe('fragment', 24, 'gracz', true));
+    for (const who of ['gracz', 'rywal']) {
+      out.push(probe('kapsula', 24, who)); out.push(probe('zloty', 24, who)); out.push(probe('portal', A[3] + 0.5, who));
+      for (const [k, t] of [['lawka', 2], ['samochod', 3], ['pawilon', 4], ['landmark', 4], ['autobus', 5], ['wiezowiec', 6]]) out.push(probe(k, A[t - 1] + 0.5, who));
+    }
+    let arenaCalls = 0, campCalls = 0, err = null;
+    const oa = g.handleObjectEating, oc = g.handleCampaignEating;
+    g.handleObjectEating = function (h) { arenaCalls++; return oa.call(this, h); };
+    g.handleCampaignEating = function () { campCalls++; return oc.call(this); };
+    // what Game.loop() runs in a mission: mode 'campaign' -> updateCampaign() (Game.update() is the Arena step)
+    let mode = null;
+    try { g.startCampaignMission('M13'); stop(); mode = g.mode; g.introPending = false; for (let i = 0; i < 60; i++) { if (g.mode === 'campaign') g.updateCampaign(1 / 60); else g.update(1 / 60); } } catch (e) { err = String(e && e.message || e); }
+    g.handleObjectEating = oa; g.handleCampaignEating = oc;
+    return { probes: out, campaign: { mode, arenaCalls, campCalls, err } };
+  });
+}
 
 /** Per kind and approach direction, the picture's edge facing the vortex (world units, at the table's bitmap scale), from the measured box:
  *  an object to the left of the vortex faces it with its right edge, one above it with its bottom edge, etc. */
@@ -329,6 +393,7 @@ export async function run({ base, only = ['rule', 'draw', 'signal', 'layout', 's
       if (only.includes('rule')) data[name].M = await measure(g.page);
       if (only.includes('draw')) data[name].D = await drawn(g.page);
       if (only.includes('layout')) data[name].L = await layouts(g.page, Array.from({ length: seeds }, (_, i) => 1000 + i * 7919));
+      if (only.includes('source')) data[name].E = await eatProbe(g.page);
       if (only.includes('signal') && name === 'cand') data[name].S = await signal(g.page, contactTable(data[name].M || await measure(g.page)));
       data[name].errors = g.errors.slice();
     } finally { await g.browser.close(); srv.server.close(); }
@@ -439,8 +504,31 @@ export async function run({ base, only = ['rule', 'draw', 'signal', 'layout', 's
 
   if (only.includes('source')) {
     const bs = fs.readFileSync(path.join(base, 'game.js'), 'utf8'), cs = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8');
-    const diff = GUARDED.filter(([, re]) => { const a = block(bs, re), b = block(cs, re); return !a || a !== b; }).map(([n]) => n);
-    check('SF-SOURCE: eat gates, tiers, growth, radii, spawn search, Campaign entities byte-identical to base', diff.length === 0, { diff });
+    const diff = GUARDED.filter(([n]) => n !== 'handleObjectEating').filter(([, re]) => { const a = block(bs, re), b = block(cs, re); return !a || a !== b; }).map(([n]) => n);
+    check('SF-SOURCE: eat gates, tiers, growth, radii, spawn search, Campaign eat code + entities, SZAŁ reach byte-identical to base', diff.length === 0, { diff });
+    // the approved V2g exception, and nothing else, in the Arena eat code
+    const re = GUARDED.find(([n]) => n === 'handleObjectEating')[1], bEat = block(bs, re), cEat = block(cs, re);
+    let want = bEat; const missing = [];
+    for (const [a, b] of V2G_EDITS) { if (!want || want.split(a).length !== 2) missing.push(a.trim().slice(0, 40)); else want = want.replace(a, () => b); }
+    const cfg = cs.split(/\r?\n/).filter(l => /^\s*fragmentReach:/.test(l)), cfgBase = bs.split(/\r?\n/).filter(l => /^\s*fragmentReach:/.test(l));
+    check('SF-SOURCE-v2g: handleObjectEating() = base + exactly the approved V2g edits; CONFIG.arena.fragmentReach = [1.0, 0, true] (base has none)',
+      missing.length === 0 && want === cEat && cfg.length === 1 && cfg[0].startsWith(V2G_FRAGMENT_REACH) && cfgBase.length === 0, { missing, sameAsExpected: want === cEat, cfg, cfgBase });
+    // behaviour: where swallowing starts, base vs candidate
+    const E0 = data.base.E, E1 = data.cand.E, key = (p) => `${p.kind}|${p.R}|${p.who}|${p.frenzy}`;
+    const pairs = E1.probes.map(p => [E0.probes.find(q => key(q) === key(p)), p]);
+    const near = (a, b) => !!a && a.every((x) => x != null && Math.abs(x - b) < 0.006);
+    const frag = pairs.filter(([, p]) => p.kind === 'fragment' && !p.frenzy);
+    const fp = frag.filter(([b, c]) => c.who === 'gracz' && !(near(b.startR, 0.85) && near(c.startR, 1.0)));
+    check('SF-EAT-v2g-player: the player vortex swallows a T1 fragment within 1.0 R (base 0.85 R), R 18 / 24 / 29, 4 directions', fp.length === 0 && frag.some(([, c]) => c.who === 'gracz'), { bad: fp, sample: frag.filter(([, c]) => c.who === 'gracz').map(([b, c]) => [c.R, b.startR[0], c.startR[0]]) });
+    const fr = frag.filter(([b, c]) => c.who === 'rywal' && !(near(b.startR, 0.85) && near(c.startR, 0.85)));
+    check('SF-EAT-v2g-rivals: a rival vortex still swallows a fragment within 0.85 R (unchanged), R 18 / 24 / 29', fr.length === 0 && frag.some(([, c]) => c.who === 'rywal'), { bad: fr });
+    const fz = pairs.filter(([, p]) => p.frenzy).filter(([b, c]) => !c.active || JSON.stringify(b.startR) !== JSON.stringify(c.startR) || !near(c.startR, 0.85 * 1.35));
+    check('SF-EAT-v2g-frenzy: during SZAŁ the longer reach (0.85 x 1.35 R) still wins for the fragment, as in base', fz.length === 0 && pairs.some(([, p]) => p.frenzy), { bad: fz, got: pairs.filter(([, p]) => p.frenzy).map(([b, c]) => [b.startR, c.startR]) });
+    const others = pairs.filter(([, p]) => p.kind !== 'fragment').filter(([b, c]) => !b || b.missing || c.missing || JSON.stringify(b.startR) !== JSON.stringify(c.startR) || !near(c.startR, 0.85));
+    check('SF-EAT-others: kapsula, golden core, T4 portal and T2-T6 kinds (player and rival) swallow exactly as in base (0.85 R)', others.length === 0, { bad: others.slice(0, 6), n: pairs.filter(([, p]) => p.kind !== 'fragment').length });
+    const cp = E1.campaign;
+    check('SF-EAT-campaign: a Campaign mission (the mission step Game.loop() runs) never runs the Arena eat code (handleObjectEating 0 calls, handleCampaignEating runs)', cp.mode === 'campaign' && cp.arenaCalls === 0 && cp.campCalls > 0 && !cp.err && E0.campaign.arenaCalls === 0, { cand: cp, base: E0.campaign });
+    results.eat = { base: E0, cand: E1 };
     const files = ['index.html', 'style.css', 'objects-raster-2.js', 'objects-raster-3.js'].filter(f => fs.readFileSync(path.join(base, f), 'utf8').replace(/\r\n/g, '\n') !== fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n'));
     check('SF-SOURCE-files: index.html, style.css and both bitmap sets unchanged', files.length === 0, { files });
   }
