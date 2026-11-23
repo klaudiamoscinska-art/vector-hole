@@ -215,6 +215,26 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   pod nimi cyjanowa obręcz z ciemnym obrysem, miękkim cieniem i lekką poświatą (czytelna na jasnej
   i ciemnej podłodze), a puls T1 to ±7% skali (inne obiekty ±3%) w tej samej fazie i tempie
   (3 rad/s) plus jaśnienie obręczy 0,5→1. Bez `shadowBlur`; wektor (gfx 0) bez zmian.
+- **Skala obrazu obiektów Areny i znacznik blokady (GG-OBJECTS-SCALE-FIX-01, wariant C):** jadalność obiektu
+  T2–T6 to próg tieru wiru, więc tuż przed progiem i tuż po nim obiekt wygląda tak samo — sama wielkość obrazu nie może
+  powiedzieć „jeszcze nie”. Dwie części: (1) **skala** `OBJECT_VIEW_SCALE`: postrzegany promień obrazu (średnia geometryczna
+  połowy dłuższego boku sylwetki i promienia równoważnego powierzchni) = promień obiektu r (pasmo 0,97–1,06 r, nie mniej niż ×1,
+  najwyżej ×1,45; `qa/objscale1.mjs`). Bitmapy były optycznie lżejsze niż r (0,70–0,94 r); teraz ×1,07–1,44, wektor (gfx 0)
+  ×1,00–1,24. Obraz rośnie wokół środka hitboxa razem z podstawą; pierścień „mogę zjeść” jak dotąd (r + 3). (2) **znacznik
+  blokady** (`LOCK_BADGE`, `Game.lockBadgeTargets()/drawLockBadges()`): zablokowany obiekt (`holeCanEat()` = fałsz, ta sama
+  bramka co jedzenie, z +1 tierem SZAŁU) przy wirze pokazuje przy obrazie plakietkę — kłódka i wymagany tier („T3”). Wysokość
+  21 px ekranu przy każdym zoomie (17 px było za małe na telefonie); nieprzezroczyste ciemne tło z ciemną obwódką (czytelne na
+  jasnych i neonowych podłogach), brzeg w kolorze tieru, kłódka i napis w jaśniejszym odcieniu tego koloru. Pojawia się, zanim
+  narysowana krawędź wiru (~1,16 R) dotknie obrazu: gdy odstęp krawędzi < max(0,7 R, 32 px ekranu), z wygaszeniem na zewnętrznych
+  35%; najwyżej 4 najbliższe obiekty, nigdy na całej mapie; nie, gdy wisi napis „ZA DUŻE” (`lockedBump()`). Miejsce
+  (`Game.lockBadgePlacements()`): nad obrazem, a gdy tam nie wolno — pod nim, potem obok (od strony z dala od wiru); nigdy na
+  narysowanym wirze, panelu HUD, minimapie, obrazie innego oznaczonego obiektu ani innej plakietce, zawsze w bezpiecznym obszarze
+  ekranu; brak miejsca = brak plakietki w tej klatce (napis „ZA DUŻE” i tak pojawi się przy kontakcie). Jadalny obiekt nie ma
+  plakietki, ma pierścień. Obejmuje też mały portal T4 (Burza portali). Plakietka to jedna płócienna kopia na tier w cache,
+  jedno `drawImage`. Tylko Arena/Wyzwanie dnia (`render()`; Kampania ma własny renderer).
+  Zasięg jedzenia (poza fragmentem T1 gracza — patrz V2g niżej), progi, hitboxy, wygląd T1, Złoty Rdzeń, Kampania, menu bez zmian. Reguła spawnu „obraz nie na obrazie” liczy obraz
+  w nowej skali (RNG, liczba i rodzaje obiektów, promienie bez zmian). Wariant A (obraz = 0,88 wiru przy progu, ×1,21–2,0)
+  odrzucony: obrazy daleko poza hitboxem i +38% czasu klatki w gęstej scenie telefonu.
 - **Rywal-pacer (v13, `CONFIG.rival`):** pierwszy bot jedzie po krzywej
   „par” = mediana 5 ostatnich ukończonych rund gracza (2600, dopóki nie ma
   3 rund; w Wyzwaniu dnia i wyzwaniach znajomych zawsze 2600) ×
@@ -229,6 +249,17 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   polowanie na gracza z 0→560 px, pasywny wzrost). 2,5 s ochrony na starcie
   rundy, rywale startują ≥ 500 px od gracza. „Godzina szczytu” (szybsi rywale, 35% rund) nigdy przy t = 0.
   Ostatnie 40 s: rywale +10% prędkości.
+- **Zasięg pochłaniania fragmentu T1 przez gracza (GG-OBJECTS-SCALE-FIX-01, V2g — decyzja właścicielki i GPT):**
+  w Arenie/Wyzwaniu dnia obiekt jest pochłaniany, gdy jego środek jest bliżej środka wiru niż 0,85 R. Wir jest jednak
+  rysowany do ~1,16 R, więc fragment 0,85–1,16 R od toru chował się pod brzegiem i wyjeżdżał niezjedzony („kryształek w
+  Porcie Syntez”). Teraz **fragment T1 i tylko wir gracza** mają 1,0 R (`CONFIG.arena.fragmentReach` = [1,0, 0, tylko gracz],
+  `handleObjectEating()`): fragment, którego środek wszedł pod korpus wiru, zostaje zjedzony. Rywale zostają przy 0,85 R
+  (ten sam zasięg dla nich przyspieszał ich wzrost: najlepszy rywal +16–20% punktów w symulacjach), tak jak `edgeReach()`
+  dotyczy tylko gracza. Kapsuła, Złoty Rdzeń, portal i T2–T6 bez zmian (0,85 R); SZAŁ (0,85 × 1,35 R) nadal wygrywa;
+  Kampania ma własne jedzenie (`handleCampaignEating()`) — bez zmian. Nagroda za fragment, wzrost, progi, ekonomia, zapis
+  bez zmian. Fragment w pasie 1,0–1,16 R (pod zewnętrzną poświatą) nadal nie jest zjadany. Wpływ (bot casual, 2 × 40 rund):
+  fragmenty gracza +4…7%, wynik −1…+3%, czas do T4 nowego gracza 17,4 → 15,7 s, T2/T3 bez zmian — w szumie między
+  seedami. `qa/objscale1.mjs` SF-SOURCE-v2g / SF-EAT-*.
 - **Krawędź miasta (FTUE-3, `edgeReach()`, `CONFIG.arena.edgeReachSlack`):**
   środek wiru zatrzymuje się o promień od brzegu miasta, więc duży wir nie
   sięgał tego, co leżało między nim a brzegiem — mniejszy rywal albo

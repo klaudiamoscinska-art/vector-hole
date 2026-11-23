@@ -47,6 +47,13 @@ const CONFIG = {
     // closest point it may reach), the player's vortex pulls those in too
     // (Game.edgeReach()). Bots are unchanged.
     edgeReachSlack: 0.25,
+    // GG-OBJECTS-SCALE-FIX-01 (V2g, owner + GPT decision): a T1 fragment (and only it) is swallowed once its centre is within
+    // fragmentReach[0] * R + fragmentReach[1] * r  of the vortex's centre (R = the vortex, r = the fragment); any other object keeps
+    // 0.85 R. Before, every object used 0.85 R: the vortex is drawn out to ~1.16 R, so a fragment 0.85-1.16 R off its path slid under the
+    // rim and came out uneaten (REVIEW-02). fragmentReach[2] true = the player's vortex only (like edgeReachSlack): rivals keep 0.85 R --
+    // the same reach for them made them grow faster (top rival +16-20 % score, FINAL-03 simulations). Never below the usual reach (SZAŁ's
+    // longer reach still wins). Checked by qa/objscale1.mjs SF-SOURCE-v2g / SF-EAT-*.
+    fragmentReach: [1.0, 0, true],
     // ARENA-FIX-1: an eaten rival never comes back on the player. Its new
     // centre must lie at least  r_player * sqrt(2) + r_rival + margin  world
     // units from the player's centre at the moment it appears. r * sqrt(2)
@@ -7033,6 +7040,93 @@ function getObjectSprite(kind, color, r, variant) {
   return s;
 }
 
+/** GG-OBJECTS-SCALE-FIX-01 (variant C): how much bigger an Arena object of kind T2-T6 is drawn than at its radius r, [bitmap (gfx 1/2),
+ *  vector look (gfx 0 and a bitmap not decoded yet)]. A look only: radius, hitbox, eat gates, tiers, mass and the RNG are not touched.
+ *  Why: drawn at r, the pictures were lighter than their hitbox (a bus or a dome is long and flat, a lamp thin): their perceived radius P
+ *  (qa/objscale1.mjs: the geometric mean of the picture's half extent and its area-equivalent radius) was 0.70-0.94 r, so a T2-T6 object
+ *  looked even smaller next to the vortex than its size says. Rule: P = r for every kind (band 0.97-1.06, never below 1, at most x1.45) --
+ *  the picture is as big as the thing the game eats, the tiers stay in order. The numbers are `node qa/objscale1.mjs --derive`.
+ *  Size alone cannot say "locked" (REVIEW-01: eating is a tier gate, so at the threshold a locked and an eatable object look the same):
+ *  a locked object near the vortex says so with a tier badge (Game.drawLockBadges()), an eatable one keeps the can-eat ring.
+ *  (Variant A, P = 0.88 of the vortex at unlock, needed x1.21-2.0: pictures far past the hitbox and +38 % frame time in dense phone scenes.)
+ *  T1 (fragment, kapsula: eatable from the first frame), the golden core, the portal, Campaign, menus and the welcome scene are not in it
+ *  (scale 1). The picture grows about the object's centre = the centre of its hitbox; the ground base (shadow + tier ring) grows with it.
+ *  spawnViewBox() uses the bitmap factor, so no picture spawns over another. */
+const OBJECT_VIEW_SCALE = {
+  lawka: [1.22, 1.04],
+  kiosk: [1.08, 1.02],
+  skrzynia: [1.17, 1.12],
+  latarnia: [1.23, 1.24],
+  drzewo: [1.14, 1.16],
+  znacznik: [1.1, 1.12],
+  samochod: [1.21, 1.11],
+  wezel: [1.31, 1.09],
+  pylon: [1.44, 1.23],
+  pawilon: [1.18, 1.01],
+  billboard: [1.11, 1],
+  magazyn: [1.21, 1],
+  landmark: [1.12, 1.03],
+  autobus: [1.24, 1.02],
+  tramwaj: [1.31, 1.04],
+  ciezarowka: [1.3, 1],
+  wiezowiec: [1.17, 1.03],
+  maszt: [1.07, 1.16],
+  kopula: [1.24, 1.05]
+};
+/** The bitmap factor of OBJECT_VIEW_SCALE for a kind (1 when it has none): the size the spawn rule keeps clear (spawnViewBox()). */
+function objectViewScale(kind) {
+  const v = OBJECT_VIEW_SCALE[kind];
+  return v ? v[0] : 1;
+}
+
+/** GG-OBJECTS-SCALE-FIX-01 (variant C): the "locked" signal. A locked Arena object (Game.holeCanEat() false -- the real eat gate, SZAŁ's
+ *  +1 tier included) near the player's vortex shows a small badge by its picture: a padlock and the tier it needs ("T3") in that tier's
+ *  colour, the same tier label as lockedBump()'s tag. It shows before the vortex's drawn edge (about 1.16 R) reaches the picture: once the gap
+ *  between them is below max(0.7 R, 32 screen px), fading in over the outer 35 % of that, for the `max` nearest such objects only -- never
+ *  across the map. An eatable object never shows it (it keeps the can-eat ring). Display only: eat reach, gates, tiers and hitboxes are
+ *  untouched. One cached canvas per tier and pixel ratio, one drawImage per badge (no shadowBlur, no per-frame text or path).
+ *  FINAL-03 (phone: 17 px was too small): `h` 21 CSS px at any zoom; an opaque ink pill with a dark halo (`halo` px) so it reads on bright
+ *  neon floors, the tier colour's rim, the padlock and label in a lighter tint of that colour. Placed above the picture, else below it, else
+ *  beside it away from the vortex -- never over the vortex's drawn disc, a HUD panel, the minimap or another badge (Game.lockBadgePlacements()). */
+const LOCK_BADGE = { max: 4, holeDrawn: 1.16, nearFrac: 0.7, nearPx: 32, fade: 0.35, h: 21, halo: 2, gapPx: 3, sprites: new Map() };
+/** The picture's box around its centre as drawn (SPAWN_VIEW box x r x the bitmap factor): [left, right, top, bottom], world units, up < 0. */
+function objectPictureBox(kind, r) {
+  const v = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER, k = r * objectViewScale(kind);
+  return [v[0] * k, v[1] * k, v[2] * k, v[3] * k];
+}
+/** The picture's farthest edge from its centre, world units. */
+function objectPictureReach(kind, r) {
+  const b = objectPictureBox(kind, r);
+  return Math.max(-b[0], b[1], -b[2], b[3]);
+}
+/** The badge of size tier m (CONFIG.sizeTiers index) at device pixel ratio dpr: { cv, w, h } (w, h in CSS px, the halo included). */
+function lockBadgeSprite(m, dpr) {
+  const fonts = typeof document !== 'undefined' && document.fonts ? document.fonts.status : 'loaded', key = m + '|' + dpr + '|' + fonts;
+  let s = LOCK_BADGE.sprites.get(key);
+  if (s) return s;
+  const tier = CONFIG.sizeTiers[m], H = LOCK_BADGE.h, E = LOCK_BADGE.halo, ink = shadeColor(tier.color, 0.35), font = `${Math.round(H * 0.62)}px ${FONT_DISPLAY}`;
+  const cv = document.createElement('canvas'), c = cv.getContext('2d');
+  c.font = font;
+  const lockW = H * 0.44, padL = H * 0.34, gap = H * 0.2, padR = H * 0.38, W = Math.ceil(padL + lockW + gap + c.measureText(tier.shortId).width + padR);
+  cv.width = Math.ceil((W + 2 * E) * dpr); cv.height = Math.ceil((H + 2 * E) * dpr);
+  c.setTransform(dpr, 0, 0, dpr, E * dpr, E * dpr);
+  const rr = H / 2;   // pill: dark halo outside, opaque ink inside, the tier colour's rim
+  c.beginPath();
+  c.arc(rr, rr, rr, Math.PI / 2, Math.PI * 1.5); c.arc(W - rr, rr, rr, -Math.PI / 2, Math.PI / 2); c.closePath();
+  c.lineWidth = 2 * E; c.strokeStyle = 'rgba(1, 4, 10, 0.78)'; c.stroke();
+  c.fillStyle = 'rgb(4, 16, 29)'; c.fill();
+  c.lineWidth = 1.75; c.strokeStyle = tier.color; c.stroke();
+  const lx = padL, bw = lockW, bh = H * 0.36, by = H * 0.48;   // padlock: shackle + body
+  c.strokeStyle = ink; c.lineWidth = Math.max(1.4, H * 0.09); c.beginPath(); c.arc(lx + bw / 2, by, bw * 0.3, Math.PI, 0); c.stroke();
+  c.fillStyle = ink; c.fillRect(lx, by, bw, bh);
+  c.fillStyle = 'rgb(4, 16, 29)'; c.fillRect(lx + bw / 2 - 0.7, by + bh * 0.28, 1.4, bh * 0.44);
+  c.font = font; c.textBaseline = 'middle'; c.fillStyle = ink;
+  c.fillText(tier.shortId, lx + lockW + gap, H / 2 + 0.5);
+  s = { cv, w: W + 2 * E, h: H + 2 * E };
+  LOCK_BADGE.sprites.set(key, s);
+  return s;
+}
+
 /** Draws one object at the current origin: idle bob/breathe + cached
  *  sprite + its live overlay. `seed` de-syncs the idle motion between
  *  objects; `live` false skips the animated extras (used-up nodes etc.). */
@@ -7045,10 +7139,11 @@ function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
   // GG-OBJECTS-RASTER-02: an Arena object with a ready bitmap (opts.raster, gfx 1/2) -- the same idle bob / breathe and live
   // overlay as the vector look, only the picture differs.
   const bmp = opts.raster ? OBJECT_RASTER.get(kind, r) : null;
+  const vs = opts.raster ? OBJECT_VIEW_SCALE[kind] : null;   // GG-OBJECTS-SCALE-FIX-01: an Arena T2-T6 object is drawn bigger than r
   if (bmp) {
     const t1 = kind === 'fragment' || kind === 'kapsula';   // GG-OBJECTS-FIX-03: see OBJECT_T1
     const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
-    const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * (t1 ? T1_BREATHE : 0.03);
+    const breathe = (1 + Math.sin(t * 3 + seed * 1.7) * (t1 ? T1_BREATHE : 0.03)) * (vs ? vs[0] : 1);
     ctx.save();
     ctx.translate(0, bob);
     ctx.scale(breathe, breathe);
@@ -7062,12 +7157,12 @@ function drawObjectArt(ctx, kind, color, r, t, seed, opts = {}) {
     return;
   }
   if (OBJECT_ART_LITE && opts.live !== false) {
-    const s = getObjectSprite(kind, color, r, opts.variant);
-    ctx.drawImage(s.canvas, -s.half, -s.half, s.half * 2, s.half * 2);
+    const s = getObjectSprite(kind, color, r, opts.variant), h = s.half * (vs ? vs[1] : 1);
+    ctx.drawImage(s.canvas, -h, -h, h * 2, h * 2);
     return;
   }
   const bob = Math.sin(t * 2.2 + seed) * Math.min(2, r * 0.08);
-  const breathe = 1 + Math.sin(t * 3 + seed * 1.7) * 0.03;
+  const breathe = (1 + Math.sin(t * 3 + seed * 1.7) * 0.03) * (vs ? vs[1] : 1);
   ctx.save();
   ctx.translate(0, bob);
   // GG-OBJECTS-02: no idle rocking -- every look keeps the one orientation
@@ -11002,7 +11097,8 @@ const SPAWN_SPIRAL = (() => {
 /** The picture box of a `kind` of radius r centred at (x, y), in world units, written into `out` ({ l, r, t, b }). */
 function spawnViewBox(kind, r, x, y, out) {
   const s = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER, t1 = kind === 'fragment' || kind === 'kapsula';
-  const amp = 1 + (t1 ? T1_BREATHE : 0.03), bob = Math.min(2, r * 0.08), base = OBJECT_RASTER_BASE[kind];
+  // GG-OBJECTS-SCALE-FIX-01: the picture as drawn -- the bitmap factor of OBJECT_VIEW_SCALE (one layout for every quality level)
+  const amp = (1 + (t1 ? T1_BREATHE : 0.03)) * objectViewScale(kind), bob = Math.min(2, r * 0.08), base = OBJECT_RASTER_BASE[kind];
   let l = s[0], rr = s[1], t = s[2], b = s[3];
   if (base) {   // the ground ring under the bitmap (T1: OBJECT_T1's wider ring at its largest)
     const hw = base[2], ring = t1 ? hw * 1.12 * 1.06 : hw * 1.02, yc = base[1] - 0.1 * hw;
@@ -11014,11 +11110,12 @@ function spawnViewBox(kind, r, x, y, out) {
 const SPAWN_BOX_A = { l: 0, r: 0, t: 0, b: 0 }, SPAWN_BOX_B = { l: 0, r: 0, t: 0, b: 0 };
 /** True when obj placed at (x, y) keeps both clearances (footprint, picture) from every live object in `others` (but obj). */
 function spawnSpotFree(obj, x, y, others) {
-  const r = obj.radius, a = spawnViewBox(obj.subtype, r, x, y, SPAWN_BOX_A);
+  const r = obj.radius, a = spawnViewBox(obj.subtype, r, x, y, SPAWN_BOX_A), ra = r * objectViewScale(obj.subtype);
   for (let i = 0; i < others.length; i++) {
     const o = others[i];
     if (o === obj || o.eating || o.removed) continue;
-    const reach = 1.6 * (r + o.radius) + SPAWN_GAP + SPAWN_VIEW_GAP + 4, dx = o.x - x;
+    // GG-OBJECTS-SCALE-FIX-01: the quick distance cut-off covers the pictures as drawn (1.6 x their scaled radii; scale 1 = exactly as before)
+    const reach = 1.6 * (ra + o.radius * objectViewScale(o.subtype)) + SPAWN_GAP + SPAWN_VIEW_GAP + 4, dx = o.x - x;
     if (dx >= reach || dx <= -reach) continue;
     const dy = o.y - y;
     if (dy >= reach || dy <= -reach) continue;
@@ -19815,6 +19912,7 @@ class Game {
 
   handleObjectEating(hole) {
     const reach = hole.radius * 0.85 * (hole.isPlayer && this.frenzyActive ? CONFIG.golden.reachMult : 1);
+    const fr = CONFIG.arena.fragmentReach, fragReach = fr[2] && !hole.isPlayer ? reach : Math.max(reach, hole.radius * fr[0] + TIERS.fragment.maxR * fr[1]);
     for (const obj of this.objects) {
       if (obj.eating) continue;
       if (!this.holeCanEat(hole, obj)) {
@@ -19828,14 +19926,15 @@ class Game {
       // already as long as the reach rules the bite out (the distance is
       // never shorter than either gap), without a Math.hypot for each of
       // the ~300 objects x every hole x every frame. The same test, exactly.
+      const lim = obj.tier === 'fragment' ? fragReach : reach;
       const gx = Math.abs(obj.x - hole.x), gy = Math.abs(obj.y - hole.y);
-      if (gx >= reach || gy >= reach) {
+      if (gx >= lim || gy >= lim) {
         if (!hole.isPlayer) continue;
         const edge = hole.radius * Math.SQRT2 + obj.radius; // edgeReach()'s outer bound
         if (gx >= edge || gy >= edge) continue;
       }
       const d = dist(hole.x, hole.y, obj.x, obj.y);
-      if (d < reach || (hole.isPlayer && this.edgeReach(hole, obj.x, obj.y, obj.radius))) obj.startEating(hole);
+      if (d < lim || (hole.isPlayer && this.edgeReach(hole, obj.x, obj.y, obj.radius))) obj.startEating(hole);
     }
   }
 
@@ -21148,6 +21247,7 @@ class Game {
       if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed), this.swallowOver(h, swallowed));
     }
     this.drawNeutralRings(ctx, labelScale);
+    this.drawLockBadges(ctx);   // GG-OBJECTS-SCALE-FIX-01 (variant C): locked objects near the vortex name the tier they need
     this.drawPlayerOverlapMarker(ctx, holes, labelScale);
     if (this.frenzyActive) {
       ctx.save();
@@ -21675,6 +21775,77 @@ class Game {
     if (!this.holeCanEat(this.player, obj)) return 0;
     if (obj.radius >= this.player.radius && !this.frenzyActive) return 0;
     return 1;
+  }
+
+  /** GG-OBJECTS-SCALE-FIX-01 (variant C): the locked objects that show a tier badge this frame (LOCK_BADGE), nearest first, as
+   *  { obj, gap, alpha, tier } (gap = world units between the vortex's drawn edge and the picture's farthest edge). Locked = holeCanEat()
+   *  false, the same gate handleObjectEating() uses. Not while the object's own "ZA DUŻE" tag (lockedBump()) is up. render() = Arena/Daily. */
+  lockBadgeTargets() {
+    const out = this.lockBadgeList || (this.lockBadgeList = []);
+    out.length = 0;
+    const p = this.player;
+    if (!p || !this.objects) return out;
+    const B = LOCK_BADGE, rim = p.radius * B.holeDrawn, near = Math.max(p.radius * B.nearFrac, B.nearPx / this.zoom), now = performance.now();
+    for (const o of this.objects) {
+      if (o.eating || o.removed) continue;
+      const reach = objectPictureReach(o.subtype, o.radius), lim = rim + reach + near, dx = o.x - p.x, dy = o.y - p.y;
+      if (dx >= lim || dx <= -lim || dy >= lim || dy <= -lim) continue;
+      if (this.holeCanEat(p, o)) continue;
+      if (o.lockHintAt != null && now - o.lockHintAt < 1200) continue;
+      const gap = Math.hypot(dx, dy) - rim - reach;
+      if (gap >= near) continue;
+      out.push({ obj: o, gap, alpha: gap <= near * (1 - B.fade) ? 1 : (near - gap) / (near * B.fade), tier: TIERS[o.tier].minSizeTier });
+    }
+    out.sort((a, b) => a.gap - b.gap);
+    if (out.length > B.max) out.length = B.max;
+    return out;
+  }
+
+  /** FINAL-03: where lockBadgeTargets()'s badges go on screen (CSS px, no shake), nearest object first: above its picture, else below it,
+   *  else beside it away from the vortex -- the first spot that stays inside the safe area and off the vortex's drawn disc (1.16 R), the
+   *  HUD panels, the minimap, the other badged objects' pictures and the badges already placed. No spot -> no badge this frame (the "ZA DUŻE" tag still comes on contact).
+   *  [{ t, s, x, y }] (t = the target, s = its sprite). */
+  lockBadgePlacements() {
+    const out = this.lockBadgePlaced || (this.lockBadgePlaced = []);
+    out.length = 0;
+    const list = this.lockBadgeTargets();
+    if (!list.length) return out;
+    const z = this.zoom, p = this.player, ox0 = this.width / 2 - this.camera.x * z, oy0 = this.height / 2 - this.camera.y * z;
+    const sf = this.safe || { t: 0, r: 0, b: 0, l: 0 }, hud = this.hudBoxes || [], mini = this.showMinimap ? this.minimapRect() : null;
+    const hx = p.x * z + ox0, hy = p.y * z + oy0, hr = p.radius * LOCK_BADGE.holeDrawn * z, G = LOCK_BADGE.gapPx;
+    const hit = (x, y, w, h, q) => x < q.r && x + w > q.l && y < q.b && y + h > q.t;
+    const pics = list.map((t) => { const o = t.obj, b = objectPictureBox(o.subtype, o.radius), cx = o.x * z + ox0, cy = o.y * z + oy0; return { o, l: cx + b[0] * z, r: cx + b[1] * z, t: cy + b[2] * z, b: cy + b[3] * z }; });
+    const free = (x, y, w, h, own) => {
+      if (x < sf.l || y < sf.t || x + w > this.width - sf.r || y + h > this.height - sf.b) return false;
+      const nx = clamp(hx, x, x + w) - hx, ny = clamp(hy, y, y + h) - hy;
+      if (nx * nx + ny * ny < hr * hr) return false;
+      for (const q of hud) if (hit(x, y, w, h, q)) return false;
+      if (mini && hit(x, y, w, h, mini)) return false;
+      for (const q of pics) if (q.o !== own && hit(x, y, w, h, q)) return false;
+      for (const q of out) if (x < q.x + q.s.w + 2 && x + w + 2 > q.x && y < q.y + q.s.h + 2 && y + h + 2 > q.y) return false;
+      return true;
+    };
+    for (let i = 0; i < list.length; i++) {
+      const t = list[i], q = pics[i], s = lockBadgeSprite(t.tier, this.dpr), w = s.w, h = s.h, cx = q.o.x * z + ox0, cy = q.o.y * z + oy0;
+      const sx = cx >= hx ? q.r + G : q.l - G - w;
+      if (free(cx - w / 2, q.t - G - h, w, h, q.o)) out.push({ t, s, x: cx - w / 2, y: q.t - G - h });
+      else if (free(cx - w / 2, q.b + G, w, h, q.o)) out.push({ t, s, x: cx - w / 2, y: q.b + G });
+      else if (free(sx, cy - h / 2, w, h, q.o)) out.push({ t, s, x: sx, y: cy - h / 2 });
+    }
+    return out;
+  }
+
+  /** Draws lockBadgePlacements()'s badges on top of the vortices, at a fixed size on screen (in the world transform, so they shake with it). */
+  drawLockBadges(ctx) {
+    const list = this.lockBadgePlacements();
+    if (!list.length) return;
+    const z = this.zoom, ox0 = this.width / 2 - this.camera.x * z, oy0 = this.height / 2 - this.camera.y * z, d = this.dpr;
+    ctx.save();
+    for (const q of list) {
+      ctx.globalAlpha = q.t.alpha;
+      ctx.drawImage(q.s.cv, (Math.round(q.x * d) / d - ox0) / z, (Math.round(q.y * d) / d - oy0) / z, q.s.w / z, q.s.h / z);
+    }
+    ctx.restore();
   }
 
   /** DEVICE-QA-1 (playtest 020: "wygląda na większego i nie mogę go
