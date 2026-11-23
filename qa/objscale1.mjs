@@ -1,5 +1,6 @@
-// GG-OBJECTS-SCALE-FIX-01: an Arena object must not look clearly smaller than a vortex that cannot eat it yet. A stage test: base = a worktree of origin/main.
-//   node qa/objscale1.mjs --base=DIR [--only=rule,draw,layout,source] [--seeds=40]
+// GG-OBJECTS-SCALE-FIX-01 (variant C, REVIEW-02): an Arena T2-T6 picture is as big as its hitbox, and a locked object near the vortex says
+// which tier it needs. A stage test: base = a worktree of origin/main.
+//   node qa/objscale1.mjs --base=DIR [--only=rule,draw,signal,layout,source] [--seeds=40]
 //   node qa/objscale1.mjs --derive         (prints the OBJECT_VIEW_SCALE table the rule asks for, from this checkout's pictures; nothing is checked)
 //
 // Size on screen is measured, not assumed. P = the perceived radius of a picture: the geometric mean of its half extent (half the longer side of
@@ -7,14 +8,16 @@
 // bus gets less than its half length, a thin lamp less than its half height. The vortex is a disc: its P is the area-equivalent radius of the
 // player's own drawn vortex (the starting look) at that radius.
 // Eating is a tier gate only (canEatWorldObjectTier(): T2 objects from radius 30, T3 46, T4 66, T5 90, T6 118 = growth.radiusAnchors), so a T2-T6
-// object stays locked through the whole tier below it while that vortex grows 31-67 %. The rule, for every T2-T6 kind and both looks
-// (bitmap gfx 1/2, vector gfx 0): rho = P(object as drawn) / P(vortex at the unlock radius) in [0.85, 1.0]:
-//   >= 0.85  while it is locked the object never looks clearly smaller than the vortex (the vortex is below the unlock radius, so rho is higher);
-//   <= 1.0   the moment it unlocks it fits in the vortex (it does not look bigger than a vortex that can eat it).
-// T1 (fragment, kapsula) is eatable from the first frame: no rule, untouched.
-// Sections: rule (the band + tiers readable in order + 'clearly smaller while locked' share before/after), draw (the drawn pixels follow the table;
-// Campaign/T1/gfx paths untouched), layout (seeded spawn: same RNG stream, same objects, no object waiting, no picture over another), source
-// (eat gates, tiers, growth, radii byte-identical to base).
+// object stays locked through the whole tier below it while that vortex grows 31-67 %: no static picture size can tell "locked" from
+// "eatable" at the threshold (REVIEW-01). Variant C splits the two jobs:
+//   size   : every T2-T6 kind is drawn so its P = its radius r (band 0.97-1.06, scale capped at x1.45): the picture matches the hitbox,
+//            tiers stay in order, production's too-light pictures (P 0.70-0.94 r) grow, the x1.7-2.0 pictures of variant A are gone;
+//   signal : a locked object near the vortex shows a small tier badge (Game.lockBadgeTargets() / drawLockBadges()) before the vortex's edge
+//            reaches its picture; an eatable one shows none and keeps the can-eat ring. The state comes from Game.holeCanEat().
+// T1 (fragment, kapsula: eatable from the first frame): no rule, untouched.
+// Sections: rule (band, cap, order, ring), draw (the drawn pixels follow the table; Campaign/T1/gfx paths untouched), signal (badge on/off,
+// timing, portal, frenzy, Campaign), layout (seeded spawn: same RNG stream, same objects, no object waiting, no picture over another),
+// source (eat gates, tiers, growth, radii byte-identical to base).
 // Output: qa/out/objscale1/results.json (+ the console). Exit 1 on any FAIL.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,7 +26,8 @@ import { session } from './objraster2-shots.mjs';
 
 const opt = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
 const DIR = path.join(OUT, 'objscale1');
-export const BAND = [0.85, 1.0], TARGET = 0.88, ALPHA = 140;
+export const BAND = [0.97, 1.06], CAP = 1.45, ALPHA = 140;
+const LOCKED = 0.85;   // REVIEW-01's 'clearly smaller' mark, reported (not gated) for the record
 export const KINDS = { lawka: 2, kiosk: 2, skrzynia: 2, latarnia: 2, drzewo: 2, znacznik: 2, samochod: 3, wezel: 3, pylon: 3, pawilon: 4, billboard: 4, magazyn: 4, landmark: 4, autobus: 5, tramwaj: 5, ciezarowka: 5, wiezowiec: 6, maszt: 6, kopula: 6 };
 
 /** A served copy of a checkout whose game.js also exports what this test reads (QA only; the game's own export list is untouched). */
@@ -32,8 +36,8 @@ export function exportedRoot(root, name) {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(root)) if (/\.(js|html|css)$/.test(f) && f !== 'game.js') fs.copyFileSync(path.join(root, f), path.join(dir, f));
-  const src = fs.readFileSync(path.join(root, 'game.js'), 'utf8'), vs = src.includes('const OBJECT_VIEW_SCALE');
-  fs.writeFileSync(path.join(dir, 'game.js'), src + `\nexport { drawObjectArt as __qaDraw, getObjectSprite as __qaSprite, OBJECT_RASTER as __qaRaster, spawnViewBox as __qaViewBox${vs ? ', OBJECT_VIEW_SCALE as __qaViewScale' : ''} };\n`);
+  const src = fs.readFileSync(path.join(root, 'game.js'), 'utf8'), vs = src.includes('const OBJECT_VIEW_SCALE'), lb = src.includes('const LOCK_BADGE');
+  fs.writeFileSync(path.join(dir, 'game.js'), src + `\nexport { drawObjectArt as __qaDraw, getObjectSprite as __qaSprite, OBJECT_RASTER as __qaRaster, spawnViewBox as __qaViewBox${vs ? ', OBJECT_VIEW_SCALE as __qaViewScale' : ''}${lb ? ', LOCK_BADGE as __qaBadge, objectPictureReach as __qaReach' : ''} };\n`);
   return dir;
 }
 
@@ -96,22 +100,18 @@ export function judge(M) {
     for (const look of ['bmp', 'vec']) {
       const s = scaleOf(M, k, look), P = e[look].P * s;
       let small = 0, n = 0;
-      for (let R = A0; R < A; R += 0.25) { n++; if (P / holeP(M, R) < BAND[0]) small++; }
+      for (let R = A0; R < A; R += 0.25) { n++; if (P / holeP(M, R) < LOCKED) small++; }
       rows[k][look] = { scale: s, P: +P.toFixed(2), Pr: +(P / e.r).toFixed(3), rho: +(P / holeP(M, A)).toFixed(3), clearlySmallerShare: +(small / n).toFixed(3),
-        firstClearlySmallerAt: (() => { for (let R = A0; R < A; R += 0.25) if (P / holeP(M, R) < BAND[0]) return R; return null; })() };
+        firstClearlySmallerAt: (() => { for (let R = A0; R < A; R += 0.25) if (P / holeP(M, R) < LOCKED) return R; return null; })() };
     }
   }
   return rows;
 }
 
-/** The OBJECT_VIEW_SCALE table the rule asks for: rho = TARGET at unlock, never below 1 (only kinds that are too small grow). */
+/** The OBJECT_VIEW_SCALE table the rule asks for: [bitmap, vector] so that P = r, never below 1 (only too-light pictures grow), at most CAP. */
 function derive(M) {
   const t = {};
-  for (const [k, e] of Object.entries(M.kinds)) {
-    const want = TARGET * holeP(M, M.anchors[e.minSizeTier]);
-    t[k] = ['bmp', 'vec'].map(look => Math.max(1, Math.ceil(want / e[look].P * 100) / 100));
-    t[k].push(Math.round(want / e.r * 100) / 100);   // the can-eat ring: the picture's perceived radius, in units of r
-  }
+  for (const [k, e] of Object.entries(M.kinds)) t[k] = ['bmp', 'vec'].map(look => Math.min(CAP, Math.max(1, Math.ceil(e.r / e[look].P * 100) / 100)));
   return t;
 }
 
@@ -145,6 +145,76 @@ async function drawn(page) {
     g.applyGfx(2);
     return out;
   }, { KINDS, ALPHA });
+}
+
+/* ------------------------------------------------------------- signal ------------------------------------------------------------- */
+/** In the page (candidate): Game.lockBadgeTargets() in staged cases. contact[k][dir] = the edge of kind k's measured picture that faces the
+ *  vortex when the object sits in that direction from it (world units, at its scale) -- from the rule section's boxes (contactTable()). */
+async function signal(page, contact) {
+  return page.evaluate(async ({ KINDS, contact }) => {
+    const m = await import(document.querySelector('script[type="module"][src]').src);
+    const g = window.game, T = m.TIERS, A = m.CONFIG.growth.radiusAnchors, kt = {};
+    for (const [n, t] of Object.entries(T)) for (const k of t.subtypes) kt[k] = n;
+    const stop = () => { if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false; };
+    const fresh = (kind, R, n = 1) => {
+      window.__qaSeedRandom(2024); g.applyGfx(2); g.startRound({ seed: 2024 }); stop(); g.frenzyEndsAt = null;
+      let objs;
+      if (kind === 'portal') { g.spawnPortalRain(); objs = g.objects.filter(o => o.subtype === 'portal').slice(0, n); } else objs = g.objects.filter(o => o.subtype === kind && !o.eating).slice(0, n);
+      g.objects = objs.slice();
+      const p = g.player; p.x = 1500; p.y = 1500; p.radius = R; g.zoom = 1; g.lockHintAt = null;
+      for (const o of objs) o.lockHintAt = null;
+      return { p, objs };
+    };
+    const place = (o, p, d, a) => { o.x = p.x + Math.cos(a) * d; o.y = p.y + Math.sin(a) * d; };
+    const near = (R) => Math.max(R * m.__qaBadge.nearFrac, m.__qaBadge.nearPx / g.zoom);
+    const at = (kind, R, gapUnits, a = -Math.PI / 4) => {   // gap = between the badge's own rim (1.16 R) and the picture's farthest edge
+      const { p, objs } = fresh(kind, R), o = objs[0];
+      place(o, p, R * m.__qaBadge.holeDrawn + m.__qaReach(kind, o.radius) + gapUnits, a);
+      const list = g.lockBadgeTargets();
+      return { kind, R, canEat: g.holeCanEat(p, o), ring: g.canEatHighlight(o), badges: list.map(t => ({ kind: t.obj.subtype, tier: m.CONFIG.sizeTiers[t.tier].shortId, alpha: +t.alpha.toFixed(2) })), want: 'T' + (T[kt[kind]].minSizeTier + 1) };
+    };
+    const cases = { lockedNear: [], eatableNear: [], lockedFar: [], contact: [], frenzy: null, cap: null, hint: null, campaign: null };
+    const KS = { lawka: 2, samochod: 3, pawilon: 4, autobus: 5, wiezowiec: 6, portal: 4 };
+    for (const [k, t] of Object.entries(KS)) {
+      cases.lockedNear.push(at(k, A[t - 1] - 6, 0.2 * (A[t - 1] - 6)));
+      cases.eatableNear.push(at(k, A[t - 1] + 1, 0.2 * (A[t - 1] + 1)));
+      cases.lockedFar.push(at(k, A[t - 1] - 6, near(A[t - 1] - 6) + 2));
+    }
+    // the moment of visual contact: the measured picture touching a 1.16 R disc (the vortex as drawn), every T2-T6 kind, 4 directions
+    for (const k of Object.keys(KINDS)) for (const [dir, a] of Object.entries({ left: Math.PI, right: 0, up: -Math.PI / 2, down: Math.PI / 2 })) {
+      const R = A[KINDS[k] - 1] - 1, { p, objs } = fresh(k, R);
+      place(objs[0], p, R * 1.16 + contact[k][dir], a);
+      const list = g.lockBadgeTargets();
+      cases.contact.push({ kind: k, dir, R, alpha: list.length ? +list[0].alpha.toFixed(2) : 0 });
+    }
+    { // SZAŁ (frenzy): one tier more is eatable -> that tier's badge goes
+      const { p, objs } = fresh('samochod', 40); place(objs[0], p, 40 * 1.16 + m.__qaReach('samochod', objs[0].radius) + 4, 0);
+      const off = g.lockBadgeTargets().length;
+      g.frenzyEndsAt = g.timeRemaining - 10; const active = g.frenzyActive, on = g.lockBadgeTargets().length; g.frenzyEndsAt = null;
+      cases.frenzy = { active, off, on };
+    }
+    { // at most LOCK_BADGE.max, nearest first
+      const { p, objs } = fresh('lawka', 25, 8);
+      objs.forEach((o, i) => place(o, p, 25 * 1.16 + m.__qaReach('lawka', o.radius) + 1 + i, (i / objs.length) * Math.PI * 2));
+      const list = g.lockBadgeTargets();
+      cases.cap = { placed: objs.length, shown: list.length, max: m.__qaBadge.max, nearestFirst: list.every((t, i) => i === 0 || t.gap >= list[i - 1].gap) };
+    }
+    { // not while the object's own "ZA DUŻE" tag is up
+      const { p, objs } = fresh('lawka', 25); place(objs[0], p, 25 * 1.16 + m.__qaReach('lawka', objs[0].radius) + 2, 0);
+      objs[0].lockHintAt = performance.now(); const during = g.lockBadgeTargets().length; objs[0].lockHintAt = null;
+      cases.hint = { during, after: g.lockBadgeTargets().length };
+    }
+    { // drawn by the Arena renderer only: render() calls drawLockBadges(), renderCampaign() never does
+      const { p, objs } = fresh('lawka', 25); place(objs[0], p, 25 * 1.16 + m.__qaReach('lawka', objs[0].radius) + 2, 0);
+      let calls = 0; const orig = g.drawLockBadges; g.drawLockBadges = function (ctx) { calls++; return orig.call(this, ctx); };
+      g.render(1); const arena = calls; calls = 0;
+      let campaign = null, err = null;
+      try { g.startCampaignMission('M13'); stop(); g.renderCampaign(1); campaign = calls; } catch (e) { err = String(e && e.message || e); }
+      g.drawLockBadges = orig;
+      cases.campaign = { arena, campaign, err, sprites: m.__qaBadge.sprites.size };
+    }
+    return cases;
+  }, { KINDS, contact });
 }
 
 /* ------------------------------------------------------------- layout ------------------------------------------------------------- */
@@ -197,9 +267,20 @@ const GUARDED = [
   ['SPAWN_VIEW', /^const SPAWN_VIEW = \{/], ['campaign entityRadius', /^    entityRadius: \{/], ['CampaignEntity.draw', /^class CampaignEntity \{/]
 ];
 
-export async function run({ base, only = ['rule', 'draw', 'layout', 'source'], seeds = 40 } = {}) {
+/** Per kind and approach direction, the picture's edge facing the vortex (world units, at the table's bitmap scale), from the measured box:
+ *  an object to the left of the vortex faces it with its right edge, one above it with its bottom edge, etc. */
+function contactTable(M) {
+  const out = {};
+  for (const [k, e] of Object.entries(M.kinds)) {
+    const s = M.table && M.table[k] ? M.table[k][0] : 1, [l, r, t, b] = e.bmp.box;
+    out[k] = { left: r * s, right: -l * s, up: b * s, down: -t * s };
+  }
+  return out;
+}
+
+export async function run({ base, only = ['rule', 'draw', 'signal', 'layout', 'source'], seeds = 40 } = {}) {
   fs.mkdirSync(DIR, { recursive: true });
-  const results = { stage: 'GG-OBJECTS-SCALE-FIX-01', band: BAND, target: TARGET, alpha: ALPHA };
+  const results = { stage: 'GG-OBJECTS-SCALE-FIX-01 C', band: BAND, cap: CAP, alpha: ALPHA };
   let ok = true;
   const check = (name, pass, details) => { report(name, pass, JSON.stringify(details).slice(0, 400)); if (!pass) ok = false; (results.checks = results.checks || []).push({ name, pass, details }); };
   const roots = [['base', base], ['cand', ROOT]];
@@ -212,6 +293,7 @@ export async function run({ base, only = ['rule', 'draw', 'layout', 'source'], s
       if (only.includes('rule')) data[name].M = await measure(g.page);
       if (only.includes('draw')) data[name].D = await drawn(g.page);
       if (only.includes('layout')) data[name].L = await layouts(g.page, Array.from({ length: seeds }, (_, i) => 1000 + i * 7919));
+      if (only.includes('signal') && name === 'cand') data[name].S = await signal(g.page, contactTable(data[name].M || await measure(g.page)));
       data[name].errors = g.errors.slice();
     } finally { await g.browser.close(); srv.server.close(); }
   }
@@ -219,30 +301,49 @@ export async function run({ base, only = ['rule', 'draw', 'layout', 'source'], s
   if (only.includes('rule')) {
     const before = judge(data.base.M), after = judge(data.cand.M);
     results.rule = { before, after, hole: data.cand.M.hole, anchors: data.cand.M.anchors, table: data.cand.M.table };
-    console.log('\nkind        T  r  unlock | look  BEFORE P/r  rho  clearly-smaller | AFTER scale  P/r  rho  clearly-smaller');
+    console.log('\nkind        T  r  unlock | look  BEFORE P/r  rho  clearly-smaller | AFTER scale  P/r  rho  clearly-smaller (reported, not gated: the badge says "locked")');
     for (const k of Object.keys(KINDS)) for (const look of ['bmp', 'vec']) {
       const b = before[k][look], a = after[k][look];
       console.log(`${k.padEnd(11)} ${KINDS[k]} ${String(after[k].r).padStart(3)} ${String(after[k].unlock).padStart(4)}   | ${look}  ${b.Pr.toFixed(2)} ${b.rho.toFixed(2)} ${(b.clearlySmallerShare * 100).toFixed(0).padStart(3)} % | ${a.scale.toFixed(2)} ${a.Pr.toFixed(2)} ${a.rho.toFixed(2)} ${(a.clearlySmallerShare * 100).toFixed(0).padStart(3)} %`);
     }
     for (const look of ['bmp', 'vec']) {
-      const bad = Object.keys(KINDS).filter(k => after[k][look].rho < BAND[0] || after[k][look].rho > BAND[1]);
-      check(`SF-RULE-${look}: every T2-T6 ${look === 'bmp' ? 'bitmap' : 'vector'} look at unlock is ${BAND[0]}-${BAND[1]} of the vortex`, bad.length === 0, { bad: bad.map(k => `${k} ${after[k][look].rho}`) });
-      const small = Object.keys(KINDS).filter(k => after[k][look].clearlySmallerShare > 0);
-      check(`SF-LOCKED-${look}: no locked object looks clearly smaller (< ${BAND[0]}) than a vortex of the tier below`, small.length === 0, { small });
-      // tiers readable in order: every kind of tier k+1 is bigger on screen than every kind of tier k
+      const bad = Object.keys(KINDS).filter(k => { const a = after[k][look]; return !((a.Pr >= BAND[0] || a.scale === CAP) && (a.Pr <= BAND[1] || a.scale === 1)); });
+      check(`SF-RULE-${look}: every T2-T6 ${look === 'bmp' ? 'bitmap' : 'vector'} look has P = r (${BAND[0]}-${BAND[1]} r; only a capped or unscaled kind may sit outside)`, bad.length === 0, { bad: bad.map(k => `${k} P/r ${after[k][look].Pr} x${after[k][look].scale}`) });
+      const big = Object.keys(KINDS).filter(k => after[k][look].scale > CAP);
+      check(`SF-CAP-${look}: no kind drawn more than x${CAP} (variant A went to x2.0)`, big.length === 0, { big });
+      const worse = Object.keys(KINDS).filter(k => after[k][look].rho < before[k][look].rho - 0.005);
+      check(`SF-GAIN-${look}: no kind looks smaller next to the vortex than in production (rho at unlock >= base)`, worse.length === 0, { worse, min: Math.min(...Object.keys(KINDS).map(k => after[k][look].rho)), baseMin: Math.min(...Object.keys(KINDS).map(k => before[k][look].rho)) });
       const byTier = {}; for (const k of Object.keys(KINDS)) (byTier[KINDS[k]] = byTier[KINDS[k]] || []).push(after[k][look].P);
       const order = [2, 3, 4, 5].map(t => ({ t, maxLo: Math.max(...byTier[t]), minHi: Math.min(...byTier[t + 1]) }));
       check(`SF-ORDER-${look}: each tier's smallest picture is bigger than the tier below's biggest`, order.every(o => o.minHi > o.maxLo), order);
     }
-    // the can-eat ring (WorldObject.draw(): r * ring + 1, +2 at its widest breath) hugs the picture (>= its P) and, at the unlock radius, stays inside the vortex's visible disc
-    const T = data.cand.M.table || {}, ring = [];
+    // the can-eat ring (WorldObject.draw(): r + 3, +2 at its widest breath -- production's) hugs the picture (>= its P) and, at the unlock radius, stays inside the vortex
+    const ring = [];
     for (const k of Object.keys(KINDS)) {
-      const e = data.cand.M.kinds[k], rr = T[k] ? e.r * T[k][2] + 1 : e.r + 3, hp = holeP(data.cand.M, data.cand.M.anchors[e.minSizeTier]);
+      const e = data.cand.M.kinds[k], rr = e.r + 3, hp = holeP(data.cand.M, data.cand.M.anchors[e.minSizeTier]);
       if (rr < after[k].bmp.P || rr + 2 > hp + 1) ring.push(`${k}: ring ${rr.toFixed(1)}-${(rr + 2).toFixed(1)}, picture P ${after[k].bmp.P}, vortex ${hp.toFixed(1)}`);
     }
-    check('SF-RING: the can-eat ring hugs the picture and fits in the vortex at unlock', ring.length === 0, { ring });
+    check('SF-RING: the can-eat ring (r + 3) hugs the picture and fits in the vortex at unlock', ring.length === 0, { ring });
     const unchanged = ['fragment', 'kapsula'].every(k => !data.cand.M.table || !data.cand.M.table[k]);
     check('SF-T1: fragment and kapsula keep their scale (no table entry)', unchanged, {});
+  }
+
+  if (only.includes('signal')) {
+    const S = data.cand.S;
+    const ln = S.lockedNear.filter(c => c.canEat || c.badges.length !== 1 || c.badges[0].tier !== c.want || c.badges[0].alpha < 1);
+    check('SF-SIGNAL-locked: a locked object near the vortex (T2-T6 + the T4 portal) shows one badge naming its tier, fully visible', ln.length === 0, { bad: ln });
+    const en = S.eatableNear.filter(c => !c.canEat || c.badges.length !== 0 || c.ring !== 1);
+    check('SF-SIGNAL-eatable: an eatable object near the vortex shows no badge and keeps the can-eat ring', en.length === 0, { bad: en });
+    const lf = S.lockedFar.filter(c => c.badges.length !== 0);
+    check('SF-SIGNAL-far: a locked object beyond the badge distance shows none (not across the map)', lf.length === 0, { bad: lf });
+    const late = S.contact.filter(c => c.alpha < 1);
+    check('SF-SIGNAL-early: the badge is fully shown by the time the vortex (drawn disc 1.16 R) touches the picture, every T2-T6 kind, 4 directions', late.length === 0, { late: late.slice(0, 8), n: S.contact.length });
+    check('SF-SIGNAL-frenzy: SZAŁ (one tier more eatable) removes that tier\'s badge -- the real eat gate', S.frenzy.active && S.frenzy.off === 1 && S.frenzy.on === 0, S.frenzy);
+    check('SF-SIGNAL-cap: at most LOCK_BADGE.max badges, nearest first', S.cap.shown === S.cap.max && S.cap.nearestFirst, S.cap);
+    check('SF-SIGNAL-hint: no badge while the object\'s own "ZA DUŻE" tag is up', S.hint.during === 0 && S.hint.after === 1, S.hint);
+    check('SF-SIGNAL-campaign: drawn by the Arena renderer only (renderCampaign() never draws a badge)', S.campaign.arena === 1 && S.campaign.campaign === 0 && !S.campaign.err, S.campaign);
+    check('SF-SIGNAL-cache: badge pictures cached (a handful of canvases, not one per frame)', S.campaign.sprites > 0 && S.campaign.sprites <= 12, { sprites: S.campaign.sprites });
+    results.signal = S;
   }
 
   if (only.includes('draw')) {

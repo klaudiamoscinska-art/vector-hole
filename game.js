@@ -7033,43 +7033,85 @@ function getObjectSprite(kind, color, r, variant) {
   return s;
 }
 
-/** GG-OBJECTS-SCALE-FIX-01: how much bigger an Arena object of kind T2-T6 is drawn than its radius r, [bitmap (gfx 1/2), vector look (gfx 0 and
- *  a bitmap not decoded yet), can-eat ring radius in units of r (the picture's perceived radius: the ring hugs the picture, see WorldObject.draw())]. A look only: radius, hitbox, eat gates, tiers, mass and the RNG are not touched.
- *  Why: eating an object is a tier gate (canEatWorldObjectTier(): T2 from vortex radius 30, T3 46, T4 66, T5 90, T6 118), and every object's
- *  radius sits just above the tier below's start (prop 20 > 18, car 34 > 30 ...), while the vortex grows 31-67 % through that tier. Drawn at r, the
- *  pictures were also lighter than r (a bus or a dome is long and flat): a T2-T6 object looked smaller than the vortex for most of the tier in
- *  which it is still locked ("it looks smaller and I can't eat it").
- *  Rule (measured by qa/objscale1.mjs; P = the picture's perceived radius on screen, the geometric mean of its half extent and its
- *  area-equivalent radius): an object's P is 0.88 of the P of a vortex at its unlock radius (band 0.85-1.0). So while it is locked it never
- *  looks clearly smaller than the vortex (that one is below the unlock radius), and the moment it unlocks it fits in the vortex (the
- *  can-eat ring says it). The numbers are `node qa/objscale1.mjs --derive`. T1 (fragment, kapsula: eatable from the first frame), the golden
- *  core, the portal, Campaign, menus and the welcome scene are not in it (scale 1). The picture grows about the object's centre = the centre of
- *  its hitbox; the ground base (shadow + tier ring) grows with it. spawnViewBox() uses the bitmap factor, so no picture spawns over another. */
+/** GG-OBJECTS-SCALE-FIX-01 (variant C): how much bigger an Arena object of kind T2-T6 is drawn than at its radius r, [bitmap (gfx 1/2),
+ *  vector look (gfx 0 and a bitmap not decoded yet)]. A look only: radius, hitbox, eat gates, tiers, mass and the RNG are not touched.
+ *  Why: drawn at r, the pictures were lighter than their hitbox (a bus or a dome is long and flat, a lamp thin): their perceived radius P
+ *  (qa/objscale1.mjs: the geometric mean of the picture's half extent and its area-equivalent radius) was 0.70-0.94 r, so a T2-T6 object
+ *  looked even smaller next to the vortex than its size says. Rule: P = r for every kind (band 0.97-1.06, never below 1, at most x1.45) --
+ *  the picture is as big as the thing the game eats, the tiers stay in order. The numbers are `node qa/objscale1.mjs --derive`.
+ *  Size alone cannot say "locked" (REVIEW-01: eating is a tier gate, so at the threshold a locked and an eatable object look the same):
+ *  a locked object near the vortex says so with a tier badge (Game.drawLockBadges()), an eatable one keeps the can-eat ring.
+ *  (Variant A, P = 0.88 of the vortex at unlock, needed x1.21-2.0: pictures far past the hitbox and +38 % frame time in dense phone scenes.)
+ *  T1 (fragment, kapsula: eatable from the first frame), the golden core, the portal, Campaign, menus and the welcome scene are not in it
+ *  (scale 1). The picture grows about the object's centre = the centre of its hitbox; the ground base (shadow + tier ring) grows with it.
+ *  spawnViewBox() uses the bitmap factor, so no picture spawns over another. */
 const OBJECT_VIEW_SCALE = {
-  lawka: [1.8, 1.53, 1.47],
-  kiosk: [1.59, 1.5, 1.47],
-  skrzynia: [1.72, 1.64, 1.47],
-  latarnia: [1.8, 1.82, 1.47],
-  drzewo: [1.67, 1.7, 1.47],
-  znacznik: [1.61, 1.65, 1.47],
-  samochod: [1.57, 1.45, 1.31],
-  wezel: [1.82, 1.51, 1.39],
-  pylon: [2, 1.71, 1.39],
-  pawilon: [1.38, 1.19, 1.17],
-  billboard: [1.3, 1.09, 1.17],
-  magazyn: [1.41, 1.17, 1.17],
-  landmark: [1.36, 1.25, 1.22],
-  autobus: [1.4, 1.15, 1.13],
-  tramwaj: [1.48, 1.18, 1.13],
-  ciezarowka: [1.48, 1.12, 1.13],
-  wiezowiec: [1.32, 1.16, 1.13],
-  maszt: [1.21, 1.31, 1.13],
-  kopula: [1.4, 1.18, 1.13]
+  lawka: [1.22, 1.04],
+  kiosk: [1.08, 1.02],
+  skrzynia: [1.17, 1.12],
+  latarnia: [1.23, 1.24],
+  drzewo: [1.14, 1.16],
+  znacznik: [1.1, 1.12],
+  samochod: [1.21, 1.11],
+  wezel: [1.31, 1.09],
+  pylon: [1.44, 1.23],
+  pawilon: [1.18, 1.01],
+  billboard: [1.11, 1],
+  magazyn: [1.21, 1],
+  landmark: [1.12, 1.03],
+  autobus: [1.24, 1.02],
+  tramwaj: [1.31, 1.04],
+  ciezarowka: [1.3, 1],
+  wiezowiec: [1.17, 1.03],
+  maszt: [1.07, 1.16],
+  kopula: [1.24, 1.05]
 };
 /** The bitmap factor of OBJECT_VIEW_SCALE for a kind (1 when it has none): the size the spawn rule keeps clear (spawnViewBox()). */
 function objectViewScale(kind) {
   const v = OBJECT_VIEW_SCALE[kind];
   return v ? v[0] : 1;
+}
+
+/** GG-OBJECTS-SCALE-FIX-01 (variant C): the "locked" signal. A locked Arena object (Game.holeCanEat() false -- the real eat gate, SZAŁ's
+ *  +1 tier included) near the player's vortex shows a small badge above its picture: a padlock and the tier it needs ("T3") in that tier's
+ *  colour, the same tier label as lockedBump()'s tag. It shows before the vortex's drawn edge (about 1.16 R) reaches the picture: once the gap
+ *  between them is below max(0.6 R, 26 screen px), fading in over the outer 40 % of that, for the `max` nearest such objects only -- never
+ *  across the map. An eatable object never shows it (it keeps the can-eat ring). Display only: eat reach, gates, tiers and hitboxes are
+ *  untouched. One cached canvas per tier and pixel ratio, one drawImage per badge (no shadowBlur, no per-frame text or path). */
+const LOCK_BADGE = { max: 4, holeDrawn: 1.16, nearFrac: 0.6, nearPx: 26, fade: 0.4, h: 17, sprites: new Map() };
+/** The picture's farthest edge from its centre / its top edge (y, negative = up), world units, as drawn (SPAWN_VIEW box x the bitmap factor). */
+function objectPictureReach(kind, r) {
+  const v = SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER;
+  return Math.max(-v[0], v[1], -v[2], v[3]) * r * objectViewScale(kind);
+}
+function objectPictureTop(kind, r) {
+  return (SPAWN_VIEW[kind] || SPAWN_VIEW_OTHER)[2] * r * objectViewScale(kind);
+}
+/** The badge of size tier m (CONFIG.sizeTiers index) at device pixel ratio dpr: { cv, w, h } (w, h in CSS px). */
+function lockBadgeSprite(m, dpr) {
+  const fonts = typeof document !== 'undefined' && document.fonts ? document.fonts.status : 'loaded', key = m + '|' + dpr + '|' + fonts;
+  let s = LOCK_BADGE.sprites.get(key);
+  if (s) return s;
+  const tier = CONFIG.sizeTiers[m], H = LOCK_BADGE.h, font = `${Math.round(H * 0.64)}px ${FONT_DISPLAY}`;
+  const cv = document.createElement('canvas'), c = cv.getContext('2d');
+  c.font = font;
+  const lockW = H * 0.46, padL = H * 0.36, gap = H * 0.2, padR = H * 0.38, W = Math.ceil(padL + lockW + gap + c.measureText(tier.shortId).width + padR);
+  cv.width = Math.ceil(W * dpr); cv.height = Math.ceil(H * dpr);
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const rr = H / 2 - 0.75;   // pill: dark ink, the tier colour's rim
+  c.beginPath();
+  c.arc(0.75 + rr, H / 2, rr, Math.PI / 2, Math.PI * 1.5); c.arc(W - 0.75 - rr, H / 2, rr, -Math.PI / 2, Math.PI / 2); c.closePath();
+  c.fillStyle = 'rgba(4, 16, 29, 0.9)'; c.fill();
+  c.lineWidth = 1.5; c.strokeStyle = tier.color; c.stroke();
+  const lx = padL, bw = lockW, bh = H * 0.36, by = H * 0.5 - H * 0.02;   // padlock: shackle + body
+  c.lineWidth = Math.max(1.2, H * 0.09); c.beginPath(); c.arc(lx + bw / 2, by, bw * 0.3, Math.PI, 0); c.stroke();
+  c.fillStyle = tier.color; c.fillRect(lx, by, bw, bh);
+  c.fillStyle = 'rgba(4, 16, 29, 0.9)'; c.fillRect(lx + bw / 2 - 0.6, by + bh * 0.3, 1.2, bh * 0.4);
+  c.font = font; c.textBaseline = 'middle'; c.fillStyle = tier.color;
+  c.fillText(tier.shortId, lx + lockW + gap, H / 2 + 0.5);
+  s = { cv, w: W, h: H };
+  LOCK_BADGE.sprites.set(key, s);
+  return s;
 }
 
 /** Draws one object at the current origin: idle bob/breathe + cached
@@ -11193,9 +11235,7 @@ class WorldObject {
       ctx.globalAlpha = highlight * (0.35 + 0.35 * breathe);
       // A few px outside the object, not 1.4x its radius -- the old ring
       // read bigger than the hole that could already eat it (player feedback).
-      // GG-OBJECTS-SCALE-FIX-01: around the picture as drawn (OBJECT_VIEW_SCALE ring, 1 px out), so a bigger picture does not hide it; still inside the vortex at unlock
-      const vs = OBJECT_VIEW_SCALE[this.subtype];
-      drawGlowRing(ctx, this.x, this.y, (vs ? this.radius * vs[2] + 1 : this.radius + 3) + 2 * breathe, this.color, 2, 18);
+      drawGlowRing(ctx, this.x, this.y, this.radius + 3 + 2 * breathe, this.color, 2, 18);
       ctx.restore();
     }
 
@@ -21192,6 +21232,7 @@ class Game {
       if (this.isInView(h.x, h.y, h.radius + 40)) h.draw(ctx, time, this.swallowPass(h, swallowed), this.swallowOver(h, swallowed));
     }
     this.drawNeutralRings(ctx, labelScale);
+    this.drawLockBadges(ctx);   // GG-OBJECTS-SCALE-FIX-01 (variant C): locked objects near the vortex name the tier they need
     this.drawPlayerOverlapMarker(ctx, holes, labelScale);
     if (this.frenzyActive) {
       ctx.save();
@@ -21719,6 +21760,44 @@ class Game {
     if (!this.holeCanEat(this.player, obj)) return 0;
     if (obj.radius >= this.player.radius && !this.frenzyActive) return 0;
     return 1;
+  }
+
+  /** GG-OBJECTS-SCALE-FIX-01 (variant C): the locked objects that show a tier badge this frame (LOCK_BADGE), nearest first, as
+   *  { obj, gap, alpha, tier } (gap = world units between the vortex's drawn edge and the picture's farthest edge). Locked = holeCanEat()
+   *  false, the same gate handleObjectEating() uses. Not while the object's own "ZA DUŻE" tag (lockedBump()) is up. render() = Arena/Daily. */
+  lockBadgeTargets() {
+    const out = this.lockBadgeList || (this.lockBadgeList = []);
+    out.length = 0;
+    const p = this.player;
+    if (!p || !this.objects) return out;
+    const B = LOCK_BADGE, rim = p.radius * B.holeDrawn, near = Math.max(p.radius * B.nearFrac, B.nearPx / this.zoom), now = performance.now();
+    for (const o of this.objects) {
+      if (o.eating || o.removed) continue;
+      const reach = objectPictureReach(o.subtype, o.radius), lim = rim + reach + near, dx = o.x - p.x, dy = o.y - p.y;
+      if (dx >= lim || dx <= -lim || dy >= lim || dy <= -lim) continue;
+      if (this.holeCanEat(p, o)) continue;
+      if (o.lockHintAt != null && now - o.lockHintAt < 1200) continue;
+      const gap = Math.hypot(dx, dy) - rim - reach;
+      if (gap >= near) continue;
+      out.push({ obj: o, gap, alpha: gap <= near * (1 - B.fade) ? 1 : (near - gap) / (near * B.fade), tier: TIERS[o.tier].minSizeTier });
+    }
+    out.sort((a, b) => a.gap - b.gap);
+    if (out.length > B.max) out.length = B.max;
+    return out;
+  }
+
+  /** Draws lockBadgeTargets()'s badges above their pictures, on top of the vortices, at a fixed size on screen. */
+  drawLockBadges(ctx) {
+    const list = this.lockBadgeTargets();
+    if (!list.length) return;
+    const z = this.zoom;
+    ctx.save();
+    for (const t of list) {
+      const o = t.obj, s = lockBadgeSprite(t.tier, this.dpr), w = s.w / z, h = s.h / z;
+      ctx.globalAlpha = t.alpha;
+      ctx.drawImage(s.cv, o.x - w / 2, o.y + objectPictureTop(o.subtype, o.radius) - 2 - 3 / z - h, w, h);
+    }
+    ctx.restore();
   }
 
   /** DEVICE-QA-1 (playtest 020: "wygląda na większego i nie mogę go
