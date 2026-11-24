@@ -117,7 +117,8 @@ async function effectChecks(url) {
     const res = {};
     for (const id of ['classic', 'pixel_burst', 'neon_rose', 'violet_rift', 'pryzmat']) {
       const A = window.__uc, g = A.start(81); g.save.effects.selected = id;
-      const P = g.player; P.x = 1500; P.y = 1500; P.setRadius(60); g.keyDir = { x: 0, y: 0 }; g.pointerScreen = null;
+      // GG-SIZE-CONSISTENCY-01: używamy osiągalnego promienia po skoku T4 57.39 -> 66, aby test zwykłego pochłonięcia nie mierzył jednocześnie animacji awansu.
+      const P = g.player; P.x = 1500; P.y = 1500; P.setRadius(66); g.keyDir = { x: 0, y: 0 }; g.pointerScreen = null;
       for (const o of g.objects) if (Math.hypot(o.x - 1500, o.y - 1500) < 400) { o.x = 2900; o.y = 2900; }
       A.step(20); // the size-up burst of setRadius() comes and goes first
       g.particles.length = 0;

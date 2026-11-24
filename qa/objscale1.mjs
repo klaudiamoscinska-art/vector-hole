@@ -23,6 +23,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve, report, OUT, ROOT, isMain } from './lib.mjs';
+// GG-SIZE-CONSISTENCY-01 (approved): an Arena T2-T6 kind's radius (= game.js ARENA_KIND_RADIUS, checked there by qa/sizecons1.mjs SC-CONTRACT-radii)
+const SIZE_KIND_RADIUS = { lawka: 25, kiosk: 27, skrzynia: 26, latarnia: 18, drzewo: 26, znacznik: 22, samochod: 35, wezel: 33, pylon: 32, pawilon: 54, billboard: 56, magazyn: 54, landmark: 52, autobus: 73, tramwaj: 68, ciezarowka: 72, wiezowiec: 94, maszt: 85, kopula: 98 };
 import { session } from './objraster2-shots.mjs';
 
 const opt = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
@@ -256,7 +258,7 @@ async function signal(page, contact) {
 
 /* ------------------------------------------------------------- layout ------------------------------------------------------------- */
 async function layouts(page, seeds) {
-  return page.evaluate(async ({ seeds }) => {
+  return page.evaluate(async ({ seeds, KR }) => {
     const m = await import(document.querySelector('script[type="module"][src]').src);
     const g = window.game, stop = () => { if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false; };
     const fnv = (s) => { let a = 0x811c9dc5; for (let i = 0; i < s.length; i++) a = Math.imul(a ^ s.charCodeAt(i), 16777619); return (a >>> 0).toString(16); };
@@ -266,7 +268,10 @@ async function layouts(page, seeds) {
       g.startRound({ seed });
       stop();
       const objs = g.objects.filter(o => !o.eating);
-      const rest = fnv(objs.map(o => [o.tier, o.subtype, Math.round(o.radius * 1000), Math.round(o.rotation * 1000), o.value].join(',')).join(';'));
+      // GG-SIZE-CONSISTENCY-01: the radius as the contract asks -- an ARENA_KIND_RADIUS kind is compared by its table value (radiusOk
+      // below checks the candidate lays exactly that), every other kind by its drawn radius, as before
+      const rest = fnv(objs.map(o => [o.tier, o.subtype, KR[o.subtype] ? 'K' + KR[o.subtype] : Math.round(o.radius * 1000), Math.round(o.rotation * 1000), o.value].join(',')).join(';'));
+      const kinds = {}; for (const o of objs) if (KR[o.subtype]) (kinds[o.subtype] = kinds[o.subtype] || new Set()).add(o.radius);
       const pos = objs.map(o => [Math.round(o.x * 100), Math.round(o.y * 100)]);
       // picture boxes (this checkout's spawnViewBox) of every pair that is close: none may touch (the game's own spawn rule, SPAWN_VIEW_GAP 3)
       const box = (o) => m.__qaViewBox(o.subtype, o.radius, o.x, o.y, { l: 0, r: 0, t: 0, b: 0 });
@@ -278,10 +283,10 @@ async function layouts(page, seeds) {
         const dx = objs[i].x - objs[j].x, dy = objs[i].y - objs[j].y, mm = objs[i].radius + objs[j].radius;
         if (dx * dx + dy * dy < mm * mm) phys++;
       }
-      out.push({ seed, n: objs.length, waiting: (g.waitingObjects || []).length, rest, rng: g.rng ? g.rng.seed : null, pos, tiers: objs.map(o => o.tier), overlaps, phys });
+      out.push({ seed, n: objs.length, waiting: (g.waitingObjects || []).length, rest, kindR: Object.fromEntries(Object.entries(kinds).map(([k, v]) => [k, [...v]])), rng: g.rng ? g.rng.seed : null, pos, tiers: objs.map(o => o.tier), overlaps, phys });
     }
     return out;
-  }, { seeds });
+  }, { seeds, KR: SIZE_KIND_RADIUS });
 }
 
 /* ------------------------------------------------------------- source ------------------------------------------------------------- */
@@ -315,6 +320,21 @@ export const V2G_EDITS = [
     "      const lim = obj.tier === 'fragment' ? fragReach : reach;\n      const gx = Math.abs(obj.x - hole.x), gy = Math.abs(obj.y - hole.y);\n      if (gx >= lim || gy >= lim) {"],
   ['      if (d < reach || (hole.isPlayer', '      if (d < lim || (hole.isPlayer']
 ];
+/** GG-SIZE-CONSISTENCY-01 (owner + GPT decision, variant B): the one approved change to WorldObject.respawn() -- after the TIERS radius draw
+ *  (kept, so the RNG streams are unchanged) an Arena T2-T6 kind takes its ARENA_KIND_RADIUS. respawn() must equal the base's text with
+ *  exactly these two lines inserted -- any other change to it fails SF-SOURCE. (The growth jump itself is checked by qa/sizecons1.mjs.) */
+export const SIZE_CONSISTENCY_EDITS = [
+  ['      this.radius = seededRand(rng, tier.minR, tier.maxR);\n',
+    '      this.radius = seededRand(rng, tier.minR, tier.maxR);\n      if (ARENA_KIND_RADIUS[this.subtype]) this.radius = ARENA_KIND_RADIUS[this.subtype];   // GG-SIZE-CONSISTENCY-01 (after the draw: same RNG stream)\n'],
+  ['      this.radius = rand(tier.minR, tier.maxR);\n',
+    '      this.radius = rand(tier.minR, tier.maxR);\n      if (ARENA_KIND_RADIUS[this.subtype]) this.radius = ARENA_KIND_RADIUS[this.subtype];   // GG-SIZE-CONSISTENCY-01\n']
+];
+/** The base's block with the approved edits applied (null when an anchor is missing or not unique). */
+function withEdits(text, edits) {
+  let want = text;
+  for (const [a, b] of edits) { if (!want || want.split(a).length !== 2) return null; want = want.replace(a, () => b); }
+  return want;
+}
 
 /* ------------------------------------------------------------- eat probe ------------------------------------------------------------- */
 /** In the page: where swallowing starts (Game.handleObjectEating(), centre distance, bisection in 4 directions, the city's middle so the
@@ -479,7 +499,9 @@ export async function run({ base, only = ['rule', 'draw', 'signal', 'layout', 's
   if (only.includes('layout')) {
     const B = data.base.L, C = data.cand.L;
     const restSame = B.every((b, i) => b.rest === C[i].rest && b.n === C[i].n);
-    check('SF-LAYOUT-objects: same objects in the same order (tier, kind, radius, rotation, value) on every seed', restSame, { diff: B.filter((b, i) => b.rest !== C[i].rest).map(b => b.seed) });
+    check('SF-LAYOUT-objects: same objects in the same order (tier, kind, radius, rotation, value) on every seed (radius: T2-T6 kinds per the approved GG-SIZE-CONSISTENCY-01 ARENA_KIND_RADIUS)', restSame, { diff: B.filter((b, i) => b.rest !== C[i].rest).map(b => b.seed) });
+    const radiusOk = C.every(c => Object.entries(c.kindR).every(([k, rs]) => rs.length === 1 && rs[0] === SIZE_KIND_RADIUS[k]));
+    check('SF-LAYOUT-radii: the candidate lays every T2-T6 kind at exactly its approved ARENA_KIND_RADIUS (GG-SIZE-CONSISTENCY-01)', radiusOk, { sample: C[0].kindR });
     const rngSame = B.every((b, i) => b.rng === C[i].rng);
     check('SF-LAYOUT-rng: the seeded stream ends in the same state after the layout (no extra draw)', rngSame && B[0].rng != null, { sample: [B[0].rng, C[0].rng] });
     const twice = await (async () => {   // determinism: same seed twice on the candidate = same positions (Daily replays a layout)
@@ -504,8 +526,10 @@ export async function run({ base, only = ['rule', 'draw', 'signal', 'layout', 's
 
   if (only.includes('source')) {
     const bs = fs.readFileSync(path.join(base, 'game.js'), 'utf8'), cs = fs.readFileSync(path.join(ROOT, 'game.js'), 'utf8');
-    const diff = GUARDED.filter(([n]) => n !== 'handleObjectEating').filter(([, re]) => { const a = block(bs, re), b = block(cs, re); return !a || a !== b; }).map(([n]) => n);
-    check('SF-SOURCE: eat gates, tiers, growth, radii, spawn search, Campaign eat code + entities, SZAŁ reach byte-identical to base', diff.length === 0, { diff });
+    // WorldObject.respawn() = base + exactly the approved GG-SIZE-CONSISTENCY-01 lines (when the base has none of them yet)
+    const expected = (n, a) => (n === 'WorldObject.respawn' && a && !a.includes('ARENA_KIND_RADIUS') ? withEdits(a, SIZE_CONSISTENCY_EDITS) : a);
+    const diff = GUARDED.filter(([n]) => n !== 'handleObjectEating').filter(([n, re]) => { const a = expected(n, block(bs, re)), b = block(cs, re); return !a || a !== b; }).map(([n]) => n);
+    check('SF-SOURCE: eat gates, tiers, growth, radii, spawn search, Campaign eat code + entities, SZAŁ reach byte-identical to base (WorldObject.respawn: + exactly the approved GG-SIZE-CONSISTENCY-01 ARENA_KIND_RADIUS lines)', diff.length === 0, { diff });
     // the approved V2g exception, and nothing else, in the Arena eat code
     const re = GUARDED.find(([n]) => n === 'handleObjectEating')[1], bEat = block(bs, re), cEat = block(cs, re);
     let want = bEat; const missing = [];
