@@ -918,7 +918,8 @@ export async function runReleaseChecks() {
     const keepsPx04 = /\non:\n {2}push:\n {4}branches:\n {6}- main\n/.test(wf) && /\n {2}workflow_dispatch:\n/.test(wf) && !/pull_request|branches-ignore|tags:/.test(wf)
       && /\npermissions:\n {2}contents: read\n {2}pages: write\n {2}id-token: write\n {2}deployments: read\n\n/.test(wf) && (wf.match(/^\s*permissions:/gm) || []).length === 1 && /group: "pages"\n {2}cancel-in-progress: false/.test(wf)
       && (wf.match(/if: github\.ref == 'refs\/heads\/main'/g) || []).length === 3 && /upload-pages-artifact@v3\n\s+with:\n\s+path: release\n/.test(wf) && (wf.match(/persist-credentials: false/g) || []).length === 2 && /fetch-depth: 0/.test(wf);
-    // Jobs: build (no environment) -> deploy (the only github-pages job: receive, check, upload, deploy) -> verify-live (no environment).
+    // Jobs: build (no environment; GG-PAGES-FIX-01: it also uploads the one Pages artifact) -> deploy (the only github-pages job: receive,
+    // check, deploy) -> verify-live (no environment).
     const jobsText = wf.slice(wf.indexOf('\njobs:\n'));
     const heads = [...jobsText.matchAll(/\n {2}([\w-]+):\n/g)];
     const jobNames = heads.map(m => m[1]);
@@ -926,14 +927,17 @@ export async function runReleaseChecks() {
     const build = jobBody('build'), deploy = jobBody('deploy'), verifyJob = jobBody('verify-live');
     const stepNames = (b) => [...b.matchAll(/- name: (.+)/g)].map(m => m[1].trim());
     const jobs = jobNames.join() === 'build,deploy,verify-live' && (wf.match(/\n {4}environment:/g) || []).length === 1 && /\n {4}environment:\n {6}name: github-pages\n/.test(deploy)
-      && stepNames(deploy).join('|') === 'Receive release/|Check release/ is the verified folder|Check the live site is still what the build saw|Upload site|Deploy to GitHub Pages' && !/assemble-release\.mjs/.test(deploy)
+      && stepNames(deploy).join('|') === 'Receive release/|Check release/ is the verified folder|Check the live site is still what the build saw|Deploy to GitHub Pages' && !/assemble-release\.mjs/.test(deploy)
       && /needs: build\n {4}if: github\.ref == 'refs\/heads\/main' && needs\.build\.outputs\.deploy == 'true'\n/.test(deploy) && /needs: \[build, deploy\]\n {4}if: github\.ref == 'refs\/heads\/main' && needs\.build\.outputs\.deploy == 'true'\n/.test(verifyJob)
-      && /assemble-release\.mjs verify-live/.test(verifyJob) && !/upload-pages-artifact|deploy-pages/.test(build + verifyJob);
-    const gated = ['Verify release/ independently', 'Fingerprint release/', 'Hand release/ to the deploy job'].every(n => new RegExp(`- name: ${n.replace(/[/.]/g, '\\$&')}\\n\\s+if: steps\\.assemble\\.outputs\\.deploy == 'true'`).test(build));
+      && /assemble-release\.mjs verify-live/.test(verifyJob) && !/deploy-pages/.test(build + verifyJob) && !/upload-pages-artifact/.test(deploy + verifyJob)
+      // GG-PAGES-FIX-01: github-pages is uploaded exactly once per run, by the build job, after release-files was handed over
+      && (wf.match(/upload-pages-artifact@/g) || []).length === 1 && (build.match(/upload-pages-artifact@v3/g) || []).length === 1
+      && stepNames(build).indexOf('Upload site') === stepNames(build).indexOf('Hand release/ to the deploy job') + 1;
+    const gated = ['Verify release/ independently', 'Fingerprint release/', 'Hand release/ to the deploy job', 'Upload site'].every(n => new RegExp(`- name: ${n.replace(/[/.]/g, '\\$&')}\\n\\s+if: steps\\.assemble\\.outputs\\.deploy == 'true'`).test(build));
     const ledgerStep = /- name: Read the deployment ledger[\s\S]*?env:\n {10}GITHUB_TOKEN: \$\{\{ github\.token \}\}\n {10}API_URL: \$\{\{ github\.api_url \}\}\n {10}REPOSITORY: \$\{\{ github\.repository \}\}\n[\s\S]*?assemble-release\.mjs ledger \\\n\s+--source git --repo \. --api-url "\$API_URL" --repository "\$REPOSITORY"/.test(build)
       && /--ledger "\$RUNNER_TEMP\/ledger\.json" --repository "\$GITHUB_REPOSITORY"/.test(build) && !/--no-ledger|--era-epoch|--allow-non-tip|--max-requests/.test(wf) && (wf.match(/github\.token|secrets\./g) || []).length === 1;
     push('workflow: PX04 kept (push to main + dispatch only, github-pages, concurrency, path: release, persist-credentials: false), permissions = the three before + deployments: read only, fetch-depth 0, steps in order live check -> ledger -> assemble -> independent check -> upload -> deploy -> live check', keepsPx04 && order.every((x, i) => x > 0 && (i === 0 || x > order[i - 1])), JSON.stringify({ keepsPx04, order }));
-    push('workflow (L1): three jobs -- build (no environment), deploy (the ONLY github-pages job: receive the checked folder, upload, deploy; so a deployment record means exactly one real publication), verify-live (no environment: a red post-check never rewrites the record); deploy/verify run only when the build has something to deploy (a superseded run creates no record)', jobs && gated, JSON.stringify({ jobNames, jobs, gated, deploySteps: stepNames(deploy) }));
+    push('workflow (L1): three jobs -- build (no environment; uploads the one Pages artifact last, gated on deploy), deploy (the ONLY github-pages job: receive the checked folder, re-check, deploy; so a deployment record means exactly one real publication), verify-live (no environment: a red post-check never rewrites the record); deploy/verify run only when the build has something to deploy (a superseded run creates no record)', jobs && gated, JSON.stringify({ jobNames, jobs, gated, deploySteps: stepNames(deploy) }));
     // A re-run of the deploy job alone (an older run) must not publish over a newer release.
     {
       const script = workflowCheckScript('Check the live site is still what the build saw');
@@ -950,7 +954,7 @@ export async function runReleaseChecks() {
       const down = await fakeLive({ status: 503 });
       const unreachable = await runStep({ BASE_URL: down.base, LIVE_INDEX: sha256(Buffer.from('live index A\n')) });
       down.server.close();
-      push('workflow (L1): the deploy job re-checks the live index.html against the build\'s pre-check -- unchanged passes; changed (a newer release went live: a re-run of an older run\'s deploy job), unknown or unreachable (503) stops before the upload', same.code === 0 && changed.code === 1 && /changed since the build/.test(changed.out) && empty.code === 1 && unreachable.code !== 0, JSON.stringify({ same: same.code, changed: changed.code, empty: empty.code, unreachable: unreachable.code }));
+      push('workflow (L1): the deploy job re-checks the live index.html against the build\'s pre-check -- unchanged passes; changed (a newer release went live: a re-run of an older run\'s deploy job), unknown or unreachable (503) stops before the deployment', same.code === 0 && changed.code === 1 && /changed since the build/.test(changed.out) && empty.code === 1 && unreachable.code !== 0, JSON.stringify({ same: same.code, changed: changed.code, empty: empty.code, unreachable: unreachable.code }));
     }
     push('workflow (L1): the ledger step reads with github.token only in its own env (the only token in the file), the assembly always gets --ledger (never --no-ledger or a test flag)', ledgerStep, String(ledgerStep));
     const checker = path.join(ROOT, '.claude/vertical-hole/tools/check_pages_workflow.py');
