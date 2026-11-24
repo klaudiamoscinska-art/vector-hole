@@ -13,9 +13,9 @@ name: Deploy to GitHub Pages
 # L1: retention reads the real publication history -- GitHub's deployment
 # records of the github-pages environment (deployments: read, GET only).
 # Only the deploy job is bound to that environment, so a record exists only
-# for a real upload + deploy, and its success means "published": the build
-# job (live pre-check, ledger, assembly, checks) and the post-deploy live
-# check are separate jobs that never write a record.
+# for a real deploy, and its success means "published": the build job (live
+# pre-check, ledger, assembly, checks, the one Pages artifact upload) and the
+# post-deploy live check are separate jobs that never write a record.
 # K2 break-glass (docs/E3_ROLLBACK_PLAN.md §4): workflow_dispatch with
 # mode=recovery, owner only, first attempt, naming main's sha and the live
 # release. It may rebuild a damaged live release and accept a live/ledger
@@ -232,6 +232,19 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Upload site
+        if: steps.assemble.outputs.deploy == 'true'
+        # GG-PAGES-FIX-01: the Pages artifact is uploaded here, once per run,
+        # from the verified and fingerprinted release/ -- not in the deploy job
+        # right before the Pages deploy action, whose artifact lookup can miss
+        # an upload finalized a moment earlier (GitHub issue #451 of that
+        # action; runs 45408485316, 45409569381). The deploy job still checks
+        # release-files against this fingerprint and the live site before
+        # deploying.
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: release
+
       - name: Keep the recovery decision trail
         # K2: what the recovery run was authorized for, saw and built --
         # kept 90 days whether it deployed or stopped. No secrets in it.
@@ -249,8 +262,8 @@ jobs:
 
   deploy:
     # The only job bound to github-pages: its deployment record (and the
-    # ledger the next runs read) means exactly "this sha was uploaded and
-    # deployed". Nothing else runs here.
+    # ledger the next runs read) means exactly "this sha was deployed" (its
+    # Pages artifact was uploaded by the build job). Nothing else runs here.
     needs: build
     if: github.ref == 'refs/heads/main' && needs.build.outputs.deploy == 'true'
     environment:
@@ -293,11 +306,6 @@ jobs:
           [ -n "$LIVE_INDEX" ] || { echo "::error::no live index.html hash from the build"; exit 1; }
           got="$(curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "${BASE_URL%/}/index.html?vh-check=deploy-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-0}" | sha256sum | cut -d' ' -f1)"
           [ "$got" = "$LIVE_INDEX" ] || { echo "::error::the live index.html changed since the build ($got != $LIVE_INDEX): a newer release was published -- this run must not deploy its older artifact"; exit 1; }
-
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: release
 
       - name: Deploy to GitHub Pages
         id: deployment

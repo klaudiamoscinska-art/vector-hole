@@ -460,7 +460,8 @@ export async function runRecoveryChecks() {
     check('WF-07 the same step: a standard dispatch with a recovery field filled in -> the run fails (exit 2), nothing set', half.code === 2 && half.output === '', last(half.out));
     const other = mode({ ...dispatchEnv(C, { GITHUB_ACTOR: 'someone', GITHUB_TRIGGERING_ACTOR: 'someone' }), ...recoveryInputs(C, idOf('B')) });
     check('WF-08 the same step: a recovery dispatch by someone else -> the run fails, nothing set', other.code === 1 && other.output === '', last(other.out));
-    // The deploy job's guard (its step list stays the five of qa/release.mjs): a recovery run's deploy job is never re-run.
+    // The deploy job's guard (its step list stays the four of qa/release.mjs; GG-PAGES-FIX-01 moved the Pages upload to the build
+    // job): a recovery run's deploy job is never re-run.
     const guard = stepScript('Check the live site is still what the build saw');
     const live = await fakeLive(siteB);
     const idx = sha256(fs.readFileSync(path.join(siteB, 'index.html')));
@@ -472,7 +473,8 @@ export async function runRecoveryChecks() {
     })));
     live.server.close();
     check('WF-09 the deploy job\'s live-index guard: a recovery run passes on attempt 1 (RECOVERY annotation) and fails on a re-run; a standard run (re-run or not, empty or missing output -- set -u safe) is unchanged', g[0].code === 0 && /RECOVERY DEPLOYMENT/.test(g[0].out) && g[1].code === 1 && /never re-run/.test(g[1].out) && g[2].code === 0 && g[3].code === 0 && g[4].code === 0 && !/RECOVERY/.test(g[2].out + g[3].out + g[4].out), g.map(x => x.code + ' ' + last(x.out)).join(' | '));
-    check('WF-10 the decision trail is uploaded only in a recovery run (also when it stopped), 90 days; the deploy job keeps its five steps', /- name: Keep the recovery decision trail\n(?:\s+#.*\n)*\s+if: always\(\) && steps\.mode\.outputs\.recovery == 'true'/.test(wf) && /name: recovery-record[\s\S]*?retention-days: 90/.test(wf) && [...wf.slice(wf.indexOf('\n  deploy:\n'), wf.indexOf('\n  verify-live:\n')).matchAll(/- name: (.+)/g)].length === 5, '');
+    const deploySteps = [...wf.slice(wf.indexOf('\n  deploy:\n'), wf.indexOf('\n  verify-live:\n')).matchAll(/- name: (.+)/g)].map(m => m[1].trim());
+    check('WF-10 the decision trail is uploaded only in a recovery run (also when it stopped), 90 days; the deploy job keeps exactly its four steps in order (GG-PAGES-FIX-01: receive, fingerprint check, live-index guard, deploy)', /- name: Keep the recovery decision trail\n(?:\s+#.*\n)*\s+if: always\(\) && steps\.mode\.outputs\.recovery == 'true'/.test(wf) && /name: recovery-record[\s\S]*?retention-days: 90/.test(wf) && deploySteps.join('|') === 'Receive release/|Check release/ is the verified folder|Check the live site is still what the build saw|Deploy to GitHub Pages', JSON.stringify(deploySteps));
     check('WF-11 the pre-check and the assembly pass --recovery only when the authorization step said recovery=true', (wf.match(/if \[ "\$\{RECOVERY:-\}" = true \]; then rec=\(--recovery "\$RUNNER_TEMP\/recovery\.json"\); fi/g) || []).length === 2 && (wf.match(/RECOVERY: \$\{\{ steps\.mode\.outputs\.recovery \}\}/g) || []).length === 2, '');
   }
   return results;
