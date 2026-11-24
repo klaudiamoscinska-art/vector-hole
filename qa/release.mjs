@@ -958,16 +958,48 @@ export async function runReleaseChecks() {
     }
     push('workflow (L1): the ledger step reads with github.token only in its own env (the only token in the file), the assembly always gets --ledger (never --no-ledger or a test flag)', ledgerStep, String(ledgerStep));
     const checker = path.join(ROOT, '.claude/vertical-hole/tools/check_pages_workflow.py');
-    const py = PYTHON && spawnSync(PYTHON.cmd, [...PYTHON.pre, '-I', checker, '--repo', ROOT], { encoding: 'utf8' });
-    if (!PYTHON) notRun('workflow: check_pages_workflow.py', 'no Python 3 interpreter (VH_PYTHON, python3, python, py -3)');
+    // GG-PAGES-FIX-01 (owner + GPT decision, docs/claude/SKILLS_PACK.md conflicts): the pack's checker requires the github-pages
+    // environment on every job that uploads the Pages artifact; here the build job uploads it and only the deploy job may hold that
+    // environment (L1 ledger). The original checker is run unchanged and must report EXACTLY this one known error -- exit 1, one
+    // CHECKED line for this workflow, one ERROR line, the guard's FAIL verdict. Any other error, exit code or a checker that did not
+    // run is a FAIL; the structure it cannot judge is checked above and below by this suite (never reported as a checker PASS).
+    const KNOWN_CHECKER_ERROR = 'ERROR: deploy-pages.yml: deployment job build has no fixed github-pages environment';
+    const runChecker = (repo) => spawnSync(PYTHON.cmd, [...PYTHON.pre, '-I', checker, '--repo', repo], { encoding: 'utf8' });
+    const checkerVerdict = (r) => {
+      const lines = String(r.stdout || '').replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+      const checked = lines.filter(l => l.startsWith('CHECKED:')), errors = lines.filter(l => l.startsWith('ERROR:'));
+      const known = r.status === 1 && checked.length === 1 && /^CHECKED: \.github[\\/]workflows[\\/]deploy-pages\.yml$/.test(checked[0])
+        && errors.length === 1 && errors[0] === KNOWN_CHECKER_ERROR && lines.some(l => l.startsWith('PAGES WORKFLOW GUARD FAIL'));
+      return { known, status: r.status, checked, errors };
+    };
+    if (!PYTHON) push('workflow: PACK CHECKER: KNOWN EXCEPTION — GG-PAGES-FIX-01 -- check_pages_workflow.py must run (a checker that did not run is a FAIL)', false, 'no Python 3 interpreter (VH_PYTHON, python3, python, py -3)');
     else {
-      const neg = path.join(W, 'wf-neg');
-      fs.mkdirSync(path.join(neg, '.github/workflows'), { recursive: true });
+      const real = checkerVerdict(runChecker(ROOT));
+      const variant = (label, text) => { const d = path.join(W, label); fs.mkdirSync(path.join(d, '.github/workflows'), { recursive: true }); fs.writeFileSync(path.join(d, '.github/workflows/deploy-pages.yml'), text); return checkerVerdict(runChecker(d)); };
+      // negatives: the recognizer must reject anything beyond the one known error
       const negWf = wf.replace(/(upload-pages-artifact@v3\n\s+with:\n\s+path: )release\n/, '$1.\n');
-      fs.writeFileSync(path.join(neg, '.github/workflows/deploy-pages.yml'), negWf);
-      const pyNeg = spawnSync(PYTHON.cmd, [...PYTHON.pre, '-I', checker, '--repo', neg], { encoding: 'utf8' });
-      push('workflow: the pack\'s static Pages checker passes the new workflow (and still fails it with path: . in the Pages upload)', py.status === 0 && /PASS/.test(py.stdout) && negWf !== wf && pyNeg.status === 1, JSON.stringify({ python: PYTHON.label, pass: firstLine(py.stdout), neg: firstLine(pyNeg.stdout) }));
+      const neg = variant('wf-neg', negWf);
+      const noEnvWf = wf.replace(/\n {4}environment:\n {6}name: github-pages\n {6}url: .*\n/, '\n');
+      const noEnv = variant('wf-neg-noenv', noEnvWf);
+      const negOk = negWf !== wf && !neg.known && neg.errors.some(e => /lacks a safe literal release path/.test(e))
+        && noEnvWf !== wf && !noEnv.known && noEnv.errors.some(e => /deployment job deploy has no fixed github-pages environment/.test(e));
+      push('workflow: PACK CHECKER: KNOWN EXCEPTION — GG-PAGES-FIX-01 -- the original check_pages_workflow.py analysed this workflow and reported exactly the one known error (exit 1, not a PASS); with path: . in the Pages upload or without the deploy job\'s github-pages environment it reports more and the exception is refused', real.known && negOk, JSON.stringify({ python: PYTHON.label, real, neg: neg.errors, noEnv: noEnv.errors }));
     }
+    // GG-PAGES-FIX-01: the E3 guards the move must keep -- fingerprint (build -> deploy -> verify-live), the live check and the recovery
+    // re-run refusal before the deployment, the ledger and the assembly's live/ledger inputs (retention), the recovery trail, the frozen
+    // root pins, the release-files hand-over (1 day) and verify-live.
+    const guards = {
+      fingerprint: /- name: Fingerprint release\/\n\s+if: steps\.assemble\.outputs\.deploy == 'true'\n\s+id: tree\n/.test(build) && /tree: \$\{\{ steps\.tree\.outputs\.tree \}\}/.test(build)
+        && /\[ "\$got" = "\$TREE" \] \|\| \{ echo "::error::release\/ changed between the build and the deploy job/.test(deploy) && /\[ "\$got" = "\$TREE" \] \|\| \{ echo "::error::release\/ is not the deployed folder/.test(verifyJob),
+      liveCheck: /\[ "\$\{GITHUB_RUN_ATTEMPT:-0\}" = 1 \] \|\| \{ echo "::error::a recovery run is never re-run/.test(deploy) && /\[ "\$got" = "\$LIVE_INDEX" \] \|\| \{ echo "::error::the live index\.html changed since the build/.test(deploy)
+        && deploy.indexOf('- name: Check the live site is still what the build saw') < deploy.indexOf('- name: Deploy to GitHub Pages'),
+      retention: /--live-json "\$RUNNER_TEMP\/live-before\.json" \\\n\s+--ledger "\$RUNNER_TEMP\/ledger\.json"/.test(build) && /assemble-release\.mjs precheck-live/.test(build),
+      recovery: /assemble-release\.mjs authorize-recovery/.test(build) && /- name: Keep the recovery decision trail\n[\s\S]*?if: always\(\) && steps\.mode\.outputs\.recovery == 'true'\n[\s\S]*?retention-days: 90\n/.test(build),
+      frozenRoot: /5011c0e4047c20ff96b22ae1da84746229f0cf99a738287d1a79414134392664  game\.js/.test(build) && /b5eb39fef65635eeb75c91de0c7b52c42dedd640e5b4b920bbbf95d4f3611b61  style\.css/.test(build),
+      handOver: /name: release-files\n\s+path: release\n\s+if-no-files-found: error\n\s+retention-days: 1\n/.test(build) && (wf.match(/name: release-files\n/g) || []).length === 3,
+      verifyLive: /assemble-release\.mjs verify-live \\\n\s+--url "\$PAGE_URL" --release release --attempts 5 --delay-ms 20000/.test(verifyJob)
+    };
+    push('workflow (GG-PAGES-FIX-01): github-pages uploaded exactly once, in build, gated on deploy; github-pages environment only on deploy; fingerprint, live check, ledger / retention inputs, recovery, frozen root, release-files hand-over and verify-live kept', jobs && gated && Object.values(guards).every(Boolean), JSON.stringify(guards));
     // The bash check catches what the script could get wrong.
     const tamper = (label, fn) => { const d = copyDir(rel, path.join(W, 'wft-' + label, 'release')); fn(d); return runWorkflowCheck(d, MAIN_SHA).code; };
     const res = {
