@@ -54,6 +54,14 @@ const CONFIG = {
     // the same reach for them made them grow faster (top rival +16-20 % score, FINAL-03 simulations). Never below the usual reach (SZAŁ's
     // longer reach still wins). Checked by qa/objscale1.mjs SF-SOURCE-v2g / SF-EAT-*.
     fragmentReach: [1.0, 0, true],
+    // GG-SIZE-CONSISTENCY-01 (owner + GPT decision, Arena only): the vortex's growth jumps x growthJump when it crosses into a size tier
+    // (arenaRadiusForUnits()): inside a tier it grows to R_m / growthJump, then over growthJumpMs its radius itself grows to R_m (the
+    // production anchor, CONFIG.growth.radiusAnchors) -- the same growth units unlock every tier as before. Why: eating a T2-T6 object
+    // is a tier gate, so while the vortex grew x1.31-1.67 inside a tier it looked bigger than objects it could not eat yet; now a locked
+    // object is never shorter than the vortex's drawn disc (1.07 R) and fits inside it once unlocked (with ARENA_KIND_RADIUS).
+    // Checked by qa/sizecons1.mjs. Campaign keeps radiusForUnits() (GDD: a deliberate difference).
+    growthJump: 1.15,
+    growthJumpMs: 300,
     // ARENA-FIX-1: an eaten rival never comes back on the player. Its new
     // centre must lie at least  r_player * sqrt(2) + r_rival + margin  world
     // units from the player's centre at the moment it appears. r * sqrt(2)
@@ -551,6 +559,29 @@ function unitsForRadius(radius) {
   }
   const n = R.length - 1;
   return U[n] + (U[n] - U[n - 1]) * (radius - R[n]) / (R[n] - R[n - 1]);
+}
+
+/** Arena's radius for `units` growth units (GG-SIZE-CONSISTENCY-01, CONFIG.arena.growthJump): the same units per tier as
+ *  radiusForUnits(), but each tier's segment runs from its anchor R[i-1] to R[i] / growthJump, and R[i] is reached on the unit that
+ *  crosses into the next tier (the jump). Past the last anchor (T6) the same slope as radiusForUnits(). Campaign never uses it. */
+function arenaRadiusForUnits(units) {
+  const J = CONFIG.arena.growthJump, U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors, u = Math.max(0, units);
+  for (let i = 1; i < U.length; i++) {
+    if (u < U[i]) return R[i - 1] + (R[i] / J - R[i - 1]) * (u - U[i - 1]) / (U[i] - U[i - 1]);
+  }
+  return radiusForUnits(u);
+}
+
+/** Inverse of arenaRadiusForUnits(); a radius inside a jump (R[i] / growthJump .. R[i], reached only by eating a rival or mid-jump)
+ *  counts as U[i]. */
+function arenaUnitsForRadius(radius) {
+  const J = CONFIG.arena.growthJump, U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors;
+  if (radius <= R[0]) return 0;
+  for (let i = 1; i < R.length; i++) {
+    if (radius < R[i] / J) return U[i - 1] + (U[i] - U[i - 1]) * (radius - R[i - 1]) / (R[i] / J - R[i - 1]);
+    if (radius < R[i]) return U[i];
+  }
+  return unitsForRadius(radius);
 }
 
 /* ----------------------- Constants (aliases into CONFIG) ----------------------- */
@@ -2352,6 +2383,19 @@ const TIERS = {
   // Golden Shot v9 Złoty Rdzeń (see CONFIG.golden) -- never part of the
   // regular pool (count 0); spawned one at a time by Game.spawnGoldenCore().
   golden: { color: '#EFCB63', minR: 13, maxR: 13, value: 60, growth: 4, subtypes: ['zloty'], count: 0, minSizeTier: 0 }
+};
+
+/** GG-SIZE-CONSISTENCY-01: an Arena T2-T6 object's radius by kind (WorldObject.respawn(); the TIERS draw still happens first, so the
+ *  RNG streams are unchanged). Each kind sits in the band  L >= the vortex's drawn disc (1.07 R) just before the growth jump that
+ *  unlocks it  and  L <= 0.95 of that disc at unlock  (L = the approved bitmap's long half-extent from the object's centre, measured
+ *  in the game's renderer: qa/sizecons1-measure.mjs); a kind already in the band keeps its TIERS radius. The approved WebP bitmaps
+ *  are drawn scaled to it (OBJECT_RASTER.get()). Campaign, menus and the welcome scene keep TIERS / their own sizes. */
+const ARENA_KIND_RADIUS = {
+  lawka: 25, kiosk: 27, skrzynia: 26, latarnia: 18, drzewo: 26, znacznik: 22,
+  samochod: 35, wezel: 33, pylon: 32,
+  pawilon: 54, billboard: 56, magazyn: 54, landmark: 52,
+  autobus: 73, tramwaj: 68, ciezarowka: 72,
+  wiezowiec: 94, maszt: 85, kopula: 98
 };
 
 const BOT_NAME_POOL = [
@@ -6843,8 +6887,8 @@ const OBJECT_RASTER = {
    *  While the size just switched to is not decoded yet, the other size's image of the kind is used. */
   get(kind, r) {
     const q = this.q, meta = OBJECT_RASTER_META[kind];
-    // GG-SIZE-CONSISTENCY-01 pilot B: a kind given another radius draws its own (unchanged) bitmap scaled to that radius
-    const pr = meta && SIZE_PROTO.radius[kind] && Math.round(r) === SIZE_PROTO.radius[kind] ? r / meta.r : 1;
+    // GG-SIZE-CONSISTENCY-01: an Arena object at its ARENA_KIND_RADIUS draws its own (unchanged) bitmap scaled to that radius
+    const pr = meta && ARENA_KIND_RADIUS[kind] && Math.round(r) === ARENA_KIND_RADIUS[kind] ? r / meta.r : 1;
     if (!q || !meta || (Math.round(r) !== meta.r && pr === 1) || typeof Image !== 'function') return null;
     let im = this.imgs[q][kind];
     if (!im) {
@@ -7075,68 +7119,6 @@ const OBJECT_VIEW_SCALE = {
   maszt: [1.07, 1.16],
   kopula: [1.24, 1.05]
 };
-/** GG-SIZE-CONSISTENCY-01 EXPERIMENT (local pilot, NOT approved -- never ship in this form): two prototypes of one fix, switched only
- *  by QA in the page through applySizeProto() before a round starts. `variant` null = production behaviour, byte for byte the same
- *  numbers (no object, radius, curve or picture changes).
- *  Problem (qa/sizecons1-measure.mjs): the vortex is drawn as an opaque disc out to 1.07 R; eating a T2-T6 object is a tier gate only;
- *  inside a tier the vortex grows x1.31-1.67 while the next tier's objects stay put -- so for much of each tier the vortex looks
- *  bigger than objects it may not eat (T1 vortex R 29 = disc 31 vs a T2 crate's long half-extent 22).
- *   A -- representation only: the four pilot kinds are drawn so their long half-extent = the vortex's disc (1.07 R) at the radius that
- *        unlocks them (`view`: multiplies OBJECT_VIEW_SCALE, bitmap and vector). Hitbox, eat gate, tiers, growth: production.
- *   B -- Arena mechanics: the same growth units per tier (CONFIG.growth.unitAnchors, so the same pickups unlock each tier), but the
- *        vortex reaches only R_m / `surge` just before a tier's threshold and jumps to R_m (production's anchor) when it crosses it
- *        (arenaRadiusForUnits()). The jump is physical AND drawn: the radius itself grows from the old size to the new one over `surgeMs`
- *        (Hole.arenaGrowTo() / stepSurge()), so the eat reach, the tier (and the unlock) follow the picture -- never ahead of it.
- *        Object sizes in `radius` (all 19 T2-T6 kinds). A rival eaten is worth production's growth units (growFromArea()).
- *        Campaign keeps radiusForUnits() and never reads this. */
-const SIZE_PROTO = { variant: null, surge: 1, surgeMs: 0, view: {}, radius: {} };
-const SIZE_PROTO_SETS = {
-  A: { surge: 1, surgeMs: 0, view: { skrzynia: 1.446, wezel: 1.166, billboard: 1.181, kopula: 1.034 }, radius: {} },
-  // B FULL: every T2-T6 kind's radius in the band  L >= disc just before the jump  and  L <= 0.95 x disc at unlock  (L = the picture's
-  // long half-extent, measured: qa/sizecons1-measure.mjs; disc = 1.07 R); a kind already in the band keeps its production radius.
-  B: { surge: 1.15, surgeMs: 300, view: {}, radius: {
-    lawka: 25, kiosk: 27, skrzynia: 26, latarnia: 18, drzewo: 26, znacznik: 22,
-    samochod: 35, wezel: 33, pylon: 32,
-    pawilon: 54, billboard: 56, magazyn: 54, landmark: 52,
-    autobus: 73, tramwaj: 68, ciezarowka: 72,
-    wiezowiec: 94, maszt: 85, kopula: 98 } }
-};
-const SIZE_PROTO_VIEW0 = JSON.parse(JSON.stringify(OBJECT_VIEW_SCALE));
-/** QA only: switch the pilot (null | 'A' | 'B'); call before Game.startRound(). Returns SIZE_PROTO. */
-function applySizeProto(variant) {
-  const set = SIZE_PROTO_SETS[variant] || { surge: 1, surgeMs: 0, view: {}, radius: {} };
-  Object.assign(SIZE_PROTO, { variant: SIZE_PROTO_SETS[variant] ? variant : null, surge: set.surge, surgeMs: set.surgeMs, view: { ...set.view }, radius: { ...set.radius } });
-  for (const k of Object.keys(SIZE_PROTO_VIEW0)) {
-    const f = SIZE_PROTO.view[k] || 1;
-    OBJECT_VIEW_SCALE[k] = [+(SIZE_PROTO_VIEW0[k][0] * f).toFixed(3), +(SIZE_PROTO_VIEW0[k][1] * f).toFixed(3)];
-    if (f === 1) OBJECT_VIEW_SCALE[k] = SIZE_PROTO_VIEW0[k].slice();
-  }
-  return SIZE_PROTO;
-}
-/** Arena's radius for `units` growth units: radiusForUnits() when SIZE_PROTO.surge is 1 (production); variant B: each tier's segment
- *  runs from its anchor R[i-1] to R[i] / surge, and R[i] is reached on the unit that crosses into the next tier. Past the last anchor
- *  the production slope. */
-function arenaRadiusForUnits(units) {
-  const J = SIZE_PROTO.surge;
-  if (J === 1) return radiusForUnits(units);
-  const U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors, u = Math.max(0, units);
-  for (let i = 1; i < U.length; i++) {
-    if (u < U[i]) return R[i - 1] + (R[i] / J - R[i - 1]) * (u - U[i - 1]) / (U[i] - U[i - 1]);
-  }
-  return radiusForUnits(u);
-}
-/** Inverse of arenaRadiusForUnits(); a radius inside a jump (R[i] / surge .. R[i], reached only by eating a rival) counts as U[i]. */
-function arenaUnitsForRadius(radius) {
-  const J = SIZE_PROTO.surge;
-  if (J === 1) return unitsForRadius(radius);
-  const U = CONFIG.growth.unitAnchors, R = CONFIG.growth.radiusAnchors;
-  if (radius <= R[0]) return 0;
-  for (let i = 1; i < R.length; i++) {
-    if (radius < R[i] / J) return U[i - 1] + (U[i] - U[i - 1]) * (radius - R[i - 1]) / (R[i] / J - R[i - 1]);
-    if (radius < R[i]) return U[i];
-  }
-  return unitsForRadius(radius);
-}
 /** The bitmap factor of OBJECT_VIEW_SCALE for a kind (1 when it has none): the size the spawn rule keeps clear (spawnViewBox()). */
 function objectViewScale(kind) {
   const v = OBJECT_VIEW_SCALE[kind];
@@ -11238,14 +11220,14 @@ class WorldObject {
     if (first && rng) {
       this.subtype = tier.subtypes[seededInt(rng, 0, tier.subtypes.length - 1)];
       this.radius = seededRand(rng, tier.minR, tier.maxR);
-      if (SIZE_PROTO.radius[this.subtype]) this.radius = SIZE_PROTO.radius[this.subtype];   // GG-SIZE-CONSISTENCY-01 pilot (after the draw: same RNG stream)
+      if (ARENA_KIND_RADIUS[this.subtype]) this.radius = ARENA_KIND_RADIUS[this.subtype];   // GG-SIZE-CONSISTENCY-01 (after the draw: same RNG stream)
       this.rotation = seededRand(rng, 0, Math.PI * 2);
       this.x = seededRand(rng, this.radius + 20, WORLD_W - this.radius - 20);
       this.y = seededRand(rng, this.radius + 20, WORLD_H - this.radius - 20);
     } else {
       this.subtype = tier.subtypes[randInt(0, tier.subtypes.length - 1)];
       this.radius = rand(tier.minR, tier.maxR);
-      if (SIZE_PROTO.radius[this.subtype]) this.radius = SIZE_PROTO.radius[this.subtype];   // GG-SIZE-CONSISTENCY-01 pilot
+      if (ARENA_KIND_RADIUS[this.subtype]) this.radius = ARENA_KIND_RADIUS[this.subtype];   // GG-SIZE-CONSISTENCY-01
       this.rotation = rand(0, Math.PI * 2);
       this.x = rand(this.radius + 20, WORLD_W - this.radius - 20);
       this.y = rand(this.radius + 20, WORLD_H - this.radius - 20);
@@ -11634,32 +11616,26 @@ class Hole {
     this.y = clamp(this.y, this.radius, WORLD_H - this.radius);
   }
 
+  /** Arena: a rival eaten (handleHoleCollisions()). GG-SIZE-CONSISTENCY-01: its area is added on radiusForUnits()' curve and the
+   *  result read back as growth units, so a rival is worth the same units as before the growth jump (on the flatter in-tier Arena
+   *  curve the same radius gain would be worth up to x1.75 the units). */
   growFromArea(gainArea) {
-    if (SIZE_PROTO.surge !== 1) {
-      // GG-SIZE-CONSISTENCY-01 pilot B: a rival's area is added on production's curve, so it is worth the same growth units as in
-      // production (on B's flatter in-tier curve the same radius gain would be worth up to x1.75 the units)
-      const r0 = radiusForUnits(arenaUnitsForRadius(this.settledRadius()));
-      this.arenaGrowTo(Math.max(MIN_RADIUS, arenaRadiusForUnits(unitsForRadius(Math.sqrt(r0 * r0 + gainArea / Math.PI)))));
-      return;
-    }
-    const area = Math.PI * this.radius * this.radius;
-    const newArea = area + gainArea;
-    this.setRadius(Math.max(MIN_RADIUS, Math.sqrt(newArea / Math.PI)));
+    const r0 = radiusForUnits(arenaUnitsForRadius(this.settledRadius()));
+    this.arenaGrowTo(Math.max(MIN_RADIUS, arenaRadiusForUnits(unitsForRadius(Math.sqrt(r0 * r0 + gainArea / Math.PI)))));
   }
 
-  /** Grow along CONFIG.growth's curve by `units` growth units (an eaten
-   *  object's GDD 07 `growth` value) -- see radiusForUnits(). */
+  /** Arena: grow along arenaRadiusForUnits() by `units` growth units (an eaten object's GDD 07 `growth` value). */
   growUnits(units) {
-    if (!SIZE_PROTO.surgeMs) { this.setRadius(radiusForUnits(unitsForRadius(this.radius) + units)); return; }   // production
     this.arenaGrowTo(arenaRadiusForUnits(arenaUnitsForRadius(this.settledRadius()) + units));
   }
 
-  /** GG-SIZE-CONSISTENCY-01 pilot B: the radius growth is counted from -- the jump's target while a jump is under way. */
+  /** The radius growth is counted from: the growth jump's target while a jump is under way (GG-SIZE-CONSISTENCY-01). */
   settledRadius() { return this.surgeAt != null ? this.surgeTo : this.radius; }
 
-  /** GG-SIZE-CONSISTENCY-01 pilot B (Arena growth only): a growth that crosses a size tier starts a jump -- the radius then grows
-   *  to `r` over SIZE_PROTO.surgeMs in stepSurge(), so the tier (and what it unlocks) arrives when the vortex really is that big.
-   *  Growth during a jump moves its target. `quiet`: no gulp pop (a rival's slow passive growth). */
+  /** Arena growth (GG-SIZE-CONSISTENCY-01): a growth that crosses a size tier starts the growth jump -- the radius itself then grows to
+   *  `r` over CONFIG.arena.growthJumpMs in stepSurge(), so the eat reach, the tier, what it unlocks and its banner arrive when the vortex
+   *  really is that big (never ahead of the picture). Growth during a jump moves its target. `quiet`: no gulp pop (a rival's slow
+   *  passive growth, every frame). */
   arenaGrowTo(r, quiet) {
     r = Math.min(r, CONFIG.hole.maxRadius);
     const from = this.radius;
@@ -11671,12 +11647,12 @@ class Hole {
     if (quiet) this.radius = r; else this.setRadius(r);
   }
 
-  /** GG-SIZE-CONSISTENCY-01 pilot B: one step of a jump (Game.update(), every hole, before eating). Ease-out; a radius changed by
-   *  anything else meanwhile (eaten, respawned) cancels the jump. */
+  /** One step of a growth jump (Game.update(), every Arena hole, before eating). Ease-out; a radius changed by anything else meanwhile
+   *  (eaten, respawned) cancels the jump. */
   stepSurge() {
     if (this.surgeAt == null) return;
     if (this.radius !== this.surgeLast) { this.surgeAt = null; return; }
-    const k = (performance.now() - this.surgeAt) / SIZE_PROTO.surgeMs;
+    const k = (performance.now() - this.surgeAt) / CONFIG.arena.growthJumpMs;
     this.radius = k >= 1 || k < 0 ? this.surgeTo : this.surgeFrom + (this.surgeTo - this.surgeFrom) * (1 - Math.pow(1 - k, 3));
     this.surgeLast = this.radius;
     if (k >= 1 || k < 0) this.surgeAt = null;
@@ -15970,9 +15946,9 @@ class Game {
       const bot = new Bot(names[i], p.x, p.y);
       // Small per-bot spread so the pack isn't uniform.
       bot.startRadius = pick(D.botStartRadius) * (0.9 + 0.2 * (i / Math.max(1, NUM_BOTS - 1)));
-      // GG-SIZE-CONSISTENCY-01 pilot B: a rival starts at the same growth progress as in production (its start size read as units on
-      // production's curve, then drawn on B's) -- else a 26 px start would sit inside T1's jump, one pickup from T2
-      if (SIZE_PROTO.surgeMs && bot.startRadius > BASE_RADIUS) bot.startRadius = arenaRadiusForUnits(unitsForRadius(bot.startRadius));
+      // GG-SIZE-CONSISTENCY-01: a rival starts at the same growth progress as before the growth jump (D.botStartRadius read as units
+      // on radiusForUnits()' curve, drawn on arenaRadiusForUnits()') -- else a 26 px start would sit inside T1's jump, one pickup from T2
+      if (bot.startRadius > BASE_RADIUS) bot.startRadius = arenaRadiusForUnits(unitsForRadius(bot.startRadius));
       bot.radius = bot.startRadius;
       bot.baseSpeedMult = speedMult;
       bot.tempSpeedMult = speedMult;
@@ -20710,12 +20686,11 @@ class Game {
       this.showBanner('FINAŁOWE 40 S', 'Rywale przyspieszają!', '#FF54AD', 1.3, 2);
     }
     this.updateWaitingBots(dt);
-    if (SIZE_PROTO.surgeMs) { this.player.stepSurge(); for (const bot of this.bots) bot.stepSurge(); }   // GG-SIZE-CONSISTENCY-01 pilot B
+    this.player.stepSurge(); for (const bot of this.bots) bot.stepSurge();   // GG-SIZE-CONSISTENCY-01: growth jumps under way
     for (const bot of this.bots) {
       bot.tempSpeedMult = (bot.baseSpeedMult || 1) * (late ? 1 + D.lateRoundBotSpeedBonus : 1);
       if (this.botTuning.passive > 0) {
-        if (!SIZE_PROTO.surgeMs) bot.radius = Math.min(CONFIG.hole.maxRadius, radiusForUnits(unitsForRadius(bot.radius) + this.botTuning.passive * dt));
-        else bot.arenaGrowTo(arenaRadiusForUnits(arenaUnitsForRadius(bot.settledRadius()) + this.botTuning.passive * dt), true);   // pilot B
+        bot.arenaGrowTo(arenaRadiusForUnits(arenaUnitsForRadius(bot.settledRadius()) + this.botTuning.passive * dt), true);
       }
       bot.update(dt, this);
     }

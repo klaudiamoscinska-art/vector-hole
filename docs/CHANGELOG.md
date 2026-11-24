@@ -4,6 +4,13 @@ Zwięzła historia. Aktualny opis gry: `docs/GAME_DESIGN.md`.
 Starsze, szczegółowe plany wersji (v2–v12) zostały usunięte w v13 —
 są w historii gita (`git log -- docs/`).
 
+## GG-SIZE-CONSISTENCY-01 — wir nie wygląda na większy od obiektów, których nie może zjeść: skok wzrostu ×1,15 na progu tieru + promienie 19 rodzajów T2–T6 (lokalnie, wariant B FINAL; tylko Arena i Wyzwanie dnia; zapis nadal v13)
+- Przyczyna (`qa/sizecons1-measure.mjs`): jadalność T2–T6 = tier wiru, wir rysuje dysk do 1,07 R i rośnie w tierze ×1,31–1,67, więc przez 13–84% tieru był dłuższy od zablokowanych obiektów (kiosk T2 już od 1. fragmentu); latarnia, tramwaj i maszt były za to przy odblokowaniu dłuższe od wiru.
+- `CONFIG.arena.growthJump` 1,15 / `growthJumpMs` 300, `arenaRadiusForUnits()` / `arenaUnitsForRadius()`: te same jednostki na tier, w tierze do R_m/1,15, skok do R_m; fizyczny (`Hole.arenaGrowTo()` / `stepSurge()`) — zasięg, tier, odblokowanie i baner dopiero przy osiągnięciu progu.
+- `ARENA_KIND_RADIUS` (19 rodzajów; pasmo L ≥ dysk przed skokiem, L ≤ 0,95 dysku przy odblokowaniu), te same bitmapy WebP skalowane (`OBJECT_RASTER.get()`); losowanie z `TIERS` zostaje (strumień seeda bez zmian).
+- Rywale: zjedzony rywal i start rywala liczone w jednostkach (bez przewagi z płaskiej krzywej). Kampania bez zmian (`radiusForUnits()`), GDD opisuje świadomą różnicę.
+- Pilotaż: A (tylko obraz) odrzucony; B na 4 rodzajach (99e30e8), B FULL (e9b9bd8), integracja bez przełącznika `SIZE_PROTO`. Test: `node qa/sizecons1.mjs --base=DIR` (+ `--only=pace --seeds=100`), zrzuty `node qa/sizecons1-shots.mjs --base=DIR`.
+
 ## GG-OBJECTS-SCALE-FIX-01 — obiekty Areny T2–T6 tak duże jak ich hitbox + znacznik wymaganego tieru przy wirze + fragment T1 zjadany przez gracza od 1,0 R (lokalnie, wariant C + V2g; zapis nadal v13; progi, hitboxy, ekonomia, nagrody, boty, kampania bez zmian)
 - Audyt (`qa/objscale1.mjs`): jadalność = tier wiru, a promień obiektu leży tuż nad startem tieru poniżej, podczas gdy wir rośnie w tierze o 31–67%; bitmapy były też optycznie lżejsze niż r (0,70–0,94 r). Przed zmianą zablokowany obiekt wyglądał na wyraźnie mniejszy od wiru przez 80–100% tieru. REVIEW-01: żadna statyczna skala nie odróżni „zablokowany” od „jadalny” przy progu.
 - `OBJECT_VIEW_SCALE` (bitmapa ×1,07–1,44, wektor ×1,00–1,24; `node qa/objscale1.mjs --derive`): postrzegany promień obrazu = r. Pierścień „mogę zjeść” bez zmian (r + 3). `spawnViewBox()` / `spawnSpotFree()` liczą obraz w nowej skali.

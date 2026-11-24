@@ -35,11 +35,25 @@ function exportedRoot(root, name) {
 //   NAT   = natural 2.5D cover -- top stands in front on the floor and only covers part of bottom.
 // The game's spawn rule (settleSpawn) is stricter: no picture overlap at all at spawn (so BAD = NAT = 0 at spawn).
 const BASE_TABLE = { fragment: [-0.04, 0.86, 0.89], kapsula: [0, 0.95, 0.9], lawka: [0, 0.5, 0.93], kiosk: [-0.03, 0.63, 0.97], skrzynia: [-0.06, 0.57, 0.89], latarnia: [-0.03, 0.97, 0.6], drzewo: [-0.04, 0.68, 0.94], znacznik: [-0.15, 0.9, 0.78], samochod: [0.04, 0.35, 0.98], wezel: [0.11, 0.41, 0.88], pylon: [0.2, 0.61, 0.65], pawilon: [-0.02, 0.43, 0.96], billboard: [-0.04, 0.69, 0.96], magazyn: [-0.01, 0.39, 0.99], landmark: [-0.02, 0.8, 0.92], autobus: [-0.03, 0.3, 0.98], tramwaj: [-0.01, 0.26, 1], ciezarowka: [0.04, 0.29, 0.93], wiezowiec: [0, 0.8, 0.96], maszt: [0, 1.03, 0.68], kopula: [0, 0.38, 0.97] };
+// GG-SIZE-CONSISTENCY-01 (approved): the Arena kind radii (= game.js ARENA_KIND_RADIUS) and a rival's start radius on the Arena curve:
+// production's botStartRadius read as growth units (radiusForUnits() anchors) and drawn on arenaRadiusForUnits() (jump x1.15).
+const SIZE_KIND_RADIUS = { lawka: 25, kiosk: 27, skrzynia: 26, latarnia: 18, drzewo: 26, znacznik: 22, samochod: 35, wezel: 33, pylon: 32, pawilon: 54, billboard: 56, magazyn: 54, landmark: 52, autobus: 73, tramwaj: 68, ciezarowka: 72, wiezowiec: 94, maszt: 85, kopula: 98 };
+function arenaStartRadius(r, baseHasJump) {
+  if (baseHasJump || r <= 18) return r;   // a base that already has the jump (equal radii), or the start size
+  const U = [0, 6, 22, 50, 100, 180], R = [18, 30, 46, 66, 90, 118], J = 1.15;
+  let u = U[5] + (U[5] - U[4]) * (r - R[5]) / (R[5] - R[4]);
+  for (let i = 1; i < R.length; i++) if (r <= R[i]) { u = U[i - 1] + (U[i] - U[i - 1]) * (r - R[i - 1]) / (R[i] - R[i - 1]); break; }
+  for (let i = 1; i < U.length; i++) if (u < U[i]) return R[i - 1] + (R[i] / J - R[i - 1]) * (u - U[i - 1]) / (U[i] - U[i - 1]);
+  return R[5] + (R[5] - R[4]) * (u - U[5]) / (U[5] - U[4]);
+}
 const LIB = `
   const g = window.game, stop = () => { if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false; };
   const live = (o) => !o.eating && !o.removed;
   const fnv = (s) => { let a = 0x811c9dc5; for (let i = 0; i < s.length; i++) a = Math.imul(a ^ s.charCodeAt(i), 16777619); return (a >>> 0).toString(16); };
-  const rest = (o) => [o.tier, o.subtype, Math.round(o.radius * 1000), Math.round(o.rotation * 1000), o.value, !!o.trail].join(',');
+  // GG-SIZE-CONSISTENCY-01: an ARENA_KIND_RADIUS kind is compared by its approved table radius (checked as laid in qa/objscale1.mjs
+  // SF-LAYOUT-radii and qa/sizecons1.mjs), every other kind by its radius as before
+  const KR = ${JSON.stringify(SIZE_KIND_RADIUS)};
+  const rest = (o) => [o.tier, o.subtype, KR[o.subtype] ? 'K' + KR[o.subtype] : Math.round(o.radius * 1000), Math.round(o.rotation * 1000), o.value, !!o.trail].join(',');
   const BASE = ${JSON.stringify(BASE_TABLE)};
   const { OBJECT_RASTER_3PX } = await import('/objects-raster-3.js');
   const MASK = {};
@@ -100,7 +114,7 @@ const LAYOUTS = `(async (arg) => { ${LIB}
     // keep the object order of the base (waiting ones are taken out of g.objects only on an overfilled board)
     const j = judgeAll(g.objects, arg.keep || 0);
     out[seed] = { n: all.length, waiting: waiting(), tiers: JSON.stringify(tiers), phys: j.phys, bad: j.bad, nat: j.nat, ex: j.ex,
-      rest: fnv(all.map(rest).join('|')), bots: fnv(g.bots.map(b => [b.name, b.x.toFixed(3), b.y.toFixed(3), b.radius.toFixed(3)].join()).join('|')),
+      rest: fnv(all.map(rest).join('|')), bots: fnv(g.bots.map(b => [b.name, b.x.toFixed(3), b.y.toFixed(3)].join()).join('|')), botR: g.bots.map(b => b.radius),
       player: [g.player.x, g.player.y].map(v => +v.toFixed(3)), botSpawns: g.bots.map(b => [Math.round(b.x), Math.round(b.y)]), modifier: g.modifier, random: window.__qaRandomCalls, rngNext: g.rng.next(),
       inBounds: g.objects.every(o => o.x >= o.radius + 20 - 1e-9 && o.x <= WORLD_W - o.radius - 20 + 1e-9 && o.y >= o.radius + 20 - 1e-9 && o.y <= WORLD_H - o.radius - 20 + 1e-9),
       pos: all.map(o => [Math.round(o.x * 1000) / 1000, Math.round(o.y * 1000) / 1000, o.trail ? 1 : 0, o.tier]), stats: g.spawnStats || null, ms };
@@ -213,7 +227,8 @@ export async function spawnChecks(url, baseUrl, nSeeds) {
     const c = cand[s], b = base[s];
     if (c.n === b.n && c.tiers === b.tiers) sameCount++;
     if (c.rest === b.rest) sameRest++;
-    if (c.bots === b.bots && JSON.stringify(c.player) === JSON.stringify(b.player) && c.modifier === b.modifier) sameBots++;
+    // rivals: same names, spawns, player and modifier; the start radius = the base's growth units on the Arena curve (GG-SIZE-CONSISTENCY-01)
+    if (c.bots === b.bots && JSON.stringify(c.player) === JSON.stringify(b.player) && c.modifier === b.modifier && c.botR.every((r, i) => Math.abs(r - arenaStartRadius(b.botR[i], b.botR[i] === r)) < 1e-6)) sameBots++;
     if (c.rngNext === b.rngNext && c.random === b.random) sameRng++;
     if (c.inBounds) inB++;
     msMax = Math.max(msMax, c.ms);

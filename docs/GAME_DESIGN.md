@@ -176,8 +176,11 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   + 2 kapsuły (`layStarterFeasts()`). Połowa zjedzonych fragmentów odradza
   się na jezdniach. Cel zmierzony botem „casual”: pierwszy kęs < 1 s,
   ≥ 12 kęsów w 10 s (było: 1,1 s i 7).
-- **Wzrost:** wspólna krzywa jednostek wzrostu (`CONFIG.growth`): progi
+- **Wzrost:** wspólne jednostki wzrostu (`CONFIG.growth`): progi
   rozmiaru T2–T6 przy 6/22/50/100/180 jednostkach = promień 30/46/66/90/118.
+  **Świadoma różnica Arena ↔ Kampania (GG-SIZE-CONSISTENCY-01):** oba tryby przekraczają każdy tier po tych samych
+  jednostkach i mają te same promienie progów, ale wewnątrz tieru Arena (i Wyzwanie dnia) rośnie wolniej i na progu robi
+  skok wzrostu (`arenaRadiusForUnits()`, opis niżej), a Kampania zostaje na liniowej krzywej `radiusForUnits()`.
   Fragment 1 jedn., kapsuła 3, element uliczny 3, pojazd 6, budowla T4 16,
   ciężki pojazd T5 24, wieża T6 40. Obiekt jest jadalny dopiero od swojego
   rozmiaru (bez warunku proporcji); najechanie na za duży obiekt pokazuje
@@ -235,6 +238,29 @@ ma od v22 — kolejne rundy i próby misji startują od razu).
   Zasięg jedzenia (poza fragmentem T1 gracza — patrz V2g niżej), progi, hitboxy, wygląd T1, Złoty Rdzeń, Kampania, menu bez zmian. Reguła spawnu „obraz nie na obrazie” liczy obraz
   w nowej skali (RNG, liczba i rodzaje obiektów, promienie bez zmian). Wariant A (obraz = 0,88 wiru przy progu, ×1,21–2,0)
   odrzucony: obrazy daleko poza hitboxem i +38% czasu klatki w gęstej scenie telefonu.
+- **Skok wzrostu i rozmiary obiektów Areny (GG-SIZE-CONSISTENCY-01, wariant B; Arena i Wyzwanie dnia):** jadalność T2–T6 to
+  próg tieru, a wewnątrz tieru wir rósł ×1,31–1,67 — przez 13–84% tieru wyglądał na większy od obiektów, których jeszcze nie
+  mógł zjeść (wir rysuje nieprzezroczysty dysk do 1,07 R). Teraz:
+  (1) **krzywa ze skokiem** (`CONFIG.arena.growthJump` 1,15, `growthJumpMs` 300): wewnątrz tieru promień dochodzi do R_m/1,15
+  (26,1 / 40 / 57,4 / 78,3 / 102,6), a jednostka, która przekracza próg, daje skok do R_m (30 / 46 / 66 / 90 / 118). Te same
+  jednostki odblokowują każdy tier. Skok jest fizyczny: sam promień rośnie przez 300 ms (`Hole.arenaGrowTo()/stepSurge()`), więc
+  zasięg pochłaniania, tier, odblokowanie obiektów i baner tieru przychodzą dopiero, gdy wir naprawdę osiągnie próg; narysowany
+  wir nigdy nie jest mniejszy od fizycznego. Zjedzony w trakcie skoku wraca do rozmiaru startowego (skok porzucony). Za T6 —
+  liniowo jak dotąd.
+  (2) **promień obiektu według rodzaju** (`ARENA_KIND_RADIUS`; losowanie z `TIERS` zostaje, więc strumień seeda bez zmian):
+  każdy rodzaj T2–T6 w paśmie „dłuższa półoś obrazu L ≥ dysk wiru tuż przed skokiem” i „L ≤ 0,95 dysku przy odblokowaniu”:
+  ławka 25, kiosk 27, skrzynia 26, latarnia 18, drzewo 26, znacznik 22; samochód 35, węzeł 33, pylon 32; pawilon 54,
+  billboard 56, magazyn 54, landmark 52; autobus 73, tramwaj 68, ciężarówka 72; wieżowiec 94, maszt 85, kopuła 98 (rodzaje
+  już w paśmie bez zmian). Te same zatwierdzone bitmapy, skalowane do promienia. Zablokowany obiekt nigdy nie jest krótszy od
+  wiru, po odblokowaniu mieści się w nim (L = 0,87–0,95 dysku). Płaskie obiekty (autobus, tramwaj, ciężarówka, kopuła)
+  pozostają niższe od dysku w krótszej osi.
+  (3) **rywale bez przewagi:** zjedzony rywal daje tyle jednostek, co na liniowej krzywej (jego pole dodane na `radiusForUnits()`
+  i odczytane jako jednostki); start rywala (`botStartRadius`) liczony w jednostkach, więc żaden nie startuje w luce skoku.
+  Wzór punktów (2× promień rywala × combo), nagrody i wartości bez zmian. Równy rywal staje się jadalny tuż po moim skoku
+  (×1,16 > 1,15) — zgodnie z zasadą „wygląda na mniejszego = da się zjeść”.
+  Zmierzone (`qa/sizecons1.mjs`, 100 rund × 2 profile, bot „casual”): tiery osiągane w tym samym czasie (+0–9%), rozmiar po
+  60 i 120 s jak dotąd, najlepszy rywal ±5%, wygrane ±1 pkt; wydajność bez zmian. Kampania, menu i scena powitalna bez zmian.
+  Zadanie dnia „Urośnij do rozmiaru T5” (id `reach_size_60`, próg R 90) zalicza się przy tym samym progu T5.
 - **Rywal-pacer (v13, `CONFIG.rival`):** pierwszy bot jedzie po krzywej
   „par” = mediana 5 ostatnich ukończonych rund gracza (2600, dopóki nie ma
   3 rund; w Wyzwaniu dnia i wyzwaniach znajomych zawsze 2600) ×

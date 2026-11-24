@@ -1,5 +1,5 @@
 // GG-SIZE-CONSISTENCY-01 diagnosis, not a test: what the player SEES of the vortex and of a T2-T6 object, in the game's own renderer.
-//   node qa/sizecons1-measure.mjs [--root=DIR] [--tag=NAME]
+//   node qa/sizecons1-measure.mjs [--root=DIR] [--tag=NAME]   (a checkout: this one = the final Arena, --root=<production worktree> = BEFORE)
 // Vortex (the player's starting look, gfx 2, time frozen, no growth pop): drawn alone on a transparent canvas and on a typical dark floor;
 // per ring rho = d / R (step 0.01): the share of opaque pixels (alpha > 140) and the share of DARK pixels on the floor (luminance < 0.06 --
 // the hole's black throat). Reported edges, in units of R:
@@ -25,20 +25,21 @@ export function exportedRoot(root, name) {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(root)) if (/\.(js|html|css)$/.test(f) && f !== 'game.js') fs.copyFileSync(path.join(root, f), path.join(dir, f));
-  const src = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
-  fs.writeFileSync(path.join(dir, 'game.js'), src + `\nexport { drawObjectArt as __qaDraw, OBJECT_RASTER as __qaRaster, radiusForUnits as __qaRfu, unitsForRadius as __qaUfr, arenaRadiusForUnits as __qaArfu, arenaUnitsForRadius as __qaAufr, applySizeProto as __qaSize, SIZE_PROTO_SETS as __qaSizeSets, OBJECT_VIEW_SCALE as __qaViewScale };\n`);
+  // the final code has the Arena curve and ARENA_KIND_RADIUS; production (the base checkout) has neither -- export what exists
+  const src = fs.readFileSync(path.join(root, 'game.js'), 'utf8'), b = src.includes('function arenaRadiusForUnits');
+  fs.writeFileSync(path.join(dir, 'game.js'), src + `\nexport { drawObjectArt as __qaDraw, OBJECT_RASTER as __qaRaster, radiusForUnits as __qaRfu, unitsForRadius as __qaUfr, OBJECT_VIEW_SCALE as __qaViewScale, spawnViewBox as __qaViewBox, MISSIONS as __qaMissions${b ? ', arenaRadiusForUnits as __qaArfu, arenaUnitsForRadius as __qaAufr, ARENA_KIND_RADIUS as __qaKindR' : ''} };\n`);
   return dir;
 }
 
-export async function measurePage(page, radii, variant = null) {
-  return page.evaluate(async ({ KIND_TIER, radii, variant }) => {
+export async function measurePage(page, radii) {
+  return page.evaluate(async ({ KIND_TIER, radii }) => {
     const m = await import(document.querySelector('script[type="module"][src]').src);
     const T = m.TIERS, g = window.game;
     const kindTier = {}; for (const [name, t] of Object.entries(T)) for (const k of t.subtypes) kindTier[k] = name;
     g.applyGfx(2);
-    const SP = m.__qaSize(variant);
+    const KR = m.__qaKindR || {}, J = (m.CONFIG.arena && m.CONFIG.arena.growthJump) || 1, arfu = m.__qaArfu || m.__qaRfu;
     g.startRound({ seed: 2024 }); if (g.rafId) cancelAnimationFrame(g.rafId); g.running = false;
-    const out = { variant, viewScale: JSON.parse(JSON.stringify(m.__qaViewScale)), proto: JSON.parse(JSON.stringify(SP)), anchors: m.CONFIG.growth.radiusAnchors.slice(), unitAnchors: m.CONFIG.growth.unitAnchors.slice(), hole: {}, kinds: {} };
+    const out = { viewScale: JSON.parse(JSON.stringify(m.__qaViewScale)), proto: { surge: J, radius: { ...KR } }, anchors: m.CONFIG.growth.radiusAnchors.slice(), unitAnchors: m.CONFIG.growth.unitAnchors.slice(), hole: {}, kinds: {} };
     // ---- vortex
     const p = g.player, keep = { x: p.x, y: p.y, r: p.radius, inv: p.invulnerableUntil, pop: p.growPopAt, sq: p.fxSquash, skin: p.skin, name: p.name };
     p.skin = 'rainbow'; p.name = '';
@@ -78,10 +79,10 @@ export async function measurePage(page, radii, variant = null) {
     }
     p.skin = keep.skin; p.name = keep.name;
     // ---- objects
-    for (const k of Object.keys(KIND_TIER)) m.__qaRaster.get(k, SP.radius[k] || T[kindTier[k]].minR);
+    for (const k of Object.keys(KIND_TIER)) m.__qaRaster.get(k, KR[k] || T[kindTier[k]].minR);
     await new Promise(r => setTimeout(r, 1500));
     for (const k of Object.keys(KIND_TIER)) {
-      const tier = T[kindTier[k]], r = SP.radius[k] || tier.minR, H = Math.ceil(r * 2.2), W = H * 2 * S;
+      const tier = T[kindTier[k]], r = KR[k] || tier.minR, H = Math.ceil(r * 2.2), W = H * 2 * S;
       const cv = document.createElement('canvas'); cv.width = cv.height = W;
       const c = cv.getContext('2d'); c.setTransform(S, 0, 0, S, H * S, H * S);
       m.__qaDraw(c, k, tier.color, r, 0, 0, { raster: true, live: false });
@@ -97,19 +98,17 @@ export async function measurePage(page, radii, variant = null) {
         minHalf: +Math.min(halfW, halfH).toFixed(1), box: [x0, x1, y0, y1].map(v => +v.toFixed(1)), bitmap: !!m.__qaRaster.get(k, r) };
     }
     // the Arena growth curve in use (units -> R), sampled
-    out.curve = []; for (let u = 0; u <= 200; u += 0.5) out.curve.push([u, +m.__qaArfu(u).toFixed(3)]);
-    m.__qaSize(null);
+    out.curve = []; for (let u = 0; u <= 200; u += 0.5) out.curve.push([u, +arfu(u).toFixed(3)]);
     return out;
-  }, { KIND_TIER, radii, variant });
+  }, { KIND_TIER, radii });
 }
 
-export async function measure(root, tag, radii, variants = [null]) {
+export async function measure(root, tag, radii) {
   const srv = await serve({ root: exportedRoot(root, tag) });
   try {
     const g = await openGame(srv.url, { viewport: { width: 1280, height: 720 }, mobile: false, deviceScaleFactor: 1, initScript: QA_RANDOM });
     try {
-      const all = {};
-      for (const v of variants) all[v || 'BEFORE'] = await measurePage(g.page, radii, v);
+      const all = { [tag]: await measurePage(g.page, radii) };
       all.errors = g.errors;
       return all;
     } finally { await g.browser.close(); }
@@ -120,7 +119,7 @@ if (isMain(import.meta.url)) {
   const root = path.resolve(opt('root', ROOT)), tag = opt('tag', 'base');
   fs.mkdirSync(DIR, { recursive: true });
   const radii = [18, 20, 24, 29, 30, 32, 40, 45, 46, 52, 60, 65, 66, 76, 85, 89, 90, 100, 110, 117, 118];
-  measure(root, tag, radii, ['A', 'B'].includes(opt('variants', '')) || opt('variants', '') ? opt('variants', '').split(',').map(v => v === 'BEFORE' ? null : v) : [null]).then((all) => {
+  measure(root, tag, radii).then((all) => {
     fs.writeFileSync(path.join(DIR, `measure-${tag}.json`), JSON.stringify(all, null, 1));
     for (const [v, M] of Object.entries(all)) {
       if (v === 'errors') continue;
